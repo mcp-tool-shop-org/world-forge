@@ -1,0 +1,100 @@
+import type { SiteConfig } from '@mcptoolshop/site-theme';
+
+export const config: SiteConfig = {
+  title: 'World Forge',
+  description: '2D world authoring studio for AI RPG Engine',
+  logoBadge: 'WF',
+  brandName: 'World Forge',
+  repoUrl: 'https://github.com/mcp-tool-shop-org/world-forge',
+  npmUrl: 'https://www.npmjs.com/package/@world-forge/schema',
+  footerText: 'MIT Licensed — built by <a href="https://mcp-tool-shop.github.io/" style="color:var(--color-muted);text-decoration:underline">MCP Tool Shop</a>',
+
+  hero: {
+    badge: '2D World Authoring Studio',
+    headline: 'World Forge:',
+    headlineAccent: 'Author. Validate. Export.',
+    description: 'Paint zones on a 2D canvas, define districts and factions, place entities with stats and AI profiles, author branching dialogue trees — export a complete ContentPack for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine" style="text-decoration:underline">ai-rpg-engine</a>.',
+    primaryCta: { href: '#quickstart', label: 'Get Started' },
+    secondaryCta: { href: 'handbook/', label: 'Read the Handbook' },
+    previews: [
+      { label: 'Install', code: 'npm install\nnpm run build' },
+      { label: 'Editor', code: 'npm run dev --workspace=packages/editor\n# → http://localhost:5173' },
+      { label: 'Export', code: 'npx world-forge-export project.json \\\n  --out ./my-pack' },
+    ],
+  },
+
+  sections: [
+    {
+      kind: 'features',
+      id: 'features',
+      title: 'Features',
+      subtitle: 'Everything you need to author worlds for narrative RPGs.',
+      features: [
+        {
+          title: 'Zone Painting',
+          desc: 'Drag to create rectangular zones with spatial grid layout. Define neighbors, exits, light, noise, hazards, and interactables.',
+        },
+        {
+          title: 'Districts & Factions',
+          desc: 'Group zones into districts with faction control, economy profiles, and base metrics. Track faction influence and alert levels.',
+        },
+        {
+          title: 'Entity Placement',
+          desc: 'Drop NPCs, enemies, merchants, companions, and bosses onto zones. Author stats, resources, AI profiles, and custom metadata.',
+        },
+        {
+          title: 'Dialogue Trees',
+          desc: 'Author branching NPC conversations with conditions, effects, and multiple choice paths. Validated for broken links and unreachable nodes.',
+        },
+        {
+          title: 'Export Pipeline',
+          desc: 'One-click export to ai-rpg-engine ContentPack. Zones, districts, entities, items, dialogues, manifest, and pack metadata.',
+        },
+        {
+          title: '36 Tests, TypeScript Strict',
+          desc: 'Monorepo with project references. Schema validation, export converter tests, and Chapel Threshold dogfood proving the full pipeline.',
+        },
+      ],
+    },
+    {
+      kind: 'code-cards',
+      id: 'quickstart',
+      title: 'Quick Start',
+      cards: [
+        {
+          title: 'Install',
+          code: '# Clone and install\ngit clone https://github.com/mcp-tool-shop-org/world-forge\ncd world-forge\nnpm install\nnpm run build',
+        },
+        {
+          title: 'Launch Editor',
+          code: '# Start the web editor\nnpm run dev --workspace=packages/editor\n\n# Open http://localhost:5173\n# Paint zones, connect, place entities, export',
+        },
+        {
+          title: 'CLI Export',
+          code: '# Export a project file\nnpx world-forge-export project.json --out ./pack\n\n# Validate without exporting\nnpx world-forge-export project.json --validate-only',
+        },
+      ],
+    },
+    {
+      kind: 'data-table',
+      id: 'surface',
+      title: 'Authoring Surface',
+      subtitle: 'What World Forge authors today and what is planned.',
+      columns: ['Feature', 'Status'],
+      rows: [
+        ['Zones (spatial layout, neighbors, exits)', 'Shipped'],
+        ['Connections (bidirectional, conditional)', 'Shipped'],
+        ['Districts (faction control, economy)', 'Shipped'],
+        ['Landmarks (points of interest)', 'Shipped'],
+        ['Entities (stats, resources, AI profiles)', 'Shipped'],
+        ['Items (slot, rarity, modifiers, verbs)', 'Shipped'],
+        ['Dialogues (branching, conditions, effects)', 'Shipped'],
+        ['Spawn points & encounter anchors', 'Shipped'],
+        ['Faction presences & pressure hotspots', 'Shipped'],
+        ['Build catalogs (archetypes, traits)', 'Planned'],
+        ['Progression trees (skill unlocks)', 'Planned'],
+        ['Player template configuration', 'Planned'],
+      ],
+    },
+  ],
+};
