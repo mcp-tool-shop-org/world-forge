@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { useEditorStore } from '../store/editor-store.js';
+import { useEditorStore, type BuildsSubTab } from '../store/editor-store.js';
 import { validateProject, type ValidationError } from '@world-forge/schema';
 
 type Domain = 'world' | 'entities' | 'items' | 'dialogue' | 'player' | 'builds' | 'progression';
@@ -30,9 +30,19 @@ function classifyError(err: ValidationError): Domain {
   return 'world';
 }
 
+/** Map a build catalog error path to the correct sub-tab. */
+function buildsSubTabFor(path: string): BuildsSubTab {
+  if (path.includes('.archetypes')) return 'archetypes';
+  if (path.includes('.backgrounds')) return 'backgrounds';
+  if (path.includes('.traits')) return 'traits';
+  if (path.includes('.disciplines')) return 'disciplines';
+  if (path.includes('.crossTitles') || path.includes('.entanglements')) return 'combos';
+  return 'config';
+}
+
 export function ValidationPanel() {
   const { project } = useProjectStore();
-  const { setSelectedZone, setRightTab } = useEditorStore();
+  const { setSelectedZone, setRightTab, setBuildsSubTab, setFocusTarget } = useEditorStore();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const result = useMemo(() => validateProject(project), [project]);
@@ -50,24 +60,57 @@ export function ValidationPanel() {
 
   const handleClick = (err: ValidationError) => {
     const p = err.path;
-    // Try to extract a zone ID to focus on
+    const focus = { domain: classifyError(err), subPath: p, timestamp: Date.now() };
+
+    // Zone — select it and switch to map
     const zoneMatch = p.match(/^zones\.([^.]+)/);
     if (zoneMatch) {
       setSelectedZone(zoneMatch[1]);
       setRightTab('map');
+      setFocusTarget(focus);
       return;
     }
-    // Entity placement — switch to map tab
-    const entityMatch = p.match(/^entityPlacements\.([^.]+)/);
-    if (entityMatch) {
+
+    // Entity/item/spawn/connection — map tab
+    if (p.startsWith('entityPlacements') || p.startsWith('itemPlacements') ||
+        p.startsWith('spawnPoints') || p.startsWith('connections') || p.startsWith('landmarks')) {
       setRightTab('map');
+      setFocusTarget(focus);
       return;
     }
-    // Domain-level focus
-    if (p.startsWith('playerTemplate')) { setRightTab('player'); return; }
-    if (p.startsWith('buildCatalog')) { setRightTab('builds'); return; }
-    if (p.startsWith('progressionTrees')) { setRightTab('trees'); return; }
-    if (p.startsWith('dialogues')) { setRightTab('dialogue'); return; }
+
+    // Player template
+    if (p.startsWith('playerTemplate')) {
+      setRightTab('player');
+      setFocusTarget(focus);
+      return;
+    }
+
+    // Build catalog — also set sub-tab
+    if (p.startsWith('buildCatalog')) {
+      setRightTab('builds');
+      setBuildsSubTab(buildsSubTabFor(p));
+      setFocusTarget(focus);
+      return;
+    }
+
+    // Progression trees
+    if (p.startsWith('progressionTrees')) {
+      setRightTab('trees');
+      setFocusTarget(focus);
+      return;
+    }
+
+    // Dialogue
+    if (p.startsWith('dialogues')) {
+      setRightTab('dialogue');
+      setFocusTarget(focus);
+      return;
+    }
+
+    // Fallback: world domain
+    setRightTab('map');
+    setFocusTarget(focus);
   };
 
   const toggle = (domain: string) => {
@@ -77,15 +120,17 @@ export function ValidationPanel() {
   if (result.valid) {
     return (
       <div>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>Validation</div>
-        <div style={{ color: '#3fb950', fontSize: 13, padding: '8px 0' }}>No issues found</div>
+        <div style={headerStyle}>Validation</div>
+        <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
+          No issues found — ready to export.
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
+      <div style={headerStyle}>
         Validation — {result.errors.length} issue{result.errors.length !== 1 ? 's' : ''}
       </div>
       {domainOrder.map((domain) => {
@@ -93,12 +138,12 @@ export function ValidationPanel() {
         if (errors.length === 0) return null;
         const isCollapsed = collapsed[domain];
         return (
-          <div key={domain} style={{ marginBottom: 6 }}>
+          <div key={domain} style={{ marginBottom: 8 }}>
             <div
               onClick={() => toggle(domain)}
               style={{
-                fontSize: 12, fontWeight: 'bold', color: '#f85149',
-                cursor: 'pointer', padding: '3px 0', userSelect: 'none',
+                fontSize: 12, fontWeight: 600, color: '#f85149',
+                cursor: 'pointer', padding: '4px 0', userSelect: 'none',
               }}
             >
               {isCollapsed ? '\u25b6' : '\u25bc'} {domainLabels[domain]} ({errors.length})
@@ -108,10 +153,13 @@ export function ValidationPanel() {
                 key={i}
                 onClick={() => handleClick(err)}
                 style={{
-                  fontSize: 11, color: '#f0883e', padding: '2px 0 2px 12px',
+                  fontSize: 11, color: '#f0883e', padding: '3px 0 3px 14px',
                   cursor: 'pointer', borderLeft: '2px solid #30363d',
+                  transition: 'background 0.15s',
                 }}
-                title={`[${err.path}] ${err.message}`}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#1c2128'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                title={`Click to jump to: ${err.path}`}
               >
                 {err.message}
               </div>
@@ -128,3 +176,5 @@ export function useIssueCount(): number {
   const { project } = useProjectStore();
   return useMemo(() => validateProject(project).errors.length, [project]);
 }
+
+const headerStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginBottom: 8 };

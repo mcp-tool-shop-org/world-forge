@@ -2,11 +2,30 @@
 
 import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import type { DialogueDefinition, DialogueNode, DialogueChoice, DialogueEffect, DialogueCondition } from '@world-forge/schema';
+import { EmptyState, useFocusHighlight, sectionTitle, labelStyle, inputStyle, addBtnStyle, smallBtnStyle, xBtnStyle, itemStyle, hintStyle } from './shared.js';
+import type { DialogueNode, DialogueChoice } from '@world-forge/schema';
+
+const STARTER_DIALOGUE = {
+  id: 'keeper-greeting',
+  speakers: ['keeper'],
+  entryNodeId: 'greeting',
+  nodes: {
+    greeting: { id: 'greeting', speaker: 'keeper', text: 'Welcome, traveler. What brings you here?', choices: [
+      { id: 'c1', text: 'I seek knowledge.', nextNodeId: 'knowledge' },
+      { id: 'c2', text: 'Just passing through.', nextNodeId: 'farewell' },
+    ] },
+    knowledge: { id: 'knowledge', speaker: 'keeper', text: 'Knowledge has a price. Are you prepared?', choices: [
+      { id: 'c3', text: 'I am ready.', nextNodeId: 'farewell' },
+      { id: 'c4', text: 'Not yet.', nextNodeId: 'farewell' },
+    ] },
+    farewell: { id: 'farewell', speaker: 'keeper', text: 'Safe travels.', choices: [] },
+  },
+};
 
 export function DialoguePanel() {
   const { project, addDialogue, updateDialogue, removeDialogue,
     addDialogueNode, updateDialogueNode, removeDialogueNode } = useProjectStore();
+  const focusRef = useFocusHighlight('dialogue');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
 
@@ -15,17 +34,19 @@ export function DialoguePanel() {
 
   const handleAdd = () => {
     const id = `dlg-${Date.now()}`;
-    const entryId = `node-start`;
+    const entryId = 'node-start';
     addDialogue({
-      id,
-      speakers: [],
-      entryNodeId: entryId,
+      id, speakers: [], entryNodeId: entryId,
       nodes: { [entryId]: { id: entryId, speaker: '', text: 'Hello.', choices: [] } },
     });
     setSelectedId(id);
   };
 
-  // Detect broken references
+  const handleAddStarter = () => {
+    addDialogue(STARTER_DIALOGUE);
+    setSelectedId(STARTER_DIALOGUE.id);
+  };
+
   const brokenRefs = useMemo(() => {
     if (!selected) return new Set<string>();
     const broken = new Set<string>();
@@ -40,39 +61,50 @@ export function DialoguePanel() {
     return broken;
   }, [selected]);
 
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>Dialogues</div>
+  if (dialogues.length === 0) {
+    return (
+      <EmptyState
+        title="Dialogues"
+        description="Branching conversation trees for NPCs. Each dialogue has nodes with speaker text, player choices, conditions, and effects."
+        actions={[
+          { label: '+ Starter Dialogue (Keeper)', onClick: handleAddStarter },
+          { label: '+ Empty Dialogue', onClick: handleAdd },
+        ]}
+      />
+    );
+  }
 
-      {/* Dialogue list */}
-      {dialogues.map((d) => (
-        <div key={d.id}
-          onClick={() => { setSelectedId(d.id); setEditingNodeId(null); }}
-          style={{
-            ...itemStyle,
-            borderColor: selectedId === d.id ? '#58a6ff' : '#30363d',
-            cursor: 'pointer',
-          }}>
-          <div style={{ fontSize: 12, color: '#c9d1d9' }}>{d.id}</div>
-          <div style={{ fontSize: 10, color: '#8b949e' }}>
-            {Object.keys(d.nodes).length} node(s) | entry: {d.entryNodeId}
-            {d.speakers.length > 0 && ` | speakers: ${d.speakers.join(', ')}`}
+  return (
+    <div ref={focusRef}>
+      <div style={sectionTitle}>Dialogues</div>
+      {dialogues.map((d) => {
+        const nodeCount = Object.keys(d.nodes).length;
+        return (
+          <div key={d.id}
+            onClick={() => { setSelectedId(d.id); setEditingNodeId(null); }}
+            style={{ ...itemStyle, borderColor: selectedId === d.id ? '#58a6ff' : '#30363d', cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, color: '#c9d1d9' }}>{d.id}</div>
+            <div style={{ fontSize: 10, color: '#8b949e' }}>
+              {nodeCount} node(s) | entry: {d.entryNodeId}
+              {d.speakers.length > 0 && ` | ${d.speakers.join(', ')}`}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <button onClick={handleAdd} style={addBtnStyle}>+ Add Dialogue</button>
 
-      {/* Selected dialogue editor */}
       {selected && (
-        <div style={{ marginTop: 12, borderTop: '1px solid #30363d', paddingTop: 8 }}>
+        <div style={{ marginTop: 12, borderTop: '1px solid #21262d', paddingTop: 8 }}>
+          <div style={sectionTitle}>Settings</div>
           <label style={labelStyle}>Dialogue ID
-            <input style={inputStyle} value={selected.id} disabled />
+            <input style={{ ...inputStyle, color: '#484f58' }} value={selected.id} disabled />
           </label>
-          <label style={labelStyle}>Speakers (comma-separated entity IDs)
-            <input style={inputStyle} value={selected.speakers.join(', ')}
+          <label style={labelStyle}>Speakers
+            <input style={inputStyle} value={selected.speakers.join(', ')} placeholder="e.g. keeper, merchant"
               onChange={(e) => updateDialogue(selected.id, {
                 speakers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
               })} />
+            <div style={hintStyle}>Comma-separated entity IDs.</div>
           </label>
           <label style={labelStyle}>Entry Node
             <select style={inputStyle} value={selected.entryNodeId}
@@ -84,45 +116,41 @@ export function DialoguePanel() {
           </label>
 
           {brokenRefs.size > 0 && (
-            <div style={{ fontSize: 11, color: '#f85149', marginBottom: 8 }}>
-              Broken refs: {[...brokenRefs].join(', ')}
+            <div style={{ fontSize: 11, color: '#f85149', padding: '4px 8px', background: '#1c1410', borderRadius: 3, marginBottom: 8 }}>
+              Broken references: {[...brokenRefs].join(', ')}
             </div>
           )}
 
           <button onClick={() => { removeDialogue(selected.id); setSelectedId(null); }}
             style={{ ...smallBtnStyle, color: '#f85149', marginBottom: 8 }}>Delete Dialogue</button>
 
-          {/* Node list */}
-          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Nodes</div>
+          <div style={sectionTitle}>Nodes ({Object.keys(selected.nodes).length})</div>
           {Object.values(selected.nodes).map((node) => {
             const isEntry = node.id === selected.entryNodeId;
             return (
               <div key={node.id} style={{ ...itemStyle, borderColor: isEntry ? '#3fb950' : '#30363d' }}>
                 {editingNodeId === node.id ? (
-                  <DialogueNodeEditor
-                    node={node}
-                    dialogueId={selected.id}
-                    allNodeIds={Object.keys(selected.nodes)}
-                    brokenRefs={brokenRefs}
+                  <DialogueNodeEditor node={node} dialogueId={selected.id}
+                    allNodeIds={Object.keys(selected.nodes)} brokenRefs={brokenRefs}
                     onUpdate={updateDialogueNode}
                     onRemove={(nodeId) => { removeDialogueNode(selected.id, nodeId); setEditingNodeId(null); }}
-                    onDone={() => setEditingNodeId(null)}
-                  />
+                    onDone={() => setEditingNodeId(null)} />
                 ) : (
                   <div onClick={() => setEditingNodeId(node.id)} style={{ cursor: 'pointer' }}>
                     <div style={{ fontSize: 12, color: '#c9d1d9' }}>
-                      {isEntry && <span style={{ color: '#3fb950', fontSize: 10, marginRight: 4 }}>[ENTRY]</span>}
+                      {isEntry && <span style={{ color: '#3fb950', fontSize: 9, marginRight: 4, fontWeight: 700 }}>ENTRY</span>}
                       {node.id}
                     </div>
                     <div style={{ fontSize: 11, color: '#8b949e' }}>
-                      {node.speaker && `${node.speaker}: `}{node.text.slice(0, 50)}{node.text.length > 50 ? '...' : ''}
+                      {node.speaker && <span style={{ color: '#58a6ff' }}>{node.speaker}:</span>}{' '}
+                      {node.text.slice(0, 50)}{node.text.length > 50 ? '...' : ''}
                     </div>
                     {(node.choices?.length ?? 0) > 0 && (
                       <div style={{ fontSize: 10, color: '#58a6ff' }}>{node.choices!.length} choice(s)</div>
                     )}
                     {node.nextNodeId && (
-                      <div style={{ fontSize: 10, color: brokenRefs.has(node.nextNodeId) ? '#f85149' : '#8b949e' }}>
-                        next: {node.nextNodeId}
+                      <div style={{ fontSize: 10, color: brokenRefs.has(node.nextNodeId) ? '#f85149' : '#484f58' }}>
+                        auto: {node.nextNodeId} {brokenRefs.has(node.nextNodeId) && '(broken!)'}
                       </div>
                     )}
                   </div>
@@ -142,98 +170,69 @@ export function DialoguePanel() {
 }
 
 function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate, onRemove, onDone }: {
-  node: DialogueNode;
-  dialogueId: string;
-  allNodeIds: string[];
-  brokenRefs: Set<string>;
+  node: DialogueNode; dialogueId: string; allNodeIds: string[]; brokenRefs: Set<string>;
   onUpdate: (dialogueId: string, nodeId: string, updates: Partial<DialogueNode>) => void;
-  onRemove: (nodeId: string) => void;
-  onDone: () => void;
+  onRemove: (nodeId: string) => void; onDone: () => void;
 }) {
   const update = (updates: Partial<DialogueNode>) => onUpdate(dialogueId, node.id, updates);
-
-  const handleAddChoice = () => {
-    const choices = [...(node.choices ?? []), {
-      id: `choice-${Date.now()}`, text: 'New choice', nextNodeId: '',
-    }];
-    update({ choices });
-  };
-
-  const handleUpdateChoice = (i: number, updates: Partial<DialogueChoice>) => {
-    const choices = (node.choices ?? []).map((c, idx) => idx === i ? { ...c, ...updates } : c);
-    update({ choices });
-  };
-
-  const handleRemoveChoice = (i: number) => {
-    update({ choices: (node.choices ?? []).filter((_, idx) => idx !== i) });
-  };
 
   return (
     <>
       <label style={labelStyle}>Speaker
-        <input style={inputStyle} value={node.speaker}
+        <input style={inputStyle} value={node.speaker} placeholder="e.g. keeper"
           onChange={(e) => update({ speaker: e.target.value })} />
       </label>
       <label style={labelStyle}>Text
         <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={node.text}
+          placeholder="What the speaker says..."
           onChange={(e) => update({ text: e.target.value })} />
       </label>
-      <label style={labelStyle}>Auto-advance to (no choices)
+      <label style={labelStyle}>Auto-advance to
         <select style={inputStyle} value={node.nextNodeId ?? ''}
           onChange={(e) => update({ nextNodeId: e.target.value || undefined })}>
-          <option value="">None</option>
+          <option value="">None (use choices instead)</option>
           {allNodeIds.filter((id) => id !== node.id).map((id) => (
-            <option key={id} value={id} style={{ color: brokenRefs.has(id) ? '#f85149' : undefined }}>{id}</option>
+            <option key={id} value={id}>{id}</option>
           ))}
         </select>
+        <div style={hintStyle}>Used when there are no player choices.</div>
       </label>
 
-      {/* Choices */}
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 2, marginTop: 8 }}>Choices</div>
+      <div style={{ ...sectionTitle, marginTop: 10 }}>Choices</div>
+      {(node.choices ?? []).length === 0 && <div style={hintStyle}>No choices. Add one, or set auto-advance above.</div>}
       {(node.choices ?? []).map((choice, i) => (
-        <div key={i} style={{ padding: 4, background: '#0d1117', borderRadius: 3, marginBottom: 4, border: '1px solid #30363d' }}>
+        <div key={i} style={{ padding: 6, background: '#0d1117', borderRadius: 3, marginBottom: 4, border: '1px solid #21262d' }}>
           <input style={{ ...inputStyle, marginTop: 0 }} value={choice.text} placeholder="Choice text"
-            onChange={(e) => handleUpdateChoice(i, { text: e.target.value })} />
-          <select style={{ ...inputStyle, marginTop: 2 }} value={choice.nextNodeId}
-            onChange={(e) => handleUpdateChoice(i, { nextNodeId: e.target.value })}>
+            onChange={(e) => {
+              const choices = (node.choices ?? []).map((c, idx) => idx === i ? { ...c, text: e.target.value } : c);
+              update({ choices });
+            }} />
+          <select style={{ ...inputStyle, marginTop: 3 }} value={choice.nextNodeId}
+            onChange={(e) => {
+              const choices = (node.choices ?? []).map((c, idx) => idx === i ? { ...c, nextNodeId: e.target.value } : c);
+              update({ choices });
+            }}>
             <option value="">None</option>
             {allNodeIds.filter((id) => id !== node.id).map((id) => (
               <option key={id} value={id}>{id}</option>
             ))}
           </select>
           {choice.nextNodeId && brokenRefs.has(choice.nextNodeId) && (
-            <div style={{ fontSize: 10, color: '#f85149' }}>Broken reference!</div>
+            <div style={{ fontSize: 10, color: '#f85149', marginTop: 2 }}>Broken reference!</div>
           )}
-          <button onClick={() => handleRemoveChoice(i)} style={{ ...xBtnStyle, fontSize: 10 }}>remove choice</button>
+          <button onClick={() => update({ choices: (node.choices ?? []).filter((_, idx) => idx !== i) })}
+            style={{ ...xBtnStyle, fontSize: 10, marginTop: 2 }}>remove</button>
         </div>
       ))}
-      <button onClick={handleAddChoice} style={{ ...addBtnStyle, fontSize: 10 }}>+ choice</button>
+      <button onClick={() => {
+        const choices = [...(node.choices ?? []), { id: `choice-${Date.now()}`, text: '', nextNodeId: '' }];
+        update({ choices });
+      }} style={{ ...addBtnStyle, fontSize: 10 }}>+ choice</button>
 
-      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
         <button onClick={onDone} style={smallBtnStyle}>Done</button>
         <button onClick={() => onRemove(node.id)} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete Node</button>
       </div>
     </>
   );
 }
-
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, marginBottom: 6 };
-const inputStyle: React.CSSProperties = {
-  display: 'block', width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '3px 6px', fontSize: 12, marginTop: 2,
-};
-const addBtnStyle: React.CSSProperties = {
-  fontSize: 11, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 3, cursor: 'pointer', padding: '4px 10px', width: '100%', marginTop: 4,
-};
-const smallBtnStyle: React.CSSProperties = {
-  fontSize: 10, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 3, cursor: 'pointer', padding: '2px 8px',
-};
-const xBtnStyle: React.CSSProperties = {
-  background: 'transparent', border: 'none', color: '#f85149',
-  cursor: 'pointer', fontSize: 14, padding: '0 4px',
-};
-const itemStyle: React.CSSProperties = {
-  padding: 6, background: '#161b22', borderRadius: 3, marginBottom: 4, border: '1px solid #30363d',
-};

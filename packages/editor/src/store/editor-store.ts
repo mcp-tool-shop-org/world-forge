@@ -4,10 +4,20 @@ import { create } from 'zustand';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'issues';
+export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
+
+/** Transient focus target set by validation click. Panels read and clear it. */
+export interface FocusTarget {
+  domain: string;
+  subPath?: string;
+  timestamp: number;
+}
 
 interface EditorState {
   activeTool: EditorTool;
   rightTab: RightTab;
+  buildsSubTab: BuildsSubTab;
+  focusTarget: FocusTarget | null;
   gridSnap: boolean;
   showGrid: boolean;
   showConnections: boolean;
@@ -20,6 +30,8 @@ interface EditorState {
 
   setTool: (tool: EditorTool) => void;
   setRightTab: (tab: RightTab) => void;
+  setBuildsSubTab: (tab: BuildsSubTab) => void;
+  setFocusTarget: (target: FocusTarget | null) => void;
   setSelectedZone: (id: string | null) => void;
   setHoveredZone: (id: string | null) => void;
   setSelectedEntity: (id: string | null) => void;
@@ -33,6 +45,8 @@ interface EditorState {
 export const useEditorStore = create<EditorState>((set) => ({
   activeTool: 'select',
   rightTab: 'map',
+  buildsSubTab: 'config',
+  focusTarget: null,
   gridSnap: true,
   showGrid: true,
   showConnections: true,
@@ -45,6 +59,8 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   setTool: (tool) => set({ activeTool: tool, connectionStart: null }),
   setRightTab: (tab) => set({ rightTab: tab }),
+  setBuildsSubTab: (tab) => set({ buildsSubTab: tab }),
+  setFocusTarget: (target) => set({ focusTarget: target }),
   setSelectedZone: (id) => set({ selectedZoneId: id }),
   setHoveredZone: (id) => set({ hoveredZoneId: id }),
   setSelectedEntity: (id) => set({ selectedEntityId: id }),

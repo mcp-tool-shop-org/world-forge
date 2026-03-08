@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-03-08
+
+### Improved
+
+- **Issue navigation** — clicking a validation issue now switches to the correct tab, sub-tab (for builds), scrolls the field into view, and pulses a blue highlight for 1.5s
+- **Empty states** — all workspace panels (Player, Builds, Trees, Dialogue) now show explanatory empty states with descriptions and quick-start actions
+- **Starter templates** — one-click scaffolds: Starter Catalog (Fantasy) for builds, Combat Basics tree for progression, Keeper Greeting dialogue
+- **Panel clarity** — consistent section headings, helper text, field hints, and shared styles across all panels
+- **Export readiness** — export modal now shows a live readiness banner ("Ready to export" / "Not ready — N issues") with top issues listed, and dims the export button when invalid
+
+### Added
+
+- `shared.tsx` — reusable panel styles, `EmptyState` component, and `useFocusHighlight` hook
+- `BuildsSubTab` and `FocusTarget` types in editor store for cross-panel navigation
+- `setBuildsSubTab` and `setFocusTarget` store actions
+
 ## [1.3.0] - 2026-03-08
 
 ### Added
