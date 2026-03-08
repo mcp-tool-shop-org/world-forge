@@ -1,0 +1,18 @@
+{
+  "id": "chapel-threshold",
+  "name": "Chapel Threshold",
+  "tagline": "A ruined chapel atop an ancient crypt, where the faithful once prayed and the dead now stir.",
+  "genres": [
+    "fantasy"
+  ],
+  "difficulty": "beginner",
+  "tones": [
+    "dark",
+    "atmospheric"
+  ],
+  "tags": [],
+  "engineVersion": "2.0.0",
+  "version": "1.0.0",
+  "description": "A ruined chapel atop an ancient crypt, where the faithful once prayed and the dead now stir.",
+  "narratorTone": "epic chronicle voice, archaic turns of phrase"
+}

@@ -1,0 +1,88 @@
+[
+  {
+    "id": "suspicious-pilgrim",
+    "type": "npc",
+    "name": "Suspicious Pilgrim",
+    "tags": [],
+    "aiProfile": "passive",
+    "baseStats": {
+      "vigor": 2,
+      "instinct": 3,
+      "will": 6
+    },
+    "baseResources": {
+      "hp": 8
+    }
+  },
+  {
+    "id": "brother-aldric",
+    "type": "npc",
+    "name": "Brother Aldric",
+    "tags": [
+      "recruitable",
+      "companion",
+      "healer",
+      "faction:chapel-order"
+    ],
+    "aiProfile": "follower",
+    "baseStats": {
+      "vigor": 3,
+      "instinct": 3,
+      "will": 7
+    },
+    "baseResources": {
+      "hp": 12
+    },
+    "custom": {
+      "companionRole": "healer",
+      "companionAbilities": "medical-support,witness-calming",
+      "personalGoal": "Redeem the fallen brothers of the chapel"
+    }
+  },
+  {
+    "id": "sister-maren",
+    "type": "npc",
+    "name": "Sister Maren",
+    "tags": [
+      "recruitable",
+      "diplomat",
+      "faction:chapel-order"
+    ],
+    "aiProfile": "passive",
+    "baseStats": {
+      "vigor": 2,
+      "instinct": 5,
+      "will": 5
+    },
+    "baseResources": {
+      "hp": 10
+    },
+    "custom": {
+      "companionRole": "diplomat",
+      "companionAbilities": "faction-route,scholarly-insight",
+      "personalGoal": "Recover the chapel archives from the crypt"
+    }
+  },
+  {
+    "id": "ash-ghoul",
+    "type": "enemy",
+    "name": "Ash Ghoul",
+    "tags": [
+      "hostile",
+      "boss",
+      "elite",
+      "undead",
+      "faction:chapel-undead"
+    ],
+    "aiProfile": "aggressive",
+    "baseStats": {
+      "vigor": 4,
+      "instinct": 3,
+      "will": 1
+    },
+    "baseResources": {
+      "hp": 12,
+      "stamina": 4
+    }
+  }
+]

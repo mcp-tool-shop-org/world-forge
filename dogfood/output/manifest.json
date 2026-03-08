@@ -1,0 +1,30 @@
+{
+  "id": "chapel-threshold",
+  "title": "Chapel Threshold",
+  "version": "1.0.0",
+  "engineVersion": "2.0.0",
+  "ruleset": "standard-v1",
+  "modules": [
+    "combat-core",
+    "movement-core",
+    "npc-ai-core",
+    "dialogue-core",
+    "perception-filter",
+    "district-core",
+    "faction-core",
+    "leverage-core",
+    "rumor-core",
+    "pressure-core",
+    "companion-core",
+    "equipment-core",
+    "relationship-core",
+    "economy-core",
+    "opportunity-core",
+    "crafting-core",
+    "arc-core",
+    "endgame-core"
+  ],
+  "contentPacks": [
+    "chapel-threshold"
+  ]
+}

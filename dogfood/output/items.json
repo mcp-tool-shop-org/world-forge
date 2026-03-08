@@ -1,0 +1,49 @@
+[
+  {
+    "id": "rusted-mace",
+    "name": "Rusted Mace",
+    "description": "A pitted mace found near a collapsed grave.",
+    "slot": "weapon",
+    "rarity": "common",
+    "statModifiers": {
+      "vigor": 1
+    },
+    "grantedTags": [
+      "armed"
+    ],
+    "grantedVerbs": [
+      "strike"
+    ]
+  },
+  {
+    "id": "chapel-lantern",
+    "name": "Chapel Lantern",
+    "description": "A flickering lantern blessed by a forgotten saint.",
+    "slot": "tool",
+    "rarity": "common",
+    "grantedTags": [
+      "light-bearer"
+    ],
+    "grantedVerbs": [
+      "illuminate"
+    ]
+  },
+  {
+    "id": "bone-talisman",
+    "name": "Bone Talisman",
+    "description": "A charm carved from the rib of a restless dead.",
+    "slot": "trinket",
+    "rarity": "uncommon",
+    "statModifiers": {
+      "will": 1
+    },
+    "grantedTags": [
+      "ward-undead"
+    ],
+    "provenance": {
+      "flags": [
+        "contraband"
+      ]
+    }
+  }
+]

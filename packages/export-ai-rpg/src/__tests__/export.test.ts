@@ -52,12 +52,17 @@ describe('convertEntities', () => {
     expect(boss).toBeDefined();
     expect(boss!.type).toBe('enemy');
     expect(boss!.tags).toContain('boss');
-    expect(boss!.aiProfile).toBe('territorial');
+    expect(boss!.aiProfile).toBe('aggressive'); // authored ai.profileId overrides role default
+    expect(boss!.baseStats).toEqual({ vigor: 4, instinct: 3, will: 1 });
+    expect(boss!.baseResources).toEqual({ hp: 12, stamina: 4 });
 
     const companion = entities.find((e) => e.id === 'brother-aldric');
     expect(companion).toBeDefined();
     expect(companion!.tags).toContain('recruitable');
+    expect(companion!.tags).toContain('healer');
     expect(companion!.aiProfile).toBe('follower');
+    expect(companion!.baseStats).toEqual({ vigor: 3, instinct: 3, will: 7 });
+    expect(companion!.baseResources).toEqual({ hp: 12 });
   });
 
   it('adds faction tags', () => {

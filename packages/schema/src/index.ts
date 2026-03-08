@@ -11,7 +11,8 @@ export type {
 } from './districts.js';
 
 export type {
-  EntityRole, EntityPlacement, ItemPlacement,
+  EntityRole, EntityStats, EntityResources, EntityAI,
+  EntityPlacement, ItemSlot, ItemRarity, ItemPlacement,
   EncounterAnchor, SpawnPoint, CraftingStation, MarketNode,
 } from './entities.js';
 

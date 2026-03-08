@@ -1,0 +1,41 @@
+[
+  {
+    "id": "chapel-grounds",
+    "name": "Chapel Grounds",
+    "zoneIds": [
+      "chapel-entrance",
+      "chapel-nave",
+      "chapel-alcove",
+      "vestry-door"
+    ],
+    "tags": [
+      "sacred",
+      "ruined"
+    ],
+    "controllingFaction": "chapel-order",
+    "baseMetrics": {
+      "commerce": 10,
+      "morale": 30,
+      "stability": 50,
+      "surveillance": 40
+    }
+  },
+  {
+    "id": "crypt-depths",
+    "name": "Crypt Depths",
+    "zoneIds": [
+      "crypt-chamber"
+    ],
+    "tags": [
+      "underground",
+      "haunted"
+    ],
+    "controllingFaction": "chapel-undead",
+    "baseMetrics": {
+      "commerce": 0,
+      "morale": 10,
+      "stability": 20,
+      "surveillance": 10
+    }
+  }
+]

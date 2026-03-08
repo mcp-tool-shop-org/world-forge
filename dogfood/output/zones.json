@@ -1,0 +1,163 @@
+[
+  {
+    "id": "chapel-entrance",
+    "name": "Chapel Entrance",
+    "tags": [
+      "outdoor",
+      "safe",
+      "start"
+    ],
+    "description": [
+      {
+        "text": "Cracked stone steps lead to weathered doors."
+      }
+    ],
+    "neighbors": [
+      "chapel-nave"
+    ],
+    "light": 8,
+    "noise": 3,
+    "interactables": [
+      "worn-inscription",
+      "iron-gate"
+    ],
+    "exits": [
+      {
+        "targetZoneId": "chapel-nave",
+        "label": "Through the doors"
+      }
+    ]
+  },
+  {
+    "id": "chapel-nave",
+    "name": "Chapel Nave",
+    "tags": [
+      "indoor",
+      "sacred"
+    ],
+    "description": [
+      {
+        "text": "Pews lie overturned beneath a shattered stained-glass window."
+      }
+    ],
+    "neighbors": [
+      "chapel-entrance",
+      "chapel-alcove",
+      "vestry-door"
+    ],
+    "light": 5,
+    "noise": 2,
+    "interactables": [
+      "altar",
+      "broken-pews"
+    ],
+    "exits": [
+      {
+        "targetZoneId": "chapel-entrance",
+        "label": "Back outside"
+      },
+      {
+        "targetZoneId": "chapel-alcove",
+        "label": "Side alcove"
+      },
+      {
+        "targetZoneId": "vestry-door",
+        "label": "Vestry door"
+      }
+    ]
+  },
+  {
+    "id": "chapel-alcove",
+    "name": "Chapel Alcove",
+    "tags": [
+      "indoor",
+      "sacred",
+      "hidden"
+    ],
+    "description": [
+      {
+        "text": "A quiet nook with a saint's statue and a prayer candle."
+      }
+    ],
+    "neighbors": [
+      "chapel-nave"
+    ],
+    "light": 3,
+    "noise": 0,
+    "interactables": [
+      "saint-statue",
+      "prayer-candle"
+    ],
+    "exits": [
+      {
+        "targetZoneId": "chapel-nave",
+        "label": "Back to nave"
+      }
+    ]
+  },
+  {
+    "id": "vestry-door",
+    "name": "Vestry Door",
+    "tags": [
+      "indoor",
+      "transition"
+    ],
+    "description": [
+      {
+        "text": "A heavy iron door with a rusted lock."
+      }
+    ],
+    "neighbors": [
+      "chapel-nave",
+      "crypt-chamber"
+    ],
+    "light": 2,
+    "noise": 1,
+    "interactables": [
+      "iron-lock"
+    ],
+    "exits": [
+      {
+        "targetZoneId": "chapel-nave",
+        "label": "Back to nave"
+      },
+      {
+        "targetZoneId": "crypt-chamber",
+        "label": "Descend into the crypt"
+      }
+    ]
+  },
+  {
+    "id": "crypt-chamber",
+    "name": "Crypt Chamber",
+    "tags": [
+      "underground",
+      "dangerous",
+      "dark"
+    ],
+    "description": [
+      {
+        "text": "The air is cold and thick with dust. Stone coffins line the walls."
+      }
+    ],
+    "neighbors": [
+      "vestry-door"
+    ],
+    "light": 1,
+    "noise": 1,
+    "hazards": [
+      "crumbling-floor",
+      "toxic-spores"
+    ],
+    "interactables": [
+      "stone-coffins",
+      "ancient-inscription"
+    ],
+    "exits": [
+      {
+        "targetZoneId": "vestry-door",
+        "label": "Climb back up"
+      }
+    ]
+  }
+]

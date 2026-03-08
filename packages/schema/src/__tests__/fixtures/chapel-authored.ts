@@ -162,16 +162,57 @@ export const chapelProject: WorldProject = {
   ],
 
   entityPlacements: [
-    { entityId: 'suspicious-pilgrim', zoneId: 'chapel-entrance', role: 'npc', dialogueId: 'pilgrim-talk' },
-    { entityId: 'brother-aldric', zoneId: 'chapel-nave', role: 'companion', factionId: 'chapel-order' },
-    { entityId: 'sister-maren', zoneId: 'chapel-alcove', role: 'npc', factionId: 'chapel-order' },
-    { entityId: 'ash-ghoul', zoneId: 'crypt-chamber', role: 'boss', factionId: 'chapel-undead' },
+    {
+      entityId: 'suspicious-pilgrim', name: 'Suspicious Pilgrim',
+      zoneId: 'chapel-entrance', role: 'npc', dialogueId: 'pilgrim-talk',
+      stats: { vigor: 2, instinct: 3, will: 6 },
+      resources: { hp: 8 },
+    },
+    {
+      entityId: 'brother-aldric', name: 'Brother Aldric',
+      zoneId: 'chapel-nave', role: 'companion', factionId: 'chapel-order',
+      stats: { vigor: 3, instinct: 3, will: 7 },
+      resources: { hp: 12 },
+      tags: ['recruitable', 'healer'],
+      custom: { companionRole: 'healer', companionAbilities: 'medical-support,witness-calming', personalGoal: 'Redeem the fallen brothers of the chapel' },
+    },
+    {
+      entityId: 'sister-maren', name: 'Sister Maren',
+      zoneId: 'chapel-alcove', role: 'npc', factionId: 'chapel-order',
+      stats: { vigor: 2, instinct: 5, will: 5 },
+      resources: { hp: 10 },
+      tags: ['recruitable', 'diplomat'],
+      custom: { companionRole: 'diplomat', companionAbilities: 'faction-route,scholarly-insight', personalGoal: 'Recover the chapel archives from the crypt' },
+    },
+    {
+      entityId: 'ash-ghoul', name: 'Ash Ghoul',
+      zoneId: 'crypt-chamber', role: 'boss', factionId: 'chapel-undead',
+      stats: { vigor: 4, instinct: 3, will: 1 },
+      resources: { hp: 12, stamina: 4 },
+      tags: ['undead'],
+      ai: { profileId: 'aggressive', goals: ['guard-crypt'], fears: ['fire', 'sacred'] },
+    },
   ],
 
   itemPlacements: [
-    { itemId: 'rusted-mace', zoneId: 'chapel-nave', hidden: false },
-    { itemId: 'chapel-lantern', zoneId: 'chapel-entrance', hidden: false },
-    { itemId: 'bone-talisman', zoneId: 'crypt-chamber', container: 'stone-coffin', hidden: true },
+    {
+      itemId: 'rusted-mace', name: 'Rusted Mace', zoneId: 'chapel-nave', hidden: false,
+      description: 'A pitted mace found near a collapsed grave.',
+      slot: 'weapon', rarity: 'common',
+      statModifiers: { vigor: 1 }, grantedTags: ['armed'], grantedVerbs: ['strike'],
+    },
+    {
+      itemId: 'chapel-lantern', name: 'Chapel Lantern', zoneId: 'chapel-entrance', hidden: false,
+      description: 'A flickering lantern blessed by a forgotten saint.',
+      slot: 'tool', rarity: 'common',
+      grantedTags: ['light-bearer'], grantedVerbs: ['illuminate'],
+    },
+    {
+      itemId: 'bone-talisman', name: 'Bone Talisman', zoneId: 'crypt-chamber', container: 'stone-coffin', hidden: true,
+      description: 'A charm carved from the rib of a restless dead.',
+      slot: 'trinket', rarity: 'uncommon',
+      statModifiers: { will: 1 }, grantedTags: ['ward-undead'],
+    },
   ],
 
   encounterAnchors: [
