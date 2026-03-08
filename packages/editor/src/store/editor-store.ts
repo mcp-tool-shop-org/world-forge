@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
-export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'issues';
+export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'issues' | 'guide';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
 /** Transient focus target set by validation click. Panels read and clear it. */
@@ -27,6 +27,8 @@ interface EditorState {
   hoveredZoneId: string | null;
   selectedEntityId: string | null;
   connectionStart: string | null;
+  checklistDismissed: boolean;
+  hasExported: boolean;
 
   setTool: (tool: EditorTool) => void;
   setRightTab: (tab: RightTab) => void;
@@ -40,6 +42,9 @@ interface EditorState {
   toggleConnections: () => void;
   toggleEntities: () => void;
   setZoom: (z: number) => void;
+  dismissChecklist: () => void;
+  markExported: () => void;
+  resetChecklist: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -56,6 +61,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   hoveredZoneId: null,
   selectedEntityId: null,
   connectionStart: null,
+  checklistDismissed: false,
+  hasExported: false,
 
   setTool: (tool) => set({ activeTool: tool, connectionStart: null }),
   setRightTab: (tab) => set({ rightTab: tab }),
@@ -69,4 +76,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   toggleConnections: () => set((s) => ({ showConnections: !s.showConnections })),
   toggleEntities: () => set((s) => ({ showEntities: !s.showEntities })),
   setZoom: (z) => set({ zoom: z }),
+  dismissChecklist: () => set({ checklistDismissed: true }),
+  markExported: () => set({ hasExported: true }),
+  resetChecklist: () => set({ checklistDismissed: false, hasExported: false, rightTab: 'guide' }),
 }));

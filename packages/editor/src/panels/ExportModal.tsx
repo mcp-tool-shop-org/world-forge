@@ -1,17 +1,19 @@
-// ExportModal.tsx — export dialog with readiness summary
+// ExportModal.tsx — export dialog with readiness summary and content overview
 
 import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
+import { useEditorStore } from '../store/editor-store.js';
 import { exportToEngine } from '@world-forge/export-ai-rpg';
 import { validateProject } from '@world-forge/schema';
+import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
+  const { setRightTab, setBuildsSubTab, setFocusTarget, setSelectedZone, markExported } = useEditorStore();
   const [status, setStatus] = useState<'idle' | 'valid' | 'invalid' | 'exported'>('idle');
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  // Live readiness precheck
   const precheck = useMemo(() => validateProject(project), [project]);
 
   const handleValidate = () => {
@@ -47,7 +49,44 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     a.click();
     URL.revokeObjectURL(url);
     setStatus('exported');
+    markExported();
   };
+
+  const handleGoToFirstIssue = () => {
+    if (precheck.errors.length === 0) return;
+    const err = precheck.errors[0];
+    const p = err.path;
+    const domain = classifyError(err);
+    const focus = { domain, subPath: p, timestamp: Date.now() };
+
+    const zoneMatch = p.match(/^zones\.([^.]+)/);
+    if (zoneMatch) { setSelectedZone(zoneMatch[1]); setRightTab('map'); setFocusTarget(focus); onClose(); return; }
+    if (p.startsWith('entityPlacements') || p.startsWith('itemPlacements') || p.startsWith('spawnPoints') || p.startsWith('connections')) { setRightTab('map'); setFocusTarget(focus); onClose(); return; }
+    if (p.startsWith('playerTemplate')) { setRightTab('player'); setFocusTarget(focus); onClose(); return; }
+    if (p.startsWith('buildCatalog')) { setRightTab('builds'); setBuildsSubTab(buildsSubTabFor(p)); setFocusTarget(focus); onClose(); return; }
+    if (p.startsWith('progressionTrees')) { setRightTab('trees'); setFocusTarget(focus); onClose(); return; }
+    if (p.startsWith('dialogues')) { setRightTab('dialogue'); setFocusTarget(focus); onClose(); return; }
+    setRightTab('map'); setFocusTarget(focus); onClose();
+  };
+
+  // Content counts
+  const counts = [
+    { label: 'Zones', value: project.zones.length },
+    { label: 'Districts', value: project.districts.length },
+    { label: 'Entities', value: project.entityPlacements.length },
+    { label: 'Items', value: project.itemPlacements.length },
+    { label: 'Dialogues', value: project.dialogues.length },
+    { label: 'Trees', value: project.progressionTrees.length },
+    { label: 'Spawns', value: project.spawnPoints.length },
+  ];
+
+  // Missing systems
+  const missing: string[] = [];
+  if (!project.playerTemplate) missing.push('No player template');
+  if (!project.buildCatalog) missing.push('No build catalog');
+  if (project.progressionTrees.length === 0) missing.push('No progression trees');
+  if (project.dialogues.length === 0) missing.push('No dialogues');
+  if (project.spawnPoints.length === 0) missing.push('No spawn points');
 
   return (
     <div style={{
@@ -59,29 +98,43 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
         {/* Readiness banner */}
         {precheck.valid ? (
-          <div style={{
-            padding: '8px 12px', borderRadius: 4, marginBottom: 12,
-            background: '#0d2818', border: '1px solid #238636', fontSize: 12, color: '#3fb950',
-          }}>
+          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#0d2818', border: '1px solid #238636', fontSize: 12, color: '#3fb950' }}>
             Ready to export — no issues found.
           </div>
         ) : (
-          <div style={{
-            padding: '8px 12px', borderRadius: 4, marginBottom: 12,
-            background: '#2a1c08', border: '1px solid #9e6a03', fontSize: 12, color: '#d29922',
-          }}>
+          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#2a1c08', border: '1px solid #9e6a03', fontSize: 12, color: '#d29922' }}>
             Not ready — {precheck.errors.length} issue{precheck.errors.length !== 1 ? 's' : ''} must be fixed first.
             <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4 }}>
               {precheck.errors.slice(0, 3).map((e, i) => (
                 <div key={i}>{e.message}</div>
               ))}
               {precheck.errors.length > 3 && (
-                <div style={{ fontStyle: 'italic' }}>...and {precheck.errors.length - 3} more. See Issues tab.</div>
+                <div style={{ fontStyle: 'italic' }}>...and {precheck.errors.length - 3} more</div>
               )}
             </div>
           </div>
         )}
 
+        {/* Content summary */}
+        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4, fontWeight: 'bold' }}>Export Contents</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: 11, color: '#c9d1d9', marginBottom: 8 }}>
+          {counts.map((c) => (
+            <span key={c.label}>
+              <span style={{ color: '#8b949e' }}>{c.label}:</span> {c.value}
+            </span>
+          ))}
+        </div>
+
+        {/* Missing systems */}
+        {missing.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {missing.map((m, i) => (
+              <div key={i} style={{ fontSize: 10, color: '#484f58', padding: '1px 0' }}>— {m}</div>
+            ))}
+          </div>
+        )}
+
+        {/* Action buttons */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button onClick={handleValidate} style={modalBtnStyle}>Validate</button>
           <button onClick={handleExport} style={{
@@ -91,6 +144,9 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             cursor: precheck.valid ? 'pointer' : 'not-allowed',
             opacity: precheck.valid ? 1 : 0.6,
           }} disabled={!precheck.valid}>Export JSON</button>
+          {!precheck.valid && precheck.errors.length > 0 && (
+            <button onClick={handleGoToFirstIssue} style={{ ...modalBtnStyle, color: '#58a6ff' }}>Fix first issue</button>
+          )}
           <button onClick={onClose} style={modalBtnStyle}>Close</button>
         </div>
 

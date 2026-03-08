@@ -13,23 +13,29 @@ import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
 import { BuildCatalogPanel } from './panels/BuildCatalogPanel.js';
 import { ProgressionPanel } from './panels/ProgressionPanel.js';
 import { DialoguePanel } from './panels/DialoguePanel.js';
+import { ChecklistPanel } from './panels/ChecklistPanel.js';
+import { NewProjectWizard } from './panels/NewProjectWizard.js';
+import { SampleBrowserModal } from './panels/SampleBrowserModal.js';
 import { Canvas } from './Canvas.js';
 
-const tabs: { id: RightTab; label: string }[] = [
-  { id: 'map', label: 'Map' },
-  { id: 'player', label: 'Player' },
-  { id: 'builds', label: 'Builds' },
-  { id: 'trees', label: 'Trees' },
-  { id: 'dialogue', label: 'Dialogue' },
-  { id: 'issues', label: 'Issues' },
-];
-
 export function App() {
-  const { project, dirty, newProject, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selectedZoneId, rightTab, setRightTab, zoom } = useEditorStore();
+  const { project, dirty, loadProject, undo, redo } = useProjectStore();
+  const { activeTool, selectedZoneId, rightTab, setRightTab, zoom, checklistDismissed } = useEditorStore();
   const [showExport, setShowExport] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [showSamples, setShowSamples] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
+
+  const tabs: { id: RightTab; label: string }[] = [
+    { id: 'map', label: 'Map' },
+    { id: 'player', label: 'Player' },
+    { id: 'builds', label: 'Builds' },
+    { id: 'trees', label: 'Trees' },
+    { id: 'dialogue', label: 'Dialogue' },
+    { id: 'issues', label: 'Issues' },
+    ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
+  ];
 
   const handleLoad = useCallback(() => {
     fileInput.current?.click();
@@ -70,8 +76,9 @@ export function App() {
         <strong style={{ color: '#58a6ff' }}>World Forge</strong>
         <span style={{ color: '#8b949e', fontSize: 12 }}>{project.name}{dirty ? ' *' : ''}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={newProject} style={btnStyle}>New</button>
+        <button onClick={() => setShowWizard(true)} style={btnStyle}>New</button>
         <button onClick={handleLoad} style={btnStyle}>Load</button>
+        <button onClick={() => setShowSamples(true)} style={btnStyle}>Samples</button>
         <button onClick={handleSave} style={btnStyle}>Save</button>
         <button onClick={undo} style={btnStyle}>Undo</button>
         <button onClick={redo} style={btnStyle}>Redo</button>
@@ -139,6 +146,7 @@ export function App() {
             {rightTab === 'trees' && <ProgressionPanel />}
             {rightTab === 'dialogue' && <DialoguePanel />}
             {rightTab === 'issues' && <ValidationPanel />}
+            {rightTab === 'guide' && <ChecklistPanel />}
           </div>
         </div>
       </div>
@@ -166,6 +174,8 @@ export function App() {
       </div>
 
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}
+      {showWizard && <NewProjectWizard onClose={() => setShowWizard(false)} onOpenSamples={() => { setShowWizard(false); setShowSamples(true); }} />}
+      {showSamples && <SampleBrowserModal onClose={() => setShowSamples(false)} />}
     </div>
   );
 }

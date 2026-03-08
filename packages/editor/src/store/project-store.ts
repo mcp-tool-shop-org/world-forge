@@ -9,7 +9,7 @@ import type {
   DialogueDefinition, DialogueNode, DialogueChoice,
 } from '@world-forge/schema';
 
-function createEmptyProject(): WorldProject {
+export function createEmptyProject(): WorldProject {
   return {
     id: 'new-project',
     name: 'Untitled World',

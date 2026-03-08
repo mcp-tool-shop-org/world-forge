@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { useEditorStore, type BuildsSubTab } from '../store/editor-store.js';
+import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, type ValidationError } from '@world-forge/schema';
-
-type Domain = 'world' | 'entities' | 'items' | 'dialogue' | 'player' | 'builds' | 'progression';
+import { classifyError, buildsSubTabFor, type Domain } from './validation-helpers.js';
 
 const domainLabels: Record<Domain, string> = {
   world: 'World',
@@ -18,27 +17,6 @@ const domainLabels: Record<Domain, string> = {
 };
 
 const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression'];
-
-function classifyError(err: ValidationError): Domain {
-  const p = err.path;
-  if (p.startsWith('entityPlacements')) return 'entities';
-  if (p.startsWith('itemPlacements')) return 'items';
-  if (p.startsWith('dialogues')) return 'dialogue';
-  if (p.startsWith('playerTemplate')) return 'player';
-  if (p.startsWith('buildCatalog')) return 'builds';
-  if (p.startsWith('progressionTrees')) return 'progression';
-  return 'world';
-}
-
-/** Map a build catalog error path to the correct sub-tab. */
-function buildsSubTabFor(path: string): BuildsSubTab {
-  if (path.includes('.archetypes')) return 'archetypes';
-  if (path.includes('.backgrounds')) return 'backgrounds';
-  if (path.includes('.traits')) return 'traits';
-  if (path.includes('.disciplines')) return 'disciplines';
-  if (path.includes('.crossTitles') || path.includes('.entanglements')) return 'combos';
-  return 'config';
-}
 
 export function ValidationPanel() {
   const { project } = useProjectStore();

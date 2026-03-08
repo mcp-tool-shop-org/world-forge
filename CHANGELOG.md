@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-03-08
+
+### Added
+
+- **New Project Wizard** — 2-step modal: choose name + genre template (Blank, Fantasy, Cyberpunk, Detective, Pirate, Zombie), then toggle which systems to include (player template, build catalog, progression tree, dialogue, sample NPCs)
+- **5 genre starter templates** — each with 4 zones, connections, spawn, player template, build catalog (2 archetypes, 1 background, 2 traits), progression tree, dialogue, and sample NPCs
+- **Sample browser** — browse and open Hello World (minimal) or Chapel Threshold (rich reference) as editable copies with content counts
+- **First-run checklist** — Guide tab with 6 reactive steps (create district, add zone, place spawn, create player template, add speaking NPC, export), auto-detects completion from project state, click-to-navigate, dismissable
+- **Export content summary** — export modal now shows zone/district/entity/item/dialogue/tree/spawn counts and missing system warnings
+- **"Fix first issue" navigation** — export modal links directly to the first validation error's relevant tab and field
+- `validation-helpers.ts` — shared `classifyError()` and `buildsSubTabFor()` used by ValidationPanel and ExportModal
+- `templates/registry.ts` — template registry with `GenreTemplate`, `SampleWorld`, `WizardOptions` types and `createProjectFromWizard()` factory
+
 ## [1.3.1] - 2026-03-08
 
 ### Improved
