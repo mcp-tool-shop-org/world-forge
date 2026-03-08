@@ -57,7 +57,7 @@
 
 ## E. Identity
 
-- [ ] `[all]` SKIP: no logo yet — monorepo, not a standalone product page
+- [x] `[all]` Logo in README header (2026-03-08)
 - [ ] `[all]` SKIP: no translations — internal authoring tool
 - [ ] `[org]` SKIP: no landing page — internal authoring tool
 - [ ] `[all]` SKIP: GitHub metadata set at repo creation

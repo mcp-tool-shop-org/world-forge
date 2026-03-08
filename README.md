@@ -1,6 +1,10 @@
-# World Forge
+<p align="center">
+  <img src="assets/logo.png" alt="World Forge" width="400">
+</p>
 
-2D world authoring studio for [AI RPG Engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine). Paint zones, place entities, define districts — export a complete ContentPack ready to play.
+<h1 align="center">World Forge</h1>
+
+<p align="center">2D world authoring studio for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>.<br>Paint zones, place entities, define districts — export a complete ContentPack ready to play.</p>
 
 ## Architecture
 
