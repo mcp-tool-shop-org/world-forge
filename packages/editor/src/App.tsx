@@ -2,19 +2,34 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore } from './store/editor-store.js';
+import { useEditorStore, type RightTab } from './store/editor-store.js';
 import { ToolPalette } from './panels/ToolPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
 import { ExportModal } from './panels/ExportModal.js';
+import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
+import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
+import { BuildCatalogPanel } from './panels/BuildCatalogPanel.js';
+import { ProgressionPanel } from './panels/ProgressionPanel.js';
+import { DialoguePanel } from './panels/DialoguePanel.js';
 import { Canvas } from './Canvas.js';
+
+const tabs: { id: RightTab; label: string }[] = [
+  { id: 'map', label: 'Map' },
+  { id: 'player', label: 'Player' },
+  { id: 'builds', label: 'Builds' },
+  { id: 'trees', label: 'Trees' },
+  { id: 'dialogue', label: 'Dialogue' },
+  { id: 'issues', label: 'Issues' },
+];
 
 export function App() {
   const { project, dirty, newProject, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selectedZoneId, zoom } = useEditorStore();
+  const { activeTool, selectedZoneId, rightTab, setRightTab, zoom } = useEditorStore();
   const [showExport, setShowExport] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const issueCount = useIssueCount();
 
   const handleLoad = useCallback(() => {
     fileInput.current?.click();
@@ -78,9 +93,53 @@ export function App() {
         </div>
 
         {/* Right sidebar */}
-        <div style={{ width: 260, background: '#0d1117', borderLeft: '1px solid #30363d', overflow: 'auto', padding: 8 }}>
-          {selectedZoneId && <ZoneProperties />}
-          {activeTool === 'entity-place' && <EntityProperties />}
+        <div style={{ width: 300, background: '#0d1117', borderLeft: '1px solid #30363d', display: 'flex', flexDirection: 'column' }}>
+          {/* Tab bar */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #30363d', background: '#161b22' }}>
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setRightTab(t.id)}
+                style={{
+                  flex: 1, padding: '6px 0', fontSize: 11, cursor: 'pointer',
+                  background: rightTab === t.id ? '#0d1117' : 'transparent',
+                  color: rightTab === t.id ? '#58a6ff' : '#8b949e',
+                  border: 'none',
+                  borderBottom: rightTab === t.id ? '2px solid #58a6ff' : '2px solid transparent',
+                }}
+              >
+                {t.label}
+                {t.id === 'issues' && issueCount > 0 && (
+                  <span style={{
+                    marginLeft: 4, fontSize: 9, background: '#f85149', color: '#fff',
+                    borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
+                  }}>
+                    {issueCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+            {rightTab === 'map' && (
+              <>
+                {selectedZoneId && <ZoneProperties />}
+                {activeTool === 'entity-place' && <EntityProperties />}
+                {!selectedZoneId && activeTool !== 'entity-place' && (
+                  <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
+                    Select a zone or use a tool to see properties.
+                  </div>
+                )}
+              </>
+            )}
+            {rightTab === 'player' && <PlayerTemplatePanel />}
+            {rightTab === 'builds' && <BuildCatalogPanel />}
+            {rightTab === 'trees' && <ProgressionPanel />}
+            {rightTab === 'dialogue' && <DialoguePanel />}
+            {rightTab === 'issues' && <ValidationPanel />}
+          </div>
         </div>
       </div>
 
@@ -93,6 +152,17 @@ export function App() {
         <span>Zones: {project.zones.length}</span>
         <span>Entities: {project.entityPlacements.length}</span>
         <span>Zoom: {Math.round(zoom * 100)}%</span>
+        <div style={{ flex: 1 }} />
+        {issueCount > 0 ? (
+          <span
+            onClick={() => setRightTab('issues')}
+            style={{ color: '#f85149', cursor: 'pointer' }}
+          >
+            {issueCount} issue{issueCount !== 1 ? 's' : ''}
+          </span>
+        ) : (
+          <span style={{ color: '#3fb950' }}>Valid</span>
+        )}
       </div>
 
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}

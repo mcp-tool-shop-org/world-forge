@@ -3,9 +3,11 @@
 import { create } from 'zustand';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
+export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'issues';
 
 interface EditorState {
   activeTool: EditorTool;
+  rightTab: RightTab;
   gridSnap: boolean;
   showGrid: boolean;
   showConnections: boolean;
@@ -17,6 +19,7 @@ interface EditorState {
   connectionStart: string | null;
 
   setTool: (tool: EditorTool) => void;
+  setRightTab: (tab: RightTab) => void;
   setSelectedZone: (id: string | null) => void;
   setHoveredZone: (id: string | null) => void;
   setSelectedEntity: (id: string | null) => void;
@@ -29,6 +32,7 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>((set) => ({
   activeTool: 'select',
+  rightTab: 'map',
   gridSnap: true,
   showGrid: true,
   showConnections: true,
@@ -40,6 +44,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   connectionStart: null,
 
   setTool: (tool) => set({ activeTool: tool, connectionStart: null }),
+  setRightTab: (tab) => set({ rightTab: tab }),
   setSelectedZone: (id) => set({ selectedZoneId: id }),
   setHoveredZone: (id) => set({ hoveredZoneId: id }),
   setSelectedEntity: (id) => set({ selectedEntityId: id }),

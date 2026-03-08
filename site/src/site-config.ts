@@ -51,6 +51,10 @@ export const config: SiteConfig = {
           desc: 'Define player templates, build catalogs with archetypes, backgrounds, traits, disciplines, and progression trees with skill nodes.',
         },
         {
+          title: 'Editor Workspaces',
+          desc: 'Six workspace tabs — Map, Player, Builds, Trees, Dialogue, Issues. Live validation with grouped errors, click-to-focus navigation, and issue badge.',
+        },
+        {
           title: 'Export Pipeline',
           desc: 'One-click export to ai-rpg-engine ContentPack. Full engine handshake: zones, entities, items, dialogues, player, build catalog, progression.',
         },

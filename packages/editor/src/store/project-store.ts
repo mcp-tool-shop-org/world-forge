@@ -1,7 +1,13 @@
 // project-store.ts — WorldProject state with undo/redo
 
 import { create } from 'zustand';
-import type { WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint } from '@world-forge/schema';
+import type {
+  WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
+  PlayerTemplate, BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition,
+  TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
+  ProgressionTreeDefinition, ProgressionNode,
+  DialogueDefinition, DialogueNode, DialogueChoice,
+} from '@world-forge/schema';
 
 function createEmptyProject(): WorldProject {
   return {
@@ -71,6 +77,54 @@ interface ProjectState {
 
   // Spawn helpers
   addSpawnPoint: (s: SpawnPoint) => void;
+
+  // Player template helpers
+  setPlayerTemplate: (t: PlayerTemplate) => void;
+  updatePlayerTemplate: (updates: Partial<PlayerTemplate>) => void;
+
+  // Build catalog helpers
+  setBuildCatalog: (c: BuildCatalogDefinition) => void;
+  updateBuildCatalogConfig: (updates: Partial<Pick<BuildCatalogDefinition, 'statBudget' | 'maxTraits' | 'requiredFlaws'>>) => void;
+  addArchetype: (a: ArchetypeDefinition) => void;
+  updateArchetype: (id: string, updates: Partial<ArchetypeDefinition>) => void;
+  removeArchetype: (id: string) => void;
+  addBackground: (b: BackgroundDefinition) => void;
+  updateBackground: (id: string, updates: Partial<BackgroundDefinition>) => void;
+  removeBackground: (id: string) => void;
+  addTrait: (t: TraitDefinition) => void;
+  updateTrait: (id: string, updates: Partial<TraitDefinition>) => void;
+  removeTrait: (id: string) => void;
+  addDiscipline: (d: DisciplineDefinition) => void;
+  updateDiscipline: (id: string, updates: Partial<DisciplineDefinition>) => void;
+  removeDiscipline: (id: string) => void;
+  addCrossTitle: (ct: CrossDisciplineTitle) => void;
+  removeCrossTitle: (archetypeId: string, disciplineId: string) => void;
+  addEntanglement: (e: ClassEntanglement) => void;
+  removeEntanglement: (id: string) => void;
+
+  // Progression tree helpers
+  addProgressionTree: (t: ProgressionTreeDefinition) => void;
+  updateProgressionTree: (id: string, updates: Partial<ProgressionTreeDefinition>) => void;
+  removeProgressionTree: (id: string) => void;
+  addProgressionNode: (treeId: string, node: ProgressionNode) => void;
+  updateProgressionNode: (treeId: string, nodeId: string, updates: Partial<ProgressionNode>) => void;
+  removeProgressionNode: (treeId: string, nodeId: string) => void;
+
+  // Dialogue helpers
+  addDialogue: (d: DialogueDefinition) => void;
+  updateDialogue: (id: string, updates: Partial<DialogueDefinition>) => void;
+  removeDialogue: (id: string) => void;
+  addDialogueNode: (dialogueId: string, node: DialogueNode) => void;
+  updateDialogueNode: (dialogueId: string, nodeId: string, updates: Partial<DialogueNode>) => void;
+  removeDialogueNode: (dialogueId: string, nodeId: string) => void;
+}
+
+function ensureBuildCatalog(p: WorldProject): BuildCatalogDefinition {
+  return p.buildCatalog ?? {
+    statBudget: 10, maxTraits: 3, requiredFlaws: 0,
+    archetypes: [], backgrounds: [], traits: [],
+    disciplines: [], crossTitles: [], entanglements: [],
+  };
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -112,22 +166,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     });
   },
 
-  addZone: (z) => get().updateProject((p) => ({
-    ...p,
-    zones: [...p.zones, z],
-  })),
-
+  // Zone helpers
+  addZone: (z) => get().updateProject((p) => ({ ...p, zones: [...p.zones, z] })),
   updateZone: (id, updates) => get().updateProject((p) => ({
-    ...p,
-    zones: p.zones.map((z) => z.id === id ? { ...z, ...updates } : z),
+    ...p, zones: p.zones.map((z) => z.id === id ? { ...z, ...updates } : z),
   })),
-
   removeZone: (id) => get().updateProject((p) => ({
     ...p,
     zones: p.zones.filter((z) => z.id !== id),
     connections: p.connections.filter((c) => c.fromZoneId !== id && c.toZoneId !== id),
   })),
 
+  // Connection helpers
   addConnection: (c) => get().updateProject((p) => ({
     ...p,
     connections: [...p.connections, c],
@@ -141,39 +191,144 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return z;
     }),
   })),
-
   removeConnection: (fromId, toId) => get().updateProject((p) => ({
-    ...p,
-    connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
+    ...p, connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
   })),
 
-  addDistrict: (d) => get().updateProject((p) => ({
-    ...p,
-    districts: [...p.districts, d],
-  })),
-
+  // District helpers
+  addDistrict: (d) => get().updateProject((p) => ({ ...p, districts: [...p.districts, d] })),
   updateDistrict: (id, updates) => get().updateProject((p) => ({
-    ...p,
-    districts: p.districts.map((d) => d.id === id ? { ...d, ...updates } : d),
+    ...p, districts: p.districts.map((d) => d.id === id ? { ...d, ...updates } : d),
   })),
 
-  addEntity: (e) => get().updateProject((p) => ({
-    ...p,
-    entityPlacements: [...p.entityPlacements, e],
-  })),
-
+  // Entity helpers
+  addEntity: (e) => get().updateProject((p) => ({ ...p, entityPlacements: [...p.entityPlacements, e] })),
   removeEntity: (entityId) => get().updateProject((p) => ({
-    ...p,
-    entityPlacements: p.entityPlacements.filter((e) => e.entityId !== entityId),
+    ...p, entityPlacements: p.entityPlacements.filter((e) => e.entityId !== entityId),
   })),
 
-  addLandmark: (l) => get().updateProject((p) => ({
-    ...p,
-    landmarks: [...p.landmarks, l],
+  // Landmark & Spawn helpers
+  addLandmark: (l) => get().updateProject((p) => ({ ...p, landmarks: [...p.landmarks, l] })),
+  addSpawnPoint: (s) => get().updateProject((p) => ({ ...p, spawnPoints: [...p.spawnPoints, s] })),
+
+  // Player template helpers
+  setPlayerTemplate: (t) => get().updateProject((p) => ({ ...p, playerTemplate: t })),
+  updatePlayerTemplate: (updates) => get().updateProject((p) => ({
+    ...p, playerTemplate: p.playerTemplate ? { ...p.playerTemplate, ...updates } : undefined,
   })),
 
-  addSpawnPoint: (s) => get().updateProject((p) => ({
-    ...p,
-    spawnPoints: [...p.spawnPoints, s],
+  // Build catalog helpers
+  setBuildCatalog: (c) => get().updateProject((p) => ({ ...p, buildCatalog: c })),
+  updateBuildCatalogConfig: (updates) => get().updateProject((p) => ({
+    ...p, buildCatalog: { ...ensureBuildCatalog(p), ...updates },
+  })),
+  addArchetype: (a) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, archetypes: [...cat.archetypes, a] } };
+  }),
+  updateArchetype: (id, updates) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, archetypes: cat.archetypes.map((a) => a.id === id ? { ...a, ...updates } : a) } };
+  }),
+  removeArchetype: (id) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, archetypes: cat.archetypes.filter((a) => a.id !== id) } };
+  }),
+  addBackground: (b) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, backgrounds: [...cat.backgrounds, b] } };
+  }),
+  updateBackground: (id, updates) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, backgrounds: cat.backgrounds.map((b) => b.id === id ? { ...b, ...updates } : b) } };
+  }),
+  removeBackground: (id) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, backgrounds: cat.backgrounds.filter((b) => b.id !== id) } };
+  }),
+  addTrait: (t) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, traits: [...cat.traits, t] } };
+  }),
+  updateTrait: (id, updates) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, traits: cat.traits.map((t) => t.id === id ? { ...t, ...updates } : t) } };
+  }),
+  removeTrait: (id) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, traits: cat.traits.filter((t) => t.id !== id) } };
+  }),
+  addDiscipline: (d) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, disciplines: [...cat.disciplines, d] } };
+  }),
+  updateDiscipline: (id, updates) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, disciplines: cat.disciplines.map((d) => d.id === id ? { ...d, ...updates } : d) } };
+  }),
+  removeDiscipline: (id) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, disciplines: cat.disciplines.filter((d) => d.id !== id) } };
+  }),
+  addCrossTitle: (ct) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, crossTitles: [...cat.crossTitles, ct] } };
+  }),
+  removeCrossTitle: (archetypeId, disciplineId) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, crossTitles: cat.crossTitles.filter((ct) => !(ct.archetypeId === archetypeId && ct.disciplineId === disciplineId)) } };
+  }),
+  addEntanglement: (e) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, entanglements: [...cat.entanglements, e] } };
+  }),
+  removeEntanglement: (id) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return { ...p, buildCatalog: { ...cat, entanglements: cat.entanglements.filter((e) => e.id !== id) } };
+  }),
+
+  // Progression tree helpers
+  addProgressionTree: (t) => get().updateProject((p) => ({ ...p, progressionTrees: [...p.progressionTrees, t] })),
+  updateProgressionTree: (id, updates) => get().updateProject((p) => ({
+    ...p, progressionTrees: p.progressionTrees.map((t) => t.id === id ? { ...t, ...updates } : t),
+  })),
+  removeProgressionTree: (id) => get().updateProject((p) => ({
+    ...p, progressionTrees: p.progressionTrees.filter((t) => t.id !== id),
+  })),
+  addProgressionNode: (treeId, node) => get().updateProject((p) => ({
+    ...p, progressionTrees: p.progressionTrees.map((t) =>
+      t.id === treeId ? { ...t, nodes: [...t.nodes, node] } : t),
+  })),
+  updateProgressionNode: (treeId, nodeId, updates) => get().updateProject((p) => ({
+    ...p, progressionTrees: p.progressionTrees.map((t) =>
+      t.id === treeId ? { ...t, nodes: t.nodes.map((n) => n.id === nodeId ? { ...n, ...updates } : n) } : t),
+  })),
+  removeProgressionNode: (treeId, nodeId) => get().updateProject((p) => ({
+    ...p, progressionTrees: p.progressionTrees.map((t) =>
+      t.id === treeId ? { ...t, nodes: t.nodes.filter((n) => n.id !== nodeId) } : t),
+  })),
+
+  // Dialogue helpers
+  addDialogue: (d) => get().updateProject((p) => ({ ...p, dialogues: [...p.dialogues, d] })),
+  updateDialogue: (id, updates) => get().updateProject((p) => ({
+    ...p, dialogues: p.dialogues.map((d) => d.id === id ? { ...d, ...updates } : d),
+  })),
+  removeDialogue: (id) => get().updateProject((p) => ({
+    ...p, dialogues: p.dialogues.filter((d) => d.id !== id),
+  })),
+  addDialogueNode: (dialogueId, node) => get().updateProject((p) => ({
+    ...p, dialogues: p.dialogues.map((d) =>
+      d.id === dialogueId ? { ...d, nodes: { ...d.nodes, [node.id]: node } } : d),
+  })),
+  updateDialogueNode: (dialogueId, nodeId, updates) => get().updateProject((p) => ({
+    ...p, dialogues: p.dialogues.map((d) =>
+      d.id === dialogueId ? { ...d, nodes: { ...d.nodes, [nodeId]: { ...d.nodes[nodeId], ...updates } } } : d),
+  })),
+  removeDialogueNode: (dialogueId, nodeId) => get().updateProject((p) => ({
+    ...p, dialogues: p.dialogues.map((d) => {
+      if (d.id !== dialogueId) return d;
+      const { [nodeId]: _, ...rest } = d.nodes;
+      return { ...d, nodes: rest };
+    }),
   })),
 }));

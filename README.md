@@ -64,7 +64,7 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app. Zustand state management with undo/redo. Tools: select, zone-paint, connection, entity-place, landmark, spawn. Panels: zone properties, district editor, entity reference, export modal.
+React 19 + Vite web app. Zustand state management with undo/redo. Six workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Issues** (live grouped validation with click-to-focus). Tools: select, zone-paint, connection, entity-place, landmark, spawn.
 
 ## Authoring Surface
 
