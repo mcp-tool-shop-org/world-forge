@@ -59,6 +59,28 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 React 19 + Vite web app. Zustand state management with undo/redo. Tools: select, zone-paint, connection, entity-place, landmark, spawn. Panels: zone properties, district editor, entity reference, export modal.
 
+## Authoring Surface
+
+**World Forge currently authors:**
+
+- Zones (spatial layout, neighbors, exits, light, noise, hazards, interactables)
+- Connections (bidirectional/one-way, conditional exits)
+- Districts (faction control, economy profiles, base metrics)
+- Landmarks (named points of interest within zones)
+- Entity placements with stats, resources, AI profiles, and custom metadata
+- Item placements with slot, rarity, stat modifiers, and granted verbs
+- Spawn points, encounter anchors, pressure hotspots, faction presences
+- Export to engine-compatible ContentPack JSON
+
+**World Forge does not yet author:**
+
+- Dialogue trees (NPC conversations)
+- Build catalogs (archetypes, backgrounds, traits for character creation)
+- Progression trees (skill/ability unlocks)
+- Player template configuration
+
+See [`dogfood/WALKTHROUGH.md`](dogfood/WALKTHROUGH.md) for the Chapel Threshold export handshake proving the current surface.
+
 ## Engine Compatibility
 
 Exports target [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine) content types. The exported ContentPack can be loaded directly by [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg).
