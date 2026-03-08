@@ -7,7 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
     "test": "vitest run",
     "verify": "npm run build && npm run test"
   },
