@@ -1,0 +1,16 @@
+{
+  "name": "@world-forge/export-ai-rpg",
+  "version": "0.1.0",
+  "description": "Export pipeline from WorldProject to ai-rpg-engine ContentPack",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": ["dist"],
+  "license": "MIT",
+  "dependencies": {
+    "@world-forge/schema": "*"
+  }
+}

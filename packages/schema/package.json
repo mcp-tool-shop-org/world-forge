@@ -1,0 +1,13 @@
+{
+  "name": "@world-forge/schema",
+  "version": "0.1.0",
+  "description": "Spatial data types for world authoring",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

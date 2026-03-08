@@ -1,0 +1,18 @@
+{
+  "name": "@world-forge/editor",
+  "version": "0.1.0",
+  "description": "Web-based world authoring editor",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": ["dist"],
+  "license": "MIT",
+  "dependencies": {
+    "@world-forge/schema": "*",
+    "@world-forge/renderer-2d": "*",
+    "@world-forge/export-ai-rpg": "*"
+  }
+}

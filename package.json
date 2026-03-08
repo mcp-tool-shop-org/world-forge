@@ -1,0 +1,20 @@
+{
+  "name": "world-forge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "2D world authoring studio for AI RPG Engine",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run",
+    "verify": "npm run build && npm run test"
+  },
+  "author": "mcp-tool-shop",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

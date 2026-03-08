@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/schema" },
+    { "path": "packages/export-ai-rpg" },
+    { "path": "packages/renderer-2d" },
+    { "path": "packages/editor" }
+  ]
+}
