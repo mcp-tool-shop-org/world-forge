@@ -17,6 +17,11 @@ export type {
 } from './entities.js';
 
 export type {
+  ScalarValue, DialogueCondition, DialogueEffect,
+  DialogueChoice, DialogueNode, DialogueDefinition,
+} from './dialogue.js';
+
+export type {
   Tileset, TileDefinition, TileLayer, TilePlacement,
   PropDefinition, PropPlacement, AmbientLayer,
 } from './visual.js';

@@ -63,6 +63,7 @@ writeFileSync(join(outDir, 'zones.json'), JSON.stringify(contentPack.zones, null
 writeFileSync(join(outDir, 'districts.json'), JSON.stringify(contentPack.districts, null, 2));
 writeFileSync(join(outDir, 'entities.json'), JSON.stringify(contentPack.entities, null, 2));
 writeFileSync(join(outDir, 'items.json'), JSON.stringify(contentPack.items, null, 2));
+writeFileSync(join(outDir, 'dialogues.json'), JSON.stringify(contentPack.dialogues, null, 2));
 
 console.log('--- Output Files ---\n');
 console.log(`  ${outDir}/chapel-project.json (input)`);
@@ -72,6 +73,7 @@ console.log(`  ${outDir}/zones.json`);
 console.log(`  ${outDir}/districts.json`);
 console.log(`  ${outDir}/entities.json`);
 console.log(`  ${outDir}/items.json`);
+console.log(`  ${outDir}/dialogues.json`);
 console.log();
 
 // --- Gap Analysis ---
@@ -97,9 +99,11 @@ for (const i of contentPack.items) {
   if (!i.rarity) gaps.push(`Item "${i.name || i.id}" has no rarity`);
 }
 
-// Dialogues: empty
-if (contentPack.dialogues.length === 0) {
-  gaps.push('No dialogues exported — engine expects DialogueDefinition[] for NPC conversations');
+// Dialogues: check for entity-dialogue binding
+for (const e of chapelProject.entityPlacements) {
+  if (e.dialogueId && !contentPack.dialogues.some((d) => d.id === e.dialogueId)) {
+    gaps.push(`Entity "${e.entityId}" references dialogue "${e.dialogueId}" but it was not exported`);
+  }
 }
 
 // Build catalog: not in export

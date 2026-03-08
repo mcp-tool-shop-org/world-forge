@@ -58,6 +58,8 @@ export const invalidOrphanProject: WorldProject = {
   factionPresences: [],
   pressureHotspots: [],
 
+  dialogues: [],
+
   entityPlacements: [
     { entityId: 'npc-lost', zoneId: 'zone-void', role: 'npc' },  // invalid zone
   ],

@@ -85,6 +85,27 @@ export const minimalProject: WorldProject = {
     { id: 'ph-cellar', zoneId: 'zone-cellar', pressureType: 'undead-stirring', baseProbability: 0.3, tags: ['undead'] },
   ],
 
+  dialogues: [
+    {
+      id: 'dlg-keeper',
+      speakers: ['keeper'],
+      entryNodeId: 'greet',
+      nodes: {
+        greet: {
+          id: 'greet',
+          speaker: 'Keeper',
+          text: 'Welcome, traveler.',
+          choices: [
+            { id: 'ask', text: 'What is this place?', nextNodeId: 'explain' },
+            { id: 'bye', text: 'Farewell.', nextNodeId: 'end' },
+          ],
+        },
+        explain: { id: 'explain', speaker: 'Keeper', text: 'An old chapel, nothing more.', nextNodeId: 'end' },
+        end: { id: 'end', speaker: 'Keeper', text: 'Safe travels.' },
+      },
+    },
+  ],
+
   entityPlacements: [
     { entityId: 'npc-keeper', zoneId: 'zone-entrance', role: 'npc', factionId: 'keepers', dialogueId: 'dlg-keeper' },
   ],

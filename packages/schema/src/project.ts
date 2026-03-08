@@ -6,6 +6,7 @@ import type {
   EntityPlacement, ItemPlacement, EncounterAnchor,
   SpawnPoint, CraftingStation, MarketNode,
 } from './entities.js';
+import type { DialogueDefinition } from './dialogue.js';
 import type {
   Tileset, TileLayer, PropDefinition, PropPlacement, AmbientLayer,
 } from './visual.js';
@@ -30,6 +31,8 @@ export interface WorldProject {
 
   factionPresences: FactionPresence[];
   pressureHotspots: PressureHotspot[];
+
+  dialogues: DialogueDefinition[];
 
   entityPlacements: EntityPlacement[];
   itemPlacements: ItemPlacement[];

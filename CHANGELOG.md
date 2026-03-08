@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-03-08
+
+### Added
+
+- **Dialogue authoring** — `DialogueDefinition` type with branching nodes, choices, conditions, and effects
+- **Dialogue validation** — entry node existence, broken node references, unreachable node detection, entity-dialogue binding checks
+- **Dialogue export** — `convertDialogues()` converter, dialogues wired into ContentPack export pipeline
+- **Chapel Threshold dialogue** — 6-node pilgrim conversation tree with branching paths and `set-global` effects
+- Minimal fixture now includes a keeper dialogue for test coverage
+- 36 tests (up from 24)
+
 ## [1.0.0] - 2026-03-08
 
 ### Added

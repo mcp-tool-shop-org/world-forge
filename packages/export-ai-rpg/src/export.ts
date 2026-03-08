@@ -12,6 +12,7 @@ import { convertZones } from './convert-zones.js';
 import { convertDistricts } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
 import { convertItems } from './convert-items.js';
+import { convertDialogues } from './convert-dialogues.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 
 export type ContentPack = {
@@ -58,11 +59,14 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
   // 5. Convert items
   const items = convertItems(project);
 
-  // 6. Build manifest and pack metadata
+  // 6. Convert dialogues
+  const dialogues = convertDialogues(project);
+
+  // 7. Build manifest and pack metadata
   const manifest = convertManifest(project);
   const packMeta = convertPackMeta(project);
 
-  // 7. Warn on missing features
+  // 8. Warn on missing features
   if (project.landmarks.length === 0) {
     warnings.push('No landmarks placed — consider adding points of interest');
   }
@@ -78,7 +82,7 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
       entities,
       zones,
       districts,
-      dialogues: [], // dialogue authoring is a future feature
+      dialogues,
       items,
     },
     manifest,

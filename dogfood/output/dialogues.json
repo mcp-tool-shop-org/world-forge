@@ -1,0 +1,92 @@
+[
+  {
+    "id": "pilgrim-talk",
+    "speakers": [
+      "suspicious-pilgrim"
+    ],
+    "entryNodeId": "greeting",
+    "nodes": {
+      "greeting": {
+        "id": "greeting",
+        "speaker": "Suspicious Pilgrim",
+        "text": "You should not be here. The chapel is... changed. Something stirs below.",
+        "choices": [
+          {
+            "id": "ask-what",
+            "text": "What stirs below?",
+            "nextNodeId": "warn-crypt"
+          },
+          {
+            "id": "ask-relic",
+            "text": "I seek the relic.",
+            "nextNodeId": "relic-info"
+          },
+          {
+            "id": "leave",
+            "text": "I can handle myself.",
+            "nextNodeId": "dismiss"
+          }
+        ]
+      },
+      "warn-crypt": {
+        "id": "warn-crypt",
+        "speaker": "Suspicious Pilgrim",
+        "text": "An ash ghoul. Once a brother of this order. Now it guards the crypt with hollow fury. Take this, you may need it.",
+        "choices": [
+          {
+            "id": "accept",
+            "text": "I accept your gift.",
+            "nextNodeId": "end-gift",
+            "effects": [
+              {
+                "type": "set-global",
+                "target": "actor",
+                "params": {
+                  "key": "pilgrim-warned",
+                  "value": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "relic-info": {
+        "id": "relic-info",
+        "speaker": "Suspicious Pilgrim",
+        "text": "The Ember Sigil rests in the crypt alcove, beyond the vestry. But the ghoul will not let you pass without a fight.",
+        "choices": [
+          {
+            "id": "thanks",
+            "text": "Thank you for the warning.",
+            "nextNodeId": "end-info",
+            "effects": [
+              {
+                "type": "set-global",
+                "target": "actor",
+                "params": {
+                  "key": "pilgrim-warned",
+                  "value": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "dismiss": {
+        "id": "dismiss",
+        "speaker": "Suspicious Pilgrim",
+        "text": "Confidence is not armor. Remember that."
+      },
+      "end-gift": {
+        "id": "end-gift",
+        "speaker": "Suspicious Pilgrim",
+        "text": "A healing draught. May it serve you well. Go with caution."
+      },
+      "end-info": {
+        "id": "end-info",
+        "speaker": "Suspicious Pilgrim",
+        "text": "Be careful, wanderer. The dead here do not rest easily."
+      }
+    }
+  }
+]

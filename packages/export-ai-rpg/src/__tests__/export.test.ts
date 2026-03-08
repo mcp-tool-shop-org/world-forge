@@ -4,6 +4,7 @@ import { convertZones } from '../convert-zones.js';
 import { convertDistricts } from '../convert-districts.js';
 import { convertEntities } from '../convert-entities.js';
 import { convertItems } from '../convert-items.js';
+import { convertDialogues } from '../convert-dialogues.js';
 import { convertManifest, convertPackMeta } from '../convert-pack.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
@@ -106,6 +107,46 @@ describe('convertPackMeta', () => {
   });
 });
 
+describe('convertDialogues', () => {
+  it('converts chapel pilgrim dialogue', () => {
+    const dialogues = convertDialogues(chapelProject);
+    expect(dialogues).toHaveLength(1);
+    expect(dialogues[0].id).toBe('pilgrim-talk');
+    expect(dialogues[0].speakers).toEqual(['suspicious-pilgrim']);
+    expect(dialogues[0].entryNodeId).toBe('greeting');
+  });
+
+  it('preserves node structure and choices', () => {
+    const dialogues = convertDialogues(chapelProject);
+    const dlg = dialogues[0];
+    const greeting = dlg.nodes['greeting'];
+    expect(greeting.speaker).toBe('Suspicious Pilgrim');
+    expect(greeting.choices).toHaveLength(3);
+    expect(greeting.choices![0].nextNodeId).toBe('warn-crypt');
+  });
+
+  it('preserves effects on choices', () => {
+    const dialogues = convertDialogues(chapelProject);
+    const dlg = dialogues[0];
+    const warnCrypt = dlg.nodes['warn-crypt'];
+    expect(warnCrypt.choices![0].effects).toHaveLength(1);
+    expect(warnCrypt.choices![0].effects![0].type).toBe('set-global');
+    expect(warnCrypt.choices![0].effects![0].params.key).toBe('pilgrim-warned');
+  });
+
+  it('converts minimal keeper dialogue', () => {
+    const dialogues = convertDialogues(minimalProject);
+    expect(dialogues).toHaveLength(1);
+    expect(dialogues[0].id).toBe('dlg-keeper');
+    expect(Object.keys(dialogues[0].nodes)).toHaveLength(3);
+  });
+
+  it('returns empty array for no dialogues', () => {
+    const dialogues = convertDialogues({ ...minimalProject, dialogues: [] });
+    expect(dialogues).toHaveLength(0);
+  });
+});
+
 describe('exportToEngine', () => {
   it('exports minimal project successfully', () => {
     const result = exportToEngine(minimalProject);
@@ -114,6 +155,7 @@ describe('exportToEngine', () => {
       expect(result.contentPack.zones).toHaveLength(2);
       expect(result.contentPack.entities).toHaveLength(1);
       expect(result.contentPack.districts).toHaveLength(1);
+      expect(result.contentPack.dialogues).toHaveLength(1);
       expect(result.manifest.id).toBe('minimal-test');
     }
   });
@@ -126,6 +168,8 @@ describe('exportToEngine', () => {
       expect(result.contentPack.entities).toHaveLength(4);
       expect(result.contentPack.districts).toHaveLength(2);
       expect(result.contentPack.items).toHaveLength(3);
+      expect(result.contentPack.dialogues).toHaveLength(1);
+      expect(result.contentPack.dialogues[0].id).toBe('pilgrim-talk');
     }
   });
 

@@ -112,5 +112,83 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
+  // --- Dialogue validation ---
+
+  const dialogueIds = new Set<string>();
+
+  for (const dlg of project.dialogues) {
+    // 13. Dialogue ID uniqueness
+    if (dialogueIds.has(dlg.id)) {
+      errors.push({ path: `dialogues.${dlg.id}`, message: `Duplicate dialogue ID: ${dlg.id}` });
+    }
+    dialogueIds.add(dlg.id);
+
+    // 14. Entry node must exist
+    if (!dlg.nodes[dlg.entryNodeId]) {
+      errors.push({
+        path: `dialogues.${dlg.id}.entryNodeId`,
+        message: `Dialogue "${dlg.id}" entry node "${dlg.entryNodeId}" does not exist in nodes`,
+      });
+    }
+
+    // 15. All nextNodeId references must point to existing nodes
+    const nodeIds = new Set(Object.keys(dlg.nodes));
+    for (const [nodeId, node] of Object.entries(dlg.nodes)) {
+      if (node.nextNodeId && !nodeIds.has(node.nextNodeId)) {
+        errors.push({
+          path: `dialogues.${dlg.id}.nodes.${nodeId}.nextNodeId`,
+          message: `Node "${nodeId}" auto-advances to nonexistent node "${node.nextNodeId}"`,
+        });
+      }
+      if (node.choices) {
+        for (const choice of node.choices) {
+          if (!nodeIds.has(choice.nextNodeId)) {
+            errors.push({
+              path: `dialogues.${dlg.id}.nodes.${nodeId}.choices.${choice.id}`,
+              message: `Choice "${choice.id}" in node "${nodeId}" points to nonexistent node "${choice.nextNodeId}"`,
+            });
+          }
+        }
+      }
+    }
+
+    // 16. Unreachable nodes (not reachable from entry)
+    if (dlg.nodes[dlg.entryNodeId]) {
+      const reachable = new Set<string>();
+      const queue = [dlg.entryNodeId];
+      while (queue.length > 0) {
+        const current = queue.pop()!;
+        if (reachable.has(current)) continue;
+        reachable.add(current);
+        const nd = dlg.nodes[current];
+        if (!nd) continue;
+        if (nd.nextNodeId && nodeIds.has(nd.nextNodeId)) queue.push(nd.nextNodeId);
+        if (nd.choices) {
+          for (const ch of nd.choices) {
+            if (nodeIds.has(ch.nextNodeId)) queue.push(ch.nextNodeId);
+          }
+        }
+      }
+      for (const nid of nodeIds) {
+        if (!reachable.has(nid)) {
+          errors.push({
+            path: `dialogues.${dlg.id}.nodes.${nid}`,
+            message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable from entry node`,
+          });
+        }
+      }
+    }
+  }
+
+  // 17. Entity dialogueId must reference existing dialogue
+  for (const ep of project.entityPlacements) {
+    if (ep.dialogueId && !dialogueIds.has(ep.dialogueId)) {
+      errors.push({
+        path: `entityPlacements.${ep.entityId}.dialogueId`,
+        message: `Entity "${ep.entityId}" references nonexistent dialogue "${ep.dialogueId}"`,
+      });
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }

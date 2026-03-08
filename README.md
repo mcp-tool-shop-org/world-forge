@@ -69,12 +69,12 @@ React 19 + Vite web app. Zustand state management with undo/redo. Tools: select,
 - Landmarks (named points of interest within zones)
 - Entity placements with stats, resources, AI profiles, and custom metadata
 - Item placements with slot, rarity, stat modifiers, and granted verbs
+- Dialogue trees (branching conversations with conditions and effects)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
 - Export to engine-compatible ContentPack JSON
 
 **World Forge does not yet author:**
 
-- Dialogue trees (NPC conversations)
 - Build catalogs (archetypes, backgrounds, traits for character creation)
 - Progression trees (skill/ability unlocks)
 - Player template configuration
