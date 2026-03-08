@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/world-forge/readme.png" alt="World Forge" width="400">
+</p>
+
 # @world-forge/renderer-2d
 
 PixiJS-based 2D renderer for [World Forge](https://github.com/mcp-tool-shop-org/world-forge) world maps.
