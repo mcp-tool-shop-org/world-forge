@@ -14,16 +14,18 @@ import { BuildCatalogPanel } from './panels/BuildCatalogPanel.js';
 import { ProgressionPanel } from './panels/ProgressionPanel.js';
 import { DialoguePanel } from './panels/DialoguePanel.js';
 import { ChecklistPanel } from './panels/ChecklistPanel.js';
-import { NewProjectWizard } from './panels/NewProjectWizard.js';
-import { SampleBrowserModal } from './panels/SampleBrowserModal.js';
+import { TemplateManager } from './panels/TemplateManager.js';
+import { ImportModal } from './panels/ImportModal.js';
+import { SaveTemplateModal } from './panels/SaveTemplateModal.js';
 import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
   const { activeTool, selectedZoneId, rightTab, setRightTab, zoom, checklistDismissed } = useEditorStore();
   const [showExport, setShowExport] = useState(false);
-  const [showWizard, setShowWizard] = useState(false);
-  const [showSamples, setShowSamples] = useState(false);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
 
@@ -76,10 +78,11 @@ export function App() {
         <strong style={{ color: '#58a6ff' }}>World Forge</strong>
         <span style={{ color: '#8b949e', fontSize: 12 }}>{project.name}{dirty ? ' *' : ''}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setShowWizard(true)} style={btnStyle}>New</button>
+        <button onClick={() => setShowTemplateManager(true)} style={btnStyle}>New</button>
+        <button onClick={() => setShowImport(true)} style={btnStyle}>Import</button>
         <button onClick={handleLoad} style={btnStyle}>Load</button>
-        <button onClick={() => setShowSamples(true)} style={btnStyle}>Samples</button>
         <button onClick={handleSave} style={btnStyle}>Save</button>
+        <button onClick={() => setShowSaveTemplate(true)} style={btnStyle}>Save as Template</button>
         <button onClick={undo} style={btnStyle}>Undo</button>
         <button onClick={redo} style={btnStyle}>Redo</button>
         <button onClick={() => setShowExport(true)} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Export</button>
@@ -174,8 +177,9 @@ export function App() {
       </div>
 
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}
-      {showWizard && <NewProjectWizard onClose={() => setShowWizard(false)} onOpenSamples={() => { setShowWizard(false); setShowSamples(true); }} />}
-      {showSamples && <SampleBrowserModal onClose={() => setShowSamples(false)} />}
+      {showTemplateManager && <TemplateManager onClose={() => setShowTemplateManager(false)} />}
+      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
+      {showSaveTemplate && <SaveTemplateModal onClose={() => setShowSaveTemplate(false)} />}
     </div>
   );
 }

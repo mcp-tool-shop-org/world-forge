@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - 2026-03-08
+
+### Added
+
+- **Import pipeline** — 8 reverse converters reconstruct WorldProject from engine ContentPack, ExportResult, or raw WorldProject JSON with format auto-detection and lossy-area warnings
+- **Round-trip trust** — export → import → re-export produces matching ContentPacks for all supported fields; 38 new import + round-trip tests (114 total)
+- **User template store** — save, duplicate, and delete reusable project templates backed by localStorage with corruption recovery
+- **Import modal** — file picker with format badge (lossless/lossy), content preview (zone/entity/item counts), and import warnings
+- **Save as Template modal** — save current project as a named template with genre, icon, and description metadata
+- **Template Manager** — unified 3-tab browser (Genres | Samples | My Templates) replacing the separate wizard and sample browser
+
+### Changed
+
+- Toolbar: `New | Import | Load | Save | Save as Template | Undo | Redo | Export`
+- "New" opens the unified Template Manager instead of the old wizard
+- "Samples" button removed (merged into Template Manager Samples tab)
+
+### Removed
+
+- `NewProjectWizard.tsx` — replaced by Template Manager Genres tab
+- `SampleBrowserModal.tsx` — merged into Template Manager Samples tab
+
 ## [1.4.1] - 2026-03-08
 
 ### Improved
