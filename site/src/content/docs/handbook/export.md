@@ -9,19 +9,22 @@ The `@world-forge/export-ai-rpg` package converts a `WorldProject` into a set of
 
 ## Pipeline Steps
 
-1. **Validate** — `validateProject()` runs all 17 structural checks. If any fail, export aborts with error details.
+1. **Validate** — `validateProject()` runs all 32 structural checks. If any fail, export aborts with error details.
 2. **Convert zones** — `Zone[]` becomes `ZoneDefinition[]` with description as TextBlock, exits, neighbors, hazards.
 3. **Convert districts** — `District[]` becomes `DistrictDefinition[]` with safety mapped to surveillance.
 4. **Convert entities** — `EntityPlacement[]` becomes `EntityBlueprint[]` with role-based defaults, authored stats/resources/AI.
 5. **Convert items** — `ItemPlacement[]` becomes `ItemDefinition[]` with slot, rarity, modifiers, provenance.
 6. **Convert dialogues** — `DialogueDefinition[]` passes through to engine's matching type.
-7. **Build manifest** — game ID, title, modules, content pack references.
-8. **Build pack metadata** — genres, tones, difficulty, narrator tone.
-9. **Collect warnings** — missing landmarks, no faction presences, no pressure hotspots.
+7. **Convert player template** — `PlayerTemplate` becomes `ExportedPlayerTemplate` with stats, inventory, equipment, spawn.
+8. **Convert build catalog** — `BuildCatalogDefinition` becomes `ExportedBuildCatalog` with archetypes, backgrounds, traits, disciplines.
+9. **Convert progression trees** — `ProgressionTreeDefinition[]` maps nodes with requirements and effects.
+10. **Build manifest** — game ID, title, modules, content pack references.
+11. **Build pack metadata** — genres, tones, difficulty, narrator tone.
+12. **Collect warnings** — missing player template, build catalog, progression trees, landmarks, factions, hotspots.
 
 ## Output Format
 
-The export produces a `ContentPack` with five arrays plus manifest and metadata:
+The export produces a `ContentPack` with all authored domains plus manifest and metadata:
 
 ```typescript
 type ContentPack = {
@@ -30,6 +33,9 @@ type ContentPack = {
   districts: DistrictDefinition[];
   dialogues: DialogueDefinition[];
   items: ItemDefinition[];
+  playerTemplate?: ExportedPlayerTemplate;
+  buildCatalog?: ExportedBuildCatalog;
+  progressionTrees: ProgressionTreeDefinition[];
 };
 ```
 
@@ -75,4 +81,4 @@ Authored values always override defaults. For example, if you set `ai.profileId:
 
 ## Dogfood: Chapel Threshold
 
-The `dogfood/` directory contains a full export test using the Chapel Threshold fixture — 5 zones, 2 districts, 4 entities, 3 items, 1 dialogue tree. Running `npx tsx dogfood/chapel-threshold.ts` exports the fixture and performs a gap analysis against engine expectations.
+The `dogfood/` directory contains a full export test using the Chapel Threshold fixture — 5 zones, 2 districts, 4 entities, 3 items, 1 dialogue, 1 player template, 1 build catalog, 2 progression trees. Running `npx tsx dogfood/chapel-threshold.ts` exports the fixture and performs a gap analysis against engine expectations. As of v1.2, the gap analysis reports zero gaps — full engine handshake.

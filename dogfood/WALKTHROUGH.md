@@ -4,7 +4,7 @@ First end-to-end export from World Forge to ai-rpg-engine.
 
 ## Subject
 
-**Chapel Threshold** — a ruined chapel atop an ancient crypt. 5 zones, 2 districts, 4 entities, 3 items, 1 landmark, 1 encounter, 2 faction presences, 1 pressure hotspot, 1 ambient layer.
+**Chapel Threshold** — a ruined chapel atop an ancient crypt. 5 zones, 2 districts, 4 entities, 3 items, 1 dialogue, 1 landmark, 1 encounter, 2 faction presences, 1 pressure hotspot, 1 ambient layer, 1 player template, 1 build catalog (2 archetypes, 2 backgrounds, 3 traits, 1 discipline), 2 progression trees.
 
 ## What we did
 
@@ -38,16 +38,21 @@ Output lands in `dogfood/output/`.
 | Items had no slot/rarity/description | Added `ItemSlot`, `ItemRarity`, `name`, `description` to schema |
 | Items had no stat modifiers or granted verbs | Added `statModifiers`, `resourceModifiers`, `grantedTags`, `grantedVerbs` |
 
-### Remaining (4 gaps — future authoring features)
+### Closed in v1.1 (1 gap)
 
-| Gap | Why |
+| Gap | Fix |
 |-----|-----|
-| No dialogues exported | Dialogue authoring not yet in World Forge |
-| No BuildCatalog exported | Character creation authoring not yet in scope |
-| No ProgressionTreeDefinition exported | Progression tree authoring not yet in scope |
-| No player entity template | Player configuration not yet in editor |
+| No dialogues exported | Full dialogue authoring: branching trees with conditions + effects |
 
-These are honest scope boundaries, not bugs. The export pipeline stubs `dialogues: []` and the engine handles missing optional content gracefully.
+### Closed in v1.2 (3 gaps)
+
+| Gap | Fix |
+|-----|-----|
+| No BuildCatalog exported | Full build catalog: archetypes, backgrounds, traits, disciplines, cross-titles, entanglements |
+| No ProgressionTreeDefinition exported | Progression trees with nodes, requirements, costs, and effects |
+| No player entity template | Player template: base stats, resources, starting inventory/equipment, spawn point |
+
+All original gaps are now closed. The Chapel Threshold exports with zero gaps against the engine contract.
 
 ## Exported output vs engine starter
 
@@ -86,11 +91,12 @@ These are honest scope boundaries, not bugs. The export pipeline stubs `dialogue
 
 3. **The `custom` field is load-bearing.** Companion roles, personal goals, and abilities don't fit into any standard field. The engine uses `custom` for this, and World Forge now passes it through.
 
-4. **Dialogues are the biggest remaining gap.** Every NPC in the engine has dialogue trees. World Forge can place NPCs but can't author what they say yet.
+4. **v1.1 closed the dialogue gap.** Every NPC can now have branching dialogue trees with conditions and effects.
 
-## Next steps
+5. **v1.2 closed the remaining three gaps.** Player template, build catalog, and progression trees complete the engine contract. The Chapel Threshold now exports with zero gaps.
 
-- v1.1: Dialogue authoring in the editor
-- v1.1: Player template configuration
-- v1.2: Build catalog authoring (archetypes, backgrounds, traits)
-- v1.2: Progression tree authoring
+## Version history
+
+- **v1.0** — Initial export: zones, districts, entities (with stats/resources/AI), items (with slots/modifiers). 8 gaps closed, 4 remaining.
+- **v1.1** — Dialogue authoring: branching trees, conditions, effects. 1 gap closed, 3 remaining.
+- **v1.2** — Playable world completeness: player template, build catalog, progression trees. 3 gaps closed, 0 remaining.

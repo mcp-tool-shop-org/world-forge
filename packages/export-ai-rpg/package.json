@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/export-ai-rpg",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Export pipeline from WorldProject to ai-rpg-engine ContentPack",
   "type": "module",
   "main": "dist/index.js",

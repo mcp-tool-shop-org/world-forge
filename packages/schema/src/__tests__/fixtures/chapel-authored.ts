@@ -161,6 +161,164 @@ export const chapelProject: WorldProject = {
     },
   ],
 
+  playerTemplate: {
+    name: 'Wanderer',
+    defaultArchetypeId: 'wanderer',
+    baseStats: { vigor: 3, instinct: 4, will: 2 },
+    baseResources: { hp: 12, stamina: 6 },
+    startingInventory: ['chapel-lantern'],
+    startingEquipment: { weapon: 'rusted-mace' },
+    spawnPointId: 'chapel-spawn',
+    tags: ['player', 'mortal'],
+    custom: { origin: 'unknown', motivation: 'seek-the-relic' },
+  },
+
+  buildCatalog: {
+    statBudget: 12,
+    maxTraits: 4,
+    requiredFlaws: 1,
+    archetypes: [
+      {
+        id: 'wanderer',
+        name: 'Wanderer',
+        description: 'A drifter who survives by instinct and resourcefulness.',
+        statPriorities: { instinct: 2, vigor: 1 },
+        startingTags: ['traveler', 'resourceful'],
+        startingInventory: ['chapel-lantern'],
+        progressionTreeId: 'tree-wanderer',
+        grantedVerbs: ['scavenge', 'navigate'],
+      },
+      {
+        id: 'zealot',
+        name: 'Zealot',
+        description: 'A devout warrior who channels faith into fury.',
+        statPriorities: { will: 2, vigor: 1 },
+        resourceOverrides: { stamina: 8 },
+        startingTags: ['faithful', 'militant'],
+        startingInventory: [],
+        progressionTreeId: 'tree-zealot',
+        grantedVerbs: ['smite', 'pray'],
+      },
+    ],
+    backgrounds: [
+      {
+        id: 'pilgrim',
+        name: 'Pilgrim',
+        description: 'Traveled the sacred roads. Knows the old prayers.',
+        statModifiers: { will: 1 },
+        startingTags: ['devout'],
+        factionModifiers: { keepers: 10 },
+      },
+      {
+        id: 'exile',
+        name: 'Exile',
+        description: 'Cast out from a distant settlement. Trusts no one.',
+        statModifiers: { instinct: 1 },
+        startingTags: ['outcast', 'wary'],
+        factionModifiers: { keepers: -5 },
+      },
+    ],
+    traits: [
+      {
+        id: 'iron-gut',
+        name: 'Iron Gut',
+        description: 'Resistant to poison and spoiled food.',
+        category: 'perk',
+        effects: [{ type: 'grant-tag', tag: 'poison-resistant' }],
+      },
+      {
+        id: 'keen-eyes',
+        name: 'Keen Eyes',
+        description: 'Spots hidden passages and traps.',
+        category: 'perk',
+        effects: [{ type: 'stat-modifier', stat: 'instinct', amount: 1 }],
+      },
+      {
+        id: 'haunted',
+        name: 'Haunted',
+        description: 'Nightmares steal your rest. Stamina recovery is reduced.',
+        category: 'flaw',
+        effects: [{ type: 'resource-modifier', resource: 'stamina', amount: -2 }],
+      },
+    ],
+    disciplines: [
+      {
+        id: 'shadow-step',
+        name: 'Shadow Step',
+        description: 'Move unseen through darkness.',
+        grantedVerb: 'shadow-step',
+        passive: { type: 'grant-tag', tag: 'shadow-attuned' },
+        drawback: { type: 'resource-modifier', resource: 'hp', amount: -2 },
+        requiredTags: ['traveler'],
+      },
+    ],
+    crossTitles: [
+      { archetypeId: 'wanderer', disciplineId: 'shadow-step', title: 'Phantom Drifter', tags: ['phantom'] },
+    ],
+    entanglements: [
+      {
+        id: 'entangle-wanderer-shadow',
+        archetypeId: 'wanderer',
+        disciplineId: 'shadow-step',
+        description: 'The wanderer becomes one with the dark.',
+        effects: [{ type: 'stat-modifier', stat: 'instinct', amount: 1 }],
+      },
+    ],
+  },
+
+  progressionTrees: [
+    {
+      id: 'tree-wanderer',
+      name: 'Path of the Wanderer',
+      currency: 'xp',
+      nodes: [
+        {
+          id: 'keen-senses',
+          name: 'Keen Senses',
+          cost: 10,
+          effects: [{ type: 'stat-boost', target: 'actor', params: { stat: 'instinct', amount: 1 } }],
+        },
+        {
+          id: 'survivors-luck',
+          name: "Survivor's Luck",
+          description: 'Fortune favors those who endure.',
+          cost: 20,
+          requires: ['keen-senses'],
+          effects: [{ type: 'grant-tag', target: 'actor', params: { tag: 'lucky' } }],
+        },
+        {
+          id: 'trailblazer',
+          name: 'Trailblazer',
+          description: 'Move faster through wilderness zones.',
+          cost: 30,
+          requires: ['keen-senses'],
+          effects: [{ type: 'grant-verb', target: 'actor', params: { verb: 'sprint' } }],
+        },
+      ],
+    },
+    {
+      id: 'tree-zealot',
+      name: 'Path of the Zealot',
+      currency: 'xp',
+      nodes: [
+        {
+          id: 'righteous-fury',
+          name: 'Righteous Fury',
+          cost: 10,
+          effects: [{ type: 'stat-boost', target: 'actor', params: { stat: 'will', amount: 1 } }],
+        },
+        {
+          id: 'divine-shield',
+          name: 'Divine Shield',
+          description: 'A prayer that absorbs one blow.',
+          cost: 25,
+          requires: ['righteous-fury'],
+          effects: [{ type: 'grant-tag', target: 'actor', params: { tag: 'shielded' } }],
+        },
+      ],
+    },
+  ],
+
   dialogues: [
     {
       id: 'pilgrim-talk',

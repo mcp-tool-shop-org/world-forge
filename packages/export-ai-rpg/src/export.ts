@@ -2,7 +2,7 @@
 
 import type { WorldProject, ValidationError } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
-import type { ZoneDefinition, EntityBlueprint, DialogueDefinition } from '@ai-rpg-engine/content-schema';
+import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
 import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
@@ -13,6 +13,9 @@ import { convertDistricts } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
 import { convertItems } from './convert-items.js';
 import { convertDialogues } from './convert-dialogues.js';
+import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-player-template.js';
+import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-catalog.js';
+import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 
 export type ContentPack = {
@@ -21,6 +24,9 @@ export type ContentPack = {
   districts: DistrictDefinition[];
   dialogues: DialogueDefinition[];
   items: ItemDefinition[];
+  playerTemplate?: ExportedPlayerTemplate;
+  buildCatalog?: ExportedBuildCatalog;
+  progressionTrees: ProgressionTreeDefinition[];
 };
 
 export type ExportResult = {
@@ -62,11 +68,27 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
   // 6. Convert dialogues
   const dialogues = convertDialogues(project);
 
-  // 7. Build manifest and pack metadata
+  // 7. Convert player template, build catalog, progression trees
+  const playerTemplate = convertPlayerTemplate(project);
+  const buildCatalog = convertBuildCatalog(project);
+  const progressionTrees = convertProgressionTrees(project);
+
+  // 8. Build manifest and pack metadata
   const manifest = convertManifest(project);
   const packMeta = convertPackMeta(project);
 
-  // 8. Warn on missing features
+  // 9. Warn on missing features
+  if (!playerTemplate) {
+    warnings.push('No player template — engine will need manual player setup');
+  }
+  if (!buildCatalog) {
+    warnings.push('No build catalog — character creation will use engine defaults');
+  }
+  if (progressionTrees.length === 0) {
+    warnings.push('No progression trees — character advancement will be inactive');
+  }
+
+  // 10. Warn on other missing features
   if (project.landmarks.length === 0) {
     warnings.push('No landmarks placed — consider adding points of interest');
   }
@@ -84,6 +106,9 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
       districts,
       dialogues,
       items,
+      playerTemplate,
+      buildCatalog,
+      progressionTrees,
     },
     manifest,
     packMeta,

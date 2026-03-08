@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { validateProject } from '../validate.js';
 import type { WorldProject } from '../project.js';
 import { minimalProject } from './fixtures/minimal.js';
+import { chapelProject } from './fixtures/chapel-authored.js';
 import { invalidOrphanProject } from './fixtures/invalid-orphan.js';
 
 describe('validateProject', () => {
@@ -173,5 +174,132 @@ describe('validateProject', () => {
     const result = validateProject(bad);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.message.includes('Duplicate dialogue ID'))).toBe(true);
+  });
+
+  // --- Player template validation ---
+
+  it('accepts valid player template', () => {
+    const result = validateProject(minimalProject);
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects player template with invalid spawn point', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      playerTemplate: { ...minimalProject.playerTemplate!, spawnPointId: 'sp-nonexistent' },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path === 'playerTemplate.spawnPointId')).toBe(true);
+  });
+
+  it('rejects player template with nonexistent starting inventory item', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      playerTemplate: { ...minimalProject.playerTemplate!, startingInventory: ['ghost-item'] },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('ghost-item'))).toBe(true);
+  });
+
+  it('rejects player template with nonexistent equipment item', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      playerTemplate: { ...minimalProject.playerTemplate!, startingEquipment: { weapon: 'phantom-sword' } },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('phantom-sword'))).toBe(true);
+  });
+
+  // --- Build catalog validation ---
+
+  it('accepts valid build catalog (chapel)', () => {
+    const result = validateProject(chapelProject);
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects duplicate archetype IDs', () => {
+    const bad: WorldProject = {
+      ...chapelProject,
+      buildCatalog: {
+        ...chapelProject.buildCatalog!,
+        archetypes: [chapelProject.buildCatalog!.archetypes[0], chapelProject.buildCatalog!.archetypes[0]],
+      },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('Duplicate archetype ID'))).toBe(true);
+  });
+
+  it('rejects archetype referencing nonexistent progression tree', () => {
+    const bad: WorldProject = {
+      ...chapelProject,
+      buildCatalog: {
+        ...chapelProject.buildCatalog!,
+        archetypes: [{ ...chapelProject.buildCatalog!.archetypes[0], progressionTreeId: 'tree-ghost' }],
+      },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('tree-ghost'))).toBe(true);
+  });
+
+  it('rejects cross-title referencing nonexistent archetype', () => {
+    const bad: WorldProject = {
+      ...chapelProject,
+      buildCatalog: {
+        ...chapelProject.buildCatalog!,
+        crossTitles: [{ archetypeId: 'no-such', disciplineId: 'shadow-step', title: 'Test', tags: [] }],
+      },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('no-such'))).toBe(true);
+  });
+
+  // --- Progression tree validation ---
+
+  it('rejects duplicate progression tree IDs', () => {
+    const bad: WorldProject = {
+      ...chapelProject,
+      progressionTrees: [chapelProject.progressionTrees[0], chapelProject.progressionTrees[0]],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('Duplicate progression tree ID'))).toBe(true);
+  });
+
+  it('rejects node requiring nonexistent node', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      progressionTrees: [{
+        id: 'tree-bad', name: 'Bad Tree', currency: 'xp',
+        nodes: [
+          { id: 'root', name: 'Root', cost: 5, effects: [] },
+          { id: 'child', name: 'Child', cost: 10, requires: ['ghost-node'], effects: [] },
+        ],
+      }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('ghost-node'))).toBe(true);
+  });
+
+  it('rejects tree with no root nodes', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      progressionTrees: [{
+        id: 'tree-cycle', name: 'Cycle Tree', currency: 'xp',
+        nodes: [
+          { id: 'a', name: 'A', cost: 5, requires: ['b'], effects: [] },
+          { id: 'b', name: 'B', cost: 5, requires: ['a'], effects: [] },
+        ],
+      }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('no root nodes'))).toBe(true);
   });
 });

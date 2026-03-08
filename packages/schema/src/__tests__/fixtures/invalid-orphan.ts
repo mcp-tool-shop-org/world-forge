@@ -60,6 +60,8 @@ export const invalidOrphanProject: WorldProject = {
 
   dialogues: [],
 
+  progressionTrees: [],
+
   entityPlacements: [
     { entityId: 'npc-lost', zoneId: 'zone-void', role: 'npc' },  // invalid zone
   ],

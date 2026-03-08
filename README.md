@@ -52,11 +52,11 @@ npx world-forge-export project.json --validate-only
 
 ### @world-forge/schema
 
-Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 12 structural checks.
+Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 32 structural checks.
 
 ### @world-forge/export-ai-rpg
 
-Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, manifest, and pack metadata. Validates both input (schema validation) and output (engine content-schema validation).
+Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, manifest, and pack metadata. Full validation pipeline with gap analysis.
 
 ### @world-forge/renderer-2d
 
@@ -77,14 +77,11 @@ React 19 + Vite web app. Zustand state management with undo/redo. Tools: select,
 - Entity placements with stats, resources, AI profiles, and custom metadata
 - Item placements with slot, rarity, stat modifiers, and granted verbs
 - Dialogue trees (branching conversations with conditions and effects)
+- Player template (starting stats, inventory, equipment, spawn point)
+- Build catalog (archetypes, backgrounds, traits, disciplines, cross-titles, entanglements)
+- Progression trees (skill/ability nodes with requirements and effects)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
 - Export to engine-compatible ContentPack JSON
-
-**World Forge does not yet author:**
-
-- Build catalogs (archetypes, backgrounds, traits for character creation)
-- Progression trees (skill/ability unlocks)
-- Player template configuration
 
 See [`dogfood/WALKTHROUGH.md`](dogfood/WALKTHROUGH.md) for the Chapel Threshold export handshake proving the current surface.
 

@@ -21,6 +21,20 @@ export type {
   DialogueChoice, DialogueNode, DialogueDefinition,
 } from './dialogue.js';
 
+export type { PlayerTemplate } from './player-template.js';
+
+export type {
+  TraitEffectType, TraitEffect,
+  ArchetypeDefinition, BackgroundDefinition,
+  TraitDefinition, DisciplineDefinition,
+  CrossDisciplineTitle, ClassEntanglement,
+  BuildCatalogDefinition,
+} from './build-catalog.js';
+
+export type {
+  ProgressionEffect, ProgressionNode, ProgressionTreeDefinition,
+} from './progression-tree.js';
+
 export type {
   Tileset, TileDefinition, TileLayer, TilePlacement,
   PropDefinition, PropPlacement, AmbientLayer,

@@ -5,6 +5,9 @@ import { convertDistricts } from '../convert-districts.js';
 import { convertEntities } from '../convert-entities.js';
 import { convertItems } from '../convert-items.js';
 import { convertDialogues } from '../convert-dialogues.js';
+import { convertPlayerTemplate } from '../convert-player-template.js';
+import { convertBuildCatalog } from '../convert-build-catalog.js';
+import { convertProgressionTrees } from '../convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from '../convert-pack.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
@@ -147,6 +150,82 @@ describe('convertDialogues', () => {
   });
 });
 
+describe('convertPlayerTemplate', () => {
+  it('converts chapel player template', () => {
+    const pt = convertPlayerTemplate(chapelProject);
+    expect(pt).toBeDefined();
+    expect(pt!.name).toBe('Wanderer');
+    expect(pt!.spawnPointId).toBe('chapel-spawn');
+    expect(pt!.baseStats).toEqual({ vigor: 3, instinct: 4, will: 2 });
+    expect(pt!.startingEquipment).toEqual({ weapon: 'rusted-mace' });
+    expect(pt!.tags).toContain('player');
+  });
+
+  it('returns undefined when no player template', () => {
+    const pt = convertPlayerTemplate({ ...minimalProject, playerTemplate: undefined });
+    expect(pt).toBeUndefined();
+  });
+});
+
+describe('convertBuildCatalog', () => {
+  it('converts chapel build catalog with packId', () => {
+    const bc = convertBuildCatalog(chapelProject);
+    expect(bc).toBeDefined();
+    expect(bc!.packId).toBe('chapel-threshold');
+    expect(bc!.statBudget).toBe(12);
+    expect(bc!.archetypes).toHaveLength(2);
+    expect(bc!.backgrounds).toHaveLength(2);
+    expect(bc!.traits).toHaveLength(3);
+    expect(bc!.disciplines).toHaveLength(1);
+    expect(bc!.crossTitles).toHaveLength(1);
+    expect(bc!.entanglements).toHaveLength(1);
+  });
+
+  it('maps archetype fields correctly', () => {
+    const bc = convertBuildCatalog(chapelProject)!;
+    const wanderer = bc.archetypes.find((a) => a.id === 'wanderer');
+    expect(wanderer!.progressionTreeId).toBe('tree-wanderer');
+    expect(wanderer!.grantedVerbs).toContain('scavenge');
+    expect(wanderer!.startingTags).toContain('traveler');
+  });
+
+  it('maps trait effects correctly', () => {
+    const bc = convertBuildCatalog(chapelProject)!;
+    const ironGut = bc.traits.find((t) => t.id === 'iron-gut');
+    expect(ironGut!.category).toBe('perk');
+    expect(ironGut!.effects[0].type).toBe('grant-tag');
+  });
+
+  it('returns undefined when no build catalog', () => {
+    const bc = convertBuildCatalog({ ...minimalProject, buildCatalog: undefined });
+    expect(bc).toBeUndefined();
+  });
+});
+
+describe('convertProgressionTrees', () => {
+  it('converts chapel progression trees', () => {
+    const trees = convertProgressionTrees(chapelProject);
+    expect(trees).toHaveLength(2);
+    expect(trees[0].id).toBe('tree-wanderer');
+    expect(trees[0].currency).toBe('xp');
+    expect(trees[0].nodes).toHaveLength(3);
+  });
+
+  it('preserves node requirements and effects', () => {
+    const trees = convertProgressionTrees(chapelProject);
+    const wanderer = trees.find((t) => t.id === 'tree-wanderer')!;
+    const survivor = wanderer.nodes.find((n) => n.id === 'survivors-luck');
+    expect(survivor!.requires).toEqual(['keen-senses']);
+    expect(survivor!.effects[0].type).toBe('grant-tag');
+    expect(survivor!.effects[0].params.tag).toBe('lucky');
+  });
+
+  it('returns empty array for no trees', () => {
+    const trees = convertProgressionTrees({ ...minimalProject, progressionTrees: [] });
+    expect(trees).toHaveLength(0);
+  });
+});
+
 describe('exportToEngine', () => {
   it('exports minimal project successfully', () => {
     const result = exportToEngine(minimalProject);
@@ -160,7 +239,7 @@ describe('exportToEngine', () => {
     }
   });
 
-  it('exports chapel project successfully', () => {
+  it('exports chapel project successfully with all v1.2 domains', () => {
     const result = exportToEngine(chapelProject);
     expect('ok' in result).toBe(false);
     if (!('ok' in result)) {
@@ -170,6 +249,16 @@ describe('exportToEngine', () => {
       expect(result.contentPack.items).toHaveLength(3);
       expect(result.contentPack.dialogues).toHaveLength(1);
       expect(result.contentPack.dialogues[0].id).toBe('pilgrim-talk');
+      // v1.2 domains
+      expect(result.contentPack.playerTemplate).toBeDefined();
+      expect(result.contentPack.playerTemplate!.name).toBe('Wanderer');
+      expect(result.contentPack.buildCatalog).toBeDefined();
+      expect(result.contentPack.buildCatalog!.archetypes).toHaveLength(2);
+      expect(result.contentPack.progressionTrees).toHaveLength(2);
+      // No missing-feature warnings for chapel
+      expect(result.warnings.some((w) => w.includes('player template'))).toBe(false);
+      expect(result.warnings.some((w) => w.includes('build catalog'))).toBe(false);
+      expect(result.warnings.some((w) => w.includes('progression trees'))).toBe(false);
     }
   });
 
@@ -179,6 +268,16 @@ describe('exportToEngine', () => {
     if ('ok' in result) {
       expect(result.ok).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('warns on missing v1.2 features', () => {
+    const bare = { ...minimalProject, playerTemplate: undefined, buildCatalog: undefined, progressionTrees: [] as any[] };
+    const result = exportToEngine(bare);
+    if (!('ok' in result)) {
+      expect(result.warnings.some((w) => w.includes('player template'))).toBe(true);
+      expect(result.warnings.some((w) => w.includes('build catalog'))).toBe(true);
+      expect(result.warnings.some((w) => w.includes('progression trees'))).toBe(true);
     }
   });
 

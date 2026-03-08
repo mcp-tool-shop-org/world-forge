@@ -1,0 +1,100 @@
+[
+  {
+    "id": "tree-wanderer",
+    "name": "Path of the Wanderer",
+    "currency": "xp",
+    "nodes": [
+      {
+        "id": "keen-senses",
+        "name": "Keen Senses",
+        "cost": 10,
+        "effects": [
+          {
+            "type": "stat-boost",
+            "target": "actor",
+            "params": {
+              "stat": "instinct",
+              "amount": 1
+            }
+          }
+        ]
+      },
+      {
+        "id": "survivors-luck",
+        "name": "Survivor's Luck",
+        "description": "Fortune favors those who endure.",
+        "cost": 20,
+        "requires": [
+          "keen-senses"
+        ],
+        "effects": [
+          {
+            "type": "grant-tag",
+            "target": "actor",
+            "params": {
+              "tag": "lucky"
+            }
+          }
+        ]
+      },
+      {
+        "id": "trailblazer",
+        "name": "Trailblazer",
+        "description": "Move faster through wilderness zones.",
+        "cost": 30,
+        "requires": [
+          "keen-senses"
+        ],
+        "effects": [
+          {
+            "type": "grant-verb",
+            "target": "actor",
+            "params": {
+              "verb": "sprint"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tree-zealot",
+    "name": "Path of the Zealot",
+    "currency": "xp",
+    "nodes": [
+      {
+        "id": "righteous-fury",
+        "name": "Righteous Fury",
+        "cost": 10,
+        "effects": [
+          {
+            "type": "stat-boost",
+            "target": "actor",
+            "params": {
+              "stat": "will",
+              "amount": 1
+            }
+          }
+        ]
+      },
+      {
+        "id": "divine-shield",
+        "name": "Divine Shield",
+        "description": "A prayer that absorbs one blow.",
+        "cost": 25,
+        "requires": [
+          "righteous-fury"
+        ],
+        "effects": [
+          {
+            "type": "grant-tag",
+            "target": "actor",
+            "params": {
+              "tag": "shielded"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

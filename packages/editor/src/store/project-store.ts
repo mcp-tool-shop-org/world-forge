@@ -19,6 +19,7 @@ function createEmptyProject(): WorldProject {
     districts: [],
     landmarks: [],
     dialogues: [],
+    progressionTrees: [],
     factionPresences: [],
     pressureHotspots: [],
     entityPlacements: [],

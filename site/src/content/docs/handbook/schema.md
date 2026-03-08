@@ -29,6 +29,10 @@ interface WorldProject {
   landmarks: Landmark[];
   dialogues: DialogueDefinition[];
 
+  playerTemplate?: PlayerTemplate;
+  buildCatalog?: BuildCatalogDefinition;
+  progressionTrees: ProgressionTreeDefinition[];
+
   factionPresences: FactionPresence[];
   pressureHotspots: PressureHotspot[];
 
@@ -76,9 +80,38 @@ A branching conversation tree:
 
 Each `DialogueNode` has a speaker, text, and optional choices. Each `DialogueChoice` can have conditions (gates) and effects (state changes). Effects use `DialogueEffect` with a type, optional target (`actor`/`target`/`zone`), and params.
 
+## PlayerTemplate
+
+Defines the player character's starting state:
+
+- `name` — display name (e.g., "Wanderer")
+- `baseStats`, `baseResources` — starting stat/resource pools
+- `startingInventory` — item IDs placed in inventory at game start
+- `startingEquipment` — slot-to-item-ID map for equipped items
+- `spawnPointId` — where the player starts
+- `defaultArchetypeId`, `defaultBackgroundId` — optional build catalog refs
+
+## BuildCatalogDefinition
+
+Character creation data for the engine:
+
+- `archetypes` — class-like choices with stat priorities, progression trees, granted verbs
+- `backgrounds` — origin stories with stat modifiers and faction modifiers
+- `traits` — perks and flaws with effects (stat-modifier, resource-modifier, grant-tag, verb-access, faction-modifier)
+- `disciplines` — specialized abilities with granted verbs, passives, and drawbacks
+- `crossTitles` — special titles granted by archetype + discipline combinations
+- `entanglements` — synergy effects between archetype and discipline
+
+## ProgressionTreeDefinition
+
+Skill/ability trees with:
+
+- `currency` — what resource is spent to unlock nodes (e.g., "xp")
+- `nodes` — each with `cost`, optional `requires` (prerequisite node IDs), and `effects`
+
 ## Validation
 
-`validateProject()` runs 17 structural checks:
+`validateProject()` runs 32 structural checks:
 
 1. At least one spawn point exists
 2. At least one default spawn point
@@ -97,3 +130,18 @@ Each `DialogueNode` has a speaker, text, and optional choices. Each `DialogueCho
 15. All nextNodeId references point to existing nodes
 16. No unreachable nodes in dialogue trees
 17. Entity dialogueId references existing dialogue
+18. Player template spawn point exists
+19. Starting inventory items exist in item placements
+20. Starting equipment items exist in item placements
+21. Default archetype exists in build catalog
+22. Default background exists in build catalog
+23. Archetype ID uniqueness + progression tree refs
+24. Background ID uniqueness
+25. Trait ID uniqueness + incompatibility refs
+26. Discipline ID uniqueness
+27. Cross-title archetype + discipline refs
+28. Entanglement archetype + discipline refs
+29. Progression tree ID uniqueness
+30. Node ID uniqueness within tree
+31. Required node refs exist
+32. Root node existence (at least one node without requirements)

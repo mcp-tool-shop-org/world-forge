@@ -85,6 +85,19 @@ export const minimalProject: WorldProject = {
     { id: 'ph-cellar', zoneId: 'zone-cellar', pressureType: 'undead-stirring', baseProbability: 0.3, tags: ['undead'] },
   ],
 
+  playerTemplate: {
+    name: 'Traveler',
+    baseStats: { vigor: 3, instinct: 3, will: 3 },
+    baseResources: { hp: 10, stamina: 5 },
+    startingInventory: ['item-torch'],
+    startingEquipment: {},
+    spawnPointId: 'sp-default',
+    tags: ['player'],
+    custom: {},
+  },
+
+  progressionTrees: [],
+
   dialogues: [
     {
       id: 'dlg-keeper',

@@ -1,0 +1,28 @@
+{
+  "name": "Wanderer",
+  "defaultArchetypeId": "wanderer",
+  "baseStats": {
+    "vigor": 3,
+    "instinct": 4,
+    "will": 2
+  },
+  "baseResources": {
+    "hp": 12,
+    "stamina": 6
+  },
+  "startingInventory": [
+    "chapel-lantern"
+  ],
+  "startingEquipment": {
+    "weapon": "rusted-mace"
+  },
+  "spawnPointId": "chapel-spawn",
+  "tags": [
+    "player",
+    "mortal"
+  ],
+  "custom": {
+    "origin": "unknown",
+    "motivation": "seek-the-relic"
+  }
+}

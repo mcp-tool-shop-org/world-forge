@@ -46,6 +46,9 @@ console.log(`Districts exported: ${contentPack.districts.length}`);
 console.log(`Entities exported: ${contentPack.entities.length}`);
 console.log(`Items exported: ${contentPack.items.length}`);
 console.log(`Dialogues exported: ${contentPack.dialogues.length}`);
+console.log(`Player template: ${contentPack.playerTemplate ? contentPack.playerTemplate.name : 'none'}`);
+console.log(`Build catalog: ${contentPack.buildCatalog ? `${contentPack.buildCatalog.archetypes.length} archetypes, ${contentPack.buildCatalog.traits.length} traits` : 'none'}`);
+console.log(`Progression trees: ${contentPack.progressionTrees.length}`);
 console.log();
 
 if (warnings.length > 0) {
@@ -64,6 +67,15 @@ writeFileSync(join(outDir, 'districts.json'), JSON.stringify(contentPack.distric
 writeFileSync(join(outDir, 'entities.json'), JSON.stringify(contentPack.entities, null, 2));
 writeFileSync(join(outDir, 'items.json'), JSON.stringify(contentPack.items, null, 2));
 writeFileSync(join(outDir, 'dialogues.json'), JSON.stringify(contentPack.dialogues, null, 2));
+if (contentPack.playerTemplate) {
+  writeFileSync(join(outDir, 'player-template.json'), JSON.stringify(contentPack.playerTemplate, null, 2));
+}
+if (contentPack.buildCatalog) {
+  writeFileSync(join(outDir, 'build-catalog.json'), JSON.stringify(contentPack.buildCatalog, null, 2));
+}
+if (contentPack.progressionTrees.length > 0) {
+  writeFileSync(join(outDir, 'progression-trees.json'), JSON.stringify(contentPack.progressionTrees, null, 2));
+}
 
 console.log('--- Output Files ---\n');
 console.log(`  ${outDir}/chapel-project.json (input)`);
@@ -74,54 +86,66 @@ console.log(`  ${outDir}/districts.json`);
 console.log(`  ${outDir}/entities.json`);
 console.log(`  ${outDir}/items.json`);
 console.log(`  ${outDir}/dialogues.json`);
+if (contentPack.playerTemplate) console.log(`  ${outDir}/player-template.json`);
+if (contentPack.buildCatalog) console.log(`  ${outDir}/build-catalog.json`);
+if (contentPack.progressionTrees.length > 0) console.log(`  ${outDir}/progression-trees.json`);
 console.log();
 
 // --- Gap Analysis ---
-// Compare what we exported vs what the engine's starter-fantasy has
+// Compare what we exported vs what the engine expects
 
-console.log('=== Gap Analysis: World Forge vs Engine Starter ===\n');
+console.log('=== Gap Analysis: World Forge vs Engine Contract ===\n');
 
 const gaps: string[] = [];
 
-// Entities: we export EntityBlueprint but engine uses EntityState with stats/resources/ai
+// Entities: engine expects baseStats + baseResources
 for (const e of contentPack.entities) {
   if (!e.baseStats || Object.keys(e.baseStats).length === 0) {
-    gaps.push(`Entity "${e.name}" has no baseStats — engine expects vigor/instinct/will`);
+    gaps.push(`Entity "${e.name}" has no baseStats`);
   }
   if (!e.baseResources || Object.keys(e.baseResources).length === 0) {
-    gaps.push(`Entity "${e.name}" has no baseResources — engine expects hp/stamina`);
+    gaps.push(`Entity "${e.name}" has no baseResources`);
   }
 }
 
-// Items: we export basic items but engine has slot/rarity/statModifiers/grantedVerbs
+// Items: engine expects slot + rarity
 for (const i of contentPack.items) {
   if (!i.slot) gaps.push(`Item "${i.name || i.id}" has no slot`);
   if (!i.rarity) gaps.push(`Item "${i.name || i.id}" has no rarity`);
 }
 
-// Dialogues: check for entity-dialogue binding
+// Dialogues: entity-dialogue binding
 for (const e of chapelProject.entityPlacements) {
   if (e.dialogueId && !contentPack.dialogues.some((d) => d.id === e.dialogueId)) {
     gaps.push(`Entity "${e.entityId}" references dialogue "${e.dialogueId}" but it was not exported`);
   }
 }
 
-// Build catalog: not in export
-gaps.push('No BuildCatalog exported — engine expects archetypes, backgrounds, traits for character creation');
+// Player template
+if (!contentPack.playerTemplate) {
+  gaps.push('No player template exported — engine expects player setup');
+}
 
-// Progression trees: not in export
-gaps.push('No ProgressionTreeDefinition exported — engine expects progression trees');
+// Build catalog
+if (!contentPack.buildCatalog) {
+  gaps.push('No build catalog exported — engine expects character creation data');
+} else {
+  if (contentPack.buildCatalog.archetypes.length === 0) gaps.push('Build catalog has no archetypes');
+  if (contentPack.buildCatalog.backgrounds.length === 0) gaps.push('Build catalog has no backgrounds');
+}
 
-// Player entity: not in export
-gaps.push('No player entity template exported — engine expects a player EntityState');
+// Progression trees
+if (contentPack.progressionTrees.length === 0) {
+  gaps.push('No progression trees exported — engine expects character advancement');
+}
 
 if (gaps.length > 0) {
   console.log(`Found ${gaps.length} gaps:\n`);
   for (const g of gaps) {
-    console.log(`  ✗ ${g}`);
+    console.log(`  * ${g}`);
   }
 } else {
-  console.log('No gaps found — perfect handshake!');
+  console.log('No gaps found — full engine handshake!');
 }
 
 console.log('\n=== Done ===');

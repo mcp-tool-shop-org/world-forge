@@ -7,6 +7,9 @@ import type {
   SpawnPoint, CraftingStation, MarketNode,
 } from './entities.js';
 import type { DialogueDefinition } from './dialogue.js';
+import type { PlayerTemplate } from './player-template.js';
+import type { BuildCatalogDefinition } from './build-catalog.js';
+import type { ProgressionTreeDefinition } from './progression-tree.js';
 import type {
   Tileset, TileLayer, PropDefinition, PropPlacement, AmbientLayer,
 } from './visual.js';
@@ -33,6 +36,10 @@ export interface WorldProject {
   pressureHotspots: PressureHotspot[];
 
   dialogues: DialogueDefinition[];
+
+  playerTemplate?: PlayerTemplate;
+  buildCatalog?: BuildCatalogDefinition;
+  progressionTrees: ProgressionTreeDefinition[];
 
   entityPlacements: EntityPlacement[];
   itemPlacements: ItemPlacement[];
