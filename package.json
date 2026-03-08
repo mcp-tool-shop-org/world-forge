@@ -1,8 +1,11 @@
 {
   "name": "world-forge",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "2D world authoring studio for AI RPG Engine",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "packages/*"
   ],

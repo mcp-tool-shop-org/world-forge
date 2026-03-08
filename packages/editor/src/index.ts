@@ -1,2 +1,2 @@
 // @world-forge/editor — web authoring app
-export {};
+export { App } from './App.js';

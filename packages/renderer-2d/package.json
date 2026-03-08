@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/renderer-2d",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "PixiJS 2D renderer for world maps",
   "type": "module",
   "main": "dist/index.js",
@@ -8,9 +8,12 @@
   "scripts": {
     "build": "tsc"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "dependencies": {
-    "@world-forge/schema": "*"
+    "@world-forge/schema": "*",
+    "pixi.js": "^8.16.0"
   }
 }

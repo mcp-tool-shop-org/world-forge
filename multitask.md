@@ -328,7 +328,7 @@ This is the heart. Everything depends on it.
 ## Track D: @world-forge/renderer-2d — Canvas Rendering
 
 ### D1. PixiJS setup and viewport
-- [ ] **Initialize PixiJS renderer with viewport** (depends on A3)
+- [DONE by B] **Initialize PixiJS renderer with viewport** (depends on A3)
   - `packages/renderer-2d/package.json` — add `pixi.js` dependency
   - `packages/renderer-2d/src/viewport.ts`:
     - `WorldViewport` class wrapping a PixiJS Application
@@ -340,7 +340,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/renderer-2d/src/viewport.ts`, `index.ts`, `package.json`
 
 ### D2. Tile layer rendering
-- [ ] **Render tile layers from WorldProject data** (depends on B4, D1)
+- [DONE by B] **Render tile layers from WorldProject data** (depends on B4, D1)
   - `packages/renderer-2d/src/tile-renderer.ts`:
     - `TileLayerRenderer` — takes TileLayer + Tileset data
     - Renders tilemap to PixiJS container
@@ -352,7 +352,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/renderer-2d/src/tile-renderer.ts`, `tileset-loader.ts`
 
 ### D3. Zone overlay and highlighting
-- [ ] **Render zone boundaries and selection highlights** (depends on B1, D1)
+- [DONE by B] **Render zone boundaries and selection highlights** (depends on B1, D1)
   - `packages/renderer-2d/src/zone-renderer.ts`:
     - `ZoneOverlayRenderer` — draws zone boundaries as colored outlines
     - Hover highlight (semi-transparent fill)
@@ -366,7 +366,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/renderer-2d/src/zone-renderer.ts`, `connection-renderer.ts`
 
 ### D4. Entity and prop rendering
-- [ ] **Render entity placements and props** (depends on B3, B4, D1)
+- [DONE by B] **Render entity placements and props** (depends on B3, B4, D1)
   - `packages/renderer-2d/src/entity-renderer.ts`:
     - Render entity placements as icons/sprites by role
     - NPC = blue circle, enemy = red diamond, merchant = gold square, companion = green circle, boss = red skull
@@ -377,7 +377,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/renderer-2d/src/entity-renderer.ts`, `prop-renderer.ts`
 
 ### D5. Minimap
-- [ ] **Render a minimap panel** (depends on D2, D3)
+- [DONE by B] **Render a minimap panel** (depends on D2, D3)
   - `packages/renderer-2d/src/minimap.ts`:
     - `MinimapRenderer` — small overview of entire map
     - Shows zone colors, current viewport rectangle
@@ -390,7 +390,7 @@ This is the heart. Everything depends on it.
 ## Track E: @world-forge/editor — Web Authoring App
 
 ### E1. React app shell
-- [ ] **Create React app with Vite** (depends on A3)
+- [DONE by B] **Create React app with Vite** (depends on A3)
   - `packages/editor/package.json` — React 19, Vite, TypeScript
   - `packages/editor/vite.config.ts`
   - `packages/editor/index.html`
@@ -405,7 +405,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/editor/` scaffold
 
 ### E2. Project state management
-- [ ] **Create project store with save/load** (depends on B5, E1)
+- [DONE by B] **Create project store with save/load** (depends on B5, E1)
   - `packages/editor/src/store/project-store.ts`:
     - Zustand or React context store for WorldProject state
     - Actions: createNewProject, loadProject(json), saveProject() → JSON
@@ -422,7 +422,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/editor/src/store/*.ts`
 
 ### E3. Zone painting tool
-- [ ] **Implement zone creation and editing on canvas** (depends on D3, E2)
+- [DONE by B] **Implement zone creation and editing on canvas** (depends on D3, E2)
   - `packages/editor/src/tools/zone-tool.ts`:
     - Click-drag to create zone rectangle (grid-snapped)
     - Click existing zone to select it
@@ -438,7 +438,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/editor/src/tools/zone-tool.ts`, `panels/ZoneProperties.tsx`
 
 ### E4. Connection editing tool
-- [ ] **Implement zone connection drawing** (depends on D3, E3)
+- [DONE by B] **Implement zone connection drawing** (depends on D3, E3)
   - `packages/editor/src/tools/connection-tool.ts`:
     - Click zone A → click zone B to create connection
     - Right-click connection to delete
@@ -450,7 +450,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/editor/src/tools/connection-tool.ts`, `panels/ConnectionProperties.tsx`
 
 ### E5. Entity and landmark placement
-- [ ] **Implement entity/landmark drag-and-drop** (depends on D4, E2)
+- [DONE by B] **Implement entity/landmark drag-and-drop** (depends on D4, E2)
   - `packages/editor/src/tools/entity-tool.ts`:
     - Drag from palette to canvas to place entity
     - Entity palette shows role icons: NPC, enemy, merchant, companion, boss
@@ -467,7 +467,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/editor/src/tools/entity-tool.ts`, `landmark-tool.ts`, panels
 
 ### E6. District metadata panel
-- [ ] **Implement district creation and AI-RPG metadata editing** (depends on E3)
+- [DONE by B] **Implement district creation and AI-RPG metadata editing** (depends on E3)
   - `packages/editor/src/panels/DistrictPanel.tsx`:
     - Create new district
     - Assign zones to district (multi-select zones → "Add to district")
@@ -488,7 +488,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/editor/src/panels/DistrictPanel.tsx`, `FactionPresencePanel.tsx`, `PressurePanel.tsx`
 
 ### E7. Export integration
-- [ ] **Wire export pipeline into editor** (depends on C4, E2)
+- [DONE by B] **Wire export pipeline into editor** (depends on C4, E2)
   - `packages/editor/src/actions/export.ts`:
     - Import `exportToEngine` from `@world-forge/export-ai-rpg`
     - Validate button — shows validation results in a modal
@@ -505,7 +505,7 @@ This is the heart. Everything depends on it.
 ## Track F: Documentation & Release
 
 ### F1. README
-- [ ] **Write README.md** (can start after A3)
+- [DONE by B] **Write README.md** (can start after A3)
   - Project description: "2D world authoring studio for AI RPG Engine"
   - Architecture diagram (monorepo packages)
   - Quick start (install, create project, paint zones, export)
@@ -514,7 +514,7 @@ This is the heart. Everything depends on it.
   - **Files:** `README.md`
 
 ### F2. Shipcheck compliance
-- [ ] **Run shipcheck init and work through gates** (depends on ALL)
+- [DONE by B] **Run shipcheck init and work through gates** (depends on ALL)
   - SECURITY.md
   - Threat model in README (no secrets, no network beyond asset loading, no telemetry)
   - CHANGELOG.md
