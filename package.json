@@ -14,6 +14,7 @@
   "author": "mcp-tool-shop",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^25.3.5",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   }

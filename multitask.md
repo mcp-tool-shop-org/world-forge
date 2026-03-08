@@ -45,7 +45,7 @@ Reference files:
 ## Track A: Monorepo Scaffold
 
 ### A1. Initialize monorepo structure
-- [ ] **Create npm workspaces monorepo with shared tooling**
+- [DONE by A] **Create npm workspaces monorepo with shared tooling** — root package.json, tsconfig.base.json, 4 package stubs, vitest, .gitignore, .editorconfig
   - Root `package.json` with `"private": true`, `"workspaces": ["packages/*"]`
   - Root `tsconfig.json` with project references
   - Root `tsconfig.base.json` with shared compiler options (ES2022, NodeNext, strict)
@@ -61,7 +61,7 @@ Reference files:
   - **Files:** `package.json`, `tsconfig.json`, `tsconfig.base.json`, `.gitignore`, all `packages/*/package.json`
 
 ### A2. CI workflow
-- [ ] **Add GitHub Actions CI** (paths-gated per rules)
+- [DONE by A] **Add GitHub Actions CI** — paths-gated, Node 20+22, concurrency group
   - `.github/workflows/ci.yml`
   - Triggers: push to `packages/**`, `package.json`, `.github/workflows/**`, plus `workflow_dispatch`
   - Node 20 + 22 matrix (1 OS: ubuntu-latest)
@@ -70,7 +70,7 @@ Reference files:
   - **Files:** `.github/workflows/ci.yml`
 
 ### A3. Initial commit and push
-- [ ] **Push scaffold to GitHub** (depends on A1, A2)
+- [DONE by A] **Push scaffold to GitHub** — 23f6ce7 pushed
   - Verify: `git remote -v` shows `mcp-tool-shop-org/world-forge`
   - Verify: `git branch --show-current` shows `main`
   - Commit: `feat: monorepo scaffold with 4 package stubs`
@@ -84,7 +84,7 @@ Reference files:
 This is the heart. Everything depends on it.
 
 ### B1. Core spatial types
-- [ ] **Define map, zone, and connection types** (depends on A3)
+- [DONE by A] **Define map, zone, and connection types**
   - `packages/schema/src/spatial.ts`:
     ```typescript
     WorldMap — top-level container
@@ -112,7 +112,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/schema/src/spatial.ts`, `packages/schema/src/index.ts`
 
 ### B2. District and faction overlay types
-- [ ] **Define district grouping and faction presence types** (depends on B1)
+- [DONE by A] **Define district grouping and faction presence types**
   - `packages/schema/src/districts.ts`:
     ```typescript
     District — aggregates zones into a region
@@ -133,7 +133,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/schema/src/districts.ts`
 
 ### B3. Entity placement and spawn types
-- [ ] **Define NPC, enemy, and item placement types** (depends on B1)
+- [DONE by A] **Define NPC, enemy, and item placement types**
   - `packages/schema/src/entities.ts`:
     ```typescript
     EntityPlacement — where an entity spawns
@@ -169,7 +169,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/schema/src/entities.ts`
 
 ### B4. Visual layer types
-- [ ] **Define tileset, tile, and visual layer types** (depends on B1)
+- [DONE by A] **Define tileset, tile, and visual layer types**
   - `packages/schema/src/visual.ts`:
     ```typescript
     Tileset — a set of tiles for a biome/style
@@ -205,7 +205,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/schema/src/visual.ts`
 
 ### B5. World project container and validation
-- [ ] **Define WorldProject container + validation functions** (depends on B1-B4)
+- [DONE by A] **Define WorldProject container + validation functions** — 10 tests pass
   - `packages/schema/src/project.ts`:
     ```typescript
     WorldProject — complete authored world
@@ -250,7 +250,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/schema/src/project.ts`, `packages/schema/src/validate.ts`, `packages/schema/src/__tests__/validate.test.ts`
 
 ### B6. Test fixtures — minimal world projects
-- [ ] **Create test fixture world projects** (depends on B5)
+- [DONE by A] **Create test fixture world projects** — minimal, chapel-authored, invalid-orphan
   - `packages/schema/src/__tests__/fixtures/minimal.ts` — 2 zones, 1 district, 1 NPC, 1 spawn
   - `packages/schema/src/__tests__/fixtures/chapel-authored.ts` — hand-authored version of chapel-threshold with spatial data
   - `packages/schema/src/__tests__/fixtures/invalid-orphan.ts` — deliberately broken for validation tests
@@ -262,7 +262,7 @@ This is the heart. Everything depends on it.
 ## Track C: @world-forge/export-ai-rpg — Engine Export Pipeline
 
 ### C1. Zone and district conversion
-- [ ] **Convert WorldProject zones → engine ZoneDefinition[]** (depends on B5)
+- [DONE by A] **Convert WorldProject zones → engine ZoneDefinition[]** (depends on B5)
   - `packages/export-ai-rpg/src/convert-zones.ts`:
     - `convertZones(project: WorldProject): ZoneDefinition[]`
     - Maps: zone.id → id, zone.name → name, zone.tags → tags
@@ -278,7 +278,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/export-ai-rpg/src/convert-zones.ts`, `convert-districts.ts`, tests
 
 ### C2. Entity and item conversion
-- [ ] **Convert placements → engine EntityBlueprint[] and ItemDefinition[]** (depends on C1)
+- [DONE by A] **Convert placements → engine EntityBlueprint[] and ItemDefinition[]** (depends on C1)
   - `packages/export-ai-rpg/src/convert-entities.ts`:
     - `convertEntities(project: WorldProject): EntityBlueprint[]`
     - EntityPlacement → EntityBlueprint with type, name, tags, zoneId
@@ -291,7 +291,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/export-ai-rpg/src/convert-entities.ts`, `convert-items.ts`, tests
 
 ### C3. Pack metadata and manifest conversion
-- [ ] **Convert WorldProject metadata → GameManifest + PackMetadata** (depends on C1)
+- [DONE by A] **Convert WorldProject metadata → GameManifest + PackMetadata** (depends on C1)
   - `packages/export-ai-rpg/src/convert-pack.ts`:
     - `convertManifest(project: WorldProject): GameManifest`
     - `convertPackMeta(project: WorldProject): PackMetadata`
@@ -302,7 +302,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/export-ai-rpg/src/convert-pack.ts`, tests
 
 ### C4. Full export pipeline + validation
-- [ ] **Wire all converters into a single export function** (depends on C1-C3)
+- [DONE by A] **Wire all converters into a single export function** — 24 tests pass (depends on C1-C3)
   - `packages/export-ai-rpg/src/export.ts`:
     - `exportToEngine(project: WorldProject): ExportResult`
     - Calls validateProject first — abort if invalid
@@ -314,7 +314,7 @@ This is the heart. Everything depends on it.
   - **Files:** `packages/export-ai-rpg/src/export.ts`, `index.ts`, integration tests
 
 ### C5. CLI export command
-- [ ] **Add CLI tool for exporting world project files** (depends on C4)
+- [DONE by A] **Add CLI tool for exporting world project files** (depends on C4)
   - `packages/export-ai-rpg/src/cli.ts`:
     - `world-forge export <project.json> [--out <dir>] [--validate-only]`
     - Reads project JSON, runs export pipeline, writes output files

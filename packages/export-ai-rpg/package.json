@@ -8,9 +8,18 @@
   "scripts": {
     "build": "tsc"
   },
+  "bin": {
+    "world-forge-export": "dist/cli.js"
+  },
   "files": ["dist"],
   "license": "MIT",
   "dependencies": {
-    "@world-forge/schema": "*"
+    "@world-forge/schema": "*",
+    "@ai-rpg-engine/content-schema": "^2.0.1",
+    "@ai-rpg-engine/core": "^2.0.1",
+    "@ai-rpg-engine/modules": "^2.1.0",
+    "@ai-rpg-engine/pack-registry": "^2.0.2",
+    "@ai-rpg-engine/character-creation": "^2.0.2",
+    "@ai-rpg-engine/equipment": "^2.0.2"
   }
 }
