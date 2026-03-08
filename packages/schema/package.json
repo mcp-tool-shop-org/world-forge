@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/schema",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Spatial data types for world authoring",
   "type": "module",
   "main": "dist/index.js",
@@ -8,8 +8,34 @@
   "scripts": {
     "build": "tsc"
   },
-  "files": ["dist", "README.md", "LICENSE"],
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" },
-  "license": "MIT"
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "mcp-tool-shop",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-tool-shop-org/world-forge.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://mcp-tool-shop-org.github.io/world-forge/",
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/world-forge/issues"
+  },
+  "keywords": [
+    "world-forge",
+    "spatial",
+    "schema",
+    "rpg",
+    "game-dev",
+    "typescript"
+  ]
 }

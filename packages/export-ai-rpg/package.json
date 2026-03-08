@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/export-ai-rpg",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Export pipeline from WorldProject to ai-rpg-engine ContentPack",
   "type": "module",
   "main": "dist/index.js",
@@ -11,10 +11,36 @@
   "bin": {
     "world-forge-export": "dist/cli.js"
   },
-  "files": ["dist", "README.md", "LICENSE"],
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "mcp-tool-shop",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-tool-shop-org/world-forge.git",
+    "directory": "packages/export-ai-rpg"
+  },
+  "homepage": "https://mcp-tool-shop-org.github.io/world-forge/",
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/world-forge/issues"
+  },
+  "keywords": [
+    "world-forge",
+    "export",
+    "ai-rpg-engine",
+    "content-pack",
+    "rpg",
+    "typescript"
+  ],
   "dependencies": {
     "@world-forge/schema": "^1.0.0",
     "@ai-rpg-engine/content-schema": "^2.0.1",

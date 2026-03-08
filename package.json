@@ -1,6 +1,6 @@
 {
   "name": "world-forge",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "2D world authoring studio for AI RPG Engine",
   "engines": {
@@ -14,6 +14,14 @@
     "clean": "tsc --build --clean",
     "test": "vitest run",
     "verify": "npm run build && npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-tool-shop-org/world-forge.git"
+  },
+  "homepage": "https://mcp-tool-shop-org.github.io/world-forge/",
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/world-forge/issues"
   },
   "author": "mcp-tool-shop",
   "license": "MIT",
