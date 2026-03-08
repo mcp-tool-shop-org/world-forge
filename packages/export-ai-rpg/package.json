@@ -11,10 +11,12 @@
   "bin": {
     "world-forge-export": "dist/cli.js"
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=20" },
   "license": "MIT",
   "dependencies": {
-    "@world-forge/schema": "*",
+    "@world-forge/schema": "^1.0.0",
     "@ai-rpg-engine/content-schema": "^2.0.1",
     "@ai-rpg-engine/core": "^2.0.1",
     "@ai-rpg-engine/modules": "^2.1.0",
