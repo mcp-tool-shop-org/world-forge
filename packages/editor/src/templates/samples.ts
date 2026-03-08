@@ -186,6 +186,93 @@ const chapelThreshold: WorldProject = {
   ambientLayers: [{ id: 'crypt-fog', name: 'Crypt Fog', zoneIds: ['crypt-chamber'], type: 'fog', intensity: 0.7, color: '#2a2a3a' }],
 };
 
+const tavernCrossroads: WorldProject = {
+  id: 'tavern-crossroads',
+  name: 'Tavern Crossroads',
+  description: 'A roadside tavern where travelers trade stories and trouble finds everyone.',
+  version: '0.1.0',
+  genre: 'fantasy',
+  tones: ['atmospheric'],
+  difficulty: 'beginner',
+  narratorTone: 'Firelight dances across weathered faces. Someone is lying.',
+  map: { id: 'map-1', name: 'Tavern Crossroads', description: 'A tavern and courtyard at a crossroads.', gridWidth: 40, gridHeight: 30, tileSize: 32 },
+  zones: [
+    { id: 'tavern-hall', name: 'Tavern Hall', tags: ['interior', 'social'], description: 'Low beams, long tables, and the smell of stew.', gridX: 10, gridY: 10, gridWidth: 10, gridHeight: 8, neighbors: ['courtyard'], exits: [], light: 6, noise: 5, hazards: [], interactables: [{ name: 'Hearth', type: 'inspect', description: 'A crackling fire that never quite warms the room.' }], parentDistrictId: 'crossroads' },
+    { id: 'courtyard', name: 'Courtyard', tags: ['exterior', 'open'], description: 'A muddy yard with a well and hitching post.', gridX: 22, gridY: 12, gridWidth: 8, gridHeight: 6, neighbors: ['tavern-hall'], exits: [], light: 7, noise: 2, hazards: [], interactables: [{ name: 'Well', type: 'use', description: 'Draw water — or drop something in.' }], parentDistrictId: 'crossroads' },
+  ],
+  connections: [
+    { fromZoneId: 'tavern-hall', toZoneId: 'courtyard', bidirectional: true },
+  ],
+  districts: [{
+    id: 'crossroads', name: 'The Crossroads',
+    zoneIds: ['tavern-hall', 'courtyard'], tags: ['waypoint'],
+    baseMetrics: { commerce: 55, morale: 60, safety: 50, stability: 55 },
+    economyProfile: { supplyCategories: ['provisions', 'rumors'], scarcityDefaults: {} },
+  }],
+  landmarks: [],
+  spawnPoints: [{ id: 'tavern-spawn', zoneId: 'tavern-hall', gridX: 14, gridY: 14, isDefault: true }],
+  entityPlacements: [
+    { entityId: 'innkeeper', name: 'Innkeeper Darla', zoneId: 'tavern-hall', role: 'npc', dialogueId: 'darla-talk', tags: ['innkeeper', 'friendly'] },
+  ],
+  dialogues: [{
+    id: 'darla-talk', speakers: ['darla'], entryNodeId: 'greeting',
+    nodes: {
+      greeting: { id: 'greeting', speaker: 'darla', text: 'Welcome, traveler. Sit down and warm yourself. What brings you to the crossroads?', choices: [
+        { id: 'c1', text: 'Just passing through.', nextNodeId: 'passing' },
+        { id: 'c2', text: 'Looking for work.', nextNodeId: 'work' },
+      ]},
+      passing: { id: 'passing', speaker: 'darla', text: 'Everyone says that. Most stay longer than they planned.', choices: [] },
+      work: { id: 'work', speaker: 'darla', text: 'There is always something needs doing. Speak to the folk at the tables — someone has a task for willing hands.', choices: [] },
+    },
+  }],
+  playerTemplate: {
+    name: 'Traveler',
+    defaultArchetypeId: 'drifter',
+    baseStats: { vigor: 3, instinct: 3, will: 3 },
+    baseResources: { hp: 10, stamina: 5 },
+    startingInventory: ['walking-staff'],
+    startingEquipment: { weapon: 'walking-staff' },
+    spawnPointId: 'tavern-spawn',
+    tags: ['traveler'],
+    custom: {},
+  },
+  buildCatalog: {
+    statBudget: 10, maxTraits: 3, requiredFlaws: 1,
+    archetypes: [
+      { id: 'drifter', name: 'Drifter', description: 'A wanderer with no roots.', statPriorities: { instinct: 2, vigor: 1 }, startingTags: ['wanderer'], progressionTreeId: 'road-path', grantedVerbs: ['explore', 'barter'] },
+    ],
+    backgrounds: [
+      { id: 'vagabond', name: 'Vagabond', description: 'The open road is your only home.', statModifiers: { instinct: 1 }, startingTags: ['homeless'] },
+    ],
+    traits: [
+      { id: 'charming', name: 'Charming', description: 'People warm to you quickly.', category: 'perk', effects: [{ type: 'grant-tag', tag: 'likeable' }] },
+    ],
+    disciplines: [],
+    crossTitles: [],
+    entanglements: [],
+  },
+  progressionTrees: [{
+    id: 'road-path', name: 'Road Path', currency: 'xp',
+    nodes: [
+      { id: 'street-smarts', name: 'Street Smarts', cost: 2, effects: [{ type: 'grant-tag', params: { tag: 'streetwise' } }] },
+      { id: 'silver-tongue', name: 'Silver Tongue', cost: 3, requires: ['street-smarts'], effects: [{ type: 'grant-verb', params: { verb: 'persuade' } }] },
+    ],
+  }],
+  itemPlacements: [
+    { itemId: 'walking-staff', name: 'Walking Staff', description: 'Sturdy oak, good for walking and cracking heads.', zoneId: 'tavern-hall', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
+  ],
+  encounterAnchors: [],
+  factionPresences: [],
+  pressureHotspots: [],
+  craftingStations: [],
+  marketNodes: [],
+  tilesets: [],
+  tileLayers: [],
+  props: [],
+  propPlacements: [],
+  ambientLayers: [],
+};
+
 export const SAMPLE_WORLDS: SampleWorld[] = [
   {
     id: 'hello-world',
@@ -193,6 +280,13 @@ export const SAMPLE_WORLDS: SampleWorld[] = [
     description: 'Minimal valid project: 1 zone, 1 spawn, 1 district. The smallest exportable world.',
     complexity: 'minimal',
     project: helloWorld,
+  },
+  {
+    id: 'tavern-crossroads',
+    name: 'Tavern Crossroads',
+    description: 'A mid-sized starter with player template, build catalog, dialogue, and progression tree.',
+    complexity: 'intermediate',
+    project: tavernCrossroads,
   },
   {
     id: 'chapel-threshold',

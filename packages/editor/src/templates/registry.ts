@@ -23,7 +23,7 @@ export interface SampleWorld {
   id: string;
   name: string;
   description: string;
-  complexity: 'minimal' | 'rich';
+  complexity: 'minimal' | 'intermediate' | 'rich';
   project: WorldProject;
 }
 

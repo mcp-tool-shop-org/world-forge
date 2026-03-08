@@ -64,8 +64,8 @@ export const pirateTemplate: WorldProject = {
     defaultArchetypeId: 'swashbuckler',
     baseStats: { vigor: 3, instinct: 3, will: 3 },
     baseResources: { hp: 10, stamina: 6 },
-    startingInventory: [],
-    startingEquipment: {},
+    startingInventory: ['cutlass', 'compass'],
+    startingEquipment: { weapon: 'cutlass' },
     spawnPointId: 'dock-spawn',
     tags: ['seafarer'],
     custom: {},
@@ -97,7 +97,10 @@ export const pirateTemplate: WorldProject = {
     ],
   }],
 
-  itemPlacements: [],
+  itemPlacements: [
+    { itemId: 'cutlass', name: 'Cutlass', description: 'A curved blade favored by sailors and scoundrels alike.', zoneId: 'docks', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
+    { itemId: 'compass', name: 'Compass', description: 'A brass compass that always finds north — mostly.', zoneId: 'docks', hidden: false, slot: 'tool', rarity: 'uncommon', grantedTags: ['navigator'] },
+  ],
   encounterAnchors: [],
   factionPresences: [],
   pressureHotspots: [],

@@ -64,8 +64,8 @@ export const cyberpunkTemplate: WorldProject = {
     defaultArchetypeId: 'netrunner',
     baseStats: { vigor: 2, instinct: 4, will: 3 },
     baseResources: { hp: 8, stamina: 6 },
-    startingInventory: [],
-    startingEquipment: {},
+    startingInventory: ['shock-baton', 'data-shard'],
+    startingEquipment: { weapon: 'shock-baton' },
     spawnPointId: 'alley-spawn',
     tags: ['street'],
     custom: {},
@@ -97,7 +97,10 @@ export const cyberpunkTemplate: WorldProject = {
     ],
   }],
 
-  itemPlacements: [],
+  itemPlacements: [
+    { itemId: 'shock-baton', name: 'Shock Baton', description: 'A retractable stun rod with a flickering charge.', zoneId: 'back-alley', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
+    { itemId: 'data-shard', name: 'Data Shard', description: 'A cracked memory chip with encrypted fragments.', zoneId: 'back-alley', hidden: false, slot: 'trinket', rarity: 'uncommon', grantedTags: ['data-carrier'] },
+  ],
   encounterAnchors: [],
   factionPresences: [],
   pressureHotspots: [],

@@ -48,9 +48,7 @@ export function SampleBrowserModal({ onClose }: Props) {
                   <span style={{ fontSize: 14, fontWeight: 'bold', color: '#c9d1d9' }}>{sample.name}</span>
                   <span style={{
                     fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 'bold',
-                    background: sample.complexity === 'minimal' ? '#0d2818' : '#2a1c08',
-                    color: sample.complexity === 'minimal' ? '#3fb950' : '#d29922',
-                    border: `1px solid ${sample.complexity === 'minimal' ? '#238636' : '#9e6a03'}`,
+                    ...badgeColors[sample.complexity],
                   }}>
                     {sample.complexity}
                   </span>
@@ -72,6 +70,12 @@ export function SampleBrowserModal({ onClose }: Props) {
     </div>
   );
 }
+
+const badgeColors: Record<string, React.CSSProperties> = {
+  minimal: { background: '#0d2818', color: '#3fb950', border: '1px solid #238636' },
+  intermediate: { background: '#0d1d30', color: '#58a6ff', border: '1px solid #1f6feb' },
+  rich: { background: '#2a1c08', color: '#d29922', border: '1px solid #9e6a03' },
+};
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',

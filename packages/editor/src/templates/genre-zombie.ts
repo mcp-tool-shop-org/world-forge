@@ -64,8 +64,8 @@ export const zombieTemplate: WorldProject = {
     defaultArchetypeId: 'scavenger',
     baseStats: { vigor: 3, instinct: 3, will: 3 },
     baseResources: { hp: 10, stamina: 5 },
-    startingInventory: [],
-    startingEquipment: {},
+    startingInventory: ['crowbar', 'first-aid-kit'],
+    startingEquipment: { weapon: 'crowbar' },
     spawnPointId: 'compound-spawn',
     tags: ['survivor'],
     custom: {},
@@ -97,7 +97,10 @@ export const zombieTemplate: WorldProject = {
     ],
   }],
 
-  itemPlacements: [],
+  itemPlacements: [
+    { itemId: 'crowbar', name: 'Crowbar', description: 'Pries open doors and skulls with equal ease.', zoneId: 'barricade', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
+    { itemId: 'first-aid-kit', name: 'First Aid Kit', description: 'Basic medical supplies — gauze, antiseptic, painkillers.', zoneId: 'barricade', hidden: false, slot: 'trinket', rarity: 'uncommon', grantedTags: ['medic'] },
+  ],
   encounterAnchors: [],
   factionPresences: [],
   pressureHotspots: [],

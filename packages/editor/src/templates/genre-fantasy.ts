@@ -64,8 +64,8 @@ export const fantasyTemplate: WorldProject = {
     defaultArchetypeId: 'warrior',
     baseStats: { vigor: 3, instinct: 3, will: 3 },
     baseResources: { hp: 10, stamina: 5 },
-    startingInventory: [],
-    startingEquipment: {},
+    startingInventory: ['rustic-blade', 'healers-pouch'],
+    startingEquipment: { weapon: 'rustic-blade' },
     spawnPointId: 'village-spawn',
     tags: ['newcomer'],
     custom: {},
@@ -97,7 +97,10 @@ export const fantasyTemplate: WorldProject = {
     ],
   }],
 
-  itemPlacements: [],
+  itemPlacements: [
+    { itemId: 'rustic-blade', name: 'Rustic Blade', description: 'A weathered short sword, still sharp enough.', zoneId: 'village-square', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
+    { itemId: 'healers-pouch', name: "Healer's Pouch", description: 'Dried herbs and clean bandages.', zoneId: 'village-square', hidden: false, slot: 'trinket', rarity: 'uncommon', grantedTags: ['healer'] },
+  ],
   encounterAnchors: [],
   factionPresences: [],
   pressureHotspots: [],

@@ -23,7 +23,7 @@ export function ChecklistPanel() {
       isComplete: project.districts.length > 0, tab: 'map',
     },
     {
-      id: 'zone', label: 'Add a zone', description: 'Draw a named area on the map.',
+      id: 'zone', label: 'Add a zone', description: 'Use the Zone tool to create a named location.',
       isComplete: project.zones.length > 0, tab: 'map', tool: 'zone-paint',
     },
     {
@@ -31,11 +31,11 @@ export function ChecklistPanel() {
       isComplete: project.spawnPoints.length > 0, tab: 'map', tool: 'spawn',
     },
     {
-      id: 'player', label: 'Create a player template', description: 'Define starting stats, inventory, and equipment.',
+      id: 'player', label: 'Create a player template', description: 'Set up the player\'s starting stats and gear.',
       isComplete: project.playerTemplate !== undefined, tab: 'player',
     },
     {
-      id: 'npc', label: 'Add a speaking NPC', description: 'Place an entity with dialogue.',
+      id: 'npc', label: 'Add a speaking NPC', description: 'Add a character the player can talk to.',
       isComplete: project.entityPlacements.some((e) => e.dialogueId),
       tab: 'dialogue',
     },

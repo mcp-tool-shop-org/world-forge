@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] - 2026-03-08
+
+### Improved
+
+- **Starter items** — all 5 genre templates now include 2 thematic items (weapon + trinket/tool) with starting inventory and equipment
+- **Intermediate sample** — new "Tavern Crossroads" sample bridges the gap between Hello World and Chapel Threshold (2 zones, 1 NPC with dialogue, player template, build catalog, progression tree)
+- **Checklist wording** — clearer step descriptions: "Use the Zone tool to create a named location", "Set up the player's starting stats and gear", "Add a character the player can talk to"
+- **Sample browser badges** — three complexity tiers with distinct colors: minimal (green), intermediate (blue), rich (amber)
+
+### Added
+
+- `templates.test.ts` — 19 tests covering genre template validation, sample validation, wizard factory, system stripping, and invalid-project error routing via `classifyError`
+
 ## [1.4.0] - 2026-03-08
 
 ### Added

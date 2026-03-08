@@ -64,8 +64,8 @@ export const detectiveTemplate: WorldProject = {
     defaultArchetypeId: 'investigator',
     baseStats: { vigor: 2, instinct: 4, will: 3 },
     baseResources: { hp: 8, stamina: 6 },
-    startingInventory: [],
-    startingEquipment: {},
+    startingInventory: ['brass-knuckles', 'magnifying-lens'],
+    startingEquipment: { weapon: 'brass-knuckles' },
     spawnPointId: 'office-spawn',
     tags: ['detective'],
     custom: {},
@@ -97,7 +97,10 @@ export const detectiveTemplate: WorldProject = {
     ],
   }],
 
-  itemPlacements: [],
+  itemPlacements: [
+    { itemId: 'brass-knuckles', name: 'Brass Knuckles', description: 'Discreet and effective in close quarters.', zoneId: 'office', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
+    { itemId: 'magnifying-lens', name: 'Magnifying Lens', description: 'A well-worn lens that reveals what the eye misses.', zoneId: 'office', hidden: false, slot: 'tool', rarity: 'uncommon', grantedTags: ['keen-eyed'] },
+  ],
   encounterAnchors: [],
   factionPresences: [],
   pressureHotspots: [],
