@@ -467,4 +467,5 @@ export const chapelProject: WorldProject = {
       color: '#1a1a2e',
     },
   ],
+  assets: [],
 };

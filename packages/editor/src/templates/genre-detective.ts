@@ -111,4 +111,5 @@ export const detectiveTemplate: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };

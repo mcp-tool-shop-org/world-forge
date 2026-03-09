@@ -2,7 +2,7 @@
 
 import type { WorldProject, ZoneConnection } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
-import type { ContentPack, ExportResult } from './export.js';
+import type { ContentPack, ExportResult, AssetBindingMap } from './export.js';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { FidelityEntry, FidelityReport } from './fidelity.js';
 import { buildFidelityReport } from './fidelity.js';
@@ -83,7 +83,59 @@ export function importFromExportResult(result: ExportResult, projectName?: strin
   const meta = result.packMeta;
   const imported = importFromContentPack(result.contentPack, projectName ?? meta?.name, meta);
   imported.format = 'export-result';
+
+  // Recover assets + bindings from ExportResult (not available in raw ContentPack)
+  if (result.assets && result.assets.length > 0) {
+    imported.project.assets = result.assets;
+    if (result.assetBindings) {
+      applyAssetBindings(imported.project, result.assetBindings);
+    }
+    imported.fidelityReport.entries.push({
+      level: 'lossless', domain: 'assets', severity: 'info',
+      message: `${result.assets.length} asset(s) recovered from export result`,
+      reason: 'assets-recovered',
+    });
+  }
+
   return imported;
+}
+
+/** Apply asset bindings from an ExportResult back onto a WorldProject. */
+function applyAssetBindings(project: WorldProject, bindings: AssetBindingMap): void {
+  if (bindings.zones) {
+    for (const z of project.zones) {
+      const b = bindings.zones[z.id];
+      if (b) {
+        if (b.backgroundId) z.backgroundId = b.backgroundId;
+        if (b.tilesetId) z.tilesetId = b.tilesetId;
+      }
+    }
+  }
+  if (bindings.entities) {
+    for (const e of project.entityPlacements) {
+      const b = bindings.entities[e.entityId];
+      if (b) {
+        if (b.portraitId) e.portraitId = b.portraitId;
+        if (b.spriteId) e.spriteId = b.spriteId;
+      }
+    }
+  }
+  if (bindings.items) {
+    for (const i of project.itemPlacements) {
+      const b = bindings.items[i.itemId];
+      if (b) {
+        if (b.iconId) i.iconId = b.iconId;
+      }
+    }
+  }
+  if (bindings.landmarks) {
+    for (const l of project.landmarks) {
+      const b = bindings.landmarks[l.id];
+      if (b) {
+        if (b.iconId) l.iconId = b.iconId;
+      }
+    }
+  }
 }
 
 /** Import from a ContentPack (lossy — zones lose grid positions, entities lose zones). */
@@ -205,6 +257,7 @@ export function importFromContentPack(
     props: [],
     propPlacements: [],
     ambientLayers: [],
+    assets: [],
   };
 
   // 8. Add structural fidelity entries
@@ -212,6 +265,11 @@ export function importFromContentPack(
     level: 'dropped', domain: 'world', severity: 'warning',
     message: 'Visual layers not imported (tilesets, props, ambient)',
     reason: 'visual-layers-dropped',
+  });
+  allFidelity.push({
+    level: 'dropped', domain: 'assets', severity: 'warning',
+    message: 'Asset manifest not available in ContentPack format',
+    reason: 'assets-dropped',
   });
 
   // 9. Build fidelity report

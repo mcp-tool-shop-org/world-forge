@@ -111,4 +111,5 @@ export const cyberpunkTemplate: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };

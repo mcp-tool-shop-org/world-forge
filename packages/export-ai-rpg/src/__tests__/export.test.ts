@@ -288,4 +288,34 @@ describe('exportToEngine', () => {
       expect(result.warnings.some((w) => w.includes('landmark'))).toBe(true);
     }
   });
+
+  it('includes assets and assetBindings when project has assets', () => {
+    const withAssets = {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-1', kind: 'background' as const, label: 'BG', path: 'bg.png', tags: [] },
+        { id: 'portrait-1', kind: 'portrait' as const, label: 'NPC', path: 'npc.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
+      ),
+      entityPlacements: [
+        { entityId: 'npc-1', zoneId: 'zone-entrance', role: 'npc' as const, portraitId: 'portrait-1' },
+      ],
+    };
+    const result = exportToEngine(withAssets);
+    if (!('ok' in result)) {
+      expect(result.assets).toHaveLength(2);
+      expect(result.assetBindings?.zones?.['zone-entrance']?.backgroundId).toBe('bg-1');
+      expect(result.assetBindings?.entities?.['npc-1']?.portraitId).toBe('portrait-1');
+    }
+  });
+
+  it('omits assets and assetBindings when project has no assets', () => {
+    const result = exportToEngine(minimalProject);
+    if (!('ok' in result)) {
+      expect(result.assets).toBeUndefined();
+      expect(result.assetBindings).toBeUndefined();
+    }
+  });
 });

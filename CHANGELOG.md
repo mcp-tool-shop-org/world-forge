@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-03-08
+
+### Added
+
+- **Asset manifest types** — `AssetEntry` with `id`, `kind` (portrait/sprite/background/icon/tileset), `label`, `path`, `version`, `tags`, `provenance` metadata
+- **Asset reference fields** — Zone gains `backgroundId`/`tilesetId`, EntityPlacement gains `portraitId`/`spriteId`, ItemPlacement gains `iconId`, Landmark gains `iconId`
+- **10 new validation checks** (#33-42) — asset ID uniqueness, path non-empty, zone/entity/item/landmark ref existence + kind match, orphaned asset detection
+- **Export asset preservation** — `ExportResult` gains `assets` and `assetBindings` for round-trip fidelity
+- **Import asset recovery** — `importFromExportResult()` recovers assets + bindings; `importFromContentPack()` emits `assets-dropped` fidelity entry
+- **Asset library panel** — kind-filtered, searchable asset list with inline editing, add/remove, orphan indicator
+- **Zone asset binding** — Background and Tileset dropdowns in Zone Properties with missing-asset indicators
+- **Asset diff tracking** — `diffProjects()` includes asset domain with label/kind/path/version/tags/provenance field diffs
+- **Chapel Threshold assets** — 5 asset entries (2 backgrounds, 2 portraits, 1 icon) with zone/entity/item bindings as reference sample
+- 9 new tests across schema validation, export, import, and template suites (163 total)
+
+### Changed
+
+- `WorldProject.assets` is now a required `AssetEntry[]` field (defaults to `[]`)
+- `FidelityDomain` union includes `'assets'`
+- All domain label records (ImportSummaryPanel, DiffPanel, ValidationPanel) include assets
+- Status bar shows asset count
+- Tab bar gains Assets tab with count badge
+
 ## [1.6.0] - 2026-03-08
 
 ### Added

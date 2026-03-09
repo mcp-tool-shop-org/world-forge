@@ -1,6 +1,6 @@
 // export.ts — full export pipeline
 
-import type { WorldProject, ValidationError } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -29,11 +29,20 @@ export type ContentPack = {
   progressionTrees: ProgressionTreeDefinition[];
 };
 
+export type AssetBindingMap = {
+  zones?: Record<string, { backgroundId?: string; tilesetId?: string }>;
+  entities?: Record<string, { portraitId?: string; spriteId?: string }>;
+  items?: Record<string, { iconId?: string }>;
+  landmarks?: Record<string, { iconId?: string }>;
+};
+
 export type ExportResult = {
   contentPack: ContentPack;
   manifest: GameManifest;
   packMeta: PackMetadata;
   warnings: string[];
+  assets?: AssetEntry[];
+  assetBindings?: AssetBindingMap;
 };
 
 export type ExportError = {
@@ -99,6 +108,42 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
     warnings.push('No faction presences defined — faction system will be inactive');
   }
 
+  // 11. Collect asset manifest and bindings for round-trip preservation
+  const assets = project.assets.length > 0 ? project.assets : undefined;
+  let assetBindings: AssetBindingMap | undefined;
+  if (assets) {
+    const zoneBindings: Record<string, { backgroundId?: string; tilesetId?: string }> = {};
+    for (const z of project.zones) {
+      if (z.backgroundId || z.tilesetId) {
+        zoneBindings[z.id] = { backgroundId: z.backgroundId, tilesetId: z.tilesetId };
+      }
+    }
+    const entityBindings: Record<string, { portraitId?: string; spriteId?: string }> = {};
+    for (const e of project.entityPlacements) {
+      if (e.portraitId || e.spriteId) {
+        entityBindings[e.entityId] = { portraitId: e.portraitId, spriteId: e.spriteId };
+      }
+    }
+    const itemBindings: Record<string, { iconId?: string }> = {};
+    for (const i of project.itemPlacements) {
+      if (i.iconId) {
+        itemBindings[i.itemId] = { iconId: i.iconId };
+      }
+    }
+    const landmarkBindings: Record<string, { iconId?: string }> = {};
+    for (const l of project.landmarks) {
+      if (l.iconId) {
+        landmarkBindings[l.id] = { iconId: l.iconId };
+      }
+    }
+    assetBindings = {};
+    if (Object.keys(zoneBindings).length > 0) assetBindings.zones = zoneBindings;
+    if (Object.keys(entityBindings).length > 0) assetBindings.entities = entityBindings;
+    if (Object.keys(itemBindings).length > 0) assetBindings.items = itemBindings;
+    if (Object.keys(landmarkBindings).length > 0) assetBindings.landmarks = landmarkBindings;
+    if (Object.keys(assetBindings).length === 0) assetBindings = undefined;
+  }
+
   return {
     contentPack: {
       entities,
@@ -113,5 +158,7 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
     manifest,
     packMeta,
     warnings,
+    assets,
+    assetBindings,
   };
 }

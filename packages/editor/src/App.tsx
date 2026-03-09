@@ -19,6 +19,7 @@ import { ImportModal } from './panels/ImportModal.js';
 import { SaveTemplateModal } from './panels/SaveTemplateModal.js';
 import { ImportSummaryPanel } from './panels/ImportSummaryPanel.js';
 import { DiffPanel } from './panels/DiffPanel.js';
+import { AssetPanel } from './panels/AssetPanel.js';
 import { Canvas } from './Canvas.js';
 
 export function App() {
@@ -41,6 +42,7 @@ export function App() {
     { id: 'builds', label: 'Builds' },
     { id: 'trees', label: 'Trees' },
     { id: 'dialogue', label: 'Dialogue' },
+    { id: 'assets', label: 'Assets', badge: project.assets.length > 0 ? `${project.assets.length}` : undefined },
     { id: 'issues', label: 'Issues' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
     ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? '#3fb950' : '#d29922' }] : []),
@@ -164,6 +166,7 @@ export function App() {
             {rightTab === 'builds' && <BuildCatalogPanel />}
             {rightTab === 'trees' && <ProgressionPanel />}
             {rightTab === 'dialogue' && <DialoguePanel />}
+            {rightTab === 'assets' && <AssetPanel />}
             {rightTab === 'issues' && <ValidationPanel />}
             {rightTab === 'guide' && <ChecklistPanel />}
             {rightTab === 'import-summary' && <ImportSummaryPanel />}
@@ -180,6 +183,7 @@ export function App() {
         <span>Tool: {activeTool}</span>
         <span>Zones: {project.zones.length}</span>
         <span>Entities: {project.entityPlacements.length}</span>
+        <span>Assets: {project.assets.length}</span>
         <span>Zoom: {Math.round(zoom * 100)}%</span>
         <div style={{ flex: 1 }} />
         {issueCount > 0 ? (

@@ -55,7 +55,25 @@ Select the **Entity** tool. Click on a zone to place an entity. Choose a role:
 
 Entity properties include stats (vigor, instinct, will), resources (hp, stamina), AI profile, faction, tags, and custom metadata for companion abilities or personal goals.
 
-## 5. Export
+## 5. Manage Assets
+
+Open the **Assets** tab in the right sidebar. Click **+ Add Asset** to register a media file in your project's asset manifest. Each asset has:
+
+- **Kind** — `portrait`, `sprite`, `background`, `icon`, or `tileset`
+- **Label** — display name
+- **Path** — relative file path or URI to the media file
+- **Version** — optional version string
+- **Tags** — freeform tags for filtering
+
+Once assets are registered, bind them to world objects:
+
+- **Zones** — select a zone and choose a background or tileset from the asset dropdowns in Zone Properties
+- **Entities** — assign portrait and sprite assets to entity placements
+- **Items** — assign icon assets to item placements
+
+The validator checks that all asset references point to existing assets of the correct kind. The Assets tab shows an orphan count for unreferenced assets.
+
+## 6. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -68,7 +86,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 6. Import
+## 7. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -78,7 +96,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 7. Track Changes
+## 8. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

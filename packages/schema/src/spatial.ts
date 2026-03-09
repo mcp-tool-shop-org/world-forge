@@ -27,6 +27,8 @@ export interface Zone {
   hazards: string[];
   interactables: Interactable[];
   parentDistrictId?: string;
+  backgroundId?: string;
+  tilesetId?: string;
 }
 
 /** A labeled exit from one zone to another. */
@@ -62,4 +64,5 @@ export interface Landmark {
   tags: string[];
   description?: string;
   interactionType: 'inspect' | 'use' | 'enter' | 'talk' | 'none';
+  iconId?: string;
 }

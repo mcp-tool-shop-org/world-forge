@@ -142,4 +142,5 @@ export const minimalProject: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };

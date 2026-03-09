@@ -35,9 +35,10 @@ The type authority. Defines every structure in a `WorldProject`:
 - **District types** — `District`, `FactionPresence`, `PressureHotspot`
 - **Entity types** — `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `EncounterAnchor`
 - **Dialogue types** — `DialogueDefinition`, `DialogueNode`, `DialogueChoice`, `DialogueCondition`, `DialogueEffect`
+- **Asset types** — `AssetEntry`, `AssetKind`, `AssetProvenance`
 - **Visual types** — `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
 - **Container** — `WorldProject` interface that holds everything
-- **Validation** — `validateProject()` with 32 structural checks
+- **Validation** — `validateProject()` with 42 structural checks (including asset ref + kind validation)
 
 ## @world-forge/export-ai-rpg
 
@@ -64,7 +65,7 @@ PixiJS-based 2D renderer with six sub-renderers:
 
 ## @world-forge/editor
 
-React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, landmark, spawn. Workspace tabs: Map, Player, Builds, Trees, Dialogue, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
+React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, landmark, spawn. Workspace tabs: Map, Player, Builds, Trees, Dialogue, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
 
 ## Build System
 

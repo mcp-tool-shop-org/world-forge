@@ -1,6 +1,6 @@
 // diff-model.ts — semantic project diff engine
 
-import type { WorldProject, Zone, District, EntityPlacement, ItemPlacement, DialogueDefinition, ProgressionTreeDefinition, BuildCatalogDefinition, PlayerTemplate } from '@world-forge/schema';
+import type { WorldProject, Zone, District, EntityPlacement, ItemPlacement, DialogueDefinition, ProgressionTreeDefinition, BuildCatalogDefinition, PlayerTemplate, AssetEntry } from '@world-forge/schema';
 import type { FidelityDomain } from '@world-forge/export-ai-rpg';
 
 export type ChangeStatus = 'unchanged' | 'modified' | 'added' | 'removed';
@@ -89,7 +89,7 @@ function diffDomain<T>(
 
 function diffZone(a: Zone, b: Zone): FieldDiff[] {
   const diffs: FieldDiff[] = [];
-  for (const f of ['name', 'description', 'gridX', 'gridY', 'gridWidth', 'gridHeight', 'light', 'noise', 'parentDistrictId'] as const) {
+  for (const f of ['name', 'description', 'gridX', 'gridY', 'gridWidth', 'gridHeight', 'light', 'noise', 'parentDistrictId', 'backgroundId', 'tilesetId'] as const) {
     const d = fieldDiff(f, a[f], b[f]);
     if (d) diffs.push(d);
   }
@@ -112,7 +112,7 @@ function diffDistrict(a: District, b: District): FieldDiff[] {
 
 function diffEntity(a: EntityPlacement, b: EntityPlacement): FieldDiff[] {
   const diffs: FieldDiff[] = [];
-  for (const f of ['name', 'zoneId', 'role', 'factionId', 'dialogueId'] as const) {
+  for (const f of ['name', 'zoneId', 'role', 'factionId', 'dialogueId', 'portraitId', 'spriteId'] as const) {
     const d = fieldDiff(f, a[f], b[f]);
     if (d) diffs.push(d);
   }
@@ -126,7 +126,7 @@ function diffEntity(a: EntityPlacement, b: EntityPlacement): FieldDiff[] {
 
 function diffItem(a: ItemPlacement, b: ItemPlacement): FieldDiff[] {
   const diffs: FieldDiff[] = [];
-  for (const f of ['name', 'description', 'zoneId', 'hidden', 'slot', 'rarity'] as const) {
+  for (const f of ['name', 'description', 'zoneId', 'hidden', 'slot', 'rarity', 'iconId'] as const) {
     const d = fieldDiff(f, a[f], b[f]);
     if (d) diffs.push(d);
   }
@@ -202,6 +202,17 @@ function diffBuildCatalog(a: BuildCatalogDefinition | undefined, b: BuildCatalog
   };
 }
 
+function diffAsset(a: AssetEntry, b: AssetEntry): FieldDiff[] {
+  const diffs: FieldDiff[] = [];
+  for (const f of ['label', 'kind', 'path', 'version'] as const) {
+    const d = fieldDiff(f, a[f], b[f]);
+    if (d) diffs.push(d);
+  }
+  if (!deepEqual(a.tags, b.tags)) diffs.push({ field: 'tags', before: a.tags, after: b.tags });
+  if (!deepEqual(a.provenance, b.provenance)) diffs.push({ field: 'provenance', before: a.provenance, after: b.provenance });
+  return diffs;
+}
+
 // --- Main diff function ---
 
 export function diffProjects(before: WorldProject, after: WorldProject): ProjectDiff {
@@ -215,6 +226,7 @@ export function diffProjects(before: WorldProject, after: WorldProject): Project
   domains.push(diffDomain<ProgressionTreeDefinition>('progression', before.progressionTrees, after.progressionTrees, (t) => t.id, (t) => t.name, diffTree));
   domains.push(diffPlayerTemplate(before.playerTemplate, after.playerTemplate));
   domains.push(diffBuildCatalog(before.buildCatalog, after.buildCatalog));
+  domains.push(diffDomain<AssetEntry>('assets', before.assets, after.assets, (a) => a.id, (a) => a.label, diffAsset));
 
   const totalUnchanged = domains.reduce((s, d) => s + d.unchanged, 0);
   const totalModified = domains.reduce((s, d) => s + d.modified, 0);

@@ -111,4 +111,5 @@ export const zombieTemplate: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };

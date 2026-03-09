@@ -80,4 +80,5 @@ export const invalidOrphanProject: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };

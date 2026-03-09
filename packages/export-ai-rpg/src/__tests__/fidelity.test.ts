@@ -164,7 +164,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
     const report = imported.fidelityReport;
     const dropped = report.entries.filter((e) => e.level === 'dropped');
     const validReasons = new Set([
-      'economy-data-lost', 'pack-id-stripped', 'visual-layers-dropped',
+      'economy-data-lost', 'pack-id-stripped', 'visual-layers-dropped', 'assets-dropped',
     ]);
     for (const entry of dropped) {
       expect(validReasons.has(entry.reason)).toBe(true);

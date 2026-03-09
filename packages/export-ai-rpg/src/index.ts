@@ -6,7 +6,7 @@ export { convertEntities } from './convert-entities.js';
 export { convertItems } from './convert-items.js';
 export { convertManifest, convertPackMeta } from './convert-pack.js';
 export { exportToEngine } from './export.js';
-export type { ContentPack, ExportResult, ExportError } from './export.js';
+export type { ContentPack, ExportResult, ExportError, AssetBindingMap } from './export.js';
 export { importProject, importFromContentPack, importFromExportResult, detectImportFormat } from './import.js';
 export type { ImportResult, ImportError, ImportFormat } from './import.js';
 export { summarizeFidelity, buildFidelityReport } from './fidelity.js';

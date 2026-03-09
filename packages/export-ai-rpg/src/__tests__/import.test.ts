@@ -485,3 +485,59 @@ describe('importProject', () => {
     expect(result).toHaveProperty('ok', false);
   });
 });
+
+// --- Asset round-trip tests ---
+
+describe('asset preservation', () => {
+  const projectWithAssets = {
+    ...minimalProject,
+    assets: [
+      { id: 'bg-1', kind: 'background' as const, label: 'Entrance BG', path: 'assets/bg.png', tags: [] },
+      { id: 'portrait-1', kind: 'portrait' as const, label: 'Guard', path: 'assets/guard.png', tags: ['npc'] },
+    ],
+    zones: minimalProject.zones.map((z, i) =>
+      i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
+    ),
+    entityPlacements: [
+      { entityId: 'guard-1', zoneId: 'zone-entrance', role: 'npc' as const, portraitId: 'portrait-1' },
+    ],
+  };
+
+  it('ExportResult round-trip recovers assets', () => {
+    const exported = exportToEngine(projectWithAssets);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.assets).toHaveLength(2);
+
+    const imported = importFromExportResult(exported);
+    expect(imported.project.assets).toHaveLength(2);
+    expect(imported.project.assets[0].id).toBe('bg-1');
+  });
+
+  it('ExportResult round-trip recovers asset bindings', () => {
+    const exported = exportToEngine(projectWithAssets);
+    if ('ok' in exported) throw new Error('export failed');
+
+    const imported = importFromExportResult(exported);
+    const entrance = imported.project.zones.find((z) => z.id === 'zone-entrance');
+    expect(entrance?.backgroundId).toBe('bg-1');
+    const guard = imported.project.entityPlacements.find((e) => e.entityId === 'guard-1');
+    expect(guard?.portraitId).toBe('portrait-1');
+  });
+
+  it('ExportResult round-trip has assets-recovered fidelity entry', () => {
+    const exported = exportToEngine(projectWithAssets);
+    if ('ok' in exported) throw new Error('export failed');
+
+    const imported = importFromExportResult(exported);
+    expect(imported.fidelityReport.entries.some((e) => e.reason === 'assets-recovered')).toBe(true);
+  });
+
+  it('ContentPack import has assets-dropped fidelity entry', () => {
+    const exported = exportToEngine(projectWithAssets);
+    if ('ok' in exported) throw new Error('export failed');
+
+    const imported = importFromContentPack(exported.contentPack);
+    expect(imported.project.assets).toHaveLength(0);
+    expect(imported.fidelityReport.entries.some((e) => e.reason === 'assets-dropped')).toBe(true);
+  });
+});

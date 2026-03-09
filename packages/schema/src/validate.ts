@@ -388,5 +388,91 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
+  // --- Asset validation ---
+
+  const VALID_ASSET_KINDS = new Set(['portrait', 'sprite', 'background', 'icon', 'tileset']);
+  const assetIds = new Set<string>();
+  const assetMap = new Map<string, { kind: string }>();
+
+  // 33. Asset ID uniqueness
+  for (const a of project.assets) {
+    if (assetIds.has(a.id)) {
+      errors.push({ path: `assets.${a.id}`, message: `Duplicate asset ID: ${a.id}` });
+    }
+    assetIds.add(a.id);
+    assetMap.set(a.id, { kind: a.kind });
+  }
+
+  // 34. Asset path must be non-empty
+  for (const a of project.assets) {
+    if (!a.path || a.path.trim().length === 0) {
+      errors.push({ path: `assets.${a.id}.path`, message: `Asset "${a.id}" has empty path` });
+    }
+  }
+
+  // 35. Asset kind must be valid
+  for (const a of project.assets) {
+    if (!VALID_ASSET_KINDS.has(a.kind)) {
+      errors.push({ path: `assets.${a.id}.kind`, message: `Asset "${a.id}" has unsupported kind "${a.kind}"` });
+    }
+  }
+
+  // Helper: check asset ref exists and has correct kind
+  function checkAssetRef(refId: string | undefined, expectedKind: string, path: string, label: string) {
+    if (!refId) return;
+    if (!assetIds.has(refId)) {
+      errors.push({ path, message: `${label} references nonexistent asset "${refId}"` });
+      return;
+    }
+    const asset = assetMap.get(refId);
+    if (asset && asset.kind !== expectedKind) {
+      errors.push({ path, message: `${label} references asset "${refId}" of kind "${asset.kind}", expected "${expectedKind}"` });
+    }
+  }
+
+  // 36-37. Zone asset refs
+  for (const z of project.zones) {
+    checkAssetRef(z.backgroundId, 'background', `zones.${z.id}.backgroundId`, `Zone "${z.id}"`);
+    checkAssetRef(z.tilesetId, 'tileset', `zones.${z.id}.tilesetId`, `Zone "${z.id}"`);
+  }
+
+  // 38-39. Entity asset refs
+  for (const ep of project.entityPlacements) {
+    checkAssetRef(ep.portraitId, 'portrait', `entityPlacements.${ep.entityId}.portraitId`, `Entity "${ep.entityId}"`);
+    checkAssetRef(ep.spriteId, 'sprite', `entityPlacements.${ep.entityId}.spriteId`, `Entity "${ep.entityId}"`);
+  }
+
+  // 40. Item asset refs
+  for (const ip of project.itemPlacements) {
+    checkAssetRef(ip.iconId, 'icon', `itemPlacements.${ip.itemId}.iconId`, `Item "${ip.itemId}"`);
+  }
+
+  // 41. Landmark asset refs
+  for (const lm of project.landmarks) {
+    checkAssetRef(lm.iconId, 'icon', `landmarks.${lm.id}.iconId`, `Landmark "${lm.id}"`);
+  }
+
+  // 42. Orphaned assets (in manifest but unreferenced)
+  const referencedAssetIds = new Set<string>();
+  for (const z of project.zones) {
+    if (z.backgroundId) referencedAssetIds.add(z.backgroundId);
+    if (z.tilesetId) referencedAssetIds.add(z.tilesetId);
+  }
+  for (const ep of project.entityPlacements) {
+    if (ep.portraitId) referencedAssetIds.add(ep.portraitId);
+    if (ep.spriteId) referencedAssetIds.add(ep.spriteId);
+  }
+  for (const ip of project.itemPlacements) {
+    if (ip.iconId) referencedAssetIds.add(ip.iconId);
+  }
+  for (const lm of project.landmarks) {
+    if (lm.iconId) referencedAssetIds.add(lm.iconId);
+  }
+  for (const a of project.assets) {
+    if (!referencedAssetIds.has(a.id)) {
+      errors.push({ path: `assets.${a.id}`, message: `Asset "${a.id}" (${a.kind}) is not referenced by any zone, entity, item, or landmark` });
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }

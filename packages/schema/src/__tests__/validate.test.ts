@@ -302,4 +302,98 @@ describe('validateProject', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.message.includes('no root nodes'))).toBe(true);
   });
+
+  // --- Asset validation ---
+
+  it('accepts project with valid assets', () => {
+    const good: WorldProject = {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-1', kind: 'background', label: 'Entrance BG', path: 'assets/bg.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
+      ),
+    };
+    const result = validateProject(good);
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects duplicate asset IDs', () => {
+    const asset = { id: 'dup', kind: 'portrait' as const, label: 'Dup', path: 'a.png', tags: [] };
+    const bad: WorldProject = {
+      ...minimalProject,
+      assets: [asset, asset],
+      entityPlacements: minimalProject.entityPlacements.map((e) => ({ ...e, portraitId: 'dup' })),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('Duplicate asset ID'))).toBe(true);
+  });
+
+  it('rejects asset with empty path', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assets: [{ id: 'empty-path', kind: 'icon', label: 'Bad', path: '', tags: [] }],
+      itemPlacements: minimalProject.itemPlacements.map((i) => ({ ...i, iconId: 'empty-path' })),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('empty path'))).toBe(true);
+  });
+
+  it('rejects zone backgroundId referencing nonexistent asset', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0 ? { ...z, backgroundId: 'ghost-bg' } : z,
+      ),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('ghost-bg') && e.message.includes('nonexistent'))).toBe(true);
+  });
+
+  it('rejects zone backgroundId referencing wrong asset kind', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assets: [{ id: 'portrait-1', kind: 'portrait', label: 'Face', path: 'face.png', tags: [] }],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0 ? { ...z, backgroundId: 'portrait-1' } : z,
+      ),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('portrait') && e.message.includes('expected "background"'))).toBe(true);
+  });
+
+  it('rejects entity portraitId referencing nonexistent asset', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      entityPlacements: [{ entityId: 'npc-1', zoneId: 'zone-entrance', role: 'npc', portraitId: 'ghost-portrait' }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('ghost-portrait'))).toBe(true);
+  });
+
+  it('rejects item iconId referencing nonexistent asset', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      itemPlacements: [{ itemId: 'item-1', zoneId: 'zone-entrance', hidden: false, iconId: 'ghost-icon' }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('ghost-icon'))).toBe(true);
+  });
+
+  it('reports orphaned assets', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assets: [{ id: 'orphan-bg', kind: 'background', label: 'Unused', path: 'unused.png', tags: [] }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('orphan-bg') && e.message.includes('not referenced'))).toBe(true);
+  });
 });

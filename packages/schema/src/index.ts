@@ -40,6 +40,8 @@ export type {
   PropDefinition, PropPlacement, AmbientLayer,
 } from './visual.js';
 
+export type { AssetKind, AssetProvenance, AssetEntry } from './assets.js';
+
 export type { WorldProject } from './project.js';
 
 export type { ValidationError, ValidationResult } from './validate.js';

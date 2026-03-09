@@ -9,7 +9,7 @@ The `@world-forge/export-ai-rpg` package converts a `WorldProject` into a set of
 
 ## Pipeline Steps
 
-1. **Validate** — `validateProject()` runs all 32 structural checks. If any fail, export aborts with error details.
+1. **Validate** — `validateProject()` runs all 42 structural checks. If any fail, export aborts with error details.
 2. **Convert zones** — `Zone[]` becomes `ZoneDefinition[]` with description as TextBlock, exits, neighbors, hazards.
 3. **Convert districts** — `District[]` becomes `DistrictDefinition[]` with safety mapped to surveillance.
 4. **Convert entities** — `EntityPlacement[]` becomes `EntityBlueprint[]` with role-based defaults, authored stats/resources/AI.
@@ -21,6 +21,7 @@ The `@world-forge/export-ai-rpg` package converts a `WorldProject` into a set of
 10. **Build manifest** — game ID, title, modules, content pack references.
 11. **Build pack metadata** — genres, tones, difficulty, narrator tone.
 12. **Collect warnings** — missing player template, build catalog, progression trees, landmarks, factions, hotspots.
+13. **Collect assets** — asset manifest and zone/entity/item/landmark bindings are attached to the ExportResult for round-trip preservation.
 
 ## Output Format
 
@@ -61,7 +62,7 @@ if ('ok' in result) {
   console.error(result.errors);
 } else {
   // Success
-  const { contentPack, manifest, packMeta, warnings } = result;
+  const { contentPack, manifest, packMeta, warnings, assets, assetBindings } = result;
 }
 ```
 
@@ -109,7 +110,7 @@ if (result.success) {
 ### Supported Formats
 
 - **WorldProject** — lossless round-trip, no conversion needed
-- **ExportResult** — `{ contentPack, manifest, packMeta }` from `exportToEngine()`
+- **ExportResult** — `{ contentPack, manifest, packMeta, assets, assetBindings }` from `exportToEngine()`
 - **ContentPack** — engine content without manifest/metadata wrapper
 
 ## Fidelity Reporting
@@ -132,6 +133,8 @@ Common fidelity entries:
 | `role-reverse-mapped` | approximated | Entity role inferred from engine tags |
 | `textblock-to-string` | approximated | Dialogue text normalized from TextBlock arrays to strings |
 | `visual-layers-dropped` | dropped | Visual layers (tiles, props, ambient) not stored in engine format |
+| `assets-recovered` | lossless | Asset manifest and bindings restored from ExportResult |
+| `assets-dropped` | dropped | Assets not available in bare ContentPack format |
 
 The report includes a summary with overall lossless percentage and per-domain breakdowns, displayed in the editor's Import Summary panel.
 

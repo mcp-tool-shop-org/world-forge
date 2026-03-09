@@ -39,6 +39,7 @@ const helloWorld: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };
 
 const chapelThreshold: WorldProject = {
@@ -54,11 +55,11 @@ const chapelThreshold: WorldProject = {
   map: { id: 'map-1', name: 'Chapel Threshold', description: 'A crumbling chapel complex above a haunted crypt.', gridWidth: 60, gridHeight: 40, tileSize: 32 },
 
   zones: [
-    { id: 'chapel-entrance', name: 'Chapel Entrance', tags: ['exterior', 'safe'], description: 'Cracked flagstones lead to iron-bound doors.', gridX: 10, gridY: 10, gridWidth: 8, gridHeight: 6, neighbors: ['chapel-nave'], exits: [{ targetZoneId: 'chapel-nave', label: 'Enter Chapel' }], light: 7, noise: 2, hazards: [], interactables: [{ name: 'Stone Plaque', type: 'inspect', description: 'Words worn smooth by centuries of rain.' }], parentDistrictId: 'chapel-grounds' },
+    { id: 'chapel-entrance', name: 'Chapel Entrance', tags: ['exterior', 'safe'], description: 'Cracked flagstones lead to iron-bound doors.', gridX: 10, gridY: 10, gridWidth: 8, gridHeight: 6, neighbors: ['chapel-nave'], exits: [{ targetZoneId: 'chapel-nave', label: 'Enter Chapel' }], light: 7, noise: 2, hazards: [], interactables: [{ name: 'Stone Plaque', type: 'inspect', description: 'Words worn smooth by centuries of rain.' }], parentDistrictId: 'chapel-grounds', backgroundId: 'chapel-entrance-bg' },
     { id: 'chapel-nave', name: 'Chapel Nave', tags: ['interior', 'sacred'], description: 'Rows of pews face a shattered altar. Candlelight flickers.', gridX: 10, gridY: 20, gridWidth: 10, gridHeight: 8, neighbors: ['chapel-entrance', 'chapel-alcove', 'vestry-door'], exits: [], light: 4, noise: 1, hazards: [], interactables: [{ name: 'Altar', type: 'inspect', description: 'The altar stone is cracked but still consecrated.' }, { name: 'Candle Rack', type: 'use', description: 'Light a candle for the departed.' }], parentDistrictId: 'chapel-grounds' },
     { id: 'chapel-alcove', name: 'Chapel Alcove', tags: ['interior', 'hidden'], description: 'A side niche concealing a passage downward.', gridX: 22, gridY: 22, gridWidth: 5, gridHeight: 4, neighbors: ['chapel-nave'], exits: [{ targetZoneId: 'crypt-chamber', label: 'Descend to Crypt', condition: 'has-tag:chapel-key' }], light: 2, noise: 0, hazards: [], interactables: [{ name: 'Hidden Lever', type: 'use', description: 'A lever disguised as a wall sconce.' }], parentDistrictId: 'chapel-grounds' },
     { id: 'vestry-door', name: 'Vestry Door', tags: ['interior', 'locked'], description: 'A heavy wooden door leading to the vestry. Locked from the inside.', gridX: 4, gridY: 22, gridWidth: 4, gridHeight: 4, neighbors: ['chapel-nave'], exits: [], light: 3, noise: 0, hazards: [], interactables: [{ name: 'Lock', type: 'use', description: 'An old but sturdy lock.' }], parentDistrictId: 'chapel-grounds' },
-    { id: 'crypt-chamber', name: 'Crypt Chamber', tags: ['underground', 'danger'], description: 'Cold stone. Old bones. Something stirs in the shadows.', gridX: 30, gridY: 25, gridWidth: 10, gridHeight: 8, neighbors: [], exits: [], light: 1, noise: 3, hazards: ['undead', 'darkness'], interactables: [{ name: 'Sarcophagus', type: 'inspect', description: 'The lid is slightly ajar.' }, { name: 'Rune Circle', type: 'use', description: 'Faintly glowing glyphs etched into the floor.' }], parentDistrictId: 'crypt-depths' },
+    { id: 'crypt-chamber', name: 'Crypt Chamber', tags: ['underground', 'danger'], description: 'Cold stone. Old bones. Something stirs in the shadows.', gridX: 30, gridY: 25, gridWidth: 10, gridHeight: 8, neighbors: [], exits: [], light: 1, noise: 3, hazards: ['undead', 'darkness'], interactables: [{ name: 'Sarcophagus', type: 'inspect', description: 'The lid is slightly ajar.' }, { name: 'Rune Circle', type: 'use', description: 'Faintly glowing glyphs etched into the floor.' }], parentDistrictId: 'crypt-depths', backgroundId: 'crypt-bg' },
   ],
 
   connections: [
@@ -83,8 +84,8 @@ const chapelThreshold: WorldProject = {
   spawnPoints: [{ id: 'chapel-spawn', zoneId: 'chapel-entrance', gridX: 12, gridY: 12, isDefault: true }],
 
   entityPlacements: [
-    { entityId: 'suspicious-pilgrim', name: 'Suspicious Pilgrim', zoneId: 'chapel-entrance', role: 'npc', dialogueId: 'pilgrim-talk', tags: ['pilgrim', 'suspicious'] },
-    { entityId: 'brother-aldric', name: 'Brother Aldric', zoneId: 'chapel-nave', role: 'companion', factionId: 'chapel-order', tags: ['clergy', 'ally'], stats: { vigor: 3, instinct: 2, will: 4 }, resources: { hp: 12, stamina: 6 } },
+    { entityId: 'suspicious-pilgrim', name: 'Suspicious Pilgrim', zoneId: 'chapel-entrance', role: 'npc', dialogueId: 'pilgrim-talk', tags: ['pilgrim', 'suspicious'], portraitId: 'pilgrim-portrait' },
+    { entityId: 'brother-aldric', name: 'Brother Aldric', zoneId: 'chapel-nave', role: 'companion', factionId: 'chapel-order', tags: ['clergy', 'ally'], stats: { vigor: 3, instinct: 2, will: 4 }, resources: { hp: 12, stamina: 6 }, portraitId: 'aldric-portrait' },
     { entityId: 'sister-maren', name: 'Sister Maren', zoneId: 'vestry-door', role: 'companion', factionId: 'chapel-order', tags: ['clergy', 'healer'] },
     { entityId: 'ash-ghoul', name: 'Ash Ghoul', zoneId: 'crypt-chamber', role: 'boss', factionId: 'chapel-undead', tags: ['undead', 'boss'], stats: { vigor: 6, instinct: 4, will: 3 }, resources: { hp: 25, stamina: 10 } },
   ],
@@ -169,7 +170,7 @@ const chapelThreshold: WorldProject = {
   itemPlacements: [
     { itemId: 'rusted-mace', name: 'Rusted Mace', description: 'Heavy and pitted, but still serviceable.', zoneId: 'chapel-entrance', hidden: false, slot: 'weapon', rarity: 'common', statModifiers: { vigor: 1 } },
     { itemId: 'chapel-lantern', name: 'Chapel Lantern', description: 'A dim lantern that never quite goes out.', zoneId: 'chapel-entrance', hidden: false, slot: 'tool', rarity: 'uncommon', grantedTags: ['light-source'] },
-    { itemId: 'bone-talisman', name: 'Bone Talisman', description: 'Carved from something that was once alive.', zoneId: 'crypt-chamber', hidden: true, container: 'sarcophagus', slot: 'trinket', rarity: 'rare', grantedTags: ['death-touched'] },
+    { itemId: 'bone-talisman', name: 'Bone Talisman', description: 'Carved from something that was once alive.', zoneId: 'crypt-chamber', hidden: true, container: 'sarcophagus', slot: 'trinket', rarity: 'rare', grantedTags: ['death-touched'], iconId: 'bone-talisman-icon' },
   ],
 
   encounterAnchors: [
@@ -184,6 +185,13 @@ const chapelThreshold: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [{ id: 'crypt-fog', name: 'Crypt Fog', zoneIds: ['crypt-chamber'], type: 'fog', intensity: 0.7, color: '#2a2a3a' }],
+  assets: [
+    { id: 'chapel-entrance-bg', kind: 'background', label: 'Chapel Entrance', path: 'assets/backgrounds/chapel-entrance.png', tags: ['exterior', 'chapel'] },
+    { id: 'crypt-bg', kind: 'background', label: 'Crypt Chamber', path: 'assets/backgrounds/crypt-chamber.png', tags: ['underground', 'dark'] },
+    { id: 'pilgrim-portrait', kind: 'portrait', label: 'Suspicious Pilgrim', path: 'assets/portraits/pilgrim.png', tags: ['npc', 'pilgrim'] },
+    { id: 'aldric-portrait', kind: 'portrait', label: 'Brother Aldric', path: 'assets/portraits/aldric.png', tags: ['npc', 'clergy'] },
+    { id: 'bone-talisman-icon', kind: 'icon', label: 'Bone Talisman', path: 'assets/icons/bone-talisman.png', tags: ['item', 'rare'] },
+  ],
 };
 
 const tavernCrossroads: WorldProject = {
@@ -271,6 +279,7 @@ const tavernCrossroads: WorldProject = {
   props: [],
   propPlacements: [],
   ambientLayers: [],
+  assets: [],
 };
 
 export const SAMPLE_WORLDS: SampleWorld[] = [

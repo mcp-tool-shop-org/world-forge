@@ -13,6 +13,7 @@ import type { ProgressionTreeDefinition } from './progression-tree.js';
 import type {
   Tileset, TileLayer, PropDefinition, PropPlacement, AmbientLayer,
 } from './visual.js';
+import type { AssetEntry } from './assets.js';
 
 /** Complete authored world — everything needed to export to ai-rpg-engine. */
 export interface WorldProject {
@@ -53,4 +54,5 @@ export interface WorldProject {
   props: PropDefinition[];
   propPlacements: PropPlacement[];
   ambientLayers: AmbientLayer[];
+  assets: AssetEntry[];
 }

@@ -5,7 +5,7 @@ export type FidelitySeverity = 'info' | 'warning' | 'error';
 export type FidelityDomain =
   | 'zones' | 'districts' | 'entities' | 'items'
   | 'dialogues' | 'player' | 'builds' | 'progression'
-  | 'world';
+  | 'world' | 'assets';
 
 export interface FidelityEntry {
   level: FidelityLevel;

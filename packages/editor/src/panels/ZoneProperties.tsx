@@ -36,6 +36,30 @@ export function ZoneProperties() {
           ))}
         </select>
       </label>
+      <label style={labelStyle}>Background
+        <select style={inputStyle} value={zone.backgroundId ?? ''}
+          onChange={(e) => updateZone(zone.id, { backgroundId: e.target.value || undefined })}>
+          <option value="">None</option>
+          {project.assets.filter((a) => a.kind === 'background').map((a) => (
+            <option key={a.id} value={a.id}>{a.label}</option>
+          ))}
+        </select>
+        {zone.backgroundId && !project.assets.some((a) => a.id === zone.backgroundId) && (
+          <span style={{ color: '#f85149', fontSize: 11 }}>Missing asset: {zone.backgroundId}</span>
+        )}
+      </label>
+      <label style={labelStyle}>Tileset
+        <select style={inputStyle} value={zone.tilesetId ?? ''}
+          onChange={(e) => updateZone(zone.id, { tilesetId: e.target.value || undefined })}>
+          <option value="">None</option>
+          {project.assets.filter((a) => a.kind === 'tileset').map((a) => (
+            <option key={a.id} value={a.id}>{a.label}</option>
+          ))}
+        </select>
+        {zone.tilesetId && !project.assets.some((a) => a.id === zone.tilesetId) && (
+          <span style={{ color: '#f85149', fontSize: 11 }}>Missing asset: {zone.tilesetId}</span>
+        )}
+      </label>
       <button onClick={() => { removeZone(zone.id); setSelectedZone(null); }}
         style={{ ...btnStyle, background: '#da3633', marginTop: 8 }}>
         Delete Zone

@@ -93,6 +93,36 @@ describe('createProjectFromWizard', () => {
   });
 });
 
+describe('chapel assets', () => {
+  const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold')!;
+
+  it('has asset entries', () => {
+    expect(chapel.project.assets.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('asset bindings reference valid asset IDs', () => {
+    const assetIds = new Set(chapel.project.assets.map((a) => a.id));
+    for (const z of chapel.project.zones) {
+      if (z.backgroundId) expect(assetIds.has(z.backgroundId)).toBe(true);
+      if (z.tilesetId) expect(assetIds.has(z.tilesetId)).toBe(true);
+    }
+    for (const e of chapel.project.entityPlacements) {
+      if (e.portraitId) expect(assetIds.has(e.portraitId)).toBe(true);
+      if (e.spriteId) expect(assetIds.has(e.spriteId)).toBe(true);
+    }
+    for (const i of chapel.project.itemPlacements) {
+      if (i.iconId) expect(assetIds.has(i.iconId)).toBe(true);
+    }
+  });
+
+  it('all samples validate with assets', () => {
+    for (const s of SAMPLE_WORLDS) {
+      const result = validateProject(s.project);
+      expect(result.valid).toBe(true);
+    }
+  });
+});
+
 describe('invalid project path — classifyError routing', () => {
   it('routes spawnPoint errors to world domain', () => {
     const project = createProjectFromWizard({

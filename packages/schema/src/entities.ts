@@ -41,6 +41,8 @@ export interface EntityPlacement {
   ai?: EntityAI;
   tags?: string[];
   custom?: Record<string, string>;
+  portraitId?: string;
+  spriteId?: string;
 }
 
 /** Item slot type (maps to engine's equipment slots). */
@@ -65,6 +67,7 @@ export interface ItemPlacement {
   resourceModifiers?: Record<string, number>;
   grantedTags?: string[];
   grantedVerbs?: string[];
+  iconId?: string;
 }
 
 /** A point where encounters can trigger. */

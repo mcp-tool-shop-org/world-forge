@@ -7,6 +7,7 @@ import type {
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
   DialogueDefinition, DialogueNode, DialogueChoice,
+  AssetEntry,
 } from '@world-forge/schema';
 
 export function createEmptyProject(): WorldProject {
@@ -39,6 +40,7 @@ export function createEmptyProject(): WorldProject {
     props: [],
     propPlacements: [],
     ambientLayers: [],
+    assets: [],
   };
 }
 
@@ -109,6 +111,11 @@ interface ProjectState {
   addProgressionNode: (treeId: string, node: ProgressionNode) => void;
   updateProgressionNode: (treeId: string, nodeId: string, updates: Partial<ProgressionNode>) => void;
   removeProgressionNode: (treeId: string, nodeId: string) => void;
+
+  // Asset helpers
+  addAsset: (a: AssetEntry) => void;
+  updateAsset: (id: string, updates: Partial<AssetEntry>) => void;
+  removeAsset: (id: string) => void;
 
   // Dialogue helpers
   addDialogue: (d: DialogueDefinition) => void;
@@ -306,6 +313,34 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeProgressionNode: (treeId, nodeId) => get().updateProject((p) => ({
     ...p, progressionTrees: p.progressionTrees.map((t) =>
       t.id === treeId ? { ...t, nodes: t.nodes.filter((n) => n.id !== nodeId) } : t),
+  })),
+
+  // Asset helpers
+  addAsset: (a) => get().updateProject((p) => ({ ...p, assets: [...p.assets, a] })),
+  updateAsset: (id, updates) => get().updateProject((p) => ({
+    ...p, assets: p.assets.map((a) => a.id === id ? { ...a, ...updates } : a),
+  })),
+  removeAsset: (id) => get().updateProject((p) => ({
+    ...p,
+    assets: p.assets.filter((a) => a.id !== id),
+    zones: p.zones.map((z) => ({
+      ...z,
+      backgroundId: z.backgroundId === id ? undefined : z.backgroundId,
+      tilesetId: z.tilesetId === id ? undefined : z.tilesetId,
+    })),
+    entityPlacements: p.entityPlacements.map((e) => ({
+      ...e,
+      portraitId: e.portraitId === id ? undefined : e.portraitId,
+      spriteId: e.spriteId === id ? undefined : e.spriteId,
+    })),
+    itemPlacements: p.itemPlacements.map((i) => ({
+      ...i,
+      iconId: i.iconId === id ? undefined : i.iconId,
+    })),
+    landmarks: p.landmarks.map((l) => ({
+      ...l,
+      iconId: l.iconId === id ? undefined : l.iconId,
+    })),
   })),
 
   // Dialogue helpers
