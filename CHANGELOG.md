@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-03-09
+
+### Added
+
+- **Canvas viewport** — real camera model with pan/zoom via `ctx.setTransform()`, replacing fixed tileSize rendering that left zones off-screen
+- **Viewport math utilities** — `viewport.ts` with 8 pure functions: `screenToWorld`, `worldToScreen`, `screenToGrid`, `computeContentBounds`, `fitBoundsToViewport`, `centerOnPoint`, `centerOnZone`, `zoomAtPoint`
+- **Mousewheel zoom** — cursor-anchored zoom that keeps the world point under the cursor stationary
+- **Drag pan** — spacebar + left-click or middle-mouse drag to pan the canvas
+- **Auto fit-to-content** — viewport automatically frames all content when a project loads
+- **Double-click to center** — double-click a zone to select it and frame it in the viewport
+- **Viewport controls** — Viewport section in ToolPalette with zoom +/-, percentage display, Fit (frame all content), Center (frame selected zone), Reset (return to origin at 100%)
+- **Spatial legibility** — zone labels with dark background pills for readability at any zoom, zoom-compensated line widths and marker sizes, stronger selection/hover states (thicker borders, brighter fills, white label for selected)
+- **ViewportState in editor store** — `panX`, `panY`, `zoom` replacing the old flat `zoom` field, with `setViewport()` partial updater and `resetViewport()`
+- 24 viewport math tests (221 total)
+
+### Changed
+
+- Canvas.tsx fully rewritten with viewport transform — all drawing in world coordinates via `ctx.setTransform()`
+- All mouse handlers convert screen coordinates through viewport (screenToWorld → grid)
+- Entity markers, landmark diamonds, spawn squares, grid lines all zoom-compensated (constant screen size)
+- Editor store imports `ViewportState` from `viewport.ts` (single source of truth)
+- ToolPalette uses `computeContentBounds`/`fitBoundsToViewport`/`centerOnZone` from viewport.ts
+- Status bar and App.tsx reference `viewport.zoom` instead of flat `zoom`
+
 ## [1.9.0] - 2026-03-09
 
 ### Added

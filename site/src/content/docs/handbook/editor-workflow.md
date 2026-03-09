@@ -79,7 +79,38 @@ Use the **Group** checkbox to view assets organized by pack, with an "Unassigned
 
 The validator checks that all asset references point to existing assets of the correct kind. The Assets tab shows an orphan count for unreferenced assets.
 
-## 6. Scene Preview
+## 6. Canvas Viewport
+
+The canvas uses a real camera model with pan and zoom. All content is drawn in world coordinates and projected through a viewport transform.
+
+### Navigation
+
+| Action | Input |
+|--------|-------|
+| Pan | Spacebar + drag, or middle-mouse drag |
+| Zoom | Mousewheel (anchored to cursor position) |
+| Fit all content | Click **Fit** in viewport controls |
+| Center on selected zone | Click **Center** in viewport controls |
+| Center on any zone | Double-click a zone on the canvas |
+| Reset to origin at 100% | Click **Reset** in viewport controls |
+
+The viewport auto-fits all content when a project first loads, so zones at any grid position are immediately visible.
+
+### Viewport Controls
+
+The **Viewport** section in the tool palette provides:
+
+- **+/-** buttons — step zoom in/out by 10%
+- **Percentage** — current zoom level (10% to 500%)
+- **Fit** — frame all project content in the canvas
+- **Center** — frame the selected zone (disabled when no zone selected)
+- **Reset** — return to origin (0,0) at 100% zoom
+
+### Legibility
+
+Zone labels have dark background pills for readability at any zoom level. Line widths, entity markers, landmark diamonds, and spawn squares are zoom-compensated so they maintain a consistent screen size. Selected zones show brighter fills, thicker borders, and white label text.
+
+## 7. Scene Preview
 
 When you select a zone, the **Scene Preview** panel appears above the Zone Properties form. It shows an inline HTML/CSS composition of everything visually bound to that zone:
 
@@ -110,7 +141,7 @@ The **Layers** section in the tool palette provides 7 visibility toggles:
 | Backgrounds | — | Background/tileset badges on/off |
 | Ambient | Zone tint overlays on/off | Ambient layer entries on/off |
 
-## 7. Export
+## 8. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -123,7 +154,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 8. Import
+## 9. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -133,7 +164,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 9. Track Changes
+## 10. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

@@ -3,6 +3,8 @@
 import { create } from 'zustand';
 import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
 import type { WorldProject } from '@world-forge/schema';
+import { DEFAULT_VIEWPORT } from '../viewport.js';
+import type { ViewportState } from '../viewport.js';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff';
@@ -28,7 +30,7 @@ interface EditorState {
   showSpawns: boolean;
   showBackgrounds: boolean;
   showAmbient: boolean;
-  zoom: number;
+  viewport: ViewportState;
   selectedZoneId: string | null;
   hoveredZoneId: string | null;
   selectedEntityId: string | null;
@@ -56,7 +58,8 @@ interface EditorState {
   toggleSpawns: () => void;
   toggleBackgrounds: () => void;
   toggleAmbient: () => void;
-  setZoom: (z: number) => void;
+  setViewport: (vp: Partial<ViewportState>) => void;
+  resetViewport: () => void;
   dismissChecklist: () => void;
   markExported: () => void;
   resetChecklist: () => void;
@@ -78,7 +81,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   showSpawns: true,
   showBackgrounds: true,
   showAmbient: true,
-  zoom: 1,
+  viewport: { panX: 0, panY: 0, zoom: 1 },
   selectedZoneId: null,
   hoveredZoneId: null,
   selectedEntityId: null,
@@ -104,7 +107,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   toggleSpawns: () => set((s) => ({ showSpawns: !s.showSpawns })),
   toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
   toggleAmbient: () => set((s) => ({ showAmbient: !s.showAmbient })),
-  setZoom: (z) => set({ zoom: z }),
+  setViewport: (vp) => set((s) => ({ viewport: { ...s.viewport, ...vp } })),
+  resetViewport: () => set({ viewport: { ...DEFAULT_VIEWPORT } }),
   dismissChecklist: () => set({ checklistDismissed: true }),
   markExported: () => set({ hasExported: true }),
   resetChecklist: () => set({ checklistDismissed: false, hasExported: false, rightTab: 'guide' }),

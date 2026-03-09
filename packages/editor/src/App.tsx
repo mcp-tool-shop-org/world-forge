@@ -24,7 +24,7 @@ import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selectedZoneId, rightTab, setRightTab, zoom, checklistDismissed } = useEditorStore();
+  const { activeTool, selectedZoneId, rightTab, setRightTab, viewport, checklistDismissed } = useEditorStore();
   const importFidelity = useEditorStore((s) => s.importFidelity);
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const [showExport, setShowExport] = useState(false);
@@ -184,7 +184,7 @@ export function App() {
         <span>Zones: {project.zones.length}</span>
         <span>Entities: {project.entityPlacements.length}</span>
         <span>Assets: {project.assets.length}</span>
-        <span>Zoom: {Math.round(zoom * 100)}%</span>
+        <span>Zoom: {Math.round(viewport.zoom * 100)}%</span>
         <div style={{ flex: 1 }} />
         {issueCount > 0 ? (
           <span

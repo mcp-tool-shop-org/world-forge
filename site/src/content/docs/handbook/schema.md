@@ -151,6 +151,30 @@ Assets reference their pack via `packId`. Deleting a pack cascades by clearing `
 
 This is the data source for the editor's Scene Preview component and can be used independently for testing or tooling.
 
+## Viewport Math
+
+The `viewport.ts` module provides pure math functions for 2D viewport transforms. No React, no DOM — just coordinate math.
+
+```typescript
+interface ViewportState { panX: number; panY: number; zoom: number; }
+interface WorldBounds { minX: number; minY: number; maxX: number; maxY: number; }
+```
+
+**Transform model:** `screenX = (worldX - panX) * zoom`, applied via `ctx.setTransform(zoom, 0, 0, zoom, -panX * zoom, -panY * zoom)`.
+
+| Function | Purpose |
+|----------|---------|
+| `screenToWorld` | Convert screen pixel to world pixel coordinates |
+| `worldToScreen` | Convert world pixel to screen pixel coordinates |
+| `screenToGrid` | Convert screen pixel to tile grid coordinates |
+| `computeContentBounds` | Compute world-pixel bounding box of all authored content |
+| `fitBoundsToViewport` | Compute viewport that fits bounds into a canvas, centered |
+| `centerOnPoint` | Compute viewport centered on a world point at current zoom |
+| `centerOnZone` | Compute viewport that frames a specific zone with padding |
+| `zoomAtPoint` | Apply zoom delta while keeping cursor world-point stationary |
+
+Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, panY: 0, zoom: 1 }`.
+
 ## Validation
 
 `validateProject()` runs 48 structural checks:
