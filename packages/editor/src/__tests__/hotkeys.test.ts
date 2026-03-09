@@ -34,6 +34,8 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     duplicateSelected: vi.fn(() => emptySel),
     setShowSearch: vi.fn(),
     setRightTab: vi.fn(),
+    showSpeedPanel: false,
+    closeSpeedPanel: vi.fn(),
     ...overrides,
   };
 }

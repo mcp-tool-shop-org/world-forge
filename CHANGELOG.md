@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] - 2026-03-09
+
+### Added
+
+- **Speed Panel** — double-right-click anywhere on the canvas to open a floating command palette at the cursor position
+- **Context-aware actions** — Speed Panel shows different actions based on what's under the cursor: zone actions (Edit Properties, Delete, Duplicate, Assign District, Place Entity Here, Connect From Here), entity/landmark actions (Edit Properties, Delete, Duplicate), connection actions (Edit Properties, Delete, Swap Direction), or empty canvas actions (New Zone, Fit to Content)
+- **Pinned favorites** — star any action to pin it to the top of the Speed Panel; pins persist in localStorage across sessions
+- **Speed Panel search** — type in the search input to filter actions by name
+- **Keyboard navigation** — Arrow keys, Enter to execute, Esc to dismiss the Speed Panel
+- **Esc guard** — Esc closes the Speed Panel when open instead of clearing selection
+- 20 new tests (480 total)
+
+### Changed
+
+- HotkeyContext extended with `showSpeedPanel` and `closeSpeedPanel` for Esc dispatch guard
+- Editor store extended with speed panel state (`showSpeedPanel`, `speedPanelPosition`, `speedPanelContext`)
+
 ## [2.9.0] - 2026-03-09
 
 ### Added

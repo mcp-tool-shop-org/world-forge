@@ -16,6 +16,7 @@ React 19 web app for [World Forge](https://github.com/mcp-tool-shop-org/world-fo
 - **Preset system** — region and encounter presets with merge/overwrite application, 4 built-in region presets, 3 built-in encounter presets, custom preset CRUD with localStorage persistence
 - **Keyboard shortcuts** — centralized hotkey registry with 13 bindings: Escape, Ctrl+A, Ctrl+D, Ctrl+K, Delete, Arrow nudge, Enter (open details), P (apply preset), Shift+P (save preset)
 - **Double-click** — double-click any canvas object to select it, switch to Map tab, and center viewport
+- **Speed Panel** — double-right-click canvas to open a floating command palette with context-aware actions (zone, entity, connection, empty canvas), pinnable favorites, search filtering, and keyboard navigation
 - **Workspace tabs** — Map, Player, Builds, Trees, Dialogue, Objects, Presets, Assets, Issues, Guide
 - **Asset library** — manage portraits, sprites, backgrounds, icons, and tilesets with kind-specific bindings
 - **Undo/redo** — 10-deep history stack via Zustand

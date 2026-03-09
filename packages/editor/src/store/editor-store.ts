@@ -5,6 +5,7 @@ import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
 import type { WorldProject } from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
+import type { HitResult } from '../hit-testing.js';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff' | 'objects' | 'presets';
@@ -117,6 +118,13 @@ interface EditorState {
   setImportSnapshot: (project: WorldProject) => void;
   showSearch: boolean;
   setShowSearch: (show: boolean) => void;
+
+  // Speed panel (double-right-click command palette)
+  showSpeedPanel: boolean;
+  speedPanelPosition: { x: number; y: number } | null;
+  speedPanelContext: HitResult | null;
+  openSpeedPanel: (x: number, y: number, context: HitResult | null) => void;
+  closeSpeedPanel: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -217,4 +225,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   setImportSnapshot: (project) => set({ importSnapshot: project }),
   showSearch: false,
   setShowSearch: (show) => set({ showSearch: show }),
+
+  showSpeedPanel: false,
+  speedPanelPosition: null,
+  speedPanelContext: null,
+  openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context }),
+  closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null }),
 }));

@@ -83,6 +83,9 @@ Key editor modules:
 - **hotkeys.ts** — centralized keyboard shortcut registry with 13 bindings, `matchHotkey()` and `dispatchHotkey()` with input-field safety guard
 - **PresetBrowser** — preset library UI with Region/Encounter sub-tabs, merge/overwrite mode, save-from-current, built-in protection
 - **presets/** — preset type definitions (`RegionPreset`, `EncounterPreset`), built-in presets (4 region, 3 encounter), Zustand + localStorage preset store
+- **SpeedPanel** — double-right-click floating command palette with context-aware actions, pinnable favorites, search filtering
+- **speed-panel-actions.ts** — action registry with `SpeedPanelAction` interface, context filters, and `filterActions()` for pin/query separation
+- **speed-panel-store.ts** — Zustand + localStorage store for pinned action IDs
 
 ## Build System
 

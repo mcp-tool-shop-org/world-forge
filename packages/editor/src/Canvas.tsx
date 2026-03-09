@@ -13,6 +13,8 @@ import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
+const DBL_RIGHT_INTERVAL = 300; // ms between right-clicks for speed panel
+const DBL_RIGHT_RADIUS = 5;     // px proximity for double-right-click
 
 let nextZoneId = 1;
 
@@ -27,6 +29,7 @@ export function Canvas() {
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
     viewport, setViewport, setShowSearch, setRightTab,
+    openSpeedPanel, showSpeedPanel, closeSpeedPanel,
   } = useEditorStore();
 
   const tileSize = project.map.tileSize;
@@ -62,6 +65,11 @@ export function Canvas() {
   const CYCLE_TOLERANCE = 4;
   const lastClickPos = useRef<{ sx: number; sy: number } | null>(null);
   const cycleIndex = useRef(0);
+
+  // Double-right-click detection for speed panel
+  const rightClickTracker = useRef<{ time: number; sx: number; sy: number } | null>(null);
+  const panButton = useRef(-1);
+  const panStartScreen = useRef<{ sx: number; sy: number } | null>(null);
 
   // --- Coordinate conversion ---
   const screenToWorld = useCallback((screenX: number, screenY: number) => ({
@@ -547,6 +555,7 @@ export function Canvas() {
       showEntities, showLandmarks, showSpawns,
       clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
       duplicateSelected, setShowSearch, setRightTab,
+      showSpeedPanel, closeSpeedPanel,
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -581,7 +590,7 @@ export function Canvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [selection, selectedConnection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, removeConnection, setShowSearch, duplicateSelected, setRightTab]);
+  }, [selection, selectedConnection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, removeConnection, setShowSearch, duplicateSelected, setRightTab, showSpeedPanel, closeSpeedPanel]);
 
   // --- Mouse coordinate helpers ---
   const getScreenXY = (e: React.MouseEvent) => {
@@ -631,7 +640,12 @@ export function Canvas() {
     if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld.current)) {
       e.preventDefault();
       isPanning.current = true;
+      panButton.current = e.button;
       panStart.current = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
+      if (e.button === 2) {
+        const { sx, sy } = getScreenXY(e);
+        panStartScreen.current = { sx, sy };
+      }
       return;
     }
 
@@ -741,7 +755,35 @@ export function Canvas() {
 
   const handleMouseUp = (e: React.MouseEvent) => {
     if (isPanning.current) {
+      const wasRight = panButton.current === 2;
       isPanning.current = false;
+      panButton.current = -1;
+
+      // Double-right-click detection: if right-click released with no drag
+      if (wasRight && panStartScreen.current) {
+        const { sx, sy } = getScreenXY(e);
+        const dx = sx - panStartScreen.current.sx;
+        const dy = sy - panStartScreen.current.sy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        panStartScreen.current = null;
+
+        if (dist < DBL_RIGHT_RADIUS) {
+          const now = Date.now();
+          const prev = rightClickTracker.current;
+          if (prev && (now - prev.time) < DBL_RIGHT_INTERVAL &&
+              Math.sqrt((sx - prev.sx) ** 2 + (sy - prev.sy) ** 2) < DBL_RIGHT_RADIUS) {
+            // Double-right-click detected
+            rightClickTracker.current = null;
+            const hit = findHitAt(sx, sy, viewport, project, tileSize, visibility);
+            openSpeedPanel(sx, sy, hit);
+          } else {
+            rightClickTracker.current = { time: now, sx, sy };
+          }
+        } else {
+          rightClickTracker.current = null;
+        }
+      }
+
       panStart.current = null;
       return;
     }

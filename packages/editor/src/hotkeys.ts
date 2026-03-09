@@ -46,6 +46,8 @@ export interface HotkeyContext {
   duplicateSelected: (sel: SelectionSet) => SelectionSet;
   setShowSearch: (show: boolean) => void;
   setRightTab: (tab: RightTab) => void;
+  showSpeedPanel: boolean;
+  closeSpeedPanel: () => void;
 }
 
 export type HotkeyResult =
@@ -128,7 +130,8 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     }
 
     case 'escape':
-      ctx.clearSelection();
+      if (ctx.showSpeedPanel) { ctx.closeSpeedPanel(); }
+      else { ctx.clearSelection(); }
       return { handled: true, action };
 
     case 'nudge-up':

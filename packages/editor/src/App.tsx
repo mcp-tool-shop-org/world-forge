@@ -26,11 +26,12 @@ import { AssetPanel } from './panels/AssetPanel.js';
 import { ObjectListPanel } from './panels/ObjectListPanel.js';
 import { PresetBrowser } from './panels/PresetBrowser.js';
 import { SearchOverlay } from './panels/SearchOverlay.js';
+import { SpeedPanel } from './panels/SpeedPanel.js';
 import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSearch } = useEditorStore();
+  const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSearch, showSpeedPanel } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
@@ -143,6 +144,7 @@ export function App() {
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative' }}>
           <Canvas />
+          {showSpeedPanel && <SpeedPanel />}
         </div>
 
         {/* Right sidebar */}
