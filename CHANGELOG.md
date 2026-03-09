@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.6.0] - 2026-03-09
+
+### Added
+
+- **Kit export** — every starter kit (built-in and custom) can be exported as a portable `.wfkit.json` bundle file via the new Export button on kit cards. The bundle format (`KitBundle`) strips runtime fields (id, builtIn, createdAt, updatedAt, source), adds `bundleVersion: 1` and `exportedAt` timestamp, and deep-clones the project for clean serialization
+- **Kit import** — new "Import Kit" button in the Starter Kits tab opens a file picker modal that accepts `.wfkit.json` or `.json` files. The import pipeline validates the bundle format, checks required fields (bundleVersion, name, modes, project), runs full kit validation, and shows a preview with name, mode badges, content counts, and any warnings/errors before importing
+- **Kit collision handling** — when importing a kit whose name matches an existing kit (case-insensitive), the modal offers three strategies: "Import as Copy" (appends "(imported)" suffix), "Replace Existing" (custom kits only, preserves createdAt), or "Cancel". Built-in kits can never be replaced
+- **Kit provenance tracking** — `source?: 'local' | 'imported'` field on `StarterKit`. Saved kits default to `'local'`, imported kits are tagged `'imported'`. Provenance badges appear on kit cards: blue "imported" badge, gray "custom" badge. Search overlay shows three-way status (built-in/imported/custom). ChecklistPanel displays "Using imported kit: {name}" when applicable
+- **Bundle serialization** — `serializeKit()`, `parseKitBundle()`, `prepareKitImport()`, `kitFilename()` functions in new `kits/bundle.ts` module. Full validation pipeline: parse JSON → validate bundle structure → validate as kit → return ready-to-import shape with combined parse warnings and validation warnings/errors
+- **Kit store `importKit` method** — creates a new kit with generated ID, or replaces an existing custom kit in-place when `replaceId` is provided (preserves original createdAt). Deep-clones project, sets timestamps, persists to localStorage
+- **`duplicateKit` source preservation** — duplicating an imported kit preserves `source: 'imported'`; duplicating a built-in kit gets `source: undefined`
+- 57 new tests (975 total across 44 test files)
+
+### Changed
+
+- TemplateManager kit cards show provenance badges ("imported" in blue, "custom" in gray) alongside the built-in lock icon
+- SearchOverlay kit detail string uses three-way status: built-in/imported/custom (was two-way: built-in/custom)
+- ChecklistPanel shows imported kit name when active kit has `source === 'imported'`
+- `saveKit` defaults `source` to `'local'` via `input.source ?? 'local'`
+- Barrel exports in `kits/index.ts` expanded with bundle types and functions
+
 ## [3.5.0] - 2026-03-09
 
 ### Added

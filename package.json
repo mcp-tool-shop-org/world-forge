@@ -1,6 +1,6 @@
 {
   "name": "world-forge",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
   "description": "2D world authoring studio for AI RPG Engine",
   "engines": {

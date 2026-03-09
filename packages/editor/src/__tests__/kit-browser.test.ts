@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { countContent, createProjectFromKit } from '../panels/TemplateManager.js';
-import { BUILTIN_KITS } from '../kits/index.js';
+import { BUILTIN_KITS, serializeKit, parseKitBundle, kitFilename } from '../kits/index.js';
 import type { StarterKit } from '../kits/index.js';
 
 const sampleKit = BUILTIN_KITS[0]; // dungeon-starter
@@ -91,5 +91,36 @@ describe('kit browser rendering logic', () => {
       const presetCount = kit.presetRefs.region.length + kit.presetRefs.encounter.length;
       expect(presetCount).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('kit export', () => {
+  it('serializeKit produces valid bundle from built-in kit', () => {
+    const bundle = serializeKit(BUILTIN_KITS[0]);
+    const parsed = parseKitBundle(bundle);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.warnings).toHaveLength(0);
+  });
+
+  it('serializeKit produces valid bundle from custom kit', () => {
+    const custom: StarterKit = {
+      ...BUILTIN_KITS[0],
+      id: 'custom-1',
+      builtIn: false,
+      source: 'local',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const bundle = serializeKit(custom);
+    const parsed = parseKitBundle(bundle);
+    expect(parsed.ok).toBe(true);
+  });
+
+  it('kitFilename produces expected filename', () => {
+    expect(kitFilename('Forgotten Vault')).toBe('forgotten-vault.wfkit.json');
+  });
+
+  it('kitFilename handles empty name', () => {
+    expect(kitFilename('')).toBe('kit.wfkit.json');
   });
 });

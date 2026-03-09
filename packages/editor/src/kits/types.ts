@@ -19,4 +19,5 @@ export interface StarterKit {
   createdAt?: string;
   updatedAt?: string;
   version?: string;
+  source?: 'local' | 'imported';
 }

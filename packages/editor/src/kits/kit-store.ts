@@ -44,6 +44,12 @@ interface KitState {
   updateKit: (id: string, updates: Partial<Omit<StarterKit, 'id' | 'builtIn'>>) => void;
   deleteKit: (id: string) => void;
   duplicateKit: (id: string) => StarterKit | undefined;
+
+  /** Import a kit from a bundle. If replaceId is set and points to a custom kit, replaces it in-place. */
+  importKit: (
+    input: Omit<StarterKit, 'id' | 'builtIn' | 'createdAt' | 'updatedAt'>,
+    replaceId?: string,
+  ) => StarterKit;
 }
 
 export const useKitStore = create<KitState>((set, get) => ({
@@ -60,6 +66,7 @@ export const useKitStore = create<KitState>((set, get) => ({
       ...JSON.parse(JSON.stringify(input)),
       id: `kit-${Date.now()}`,
       builtIn: false,
+      source: input.source ?? 'local',
       createdAt: now,
       updatedAt: now,
     };
@@ -94,6 +101,7 @@ export const useKitStore = create<KitState>((set, get) => ({
       id: `kit-${Date.now()}`,
       name: `${original.name} (copy)`,
       builtIn: false,
+      source: original.builtIn ? undefined : original.source,
       createdAt: now,
       updatedAt: now,
     };
@@ -101,6 +109,41 @@ export const useKitStore = create<KitState>((set, get) => ({
     set({ kits });
     persist(kits);
     return copy;
+  },
+
+  importKit: (input, replaceId) => {
+    const now = new Date().toISOString();
+
+    // Replace existing custom kit if replaceId targets one
+    if (replaceId) {
+      const existing = get().kits.find((k) => k.id === replaceId);
+      if (existing && !existing.builtIn) {
+        const updated: StarterKit = {
+          ...JSON.parse(JSON.stringify(input)),
+          id: replaceId,
+          builtIn: false,
+          createdAt: existing.createdAt,
+          updatedAt: now,
+        };
+        const kits = get().kits.map((k) => (k.id === replaceId ? updated : k));
+        set({ kits });
+        persist(kits);
+        return updated;
+      }
+    }
+
+    // Import as new kit
+    const kit: StarterKit = {
+      ...JSON.parse(JSON.stringify(input)),
+      id: `kit-${Date.now()}`,
+      builtIn: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const kits = [...get().kits, kit];
+    set({ kits });
+    persist(kits);
+    return kit;
   },
 }));
 

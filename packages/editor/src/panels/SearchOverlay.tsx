@@ -129,7 +129,7 @@ export function SearchOverlay() {
     }
     // Add starter kits to search index
     for (const kit of kits) {
-      const status = kit.builtIn ? 'built-in' : 'custom';
+      const status = kit.builtIn ? 'built-in' : kit.source === 'imported' ? 'imported' : 'custom';
       const modeTag = kit.modes.join(', ');
       base.push({ type: 'starter-kit', id: kit.id, label: kit.name, detail: `${status} kit [${modeTag}]` });
     }

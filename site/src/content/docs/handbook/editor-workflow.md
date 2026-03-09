@@ -506,6 +506,22 @@ Custom kits support full editing (metadata, preset references, and guide hints) 
 
 Custom kits can override the mode guide's checklist labels. When you open a project from a kit with guide hints, the checklist panel uses the kit's labels instead of the mode defaults. This lets kit authors tailor the authoring guide to their specific world concept.
 
+### Export
+
+Every kit card (built-in and custom) has an **Export** button that downloads the kit as a portable `.wfkit.json` bundle file. The bundle contains the kit's name, description, icon, modes, tags, project data, preset references, and guide hints — everything needed to recreate the kit on another machine. Runtime fields (id, timestamps, source) are stripped; a `bundleVersion` and `exportedAt` timestamp are added.
+
+### Import
+
+Click **Import Kit** at the top of the Starter Kits tab to open the import modal. Pick a `.wfkit.json` or `.json` file — the modal validates the bundle, shows a preview (name, mode badges, description, content counts), and displays any warnings or errors. If validation passes, click **Import** to add the kit.
+
+If a kit with the same name already exists (case-insensitive match), the modal offers collision strategies:
+
+- **Import as Copy** — adds the kit with "(imported)" appended to the name
+- **Replace Existing** — overwrites the existing custom kit in-place (not available for built-in kits)
+- **Cancel** — abort the import
+
+Imported kits are tagged with a blue "imported" badge so you can tell them apart from kits you created locally.
+
 ### Mode Filtering
 
 Use the mode filter pills at the top of the Starter Kits tab to show only kits compatible with a specific mode. Kits can support multiple modes — a kit tagged with both "dungeon" and "interior" appears under either filter.

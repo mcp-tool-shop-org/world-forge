@@ -80,6 +80,11 @@ export function ChecklistPanel() {
   return (
     <div>
       <div style={headerStyle}>Getting Started</div>
+      {activeKit?.source === 'imported' && (
+        <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 6 }}>
+          Using imported kit: {activeKit.name}
+        </div>
+      )}
       {profile.modeTip && (
         <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 8, fontStyle: 'italic' }}>
           {profile.icon} {profile.modeTip}

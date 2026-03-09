@@ -120,6 +120,7 @@ Modes provide **smart defaults** during editing — creating a connection in oce
 - Centralized hotkey registry with 13 shortcuts including Enter (open details), P (apply preset), Shift+P (save preset)
 - Double-click any canvas object to select and open its details panel
 - Speed Panel (double-right-click) — floating command palette with context-aware actions, pinnable favorites with reorder, recent actions, custom groups, lightweight macros, and mode-suggested quick actions (edit mode for CRUD)
+- Kit export/import — export any starter kit as a portable `.wfkit.json` bundle, import with validation, collision handling (import as copy / replace existing / cancel), and provenance tracking (local/imported badges)
 - Export to engine-compatible ContentPack JSON
 - Import from ContentPack or ExportResult JSON with structured fidelity reporting
 - Semantic diff tracking — see exactly what changed since import

@@ -5,12 +5,13 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { useTemplateStore, type UserTemplate } from '../store/template-store.js';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
-import { useKitStore, filterKitsByMode } from '../kits/index.js';
+import { useKitStore, filterKitsByMode, serializeKit, kitFilename } from '../kits/index.js';
 import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { EditKitModal } from './EditKitModal.js';
+import { ImportKitModal } from './ImportKitModal.js';
 
 interface Props { onClose: () => void }
 
@@ -59,6 +60,7 @@ export function TemplateManager({ onClose }: Props) {
   const [confirmDeleteKit, setConfirmDeleteKit] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<AuthoringMode | undefined>(undefined);
   const [editingKit, setEditingKit] = useState<StarterKit | null>(null);
+  const [showImportKit, setShowImportKit] = useState(false);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
   useEffect(() => { loadKits(); }, [loadKits]);
@@ -130,6 +132,17 @@ export function TemplateManager({ onClose }: Props) {
   const handleDuplicateKit = useCallback((id: string) => {
     duplicateKitAction(id);
   }, [duplicateKitAction]);
+
+  const handleExportKit = useCallback((kit: StarterKit) => {
+    const bundle = serializeKit(kit);
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = kitFilename(kit.name);
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const handleDeleteKit = useCallback((id: string) => {
     if (confirmDeleteKit === id) {
@@ -293,6 +306,9 @@ export function TemplateManager({ onClose }: Props) {
                 </button>
               ))}
             </div>
+            <div style={{ marginBottom: 12 }}>
+              <button onClick={() => setShowImportKit(true)} style={smallBtnStyle}>Import Kit</button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filterKitsByMode(kits, filterMode).map((kit) => {
                 const c = countContent(kit.project);
@@ -303,6 +319,12 @@ export function TemplateManager({ onClose }: Props) {
                       <span style={{ fontSize: 16 }}>{kit.icon}</span>
                       <span style={{ fontSize: 14, fontWeight: 'bold', color: '#c9d1d9' }}>{kit.name}</span>
                       {kit.builtIn && <span style={{ fontSize: 10, color: '#8b949e' }} title="Built-in kit">{'\uD83D\uDD12'}</span>}
+                      {!kit.builtIn && kit.source === 'imported' && (
+                        <span style={importedBadgeStyle} title="Imported kit">imported</span>
+                      )}
+                      {!kit.builtIn && kit.source !== 'imported' && (
+                        <span style={customBadgeStyle} title="Custom kit">custom</span>
+                      )}
                       {kit.modes.map((m) => (
                         <span key={m} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#21262d', color: '#8b949e' }}>
                           {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
@@ -326,6 +348,7 @@ export function TemplateManager({ onClose }: Props) {
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => handleOpenKit(kit)} style={openBtnStyle}>Start Project</button>
                       <button onClick={() => handleDuplicateKit(kit.id)} style={smallBtnStyle}>Duplicate</button>
+                      <button onClick={() => handleExportKit(kit)} style={smallBtnStyle} title="Export as .wfkit.json">Export</button>
                       {!kit.builtIn && (
                         <>
                           <button onClick={() => setEditingKit(kit)} style={smallBtnStyle}>Edit</button>
@@ -440,6 +463,7 @@ export function TemplateManager({ onClose }: Props) {
         </div>
       </div>
       {editingKit && <EditKitModal kit={editingKit} onClose={() => setEditingKit(null)} />}
+      {showImportKit && <ImportKitModal onClose={() => { setShowImportKit(false); loadKits(); }} />}
     </div>
   );
 }
@@ -513,4 +537,14 @@ const btnStyle: React.CSSProperties = {
 
 const closeBtnStyle: React.CSSProperties = {
   background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer',
+};
+
+const importedBadgeStyle: React.CSSProperties = {
+  fontSize: 9, padding: '1px 6px', borderRadius: 4,
+  background: '#0d1d30', color: '#58a6ff', border: '1px solid #1f6feb',
+};
+
+const customBadgeStyle: React.CSSProperties = {
+  fontSize: 9, padding: '1px 6px', borderRadius: 4,
+  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
 };
