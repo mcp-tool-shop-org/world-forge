@@ -1,6 +1,6 @@
 // types.ts — preset type definitions for region and encounter templates
 
-import type { DistrictMetrics, EconomyProfile, FactionPresence, PressureHotspot } from '@world-forge/schema';
+import type { DistrictMetrics, EconomyProfile, FactionPresence, PressureHotspot, AuthoringMode } from '@world-forge/schema';
 
 /** A reusable template for district/region configuration. */
 export interface RegionPreset {
@@ -9,6 +9,8 @@ export interface RegionPreset {
   description: string;
   tags: string[];
   genre?: string;
+  /** Authoring modes this preset is relevant to. Undefined = all modes. */
+  modes?: AuthoringMode[];
   builtIn: boolean;
   /** Tags applied to the district. */
   regionTags: string[];
@@ -31,6 +33,8 @@ export interface EncounterPreset {
   description: string;
   tags: string[];
   genre?: string;
+  /** Authoring modes this preset is relevant to. Undefined = all modes. */
+  modes?: AuthoringMode[];
   builtIn: boolean;
   /** Encounter type (boss, ambush, patrol, hazard, discovery, etc.). */
   encounterType: string;

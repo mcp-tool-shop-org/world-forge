@@ -34,7 +34,7 @@ This runs `tsc --build`, which resolves the dependency graph: schema first, then
 npm run dev --workspace=packages/editor
 ```
 
-Open `http://localhost:5173` in your browser. The editor loads with an empty project ready for authoring.
+Open `http://localhost:5173` in your browser. The editor loads the Template Manager where you can choose a genre template, a sample project, or start blank. Each new project starts with an **authoring mode** (dungeon, district, world, ocean, space, interior, or wilderness) that sets grid dimensions, connection vocabulary, and guide text to match your world's scale.
 
 ## Run Tests
 

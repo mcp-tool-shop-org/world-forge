@@ -28,6 +28,7 @@ import { PresetBrowser } from './panels/PresetBrowser.js';
 import { SearchOverlay } from './panels/SearchOverlay.js';
 import { SpeedPanel } from './panels/SpeedPanel.js';
 import { Canvas } from './Canvas.js';
+import { getModeProfile } from './mode-profiles.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
@@ -101,6 +102,9 @@ export function App() {
         <img src="/logo.png" alt="World Forge" style={{ height: 24, borderRadius: 4 }} />
         <strong style={{ color: '#58a6ff' }}>World Forge</strong>
         <span style={{ color: '#8b949e', fontSize: 12 }}>{project.name}{dirty ? ' *' : ''}</span>
+        <span style={{ fontSize: 11, color: '#6e7681', background: '#21262d', borderRadius: 8, padding: '1px 6px' }}>
+          {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}
+        </span>
         <div style={{ flex: 1 }} />
         <button onClick={() => setShowTemplateManager(true)} style={btnStyle}>New</button>
         <button onClick={() => setShowImport(true)} style={btnStyle}>Import</button>
@@ -240,6 +244,7 @@ export function App() {
         display: 'flex', alignItems: 'center', gap: 12, padding: '4px 12px',
         background: '#161b22', borderTop: '1px solid #30363d', fontSize: 11, color: '#8b949e',
       }}>
+        <span>Mode: {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}</span>
         <span>Tool: {activeTool}</span>
         <span>Zones: {project.zones.length}</span>
         <span>Entities: {project.entityPlacements.length}</span>

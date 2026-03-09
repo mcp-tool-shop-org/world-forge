@@ -62,6 +62,15 @@ describe('validateProject', () => {
     expect(result.errors.filter((e) => e.path === 'connections')).toHaveLength(0);
   });
 
+  it.each(['channel', 'route', 'docking', 'warp', 'trail'] as const)('accepts new connection kind "%s"', (kind) => {
+    const proj: WorldProject = {
+      ...minimalProject,
+      connections: [{ fromZoneId: minimalProject.zones[0].id, toZoneId: minimalProject.zones[1].id, bidirectional: true, kind }],
+    };
+    const result = validateProject(proj);
+    expect(result.errors.filter((e) => e.path === 'connections')).toHaveLength(0);
+  });
+
   it('rejects connection with invalid kind', () => {
     const proj: WorldProject = {
       ...minimalProject,

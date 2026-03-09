@@ -1,9 +1,10 @@
-// ChecklistPanel.tsx — first-run guided checklist
+// ChecklistPanel.tsx — first-run guided checklist (mode-adaptive)
 
 import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, type RightTab, type EditorTool } from '../store/editor-store.js';
 import { HOTKEY_BINDINGS } from '../hotkeys.js';
+import { getModeProfile } from '../mode-profiles.js';
 
 interface Step {
   id: string;
@@ -18,17 +19,27 @@ export function ChecklistPanel() {
   const { project } = useProjectStore();
   const { hasExported, setRightTab, setTool, dismissChecklist } = useEditorStore();
 
-  const steps: Step[] = useMemo(() => [
+  const profile = useMemo(() => getModeProfile(project.mode), [project.mode]);
+
+  const steps: Step[] = useMemo(() => {
+    const ov = profile.guideOverrides;
+    return [
     {
-      id: 'district', label: 'Create a district', description: 'Group zones into a named region.',
+      id: 'district',
+      label: ov.district?.label ?? 'Create a district',
+      description: ov.district?.description ?? 'Group zones into a named region.',
       isComplete: project.districts.length > 0, tab: 'map',
     },
     {
-      id: 'zone', label: 'Add a zone', description: 'Use the Zone tool to create a named location.',
+      id: 'zone',
+      label: ov.zone?.label ?? 'Add a zone',
+      description: ov.zone?.description ?? 'Use the Zone tool to create a named location.',
       isComplete: project.zones.length > 0, tab: 'map', tool: 'zone-paint',
     },
     {
-      id: 'spawn', label: 'Place a spawn point', description: 'Set where players start.',
+      id: 'spawn',
+      label: ov.spawn?.label ?? 'Place a spawn point',
+      description: ov.spawn?.description ?? 'Set where players start.',
       isComplete: project.spawnPoints.length > 0, tab: 'map', tool: 'spawn',
     },
     {
@@ -44,7 +55,8 @@ export function ChecklistPanel() {
       id: 'export', label: 'Export your world', description: 'Generate a pack for AI RPG Engine.',
       isComplete: hasExported, tab: 'issues',
     },
-  ], [project, hasExported]);
+  ];
+  }, [project, hasExported, profile]);
 
   const completed = steps.filter((s) => s.isComplete).length;
   const allDone = completed === steps.length;

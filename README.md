@@ -11,7 +11,7 @@
   <a href="https://mcp-tool-shop-org.github.io/world-forge/"><img src="https://img.shields.io/badge/Landing_Page-live-blue" alt="Landing Page"></a>
 </p>
 
-<p align="center">2D world authoring studio for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>.<br>Paint zones, place entities, define districts — export a complete ContentPack ready to play.</p>
+<p align="center">2D world authoring studio for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete ContentPack ready to play.</p>
 
 ## Architecture
 
@@ -52,7 +52,7 @@ npx world-forge-export project.json --validate-only
 
 ### @world-forge/schema
 
-Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 54 structural checks. `assembleSceneData()` extracts all visual bindings for a zone with missing-asset detection.
+Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `AuthoringMode` type (7 modes: dungeon, district, world, ocean, space, interior, wilderness), `validateProject()` with 54 structural checks, `advisoryValidation()` with mode-specific suggestions. `assembleSceneData()` extracts all visual bindings for a zone with missing-asset detection.
 
 ### @world-forge/export-ai-rpg
 
@@ -64,7 +64,23 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs: **Map** (zone/entity/district editing), **Objects** (hierarchical tree: districts → zones → entities/landmarks/spawns, click-to-select+frame, bidirectional highlights), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Assets** (asset library with kind-filtered search, inline editing, orphan detection, asset pack management with group-by-pack view), **Issues** (live grouped validation with click-to-focus), **Presets** (region and encounter preset browser with merge/overwrite apply, save-from-current, built-in + custom presets), **Guide** (first-run checklist with hotkey reference), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn. **Search / command-jump** — Ctrl+K opens overlay to find any object by name/ID with keyboard navigation. **Multi-select** — shift-click, box-select, Ctrl+A; drag-move with atomic undo; Ctrl+D to duplicate selected with remapped IDs/connections. **Align & distribute** — 6-way alignment (left/right/top/bottom/center-h/center-v) and even horizontal/vertical distribution for any selection of 2+ objects. **Object snapping** — drag-time snap to edges/centers of non-selected objects with visual guide lines and live drag preview. **Click-cycle** — repeated clicks at same position cycle through overlapping objects. **Canvas viewport** — pan/zoom camera with `ctx.setTransform()`, mousewheel zoom (cursor-anchored), spacebar/middle-mouse drag-pan, auto fit-to-content on project load, double-click to select and center on any object. **Viewport controls** — zoom +/-, Fit (frame all content), Center (frame selected zone), Reset (return to origin). **Centralized hotkey registry** — 13 keyboard shortcuts including Enter (open details), P (apply preset), Shift+P (save preset). **Speed Panel** — double-right-click canvas to open a floating command palette with context-aware actions, pinnable favorites (reorder in edit mode), recent actions, custom groups, and lightweight macros with step editor and abort feedback. **Scene Preview** — inline composed preview in ZoneProperties showing background, entities, landmarks, items, spawns, ambient layers, connections, and light level with missing-asset markers. **Layer toggles** — 7 visibility controls (Grid, Connections, Entities, Landmarks, Spawns, Backgrounds, Ambient) driving both canvas and scene preview. **Spatial legibility** — zone labels with dark background pills, zoom-compensated markers and line widths, stronger selection/hover states.
+React 19 + Vite web app. Zustand state management with undo/redo. **Authoring modes** (dungeon/district/world/ocean/space/interior/wilderness) adapt grid defaults, connection vocabulary, preset filtering, guide text, and advisory suggestions to the world's scale. Workspace tabs: **Map** (zone/entity/district editing), **Objects** (hierarchical tree: districts → zones → entities/landmarks/spawns, click-to-select+frame, bidirectional highlights), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Assets** (asset library with kind-filtered search, inline editing, orphan detection, asset pack management with group-by-pack view), **Issues** (live grouped validation with click-to-focus), **Presets** (region and encounter preset browser with merge/overwrite apply, save-from-current, built-in + custom presets), **Guide** (first-run checklist with hotkey reference), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn. **Search / command-jump** — Ctrl+K opens overlay to find any object by name/ID with keyboard navigation. **Multi-select** — shift-click, box-select, Ctrl+A; drag-move with atomic undo; Ctrl+D to duplicate selected with remapped IDs/connections. **Align & distribute** — 6-way alignment (left/right/top/bottom/center-h/center-v) and even horizontal/vertical distribution for any selection of 2+ objects. **Object snapping** — drag-time snap to edges/centers of non-selected objects with visual guide lines and live drag preview. **Click-cycle** — repeated clicks at same position cycle through overlapping objects. **Canvas viewport** — pan/zoom camera with `ctx.setTransform()`, mousewheel zoom (cursor-anchored), spacebar/middle-mouse drag-pan, auto fit-to-content on project load, double-click to select and center on any object. **Viewport controls** — zoom +/-, Fit (frame all content), Center (frame selected zone), Reset (return to origin). **Centralized hotkey registry** — 13 keyboard shortcuts including Enter (open details), P (apply preset), Shift+P (save preset). **Speed Panel** — double-right-click canvas to open a floating command palette with context-aware actions, pinnable favorites (reorder in edit mode), recent actions, custom groups, and lightweight macros with step editor and abort feedback. **Scene Preview** — inline composed preview in ZoneProperties showing background, entities, landmarks, items, spawns, ambient layers, connections, and light level with missing-asset markers. **Layer toggles** — 7 visibility controls (Grid, Connections, Entities, Landmarks, Spawns, Backgrounds, Ambient) driving both canvas and scene preview. **Spatial legibility** — zone labels with dark background pills, zoom-compensated markers and line widths, stronger selection/hover states.
+
+## Authoring Modes
+
+World Forge separates **genre** (fantasy, cyberpunk, pirate) from **mode** (dungeon, ocean, space). Genre is flavor — mode is scale. A cyberpunk dungeon and a pirate ocean are both valid. Mode governs grid defaults, connection vocabulary, validation suggestions, guide wording, and preset filtering.
+
+| Mode | Grid | Tile | Key Connections |
+|------|------|------|-----------------|
+| Dungeon | 30×25 | 32 | door, stairs, passage, secret, hazard |
+| District / City | 50×40 | 32 | road, door, passage, portal |
+| Region / World | 80×60 | 48 | road, portal, passage |
+| Ocean / Sea | 60×50 | 48 | channel, route, portal, hazard |
+| Space | 100×80 | 64 | docking, warp, passage, portal |
+| Interior | 20×15 | 24 | door, stairs, passage, secret |
+| Wilderness | 60×50 | 48 | trail, road, passage, hazard |
+
+Mode is set when creating a new project (mode picker in the wizard) and stored as `mode?: AuthoringMode` on `WorldProject`. Existing projects without a mode are treated as `'dungeon'`. Importing pre-mode projects triggers heuristic inference from connection kinds and grid area.
 
 ## Authoring Surface
 
@@ -88,7 +104,7 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Object-to-object snapping during drag with visual guide lines, drag preview, and toggleable snap control
 - Zone resize handles (8 handles per zone) with edge-specific snapping, min-size clamping, and live preview
 - Connection selection, editing, and deletion — click connections to inspect/edit label, kind, direction, and conditions
-- 7 connection kinds (passage, door, stairs, road, portal, secret, hazard) with distinct visual styles and canvas labels
+- 12 connection kinds (passage, door, stairs, road, portal, secret, hazard, channel, route, docking, warp, trail) with distinct visual styles and canvas labels
 - Edge-anchored connection routing with directional arrowheads and conditional dashed-line styling
 - Encounter anchors on canvas — red diamond markers at zone center with type-based coloring (boss, ambush, patrol), selectable and editable
 - District panel with metrics sliders, tags, controlling faction, economy profile, faction presence editing, pressure hotspot editing, and district removal
@@ -98,7 +114,7 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Scene preview (inline HTML/CSS composition of all zone visual bindings with missing-asset detection)
 - Layer visibility toggles (7 layers: grid, connections, entities, landmarks, spawns, backgrounds, ambient)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
-- Region presets (4 built-in) and encounter presets (3 built-in) with merge/overwrite application, custom preset CRUD
+- Region presets (9 built-in, mode-filtered) and encounter presets (3 built-in) with merge/overwrite application, custom preset CRUD
 - Centralized hotkey registry with 13 shortcuts including Enter (open details), P (apply preset), Shift+P (save preset)
 - Double-click any canvas object to select and open its details panel
 - Speed Panel (double-right-click) — floating command palette with context-aware actions, pinnable favorites with reorder, recent actions, custom groups, and lightweight macros (edit mode for CRUD)

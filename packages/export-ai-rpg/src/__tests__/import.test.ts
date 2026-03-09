@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { validateProject } from '@world-forge/schema';
 import { exportToEngine } from '../export.js';
-import { detectImportFormat, importProject, importFromContentPack, importFromExportResult } from '../import.js';
+import { detectImportFormat, importProject, importFromContentPack, importFromExportResult, inferMode } from '../import.js';
+import type { WorldProject } from '@world-forge/schema';
 import { importZones } from '../import-zones.js';
 import { importDistricts } from '../import-districts.js';
 import { importEntities } from '../import-entities.js';
@@ -591,5 +592,106 @@ describe('asset pack preservation', () => {
     const imported = importFromContentPack(exported.contentPack);
     expect(imported.project.assetPacks).toHaveLength(0);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
+  });
+});
+
+// --- Mode inference and round-trip ---
+
+describe('mode inference and round-trip', () => {
+  it('inferMode → ocean for channel connections', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      connections: [{ fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true, kind: 'channel' }],
+    };
+    expect(inferMode(project)).toBe('ocean');
+  });
+
+  it('inferMode → space for warp connections', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      connections: [{ fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true, kind: 'warp' }],
+    };
+    expect(inferMode(project)).toBe('space');
+  });
+
+  it('inferMode → interior for small grids', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      map: { ...minimalProject.map, gridWidth: 20, gridHeight: 15 },
+      connections: [],
+    };
+    expect(inferMode(project)).toBe('interior');
+  });
+
+  it('inferMode → world for large grids', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      map: { ...minimalProject.map, gridWidth: 80, gridHeight: 60 },
+      connections: [],
+    };
+    expect(inferMode(project)).toBe('world');
+  });
+
+  it('inferMode → dungeon fallback', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      map: { ...minimalProject.map, gridWidth: 30, gridHeight: 25 },
+      connections: [{ fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true, kind: 'passage' }],
+    };
+    // 30×25 = 750: not small enough for interior, not large enough for world
+    expect(inferMode(project)).toBe('dungeon');
+  });
+
+  it('round-trip preserves mode on WorldProject', () => {
+    const project: WorldProject = { ...chapelProject, mode: 'ocean' };
+    const exported = exportToEngine(project);
+    if ('ok' in exported) throw new Error('export failed');
+    const imported = importFromExportResult(exported);
+    expect(imported.project.mode).toBe('ocean');
+  });
+
+  it('pre-mode ContentPack import triggers mode inference', () => {
+    const exported = exportToEngine(minimalProject);
+    if ('ok' in exported) throw new Error('export failed');
+    const imported = importFromContentPack(exported.contentPack);
+    // Mode was not set on minimalProject, so it should be inferred
+    expect(imported.project.mode).toBeDefined();
+    expect(imported.fidelityReport.entries.some((e) => e.reason === 'mode-inferred')).toBe(true);
+  });
+
+  it('fidelity mentions mode inference', () => {
+    const exported = exportToEngine(minimalProject);
+    if ('ok' in exported) throw new Error('export failed');
+    const imported = importFromContentPack(exported.contentPack);
+    const modeEntry = imported.fidelityReport.entries.find((e) => e.reason === 'mode-inferred');
+    expect(modeEntry).toBeDefined();
+    expect(modeEntry!.message).toContain('inferred');
+  });
+
+  it('PackMetadata includes mode tag', () => {
+    const project: WorldProject = { ...minimalProject, mode: 'ocean' };
+    const exported = exportToEngine(project);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.packMeta.tags).toContain('mode:ocean');
+  });
+
+  it('PackMetadata has no mode tag when mode is undefined', () => {
+    const project: WorldProject = { ...minimalProject, mode: undefined };
+    const exported = exportToEngine(project);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.packMeta.tags.some((t: string) => t.startsWith('mode:'))).toBe(false);
+  });
+
+  it('existing import tests still pass (regression)', () => {
+    // WorldProject round-trip
+    const result = importProject(minimalProject);
+    if ('ok' in result) throw new Error('import failed');
+    expect(result.lossless).toBe(true);
+
+    // ContentPack import
+    const exported = exportToEngine(chapelProject);
+    if ('ok' in exported) throw new Error('export failed');
+    const imported = importFromContentPack(exported.contentPack);
+    expect(validateProject(imported.project).valid).toBe(true);
   });
 });

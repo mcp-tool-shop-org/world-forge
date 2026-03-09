@@ -44,5 +44,11 @@ export type { AssetKind, AssetProvenance, AssetEntry, PackCompatibility, AssetPa
 
 export type { WorldProject } from './project.js';
 
+export type { AuthoringMode } from './authoring-mode.js';
+export { AUTHORING_MODES, isValidMode, DEFAULT_MODE } from './authoring-mode.js';
+
 export type { ValidationError, ValidationResult } from './validate.js';
 export { validateProject } from './validate.js';
+
+export type { AdvisoryItem, AdvisoryResult } from './advisory.js';
+export { advisoryValidation } from './advisory.js';

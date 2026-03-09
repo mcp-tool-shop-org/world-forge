@@ -7,6 +7,22 @@ sidebar:
 
 The World Forge editor is a React web app that provides a visual authoring surface for world projects. Here is the typical workflow from empty canvas to exported ContentPack.
 
+## 0. Choose an Authoring Mode
+
+When creating a new project (via the Template Manager), choose an **authoring mode** that matches your world's scale. The mode picker appears in the wizard alongside genre selection.
+
+| Mode | Best For | Grid | Tile |
+|------|----------|------|------|
+| Dungeon | Rooms, corridors, caves | 30×25 | 32 |
+| District / City | Neighborhoods, wards | 50×40 | 32 |
+| Region / World | Continents, kingdoms | 80×60 | 48 |
+| Ocean / Sea | Harbors, shipping lanes | 60×50 | 48 |
+| Space | Stations, star systems | 100×80 | 64 |
+| Interior | Cabins, single buildings | 20×15 | 24 |
+| Wilderness | Trails, camps, forests | 60×50 | 48 |
+
+Mode is orthogonal to genre — a cyberpunk dungeon and a fantasy ocean are both valid. Mode governs grid defaults, connection vocabulary, preset filtering, guide wording, and advisory validation suggestions. The current mode is visible in the **top bar** (badge next to project name) and **status bar**.
+
 ## 1. Paint Zones
 
 Select the **Zone** tool from the tool palette. Click and drag on the canvas to create rectangular zones. Each zone represents a distinct area in your world — a room, corridor, courtyard, or cave.
@@ -35,7 +51,7 @@ In **Select** mode, click any connection line to select it. Selected connections
 
 - **From / To** — read-only zone names
 - **Label** — optional display label; labels appear at the line midpoint when zoomed in above 30%
-- **Kind** — semantic path type: Passage (default), Door, Stairs, Road, Portal, Secret, or Hazard. Each kind has a distinct visual style on the canvas (color and dash pattern)
+- **Kind** — semantic path type: Passage (default), Door, Stairs, Road, Portal, Secret, Hazard, Channel, Route, Docking, Warp, or Trail. Each kind has a distinct visual style on the canvas (color and dash pattern). The available kinds vary by authoring mode — ocean projects emphasize Channel and Route, space projects use Docking and Warp, wilderness uses Trail
 - **Bidirectional** — checkbox toggle; non-bidirectional connections show an arrowhead on the canvas
 - **Condition** — optional condition string (e.g. `has-tag:chapel-key`); conditional connections render as dashed lines. Condition dashing takes priority over kind dashing
 - **Swap Direction** — reverses the from/to direction (non-bidirectional only)
@@ -289,14 +305,21 @@ The **Presets** tab in the right sidebar provides a library of reusable template
 
 ### Region Presets
 
-Region presets configure an entire district in one click — tags, controlling faction, base metrics, economy profile, faction presences, and pressure hotspots. Four built-in presets are included:
+Region presets configure an entire district in one click — tags, controlling faction, base metrics, economy profile, faction presences, and pressure hotspots. Nine built-in presets are included, each tagged with compatible **authoring modes**:
 
-| Preset | Tags | Faction | Key Metrics |
-|--------|------|---------|-------------|
-| Crypt District | dark, cramped, undead | undead-horde | Commerce 5, Safety 10 |
-| Market Ward | bustling, trade, urban | merchant-guild | Commerce 90, Safety 55 |
-| Chapel Grounds | sacred, order, stone | chapel-order | Commerce 15, Safety 70 |
-| Smuggler Dock | shady, waterfront | smuggler-ring | Commerce 70, Safety 20 |
+| Preset | Modes | Faction | Key Metrics |
+|--------|-------|---------|-------------|
+| Crypt District | dungeon, interior | undead-horde | Commerce 5, Safety 10 |
+| Market Ward | district, world | merchant-guild | Commerce 90, Safety 55 |
+| Chapel Grounds | district, dungeon | chapel-order | Commerce 15, Safety 70 |
+| Smuggler Dock | district, ocean | smuggler-ring | Commerce 70, Safety 20 |
+| Ocean Port | ocean | harbor-master | Commerce 75, Safety 45 |
+| Space Station Hub | space | station-authority | Commerce 60, Safety 65 |
+| Wilderness Camp | wilderness | ranger-corps | Commerce 10, Safety 30 |
+| Dungeon Vault | dungeon, interior | vault-keeper | Commerce 5, Safety 15 |
+| City Slum | district, world | street-gang | Commerce 40, Safety 15 |
+
+Presets are **filtered by the current authoring mode** — incompatible presets are hidden, with a "N hidden by mode" count shown below the list. This keeps the preset browser relevant to what you're building.
 
 **Apply modes:**
 

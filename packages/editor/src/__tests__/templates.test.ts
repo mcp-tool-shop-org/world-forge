@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { validateProject } from '@world-forge/schema';
+import { validateProject, AUTHORING_MODES } from '@world-forge/schema';
+import type { AuthoringMode } from '@world-forge/schema';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
 import { classifyError } from '../panels/validation-helpers.js';
+import { createEmptyProject } from '../store/project-store.js';
+import { getModeProfile } from '../mode-profiles.js';
 
 describe('genre templates', () => {
   for (const t of GENRE_TEMPLATES) {
@@ -32,6 +35,7 @@ describe('createProjectFromWizard', () => {
     const project = createProjectFromWizard({
       name: 'Test Fantasy',
       genre: 'fantasy',
+      mode: 'dungeon',
       includePlayer: true,
       includeBuildCatalog: true,
       includeProgressionTree: true,
@@ -48,6 +52,7 @@ describe('createProjectFromWizard', () => {
     const project = createProjectFromWizard({
       name: 'Empty',
       genre: 'blank',
+      mode: 'dungeon',
       includePlayer: false,
       includeBuildCatalog: false,
       includeProgressionTree: false,
@@ -66,6 +71,7 @@ describe('createProjectFromWizard', () => {
     const project = createProjectFromWizard({
       name: 'No Player',
       genre: 'fantasy',
+      mode: 'dungeon',
       includePlayer: false,
       includeBuildCatalog: true,
       includeProgressionTree: true,
@@ -80,6 +86,7 @@ describe('createProjectFromWizard', () => {
     const project = createProjectFromWizard({
       name: 'No Dialogue',
       genre: 'fantasy',
+      mode: 'dungeon',
       includePlayer: true,
       includeBuildCatalog: true,
       includeProgressionTree: true,
@@ -160,6 +167,7 @@ describe('invalid project path — classifyError routing', () => {
     const project = createProjectFromWizard({
       name: 'Broken',
       genre: 'fantasy',
+      mode: 'dungeon',
       includePlayer: true,
       includeBuildCatalog: true,
       includeProgressionTree: true,
@@ -181,6 +189,7 @@ describe('invalid project path — classifyError routing', () => {
     const project = createProjectFromWizard({
       name: 'Bad Entity',
       genre: 'fantasy',
+      mode: 'dungeon',
       includePlayer: true,
       includeBuildCatalog: true,
       includeProgressionTree: true,
@@ -195,5 +204,164 @@ describe('invalid project path — classifyError routing', () => {
     const entityError = result.errors.find((e) => e.path.includes('entityPlacements'));
     expect(entityError).toBeDefined();
     expect(classifyError(entityError!)).toBe('entities');
+  });
+});
+
+describe('mode-aware project creation', () => {
+  it('createEmptyProject() defaults to dungeon grid (30×25, tileSize 32)', () => {
+    const project = createEmptyProject();
+    expect(project.mode).toBe('dungeon');
+    expect(project.map.gridWidth).toBe(30);
+    expect(project.map.gridHeight).toBe(25);
+    expect(project.map.tileSize).toBe(32);
+  });
+
+  it('createEmptyProject("ocean") uses ocean grid (60×50, tileSize 48)', () => {
+    const project = createEmptyProject('ocean');
+    expect(project.mode).toBe('ocean');
+    expect(project.map.gridWidth).toBe(60);
+    expect(project.map.gridHeight).toBe(50);
+    expect(project.map.tileSize).toBe(48);
+  });
+
+  it('createEmptyProject("space") uses space grid (100×80, tileSize 64)', () => {
+    const project = createEmptyProject('space');
+    expect(project.mode).toBe('space');
+    expect(project.map.gridWidth).toBe(100);
+    expect(project.map.gridHeight).toBe(80);
+    expect(project.map.tileSize).toBe(64);
+  });
+
+  it('createEmptyProject("interior") uses interior grid (20×15, tileSize 24)', () => {
+    const project = createEmptyProject('interior');
+    expect(project.mode).toBe('interior');
+    expect(project.map.gridWidth).toBe(20);
+    expect(project.map.gridHeight).toBe(15);
+    expect(project.map.tileSize).toBe(24);
+  });
+
+  it('wizard with mode="world" applies world grid (80×60, tileSize 48)', () => {
+    const project = createProjectFromWizard({
+      name: 'World Test',
+      genre: 'blank',
+      mode: 'world',
+      includePlayer: false,
+      includeBuildCatalog: false,
+      includeProgressionTree: false,
+      includeDialogue: false,
+      includeSampleNPCs: false,
+    });
+    expect(project.mode).toBe('world');
+    expect(project.map.gridWidth).toBe(80);
+    expect(project.map.gridHeight).toBe(60);
+    expect(project.map.tileSize).toBe(48);
+  });
+
+  it('genre templates preserve genre when mode is set independently', () => {
+    const project = createProjectFromWizard({
+      name: 'Pirate Dungeon',
+      genre: 'pirate',
+      mode: 'dungeon',
+      includePlayer: true,
+      includeBuildCatalog: false,
+      includeProgressionTree: false,
+      includeDialogue: false,
+      includeSampleNPCs: false,
+    });
+    expect(project.genre).toBe('pirate');
+    expect(project.mode).toBe('dungeon');
+    expect(project.map.gridWidth).toBe(30);
+  });
+
+  it('blank wizard respects mode grid defaults', () => {
+    const project = createProjectFromWizard({
+      name: 'Blank Wilderness',
+      genre: 'blank',
+      mode: 'wilderness',
+      includePlayer: false,
+      includeBuildCatalog: false,
+      includeProgressionTree: false,
+      includeDialogue: false,
+      includeSampleNPCs: false,
+    });
+    expect(project.mode).toBe('wilderness');
+    expect(project.map.gridWidth).toBe(60);
+    expect(project.map.gridHeight).toBe(50);
+    expect(project.map.tileSize).toBe(48);
+  });
+
+  it.each(AUTHORING_MODES)('createEmptyProject("%s") applies correct mode and grid', (mode) => {
+    const project = createEmptyProject(mode as AuthoringMode);
+    expect(project.mode).toBe(mode);
+    const profile = getModeProfile(mode as AuthoringMode);
+    expect(project.map.gridWidth).toBe(profile.grid.width);
+    expect(project.map.gridHeight).toBe(profile.grid.height);
+    expect(project.map.tileSize).toBe(profile.grid.tileSize);
+    // Empty projects are structurally valid WorldProject objects
+    expect(project.id).toBeTruthy();
+    expect(project.name).toBeTruthy();
+    expect(project.zones).toEqual([]);
+  });
+
+  it('all genre templates have mode field set', () => {
+    for (const t of GENRE_TEMPLATES) {
+      expect(t.mode).toBeDefined();
+    }
+  });
+});
+
+describe('mode samples', () => {
+  it('sample count is 9', () => {
+    expect(SAMPLE_WORLDS.length).toBe(9);
+  });
+
+  for (const s of SAMPLE_WORLDS) {
+    it(`${s.name} sample validates clean`, () => {
+      const result = validateProject(s.project);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it(`${s.name} has correct mode set`, () => {
+      expect(s.mode).toBeDefined();
+      expect(s.project.mode).toBe(s.mode);
+    });
+  }
+
+  it('each new sample has >= 1 zone, connection, district, spawn', () => {
+    const newIds = ['ocean-harbor', 'space-station', 'wilderness-trail', 'city-market', 'world-map', 'cabin-interior'];
+    for (const id of newIds) {
+      const sample = SAMPLE_WORLDS.find((s) => s.id === id);
+      expect(sample).toBeDefined();
+      expect(sample!.project.zones.length).toBeGreaterThanOrEqual(1);
+      expect(sample!.project.connections.length).toBeGreaterThanOrEqual(1);
+      expect(sample!.project.districts.length).toBeGreaterThanOrEqual(1);
+      expect(sample!.project.spawnPoints.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('ocean uses channel, space uses docking, wilderness uses trail', () => {
+    const ocean = SAMPLE_WORLDS.find((s) => s.id === 'ocean-harbor')!;
+    expect(ocean.project.connections[0].kind).toBe('channel');
+
+    const space = SAMPLE_WORLDS.find((s) => s.id === 'space-station')!;
+    expect(space.project.connections[0].kind).toBe('docking');
+
+    const wild = SAMPLE_WORLDS.find((s) => s.id === 'wilderness-trail')!;
+    expect(wild.project.connections[0].kind).toBe('trail');
+  });
+
+  it('all sample IDs are unique', () => {
+    const ids = SAMPLE_WORLDS.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('existing samples have mode field', () => {
+    const helloWorld = SAMPLE_WORLDS.find((s) => s.id === 'hello-world');
+    expect(helloWorld?.mode).toBe('dungeon');
+    const tavern = SAMPLE_WORLDS.find((s) => s.id === 'tavern-crossroads');
+    expect(tavern?.mode).toBe('district');
+    const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold');
+    expect(chapel?.mode).toBe('dungeon');
   });
 });

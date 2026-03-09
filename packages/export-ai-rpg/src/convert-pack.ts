@@ -78,6 +78,9 @@ export function convertPackMeta(project: WorldProject): PackMetadata {
     .filter((t): t is PackTone => t !== undefined);
   const difficulty = DIFFICULTY_MAP[project.difficulty] ?? 'intermediate';
 
+  const tags: string[] = [];
+  if (project.mode) tags.push(`mode:${project.mode}`);
+
   return {
     id: project.id,
     name: project.name,
@@ -85,7 +88,7 @@ export function convertPackMeta(project: WorldProject): PackMetadata {
     genres: [genre],
     difficulty,
     tones: tones.length > 0 ? tones : ['atmospheric'],
-    tags: [],
+    tags,
     engineVersion: '2.0.0',
     version: project.version,
     description: project.description,

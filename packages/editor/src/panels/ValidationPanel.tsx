@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { validateProject, type ValidationError } from '@world-forge/schema';
+import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor, type Domain } from './validation-helpers.js';
 
 const domainLabels: Record<Domain, string> = {
@@ -26,6 +26,7 @@ export function ValidationPanel() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const result = useMemo(() => validateProject(project), [project]);
+  const advisory = useMemo(() => advisoryValidation(project), [project]);
 
   const grouped = useMemo(() => {
     const map: Record<Domain, ValidationError[]> = {
@@ -118,6 +119,9 @@ export function ValidationPanel() {
         <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
           No issues found — ready to export.
         </div>
+        {advisory.items.length > 0 && (
+          <AdvisorySuggestions items={advisory.items} collapsed={collapsed} toggle={toggle} />
+        )}
       </div>
     );
   }
@@ -161,6 +165,41 @@ export function ValidationPanel() {
           </div>
         );
       })}
+      {advisory.items.length > 0 && (
+        <AdvisorySuggestions items={advisory.items} collapsed={collapsed} toggle={toggle} />
+      )}
+    </div>
+  );
+}
+
+function AdvisorySuggestions({ items, collapsed, toggle }: {
+  items: { path: string; message: string; severity: string }[];
+  collapsed: Record<string, boolean>;
+  toggle: (key: string) => void;
+}) {
+  const isCollapsed = collapsed['advisory'] ?? true; // default collapsed
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div
+        onClick={() => toggle('advisory')}
+        style={{
+          fontSize: 12, fontWeight: 600, color: '#58a6ff',
+          cursor: 'pointer', padding: '4px 0', userSelect: 'none',
+        }}
+      >
+        {isCollapsed ? '\u25b6' : '\u25bc'} Suggestions ({items.length})
+      </div>
+      {!isCollapsed && items.map((item, i) => (
+        <div
+          key={i}
+          style={{
+            fontSize: 11, color: '#58a6ff', padding: '3px 0 3px 14px',
+            borderLeft: '2px solid #1f6feb',
+          }}
+        >
+          {item.message}
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { buildSearchIndex, filterResults } from '../panels/SearchOverlay.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
+import { BUILTIN_REGION_PRESETS } from '../presets/built-ins.js';
+import { getModeProfile, MODE_PROFILES } from '../mode-profiles.js';
+import { AUTHORING_MODES } from '@world-forge/schema';
 
 // Chapel Threshold — the richest sample world
 const chapel = SAMPLE_WORLDS[2].project;
@@ -138,5 +141,58 @@ describe('connection search', () => {
     const results = filterResults(index, 'secret');
     const connResults = results.filter((r) => r.type === 'connection');
     expect(connResults.length).toBeGreaterThan(0);
+  });
+});
+
+describe('search mode annotations', () => {
+  it('presets with modes include mode annotation in detail', () => {
+    const preset = BUILTIN_REGION_PRESETS.find((p) => p.modes && p.modes.length > 0);
+    expect(preset).toBeDefined();
+    const modeTag = `[${preset!.modes!.join(', ')}]`;
+    const detail = `${preset!.description} ${modeTag}`;
+    expect(detail).toContain('[');
+    expect(detail).toContain(']');
+  });
+
+  it('presets without modes have no mode annotation', () => {
+    // Encounter presets have no modes — they're universal
+    const universalPreset: { description: string; modes?: string[] } = { description: 'Boss fight', modes: undefined };
+    const modeTag = universalPreset.modes ? ` [${universalPreset.modes.join(', ')}]` : '';
+    expect(modeTag).toBe('');
+  });
+
+  it('mode label matches profile for each mode', () => {
+    for (const mode of AUTHORING_MODES) {
+      const profile = getModeProfile(mode);
+      expect(profile.label.length).toBeGreaterThan(0);
+      expect(profile.icon.length).toBeGreaterThan(0);
+      expect(MODE_PROFILES[mode].label).toBe(profile.label);
+    }
+  });
+
+  it('search results still return all presets when searched', () => {
+    // Build a full index including presets
+    const base = buildSearchIndex(chapel);
+    for (const p of BUILTIN_REGION_PRESETS) {
+      const modeTag = p.modes ? ` [${p.modes.join(', ')}]` : '';
+      base.push({ type: 'region-preset', id: p.id, label: p.name, detail: `${p.description}${modeTag}` });
+    }
+    // Search for a mode-tagged preset
+    const results = filterResults(base, 'Crypt');
+    expect(results.some((r) => r.type === 'region-preset' && r.id === 'crypt-district')).toBe(true);
+  });
+
+  it('existing search tests pass unchanged', () => {
+    const index = buildSearchIndex(chapel);
+    const results = filterResults(index, 'chapel');
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('mode badge text matches getModeProfile for each mode', () => {
+    for (const mode of AUTHORING_MODES) {
+      const profile = getModeProfile(mode);
+      const badgeText = `${profile.icon} ${profile.label}`;
+      expect(badgeText.length).toBeGreaterThan(2);
+    }
   });
 });

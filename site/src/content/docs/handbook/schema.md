@@ -18,6 +18,7 @@ interface WorldProject {
   description: string;
   version: string;
   genre: string;
+  mode?: AuthoringMode;    // dungeon | district | world | ocean | space | interior | wilderness
   tones: string[];
   difficulty: string;
   narratorTone: string;
@@ -45,6 +46,32 @@ interface WorldProject {
   // ... crafting, market, visual layers
 }
 ```
+
+## AuthoringMode
+
+World Forge separates **genre** (fantasy, cyberpunk) from **mode** (dungeon, ocean, space). Genre is flavor — mode is scale. They are orthogonal: a cyberpunk dungeon and a pirate ocean are both valid.
+
+```typescript
+type AuthoringMode = 'dungeon' | 'district' | 'world' | 'ocean' | 'space' | 'interior' | 'wilderness';
+```
+
+The `mode` field on `WorldProject` is optional — projects without it default to `'dungeon'` everywhere. Mode governs:
+
+- **Grid defaults** — `createEmptyProject(mode)` applies mode-specific width, height, and tile size
+- **Connection vocabulary** — each mode suggests relevant connection kinds (e.g., ocean uses channel/route, space uses docking/warp)
+- **Preset filtering** — presets with `modes` arrays are hidden when incompatible with the current mode
+- **Guide text** — the checklist adapts step labels per mode (e.g., "Add a chamber" vs "Add a sea zone")
+- **Advisory validation** — mode-specific suggestions (e.g., "Consider adding secret connections" for dungeons)
+
+| Mode | Grid | Tile | Key Connections |
+|------|------|------|-----------------|
+| dungeon | 30×25 | 32 | door, stairs, passage, secret, hazard |
+| district | 50×40 | 32 | road, door, passage, portal |
+| world | 80×60 | 48 | road, portal, passage |
+| ocean | 60×50 | 48 | channel, route, portal, hazard |
+| space | 100×80 | 64 | docking, warp, passage, portal |
+| interior | 20×15 | 24 | door, stairs, passage, secret |
+| wilderness | 60×50 | 48 | trail, road, passage, hazard |
 
 ## Zone
 
@@ -177,7 +204,7 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 
 ## Validation
 
-`validateProject()` runs 48 structural checks:
+`validateProject()` runs 54 structural checks:
 
 1. At least one spawn point exists
 2. At least one default spawn point
@@ -224,3 +251,18 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 46. Asset packId references existing pack
 47. Orphaned pack detection (no assets reference this pack)
 48. Pack version format (semver x.y.z)
+49-54. Encounter, faction, and pressure hotspot structural checks
+
+## Advisory Validation
+
+`advisoryValidation(project)` returns mode-specific **suggestions** that never block export. These appear in the editor as a collapsible blue section below hard validation errors.
+
+Each mode generates relevant suggestions — for example, dungeon mode suggests adding secret connections and trap hazards, ocean mode suggests channel connections and port zones. Universal suggestions (e.g., "add at least 2 zones", "add connections between zones") apply to all modes.
+
+```typescript
+interface AdvisoryItem {
+  path: string;      // e.g. 'connections' or 'zones'
+  message: string;   // human-readable suggestion
+  severity: 'info' | 'suggestion';
+}
+```

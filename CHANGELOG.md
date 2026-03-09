@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.2.0] - 2026-03-09
+
+### Added
+
+- **Authoring modes** — 7 orthogonal scale modes (dungeon, district, world, ocean, space, interior, wilderness) that govern grid defaults, connection vocabulary, validation emphasis, guide wording, and preset filtering — genre stays as flavor, mode is scale
+- **Mode profiles** — static `ModeProfile` data objects per mode with label, icon, grid dimensions (tileSize), connection kinds, suggested zone tags, and guide overrides
+- **5 new connection kinds** — `channel`, `route`, `docking`, `warp`, `trail` for ocean/space/wilderness modes (backward-compatible union expansion)
+- **Advisory validation** — `advisoryValidation()` returns mode-specific suggestions (e.g. "dungeon: add secret connections", "ocean: add channel connections") that never block export; shown in a collapsible blue section below hard errors
+- **Mode-aware project creation** — `createEmptyProject(mode?)` and `createProjectFromWizard({mode})` apply correct grid dimensions from mode profile; mode picker in Template Manager wizard
+- **Preset mode compatibility** — `modes?: AuthoringMode[]` on presets; `filterPresetsByMode()` hides incompatible presets with "N hidden by mode" count; 5 new region presets (Ocean Port, Space Station Hub, Wilderness Camp, Dungeon Vault, City Slum)
+- **Mode-adaptive guide** — ChecklistPanel applies `guideOverrides` per mode (e.g. dungeon→"Add a chamber", ocean→"Add a sea zone", space→"Add a sector")
+- **UI mode indicators** — mode badge in top bar next to project name, "Mode: icon label" in status bar
+- **Search mode annotations** — preset search results include mode tags in detail text; incompatible presets get dim styling
+- **Import mode inference** — `inferMode()` heuristic recovers mode from connection kinds, grid area, and zone tags; mode preserved through export/import round-trip via PackMetadata tags
+- **6 new mode samples** — Ocean Harbor (channel), Space Station (docking), Wilderness Trail (trail), City Market (road), World Map (road), Cabin Interior (stairs) — each with 2 zones, 1 connection, 1 district, 1 spawn
+- 105 new tests (628 total)
+
+### Changed
+
+- `WorldProject.mode` is an optional `AuthoringMode` field — existing projects with `undefined` are treated as `'dungeon'` everywhere
+- `ConnectionKind` union expanded from 7 to 12 kinds
+- `VALID_CONNECTION_KINDS` set updated for the 5 new kinds
+- Existing genre templates assigned `mode: 'district'`; existing samples assigned `mode` (Hello World→dungeon, Tavern→district, Chapel→dungeon)
+- Existing region presets assigned `modes` arrays; encounter presets left universal
+- Tab bar preset search indexes mode annotations
+- Import pipeline applies `inferMode()` when mode is missing, adds fidelity entry
+- Export pipeline includes `mode:` tag in PackMetadata
+
 ## [3.1.0] - 2026-03-09
 
 ### Added

@@ -19,7 +19,7 @@ The `@world-forge/export-ai-rpg` package converts a `WorldProject` into a set of
 8. **Convert build catalog** — `BuildCatalogDefinition` becomes `ExportedBuildCatalog` with archetypes, backgrounds, traits, disciplines.
 9. **Convert progression trees** — `ProgressionTreeDefinition[]` maps nodes with requirements and effects.
 10. **Build manifest** — game ID, title, modules, content pack references.
-11. **Build pack metadata** — genres, tones, difficulty, narrator tone.
+11. **Build pack metadata** — genres, tones, difficulty, narrator tone, authoring mode tag.
 12. **Collect warnings** — missing player template, build catalog, progression trees, landmarks, factions, hotspots.
 13. **Collect assets** — asset manifest and zone/entity/item/landmark bindings are attached to the ExportResult for round-trip preservation.
 14. **Collect asset packs** — asset pack definitions are attached to the ExportResult when present.
@@ -138,8 +138,24 @@ Common fidelity entries:
 | `asset-packs-recovered` | lossless | Asset packs restored from ExportResult |
 | `assets-dropped` | dropped | Assets not available in bare ContentPack format |
 | `asset-packs-dropped` | dropped | Asset packs not available in bare ContentPack format |
+| `mode-inferred` | approximated | Authoring mode inferred from connection kinds and grid area |
 
 The report includes a summary with overall lossless percentage and per-domain breakdowns, displayed in the editor's Import Summary panel.
+
+## Mode Preservation
+
+The export pipeline stores the project's authoring mode as a `mode:<value>` tag in PackMetadata. On import:
+
+- **ExportResult** — mode is recovered from the `mode:` tag in `packMeta.tags` (lossless)
+- **ContentPack / pre-mode projects** — `inferMode()` uses heuristics to recover the likely mode:
+  - `channel` or `route` connections → ocean
+  - `warp` or `docking` connections → space
+  - `trail` connections with camp/wild zone tags → wilderness
+  - Grid area ≤ 400 → interior
+  - Grid area ≥ 4000 → world
+  - Fallback → dungeon
+
+Inferred modes generate a `mode-inferred` fidelity entry at the `approximated` level.
 
 ## Dogfood: Chapel Threshold
 

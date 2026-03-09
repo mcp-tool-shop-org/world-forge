@@ -19,8 +19,9 @@ World Forge is one of three projects that form the authoring-to-play pipeline:
 
 ## What World Forge Does
 
+- **Choose an authoring mode** — dungeon, district, world, ocean, space, interior, or wilderness — to adapt grid size, connection vocabulary, validation, and guide text to your world's scale
 - **Paint zones** on a 2D spatial grid with neighbors, exits, light, noise, hazards
-- **Connect zones** with bidirectional or one-way links
+- **Connect zones** with bidirectional or one-way links using 12 connection kinds (passage, door, stairs, road, portal, secret, hazard, channel, route, docking, warp, trail)
 - **Define districts** with faction control, economy profiles, base metrics
 - **Place entities** — NPCs, enemies, merchants, companions, bosses — with stats, resources, AI profiles
 - **Author dialogues** — branching conversation trees with conditions and effects

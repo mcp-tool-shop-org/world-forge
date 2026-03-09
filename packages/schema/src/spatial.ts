@@ -46,7 +46,9 @@ export interface Interactable {
 }
 
 /** Semantic path type for a connection. */
-export type ConnectionKind = 'passage' | 'door' | 'stairs' | 'road' | 'portal' | 'secret' | 'hazard';
+export type ConnectionKind =
+  | 'passage' | 'door' | 'stairs' | 'road' | 'portal' | 'secret' | 'hazard'
+  | 'channel' | 'route' | 'docking' | 'warp' | 'trail';
 
 /** An explicit link between two zones. */
 export interface ZoneConnection {

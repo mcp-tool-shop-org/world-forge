@@ -96,7 +96,10 @@ export function validateProject(project: WorldProject): ValidationResult {
   }
 
   // 11. Connections must reference valid zones
-  const VALID_CONNECTION_KINDS = new Set(['passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard']);
+  const VALID_CONNECTION_KINDS = new Set([
+    'passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard',
+    'channel', 'route', 'docking', 'warp', 'trail',
+  ]);
   for (const c of project.connections) {
     if (!zoneIds.has(c.fromZoneId)) {
       errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.fromZoneId}"` });

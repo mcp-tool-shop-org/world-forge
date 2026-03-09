@@ -152,7 +152,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
       'surveillance-to-safety', 'zone-placement-round-robin',
       'role-reverse-mapped', 'zone-placement-first-zone',
       'hidden-from-contraband', 'textblock-to-string',
-      'spawn-point-generated',
+      'spawn-point-generated', 'mode-inferred',
     ]);
     for (const entry of approx) {
       expect(validReasons.has(entry.reason)).toBe(true);

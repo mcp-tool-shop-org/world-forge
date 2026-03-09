@@ -1,7 +1,7 @@
 // import.ts — main import pipeline: ContentPack/ExportResult/WorldProject → WorldProject
 
-import type { WorldProject, ZoneConnection } from '@world-forge/schema';
-import { validateProject } from '@world-forge/schema';
+import type { WorldProject, ZoneConnection, AuthoringMode } from '@world-forge/schema';
+import { validateProject, isValidMode } from '@world-forge/schema';
 import type { ContentPack, ExportResult, AssetBindingMap } from './export.js';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { FidelityEntry, FidelityReport } from './fidelity.js';
@@ -41,6 +41,30 @@ const REVERSE_GENRE: Record<string, string> = {
 const REVERSE_DIFFICULTY: Record<string, string> = {
   beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced',
 };
+
+/** Infer authoring mode from project content when mode is not set. */
+export function inferMode(project: WorldProject): AuthoringMode {
+  // If mode is explicitly set and valid, use it
+  if (project.mode && isValidMode(project.mode)) return project.mode;
+
+  const kinds = new Set(project.connections.map((c) => c.kind).filter(Boolean));
+  const area = project.map.gridWidth * project.map.gridHeight;
+
+  // Connection-kind heuristics
+  if (kinds.has('channel') || kinds.has('route')) return 'ocean';
+  if (kinds.has('warp') || kinds.has('docking')) return 'space';
+
+  // Tag-based heuristics for wilderness
+  const allZoneTags = project.zones.flatMap((z) => z.tags ?? []);
+  if (kinds.has('trail') && (allZoneTags.includes('camp') || allZoneTags.includes('wild'))) return 'wilderness';
+
+  // Size-based heuristics
+  if (area <= 400) return 'interior';   // small grid (e.g. 20×15 = 300)
+  if (area >= 4000) return 'world';     // large grid (e.g. 80×60 = 4800)
+
+  // Fallback
+  return 'dungeon';
+}
 
 /** Detect the format of parsed JSON data. */
 export function detectImportFormat(data: unknown): ImportFormat | null {
@@ -83,6 +107,17 @@ export function importFromExportResult(result: ExportResult, projectName?: strin
   const meta = result.packMeta;
   const imported = importFromContentPack(result.contentPack, projectName ?? meta?.name, meta);
   imported.format = 'export-result';
+
+  // Recover mode from PackMetadata tags if present (e.g. "mode:ocean")
+  if (meta?.tags) {
+    const modeTag = meta.tags.find((t: string) => t.startsWith('mode:'));
+    if (modeTag) {
+      const modeValue = modeTag.slice(5); // strip "mode:"
+      if (isValidMode(modeValue)) {
+        imported.project.mode = modeValue;
+      }
+    }
+  }
 
   // Recover assets + bindings from ExportResult (not available in raw ContentPack)
   if (result.assets && result.assets.length > 0) {
@@ -270,6 +305,17 @@ export function importFromContentPack(
     assets: [],
     assetPacks: [],
   };
+
+  // 7b. Infer and apply mode if not set
+  if (!project.mode) {
+    const inferred = inferMode(project);
+    project.mode = inferred;
+    allFidelity.push({
+      level: 'approximated', domain: 'world', severity: 'info',
+      message: `Authoring mode inferred as '${inferred}' from project content`,
+      reason: 'mode-inferred',
+    });
+  }
 
   // 8. Add structural fidelity entries
   allFidelity.push({

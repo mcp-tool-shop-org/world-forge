@@ -116,12 +116,14 @@ export function SearchOverlay() {
 
   const searchIndex = useMemo(() => {
     const base = buildSearchIndex(project);
-    // Add presets to search index
+    // Add presets to search index (with mode annotations)
     for (const p of regionPresets) {
-      base.push({ type: 'region-preset', id: p.id, label: p.name, detail: p.description });
+      const modeTag = p.modes ? ` [${p.modes.join(', ')}]` : '';
+      base.push({ type: 'region-preset', id: p.id, label: p.name, detail: `${p.description}${modeTag}` });
     }
     for (const p of encounterPresets) {
-      base.push({ type: 'encounter-preset', id: p.id, label: p.name, detail: `${p.encounterType} — ${p.description}` });
+      const modeTag = p.modes ? ` [${p.modes.join(', ')}]` : '';
+      base.push({ type: 'encounter-preset', id: p.id, label: p.name, detail: `${p.encounterType} — ${p.description}${modeTag}` });
     }
     return base;
   }, [project, regionPresets, encounterPresets]);

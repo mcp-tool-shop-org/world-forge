@@ -5,7 +5,9 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { useTemplateStore, type UserTemplate } from '../store/template-store.js';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
-import type { WorldProject } from '@world-forge/schema';
+import type { WorldProject, AuthoringMode } from '@world-forge/schema';
+import { AUTHORING_MODES } from '@world-forge/schema';
+import { MODE_PROFILES, getModeProfile } from '../mode-profiles.js';
 
 interface Props { onClose: () => void }
 
@@ -31,6 +33,7 @@ export function TemplateManager({ onClose }: Props) {
   // Wizard state (genres tab)
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState('');
+  const [mode, setMode] = useState<AuthoringMode>('dungeon');
   const [genre, setGenre] = useState('blank');
   const [includePlayer, setIncludePlayer] = useState(false);
   const [includeBuildCatalog, setIncludeBuildCatalog] = useState(false);
@@ -57,6 +60,7 @@ export function TemplateManager({ onClose }: Props) {
     const project = createProjectFromWizard({
       name: name || 'Untitled World',
       genre,
+      mode,
       includePlayer,
       includeBuildCatalog,
       includeProgressionTree,
@@ -66,7 +70,7 @@ export function TemplateManager({ onClose }: Props) {
     loadProject(project);
     resetChecklist();
     onClose();
-  }, [name, genre, includePlayer, includeBuildCatalog, includeProgressionTree, includeDialogue, includeSampleNPCs, loadProject, resetChecklist, onClose]);
+  }, [name, genre, mode, includePlayer, includeBuildCatalog, includeProgressionTree, includeDialogue, includeSampleNPCs, loadProject, resetChecklist, onClose]);
 
   const handleOpenSample = useCallback((project: WorldProject) => {
     const copy: WorldProject = JSON.parse(JSON.stringify(project));
@@ -135,7 +139,30 @@ export function TemplateManager({ onClose }: Props) {
               autoFocus
             />
 
-            <label style={{ ...labelStyle, marginTop: 12 }}>Template</label>
+            <label style={{ ...labelStyle, marginTop: 12 }}>Scale</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+              {AUTHORING_MODES.map((m) => {
+                const p = MODE_PROFILES[m];
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    style={{
+                      background: mode === m ? '#0d1d30' : '#0d1117',
+                      border: mode === m ? '2px solid #58a6ff' : '1px solid #30363d',
+                      borderRadius: 4, padding: '4px 8px', cursor: 'pointer', color: '#c9d1d9',
+                      fontSize: 11, display: 'flex', alignItems: 'center', gap: 4,
+                    }}
+                    title={p.description}
+                  >
+                    <span style={{ fontSize: 13 }}>{p.icon}</span>
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label style={{ ...labelStyle }}>Template</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               <button
                 onClick={() => selectGenre('blank')}
@@ -192,6 +219,11 @@ export function TemplateManager({ onClose }: Props) {
                       <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 'bold', ...badgeColors[sample.complexity] }}>
                         {sample.complexity}
                       </span>
+                      {sample.mode && (
+                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#21262d', color: '#8b949e' }}>
+                          {MODE_PROFILES[sample.mode].icon} {MODE_PROFILES[sample.mode].label}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{sample.description}</div>
                     <div style={{ fontSize: 10, color: '#484f58', marginBottom: 8 }}>

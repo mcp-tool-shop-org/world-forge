@@ -1,6 +1,7 @@
 // samples.ts — sample worlds for learning and reference
 
 import type { WorldProject } from '@world-forge/schema';
+import type { AuthoringMode } from '@world-forge/schema';
 import type { SampleWorld } from './registry.js';
 
 const helloWorld: WorldProject = {
@@ -12,6 +13,7 @@ const helloWorld: WorldProject = {
   tones: ['neutral'],
   difficulty: 'beginner',
   narratorTone: '',
+  mode: 'dungeon',
   map: { id: 'map-1', name: 'Map', description: '', gridWidth: 40, gridHeight: 30, tileSize: 32 },
   zones: [
     { id: 'start', name: 'Starting Area', tags: ['safe'], description: 'A simple clearing.', gridX: 15, gridY: 12, gridWidth: 10, gridHeight: 6, neighbors: [], exits: [], light: 8, noise: 0, hazards: [], interactables: [], parentDistrictId: 'region-1' },
@@ -52,6 +54,7 @@ const chapelThreshold: WorldProject = {
   tones: ['atmospheric', 'dark'],
   difficulty: 'intermediate',
   narratorTone: 'Dust motes drift through shafts of pale light. The chapel holds its breath.',
+  mode: 'dungeon',
 
   map: { id: 'map-1', name: 'Chapel Threshold', description: 'A crumbling chapel complex above a haunted crypt.', gridWidth: 60, gridHeight: 40, tileSize: 32 },
 
@@ -220,6 +223,7 @@ const tavernCrossroads: WorldProject = {
   tones: ['atmospheric'],
   difficulty: 'beginner',
   narratorTone: 'Firelight dances across weathered faces. Someone is lying.',
+  mode: 'district',
   map: { id: 'map-1', name: 'Tavern Crossroads', description: 'A tavern and courtyard at a crossroads.', gridWidth: 40, gridHeight: 30, tileSize: 32 },
   zones: [
     { id: 'tavern-hall', name: 'Tavern Hall', tags: ['interior', 'social'], description: 'Low beams, long tables, and the smell of stew.', gridX: 10, gridY: 10, gridWidth: 10, gridHeight: 8, neighbors: ['courtyard'], exits: [], light: 6, noise: 5, hazards: [], interactables: [{ name: 'Hearth', type: 'inspect', description: 'A crackling fire that never quite warms the room.' }], parentDistrictId: 'crossroads' },
@@ -300,12 +304,98 @@ const tavernCrossroads: WorldProject = {
   assetPacks: [],
 };
 
+// ── Lean mode-specific sample factory ─────────────────────────
+
+function leanSample(opts: {
+  id: string; name: string; description: string; genre: string; mode: AuthoringMode;
+  grid: { w: number; h: number; tile: number };
+  z1: { id: string; name: string; tags: string[] };
+  z2: { id: string; name: string; tags: string[] };
+  connKind: string;
+}): WorldProject {
+  return {
+    id: opts.id, name: opts.name, description: opts.description, version: '0.1.0',
+    genre: opts.genre, tones: ['atmospheric'], difficulty: 'beginner', narratorTone: '', mode: opts.mode,
+    map: { id: 'map-1', name: opts.name, description: '', gridWidth: opts.grid.w, gridHeight: opts.grid.h, tileSize: opts.grid.tile },
+    zones: [
+      { id: opts.z1.id, name: opts.z1.name, tags: opts.z1.tags, description: '', gridX: 2, gridY: 2, gridWidth: 8, gridHeight: 6, neighbors: [opts.z2.id], exits: [], light: 5, noise: 0, hazards: [], interactables: [], parentDistrictId: `${opts.id}-district` },
+      { id: opts.z2.id, name: opts.z2.name, tags: opts.z2.tags, description: '', gridX: 12, gridY: 2, gridWidth: 8, gridHeight: 6, neighbors: [opts.z1.id], exits: [], light: 5, noise: 0, hazards: [], interactables: [], parentDistrictId: `${opts.id}-district` },
+    ],
+    connections: [
+      { fromZoneId: opts.z1.id, toZoneId: opts.z2.id, bidirectional: true, kind: opts.connKind as any },
+    ],
+    districts: [{
+      id: `${opts.id}-district`, name: `${opts.name} District`,
+      zoneIds: [opts.z1.id, opts.z2.id], tags: [],
+      baseMetrics: { commerce: 30, morale: 50, safety: 50, stability: 50 },
+      economyProfile: { supplyCategories: [], scarcityDefaults: {} },
+    }],
+    landmarks: [],
+    spawnPoints: [{ id: `${opts.id}-spawn`, zoneId: opts.z1.id, gridX: 4, gridY: 4, isDefault: true }],
+    entityPlacements: [], dialogues: [], progressionTrees: [],
+    itemPlacements: [], encounterAnchors: [],
+    factionPresences: [], pressureHotspots: [],
+    craftingStations: [], marketNodes: [],
+    tilesets: [], tileLayers: [], props: [], propPlacements: [],
+    ambientLayers: [], assets: [], assetPacks: [],
+  };
+}
+
+const oceanHarbor = leanSample({
+  id: 'ocean-harbor', name: 'Ocean Harbor', description: 'A harbor and open sea connected by a channel.',
+  genre: 'pirate', mode: 'ocean', grid: { w: 60, h: 50, tile: 48 },
+  z1: { id: 'harbor', name: 'Harbor', tags: ['port', 'coastal'] },
+  z2: { id: 'open-sea', name: 'Open Sea', tags: ['deep', 'dangerous'] },
+  connKind: 'channel',
+});
+
+const spaceStation = leanSample({
+  id: 'space-station', name: 'Space Station', description: 'A station bridge and cargo bay connected by docking.',
+  genre: 'sci-fi', mode: 'space', grid: { w: 100, h: 80, tile: 64 },
+  z1: { id: 'bridge', name: 'Bridge', tags: ['station', 'command'] },
+  z2: { id: 'cargo-bay', name: 'Cargo Bay', tags: ['station', 'storage'] },
+  connKind: 'docking',
+});
+
+const wildernessTrail = leanSample({
+  id: 'wilderness-trail', name: 'Wilderness Trail', description: 'A camp and ravine connected by a forest trail.',
+  genre: 'fantasy', mode: 'wilderness', grid: { w: 60, h: 50, tile: 48 },
+  z1: { id: 'camp', name: 'Camp', tags: ['camp', 'safe'] },
+  z2: { id: 'ravine', name: 'Ravine', tags: ['wild', 'dangerous'] },
+  connKind: 'trail',
+});
+
+const cityMarket = leanSample({
+  id: 'city-market', name: 'City Market', description: 'A market square and slums connected by a road.',
+  genre: 'fantasy', mode: 'district', grid: { w: 50, h: 40, tile: 32 },
+  z1: { id: 'market-square', name: 'Market Square', tags: ['trade', 'bustling'] },
+  z2: { id: 'slums', name: 'Slums', tags: ['poor', 'dangerous'] },
+  connKind: 'road',
+});
+
+const worldMap = leanSample({
+  id: 'world-map', name: 'World Map', description: 'Two kingdoms connected by a road.',
+  genre: 'fantasy', mode: 'world', grid: { w: 80, h: 60, tile: 48 },
+  z1: { id: 'kingdom-north', name: 'Kingdom North', tags: ['kingdom', 'cold'] },
+  z2: { id: 'kingdom-south', name: 'Kingdom South', tags: ['kingdom', 'warm'] },
+  connKind: 'road',
+});
+
+const cabinInterior = leanSample({
+  id: 'cabin-interior', name: 'Cabin Interior', description: 'A main room and cellar connected by stairs.',
+  genre: 'fantasy', mode: 'interior', grid: { w: 20, h: 15, tile: 24 },
+  z1: { id: 'main-room', name: 'Main Room', tags: ['room', 'safe'] },
+  z2: { id: 'cellar', name: 'Cellar', tags: ['underground', 'dark'] },
+  connKind: 'stairs',
+});
+
 export const SAMPLE_WORLDS: SampleWorld[] = [
   {
     id: 'hello-world',
     name: 'Hello World',
     description: 'Minimal valid project: 1 zone, 1 spawn, 1 district. The smallest exportable world.',
     complexity: 'minimal',
+    mode: 'dungeon',
     project: helloWorld,
   },
   {
@@ -313,6 +403,7 @@ export const SAMPLE_WORLDS: SampleWorld[] = [
     name: 'Tavern Crossroads',
     description: 'A mid-sized starter with player template, build catalog, dialogue, and progression tree.',
     complexity: 'intermediate',
+    mode: 'district',
     project: tavernCrossroads,
   },
   {
@@ -320,6 +411,13 @@ export const SAMPLE_WORLDS: SampleWorld[] = [
     name: 'Chapel Threshold',
     description: 'Rich reference with factions, encounters, items, build catalog, progression trees, and branching dialogue.',
     complexity: 'rich',
+    mode: 'dungeon',
     project: chapelThreshold,
   },
+  { id: 'ocean-harbor', name: 'Ocean Harbor', description: 'Harbor + open sea with channel connection.', complexity: 'minimal', mode: 'ocean', project: oceanHarbor },
+  { id: 'space-station', name: 'Space Station', description: 'Bridge + cargo bay with docking connection.', complexity: 'minimal', mode: 'space', project: spaceStation },
+  { id: 'wilderness-trail', name: 'Wilderness Trail', description: 'Camp + ravine with trail connection.', complexity: 'minimal', mode: 'wilderness', project: wildernessTrail },
+  { id: 'city-market', name: 'City Market', description: 'Market square + slums with road connection.', complexity: 'minimal', mode: 'district', project: cityMarket },
+  { id: 'world-map', name: 'World Map', description: 'Two kingdoms connected by road.', complexity: 'minimal', mode: 'world', project: worldMap },
+  { id: 'cabin-interior', name: 'Cabin Interior', description: 'Main room + cellar with stairs connection.', complexity: 'minimal', mode: 'interior', project: cabinInterior },
 ];

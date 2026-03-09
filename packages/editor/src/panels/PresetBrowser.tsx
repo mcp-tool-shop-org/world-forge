@@ -3,8 +3,18 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { usePresetStore } from '../presets/preset-store.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
+import type { AuthoringMode } from '@world-forge/schema';
 
 type SubTab = 'region' | 'encounter';
+
+/** Pure filter: keep presets matching the given mode (or with undefined modes). */
+export function filterPresetsByMode<T extends { modes?: AuthoringMode[] }>(
+  presets: T[],
+  mode: AuthoringMode | undefined,
+): T[] {
+  if (!mode) return presets;
+  return presets.filter((p) => !p.modes || p.modes.includes(mode));
+}
 
 export function PresetBrowser() {
   const [subTab, setSubTab] = useState<SubTab>('region');
@@ -21,6 +31,13 @@ export function PresetBrowser() {
   } = usePresetStore();
 
   const selectedZoneId = getSelectedZoneId(selection);
+
+  // Mode-aware preset filtering
+  const currentMode = project.mode;
+  const filteredRegion = filterPresetsByMode(regionPresets, currentMode);
+  const filteredEncounter = filterPresetsByMode(encounterPresets, currentMode);
+  const hiddenRegionCount = regionPresets.length - filteredRegion.length;
+  const hiddenEncounterCount = encounterPresets.length - filteredEncounter.length;
 
   // Find which district the selected zone belongs to
   const selectedDistrict = selectedZoneId
@@ -127,8 +144,20 @@ export function PresetBrowser() {
         </button>
       )}
 
+      {/* Hidden by mode count */}
+      {subTab === 'region' && hiddenRegionCount > 0 && (
+        <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6 }}>
+          {hiddenRegionCount} hidden by mode
+        </div>
+      )}
+      {subTab === 'encounter' && hiddenEncounterCount > 0 && (
+        <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6 }}>
+          {hiddenEncounterCount} hidden by mode
+        </div>
+      )}
+
       {/* Preset list */}
-      {subTab === 'region' && regionPresets.map((p) => (
+      {subTab === 'region' && filteredRegion.map((p) => (
         <PresetCard
           key={p.id}
           name={p.name}
@@ -156,7 +185,7 @@ export function PresetBrowser() {
         />
       ))}
 
-      {subTab === 'encounter' && encounterPresets.map((p) => (
+      {subTab === 'encounter' && filteredEncounter.map((p) => (
         <PresetCard
           key={p.id}
           name={p.name}

@@ -9,13 +9,17 @@ import type {
   ProgressionTreeDefinition, ProgressionNode,
   DialogueDefinition, DialogueNode, DialogueChoice,
   AssetEntry, AssetPack,
+  AuthoringMode,
 } from '@world-forge/schema';
+import { DEFAULT_MODE } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
 import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
+import { getModeProfile } from '../mode-profiles.js';
 
-export function createEmptyProject(): WorldProject {
+export function createEmptyProject(mode?: AuthoringMode): WorldProject {
+  const profile = getModeProfile(mode);
   return {
     id: 'new-project',
     name: 'Untitled World',
@@ -25,7 +29,8 @@ export function createEmptyProject(): WorldProject {
     tones: ['atmospheric'],
     difficulty: 'beginner',
     narratorTone: '',
-    map: { id: 'map-1', name: 'Map', description: '', gridWidth: 40, gridHeight: 30, tileSize: 32 },
+    mode: mode ?? DEFAULT_MODE,
+    map: { id: 'map-1', name: 'Map', description: '', gridWidth: profile.grid.width, gridHeight: profile.grid.height, tileSize: profile.grid.tileSize },
     zones: [],
     connections: [],
     districts: [],
