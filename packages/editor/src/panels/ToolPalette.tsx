@@ -1,6 +1,6 @@
-import { useEditorStore, type EditorTool } from '../store/editor-store.js';
+import { useEditorStore, getSelectedZoneId, getSelectionCount, type EditorTool } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
-import { computeContentBounds, fitBoundsToViewport, centerOnZone, MIN_ZOOM, MAX_ZOOM } from '../viewport.js';
+import { computeContentBounds, fitBoundsToViewport, centerOnZone, frameBounds, MIN_ZOOM, MAX_ZOOM } from '../viewport.js';
 
 const tools: { id: EditorTool; label: string; key: string }[] = [
   { id: 'select', label: 'Select', key: 'V' },
@@ -13,11 +13,12 @@ const tools: { id: EditorTool; label: string; key: string }[] = [
 
 export function ToolPalette() {
   const {
-    activeTool, setTool, selectedZoneId,
+    activeTool, setTool, selection,
     showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient,
     toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient,
     viewport, setViewport, resetViewport,
   } = useEditorStore();
+  const selectedZoneId = getSelectedZoneId(selection);
   const { project } = useProjectStore();
   const tileSize = project.map.tileSize;
 
@@ -37,12 +38,44 @@ export function ToolPalette() {
     setViewport(fitBoundsToViewport(bounds, size.cw, size.ch));
   };
 
+  const selCount = getSelectionCount(selection);
+
   const centerOnSelected = () => {
     const size = getCanvasSize();
-    if (!size || !selectedZoneId) return;
-    const zone = project.zones.find((z) => z.id === selectedZoneId);
-    if (!zone) return;
-    setViewport(centerOnZone(zone, tileSize, size.cw, size.ch));
+    if (!size) return;
+    // Single zone: center on it
+    if (selectedZoneId) {
+      const zone = project.zones.find((z) => z.id === selectedZoneId);
+      if (!zone) return;
+      setViewport(centerOnZone(zone, tileSize, size.cw, size.ch));
+      return;
+    }
+    // Multi-selection: frame all selected items
+    if (selCount > 0) {
+      const items: Array<{ gridX: number; gridY: number; gridWidth?: number; gridHeight?: number }> = [];
+      for (const zid of selection.zones) {
+        const z = project.zones.find((zone) => zone.id === zid);
+        if (z) items.push({ gridX: z.gridX, gridY: z.gridY, gridWidth: z.gridWidth, gridHeight: z.gridHeight });
+      }
+      for (const eid of selection.entities) {
+        const ep = project.entityPlacements.find((e) => e.entityId === eid);
+        if (ep) {
+          const zone = project.zones.find((z) => z.id === ep.zoneId);
+          items.push({ gridX: ep.gridX ?? (zone ? zone.gridX + 2 : 0), gridY: ep.gridY ?? (zone ? zone.gridY + 2 : 0) });
+        }
+      }
+      for (const lid of selection.landmarks) {
+        const lm = project.landmarks.find((l) => l.id === lid);
+        if (lm) items.push({ gridX: lm.gridX, gridY: lm.gridY });
+      }
+      for (const sid of selection.spawns) {
+        const sp = project.spawnPoints.find((s) => s.id === sid);
+        if (sp) items.push({ gridX: sp.gridX, gridY: sp.gridY });
+      }
+      if (items.length === 0) return;
+      const vp = frameBounds(items, tileSize, size.cw, size.ch);
+      if (vp) setViewport(vp);
+    }
   };
 
   const zoomPercent = Math.round(viewport.zoom * 100);
@@ -79,7 +112,7 @@ export function ToolPalette() {
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
         <button style={btnStyle} onClick={fitToContent}>Fit</button>
-        <button style={{ ...btnStyle, opacity: selectedZoneId ? 1 : 0.4 }} onClick={centerOnSelected} disabled={!selectedZoneId}>Center</button>
+        <button style={{ ...btnStyle, opacity: selCount > 0 ? 1 : 0.4 }} onClick={centerOnSelected} disabled={selCount === 0}>Center</button>
         <button style={btnStyle} onClick={resetViewport}>Reset</button>
       </div>
 

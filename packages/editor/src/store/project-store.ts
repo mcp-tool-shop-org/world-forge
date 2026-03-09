@@ -73,13 +73,22 @@ interface ProjectState {
 
   // Entity helpers
   addEntity: (e: EntityPlacement) => void;
+  updateEntity: (entityId: string, updates: Partial<EntityPlacement>) => void;
   removeEntity: (entityId: string) => void;
 
   // Landmark helpers
   addLandmark: (l: Landmark) => void;
+  updateLandmark: (id: string, updates: Partial<Landmark>) => void;
+  removeLandmark: (id: string) => void;
 
   // Spawn helpers
   addSpawnPoint: (s: SpawnPoint) => void;
+  updateSpawnPoint: (id: string, updates: Partial<SpawnPoint>) => void;
+  removeSpawnPoint: (id: string) => void;
+
+  // Batch helpers (multi-select operations)
+  moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, dx: number, dy: number) => void;
+  removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => void;
 
   // Player template helpers
   setPlayerTemplate: (t: PlayerTemplate) => void;
@@ -216,13 +225,61 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   // Entity helpers
   addEntity: (e) => get().updateProject((p) => ({ ...p, entityPlacements: [...p.entityPlacements, e] })),
+  updateEntity: (entityId, updates) => get().updateProject((p) => ({
+    ...p, entityPlacements: p.entityPlacements.map((e) => e.entityId === entityId ? { ...e, ...updates } : e),
+  })),
   removeEntity: (entityId) => get().updateProject((p) => ({
     ...p, entityPlacements: p.entityPlacements.filter((e) => e.entityId !== entityId),
   })),
 
-  // Landmark & Spawn helpers
+  // Landmark helpers
   addLandmark: (l) => get().updateProject((p) => ({ ...p, landmarks: [...p.landmarks, l] })),
+  updateLandmark: (id, updates) => get().updateProject((p) => ({
+    ...p, landmarks: p.landmarks.map((l) => l.id === id ? { ...l, ...updates } : l),
+  })),
+  removeLandmark: (id) => get().updateProject((p) => ({
+    ...p, landmarks: p.landmarks.filter((l) => l.id !== id),
+  })),
+
+  // Spawn helpers
   addSpawnPoint: (s) => get().updateProject((p) => ({ ...p, spawnPoints: [...p.spawnPoints, s] })),
+  updateSpawnPoint: (id, updates) => get().updateProject((p) => ({
+    ...p, spawnPoints: p.spawnPoints.map((s) => s.id === id ? { ...s, ...updates } : s),
+  })),
+  removeSpawnPoint: (id) => get().updateProject((p) => ({
+    ...p, spawnPoints: p.spawnPoints.filter((s) => s.id !== id),
+  })),
+
+  // Batch helpers — single updateProject call for atomic undo
+  moveSelected: (sel, dx, dy) => get().updateProject((p) => {
+    const zSet = new Set(sel.zones);
+    const eSet = new Set(sel.entities);
+    const lSet = new Set(sel.landmarks);
+    const sSet = new Set(sel.spawns);
+    return {
+      ...p,
+      zones: p.zones.map((z) => zSet.has(z.id) ? { ...z, gridX: z.gridX + dx, gridY: z.gridY + dy } : z),
+      entityPlacements: p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
+        ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
+      landmarks: p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
+      spawnPoints: p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+    };
+  }),
+  removeSelected: (sel) => get().updateProject((p) => {
+    const zSet = new Set(sel.zones);
+    const eSet = new Set(sel.entities);
+    const lSet = new Set(sel.landmarks);
+    const sSet = new Set(sel.spawns);
+    return {
+      ...p,
+      zones: p.zones.filter((z) => !zSet.has(z.id)),
+      connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
+      districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
+      entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId) && !zSet.has(e.zoneId)),
+      landmarks: p.landmarks.filter((l) => !lSet.has(l.id) && !zSet.has(l.zoneId)),
+      spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
+    };
+  }),
 
   // Player template helpers
   setPlayerTemplate: (t) => get().updateProject((p) => ({ ...p, playerTemplate: t })),

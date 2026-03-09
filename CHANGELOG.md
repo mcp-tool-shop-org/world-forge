@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-03-09
+
+### Added
+
+- **Multi-select** — `SelectionSet` model supports zones, entities, landmarks, and spawns simultaneously; shift-click to add/remove from selection
+- **Box select** — rubber-band rectangle in select tool mode selects all enclosed objects; shift held unions with existing selection
+- **Drag-move** — drag any selected object(s) to reposition; 3px threshold prevents accidental moves; single `updateProject()` call for atomic undo
+- **Hit testing** — extracted `hit-testing.ts` with `findHitAt()` (priority: spawns > landmarks > entities > zones) and `findAllInRect()`, 8px screen-space hit radius for point objects
+- **Batch zone actions** — `BatchZoneActions` panel when 2+ zones selected: batch district assignment, batch tag add, delete all with confirmation
+- **Spatial jump helpers** — `frameBounds()` viewport function frames arbitrary spatial items; Center button works with multi-selection; district zone count badge click selects + frames all district zones
+- **Keyboard shortcuts** — Escape (clear selection), Ctrl/Cmd+A (select all visible), Delete/Backspace (remove selected with confirmation), Arrow keys (nudge 1 cell, Shift+Arrow nudge 5)
+- **Selection highlights** — white circle for selected entities/landmarks, white square outline for selected spawns, selection count badge on canvas
+- 37 new tests: 12 selection model, 20 hit testing, 5 viewport frame (258 total)
+
+### Changed
+
+- Canvas.tsx fully rewritten with hit-testing integration, box-select, drag-move, keyboard shortcuts, and cursor management
+- Editor store uses `SelectionSet` instead of single `selectedZoneId`; backward-compatible `setSelectedZone()` kept for navigation panels
+- Project store gains batch helpers: `moveSelected()`, `removeSelected()`, `updateEntity()`, `updateLandmark()`, `updateSpawnPoint()`, `removeLandmark()`, `removeSpawnPoint()`
+- ToolPalette Center button handles multi-selection via `frameBounds()`
+- DistrictPanel supports multi-zone assignment and click-to-frame-district
+- App.tsx routes to BatchZoneActions when 2+ zones selected; status bar shows selection count
+
 ## [2.0.0] - 2026-03-09
 
 ### Added

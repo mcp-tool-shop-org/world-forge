@@ -1,33 +1,46 @@
-// Canvas.tsx — main viewport with zone interaction, pan & zoom
+// Canvas.tsx — main viewport with multi-select, box-select, drag-move, pan & zoom
 
 import { useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore } from './store/editor-store.js';
+import { useEditorStore, getSelectionCount, isSelected as isSel } from './store/editor-store.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
+import { findHitAt, findAllInRect } from './hit-testing.js';
 import type { Zone } from '@world-forge/schema';
 
 const ZOOM_STEP = 0.1;
+const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
 
 let nextZoneId = 1;
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, updateZone, addEntity, addSpawnPoint } = useProjectStore();
+  const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, removeSelected } = useProjectStore();
   const {
-    activeTool, showGrid, selectedZoneId, hoveredZoneId,
+    activeTool, showGrid, selection, hoveredZoneId,
     showConnections, showEntities, showLandmarks, showSpawns, showAmbient,
-    setSelectedZone, setHoveredZone, connectionStart, setConnectionStart,
+    selectZone, selectEntity, selectLandmark, selectSpawn,
+    setSelectedZone, setHoveredZone, selectAll, clearSelection,
+    connectionStart, setConnectionStart,
     viewport, setViewport,
   } = useEditorStore();
 
   const tileSize = project.map.tileSize;
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const zonePaintStart = useRef<{ x: number; y: number } | null>(null);
   const isPanning = useRef(false);
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const spaceHeld = useRef(false);
   const hasFitted = useRef(false);
 
-  // --- Coordinate conversion (inline, no viewport.ts dependency for Canvas) ---
+  // Box-select state
+  const boxSelect = useRef<{ startX: number; startY: number; curX: number; curY: number } | null>(null);
+
+  // Drag-move state
+  const dragMove = useRef<{
+    startSX: number; startSY: number; startGX: number; startGY: number;
+    active: boolean; lastDX: number; lastDY: number;
+  } | null>(null);
+
+  // --- Coordinate conversion ---
   const screenToWorld = useCallback((screenX: number, screenY: number) => ({
     worldX: screenX / viewport.zoom + viewport.panX,
     worldY: screenY / viewport.zoom + viewport.panY,
@@ -35,10 +48,7 @@ export function Canvas() {
 
   const screenToGrid = useCallback((screenX: number, screenY: number) => {
     const { worldX, worldY } = screenToWorld(screenX, screenY);
-    return {
-      gx: Math.floor(worldX / tileSize),
-      gy: Math.floor(worldY / tileSize),
-    };
+    return { gx: Math.floor(worldX / tileSize), gy: Math.floor(worldY / tileSize) };
   }, [screenToWorld, tileSize]);
 
   // --- Fit to content on first render ---
@@ -51,7 +61,6 @@ export function Canvas() {
     const ch = canvas.offsetHeight;
     if (cw === 0 || ch === 0) return;
 
-    // Compute content bounds
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const z of project.zones) {
       minX = Math.min(minX, z.gridX * tileSize);
@@ -103,7 +112,6 @@ export function Canvas() {
     canvas.height = canvas.offsetHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Apply viewport transform — all drawing below is in world coordinates
     const { panX, panY, zoom } = viewport;
     ctx.setTransform(zoom, 0, 0, zoom, -panX * zoom, -panY * zoom);
 
@@ -155,26 +163,25 @@ export function Canvas() {
       const distIdx = project.districts.findIndex((d) => d.id === zone.parentDistrictId);
       const color = colors[distIdx % colors.length] ?? '#888';
 
-      const isSelected = zone.id === selectedZoneId;
-      const isHovered = zone.id === hoveredZoneId;
+      const selected = selection.zones.includes(zone.id);
+      const hovered = zone.id === hoveredZoneId;
 
-      // Fill — stronger states for selection & hover
-      ctx.fillStyle = isSelected ? color + '50' : isHovered ? color + '30' : color + '10';
+      ctx.fillStyle = selected ? color + '50' : hovered ? color + '30' : color + '10';
       ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = color + (isSelected ? 'ff' : isHovered ? 'cc' : '80');
-      ctx.lineWidth = (isSelected ? 3 : isHovered ? 2 : 1) / zoom;
+      ctx.strokeStyle = color + (selected ? 'ff' : hovered ? 'cc' : '80');
+      ctx.lineWidth = (selected ? 3 : hovered ? 2 : 1) / zoom;
       ctx.strokeRect(x, y, w, h);
 
-      // Zone label with dark background pill for readability
+      // Zone label with dark background pill
       const fontSize = Math.max(9, Math.min(14, 11 / zoom));
       ctx.font = `${fontSize}px monospace`;
       const labelX = x + 4 / zoom;
       const labelY = y + (fontSize + 3) / zoom;
       const textWidth = ctx.measureText(zone.name).width;
-      const pad = 2 / zoom;
+      const labelPad = 2 / zoom;
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(labelX - pad, labelY - fontSize + pad, textWidth + pad * 2, fontSize + pad);
-      ctx.fillStyle = isSelected ? '#fff' : '#ccc';
+      ctx.fillRect(labelX - labelPad, labelY - fontSize + labelPad, textWidth + labelPad * 2, fontSize + labelPad);
+      ctx.fillStyle = selected ? '#fff' : '#ccc';
       ctx.fillText(zone.name, labelX, labelY);
     }
 
@@ -189,11 +196,20 @@ export function Canvas() {
           npc: '#4a9eff', enemy: '#ff4444', merchant: '#ffd700',
           'quest-giver': '#44ff44', companion: '#44ffaa', boss: '#ff2222',
         };
+        const selected = isSel(selection, 'entity', ep.entityId);
         ctx.fillStyle = roleColors[ep.role] ?? '#888';
         ctx.beginPath();
         const radius = (ep.role === 'boss' ? 8 : 5) / zoom;
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
+        // Selection ring
+        if (selected) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2 / zoom;
+          ctx.beginPath();
+          ctx.arc(x, y, radius + 3 / zoom, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
         ctx.fillText(ep.entityId, x + 10 / zoom, y + 3 / zoom);
@@ -208,6 +224,7 @@ export function Canvas() {
         const x = lm.gridX * tileSize;
         const y = lm.gridY * tileSize;
         const s = 6 / zoom;
+        const selected = isSel(selection, 'landmark', lm.id);
         ctx.fillStyle = '#ffd700';
         ctx.beginPath();
         ctx.moveTo(x, y - s);
@@ -216,6 +233,14 @@ export function Canvas() {
         ctx.lineTo(x - s * 5 / 6, y);
         ctx.closePath();
         ctx.fill();
+        // Selection ring
+        if (selected) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2 / zoom;
+          ctx.beginPath();
+          ctx.arc(x, y, s + 2 / zoom, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         ctx.fillStyle = '#ffd700';
         ctx.font = `${9 / zoom}px monospace`;
         ctx.fillText(lm.name, x + 8 / zoom, y + 3 / zoom);
@@ -228,8 +253,15 @@ export function Canvas() {
         const x = sp.gridX * tileSize;
         const y = sp.gridY * tileSize;
         const s = 4 / zoom;
+        const selected = isSel(selection, 'spawn', sp.id);
         ctx.fillStyle = '#00ff88';
         ctx.fillRect(x - s, y - s, s * 2, s * 2);
+        // Selection ring
+        if (selected) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2 / zoom;
+          ctx.strokeRect(x - s - 2 / zoom, y - s - 2 / zoom, s * 2 + 4 / zoom, s * 2 + 4 / zoom);
+        }
         ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
         ctx.fillText('SPAWN', x + 8 / zoom, y + 3 / zoom);
@@ -256,9 +288,35 @@ export function Canvas() {
       }
     }
 
-    // Reset transform for any screen-space overlays
+    // Reset transform for screen-space overlays
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selectedZoneId, hoveredZoneId, tileSize, viewport]);
+
+    // Box-select rectangle (screen-space)
+    if (boxSelect.current) {
+      const { startX, startY, curX, curY } = boxSelect.current;
+      ctx.strokeStyle = 'rgba(74, 158, 255, 0.8)';
+      ctx.fillStyle = 'rgba(74, 158, 255, 0.15)';
+      ctx.lineWidth = 1;
+      const rx = Math.min(startX, curX);
+      const ry = Math.min(startY, curY);
+      const rw = Math.abs(curX - startX);
+      const rh = Math.abs(curY - startY);
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeRect(rx, ry, rw, rh);
+    }
+
+    // Selection count badge (screen-space)
+    const selCount = getSelectionCount(selection);
+    if (selCount > 1) {
+      const label = `${selCount} selected`;
+      ctx.font = '11px monospace';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(8, 8, tw + 12, 20);
+      ctx.fillStyle = '#58a6ff';
+      ctx.fillText(label, 14, 22);
+    }
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selection, hoveredZoneId, tileSize, viewport]);
 
   useEffect(() => {
     draw();
@@ -267,26 +325,68 @@ export function Canvas() {
     return () => window.removeEventListener('resize', handle);
   }, [draw]);
 
-  // --- Keyboard events for spacebar pan ---
+  // --- Keyboard events ---
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Don't capture keys when typing in inputs
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
         spaceHeld.current = true;
+        return;
+      }
+
+      if (e.code === 'Escape') {
+        clearSelection();
+        return;
+      }
+
+      // Ctrl/Cmd+A = select all visible objects
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+        e.preventDefault();
+        const zones = project.zones.map((z) => z.id);
+        const entities = showEntities ? project.entityPlacements.map((e) => e.entityId) : [];
+        const landmarks = showLandmarks ? project.landmarks.map((l) => l.id) : [];
+        const spawns = showSpawns ? project.spawnPoints.map((s) => s.id) : [];
+        selectAll({ zones, entities, landmarks, spawns }, false);
+        return;
+      }
+
+      // Delete/Backspace = delete selected
+      if (e.code === 'Delete' || e.code === 'Backspace') {
+        const count = getSelectionCount(selection);
+        if (count === 0) return;
+        if (count > 3 && !confirm(`Delete ${count} objects?`)) return;
+        removeSelected(selection);
+        clearSelection();
+        return;
+      }
+
+      // Arrow keys = nudge selected
+      const arrowDirs: Record<string, [number, number]> = {
+        ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+      };
+      const dir = arrowDirs[e.code];
+      if (dir && getSelectionCount(selection) > 0) {
+        e.preventDefault();
+        const mult = e.shiftKey ? 5 : 1;
+        moveSelected(selection, dir[0] * mult, dir[1] * mult);
       }
     };
+
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        spaceHeld.current = false;
-      }
+      if (e.code === 'Space') spaceHeld.current = false;
     };
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, []);
+  }, [selection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected]);
 
   // --- Mouse coordinate helpers ---
   const getScreenXY = (e: React.MouseEvent) => {
@@ -305,9 +405,26 @@ export function Canvas() {
       gy >= z.gridY && gy < z.gridY + z.gridHeight,
     );
 
+  const visibility = { showEntities, showLandmarks, showSpawns };
+
+  // --- Check if a hit result is already selected ---
+  const hitIsSelected = (hit: { type: string; id: string } | null) => {
+    if (!hit) return false;
+    const t = hit.type as 'zone' | 'entity' | 'landmark' | 'spawn';
+    return isSel(selection, t, hit.id);
+  };
+
+  // --- Dispatch selection for a hit result ---
+  const selectHit = (hit: { type: string; id: string }, additive: boolean) => {
+    if (hit.type === 'zone') selectZone(hit.id, additive);
+    else if (hit.type === 'entity') selectEntity(hit.id, additive);
+    else if (hit.type === 'landmark') selectLandmark(hit.id, additive);
+    else if (hit.type === 'spawn') selectSpawn(hit.id, additive);
+  };
+
   // --- Mouse handlers ---
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Middle mouse or space+left = pan
+    // Pan: middle mouse or space+left
     if (e.button === 1 || (e.button === 0 && spaceHeld.current)) {
       e.preventDefault();
       isPanning.current = true;
@@ -316,13 +433,31 @@ export function Canvas() {
     }
 
     if (e.button !== 0) return;
-    const { gx, gy } = gridPos(e);
+    const { sx, sy } = getScreenXY(e);
+    const { gx, gy } = screenToGrid(sx, sy);
 
     if (activeTool === 'select') {
-      const zone = findZoneAt(gx, gy);
-      setSelectedZone(zone?.id ?? null);
+      const hit = findHitAt(sx, sy, viewport, project, tileSize, visibility);
+
+      if (hit) {
+        if (e.shiftKey) {
+          // Additive select — toggle, no drag
+          selectHit(hit, true);
+        } else if (hitIsSelected(hit)) {
+          // Already selected — start drag tracking (don't change selection)
+          dragMove.current = { startSX: sx, startSY: sy, startGX: gx, startGY: gy, active: false, lastDX: 0, lastDY: 0 };
+        } else {
+          // Not selected — replace selection, start drag tracking
+          selectHit(hit, false);
+          dragMove.current = { startSX: sx, startSY: sy, startGX: gx, startGY: gy, active: false, lastDX: 0, lastDY: 0 };
+        }
+      } else {
+        // No hit — start box-select
+        if (!e.shiftKey) clearSelection();
+        boxSelect.current = { startX: sx, startY: sy, curX: sx, curY: sy };
+      }
     } else if (activeTool === 'zone-paint') {
-      dragStart.current = { x: gx, y: gy };
+      zonePaintStart.current = { x: gx, y: gy };
     } else if (activeTool === 'connection') {
       const zone = findZoneAt(gx, gy);
       if (zone) {
@@ -341,8 +476,7 @@ export function Canvas() {
         addEntity({
           entityId: `entity-${Date.now()}`,
           zoneId: zone.id,
-          gridX: gx,
-          gridY: gy,
+          gridX: gx, gridY: gy,
           role: 'npc',
         });
       }
@@ -350,8 +484,7 @@ export function Canvas() {
       addSpawnPoint({
         id: `spawn-${Date.now()}`,
         zoneId: findZoneAt(gx, gy)?.id ?? '',
-        gridX: gx,
-        gridY: gy,
+        gridX: gx, gridY: gy,
         isDefault: project.spawnPoints.length === 0,
       });
     }
@@ -363,26 +496,56 @@ export function Canvas() {
       panStart.current = null;
       return;
     }
-    if (activeTool === 'zone-paint' && dragStart.current) {
+
+    // Drag-move commit
+    if (dragMove.current?.active) {
+      const { sx, sy } = getScreenXY(e);
+      const { gx: curGX, gy: curGY } = screenToGrid(sx, sy);
+      const dx = curGX - dragMove.current.startGX;
+      const dy = curGY - dragMove.current.startGY;
+      if (dx !== 0 || dy !== 0) {
+        moveSelected(selection, dx, dy);
+      }
+      dragMove.current = null;
+      draw();
+      return;
+    }
+    dragMove.current = null;
+
+    // Box-select commit
+    if (boxSelect.current) {
+      const { startX, startY, curX, curY } = boxSelect.current;
+      const rect = { x1: startX, y1: startY, x2: curX, y2: curY };
+      const result = findAllInRect(rect, viewport, project, tileSize, visibility);
+      const hasItems = result.zones.length + result.entities.length + result.landmarks.length + result.spawns.length > 0;
+      if (hasItems) {
+        selectAll(result, e.shiftKey);
+      }
+      boxSelect.current = null;
+      draw();
+      return;
+    }
+
+    // Zone-paint commit
+    if (activeTool === 'zone-paint' && zonePaintStart.current) {
       const { gx, gy } = gridPos(e);
-      const sx = Math.min(dragStart.current.x, gx);
-      const sy = Math.min(dragStart.current.y, gy);
-      const w = Math.abs(gx - dragStart.current.x) + 1;
-      const h = Math.abs(gy - dragStart.current.y) + 1;
+      const sx = Math.min(zonePaintStart.current.x, gx);
+      const sy = Math.min(zonePaintStart.current.y, gy);
+      const w = Math.abs(gx - zonePaintStart.current.x) + 1;
+      const h = Math.abs(gy - zonePaintStart.current.y) + 1;
       if (w >= 2 && h >= 2) {
         const id = `zone-${nextZoneId++}`;
         addZone({
           id,
           name: `Zone ${nextZoneId - 1}`,
-          tags: [],
-          description: '',
+          tags: [], description: '',
           gridX: sx, gridY: sy, gridWidth: w, gridHeight: h,
           neighbors: [], exits: [],
           light: 5, noise: 0, hazards: [], interactables: [],
         });
         setSelectedZone(id);
       }
-      dragStart.current = null;
+      zonePaintStart.current = null;
     }
   };
 
@@ -396,9 +559,35 @@ export function Canvas() {
       });
       return;
     }
-    const { gx, gy } = gridPos(e);
-    const zone = findZoneAt(gx, gy);
-    setHoveredZone(zone?.id ?? null);
+
+    const { sx, sy } = getScreenXY(e);
+
+    // Drag-move tracking
+    if (dragMove.current) {
+      if (!dragMove.current.active) {
+        const ddx = sx - dragMove.current.startSX;
+        const ddy = sy - dragMove.current.startSY;
+        if (Math.sqrt(ddx * ddx + ddy * ddy) >= DRAG_THRESHOLD) {
+          dragMove.current.active = true;
+        }
+      }
+      if (dragMove.current.active) {
+        draw(); // Trigger redraw — ghost rendering handled by cursor change
+      }
+      return;
+    }
+
+    // Box-select tracking
+    if (boxSelect.current) {
+      boxSelect.current.curX = sx;
+      boxSelect.current.curY = sy;
+      draw();
+      return;
+    }
+
+    // Hover tracking via hit-testing
+    const hit = findHitAt(sx, sy, viewport, project, tileSize, visibility);
+    setHoveredZone(hit?.type === 'zone' ? hit.id : null);
   };
 
   // --- Wheel zoom ---
@@ -410,7 +599,6 @@ export function Canvas() {
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
 
-    // World point under cursor before zoom
     const worldX = sx / viewport.zoom + viewport.panX;
     const worldY = sy / viewport.zoom + viewport.panY;
 
@@ -418,7 +606,6 @@ export function Canvas() {
     const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, viewport.zoom + delta));
     if (newZoom === viewport.zoom) return;
 
-    // Keep world point under cursor stationary
     const newPanX = worldX - sx / newZoom;
     const newPanY = worldY - sy / newZoom;
     setViewport({ panX: newPanX, panY: newPanY, zoom: newZoom });
@@ -436,13 +623,18 @@ export function Canvas() {
     const { gx, gy } = gridPos(e);
     const zone = findZoneAt(gx, gy);
     if (!zone) return;
-    setSelectedZone(zone.id);
+    selectZone(zone.id, false);
     const canvas = canvasRef.current;
     if (!canvas) return;
     setViewport(centerOnZone(zone, tileSize, canvas.offsetWidth, canvas.offsetHeight));
   };
 
-  const cursor = isPanning.current || spaceHeld.current ? 'grabbing' : 'crosshair';
+  // --- Cursor ---
+  let cursor = 'crosshair';
+  if (isPanning.current || spaceHeld.current) cursor = 'grabbing';
+  else if (dragMove.current?.active) cursor = 'grabbing';
+  else if (boxSelect.current) cursor = 'crosshair';
+  else if (activeTool === 'select') cursor = 'default';
 
   return (
     <canvas

@@ -2,11 +2,12 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore, type RightTab } from './store/editor-store.js';
+import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
 import { ToolPalette } from './panels/ToolPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
+import { BatchZoneActions } from './panels/BatchZoneActions.js';
 import { ExportModal } from './panels/ExportModal.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
@@ -24,7 +25,9 @@ import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selectedZoneId, rightTab, setRightTab, viewport, checklistDismissed } = useEditorStore();
+  const { activeTool, selection, rightTab, setRightTab, viewport, checklistDismissed } = useEditorStore();
+  const selectedZoneId = getSelectedZoneId(selection);
+  const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const [showExport, setShowExport] = useState(false);
@@ -153,9 +156,10 @@ export function App() {
           <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
             {rightTab === 'map' && (
               <>
+                {selection.zones.length > 1 && <BatchZoneActions />}
                 {selectedZoneId && <ZoneProperties />}
                 {activeTool === 'entity-place' && <EntityProperties />}
-                {!selectedZoneId && activeTool !== 'entity-place' && (
+                {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
                   <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
                     Select a zone or use a tool to see properties.
                   </div>
@@ -185,6 +189,7 @@ export function App() {
         <span>Entities: {project.entityPlacements.length}</span>
         <span>Assets: {project.assets.length}</span>
         <span>Zoom: {Math.round(viewport.zoom * 100)}%</span>
+        {selectionCount > 0 && <span>Selected: {selectionCount}</span>}
         <div style={{ flex: 1 }} />
         {issueCount > 0 ? (
           <span

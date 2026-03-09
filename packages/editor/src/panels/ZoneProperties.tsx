@@ -1,10 +1,11 @@
 import { useProjectStore } from '../store/project-store.js';
-import { useEditorStore } from '../store/editor-store.js';
+import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { ScenePreview } from './ScenePreview.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();
-  const { selectedZoneId, setSelectedZone } = useEditorStore();
+  const { selection, setSelectedZone } = useEditorStore();
+  const selectedZoneId = getSelectedZoneId(selection);
   const zone = project.zones.find((z) => z.id === selectedZoneId);
   if (!zone) return null;
 

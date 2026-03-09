@@ -17,6 +17,38 @@ export interface FocusTarget {
   timestamp: number;
 }
 
+/** Multi-select state with typed ID arrays */
+export interface SelectionSet {
+  zones: string[];
+  entities: string[];
+  landmarks: string[];
+  spawns: string[];
+}
+
+const EMPTY_SELECTION: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [] };
+
+// --- Pure selection helpers (exported for tests & panels) ---
+
+/** Returns the single selected zone ID, or null if 0 or 2+ zones selected */
+export function getSelectedZoneId(sel: SelectionSet): string | null {
+  return sel.zones.length === 1 ? sel.zones[0] : null;
+}
+
+/** Total count of all selected objects */
+export function getSelectionCount(sel: SelectionSet): number {
+  return sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length;
+}
+
+/** Check if a specific object is in the selection */
+export function isSelected(sel: SelectionSet, type: 'zone' | 'entity' | 'landmark' | 'spawn', id: string): boolean {
+  const key = type === 'zone' ? 'zones' : type === 'entity' ? 'entities' : type === 'landmark' ? 'landmarks' : 'spawns';
+  return sel[key].includes(id);
+}
+
+function toggleInArray(arr: string[], id: string): string[] {
+  return arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+}
+
 interface EditorState {
   activeTool: EditorTool;
   rightTab: RightTab;
@@ -31,9 +63,8 @@ interface EditorState {
   showBackgrounds: boolean;
   showAmbient: boolean;
   viewport: ViewportState;
-  selectedZoneId: string | null;
+  selection: SelectionSet;
   hoveredZoneId: string | null;
-  selectedEntityId: string | null;
   connectionStart: string | null;
   checklistDismissed: boolean;
   hasExported: boolean;
@@ -47,9 +78,16 @@ interface EditorState {
   setRightTab: (tab: RightTab) => void;
   setBuildsSubTab: (tab: BuildsSubTab) => void;
   setFocusTarget: (target: FocusTarget | null) => void;
+  setSelection: (sel: SelectionSet) => void;
+  clearSelection: () => void;
+  selectZone: (id: string, additive: boolean) => void;
+  selectEntity: (id: string, additive: boolean) => void;
+  selectLandmark: (id: string, additive: boolean) => void;
+  selectSpawn: (id: string, additive: boolean) => void;
+  selectAll: (set: SelectionSet, additive: boolean) => void;
+  /** Backward compat: set single zone selection (used by validation/export navigation) */
   setSelectedZone: (id: string | null) => void;
   setHoveredZone: (id: string | null) => void;
-  setSelectedEntity: (id: string | null) => void;
   setConnectionStart: (id: string | null) => void;
   toggleGrid: () => void;
   toggleConnections: () => void;
@@ -82,9 +120,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   showBackgrounds: true,
   showAmbient: true,
   viewport: { panX: 0, panY: 0, zoom: 1 },
-  selectedZoneId: null,
+  selection: { ...EMPTY_SELECTION },
   hoveredZoneId: null,
-  selectedEntityId: null,
   connectionStart: null,
   checklistDismissed: false,
   hasExported: false,
@@ -96,9 +133,42 @@ export const useEditorStore = create<EditorState>((set) => ({
   setRightTab: (tab) => set({ rightTab: tab }),
   setBuildsSubTab: (tab) => set({ buildsSubTab: tab }),
   setFocusTarget: (target) => set({ focusTarget: target }),
-  setSelectedZone: (id) => set({ selectedZoneId: id }),
+
+  // Selection actions
+  setSelection: (sel) => set({ selection: sel }),
+  clearSelection: () => set({ selection: { ...EMPTY_SELECTION } }),
+  selectZone: (id, additive) => set((s) => ({
+    selection: additive
+      ? { ...s.selection, zones: toggleInArray(s.selection.zones, id) }
+      : { ...EMPTY_SELECTION, zones: [id] },
+  })),
+  selectEntity: (id, additive) => set((s) => ({
+    selection: additive
+      ? { ...s.selection, entities: toggleInArray(s.selection.entities, id) }
+      : { ...EMPTY_SELECTION, entities: [id] },
+  })),
+  selectLandmark: (id, additive) => set((s) => ({
+    selection: additive
+      ? { ...s.selection, landmarks: toggleInArray(s.selection.landmarks, id) }
+      : { ...EMPTY_SELECTION, landmarks: [id] },
+  })),
+  selectSpawn: (id, additive) => set((s) => ({
+    selection: additive
+      ? { ...s.selection, spawns: toggleInArray(s.selection.spawns, id) }
+      : { ...EMPTY_SELECTION, spawns: [id] },
+  })),
+  selectAll: (incoming, additive) => set((s) => ({
+    selection: additive ? {
+      zones: [...new Set([...s.selection.zones, ...incoming.zones])],
+      entities: [...new Set([...s.selection.entities, ...incoming.entities])],
+      landmarks: [...new Set([...s.selection.landmarks, ...incoming.landmarks])],
+      spawns: [...new Set([...s.selection.spawns, ...incoming.spawns])],
+    } : incoming,
+  })),
+  /** Backward compat: replaces selection with single zone (or clears if null) */
+  setSelectedZone: (id) => set({ selection: id ? { ...EMPTY_SELECTION, zones: [id] } : { ...EMPTY_SELECTION } }),
+
   setHoveredZone: (id) => set({ hoveredZoneId: id }),
-  setSelectedEntity: (id) => set({ selectedEntityId: id }),
   setConnectionStart: (id) => set({ connectionStart: id }),
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   toggleConnections: () => set((s) => ({ showConnections: !s.showConnections })),

@@ -1,9 +1,11 @@
 import { useProjectStore } from '../store/project-store.js';
-import { useEditorStore } from '../store/editor-store.js';
+import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
+import { frameBounds } from '../viewport.js';
 
 export function DistrictPanel() {
   const { project, addDistrict, updateDistrict, updateZone } = useProjectStore();
-  const { selectedZoneId } = useEditorStore();
+  const { selection, setSelection, setViewport } = useEditorStore();
+  const selectedZoneId = getSelectedZoneId(selection);
 
   const handleCreate = () => {
     const id = `district-${Date.now()}`;
@@ -17,14 +19,33 @@ export function DistrictPanel() {
     });
   };
 
+  const selectedZoneIds = selection.zones;
+  const tileSize = project.map.tileSize;
+
+  const handleFrameDistrict = (districtId: string) => {
+    const district = project.districts.find((d) => d.id === districtId);
+    if (!district || district.zoneIds.length === 0) return;
+    // Select all zones in district
+    setSelection({ zones: district.zoneIds, entities: [], landmarks: [], spawns: [] });
+    // Frame them
+    const items = district.zoneIds.map((zid) => project.zones.find((z) => z.id === zid)).filter(Boolean) as Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number }>;
+    if (items.length === 0) return;
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    const vp = frameBounds(items, tileSize, canvas.offsetWidth, canvas.offsetHeight);
+    if (vp) setViewport(vp);
+  };
+
   const handleAssignZone = (districtId: string) => {
-    if (!selectedZoneId) return;
+    if (selectedZoneIds.length === 0) return;
     const district = project.districts.find((d) => d.id === districtId);
     if (!district) return;
-    if (!district.zoneIds.includes(selectedZoneId)) {
-      updateDistrict(districtId, { zoneIds: [...district.zoneIds, selectedZoneId] });
+    for (const zid of selectedZoneIds) {
+      if (!district.zoneIds.includes(zid)) {
+        updateDistrict(districtId, { zoneIds: [...district.zoneIds, ...selectedZoneIds.filter((z) => !district.zoneIds.includes(z))] });
+      }
+      updateZone(zid, { parentDistrictId: districtId });
     }
-    updateZone(selectedZoneId, { parentDistrictId: districtId });
   };
 
   return (
@@ -37,11 +58,16 @@ export function DistrictPanel() {
             value={d.name}
             onChange={(e) => updateDistrict(d.id, { name: e.target.value })}
           />
-          <div style={{ fontSize: 10, color: '#8b949e' }}>{d.zoneIds.length} zones</div>
-          {selectedZoneId && (
+          <div
+            style={{ fontSize: 10, color: d.zoneIds.length > 0 ? '#58a6ff' : '#8b949e', cursor: d.zoneIds.length > 0 ? 'pointer' : 'default' }}
+            onClick={() => d.zoneIds.length > 0 && handleFrameDistrict(d.id)}
+          >
+            {d.zoneIds.length} zones
+          </div>
+          {selectedZoneIds.length > 0 && (
             <button onClick={() => handleAssignZone(d.id)}
               style={{ fontSize: 10, background: '#21262d', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 2, cursor: 'pointer', padding: '1px 4px', marginTop: 2 }}>
-              + Assign selected zone
+              + Assign {selectedZoneIds.length === 1 ? 'selected zone' : `${selectedZoneIds.length} zones`}
             </button>
           )}
         </div>

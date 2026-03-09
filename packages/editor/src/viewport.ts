@@ -231,3 +231,33 @@ export function zoomAtPoint(
     zoom: newZoom,
   };
 }
+
+/**
+ * Compute viewport state that frames a set of spatial items.
+ * Items with gridWidth/gridHeight are treated as rectangles; others as points.
+ */
+export function frameBounds(
+  items: Array<{ gridX: number; gridY: number; gridWidth?: number; gridHeight?: number }>,
+  tileSize: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  padding: number = 64,
+): ViewportState | null {
+  if (items.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const item of items) {
+    const x = item.gridX * tileSize;
+    const y = item.gridY * tileSize;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + (item.gridWidth ?? 1) * tileSize);
+    maxY = Math.max(maxY, y + (item.gridHeight ?? 1) * tileSize);
+  }
+
+  return fitBoundsToViewport(
+    { minX: minX - padding, minY: minY - padding, maxX: maxX + padding, maxY: maxY + padding },
+    canvasWidth,
+    canvasHeight,
+  );
+}
