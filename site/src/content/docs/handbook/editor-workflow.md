@@ -87,7 +87,7 @@ The canvas uses a real camera model with pan and zoom. All content is drawn in w
 
 | Action | Input |
 |--------|-------|
-| Pan | Spacebar + drag, or middle-mouse drag |
+| Pan | Right-click drag, Spacebar + drag, or middle-mouse drag |
 | Zoom | Mousewheel (anchored to cursor position) |
 | Fit all content | Click **Fit** in viewport controls |
 | Center on selected zone | Click **Center** in viewport controls |

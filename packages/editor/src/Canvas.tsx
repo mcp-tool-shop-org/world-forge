@@ -485,8 +485,8 @@ export function Canvas() {
 
   // --- Mouse handlers ---
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Pan: middle mouse or space+left
-    if (e.button === 1 || (e.button === 0 && spaceHeld.current)) {
+    // Pan: middle mouse, right mouse, or space+left
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld.current)) {
       e.preventDefault();
       isPanning.current = true;
       panStart.current = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
@@ -732,6 +732,7 @@ export function Canvas() {
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
+      onContextMenu={(e) => e.preventDefault()}
     />
   );
 }
