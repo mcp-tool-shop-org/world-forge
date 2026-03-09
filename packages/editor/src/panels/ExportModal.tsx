@@ -7,6 +7,8 @@ import { exportToEngine } from '@world-forge/export-ai-rpg';
 import { validateProject } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
+import { serializeProject, projectFilename } from '../projects/index.js';
+import { useKitStore } from '../kits/index.js';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
@@ -14,6 +16,10 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const importFidelity = useEditorStore((s) => s.importFidelity);
   const importSourceFormat = useEditorStore((s) => s.importSourceFormat);
+  const activeKitId = useEditorStore((s) => s.activeKitId);
+  const projectBundleSource = useEditorStore((s) => s.projectBundleSource);
+  const { kits } = useKitStore();
+  const [bundleExported, setBundleExported] = useState(false);
   const [status, setStatus] = useState<'idle' | 'valid' | 'invalid' | 'exported'>('idle');
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -132,7 +138,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#0d1117', border: '1px solid #30363d', fontSize: 12 }}>
               <div style={{ fontWeight: 600, color: '#c9d1d9', marginBottom: 4 }}>Changes Since Import</div>
               <div style={{ color: '#8b949e', marginBottom: 4 }}>
-                Imported from {importSourceFormat === 'export-result' ? 'ExportResult' : importSourceFormat === 'content-pack' ? 'ContentPack' : 'WorldProject'}.
+                Imported from {importSourceFormat === 'export-result' ? 'ExportResult' : importSourceFormat === 'content-pack' ? 'ContentPack' : importSourceFormat === 'project-bundle' ? 'ProjectBundle' : 'WorldProject'}.
                 {totalChanges === 0
                   ? <span style={{ color: '#3fb950' }}> No changes since import.</span>
                   : <span> Since import: <span style={{ color: '#58a6ff' }}>{diff.totalModified} modified</span>, <span style={{ color: '#3fb950' }}>{diff.totalAdded} added</span>, <span style={{ color: '#f85149' }}>{diff.totalRemoved} removed</span>.</span>
@@ -211,6 +217,37 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             {warnings.map((w, i) => <div key={i} style={{ color: '#d29922', fontSize: 11, padding: '2px 0' }}>{w}</div>)}
           </div>
         )}
+
+        {/* Project Bundle Export */}
+        <div style={{ borderTop: '1px solid #30363d', marginTop: 16, paddingTop: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#c9d1d9', marginBottom: 4 }}>Export Project Bundle</div>
+          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
+            Save a portable <code style={{ color: '#58a6ff' }}>.wfproject.json</code> file that can be imported in another World Forge instance. Includes all project data and provenance metadata.
+          </div>
+          {projectBundleSource === 'imported' && (
+            <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 8 }}>
+              This project was imported from a project bundle.
+            </div>
+          )}
+          <button onClick={() => {
+            const activeKit = activeKitId ? kits.find((k) => k.id === activeKitId) : undefined;
+            const bundle = serializeProject(
+              project,
+              activeKit ? { name: activeKit.name, source: activeKit.builtIn ? 'built-in' : activeKit.source } : null,
+            );
+            const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = projectFilename(project.name);
+            a.click();
+            URL.revokeObjectURL(url);
+            setBundleExported(true);
+          }} style={{ ...modalBtnStyle, background: '#1f6feb', color: '#fff' }}>
+            Export Project Bundle
+          </button>
+          {bundleExported && <span style={{ color: '#3fb950', fontSize: 12, marginLeft: 8 }}>Bundle saved!</span>}
+        </div>
       </div>
     </div>
   );

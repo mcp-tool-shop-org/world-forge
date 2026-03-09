@@ -83,6 +83,8 @@ interface EditorState {
   importFidelity: FidelityReport | null;
   importSourceFormat: ImportFormat | null;
   importSnapshot: WorldProject | null;
+  projectBundleSource: 'local' | 'imported' | null;
+  setProjectBundleSource: (source: 'local' | 'imported' | null) => void;
 
   setTool: (tool: EditorTool) => void;
   setRightTab: (tab: RightTab) => void;
@@ -156,6 +158,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   importFidelity: null,
   importSourceFormat: null,
   importSnapshot: null,
+  projectBundleSource: null,
 
   setTool: (tool) => set({ activeTool: tool, connectionStart: null }),
   setRightTab: (tab) => set({ rightTab: tab }),
@@ -224,7 +227,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   resetViewport: () => set({ viewport: { ...DEFAULT_VIEWPORT } }),
   dismissChecklist: () => set({ checklistDismissed: true }),
   markExported: () => set({ hasExported: true }),
-  resetChecklist: () => set({ checklistDismissed: false, hasExported: false, activeKitId: null, rightTab: 'guide' }),
+  resetChecklist: () => set({ checklistDismissed: false, hasExported: false, activeKitId: null, projectBundleSource: null, rightTab: 'guide' }),
+  setProjectBundleSource: (source) => set({ projectBundleSource: source }),
   setActiveKitId: (id) => set({ activeKitId: id }),
   setImportFidelity: (report, format) => set({ importFidelity: report, importSourceFormat: format }),
   clearImportFidelity: () => set({ importFidelity: null, importSourceFormat: null, importSnapshot: null }),

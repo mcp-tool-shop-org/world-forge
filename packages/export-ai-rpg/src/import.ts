@@ -16,7 +16,7 @@ import { importPlayerTemplate } from './import-player-template.js';
 import { importBuildCatalog } from './import-build-catalog.js';
 import { importProgressionTrees } from './import-progression-trees.js';
 
-export type ImportFormat = 'world-project' | 'content-pack' | 'export-result';
+export type ImportFormat = 'world-project' | 'content-pack' | 'export-result' | 'project-bundle';
 
 export interface ImportResult {
   project: WorldProject;
@@ -70,6 +70,9 @@ export function inferMode(project: WorldProject): AuthoringMode {
 export function detectImportFormat(data: unknown): ImportFormat | null {
   if (typeof data !== 'object' || data === null) return null;
   const obj = data as Record<string, unknown>;
+
+  // ProjectBundle has bundleVersion + project (must check before WorldProject)
+  if ('bundleVersion' in obj && 'project' in obj && typeof obj.project === 'object') return 'project-bundle';
 
   // WorldProject has map + entityPlacements + zones
   if ('map' in obj && 'entityPlacements' in obj && 'zones' in obj) return 'world-project';

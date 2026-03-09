@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.7.0] - 2026-03-09
+
+### Added
+
+- **Project bundle export** — export any project as a portable `.wfproject.json` file via the new "Export Project Bundle" button in the Export modal. The bundle wraps a deep-cloned `WorldProject` with `bundleVersion: 1`, `exportedAt` timestamp, content summary counts, and dependency metadata (active kit provenance + asset pack IDs). No validation gate — work-in-progress projects can be exported
+- **Project bundle import** — `.wfproject.json` files are auto-detected as the fourth import format (`project-bundle`) alongside WorldProject, ExportResult, and ContentPack. The Import modal shows bundle metadata (name, mode, genre, exported date), content summary, kit provenance, asset pack listing, and validation warnings. Unsaved-changes guard warns before overwriting dirty projects
+- **Project bundle format** — `ProjectBundle` interface in `packages/editor/src/projects/bundle.ts` with `serializeProject()`, `parseProjectBundle()`, `prepareProjectImport()`, `extractDependencies()`, and `projectFilename()` functions. Follows the same serialize/parse/prepare pipeline as kit bundles
+- **Provenance tracking** — `projectBundleSource` field in editor store tracks whether the current project was imported from a bundle. Provenance indicator appears in the Guide checklist and Export modal. Cleared on `resetChecklist`
+- **Format detection update** — `detectImportFormat()` now checks for `bundleVersion` + `project` fields before the WorldProject heuristic, preventing false-positive detection of bundles as raw WorldProject
+- 107 new tests (1082 total across 47 test files)
+
+### Changed
+
+- Export modal shows "ProjectBundle" in the "Changes Since Import" format label when applicable
+- Import modal file picker accepts `.wfproject.json` in addition to `.json`
+- `ImportFormat` type in `@world-forge/export-ai-rpg` extended with `'project-bundle'`
+
 ## [3.6.0] - 2026-03-09
 
 ### Added

@@ -85,6 +85,11 @@ export function ChecklistPanel() {
           Using imported kit: {activeKit.name}
         </div>
       )}
+      {useEditorStore((s) => s.projectBundleSource) === 'imported' && (
+        <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 6 }}>
+          Imported from project bundle
+        </div>
+      )}
       {profile.modeTip && (
         <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 8, fontStyle: 'italic' }}>
           {profile.icon} {profile.modeTip}

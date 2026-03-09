@@ -539,6 +539,8 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
+Below the engine export section, a separate **Export Project Bundle** button lets you save the project as a portable `.wfproject.json` file (see §18).
+
 ## 16. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
@@ -546,6 +548,9 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 - **WorldProject** — lossless, loads directly
 - **ExportResult** — the `{ contentPack, manifest, packMeta }` output from export
 - **ContentPack** — engine content without manifest wrapper
+- **ProjectBundle** — portable `.wfproject.json` file exported from another World Forge instance (lossless)
+
+For ProjectBundle imports, the preview shows bundle metadata (name, mode, genre, exported date), content summary counts, kit provenance (if the original project used a starter kit), and asset pack listing. If the current project has unsaved changes, an amber warning appears before overwriting.
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
@@ -558,3 +563,27 @@ After importing a project, the **Diff** tab appears in the right sidebar. It sho
 - **Removed** objects are highlighted in red
 
 Changes are grouped by domain (Zones, Districts, Entities, Items, etc.) so you can see exactly what you've edited since import.
+
+## 18. Project Bundles
+
+Project bundles make authored worlds portable. A `.wfproject.json` file contains everything needed to re-open a project on another machine.
+
+### What's in a bundle
+
+- **bundleVersion** — format version (currently `1`)
+- **Project data** — deep-cloned `WorldProject` with all zones, districts, entities, items, dialogues, assets, and visual layers
+- **Content summary** — zone, entity, item, dialogue, district, spawn, connection, encounter, asset, and asset pack counts
+- **Dependencies** — the active starter kit name and source (display-only provenance), plus embedded asset pack IDs
+- **Metadata** — project name, description, version, genre, mode, and export timestamp
+
+### Exporting
+
+Open the Export modal and click **Export Project Bundle**. Unlike engine export, project bundles have no validation gate — you can export work-in-progress. The bundle file is named after the project (e.g., `chapel-threshold.wfproject.json`).
+
+### Importing
+
+Open the Import modal and choose a `.wfproject.json` file. The format is auto-detected. The preview shows the bundle's metadata, content counts, and dependency info before you confirm. If the current project has unsaved changes, you'll see a warning before overwriting.
+
+### Provenance
+
+After importing a project bundle, the Guide checklist and Export modal show an "Imported from project bundle" indicator. This is cleared when you start a new project or reset the checklist.
