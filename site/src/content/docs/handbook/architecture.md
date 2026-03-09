@@ -65,11 +65,11 @@ PixiJS-based 2D renderer with six sub-renderers:
 
 ## @world-forge/editor
 
-React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, encounter-place, landmark, spawn. Workspace tabs: Map, Objects, Player, Builds, Trees, Dialogue, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
+React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, encounter-place, landmark, spawn. Workspace tabs: Map, Objects, Player, Builds, Trees, Dialogue, Presets, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
 
 Key editor modules:
 
-- **SearchOverlay** — Ctrl+K command-jump across all object types (zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, progression trees)
+- **SearchOverlay** — Ctrl+K command-jump across all object types (zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, progression trees) and presets (region and encounter)
 - **ObjectListPanel** — hierarchical tree view (districts → zones → entities/landmarks/spawns/encounters) with bidirectional selection, inline filter, faction and hotspot counts
 - **EncounterProperties** — single-encounter selection panel with type, enemy IDs, probability, cooldown, tags
 - **DistrictPanel** — expanded district editor with metrics sliders, tags, controlling faction, economy profile, faction presence management, pressure hotspot editing
@@ -80,6 +80,9 @@ Key editor modules:
 - **snap.ts** — pure snap computation for object-to-object snapping during drag and resize (edge/center matching, guide line generation)
 - **resize-handles.ts** — pure math for zone resize handles (8 handles per zone, axis-aware resizing, min-size clamping, screen-space hit detection)
 - **connection-lines.ts** — pure math for connection routing, edge anchoring (ray-rect intersection), line-segment hit-testing, kind-based visual styles, and display labels
+- **hotkeys.ts** — centralized keyboard shortcut registry with 13 bindings, `matchHotkey()` and `dispatchHotkey()` with input-field safety guard
+- **PresetBrowser** — preset library UI with Region/Encounter sub-tabs, merge/overwrite mode, save-from-current, built-in protection
+- **presets/** — preset type definitions (`RegionPreset`, `EncounterPreset`), built-in presets (4 region, 3 encounter), Zustand + localStorage preset store
 
 ## Build System
 

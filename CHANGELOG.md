@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.9.0] - 2026-03-09
+
+### Added
+
+- **Preset system** — reusable region and encounter templates with merge/overwrite application modes
+- **Region presets** — 4 built-in presets (Crypt District, Market Ward, Chapel Grounds, Smuggler Dock) that configure tags, controlling faction, metrics, economy profile, faction presences, and pressure hotspots in one click
+- **Encounter presets** — 3 built-in presets (Boss, Hazard, Discovery) that create encounter anchors with pre-configured type, probability, cooldown, and tags
+- **Preset Browser** — new "Presets" tab in right sidebar with Region/Encounter sub-tabs, merge/overwrite mode toggle, save-from-current, apply with confirm, and duplicate support
+- **Custom presets** — save any district or encounter configuration as a reusable preset; custom presets are stored in localStorage and support full CRUD
+- **Built-in preset protection** — built-in presets are immutable (lock icon, cannot edit or delete); duplicate to customize
+- **Centralized hotkey registry** — `hotkeys.ts` with binding registry, `matchHotkey()`, and `dispatchHotkey()` replacing inline Canvas.tsx handlers
+- **New keyboard shortcuts** — Enter (open details panel for selected object), P (apply preset), Shift+P (save current as preset)
+- **Hotkey reference table** — Guide tab now includes a keyboard shortcuts reference section
+- **Double-click panel affordance** — double-click any object on the canvas to select it, switch to Map tab, and center viewport; works for zones, encounters, entities, landmarks, spawns, and connections
+- **Preset search** — Ctrl+K indexes region and encounter presets alongside world objects; selecting a preset switches to the Presets tab
+- 48 new tests (460 total)
+
+### Changed
+
+- Canvas.tsx keyboard handler delegated to centralized `dispatchHotkey()` (Space/pan remains local)
+- SearchResult type extended with `region-preset` and `encounter-preset` types
+- RightTab union extended with `presets`
+
 ## [2.8.0] - 2026-03-09
 
 ### Added

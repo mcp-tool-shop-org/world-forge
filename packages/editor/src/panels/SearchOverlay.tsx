@@ -3,13 +3,15 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
+import { usePresetStore } from '../presets/preset-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
 import type { WorldProject } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
+import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset';
   id: string;
   label: string;
   detail: string;
@@ -17,11 +19,13 @@ export interface SearchResult {
 
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
   zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
+  'region-preset': 'Rgn', 'encounter-preset': 'Enc',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
   district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
+  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -108,7 +112,19 @@ export function SearchOverlay() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const searchIndex = useMemo(() => buildSearchIndex(project), [project]);
+  const { regionPresets, encounterPresets } = usePresetStore();
+
+  const searchIndex = useMemo(() => {
+    const base = buildSearchIndex(project);
+    // Add presets to search index
+    for (const p of regionPresets) {
+      base.push({ type: 'region-preset', id: p.id, label: p.name, detail: p.description });
+    }
+    for (const p of encounterPresets) {
+      base.push({ type: 'encounter-preset', id: p.id, label: p.name, detail: `${p.encounterType} — ${p.description}` });
+    }
+    return base;
+  }, [project, regionPresets, encounterPresets]);
   const results = useMemo(() => filterResults(searchIndex, query), [searchIndex, query]);
 
   // Reset active index when results change
@@ -191,6 +207,8 @@ export function SearchOverlay() {
     } else if (result.type === 'tree') {
       setRightTab('trees');
       setFocusTarget({ domain: 'trees', subPath: result.id, timestamp: Date.now() });
+    } else if (result.type === 'region-preset' || result.type === 'encounter-preset') {
+      setRightTab('presets');
     }
   }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 

@@ -7,7 +7,7 @@ import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place';
-export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff' | 'objects';
+export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff' | 'objects' | 'presets';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
 /** Transient focus target set by validation click. Panels read and clear it. */

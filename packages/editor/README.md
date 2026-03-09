@@ -13,8 +13,10 @@ React 19 web app for [World Forge](https://github.com/mcp-tool-shop-org/world-fo
 - **Encounter authoring** — place encounter anchors on zones with type-based canvas markers (boss, ambush, patrol), editable properties (enemy IDs, probability, cooldown, tags)
 - **District editing** — expanded district panel with metrics sliders, tags, controlling faction, economy profile, faction presence management, and pressure hotspot editing
 - **Batch editing** — batch district assignment, batch tag add, and batch delete when multiple zones selected
-- **Keyboard shortcuts** — Escape, Ctrl+A, Delete, Arrow nudge for fast spatial editing
-- **Workspace tabs** — Map, Player, Builds, Trees, Dialogue, Assets, Issues, Guide
+- **Preset system** — region and encounter presets with merge/overwrite application, 4 built-in region presets, 3 built-in encounter presets, custom preset CRUD with localStorage persistence
+- **Keyboard shortcuts** — centralized hotkey registry with 13 bindings: Escape, Ctrl+A, Ctrl+D, Ctrl+K, Delete, Arrow nudge, Enter (open details), P (apply preset), Shift+P (save preset)
+- **Double-click** — double-click any canvas object to select it, switch to Map tab, and center viewport
+- **Workspace tabs** — Map, Player, Builds, Trees, Dialogue, Objects, Presets, Assets, Issues, Guide
 - **Asset library** — manage portraits, sprites, backgrounds, icons, and tilesets with kind-specific bindings
 - **Undo/redo** — 10-deep history stack via Zustand
 - **Import/Export** — round-trip fidelity reporting, semantic diff tracking

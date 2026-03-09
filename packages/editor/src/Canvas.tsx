@@ -9,6 +9,7 @@ import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
 import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone } from '@world-forge/schema';
+import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
@@ -25,7 +26,7 @@ export function Canvas() {
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
-    viewport, setViewport, setShowSearch,
+    viewport, setViewport, setShowSearch, setRightTab,
   } = useEditorStore();
 
   const tileSize = project.map.tileSize;
@@ -539,10 +540,17 @@ export function Canvas() {
     return () => window.removeEventListener('resize', handle);
   }, [draw]);
 
-  // --- Keyboard events ---
+  // --- Keyboard events (delegated to hotkeys.ts) ---
   useEffect(() => {
+    const hotkeyCtx: HotkeyContext = {
+      selection, selectedConnection, project,
+      showEntities, showLandmarks, showSpawns,
+      clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
+      duplicateSelected, setShowSearch, setRightTab,
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
-      // Don't capture keys when typing in inputs
+      // Space handled locally (depends on ref)
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -552,68 +560,14 @@ export function Canvas() {
         return;
       }
 
-      if (e.code === 'Escape') {
-        clearSelection();
+      // Delegate to centralized dispatch
+      const result = dispatchHotkey(e, hotkeyCtx);
+      if (result.handled && result.action === 'escape') {
+        // Also clear canvas-local drag state
         dragMove.current = null;
         resizeMove.current = null;
         activeGuides.current = [];
         snapDelta.current = { dx: 0, dy: 0 };
-        return;
-      }
-
-      // Ctrl/Cmd+K = open search
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
-        e.preventDefault();
-        setShowSearch(true);
-        return;
-      }
-
-      // Ctrl/Cmd+D = duplicate selected
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyD') {
-        e.preventDefault();
-        if (getSelectionCount(selection) > 0) {
-          const newSel = duplicateSelected(selection);
-          selectAll(newSel, false);
-        }
-        return;
-      }
-
-      // Ctrl/Cmd+A = select all visible objects
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
-        e.preventDefault();
-        const zones = project.zones.map((z) => z.id);
-        const entities = showEntities ? project.entityPlacements.map((e) => e.entityId) : [];
-        const landmarks = showLandmarks ? project.landmarks.map((l) => l.id) : [];
-        const spawns = showSpawns ? project.spawnPoints.map((s) => s.id) : [];
-        const encounters = project.encounterAnchors.map((e) => e.id);
-        selectAll({ zones, entities, landmarks, spawns, encounters }, false);
-        return;
-      }
-
-      // Delete/Backspace = delete selected
-      if (e.code === 'Delete' || e.code === 'Backspace') {
-        if (selectedConnection) {
-          removeConnection(selectedConnection.from, selectedConnection.to);
-          clearSelection();
-          return;
-        }
-        const count = getSelectionCount(selection);
-        if (count === 0) return;
-        if (count > 3 && !confirm(`Delete ${count} objects?`)) return;
-        removeSelected(selection);
-        clearSelection();
-        return;
-      }
-
-      // Arrow keys = nudge selected
-      const arrowDirs: Record<string, [number, number]> = {
-        ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
-      };
-      const dir = arrowDirs[e.code];
-      if (dir && getSelectionCount(selection) > 0) {
-        e.preventDefault();
-        const mult = e.shiftKey ? 5 : 1;
-        moveSelected(selection, dir[0] * mult, dir[1] * mult);
       }
     };
 
@@ -627,7 +581,7 @@ export function Canvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [selection, selectedConnection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, removeConnection, setShowSearch, duplicateSelected]);
+  }, [selection, selectedConnection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, removeConnection, setShowSearch, duplicateSelected, setRightTab]);
 
   // --- Mouse coordinate helpers ---
   const getScreenXY = (e: React.MouseEvent) => {
@@ -985,15 +939,48 @@ export function Canvas() {
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
-  // --- Double-click to center on zone ---
+  // --- Double-click to open details for clicked object ---
   const handleDoubleClick = (e: React.MouseEvent) => {
-    const { gx, gy } = gridPos(e);
-    const zone = findZoneAt(gx, gy);
-    if (!zone) return;
-    selectZone(zone.id, false);
+    const { sx, sy } = getScreenXY(e);
+    const hit = findHitAt(sx, sy, viewport, project, tileSize, visibility);
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    setViewport(centerOnZone(zone, tileSize, canvas.offsetWidth, canvas.offsetHeight));
+
+    if (!hit) {
+      clearSelection();
+      return;
+    }
+
+    // Select the object and switch to map tab so the properties panel appears
+    switch (hit.type) {
+      case 'zone': {
+        selectZone(hit.id, false);
+        const zone = project.zones.find((z) => z.id === hit.id);
+        if (zone && canvas) setViewport(centerOnZone(zone, tileSize, canvas.offsetWidth, canvas.offsetHeight));
+        break;
+      }
+      case 'encounter': {
+        selectEncounter(hit.id, false);
+        const enc = project.encounterAnchors.find((a) => a.id === hit.id);
+        const zone = enc ? project.zones.find((z) => z.id === enc.zoneId) : null;
+        if (zone && canvas) setViewport(centerOnZone(zone, tileSize, canvas.offsetWidth, canvas.offsetHeight));
+        break;
+      }
+      case 'entity':
+        selectEntity(hit.id, false);
+        break;
+      case 'landmark':
+        selectLandmark(hit.id, false);
+        break;
+      case 'spawn':
+        selectSpawn(hit.id, false);
+        break;
+      case 'connection': {
+        const [from, to] = hit.id.split('::');
+        selectConnection(from, to);
+        break;
+      }
+    }
+    setRightTab('map');
   };
 
   // --- Cursor ---

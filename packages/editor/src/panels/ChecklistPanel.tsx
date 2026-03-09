@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, type RightTab, type EditorTool } from '../store/editor-store.js';
+import { HOTKEY_BINDINGS } from '../hotkeys.js';
 
 interface Step {
   id: string;
@@ -110,6 +111,30 @@ export function ChecklistPanel() {
       <button onClick={dismissChecklist} style={{ ...actionBtnStyle, marginTop: 8 }}>
         Dismiss Guide
       </button>
+
+      {/* Hotkey reference */}
+      <div style={{ ...headerStyle, marginTop: 16 }}>Keyboard Shortcuts</div>
+      <table style={{ width: '100%', fontSize: 11, color: '#8b949e', borderCollapse: 'collapse' }}>
+        <tbody>
+          {HOTKEY_BINDINGS.filter((b, i, arr) =>
+            // Deduplicate by action (e.g. Delete and Backspace both → 'delete')
+            arr.findIndex((x) => x.action === b.action) === i
+          ).map((b) => (
+            <tr key={b.action} style={{ borderBottom: '1px solid #21262d' }}>
+              <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: '#58a6ff', whiteSpace: 'nowrap' }}>{b.label}</td>
+              <td style={{ padding: '3px 4px' }}>{b.description}</td>
+            </tr>
+          ))}
+          <tr style={{ borderBottom: '1px solid #21262d' }}>
+            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: '#58a6ff', whiteSpace: 'nowrap' }}>Space</td>
+            <td style={{ padding: '3px 4px' }}>Hold to pan canvas</td>
+          </tr>
+          <tr style={{ borderBottom: '1px solid #21262d' }}>
+            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: '#58a6ff', whiteSpace: 'nowrap' }}>Dbl-click</td>
+            <td style={{ padding: '3px 4px' }}>Open details for clicked object</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }

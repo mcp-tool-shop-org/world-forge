@@ -24,6 +24,7 @@ import { ImportSummaryPanel } from './panels/ImportSummaryPanel.js';
 import { DiffPanel } from './panels/DiffPanel.js';
 import { AssetPanel } from './panels/AssetPanel.js';
 import { ObjectListPanel } from './panels/ObjectListPanel.js';
+import { PresetBrowser } from './panels/PresetBrowser.js';
 import { SearchOverlay } from './panels/SearchOverlay.js';
 import { Canvas } from './Canvas.js';
 
@@ -52,6 +53,7 @@ export function App() {
     { id: 'trees', label: 'Trees' },
     { id: 'dialogue', label: 'Dialogue' },
     { id: 'objects', label: 'Objects' },
+    { id: 'presets', label: 'Presets' },
     { id: 'assets', label: 'Assets', badge: project.assets.length > 0 ? `${project.assets.length}` : undefined },
     { id: 'issues', label: 'Issues' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
@@ -219,6 +221,7 @@ export function App() {
                 {rightTab === 'trees' && <ProgressionPanel />}
                 {rightTab === 'dialogue' && <DialoguePanel />}
                 {rightTab === 'objects' && <ObjectListPanel />}
+                {rightTab === 'presets' && <PresetBrowser />}
                 {rightTab === 'assets' && <AssetPanel />}
                 {rightTab === 'issues' && <ValidationPanel />}
                 {rightTab === 'guide' && <ChecklistPanel />}

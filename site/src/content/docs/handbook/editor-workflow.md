@@ -277,14 +277,58 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Ctrl+Z | Undo |
 | Ctrl+Shift+Z | Redo |
 | Arrow keys | Nudge selected objects by 1 grid cell |
+| Enter | Open details panel for selected object |
+| P | Apply preset to selected district/zone |
+| Shift+P | Save current selection as preset |
+| Double-click | Select object and open its details panel |
 
-## 9. Search
+## 9. Presets
 
-Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, and progression trees.
+The **Presets** tab in the right sidebar provides a library of reusable templates for districts and encounters.
 
-Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role, an encounter's type and probability). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For encounters, the parent zone is framed. For dialogues and progression trees, the corresponding sidebar tab opens.
+### Region Presets
 
-## 10. Objects Tab
+Region presets configure an entire district in one click — tags, controlling faction, base metrics, economy profile, faction presences, and pressure hotspots. Four built-in presets are included:
+
+| Preset | Tags | Faction | Key Metrics |
+|--------|------|---------|-------------|
+| Crypt District | dark, cramped, undead | undead-horde | Commerce 5, Safety 10 |
+| Market Ward | bustling, trade, urban | merchant-guild | Commerce 90, Safety 55 |
+| Chapel Grounds | sacred, order, stone | chapel-order | Commerce 15, Safety 70 |
+| Smuggler Dock | shady, waterfront | smuggler-ring | Commerce 70, Safety 20 |
+
+**Apply modes:**
+
+- **Merge** — fills only empty or default fields, preserving existing customization
+- **Overwrite** — replaces all preset-covered fields regardless of existing values
+
+Both modes create a single undo step. Select a district, choose a preset, then click Apply (then Confirm).
+
+### Encounter Presets
+
+Encounter presets create a new encounter anchor with pre-configured settings. Three built-in presets:
+
+| Preset | Type | Probability | Cooldown | Tags |
+|--------|------|-------------|----------|------|
+| Boss Encounter | boss | 1.0 | 0 turns | boss, scripted |
+| Hazard Encounter | hazard | 0.6 | 2 turns | environmental, trap |
+| Discovery Encounter | discovery | 0.4 | 5 turns | lore, reward |
+
+Select a zone, choose a preset, click Apply to place the encounter.
+
+### Custom Presets
+
+Click **Save Current** to capture a selected district's configuration (or a selected encounter) as a custom preset. Custom presets support full editing and deletion. Built-in presets are immutable (shown with a lock icon) — duplicate them to customize.
+
+Custom presets are stored in localStorage and persist across sessions.
+
+## 10. Search
+
+Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, progression trees, and presets.
+
+Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role, an encounter's type and probability, a preset's description). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For encounters, the parent zone is framed. For dialogues and progression trees, the corresponding sidebar tab opens. For presets, the Presets tab opens.
+
+## 11. Objects Tab
 
 The **Objects** tab in the right sidebar provides a hierarchical tree view of your entire project:
 
@@ -303,7 +347,7 @@ Click any item to select it on the canvas and frame it in view. The tree highlig
 
 Click a district header to select all its zones. Double-click to expand or collapse.
 
-## 11. Scene Preview
+## 12. Scene Preview
 
 When you select a zone, the **Scene Preview** panel appears above the Zone Properties form. It shows an inline HTML/CSS composition of everything visually bound to that zone:
 
@@ -334,7 +378,7 @@ The **Layers** section in the tool palette provides 7 visibility toggles:
 | Backgrounds | — | Background/tileset badges on/off |
 | Ambient | Zone tint overlays on/off | Ambient layer entries on/off |
 
-## 12. Export
+## 13. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -347,7 +391,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 13. Import
+## 14. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -357,7 +401,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 14. Track Changes
+## 15. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

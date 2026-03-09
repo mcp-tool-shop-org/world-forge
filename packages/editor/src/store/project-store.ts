@@ -13,6 +13,7 @@ import type {
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
 import type { ResizeResult } from '../resize-handles.js';
+import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 
 export function createEmptyProject(): WorldProject {
   return {
@@ -164,6 +165,10 @@ interface ProjectState {
   addDialogueNode: (dialogueId: string, node: DialogueNode) => void;
   updateDialogueNode: (dialogueId: string, nodeId: string, updates: Partial<DialogueNode>) => void;
   removeDialogueNode: (dialogueId: string, nodeId: string) => void;
+
+  // Preset apply helpers
+  applyRegionPreset: (districtId: string, preset: RegionPreset, mode: 'merge' | 'overwrite') => void;
+  createEncounterFromPreset: (zoneId: string, preset: EncounterPreset) => string;
 }
 
 function ensureBuildCatalog(p: WorldProject): BuildCatalogDefinition {
@@ -516,4 +521,124 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { ...d, nodes: rest };
     }),
   })),
+
+  // ── Preset apply helpers ──────────────────────────────────────
+
+  applyRegionPreset: (districtId, preset, mode) => get().updateProject((p) => {
+    const district = p.districts.find((d) => d.id === districtId);
+    if (!district) return p;
+
+    const isMerge = mode === 'merge';
+
+    // Update district fields
+    const updatedDistrict = { ...district };
+
+    // Tags: merge appends unique, overwrite replaces
+    if (isMerge) {
+      const combined = new Set([...district.tags, ...preset.regionTags]);
+      updatedDistrict.tags = [...combined];
+    } else {
+      updatedDistrict.tags = [...preset.regionTags];
+    }
+
+    // Controlling faction: merge only fills if empty
+    if (!isMerge || !district.controllingFaction) {
+      updatedDistrict.controllingFaction = preset.controllingFaction;
+    }
+
+    // Metrics: merge only fills default (0) values, overwrite replaces all
+    const dm = district.baseMetrics;
+    updatedDistrict.baseMetrics = {
+      commerce: (!isMerge || dm.commerce === 0) && preset.baseMetrics.commerce != null ? preset.baseMetrics.commerce : dm.commerce,
+      morale: (!isMerge || dm.morale === 0) && preset.baseMetrics.morale != null ? preset.baseMetrics.morale : dm.morale,
+      safety: (!isMerge || dm.safety === 0) && preset.baseMetrics.safety != null ? preset.baseMetrics.safety : dm.safety,
+      stability: (!isMerge || dm.stability === 0) && preset.baseMetrics.stability != null ? preset.baseMetrics.stability : dm.stability,
+    };
+
+    // Economy profile: merge only fills if categories/defaults are empty
+    if (preset.economyProfile) {
+      const existing = district.economyProfile;
+      if (!isMerge) {
+        updatedDistrict.economyProfile = {
+          supplyCategories: preset.economyProfile.supplyCategories ?? existing.supplyCategories,
+          scarcityDefaults: preset.economyProfile.scarcityDefaults ?? existing.scarcityDefaults,
+        };
+      } else {
+        updatedDistrict.economyProfile = {
+          supplyCategories: existing.supplyCategories.length === 0 && preset.economyProfile.supplyCategories
+            ? preset.economyProfile.supplyCategories
+            : existing.supplyCategories,
+          scarcityDefaults: Object.keys(existing.scarcityDefaults).length === 0 && preset.economyProfile.scarcityDefaults
+            ? preset.economyProfile.scarcityDefaults
+            : existing.scarcityDefaults,
+        };
+      }
+    }
+
+    const districts = p.districts.map((d) => d.id === districtId ? updatedDistrict : d);
+
+    // Faction presences: add new factions that don't already exist for this district
+    let factionPresences = [...p.factionPresences];
+    for (const fp of preset.factionPresences) {
+      const exists = factionPresences.some(
+        (f) => f.factionId === fp.factionId && f.districtIds.includes(districtId),
+      );
+      if (!exists) {
+        // Check if faction already exists elsewhere — extend districtIds
+        const existing = factionPresences.find((f) => f.factionId === fp.factionId);
+        if (existing) {
+          factionPresences = factionPresences.map((f) =>
+            f.factionId === fp.factionId
+              ? { ...f, districtIds: [...f.districtIds, districtId] }
+              : f,
+          );
+        } else {
+          factionPresences.push({
+            factionId: fp.factionId,
+            districtIds: [districtId],
+            influence: fp.influence,
+            alertLevel: fp.alertLevel,
+            patrolRoutes: fp.patrolRoutes,
+          });
+        }
+      }
+    }
+
+    // Pressure hotspots: add one per district zone (first zone only to avoid spam)
+    let pressureHotspots = [...p.pressureHotspots];
+    for (const ph of preset.pressureHotspots) {
+      // Place in first zone of district that doesn't already have this pressure type
+      const targetZone = district.zoneIds.find(
+        (zid) => !pressureHotspots.some((h) => h.zoneId === zid && h.pressureType === ph.pressureType),
+      );
+      if (targetZone) {
+        pressureHotspots.push({
+          id: `hotspot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          zoneId: targetZone,
+          pressureType: ph.pressureType,
+          baseProbability: ph.baseProbability,
+          tags: [...ph.tags],
+        });
+      }
+    }
+
+    return { ...p, districts, factionPresences, pressureHotspots };
+  }),
+
+  createEncounterFromPreset: (zoneId, preset) => {
+    const id = `enc-${Date.now()}`;
+    get().updateProject((p) => ({
+      ...p,
+      encounterAnchors: [...p.encounterAnchors, {
+        id,
+        zoneId,
+        encounterType: preset.encounterType,
+        enemyIds: [...preset.enemyIds],
+        probability: preset.probability,
+        cooldownTurns: preset.cooldownTurns,
+        tags: [...preset.encounterTags],
+      }],
+    }));
+    return id;
+  },
 }));
