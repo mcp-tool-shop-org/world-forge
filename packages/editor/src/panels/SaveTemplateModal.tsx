@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useTemplateStore } from '../store/template-store.js';
+import { MODAL_OVERLAY, MODAL_CARD, labelStyle, inputStyle } from './shared.js';
 
 interface Props { onClose: () => void }
 
@@ -30,8 +31,8 @@ export function SaveTemplateModal({ onClose }: Props) {
   }, [name, description, genre, icon, project, saveTemplate, onClose]);
 
   return (
-    <div style={overlayStyle}>
-      <div style={cardStyle}>
+    <div style={MODAL_OVERLAY}>
+      <div style={MODAL_CARD(400)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0, color: '#c9d1d9', fontSize: 16 }}>Save as Template</h2>
           <button onClick={onClose} style={closeBtnStyle}>×</button>
@@ -97,25 +98,6 @@ export function SaveTemplateModal({ onClose }: Props) {
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-};
-
-const cardStyle: React.CSSProperties = {
-  background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
-  padding: 24, width: 400,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 12, color: '#8b949e', marginBottom: 4, marginTop: 12,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '6px 8px', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 4, fontSize: 13, boxSizing: 'border-box',
-};
 
 const btnStyle: React.CSSProperties = {
   background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.1] - 2026-03-09
+
+### Changed
+
+- **README reformat** — broke wall-of-text package descriptions into categorized sections (workspace tabs table, canvas/editing bullets, navigation/shortcuts, import/export); grouped 36 flat authoring surface bullets into 5 categories (world structure, content, character systems, assets, workflow)
+- **Modal consistency** — SaveKitModal and SaveTemplateModal now use shared `MODAL_OVERLAY`, `MODAL_CARD`, `labelStyle`, and `inputStyle` (were duplicating locally)
+- **Color consistency** — eliminated all remaining `#1f6feb` instances: ToolPalette active tool, ExportModal bundle button, TemplateManager badge borders, ImportModal mode badge border — all now use `ACTIVE_TAB_BG` (`#58a6ff`)
+
 ## [4.0.0] - 2026-03-09
 
 ### Added

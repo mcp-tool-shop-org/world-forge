@@ -12,7 +12,7 @@ import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
-import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
+import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
 
 interface Props { onClose: () => void }
 
@@ -537,7 +537,7 @@ const sampleCardStyle: React.CSSProperties = {
 
 const badgeColors: Record<string, React.CSSProperties> = {
   minimal: { background: '#0d2818', color: '#3fb950', border: '1px solid #238636' },
-  intermediate: { background: '#0d1d30', color: '#58a6ff', border: '1px solid #1f6feb' },
+  intermediate: { background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}` },
   rich: { background: '#2a1c08', color: '#d29922', border: '1px solid #9e6a03' },
 };
 
@@ -562,7 +562,7 @@ const closeBtnStyle: React.CSSProperties = {
 
 const importedBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,
-  background: '#0d1d30', color: '#58a6ff', border: '1px solid #1f6feb',
+  background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}`,
 };
 
 const customBadgeStyle: React.CSSProperties = {

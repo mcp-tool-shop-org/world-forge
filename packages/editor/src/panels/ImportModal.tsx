@@ -7,7 +7,7 @@ import { importProject, detectImportFormat, type ImportResult, type ImportFormat
 import { buildFidelityReport } from '@world-forge/export-ai-rpg';
 import { prepareProjectImport, extractDependencies, type ImportProjectResult } from '../projects/index.js';
 import { scanDependencies } from '@world-forge/schema';
-import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
+import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
 
 interface Props { onClose: () => void }
 
@@ -192,7 +192,7 @@ export function ImportModal({ onClose }: Props) {
               )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                 {bundleResult.bundle.mode && (
-                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#0d1d30', color: '#58a6ff', border: '1px solid #1f6feb' }}>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}` }}>
                     {bundleResult.bundle.mode}
                   </span>
                 )}

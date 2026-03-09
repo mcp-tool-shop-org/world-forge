@@ -9,7 +9,7 @@ import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
 import { useKitStore } from '../kits/index.js';
-import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
+import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
@@ -254,7 +254,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             a.click();
             URL.revokeObjectURL(url);
             setBundleExported(true);
-          }} style={{ ...modalBtnStyle, background: '#1f6feb', color: '#fff' }}>
+          }} style={{ ...modalBtnStyle, background: ACTIVE_TAB_BG, color: '#fff' }}>
             Export Project Bundle
           </button>
           {bundleExported && <span style={{ color: '#3fb950', fontSize: 12, marginLeft: 8 }}>Bundle saved!</span>}

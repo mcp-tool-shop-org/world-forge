@@ -1,6 +1,7 @@
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type EditorTool } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { computeContentBounds, fitBoundsToViewport, centerOnZone, frameBounds, MIN_ZOOM, MAX_ZOOM } from '../viewport.js';
+import { ACTIVE_TAB_BG } from './shared.js';
 
 const tools: { id: EditorTool; label: string; key: string }[] = [
   { id: 'select', label: 'Select', key: 'V' },
@@ -96,7 +97,7 @@ export function ToolPalette() {
           style={{
             display: 'block', width: '100%', textAlign: 'left',
             padding: '4px 8px', marginBottom: 2, cursor: 'pointer', fontSize: 12,
-            background: activeTool === t.id ? '#1f6feb' : '#21262d',
+            background: activeTool === t.id ? ACTIVE_TAB_BG : '#21262d',
             color: activeTool === t.id ? '#fff' : '#c9d1d9',
             border: '1px solid #30363d', borderRadius: 3,
           }}
