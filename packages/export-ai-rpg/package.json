@@ -43,7 +43,7 @@
     "typescript"
   ],
   "dependencies": {
-    "@world-forge/schema": "^1.0.0",
+    "@world-forge/schema": "*",
     "@ai-rpg-engine/content-schema": "^2.0.1",
     "@ai-rpg-engine/core": "^2.0.1",
     "@ai-rpg-engine/modules": "^2.1.0",

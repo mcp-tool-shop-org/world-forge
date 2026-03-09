@@ -40,7 +40,7 @@
     "typescript"
   ],
   "dependencies": {
-    "@world-forge/schema": "^1.0.0",
+    "@world-forge/schema": "*",
     "pixi.js": "^8.16.0"
   }
 }
