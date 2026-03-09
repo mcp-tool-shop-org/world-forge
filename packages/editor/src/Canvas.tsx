@@ -2,10 +2,11 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore, getSelectionCount, isSelected as isSel } from './store/editor-store.js';
+import { useEditorStore, getSelectionCount, getSelectedZoneId, isSelected as isSel } from './store/editor-store.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
-import { computeSnap, type SnapGuide } from './snap.js';
+import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
+import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone } from '@world-forge/schema';
 
 const ZOOM_STEP = 0.1;
@@ -15,7 +16,7 @@ let nextZoneId = 1;
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, removeSelected, duplicateSelected } = useProjectStore();
+  const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
     showConnections, showEntities, showLandmarks, showSpawns, showAmbient, snapToObjects,
@@ -44,6 +45,14 @@ export function Canvas() {
   // Snap state for drag
   const activeGuides = useRef<SnapGuide[]>([]);
   const snapDelta = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+
+  // Resize state
+  const resizeMove = useRef<{
+    zoneId: string; handleKind: HandleKind;
+    startSX: number; startSY: number; startGX: number; startGY: number;
+    active: boolean; lastResult: ResizeResult | null;
+  } | null>(null);
+  const hoveredHandle = useRef<HandleKind | null>(null);
 
   // Click-cycle state for overlapping objects
   const CYCLE_TOLERANCE = 4;
@@ -130,6 +139,11 @@ export function Canvas() {
     const dragDX = isDragging ? snapDelta.current.dx : 0;
     const dragDY = isDragging ? snapDelta.current.dy : 0;
 
+    // Resize preview state
+    const isResizing = resizeMove.current?.active ?? false;
+    const resizeResult = resizeMove.current?.lastResult;
+    const resizeZoneId = resizeMove.current?.zoneId;
+
     // Grid
     if (showGrid) {
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
@@ -155,14 +169,24 @@ export function Canvas() {
         const from = project.zones.find((z) => z.id === conn.fromZoneId);
         const to = project.zones.find((z) => z.id === conn.toZoneId);
         if (!from || !to) continue;
-        const fOff = isDragging && selection.zones.includes(from.id) ? dragDX : 0;
-        const fOffY = isDragging && selection.zones.includes(from.id) ? dragDY : 0;
-        const tOff = isDragging && selection.zones.includes(to.id) ? dragDX : 0;
-        const tOffY = isDragging && selection.zones.includes(to.id) ? dragDY : 0;
-        const fx = (from.gridX + fOff + from.gridWidth / 2) * tileSize;
-        const fy = (from.gridY + fOffY + from.gridHeight / 2) * tileSize;
-        const tx = (to.gridX + tOff + to.gridWidth / 2) * tileSize;
-        const ty = (to.gridY + tOffY + to.gridHeight / 2) * tileSize;
+        const fResize = isResizing && from.id === resizeZoneId && resizeResult;
+        const tResize = isResizing && to.id === resizeZoneId && resizeResult;
+        const fOff = !fResize && isDragging && selection.zones.includes(from.id) ? dragDX : 0;
+        const fOffY = !fResize && isDragging && selection.zones.includes(from.id) ? dragDY : 0;
+        const tOff = !tResize && isDragging && selection.zones.includes(to.id) ? dragDX : 0;
+        const tOffY = !tResize && isDragging && selection.zones.includes(to.id) ? dragDY : 0;
+        const fgx = fResize ? resizeResult.gridX : from.gridX + fOff;
+        const fgy = fResize ? resizeResult.gridY : from.gridY + fOffY;
+        const fgw = fResize ? resizeResult.gridWidth : from.gridWidth;
+        const fgh = fResize ? resizeResult.gridHeight : from.gridHeight;
+        const tgx = tResize ? resizeResult.gridX : to.gridX + tOff;
+        const tgy = tResize ? resizeResult.gridY : to.gridY + tOffY;
+        const tgw = tResize ? resizeResult.gridWidth : to.gridWidth;
+        const tgh = tResize ? resizeResult.gridHeight : to.gridHeight;
+        const fx = (fgx + fgw / 2) * tileSize;
+        const fy = (fgy + fgh / 2) * tileSize;
+        const tx = (tgx + tgw / 2) * tileSize;
+        const ty = (tgy + tgh / 2) * tileSize;
         ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
         ctx.beginPath();
         ctx.moveTo(fx, fy);
@@ -175,12 +199,17 @@ export function Canvas() {
     const colors = ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#20c997'];
     for (const zone of project.zones) {
       const selected = selection.zones.includes(zone.id);
-      const offX = selected && isDragging ? dragDX : 0;
-      const offY = selected && isDragging ? dragDY : 0;
-      const x = (zone.gridX + offX) * tileSize;
-      const y = (zone.gridY + offY) * tileSize;
-      const w = zone.gridWidth * tileSize;
-      const h = zone.gridHeight * tileSize;
+      const isResizeTarget = isResizing && zone.id === resizeZoneId && resizeResult;
+      const offX = selected && isDragging && !isResizeTarget ? dragDX : 0;
+      const offY = selected && isDragging && !isResizeTarget ? dragDY : 0;
+      const zx = isResizeTarget ? resizeResult.gridX : zone.gridX + offX;
+      const zy = isResizeTarget ? resizeResult.gridY : zone.gridY + offY;
+      const zw = isResizeTarget ? resizeResult.gridWidth : zone.gridWidth;
+      const zh = isResizeTarget ? resizeResult.gridHeight : zone.gridHeight;
+      const x = zx * tileSize;
+      const y = zy * tileSize;
+      const w = zw * tileSize;
+      const h = zh * tileSize;
 
       const distIdx = project.districts.findIndex((d) => d.id === zone.parentDistrictId);
       const color = colors[distIdx % colors.length] ?? '#888';
@@ -310,8 +339,34 @@ export function Canvas() {
       }
     }
 
-    // Snap guide lines (world-space)
-    if (isDragging && activeGuides.current.length > 0) {
+    // Resize handles (world-space, single zone selected)
+    if (activeTool === 'select') {
+      const singleZoneId = getSelectedZoneId(selection);
+      if (singleZoneId) {
+        const szone = project.zones.find((z) => z.id === singleZoneId);
+        if (szone) {
+          const hZone = isResizing && singleZoneId === resizeZoneId && resizeResult
+            ? resizeResult
+            : { gridX: szone.gridX, gridY: szone.gridY, gridWidth: szone.gridWidth, gridHeight: szone.gridHeight };
+          const handles = getHandles(hZone);
+          const hRadius = HANDLE_SCREEN_RADIUS / zoom;
+          for (const h of handles) {
+            const hx = h.gx * tileSize;
+            const hy = h.gy * tileSize;
+            ctx.beginPath();
+            ctx.arc(hx, hy, hRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = '#4a9eff';
+            ctx.lineWidth = 2 / zoom;
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // Snap guide lines (world-space) — drag and resize
+    if ((isDragging || isResizing) && activeGuides.current.length > 0) {
       ctx.strokeStyle = 'rgba(0, 180, 255, 0.7)';
       ctx.lineWidth = 1 / zoom;
       ctx.setLineDash([4 / zoom, 4 / zoom]);
@@ -382,6 +437,7 @@ export function Canvas() {
       if (e.code === 'Escape') {
         clearSelection();
         dragMove.current = null;
+        resizeMove.current = null;
         activeGuides.current = [];
         snapDelta.current = { dx: 0, dy: 0 };
         return;
@@ -498,6 +554,23 @@ export function Canvas() {
     const { gx, gy } = screenToGrid(sx, sy);
 
     if (activeTool === 'select') {
+      // Resize handle priority: check before body hit-testing
+      const singleZoneId = getSelectedZoneId(selection);
+      if (singleZoneId) {
+        const szone = project.zones.find((z) => z.id === singleZoneId);
+        if (szone) {
+          const handleHit = findHandleAt(sx, sy, szone, tileSize, viewport);
+          if (handleHit) {
+            resizeMove.current = {
+              zoneId: singleZoneId, handleKind: handleHit,
+              startSX: sx, startSY: sy, startGX: gx, startGY: gy,
+              active: false, lastResult: null,
+            };
+            return;
+          }
+        }
+      }
+
       // Click-cycle: find all objects at this point, cycle on repeated clicks
       const allHits = findAllHitsAt(sx, sy, viewport, project, tileSize, visibility);
       let hit = allHits[0] ?? null;
@@ -574,6 +647,16 @@ export function Canvas() {
       return;
     }
 
+    // Resize commit
+    if (resizeMove.current?.active && resizeMove.current.lastResult) {
+      resizeZone(resizeMove.current.zoneId, resizeMove.current.lastResult);
+      resizeMove.current = null;
+      activeGuides.current = [];
+      draw();
+      return;
+    }
+    resizeMove.current = null;
+
     // Drag-move commit
     if (dragMove.current?.active) {
       const dx = snapDelta.current.dx;
@@ -639,6 +722,37 @@ export function Canvas() {
 
     const { sx, sy } = getScreenXY(e);
 
+    // Resize tracking
+    if (resizeMove.current) {
+      if (!resizeMove.current.active) {
+        const ddx = sx - resizeMove.current.startSX;
+        const ddy = sy - resizeMove.current.startSY;
+        if (Math.sqrt(ddx * ddx + ddy * ddy) >= DRAG_THRESHOLD) {
+          resizeMove.current.active = true;
+        }
+      }
+      if (resizeMove.current.active) {
+        const { gx: curGX, gy: curGY } = screenToGrid(sx, sy);
+        let rawDX = curGX - resizeMove.current.startGX;
+        let rawDY = curGY - resizeMove.current.startGY;
+        const zone = project.zones.find((z) => z.id === resizeMove.current!.zoneId);
+        if (zone) {
+          if (snapToObjects) {
+            const candidates = getNonSelectedEdges(project, selection);
+            const snapResult = computeResizeSnap(zone, resizeMove.current.handleKind, rawDX, rawDY, candidates);
+            rawDX = snapResult.dx;
+            rawDY = snapResult.dy;
+            activeGuides.current = snapResult.guides;
+          } else {
+            activeGuides.current = [];
+          }
+          resizeMove.current.lastResult = applyResize(zone, resizeMove.current.handleKind, rawDX, rawDY);
+        }
+        draw();
+      }
+      return;
+    }
+
     // Drag-move tracking
     if (dragMove.current) {
       if (!dragMove.current.active) {
@@ -671,6 +785,19 @@ export function Canvas() {
       boxSelect.current.curY = sy;
       draw();
       return;
+    }
+
+    // Handle hover detection
+    const singleZId = getSelectedZoneId(selection);
+    if (singleZId && activeTool === 'select') {
+      const sz = project.zones.find((z) => z.id === singleZId);
+      if (sz) {
+        hoveredHandle.current = findHandleAt(sx, sy, sz, tileSize, viewport);
+      } else {
+        hoveredHandle.current = null;
+      }
+    } else {
+      hoveredHandle.current = null;
     }
 
     // Hover tracking via hit-testing
@@ -718,10 +845,16 @@ export function Canvas() {
   };
 
   // --- Cursor ---
+  const handleCursors: Record<HandleKind, string> = {
+    nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize', e: 'e-resize',
+    se: 'se-resize', s: 's-resize', sw: 'sw-resize', w: 'w-resize',
+  };
   let cursor = 'crosshair';
   if (isPanning.current || spaceHeld.current) cursor = 'grabbing';
+  else if (resizeMove.current?.active) cursor = handleCursors[resizeMove.current.handleKind];
   else if (dragMove.current?.active) cursor = 'grabbing';
   else if (boxSelect.current) cursor = 'crosshair';
+  else if (hoveredHandle.current) cursor = handleCursors[hoveredHandle.current];
   else if (activeTool === 'select') cursor = 'default';
 
   return (

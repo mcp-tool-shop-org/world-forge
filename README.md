@@ -86,6 +86,7 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Multi-select (shift-click, box-select, Ctrl+A), drag-move, Ctrl+D duplicate, click-cycle disambiguation
 - Align (left/right/top/bottom/center-h/center-v) and distribute (horizontal/vertical) for any selection
 - Object-to-object snapping during drag with visual guide lines, drag preview, and toggleable snap control
+- Zone resize handles (8 handles per zone) with edge-specific snapping, min-size clamping, and live preview
 - Search / command-jump (Ctrl+K) across all object types
 - Object list panel with hierarchical district → zone → entity/landmark/spawn tree view
 - Scene preview (inline HTML/CSS composition of all zone visual bindings with missing-asset detection)

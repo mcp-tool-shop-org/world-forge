@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-03-09
+
+### Added
+
+- **Zone resize handles** — 8 handles (4 corners + 4 edge midpoints) appear when a single zone is selected; drag any handle to reshape the zone directly on the canvas
+- **Resize snap** — during resize, the moving edge snaps to nearby zone edges using the existing snap candidates within 1 grid cell radius; guides render at snap positions
+- **Resize preview** — zone renders at its new geometry during resize; connections follow the resized zone center in real-time
+- **Directional cursors** — handle hover shows directional resize cursors (nw-resize, n-resize, e-resize, etc.)
+- **Minimum zone size** — zones cannot be resized below 2×2 grid cells, matching the zone-paint constraint
+- `resize-handles.ts` — pure resize math module (getHandles, getHandleAxes, applyResize, findHandleAt) following the layout.ts/snap.ts pattern
+- `computeResizeSnap` in snap.ts — edge-specific resize snap computation
+- `resizeZone` store action — atomic resize with undo/redo support (one drag = one undo step)
+- 26 new tests (352 total)
+
 ## [2.4.1] - 2026-03-09
 
 ### Added

@@ -11,6 +11,7 @@ import type {
 } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
+import type { ResizeResult } from '../resize-handles.js';
 
 export function createEmptyProject(): WorldProject {
   return {
@@ -64,6 +65,7 @@ interface ProjectState {
   addZone: (z: Zone) => void;
   updateZone: (id: string, updates: Partial<Zone>) => void;
   removeZone: (id: string) => void;
+  resizeZone: (zoneId: string, result: ResizeResult) => void;
 
   // Connection helpers
   addConnection: (c: ZoneConnection) => void;
@@ -202,6 +204,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...p,
     zones: p.zones.filter((z) => z.id !== id),
     connections: p.connections.filter((c) => c.fromZoneId !== id && c.toZoneId !== id),
+  })),
+  resizeZone: (zoneId, result) => get().updateProject((p) => ({
+    ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, ...result } : z),
   })),
 
   // Connection helpers

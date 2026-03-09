@@ -179,6 +179,19 @@ X and Y axes snap independently — you can snap horizontally without affecting 
 
 Toggle snapping off in the Layers section of the tool palette to drag freely without snap behavior.
 
+### Resize Handles
+
+When exactly one zone is selected, 8 resize handles appear — 4 at corners and 4 at edge midpoints. Drag any handle to reshape the zone:
+
+| Handle | Effect |
+|--------|--------|
+| Corner (nw/ne/sw/se) | Resize both width and height simultaneously |
+| Edge (n/s/e/w) | Resize one axis only — the other stays fixed |
+
+Zones cannot be resized below 2×2 grid cells (the same minimum as zone painting). During resize, the moving edge snaps to nearby objects when **Snap to Objects** is enabled, and guide lines appear at snap positions. The cursor changes to a directional resize arrow when hovering over a handle.
+
+Resize is atomic — one drag produces one undo step. Press Escape during a resize drag to cancel without applying changes.
+
 ### Batch Operations
 
 The Selection Actions panel also includes zone-specific batch operations when zones are in the selection: assign all to a district, add a tag, or delete selected zones.

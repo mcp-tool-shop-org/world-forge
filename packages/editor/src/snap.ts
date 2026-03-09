@@ -3,6 +3,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { SelectionSet } from './store/editor-store.js';
 import { getSelectionBounds, type ObjectBound } from './layout.js';
+import { getHandleAxes, type HandleKind } from './resize-handles.js';
 
 /** A visual guide line to render during snap */
 export interface SnapGuide {
@@ -20,7 +21,7 @@ export interface SnapResult {
 }
 
 /** A snap-able edge from a non-selected object */
-interface SnapEdge {
+export interface SnapEdge {
   axis: 'x' | 'y';
   value: number;
   extent: [number, number]; // perpendicular extent for guide rendering
@@ -173,6 +174,80 @@ export function computeSnap(
 
   if (bestXGuide) guides.push(bestXGuide);
   if (bestYGuide) guides.push(bestYGuide);
+
+  return {
+    dx: rawDX + snapAdjustX,
+    dy: rawDY + snapAdjustY,
+    guides,
+  };
+}
+
+/**
+ * Compute snapped delta and guides for a resize operation.
+ * Only snaps the edge(s) being moved by the handle kind.
+ */
+export function computeResizeSnap(
+  zone: { gridX: number; gridY: number; gridWidth: number; gridHeight: number },
+  kind: HandleKind,
+  rawDX: number,
+  rawDY: number,
+  candidates: SnapEdge[],
+): SnapResult {
+  const axes = getHandleAxes(kind);
+  const guides: SnapGuide[] = [];
+  let snapAdjustX = 0;
+  let snapAdjustY = 0;
+
+  const zTop = zone.gridY;
+  const zBottom = zone.gridY + zone.gridHeight;
+  const zLeft = zone.gridX;
+  const zRight = zone.gridX + zone.gridWidth;
+
+  // Snap X axis (left or right edge)
+  if (axes.movesLeft || axes.movesRight) {
+    const tentEdge = axes.movesLeft ? zLeft + rawDX : zRight + rawDX;
+    let bestDist = Infinity;
+    let bestGuide: SnapGuide | null = null;
+
+    for (const cand of candidates) {
+      if (cand.axis !== 'x') continue;
+      const dist = Math.abs(tentEdge - cand.value);
+      if (dist <= SNAP_RADIUS && dist < bestDist) {
+        bestDist = dist;
+        snapAdjustX = cand.value - tentEdge;
+        bestGuide = {
+          axis: 'x',
+          value: cand.value,
+          from: Math.min(zTop, cand.extent[0]),
+          to: Math.max(zBottom, cand.extent[1]),
+        };
+      }
+    }
+    if (bestGuide) guides.push(bestGuide);
+  }
+
+  // Snap Y axis (top or bottom edge)
+  if (axes.movesTop || axes.movesBottom) {
+    const tentEdge = axes.movesTop ? zTop + rawDY : zBottom + rawDY;
+    let bestDist = Infinity;
+    let bestGuide: SnapGuide | null = null;
+
+    for (const cand of candidates) {
+      if (cand.axis !== 'y') continue;
+      const dist = Math.abs(tentEdge - cand.value);
+      if (dist <= SNAP_RADIUS && dist < bestDist) {
+        bestDist = dist;
+        snapAdjustY = cand.value - tentEdge;
+        bestGuide = {
+          axis: 'y',
+          value: cand.value,
+          from: Math.min(zLeft, cand.extent[0]),
+          to: Math.max(zRight, cand.extent[1]),
+        };
+      }
+    }
+    if (bestGuide) guides.push(bestGuide);
+  }
 
   return {
     dx: rawDX + snapAdjustX,

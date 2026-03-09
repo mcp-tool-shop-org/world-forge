@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNonSelectedEdges, computeSnap, SNAP_RADIUS } from '../snap.js';
+import { getNonSelectedEdges, computeSnap, computeResizeSnap, SNAP_RADIUS, type SnapEdge } from '../snap.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 
 const chapel = SAMPLE_WORLDS[2].project;
@@ -221,6 +221,77 @@ describe('computeSnap', () => {
 
     expect(result.dx).toBe(-50);
     expect(result.dy).toBe(-50);
+    expect(result.guides).toHaveLength(0);
+  });
+});
+
+// Chapel zone positions for resize snap tests:
+// chapel-entrance: gridX=10, gridY=10, gridWidth=8, gridHeight=6  → right=18, bottom=16
+// chapel-alcove:   gridX=22, gridY=22, gridWidth=5, gridHeight=4  → right=27, bottom=26
+
+describe('computeResizeSnap', () => {
+  const entrance = { gridX: 10, gridY: 10, gridWidth: 8, gridHeight: 6 };
+  const sel = { ...empty, zones: ['chapel-entrance'] };
+
+  it('E-handle: right edge snaps to chapel-nave right edge', () => {
+    // entrance right=18. chapel-nave right=20. dx=+3 → tentEdge=21. Distance to 20=1. Snap.
+    const candidates = getNonSelectedEdges(chapel, sel);
+    const result = computeResizeSnap(entrance, 'e', 3, 0, candidates);
+
+    expect(result.dx).toBe(2); // 3 + snap adjust of -1 = 2
+    expect(result.dy).toBe(0); // E-handle doesn't snap Y
+    expect(result.guides.some((g) => g.axis === 'x' && g.value === 20)).toBe(true);
+  });
+
+  it('N-handle: top edge snaps to nearby candidate', () => {
+    // entrance top=10. chapel-nave bottom=28. Move top upward: dy=-19 → tentEdge=-9. Nothing near -9.
+    // Instead try: entrance top=10. Move top down dy=+5 → tentEdge=15. chapel-nave center-y = (20+28)/2=24. Too far.
+    // chapel-entrance bottom=16. Move top to near 16: impossible (that's below bottom). Let's think differently.
+    // Snap to vestry-door bottom=26: tentEdge=10+15=25. Distance to 26=1. Snap.
+    const candidates = getNonSelectedEdges(chapel, sel);
+    const result = computeResizeSnap(entrance, 'n', 0, 15, candidates);
+
+    // Should snap Y (tentEdge=25, near vestry-door bottom=26, dist=1)
+    expect(result.dx).toBe(0); // N-handle doesn't snap X
+    expect(Math.abs(result.dy - 15)).toBeLessThanOrEqual(SNAP_RADIUS);
+  });
+
+  it('NW-handle: both axes snap independently', () => {
+    // NW moves left and top. entrance left=10, top=10.
+    // dx=-3 → tentLeft=7. vestry-door right=8. Distance=1. Snap to 8.
+    // dy=0 → tentTop=10. chapel-nave left=10 is x-edge, not y. But chapel-nave top=20, dist=10. No snap.
+    // Actually dy=0 means no Y movement → no Y snap needed, top stays at 10.
+    const candidates = getNonSelectedEdges(chapel, sel);
+    const result = computeResizeSnap(entrance, 'nw', -3, 0, candidates);
+
+    expect(result.dx).toBe(-2); // -3 + 1 = -2 (snapped to vestry-door right=8)
+    expect(result.dy).toBe(0);
+    expect(result.guides.some((g) => g.axis === 'x' && g.value === 8)).toBe(true);
+  });
+
+  it('E-handle far from edges: no snap', () => {
+    const candidates = getNonSelectedEdges(chapel, sel);
+    // dx=+50 → tentEdge=68. Nothing near 68.
+    const result = computeResizeSnap(entrance, 'e', 50, 0, candidates);
+
+    expect(result.dx).toBe(50);
+    expect(result.guides).toHaveLength(0);
+  });
+
+  it('E-handle exact hit: snap fires at distance 0', () => {
+    // entrance right=18. chapel-nave right=20. dx=+2 → tentEdge=20. Distance=0. Snap.
+    const candidates = getNonSelectedEdges(chapel, sel);
+    const result = computeResizeSnap(entrance, 'e', 2, 0, candidates);
+
+    expect(result.dx).toBe(2);
+    expect(result.guides.some((g) => g.axis === 'x' && g.value === 20)).toBe(true);
+  });
+
+  it('empty candidates: raw delta returned', () => {
+    const result = computeResizeSnap(entrance, 'se', 5, 3, []);
+
+    expect(result.dx).toBe(5);
+    expect(result.dy).toBe(3);
     expect(result.guides).toHaveLength(0);
   });
 });
