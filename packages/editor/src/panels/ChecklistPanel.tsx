@@ -5,6 +5,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, type RightTab, type EditorTool } from '../store/editor-store.js';
 import { HOTKEY_BINDINGS } from '../hotkeys.js';
 import { getModeProfile } from '../mode-profiles.js';
+import { useKitStore } from '../kits/index.js';
 
 interface Step {
   id: string;
@@ -18,36 +19,46 @@ interface Step {
 export function ChecklistPanel() {
   const { project } = useProjectStore();
   const { hasExported, setRightTab, setTool, dismissChecklist } = useEditorStore();
+  const activeKitId = useEditorStore((s) => s.activeKitId);
+  const { kits } = useKitStore();
 
   const profile = useMemo(() => getModeProfile(project.mode), [project.mode]);
+  const activeKit = useMemo(() => activeKitId ? kits.find((k) => k.id === activeKitId) : undefined, [activeKitId, kits]);
 
   const steps: Step[] = useMemo(() => {
+    // Kit guideHints take priority, then ModeProfile guideOverrides, then defaults
+    const kitHints = activeKit?.guideHints ?? {};
     const ov = profile.guideOverrides;
+    const hint = (key: string) => kitHints[key] ?? ov[key];
     return [
     {
       id: 'district',
-      label: ov.district?.label ?? 'Create a district',
-      description: ov.district?.description ?? 'Group zones into a named region.',
+      label: hint('district')?.label ?? 'Create a district',
+      description: hint('district')?.description ?? 'Group zones into a named region.',
       isComplete: project.districts.length > 0, tab: 'map',
     },
     {
       id: 'zone',
-      label: ov.zone?.label ?? 'Add a zone',
-      description: ov.zone?.description ?? 'Use the Zone tool to create a named location.',
+      label: hint('zone')?.label ?? 'Add a zone',
+      description: hint('zone')?.description ?? 'Use the Zone tool to create a named location.',
       isComplete: project.zones.length > 0, tab: 'map', tool: 'zone-paint',
     },
     {
       id: 'spawn',
-      label: ov.spawn?.label ?? 'Place a spawn point',
-      description: ov.spawn?.description ?? 'Set where players start.',
+      label: hint('spawn')?.label ?? 'Place a spawn point',
+      description: hint('spawn')?.description ?? 'Set where players start.',
       isComplete: project.spawnPoints.length > 0, tab: 'map', tool: 'spawn',
     },
     {
-      id: 'player', label: 'Create a player template', description: 'Set up the player\'s starting stats and gear.',
+      id: 'player',
+      label: hint('player')?.label ?? 'Create a player template',
+      description: hint('player')?.description ?? 'Set up the player\'s starting stats and gear.',
       isComplete: project.playerTemplate !== undefined, tab: 'player',
     },
     {
-      id: 'npc', label: 'Add a speaking NPC', description: 'Add a character the player can talk to.',
+      id: 'npc',
+      label: hint('npc')?.label ?? 'Add a speaking NPC',
+      description: hint('npc')?.description ?? 'Add a character the player can talk to.',
       isComplete: project.entityPlacements.some((e) => e.dialogueId),
       tab: 'dialogue',
     },
@@ -56,7 +67,7 @@ export function ChecklistPanel() {
       isComplete: hasExported, tab: 'issues',
     },
   ];
-  }, [project, hasExported, profile]);
+  }, [project, hasExported, profile, activeKit]);
 
   const completed = steps.filter((s) => s.isComplete).length;
   const allDone = completed === steps.length;
@@ -69,6 +80,11 @@ export function ChecklistPanel() {
   return (
     <div>
       <div style={headerStyle}>Getting Started</div>
+      {profile.modeTip && (
+        <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 8, fontStyle: 'italic' }}>
+          {profile.icon} {profile.modeTip}
+        </div>
+      )}
       <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
         {allDone
           ? 'All steps complete! Your world is ready.'

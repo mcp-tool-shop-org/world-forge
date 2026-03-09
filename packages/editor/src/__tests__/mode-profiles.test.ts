@@ -148,4 +148,39 @@ describe('ModeProfiles', () => {
       expect(getDefaultConnectionKind(mode)).toBe(MODE_PROFILES[mode].connectionKinds[0]);
     }
   });
+
+  // -- v3.4 guide/checklist enhancements --
+
+  it('each mode has a non-empty modeTip', () => {
+    for (const mode of AUTHORING_MODES) {
+      expect(MODE_PROFILES[mode].modeTip.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('each mode has guideOverrides for district, zone, spawn, player, and npc', () => {
+    for (const mode of AUTHORING_MODES) {
+      const ov = MODE_PROFILES[mode].guideOverrides;
+      expect(ov.district).toBeDefined();
+      expect(ov.zone).toBeDefined();
+      expect(ov.spawn).toBeDefined();
+      expect(ov.player).toBeDefined();
+      expect(ov.npc).toBeDefined();
+    }
+  });
+
+  it('dungeon player override says adventurer', () => {
+    expect(getModeProfile('dungeon').guideOverrides.player?.label).toBe('Create an adventurer');
+  });
+
+  it('ocean player override says captain', () => {
+    expect(getModeProfile('ocean').guideOverrides.player?.label).toBe('Create a captain');
+  });
+
+  it('space npc override says contact', () => {
+    expect(getModeProfile('space').guideOverrides.npc?.label).toBe('Add a speaking contact');
+  });
+
+  it('wilderness spawn override says camp spawn', () => {
+    expect(getModeProfile('wilderness').guideOverrides.spawn?.label).toBe('Place a camp spawn');
+  });
 });

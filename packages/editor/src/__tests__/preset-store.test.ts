@@ -93,7 +93,7 @@ describe('preset-store region presets', () => {
 describe('preset-store encounter presets', () => {
   it('starts with built-in encounter presets', () => {
     const { encounterPresets } = usePresetStore.getState();
-    expect(encounterPresets.length).toBe(3);
+    expect(encounterPresets.length).toBe(10);
     expect(encounterPresets.every((p) => p.builtIn)).toBe(true);
   });
 
@@ -110,7 +110,7 @@ describe('preset-store encounter presets', () => {
       encounterTags: ['patrol'],
     });
     expect(saved.builtIn).toBe(false);
-    expect(usePresetStore.getState().encounterPresets.length).toBe(4);
+    expect(usePresetStore.getState().encounterPresets.length).toBe(11);
   });
 
   it('duplicates an encounter preset', () => {
@@ -134,7 +134,7 @@ describe('preset-store encounter presets', () => {
       encounterTags: [],
     });
     deleteEncounterPreset(saved.id);
-    expect(usePresetStore.getState().encounterPresets.length).toBe(3);
+    expect(usePresetStore.getState().encounterPresets.length).toBe(10);
   });
 });
 
@@ -156,11 +156,13 @@ describe('filterPresetsByMode', () => {
     expect(stationPreset).toBeDefined();
   });
 
-  it('always includes presets with undefined modes', () => {
+  it('includes universal presets plus mode-matching presets', () => {
     const { encounterPresets } = usePresetStore.getState();
-    // Encounter presets have no modes set — universal
     const filtered = filterPresetsByMode(encounterPresets, 'ocean');
-    expect(filtered.length).toBe(encounterPresets.length);
+    // 3 universal (no modes) + 1 ocean-specific = 4
+    expect(filtered.length).toBe(4);
+    expect(filtered.some((p) => p.id === 'boss-encounter')).toBe(true);
+    expect(filtered.some((p) => p.id === 'ocean-pirate-attack')).toBe(true);
   });
 
   it('returns all presets when mode is undefined', () => {

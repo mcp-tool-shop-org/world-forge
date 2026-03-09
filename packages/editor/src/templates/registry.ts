@@ -9,6 +9,7 @@ import { cyberpunkTemplate } from './genre-cyberpunk.js';
 import { detectiveTemplate } from './genre-detective.js';
 import { pirateTemplate } from './genre-pirate.js';
 import { zombieTemplate } from './genre-zombie.js';
+import { BUILTIN_KITS } from '../kits/index.js';
 import { SAMPLE_WORLDS } from './samples.js';
 
 export interface GenreTemplate {
@@ -31,6 +32,15 @@ export interface SampleWorld {
   project: WorldProject;
 }
 
+export interface ModeStarter {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  mode: AuthoringMode;
+  project: WorldProject;
+}
+
 export interface WizardOptions {
   name: string;
   genre: string; // 'blank' | genre template id
@@ -49,6 +59,23 @@ export const GENRE_TEMPLATES: GenreTemplate[] = [
   { id: 'pirate', name: 'Pirate', description: 'Ports, taverns, and hidden treasure.', icon: '\u2693', genre: 'pirate', tones: ['adventurous', 'seafaring'], mode: 'district', project: pirateTemplate },
   { id: 'zombie', name: 'Zombie', description: 'Barricades, scavenging, and survival.', icon: '\uD83E\uDDDF', genre: 'zombie', tones: ['tense', 'survival'], mode: 'district', project: zombieTemplate },
 ];
+
+// MODE_STARTERS derived from BUILTIN_KITS for backward compatibility
+export const MODE_STARTERS: ModeStarter[] = BUILTIN_KITS.map((kit) => ({
+  id: kit.id,
+  name: kit.name,
+  description: kit.description,
+  icon: kit.icon,
+  mode: kit.modes[0],
+  project: kit.project,
+}));
+
+export function createProjectFromModeStarter(name: string, starter: ModeStarter): WorldProject {
+  const copy: WorldProject = JSON.parse(JSON.stringify(starter.project));
+  copy.id = `project-${Date.now()}`;
+  copy.name = name || starter.name;
+  return copy;
+}
 
 export { SAMPLE_WORLDS };
 export type { SampleWorld as SampleWorldType };

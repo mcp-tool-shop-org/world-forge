@@ -9,9 +9,10 @@ import { frameBounds } from '../viewport.js';
 import type { WorldProject } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
+import { useKitStore } from '../kits/index.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit';
   id: string;
   label: string;
   detail: string;
@@ -19,13 +20,13 @@ export interface SearchResult {
 
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
   zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
-  'region-preset': 'Rgn', 'encounter-preset': 'Enc',
+  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
   district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
-  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633',
+  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -113,6 +114,7 @@ export function SearchOverlay() {
   const listRef = useRef<HTMLDivElement>(null);
 
   const { regionPresets, encounterPresets } = usePresetStore();
+  const { kits } = useKitStore();
 
   const searchIndex = useMemo(() => {
     const base = buildSearchIndex(project);
@@ -125,8 +127,14 @@ export function SearchOverlay() {
       const modeTag = p.modes ? ` [${p.modes.join(', ')}]` : '';
       base.push({ type: 'encounter-preset', id: p.id, label: p.name, detail: `${p.encounterType} — ${p.description}${modeTag}` });
     }
+    // Add starter kits to search index
+    for (const kit of kits) {
+      const status = kit.builtIn ? 'built-in' : 'custom';
+      const modeTag = kit.modes.join(', ');
+      base.push({ type: 'starter-kit', id: kit.id, label: kit.name, detail: `${status} kit [${modeTag}]` });
+    }
     return base;
-  }, [project, regionPresets, encounterPresets]);
+  }, [project, regionPresets, encounterPresets, kits]);
   const results = useMemo(() => filterResults(searchIndex, query), [searchIndex, query]);
 
   // Reset active index when results change
@@ -211,6 +219,8 @@ export function SearchOverlay() {
       setFocusTarget({ domain: 'trees', subPath: result.id, timestamp: Date.now() });
     } else if (result.type === 'region-preset' || result.type === 'encounter-preset') {
       setRightTab('presets');
+    } else if (result.type === 'starter-kit') {
+      // No specific navigation — kit is informational in search
     }
   }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 

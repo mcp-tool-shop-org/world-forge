@@ -5,15 +5,18 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { useTemplateStore, type UserTemplate } from '../store/template-store.js';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
+import { useKitStore, filterKitsByMode } from '../kits/index.js';
+import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
-import { MODE_PROFILES, getModeProfile } from '../mode-profiles.js';
+import { MODE_PROFILES } from '../mode-profiles.js';
+import { EditKitModal } from './EditKitModal.js';
 
 interface Props { onClose: () => void }
 
-type Tab = 'genres' | 'samples' | 'templates';
+type Tab = 'genres' | 'starters' | 'samples' | 'templates';
 
-function countContent(p: WorldProject) {
+export function countContent(p: WorldProject) {
   return {
     zones: p.zones.length,
     entities: p.entityPlacements.length,
@@ -23,10 +26,20 @@ function countContent(p: WorldProject) {
   };
 }
 
+/** Create a new project from a StarterKit (deep clone + new ID). */
+export function createProjectFromKit(kit: StarterKit, projectName?: string): WorldProject {
+  const copy: WorldProject = JSON.parse(JSON.stringify(kit.project));
+  copy.id = `project-${Date.now()}`;
+  copy.name = projectName || kit.name;
+  return copy;
+}
+
 export function TemplateManager({ onClose }: Props) {
   const { loadProject } = useProjectStore();
   const resetChecklist = useEditorStore((s) => s.resetChecklist);
+  const setActiveKitId = useEditorStore((s) => s.setActiveKitId);
   const { templates, loadTemplates, duplicateTemplate, deleteTemplate } = useTemplateStore();
+  const { kits, loadKits, duplicateKit: duplicateKitAction, deleteKit: deleteKitAction } = useKitStore();
 
   const [tab, setTab] = useState<Tab>('genres');
 
@@ -43,8 +56,12 @@ export function TemplateManager({ onClose }: Props) {
 
   // Template management state
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDeleteKit, setConfirmDeleteKit] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<AuthoringMode | undefined>(undefined);
+  const [editingKit, setEditingKit] = useState<StarterKit | null>(null);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
+  useEffect(() => { loadKits(); }, [loadKits]);
 
   const selectGenre = (id: string) => {
     setGenre(id);
@@ -71,6 +88,14 @@ export function TemplateManager({ onClose }: Props) {
     resetChecklist();
     onClose();
   }, [name, genre, mode, includePlayer, includeBuildCatalog, includeProgressionTree, includeDialogue, includeSampleNPCs, loadProject, resetChecklist, onClose]);
+
+  const handleOpenKit = useCallback((kit: StarterKit) => {
+    const project = createProjectFromKit(kit, name || undefined);
+    loadProject(project);
+    resetChecklist();
+    setActiveKitId(kit.id);
+    onClose();
+  }, [name, loadProject, resetChecklist, setActiveKitId, onClose]);
 
   const handleOpenSample = useCallback((project: WorldProject) => {
     const copy: WorldProject = JSON.parse(JSON.stringify(project));
@@ -102,6 +127,19 @@ export function TemplateManager({ onClose }: Props) {
     }
   }, [confirmDelete, deleteTemplate]);
 
+  const handleDuplicateKit = useCallback((id: string) => {
+    duplicateKitAction(id);
+  }, [duplicateKitAction]);
+
+  const handleDeleteKit = useCallback((id: string) => {
+    if (confirmDeleteKit === id) {
+      deleteKitAction(id);
+      setConfirmDeleteKit(null);
+    } else {
+      setConfirmDeleteKit(id);
+    }
+  }, [confirmDeleteKit, deleteKitAction]);
+
   return (
     <div style={overlayStyle}>
       <div style={cardStyle}>
@@ -113,18 +151,26 @@ export function TemplateManager({ onClose }: Props) {
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #30363d', marginBottom: 16 }}>
-          {(['genres', 'samples', 'templates'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setStep(1); }}
-              style={{
-                background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #58a6ff' : '2px solid transparent',
-                color: tab === t ? '#58a6ff' : '#8b949e', padding: '8px 16px', cursor: 'pointer', fontSize: 12,
-              }}
-            >
-              {t === 'genres' ? 'Genres' : t === 'samples' ? 'Samples' : `My Templates (${templates.length})`}
-            </button>
-          ))}
+          {(['genres', 'starters', 'samples', 'templates'] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = {
+              genres: 'Genres',
+              starters: 'Starter Kits',
+              samples: 'Samples',
+              templates: `My Templates (${templates.length})`,
+            };
+            return (
+              <button
+                key={t}
+                onClick={() => { setTab(t); setStep(1); }}
+                style={{
+                  background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #58a6ff' : '2px solid transparent',
+                  color: tab === t ? '#58a6ff' : '#8b949e', padding: '8px 14px', cursor: 'pointer', fontSize: 12,
+                }}
+              >
+                {labels[t]}
+              </button>
+            );
+          })}
         </div>
 
         {/* Genres tab */}
@@ -160,6 +206,10 @@ export function TemplateManager({ onClose }: Props) {
                   </button>
                 );
               })}
+            </div>
+
+            <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 12, fontStyle: 'italic' }}>
+              {MODE_PROFILES[mode].icon} {MODE_PROFILES[mode].description}
             </div>
 
             <label style={{ ...labelStyle }}>Template</label>
@@ -199,6 +249,98 @@ export function TemplateManager({ onClose }: Props) {
               <CheckItem label="Progression tree" checked={includeProgressionTree} onChange={setIncludeProgressionTree} hint="Skills and abilities" />
               <CheckItem label="Starter dialogue" checked={includeDialogue} onChange={setIncludeDialogue} hint="NPC conversation example" />
               <CheckItem label="Sample NPCs" checked={includeSampleNPCs} onChange={setIncludeSampleNPCs} hint="Pre-placed entities and items" />
+            </div>
+          </>
+        )}
+
+        {/* Starter Kits tab */}
+        {tab === 'starters' && (
+          <>
+            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
+              Browse starter kits to begin a new project. Built-in kits ship with World Forge; custom kits are ones you&apos;ve saved.
+            </div>
+            <label style={labelStyle}>Project Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Leave blank to use kit name"
+              style={{ ...inputStyle, marginBottom: 12 }}
+            />
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setFilterMode(undefined)}
+                style={{
+                  background: filterMode === undefined ? '#0d1d30' : '#0d1117',
+                  border: filterMode === undefined ? '2px solid #58a6ff' : '1px solid #30363d',
+                  borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+                  color: filterMode === undefined ? '#58a6ff' : '#8b949e', fontSize: 10,
+                }}
+              >
+                All
+              </button>
+              {AUTHORING_MODES.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setFilterMode(m)}
+                  style={{
+                    background: filterMode === m ? '#0d1d30' : '#0d1117',
+                    border: filterMode === m ? '2px solid #58a6ff' : '1px solid #30363d',
+                    borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+                    color: filterMode === m ? '#58a6ff' : '#8b949e', fontSize: 10,
+                  }}
+                >
+                  {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filterKitsByMode(kits, filterMode).map((kit) => {
+                const c = countContent(kit.project);
+                const presetCount = kit.presetRefs.region.length + kit.presetRefs.encounter.length;
+                return (
+                  <div key={kit.id} style={sampleCardStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 16 }}>{kit.icon}</span>
+                      <span style={{ fontSize: 14, fontWeight: 'bold', color: '#c9d1d9' }}>{kit.name}</span>
+                      {kit.builtIn && <span style={{ fontSize: 10, color: '#8b949e' }} title="Built-in kit">{'\uD83D\uDD12'}</span>}
+                      {kit.modes.map((m) => (
+                        <span key={m} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#21262d', color: '#8b949e' }}>
+                          {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>{kit.description}</div>
+                    {kit.tags.length > 0 && (
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
+                        {kit.tags.map((tag) => (
+                          <span key={tag} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#21262d', color: '#484f58' }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, color: '#484f58', marginBottom: 8 }}>
+                      {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
+                      {presetCount > 0 && <> &middot; {presetCount} presets</>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleOpenKit(kit)} style={openBtnStyle}>Start Project</button>
+                      <button onClick={() => handleDuplicateKit(kit.id)} style={smallBtnStyle}>Duplicate</button>
+                      {!kit.builtIn && (
+                        <>
+                          <button onClick={() => setEditingKit(kit)} style={smallBtnStyle}>Edit</button>
+                          <button
+                            onClick={() => handleDeleteKit(kit.id)}
+                            style={{ ...smallBtnStyle, color: confirmDeleteKit === kit.id ? '#f85149' : '#8b949e' }}
+                          >
+                            {confirmDeleteKit === kit.id ? 'Confirm?' : 'Delete'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
@@ -297,6 +439,7 @@ export function TemplateManager({ onClose }: Props) {
           )}
         </div>
       </div>
+      {editingKit && <EditKitModal kit={editingKit} onClose={() => setEditingKit(null)} />}
     </div>
   );
 }

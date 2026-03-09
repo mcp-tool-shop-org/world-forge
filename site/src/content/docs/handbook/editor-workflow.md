@@ -343,13 +343,27 @@ Both modes create a single undo step. Select a district, choose a preset, then c
 
 ### Encounter Presets
 
-Encounter presets create a new encounter anchor with pre-configured settings. Three built-in presets:
+Encounter presets create a new encounter anchor with pre-configured settings. Ten built-in presets — 3 universal and 7 mode-specific:
+
+**Universal presets** (available in all modes):
 
 | Preset | Type | Probability | Cooldown | Tags |
 |--------|------|-------------|----------|------|
 | Boss Encounter | boss | 1.0 | 0 turns | boss, scripted |
 | Hazard Encounter | hazard | 0.6 | 2 turns | environmental, trap |
 | Discovery Encounter | discovery | 0.4 | 5 turns | lore, reward |
+
+**Mode-specific presets** (filtered by authoring mode):
+
+| Preset | Mode | Type | Probability | Cooldown |
+|--------|------|------|-------------|----------|
+| Dungeon Ambush | dungeon | ambush | 0.6 | 3 turns |
+| Street Brawl | district | brawl | 0.5 | 3 turns |
+| Caravan Raid | world | caravan-raid | 0.5 | 5 turns |
+| Pirate Attack | ocean | pirate | 0.6 | 3 turns |
+| Boarding Action | space | boarding | 0.5 | 4 turns |
+| Haunted Room | interior | haunt | 0.5 | 3 turns |
+| Beast Hunt | wilderness | beast | 0.6 | 3 turns |
 
 Select a zone, choose a preset, click Apply to place the encounter.
 
@@ -361,7 +375,7 @@ Custom presets are stored in localStorage and persist across sessions.
 
 ## 10. Search
 
-Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, progression trees, and presets.
+Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, progression trees, presets, and starter kits.
 
 Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role, an encounter's type and probability, a preset's description). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For encounters, the parent zone is framed. For dialogues and progression trees, the corresponding sidebar tab opens. For presets, the Presets tab opens.
 
@@ -467,7 +481,36 @@ The **Layers** section in the tool palette provides 7 visibility toggles:
 | Backgrounds | — | Background/tileset badges on/off |
 | Ambient | Zone tint overlays on/off | Ambient layer entries on/off |
 
-## 14. Export
+## 14. Starter Kits
+
+The **Starter Kits** tab in the Template Manager replaces the former "Mode Starters" tab. It displays both built-in and custom kits in a unified browser.
+
+### Built-in Kits
+
+Seven built-in kits ship with World Forge — one per authoring mode (Dungeon, District, World, Ocean, Space, Interior, Wilderness). Each includes a fully built project with 4 zones, entities, dialogues, encounters, and a complete player template. Built-in kits are immutable (shown with a lock icon) — duplicate them to customize.
+
+Each built-in kit also includes **preset references** — recommended region and encounter presets that pair well with that mode. These appear as a count on the kit card.
+
+### Custom Kits
+
+Click **Save as Kit** (in the top bar) to capture your current project as a custom starter kit. The save dialog lets you set:
+
+- **Name and description** — what appears on the kit card
+- **Icon** — emoji or character for the card header
+- **Modes** — which authoring modes the kit is compatible with (auto-detected from project)
+- **Tags** — comma-separated labels for organization
+
+Custom kits support full editing (metadata, preset references, and guide hints) and deletion. Use **Duplicate** on any kit — built-in or custom — to create an editable copy.
+
+### Guide Hints
+
+Custom kits can override the mode guide's checklist labels. When you open a project from a kit with guide hints, the checklist panel uses the kit's labels instead of the mode defaults. This lets kit authors tailor the authoring guide to their specific world concept.
+
+### Mode Filtering
+
+Use the mode filter pills at the top of the Starter Kits tab to show only kits compatible with a specific mode. Kits can support multiple modes — a kit tagged with both "dungeon" and "interior" appears under either filter.
+
+## 15. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -480,7 +523,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 15. Import
+## 16. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -490,7 +533,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 16. Track Changes
+## 17. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

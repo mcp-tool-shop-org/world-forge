@@ -27,6 +27,7 @@ import { ObjectListPanel } from './panels/ObjectListPanel.js';
 import { PresetBrowser } from './panels/PresetBrowser.js';
 import { SearchOverlay } from './panels/SearchOverlay.js';
 import { SpeedPanel } from './panels/SpeedPanel.js';
+import { SaveKitModal } from './panels/SaveKitModal.js';
 import { Canvas } from './Canvas.js';
 import { getModeProfile } from './mode-profiles.js';
 
@@ -41,6 +42,7 @@ export function App() {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [showSaveKit, setShowSaveKit] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -111,6 +113,7 @@ export function App() {
         <button onClick={handleLoad} style={btnStyle}>Load</button>
         <button onClick={handleSave} style={btnStyle}>Save</button>
         <button onClick={() => setShowSaveTemplate(true)} style={btnStyle}>Save as Template</button>
+        <button onClick={() => setShowSaveKit(true)} style={btnStyle}>Save as Kit</button>
         <button onClick={undo} style={btnStyle}>Undo</button>
         <button onClick={redo} style={btnStyle}>Redo</button>
         <button onClick={() => setShowExport(true)} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Export</button>
@@ -268,6 +271,7 @@ export function App() {
       {showTemplateManager && <TemplateManager onClose={() => setShowTemplateManager(false)} />}
       {showImport && <ImportModal onClose={() => setShowImport(false)} />}
       {showSaveTemplate && <SaveTemplateModal onClose={() => setShowSaveTemplate(false)} />}
+      {showSaveKit && <SaveKitModal onClose={() => setShowSaveKit(false)} />}
       {showSearch && <SearchOverlay />}
     </div>
   );

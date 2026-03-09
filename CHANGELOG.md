@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.5.0] - 2026-03-09
+
+### Added
+
+- **Custom starter kits** — users can create, save, edit, duplicate, and delete their own mode-native starter kits alongside the 7 built-in kits. Custom kits persist to localStorage and appear in the Starter Kits tab with full CRUD controls
+- **StarterKit type** — new `StarterKit` interface with multi-mode support (`modes[]`), preset refs (region + encounter IDs), guide hints (checklist label/description overrides), tags, built-in flag, and timestamps
+- **Kit store** (`kits/kit-store.ts`) — Zustand + localStorage CRUD store following the preset-store pattern. Built-in protection prevents editing/deleting shipped kits
+- **Starter Kits tab** — replaces "Mode Starters" tab in Template Manager. Shows built-in kits with lock icon + custom kits with Edit/Delete. Mode filter pills, name input, content counts, preset ref counts, tag badges
+- **Save as Kit** — new button in top bar captures current project as a reusable starter kit with name, description, icon, mode checkboxes, and comma-separated tags
+- **Edit Kit modal** — edit custom kit metadata, toggle preset refs from built-in presets, and set per-step guide hint overrides (label + description for district/zone/spawn/player/npc steps)
+- **Kit search** — `'starter-kit'` type added to Ctrl+K search overlay with orange "Kit" badge; indexes all kits with built-in/custom status and mode annotations
+- **Kit guide integration** — `activeKitId` in editor store; ChecklistPanel reads kit `guideHints` first, then ModeProfile `guideOverrides`, then defaults. `resetChecklist()` clears active kit
+- **Kit validation** — `validateKit()` returns `{ valid, errors[], warnings[] }`. Errors: empty name, empty/invalid modes, broken project. Warnings: preset ref IDs not found in existing presets
+- **`createProjectFromKit()`** — pure helper for deep-cloning a kit project with new ID and optional name override
+- **`filterKitsByMode()`** — pure mode filter for kits, same pattern as `filterPresetsByMode()`
+- **BUILTIN_KITS wraps MODE_STARTERS** — 7 built-in kits with curated preset refs per mode; `MODE_STARTERS` derived from `BUILTIN_KITS` for backward compat (zero test breakage)
+- 103 new tests (918 total across 40 test files)
+
+### Changed
+
+- Template Manager "Mode Starters" tab renamed to "Starter Kits" and now shows built-in + custom kits
+- `MODE_STARTERS` derived from `BUILTIN_KITS` via `.map()` instead of individual imports (backward compatible)
+- `editor-store.ts` extended with `activeKitId` + `setActiveKitId()`; `resetChecklist()` clears it
+- `SearchOverlay` type union extended with `'starter-kit'`
+- `ChecklistPanel` guide hint cascade: kit → ModeProfile → defaults
+
+## [3.4.0] - 2026-03-09
+
+### Added
+
+- **Mode starter templates** — 7 hand-built starter projects (one per authoring mode) with 4 zones, 4 connections, entities, dialogues, encounters, items, player template, build catalog, and progression tree. Each starter is a fully playable world that demonstrates mode-native content: Forgotten Vault (dungeon), Market Quarter (district), Contested Frontier (world), Corsair Strait (ocean), Relay Station (space), Clockwork Manor (interior), Wolf Ridge (wilderness)
+- **Mode Starters wizard tab** — new "Mode Starters" tab in the Template Manager showing all 7 starters with icon, description, mode tip, and content counts; click "Start Project" to create a named project from any starter
+- **`ModeStarter` interface** — `{ id, name, description, icon, mode, project }` with `createProjectFromModeStarter()` factory (deep-clone, unique ID, custom name)
+- **Upgraded sample worlds** — 6 minimal 2-zone samples replaced with intermediate 3-4 zone samples including interactables, entities, dialogues, encounters, player templates, build catalogs, progression trees, items, faction presences, and pressure hotspots: Smuggler's Cove (ocean), Mining Outpost (space), Thornwood Path (wilderness), Dockside Market (district), Iron Steppe (world), Keeper's Lodge (interior)
+- **7 mode-specific encounter presets** — Dungeon Ambush, Street Brawl, Caravan Raid, Pirate Attack, Boarding Action, Haunted Room, Beast Hunt — each tagged with its authoring mode for filtered browsing (10 total encounter presets: 3 universal + 7 mode-specific)
+- **`modeTip` on ModeProfile** — short guidance string per mode displayed in the Getting Started checklist (e.g. "Design rooms and corridors, then connect them with doors and passages.")
+- **Expanded guide overrides** — all 7 modes now provide custom labels and descriptions for spawn, player, and npc checklist steps (e.g. dungeon: "Place an entry point" / "Create an adventurer" / "Add a speaking creature")
+- **Mode description in wizard** — Genres tab shows the current mode's description below the Scale selector
+- 131 new tests (815 total across 34 test files)
+
+### Changed
+
+- `ModeProfile` interface extended with `modeTip: string`
+- `guideOverrides` expanded from 2 keys (district, zone) to 5 keys (district, zone, spawn, player, npc) across all 7 modes
+- ChecklistPanel displays `modeTip` with mode icon and uses expanded overrides for player/npc steps
+- Template Manager gains 4th tab ("Mode Starters") and mode description in Genres tab
+- Sample worlds upgraded from `complexity: 'minimal'` to `complexity: 'intermediate'` with full content
+- Encounter preset count: 3 → 10 (3 universal + 7 mode-specific)
+
 ## [3.3.0] - 2026-03-09
 
 ### Added

@@ -80,7 +80,7 @@ World Forge separates **genre** (fantasy, cyberpunk, pirate) from **mode** (dung
 | Interior | 20×15 | 24 | door, stairs, passage, secret |
 | Wilderness | 60×50 | 48 | trail, road, passage, hazard |
 
-Mode is set when creating a new project (mode picker in the wizard) and stored as `mode?: AuthoringMode` on `WorldProject`. Existing projects without a mode are treated as `'dungeon'`. Importing pre-mode projects triggers heuristic inference from connection kinds and grid area.
+Mode is set when creating a new project (mode picker in the wizard) and stored as `mode?: AuthoringMode` on `WorldProject`. Existing projects without a mode are treated as `'dungeon'`. Importing pre-mode projects triggers heuristic inference from connection kinds and grid area. The **Mode Starters** tab in the Template Manager provides a fully built starter project for each mode — 4 zones, entities, dialogues, encounters, and a complete player template ready to explore.
 
 Modes provide **smart defaults** during editing — creating a connection in ocean mode defaults to `channel`, placing an entity in dungeon mode defaults to `enemy`, new zones are named by mode pattern (`Chamber 1`, `Waters 1`, `Sector 1`), and the Speed Panel surfaces mode-relevant quick actions.
 
@@ -116,7 +116,7 @@ Modes provide **smart defaults** during editing — creating a connection in oce
 - Scene preview (inline HTML/CSS composition of all zone visual bindings with missing-asset detection)
 - Layer visibility toggles (7 layers: grid, connections, entities, landmarks, spawns, backgrounds, ambient)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
-- Region presets (9 built-in, mode-filtered) and encounter presets (3 built-in) with merge/overwrite application, custom preset CRUD
+- Region presets (9 built-in, mode-filtered) and encounter presets (10 built-in: 3 universal + 7 mode-specific) with merge/overwrite application, custom preset CRUD
 - Centralized hotkey registry with 13 shortcuts including Enter (open details), P (apply preset), Shift+P (save preset)
 - Double-click any canvas object to select and open its details panel
 - Speed Panel (double-right-click) — floating command palette with context-aware actions, pinnable favorites with reorder, recent actions, custom groups, lightweight macros, and mode-suggested quick actions (edit mode for CRUD)

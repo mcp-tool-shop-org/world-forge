@@ -77,6 +77,7 @@ interface EditorState {
   connectionStart: string | null;
   checklistDismissed: boolean;
   hasExported: boolean;
+  activeKitId: string | null;
 
   // Import fidelity tracking
   importFidelity: FidelityReport | null;
@@ -113,6 +114,7 @@ interface EditorState {
   dismissChecklist: () => void;
   markExported: () => void;
   resetChecklist: () => void;
+  setActiveKitId: (id: string | null) => void;
   setImportFidelity: (report: FidelityReport, format: ImportFormat) => void;
   clearImportFidelity: () => void;
   setImportSnapshot: (project: WorldProject) => void;
@@ -150,6 +152,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   connectionStart: null,
   checklistDismissed: false,
   hasExported: false,
+  activeKitId: null,
   importFidelity: null,
   importSourceFormat: null,
   importSnapshot: null,
@@ -221,7 +224,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   resetViewport: () => set({ viewport: { ...DEFAULT_VIEWPORT } }),
   dismissChecklist: () => set({ checklistDismissed: true }),
   markExported: () => set({ hasExported: true }),
-  resetChecklist: () => set({ checklistDismissed: false, hasExported: false, rightTab: 'guide' }),
+  resetChecklist: () => set({ checklistDismissed: false, hasExported: false, activeKitId: null, rightTab: 'guide' }),
+  setActiveKitId: (id) => set({ activeKitId: id }),
   setImportFidelity: (report, format) => set({ importFidelity: report, importSourceFormat: format }),
   clearImportFidelity: () => set({ importFidelity: null, importSourceFormat: null, importSnapshot: null }),
   setImportSnapshot: (project) => set({ importSnapshot: project }),
