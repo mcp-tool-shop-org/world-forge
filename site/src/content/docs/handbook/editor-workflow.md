@@ -587,3 +587,44 @@ Open the Import modal and choose a `.wfproject.json` file. The format is auto-de
 ### Provenance
 
 After importing a project bundle, the Guide checklist and Export modal show an "Imported from project bundle" indicator. This is cleared when you start a new project or reset the checklist.
+
+## 19. Dependency Manager
+
+The **Deps** tab scans every cross-entity reference in the project and classifies each edge as ok, broken, mismatched, or orphaned.
+
+### What it scans
+
+- **Zone asset refs** — `backgroundId` (expects kind `background`), `tilesetId` (expects kind `tileset`)
+- **Entity asset refs** — `portraitId` (expects kind `portrait`), `spriteId` (expects kind `sprite`)
+- **Item/landmark asset refs** — `iconId` (expects kind `icon`)
+- **Asset pack refs** — `asset.packId` → matching asset pack
+- **Zone refs** — connections (`fromZoneId`/`toZoneId`), district `zoneIds`, spawn `zoneId`, encounter `zoneId`
+- **Dialogue refs** — entity `dialogueId`
+- **Orphans** — assets not referenced by any placement, packs with no assets referencing them
+
+### Status types
+
+| Status | Meaning | Color |
+|--------|---------|-------|
+| broken | Target doesn't exist | Red |
+| mismatched | Target exists but wrong kind | Amber |
+| orphaned | Source exists but nothing references it | Gray |
+| ok | Reference resolves correctly | — |
+
+### Repairs
+
+Each non-ok edge offers inline repair buttons:
+
+- **Clear** — sets the broken field to `undefined` (e.g., removes the bad `backgroundId`)
+- **Relink** — opens a picker showing same-kind assets to choose a replacement
+- **Remove** — deletes orphaned assets or packs (with cascade)
+
+Batch actions at the top: "Clear all broken refs" and "Remove all orphans" apply multiple repairs in a single undo step.
+
+### Integration
+
+- **Search** — broken references appear in Ctrl+K results; selecting one navigates to the Deps tab
+- **Guide** — the checklist shows a dependency health step with amber warning for broken refs and info note for orphans
+- **Import** — the import preview shows dependency health for both project-bundle and world-project formats; auto-switches to Deps tab after importing a project with issues
+- **Export** — the bundle export section warns about broken references and links to the Deps tab for repair
+- **Validation** — the Issues tab shows "Open Deps" links on reference errors for quick cross-navigation

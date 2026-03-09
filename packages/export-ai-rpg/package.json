@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/export-ai-rpg",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "description": "Export/import pipeline between WorldProject and ai-rpg-engine ContentPack",
   "type": "module",
   "main": "dist/index.js",

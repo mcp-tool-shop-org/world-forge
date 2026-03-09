@@ -52,3 +52,6 @@ export { validateProject } from './validate.js';
 
 export type { AdvisoryItem, AdvisoryResult } from './advisory.js';
 export { advisoryValidation } from './advisory.js';
+
+export type { DepStatus, DepDomain, DependencyEdge, DependencySummary, DependencyReport } from './dependencies.js';
+export { scanDependencies } from './dependencies.js';

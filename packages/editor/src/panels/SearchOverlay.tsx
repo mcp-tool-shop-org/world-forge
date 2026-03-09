@@ -6,13 +6,13 @@ import { useEditorStore } from '../store/editor-store.js';
 import { usePresetStore } from '../presets/preset-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
-import type { WorldProject } from '@world-forge/schema';
+import { type WorldProject, scanDependencies } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { useKitStore } from '../kits/index.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency';
   id: string;
   label: string;
   detail: string;
@@ -20,13 +20,13 @@ export interface SearchResult {
 
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
   zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
-  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit',
+  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit', dependency: 'Dep',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
   district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
-  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e',
+  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e', dependency: '#d29922',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -86,6 +86,13 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
   // Progression trees
   for (const tree of project.progressionTrees) {
     results.push({ type: 'tree', id: tree.id, label: tree.id, detail: `${tree.nodes.length} nodes` });
+  }
+
+  // Dependency issues
+  const depReport = scanDependencies(project);
+  for (const edge of depReport.edges) {
+    if (edge.status === 'ok') continue;
+    results.push({ type: 'dependency', id: `dep-${edge.sourceId}-${edge.fieldName}`, label: edge.message, detail: edge.domain });
   }
 
   return results;
@@ -221,6 +228,8 @@ export function SearchOverlay() {
       setRightTab('presets');
     } else if (result.type === 'starter-kit') {
       // No specific navigation — kit is informational in search
+    } else if (result.type === 'dependency') {
+      setRightTab('deps');
     }
   }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 

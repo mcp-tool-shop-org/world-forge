@@ -6,6 +6,7 @@ import { useEditorStore, type RightTab, type EditorTool } from '../store/editor-
 import { HOTKEY_BINDINGS } from '../hotkeys.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { useKitStore } from '../kits/index.js';
+import { scanDependencies } from '@world-forge/schema';
 
 interface Step {
   id: string;
@@ -90,6 +91,7 @@ export function ChecklistPanel() {
           Imported from project bundle
         </div>
       )}
+      <DependencyHealthStep project={project} setRightTab={setRightTab} />
       {profile.modeTip && (
         <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 8, fontStyle: 'italic' }}>
           {profile.icon} {profile.modeTip}
@@ -187,3 +189,38 @@ const actionBtnStyle: React.CSSProperties = {
   background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
   borderRadius: 4,
 };
+
+function DependencyHealthStep({ project, setRightTab }: { project: import('@world-forge/schema').WorldProject; setRightTab: (tab: RightTab) => void }) {
+  const report = useMemo(() => scanDependencies(project), [project]);
+  const { broken, mismatched, orphaned } = report.summary;
+  const issues = broken + mismatched;
+
+  if (issues === 0 && orphaned === 0) {
+    return (
+      <div style={{ fontSize: 10, color: '#3fb950', marginBottom: 6 }}>
+        All references resolved
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {issues > 0 && (
+        <div
+          onClick={() => setRightTab('deps')}
+          style={{ fontSize: 10, color: '#d29922', marginBottom: 4, cursor: 'pointer' }}
+        >
+          {issues} broken reference{issues !== 1 ? 's' : ''} — open Deps tab to repair
+        </div>
+      )}
+      {orphaned > 0 && (
+        <div
+          onClick={() => setRightTab('deps')}
+          style={{ fontSize: 10, color: '#8b949e', marginBottom: 4, cursor: 'pointer' }}
+        >
+          {orphaned} orphaned asset{orphaned !== 1 ? 's' : ''} — review in Deps tab
+        </div>
+      )}
+    </>
+  );
+}

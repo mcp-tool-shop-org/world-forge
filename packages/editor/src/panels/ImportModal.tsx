@@ -6,6 +6,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { importProject, detectImportFormat, type ImportResult, type ImportFormat } from '@world-forge/export-ai-rpg';
 import { buildFidelityReport } from '@world-forge/export-ai-rpg';
 import { prepareProjectImport, extractDependencies, type ImportProjectResult } from '../projects/index.js';
+import { scanDependencies } from '@world-forge/schema';
 
 interface Props { onClose: () => void }
 
@@ -87,6 +88,11 @@ export function ImportModal({ onClose }: Props) {
       setImportFidelity(buildFidelityReport([]), 'project-bundle');
       setImportSnapshot(structuredClone(bundleResult.project));
       setProjectBundleSource('imported');
+      // Auto-switch to deps tab if the imported project has dependency issues
+      const depReport = scanDependencies(bundleResult.project);
+      if (depReport.summary.broken + depReport.summary.mismatched + depReport.summary.orphaned > 0) {
+        setRightTab('deps');
+      }
       onClose();
       return;
     }
@@ -96,7 +102,11 @@ export function ImportModal({ onClose }: Props) {
     setImportFidelity(result.fidelityReport, result.format);
     setImportSnapshot(structuredClone(result.project));
     setProjectBundleSource(null);
-    if (!result.lossless) {
+    // Auto-switch to deps tab if issues, otherwise import-summary for lossy formats
+    const depReport = scanDependencies(result.project);
+    if (depReport.summary.broken + depReport.summary.mismatched + depReport.summary.orphaned > 0) {
+      setRightTab('deps');
+    } else if (!result.lossless) {
       setRightTab('import-summary');
     }
     onClose();
@@ -150,6 +160,9 @@ export function ImportModal({ onClose }: Props) {
                 <span>Trees: {p.progressionTrees.length}</span>
               </div>
             </div>
+
+            {/* Dependency health */}
+            <DepHealthPreview project={result.project} />
 
             {result.warnings.length > 0 && (
               <div style={{ marginTop: 12 }}>
@@ -222,6 +235,9 @@ export function ImportModal({ onClose }: Props) {
               </div>
             )}
 
+            {/* Dependency health */}
+            <DepHealthPreview project={bundleResult.project} />
+
             {/* Validation warnings */}
             {bundleResult.validationWarnings.length > 0 && (
               <div style={{ marginTop: 12 }}>
@@ -288,3 +304,35 @@ const closeBtnStyle: React.CSSProperties = {
 const badgeStyle: React.CSSProperties = {
   display: 'inline-block', fontSize: 11, borderRadius: 12, padding: '2px 10px', fontWeight: 600,
 };
+
+function DepHealthPreview({ project }: { project: import('@world-forge/schema').WorldProject }) {
+  const report = scanDependencies(project);
+  const { broken, mismatched, orphaned } = report.summary;
+  const issues = broken + mismatched;
+
+  if (issues === 0 && orphaned === 0) {
+    return (
+      <div style={{ marginTop: 8, fontSize: 11, color: '#3fb950' }}>
+        Dependencies: all references resolved
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: '#8b949e' }}>
+        Dependencies:{' '}
+        {broken > 0 && <span style={{ color: '#f85149' }}>{broken} broken</span>}
+        {broken > 0 && (mismatched > 0 || orphaned > 0) && ', '}
+        {mismatched > 0 && <span style={{ color: '#d29922' }}>{mismatched} mismatched</span>}
+        {mismatched > 0 && orphaned > 0 && ', '}
+        {orphaned > 0 && <span style={{ color: '#8b949e' }}>{orphaned} orphaned</span>}
+      </div>
+      {issues > 0 && (
+        <div style={{ marginTop: 4, fontSize: 10, color: '#d29922' }}>
+          This project has broken references that can be repaired after import
+        </div>
+      )}
+    </div>
+  );
+}

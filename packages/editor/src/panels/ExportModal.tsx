@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { exportToEngine } from '@world-forge/export-ai-rpg';
-import { validateProject } from '@world-forge/schema';
+import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
@@ -229,6 +229,19 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
               This project was imported from a project bundle.
             </div>
           )}
+          {(() => {
+            const depReport = scanDependencies(project);
+            const broken = depReport.summary.broken + depReport.summary.mismatched;
+            if (broken > 0) return (
+              <div
+                onClick={() => { setRightTab('deps'); onClose(); }}
+                style={{ fontSize: 11, color: '#d29922', marginBottom: 8, cursor: 'pointer' }}
+              >
+                This project has {broken} broken reference{broken !== 1 ? 's' : ''}. Open Deps tab to repair before exporting.
+              </div>
+            );
+            return null;
+          })()}
           <button onClick={() => {
             const activeKit = activeKitId ? kits.find((k) => k.id === activeKitId) : undefined;
             const bundle = serializeProject(

@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
-import { classifyError, buildsSubTabFor, type Domain } from './validation-helpers.js';
+import { classifyError, buildsSubTabFor, isRefError, type Domain } from './validation-helpers.js';
+import { scanDependencies } from '@world-forge/schema';
 
 const domainLabels: Record<Domain, string> = {
   world: 'World',
@@ -16,9 +17,10 @@ const domainLabels: Record<Domain, string> = {
   progression: 'Progression',
   assets: 'Assets',
   packs: 'Asset Packs',
+  deps: 'Dependencies',
 };
 
-const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs'];
+const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'deps'];
 
 export function ValidationPanel() {
   const { project } = useProjectStore();
@@ -27,11 +29,15 @@ export function ValidationPanel() {
 
   const result = useMemo(() => validateProject(project), [project]);
   const advisory = useMemo(() => advisoryValidation(project), [project]);
+  const depIssueCount = useMemo(() => {
+    const r = scanDependencies(project);
+    return r.summary.broken + r.summary.mismatched + r.summary.orphaned;
+  }, [project]);
 
   const grouped = useMemo(() => {
     const map: Record<Domain, ValidationError[]> = {
       world: [], entities: [], items: [], dialogue: [],
-      player: [], builds: [], progression: [], assets: [], packs: [],
+      player: [], builds: [], progression: [], assets: [], packs: [], deps: [],
     };
     for (const err of result.errors) {
       map[classifyError(err)].push(err);
@@ -149,17 +155,31 @@ export function ValidationPanel() {
             {!isCollapsed && errors.map((err, i) => (
               <div
                 key={i}
-                onClick={() => handleClick(err)}
                 style={{
                   fontSize: 11, color: '#f0883e', padding: '3px 0 3px 14px',
                   cursor: 'pointer', borderLeft: '2px solid #30363d',
                   transition: 'background 0.15s',
+                  display: 'flex', alignItems: 'baseline', gap: 6,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#1c2128'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                title={`Click to jump to: ${err.path}`}
               >
-                {err.message}
+                <span
+                  onClick={() => handleClick(err)}
+                  title={`Click to jump to: ${err.path}`}
+                  style={{ flex: 1 }}
+                >
+                  {err.message}
+                </span>
+                {isRefError(err) && depIssueCount > 0 && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setRightTab('deps'); }}
+                    title="Open Dependency Manager to repair"
+                    style={{ fontSize: 10, color: '#d29922', whiteSpace: 'nowrap', textDecoration: 'underline' }}
+                  >
+                    Open Deps
+                  </span>
+                )}
               </div>
             ))}
           </div>

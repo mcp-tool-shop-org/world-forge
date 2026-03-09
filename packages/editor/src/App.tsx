@@ -28,6 +28,7 @@ import { PresetBrowser } from './panels/PresetBrowser.js';
 import { SearchOverlay } from './panels/SearchOverlay.js';
 import { SpeedPanel } from './panels/SpeedPanel.js';
 import { SaveKitModal } from './panels/SaveKitModal.js';
+import { DependencyPanel, useDependencyCount } from './panels/DependencyPanel.js';
 import { Canvas } from './Canvas.js';
 import { getModeProfile } from './mode-profiles.js';
 
@@ -47,6 +48,7 @@ export function App() {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
+  const depsCount = useDependencyCount();
 
   const losslessPct = importFidelity?.summary.losslessPercent;
 
@@ -60,6 +62,7 @@ export function App() {
     { id: 'presets', label: 'Presets' },
     { id: 'assets', label: 'Assets', badge: project.assets.length > 0 ? `${project.assets.length}` : undefined },
     { id: 'issues', label: 'Issues' },
+    { id: 'deps', label: 'Deps', badge: depsCount > 0 ? `${depsCount}` : undefined, badgeColor: '#d29922' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
     ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? '#3fb950' : '#d29922' }] : []),
     ...(importSnapshot ? [{ id: 'diff' as RightTab, label: 'Diff' }] : []),
@@ -233,6 +236,7 @@ export function App() {
                 {rightTab === 'presets' && <PresetBrowser />}
                 {rightTab === 'assets' && <AssetPanel />}
                 {rightTab === 'issues' && <ValidationPanel />}
+                {rightTab === 'deps' && <DependencyPanel />}
                 {rightTab === 'guide' && <ChecklistPanel />}
                 {rightTab === 'import-summary' && <ImportSummaryPanel />}
                 {rightTab === 'diff' && <DiffPanel />}

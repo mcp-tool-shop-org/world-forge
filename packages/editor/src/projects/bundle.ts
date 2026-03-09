@@ -1,7 +1,7 @@
 // bundle.ts — Project bundle serialization for portable export/import
 
 import type { WorldProject } from '@world-forge/schema';
-import { validateProject } from '@world-forge/schema';
+import { validateProject, scanDependencies } from '@world-forge/schema';
 
 /** Current project bundle format version. Increment on breaking changes. */
 export const PROJECT_BUNDLE_VERSION = 1;
@@ -25,6 +25,7 @@ export interface ProjectBundleDependencies {
   kitName?: string;        // active kit name at export time (display-only)
   kitSource?: string;      // 'local' | 'imported' | 'built-in'
   assetPackIds: string[];  // IDs of embedded asset packs (always present)
+  dependencyHealth?: { broken: number; mismatched: number; orphaned: number };
 }
 
 /** Portable on-disk format for a World Forge project. */
@@ -90,10 +91,16 @@ export function serializeProject(
     assetPacks: project.assetPacks.length,
   };
 
+  const depReport = scanDependencies(project);
   const dependencies: ProjectBundleDependencies = {
     kitName: activeKit?.name,
     kitSource: activeKit?.source,
     assetPackIds: project.assetPacks.map((p) => p.id),
+    dependencyHealth: {
+      broken: depReport.summary.broken,
+      mismatched: depReport.summary.mismatched,
+      orphaned: depReport.summary.orphaned,
+    },
   };
 
   return {

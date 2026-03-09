@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.8.0] - 2026-03-09
+
+### Added
+
+- **Dependency scanner** — `scanDependencies(project)` in `@world-forge/schema` walks the full reference graph and classifies every edge as `ok`, `broken`, `mismatched`, `orphaned`, or `informational`. Covers zone asset refs (backgroundId, tilesetId), entity asset refs (portraitId, spriteId), item asset refs (iconId), landmark asset refs (iconId), asset→pack refs (packId), zone refs (connections, districts, spawns, encounters), dialogue refs, orphan asset detection, and orphan pack detection
+- **Repair actions** — `repairsForEdge()` and `batchRepair()` in `packages/editor/src/repairs.ts` generate pure `(WorldProject) => WorldProject` repair functions for broken/mismatched/orphaned edges. Seven repair kinds: clear broken ref, relink to same-kind asset, remove orphan asset, remove orphan pack, clear pack ref, clear broken zone ref, clear broken dialogue ref. All repairs produce atomic undo steps
+- **Dependency Manager panel** — new "Deps" right-side tab with summary bar, domain-grouped issue listing, inline repair buttons, "Relink" picker for same-kind assets, batch "Clear all broken refs" and "Remove all orphans" buttons, click-to-navigate from source labels, and badge count in the tab strip
+- **Search integration** — Ctrl+K search indexes non-ok dependency edges so broken refs are discoverable by message text. Selecting a dependency result navigates to the Deps tab
+- **Guide integration** — ChecklistPanel shows dependency health step: amber warning for broken/mismatched refs with link to Deps tab, info note for orphans, green check when all resolved
+- **Import flow integration** — import preview shows dependency health summary for both project-bundle and world-project formats. If imported project has broken refs, auto-switches to Deps tab after import
+- **Export modal integration** — bundle export section shows amber warning when project has broken references with link to Deps tab for repair before exporting. `dependencyHealth` (broken/mismatched/orphaned counts) embedded in ProjectBundle dependencies
+- **Validation cross-link** — ValidationPanel shows "Open Deps" link on asset reference errors, linking directly to the Dependency Manager for repair
+- ~77 new tests (1159 total across 50 test files)
+
+### Changed
+
+- `ProjectBundleDependencies` type extended with optional `dependencyHealth` field
+- `serializeProject()` now computes and includes dependency health from `scanDependencies`
+- `RightTab` type extended with `'deps'`
+- `Domain` type in validation-helpers extended with `'deps'`
+- `SearchResult.type` union extended with `'dependency'`
+
 ## [3.7.0] - 2026-03-09
 
 ### Added
