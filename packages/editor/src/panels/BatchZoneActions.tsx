@@ -1,3 +1,4 @@
+// @deprecated — superseded by SelectionActionsPanel.tsx in v2.3.0
 // BatchZoneActions.tsx — batch operations when multiple zones are selected
 
 import { useState } from 'react';

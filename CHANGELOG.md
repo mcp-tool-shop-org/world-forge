@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-03-09
+
+### Added
+
+- **Align selected** — 6-way alignment (left/right/top/bottom/center-h/center-v) for any combination of zones, entities, landmarks, and spawns; uses selection bounding box extremes as anchor; entities without explicit positions are materialized from zone fallback
+- **Distribute selected** — even horizontal/vertical spacing for 3+ selected objects; preserves first and last positions, moves intermediates
+- **Selection Actions Panel** — unified panel replacing BatchZoneActions, shows when 2+ objects are selected (any type); contains align buttons (3x2 grid), distribute buttons, and zone-specific batch operations (district assign, tag batch, delete)
+- `layout.ts` — pure layout math functions (getSelectionBounds, alignSelected, distributeSelected) matching the `duplicate.ts` pattern
+- 20 new tests (311 total)
+
+### Changed
+
+- App.tsx routes to SelectionActionsPanel instead of BatchZoneActions when 2+ objects selected
+- Project store gains `alignSelected()` and `distributeSelected()` actions with atomic undo
+- BatchZoneActions.tsx marked as deprecated (superseded by SelectionActionsPanel)
+
 ## [2.2.0] - 2026-03-09
 
 ### Added

@@ -7,7 +7,7 @@ import { ToolPalette } from './panels/ToolPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
-import { BatchZoneActions } from './panels/BatchZoneActions.js';
+import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
 import { ExportModal } from './panels/ExportModal.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
@@ -159,7 +159,7 @@ export function App() {
           <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
             {rightTab === 'map' && (
               <>
-                {selection.zones.length > 1 && <BatchZoneActions />}
+                {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
                 {selectedZoneId && <ZoneProperties />}
                 {activeTool === 'entity-place' && <EntityProperties />}
                 {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (

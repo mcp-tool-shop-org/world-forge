@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/schema",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Spatial data types for world authoring",
   "type": "module",
   "main": "dist/index.js",

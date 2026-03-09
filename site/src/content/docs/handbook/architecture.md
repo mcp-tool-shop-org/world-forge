@@ -74,6 +74,7 @@ Key editor modules:
 - **duplicate.ts** — pure function for duplicating selections with ID remapping, connection rewiring, and district preservation
 - **frame-helpers.ts** — shared viewport framing utility (`computeFrameViewport`) used by search, object list, and district panels
 - **hit-testing.ts** — pure math hit-testing (`findHitAt`, `findAllHitsAt`) with click-cycle disambiguation for overlapping objects
+- **layout.ts** — pure functions for 6-way alignment and horizontal/vertical distribution across any combination of object types
 
 ## Build System
 

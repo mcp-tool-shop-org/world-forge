@@ -10,6 +10,7 @@ import type {
   AssetEntry, AssetPack,
 } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
+import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
 
 export function createEmptyProject(): WorldProject {
   return {
@@ -91,6 +92,8 @@ interface ProjectState {
   moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, dx: number, dy: number) => void;
   removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => void;
   duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] };
+  alignSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, axis: AlignAxis) => void;
+  distributeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, axis: DistributeAxis) => void;
 
   // Player template helpers
   setPlayerTemplate: (t: PlayerTemplate) => void;
@@ -290,6 +293,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ project: newProject, dirty: true, undoStack: newStack, redoStack: [] });
     return newSelection;
   },
+  alignSelected: (sel, axis) => get().updateProject((p) => doAlign(p, sel, axis)),
+  distributeSelected: (sel, axis) => get().updateProject((p) => doDistribute(p, sel, axis)),
 
   // Player template helpers
   setPlayerTemplate: (t) => get().updateProject((p) => ({ ...p, playerTemplate: t })),

@@ -132,9 +132,35 @@ Drag any selected object (or group) to reposition it. A 3px dead-zone prevents a
 
 Press **Ctrl+D** to duplicate the current selection. Duplicates appear offset by 2 grid cells with remapped IDs, `(copy)` name suffixes, and preserved district membership. Connections between co-selected zones are duplicated; connections to non-selected zones are dropped. Duplicated spawns are always non-default.
 
+### Aligning & Distributing
+
+When 2+ objects are selected, the **Selection Actions** panel appears in the right sidebar with layout tools:
+
+**Align** (6 operations) — move all selected objects so a shared edge or center line matches:
+
+| Button | Effect |
+|--------|--------|
+| Left | All left edges align to the leftmost object |
+| Center H | All horizontal centers align to the selection's center |
+| Right | All right edges align to the rightmost object |
+| Top | All top edges align to the topmost object |
+| Center V | All vertical centers align to the selection's center |
+| Bottom | All bottom edges align to the bottommost object |
+
+**Distribute** (2 operations, requires 3+ objects) — space objects evenly between the first and last:
+
+- **Horizontal** — even spacing along the X axis
+- **Vertical** — even spacing along the Y axis
+
+The first and last objects (by center position) stay in place; intermediate objects are repositioned. All results snap to integer grid coordinates.
+
+Zones align by bounding box edges. Point objects (entities, landmarks, spawns) align by their grid position. Mixed-type alignment is supported — you can align a landmark to the left edge of a group of zones.
+
+Entities without explicit grid coordinates (those positioned relative to their zone) are materialized with explicit coordinates when aligned. This is reversible via undo.
+
 ### Batch Operations
 
-When multiple zones are selected, the **Batch Zone Actions** panel appears with options to assign all selected zones to a district, apply tags, or delete them in one operation.
+The Selection Actions panel also includes zone-specific batch operations when zones are in the selection: assign all to a district, add a tag, or delete selected zones.
 
 ### Keyboard Shortcuts
 
