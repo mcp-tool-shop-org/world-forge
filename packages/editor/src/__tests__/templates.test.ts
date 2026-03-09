@@ -123,6 +123,30 @@ describe('chapel assets', () => {
   });
 });
 
+describe('chapel asset packs', () => {
+  const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold')!;
+
+  it('has an asset pack', () => {
+    expect(chapel.project.assetPacks.length).toBe(1);
+    expect(chapel.project.assetPacks[0].id).toBe('chapel-base-pack');
+  });
+
+  it('all chapel assets reference valid pack ID', () => {
+    const packIds = new Set(chapel.project.assetPacks.map((p) => p.id));
+    for (const a of chapel.project.assets) {
+      expect(a.packId).toBeDefined();
+      expect(packIds.has(a.packId!)).toBe(true);
+    }
+  });
+
+  it('all samples validate with asset packs', () => {
+    for (const s of SAMPLE_WORLDS) {
+      const result = validateProject(s.project);
+      expect(result.valid).toBe(true);
+    }
+  });
+});
+
 describe('invalid project path — classifyError routing', () => {
   it('routes spawnPoint errors to world domain', () => {
     const project = createProjectFromWizard({

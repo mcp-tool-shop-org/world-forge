@@ -396,4 +396,87 @@ describe('validateProject', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.message.includes('orphan-bg') && e.message.includes('not referenced'))).toBe(true);
   });
+
+  // --- Asset pack validation ---
+
+  it('accepts valid asset pack with assigned assets', () => {
+    const good: WorldProject = {
+      ...minimalProject,
+      assetPacks: [{ id: 'pack-1', label: 'Test Pack', version: '1.0.0', tags: [] }],
+      assets: [{ id: 'bg-1', kind: 'background', label: 'BG', path: 'bg.png', tags: [], packId: 'pack-1' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'bg-1' } : z),
+    };
+    const result = validateProject(good);
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects duplicate asset pack IDs', () => {
+    const pack = { id: 'dup-pack', label: 'Pack', version: '1.0.0', tags: [] };
+    const bad: WorldProject = {
+      ...minimalProject,
+      assetPacks: [pack, pack],
+      assets: [{ id: 'a1', kind: 'background', label: 'A', path: 'a.png', tags: [], packId: 'dup-pack' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'a1' } : z),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('Duplicate asset pack ID'))).toBe(true);
+  });
+
+  it('rejects asset pack with empty label', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assetPacks: [{ id: 'pack-nolabel', label: '', version: '1.0.0', tags: [] }],
+      assets: [{ id: 'a1', kind: 'background', label: 'A', path: 'a.png', tags: [], packId: 'pack-nolabel' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'a1' } : z),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('empty label'))).toBe(true);
+  });
+
+  it('rejects asset pack with empty version', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assetPacks: [{ id: 'pack-nover', label: 'Pack', version: '', tags: [] }],
+      assets: [{ id: 'a1', kind: 'background', label: 'A', path: 'a.png', tags: [], packId: 'pack-nover' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'a1' } : z),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('empty version'))).toBe(true);
+  });
+
+  it('rejects asset referencing nonexistent pack', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assets: [{ id: 'a1', kind: 'background', label: 'A', path: 'a.png', tags: [], packId: 'ghost-pack' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'a1' } : z),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('ghost-pack') && e.message.includes('nonexistent pack'))).toBe(true);
+  });
+
+  it('reports orphaned asset packs', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assetPacks: [{ id: 'lonely-pack', label: 'Lonely', version: '1.0.0', tags: [] }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('lonely-pack') && e.message.includes('no assets assigned'))).toBe(true);
+  });
+
+  it('rejects asset pack with invalid version format', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assetPacks: [{ id: 'pack-badver', label: 'Pack', version: 'v1.0', tags: [] }],
+      assets: [{ id: 'a1', kind: 'background', label: 'A', path: 'a.png', tags: [], packId: 'pack-badver' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'a1' } : z),
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('not valid semver'))).toBe(true);
+  });
 });

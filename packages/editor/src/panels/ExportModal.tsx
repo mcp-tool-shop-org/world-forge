@@ -82,6 +82,8 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     { label: 'Dialogues', value: project.dialogues.length },
     { label: 'Trees', value: project.progressionTrees.length },
     { label: 'Spawns', value: project.spawnPoints.length },
+    { label: 'Assets', value: project.assets.length },
+    { label: 'Packs', value: project.assetPacks.length },
   ];
 
   // Missing systems

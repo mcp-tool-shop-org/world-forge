@@ -165,6 +165,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
     const dropped = report.entries.filter((e) => e.level === 'dropped');
     const validReasons = new Set([
       'economy-data-lost', 'pack-id-stripped', 'visual-layers-dropped', 'assets-dropped',
+      'asset-packs-dropped',
     ]);
     for (const entry of dropped) {
       expect(validReasons.has(entry.reason)).toBe(true);
@@ -280,5 +281,12 @@ describe('FidelityReport accuracy', () => {
       expect(connEntry).toBeDefined();
       expect(connEntry!.level).toBe('lossless');
     }
+  });
+
+  it('ContentPack import has asset-packs-dropped fidelity entry', () => {
+    const exported = exportToEngine(minimalProject);
+    if ('ok' in exported) throw new Error('export failed');
+    const imported = importFromContentPack(exported.contentPack);
+    expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
   });
 });

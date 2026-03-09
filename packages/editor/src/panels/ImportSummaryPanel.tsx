@@ -7,11 +7,11 @@ import type { FidelityDomain, FidelityEntry } from '@world-forge/export-ai-rpg';
 const DOMAIN_LABELS: Record<FidelityDomain, string> = {
   zones: 'Zones', districts: 'Districts', entities: 'Entities', items: 'Items',
   dialogues: 'Dialogues', player: 'Player Template', builds: 'Build Catalog',
-  progression: 'Progression Trees', world: 'World', assets: 'Assets',
+  progression: 'Progression Trees', world: 'World', assets: 'Assets', packs: 'Packs',
 };
 
 const DOMAIN_ORDER: FidelityDomain[] = [
-  'zones', 'districts', 'entities', 'items', 'dialogues', 'player', 'builds', 'progression', 'world', 'assets',
+  'zones', 'districts', 'entities', 'items', 'dialogues', 'player', 'builds', 'progression', 'world', 'assets', 'packs',
 ];
 
 const LEVEL_COLORS = {

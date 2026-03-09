@@ -7,7 +7,7 @@ import type {
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
   DialogueDefinition, DialogueNode, DialogueChoice,
-  AssetEntry,
+  AssetEntry, AssetPack,
 } from '@world-forge/schema';
 
 export function createEmptyProject(): WorldProject {
@@ -41,6 +41,7 @@ export function createEmptyProject(): WorldProject {
     propPlacements: [],
     ambientLayers: [],
     assets: [],
+    assetPacks: [],
   };
 }
 
@@ -116,6 +117,11 @@ interface ProjectState {
   addAsset: (a: AssetEntry) => void;
   updateAsset: (id: string, updates: Partial<AssetEntry>) => void;
   removeAsset: (id: string) => void;
+
+  // Asset pack helpers
+  addAssetPack: (p: AssetPack) => void;
+  updateAssetPack: (id: string, updates: Partial<AssetPack>) => void;
+  removeAssetPack: (id: string) => void;
 
   // Dialogue helpers
   addDialogue: (d: DialogueDefinition) => void;
@@ -341,6 +347,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       ...l,
       iconId: l.iconId === id ? undefined : l.iconId,
     })),
+  })),
+
+  // Asset pack helpers
+  addAssetPack: (pack) => get().updateProject((p) => ({ ...p, assetPacks: [...p.assetPacks, pack] })),
+  updateAssetPack: (id, updates) => get().updateProject((p) => ({
+    ...p, assetPacks: p.assetPacks.map((pk) => pk.id === id ? { ...pk, ...updates } : pk),
+  })),
+  removeAssetPack: (id) => get().updateProject((p) => ({
+    ...p,
+    assetPacks: p.assetPacks.filter((pk) => pk.id !== id),
+    assets: p.assets.map((a) => a.packId === id ? { ...a, packId: undefined } : a),
   })),
 
   // Dialogue helpers

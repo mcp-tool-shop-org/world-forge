@@ -474,5 +474,57 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
+  // --- Asset pack validation ---
+
+  const packIds = new Set<string>();
+
+  // 43. Pack ID uniqueness
+  for (const pack of project.assetPacks) {
+    if (packIds.has(pack.id)) {
+      errors.push({ path: `assetPacks.${pack.id}`, message: `Duplicate asset pack ID: ${pack.id}` });
+    }
+    packIds.add(pack.id);
+  }
+
+  // 44. Pack label must be non-empty
+  for (const pack of project.assetPacks) {
+    if (!pack.label || pack.label.trim().length === 0) {
+      errors.push({ path: `assetPacks.${pack.id}.label`, message: `Asset pack "${pack.id}" has empty label` });
+    }
+  }
+
+  // 45. Pack version must be non-empty
+  for (const pack of project.assetPacks) {
+    if (!pack.version || pack.version.trim().length === 0) {
+      errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" has empty version` });
+    }
+  }
+
+  // 46. Asset packId must reference existing pack
+  for (const a of project.assets) {
+    if (a.packId && !packIds.has(a.packId)) {
+      errors.push({ path: `assets.${a.id}.packId`, message: `Asset "${a.id}" references nonexistent pack "${a.packId}"` });
+    }
+  }
+
+  // 47. Orphaned packs (no assets use this packId)
+  const usedPackIds = new Set<string>();
+  for (const a of project.assets) {
+    if (a.packId) usedPackIds.add(a.packId);
+  }
+  for (const pack of project.assetPacks) {
+    if (!usedPackIds.has(pack.id)) {
+      errors.push({ path: `assetPacks.${pack.id}`, message: `Asset pack "${pack.id}" has no assets assigned to it` });
+    }
+  }
+
+  // 48. Pack version must be valid semver format (x.y.z)
+  const semverPattern = /^\d+\.\d+\.\d+$/;
+  for (const pack of project.assetPacks) {
+    if (pack.version && pack.version.trim().length > 0 && !semverPattern.test(pack.version)) {
+      errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" version "${pack.version}" is not valid semver (expected x.y.z)` });
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }

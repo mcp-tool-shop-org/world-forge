@@ -112,4 +112,5 @@ export const fantasyTemplate: WorldProject = {
   propPlacements: [],
   ambientLayers: [],
   assets: [],
+  assetPacks: [],
 };

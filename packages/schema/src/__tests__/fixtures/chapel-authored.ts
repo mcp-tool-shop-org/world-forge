@@ -468,4 +468,5 @@ export const chapelProject: WorldProject = {
     },
   ],
   assets: [],
+  assetPacks: [],
 };

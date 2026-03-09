@@ -3,10 +3,11 @@
 import type { ValidationError } from '@world-forge/schema';
 import type { BuildsSubTab } from '../store/editor-store.js';
 
-export type Domain = 'world' | 'entities' | 'items' | 'dialogue' | 'player' | 'builds' | 'progression' | 'assets';
+export type Domain = 'world' | 'entities' | 'items' | 'dialogue' | 'player' | 'builds' | 'progression' | 'assets' | 'packs';
 
 export function classifyError(err: ValidationError): Domain {
   const p = err.path;
+  if (p.startsWith('assetPacks')) return 'packs';
   if (p.startsWith('assets')) return 'assets';
   if (p.startsWith('entityPlacements')) return 'entities';
   if (p.startsWith('itemPlacements')) return 'items';

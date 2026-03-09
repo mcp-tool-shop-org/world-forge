@@ -1,6 +1,6 @@
 // export.ts — full export pipeline
 
-import type { WorldProject, ValidationError, AssetEntry } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -43,6 +43,7 @@ export type ExportResult = {
   warnings: string[];
   assets?: AssetEntry[];
   assetBindings?: AssetBindingMap;
+  assetPacks?: AssetPack[];
 };
 
 export type ExportError = {
@@ -144,6 +145,9 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
     if (Object.keys(assetBindings).length === 0) assetBindings = undefined;
   }
 
+  // 12. Collect asset packs for round-trip preservation
+  const assetPacks = project.assetPacks.length > 0 ? project.assetPacks : undefined;
+
   return {
     contentPack: {
       entities,
@@ -160,5 +164,6 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
     warnings,
     assets,
     assetBindings,
+    assetPacks,
   };
 }

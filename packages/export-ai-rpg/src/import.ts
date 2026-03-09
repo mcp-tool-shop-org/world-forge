@@ -97,6 +97,16 @@ export function importFromExportResult(result: ExportResult, projectName?: strin
     });
   }
 
+  // Recover asset packs from ExportResult
+  if (result.assetPacks && result.assetPacks.length > 0) {
+    imported.project.assetPacks = result.assetPacks;
+    imported.fidelityReport.entries.push({
+      level: 'lossless', domain: 'packs', severity: 'info',
+      message: `${result.assetPacks.length} asset pack(s) recovered from export result`,
+      reason: 'asset-packs-recovered',
+    });
+  }
+
   return imported;
 }
 
@@ -258,6 +268,7 @@ export function importFromContentPack(
     propPlacements: [],
     ambientLayers: [],
     assets: [],
+    assetPacks: [],
   };
 
   // 8. Add structural fidelity entries
@@ -270,6 +281,11 @@ export function importFromContentPack(
     level: 'dropped', domain: 'assets', severity: 'warning',
     message: 'Asset manifest not available in ContentPack format',
     reason: 'assets-dropped',
+  });
+  allFidelity.push({
+    level: 'dropped', domain: 'packs', severity: 'warning',
+    message: 'Asset packs not available in ContentPack format',
+    reason: 'asset-packs-dropped',
   });
 
   // 9. Build fidelity report

@@ -40,6 +40,7 @@ const helloWorld: WorldProject = {
   propPlacements: [],
   ambientLayers: [],
   assets: [],
+  assetPacks: [],
 };
 
 const chapelThreshold: WorldProject = {
@@ -186,12 +187,23 @@ const chapelThreshold: WorldProject = {
   propPlacements: [],
   ambientLayers: [{ id: 'crypt-fog', name: 'Crypt Fog', zoneIds: ['crypt-chamber'], type: 'fog', intensity: 0.7, color: '#2a2a3a' }],
   assets: [
-    { id: 'chapel-entrance-bg', kind: 'background', label: 'Chapel Entrance', path: 'assets/backgrounds/chapel-entrance.png', tags: ['exterior', 'chapel'] },
-    { id: 'crypt-bg', kind: 'background', label: 'Crypt Chamber', path: 'assets/backgrounds/crypt-chamber.png', tags: ['underground', 'dark'] },
-    { id: 'pilgrim-portrait', kind: 'portrait', label: 'Suspicious Pilgrim', path: 'assets/portraits/pilgrim.png', tags: ['npc', 'pilgrim'] },
-    { id: 'aldric-portrait', kind: 'portrait', label: 'Brother Aldric', path: 'assets/portraits/aldric.png', tags: ['npc', 'clergy'] },
-    { id: 'bone-talisman-icon', kind: 'icon', label: 'Bone Talisman', path: 'assets/icons/bone-talisman.png', tags: ['item', 'rare'] },
+    { id: 'chapel-entrance-bg', kind: 'background', label: 'Chapel Entrance', path: 'assets/backgrounds/chapel-entrance.png', tags: ['exterior', 'chapel'], packId: 'chapel-base-pack' },
+    { id: 'crypt-bg', kind: 'background', label: 'Crypt Chamber', path: 'assets/backgrounds/crypt-chamber.png', tags: ['underground', 'dark'], packId: 'chapel-base-pack' },
+    { id: 'pilgrim-portrait', kind: 'portrait', label: 'Suspicious Pilgrim', path: 'assets/portraits/pilgrim.png', tags: ['npc', 'pilgrim'], packId: 'chapel-base-pack' },
+    { id: 'aldric-portrait', kind: 'portrait', label: 'Brother Aldric', path: 'assets/portraits/aldric.png', tags: ['npc', 'clergy'], packId: 'chapel-base-pack' },
+    { id: 'bone-talisman-icon', kind: 'icon', label: 'Bone Talisman', path: 'assets/icons/bone-talisman.png', tags: ['item', 'rare'], packId: 'chapel-base-pack' },
   ],
+  assetPacks: [{
+    id: 'chapel-base-pack',
+    label: 'Chapel Threshold Assets',
+    version: '1.0.0',
+    description: 'Base visual assets for the Chapel Threshold sample.',
+    tags: ['fantasy', 'dark', 'chapel'],
+    theme: 'dark-fantasy',
+    source: 'hand-drawn',
+    license: 'CC-BY-4.0',
+    author: 'mcp-tool-shop',
+  }],
 };
 
 const tavernCrossroads: WorldProject = {
@@ -280,6 +292,7 @@ const tavernCrossroads: WorldProject = {
   propPlacements: [],
   ambientLayers: [],
   assets: [],
+  assetPacks: [],
 };
 
 export const SAMPLE_WORLDS: SampleWorld[] = [

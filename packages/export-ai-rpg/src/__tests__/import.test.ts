@@ -541,3 +541,55 @@ describe('asset preservation', () => {
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'assets-dropped')).toBe(true);
   });
 });
+
+// --- Asset pack round-trip tests ---
+
+describe('asset pack preservation', () => {
+  const projectWithPacks = {
+    ...minimalProject,
+    assets: [
+      { id: 'bg-1', kind: 'background' as const, label: 'BG', path: 'bg.png', tags: [], packId: 'test-pack' },
+    ],
+    assetPacks: [{
+      id: 'test-pack', label: 'Test Pack', version: '1.0.0',
+      tags: ['test'], theme: 'dark', license: 'MIT',
+    }],
+    zones: minimalProject.zones.map((z, i) =>
+      i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
+    ),
+  };
+
+  it('ExportResult includes asset packs', () => {
+    const exported = exportToEngine(projectWithPacks);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.assetPacks).toHaveLength(1);
+    expect(exported.assetPacks![0].id).toBe('test-pack');
+  });
+
+  it('ExportResult round-trip recovers asset packs', () => {
+    const exported = exportToEngine(projectWithPacks);
+    if ('ok' in exported) throw new Error('export failed');
+
+    const imported = importFromExportResult(exported);
+    expect(imported.project.assetPacks).toHaveLength(1);
+    expect(imported.project.assetPacks[0].id).toBe('test-pack');
+    expect(imported.project.assetPacks[0].version).toBe('1.0.0');
+  });
+
+  it('ExportResult round-trip has asset-packs-recovered fidelity entry', () => {
+    const exported = exportToEngine(projectWithPacks);
+    if ('ok' in exported) throw new Error('export failed');
+
+    const imported = importFromExportResult(exported);
+    expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-recovered')).toBe(true);
+  });
+
+  it('ContentPack import has asset-packs-dropped fidelity entry', () => {
+    const exported = exportToEngine(projectWithPacks);
+    if ('ok' in exported) throw new Error('export failed');
+
+    const imported = importFromContentPack(exported.contentPack);
+    expect(imported.project.assetPacks).toHaveLength(0);
+    expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
+  });
+});

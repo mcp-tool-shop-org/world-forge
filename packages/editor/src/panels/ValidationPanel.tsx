@@ -15,9 +15,10 @@ const domainLabels: Record<Domain, string> = {
   builds: 'Build Catalog',
   progression: 'Progression',
   assets: 'Assets',
+  packs: 'Asset Packs',
 };
 
-const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets'];
+const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs'];
 
 export function ValidationPanel() {
   const { project } = useProjectStore();
@@ -29,7 +30,7 @@ export function ValidationPanel() {
   const grouped = useMemo(() => {
     const map: Record<Domain, ValidationError[]> = {
       world: [], entities: [], items: [], dialogue: [],
-      player: [], builds: [], progression: [], assets: [],
+      player: [], builds: [], progression: [], assets: [], packs: [],
     };
     for (const err of result.errors) {
       map[classifyError(err)].push(err);
@@ -83,6 +84,13 @@ export function ValidationPanel() {
     // Dialogue
     if (p.startsWith('dialogues')) {
       setRightTab('dialogue');
+      setFocusTarget(focus);
+      return;
+    }
+
+    // Asset packs
+    if (p.startsWith('assetPacks')) {
+      setRightTab('assets');
       setFocusTarget(focus);
       return;
     }

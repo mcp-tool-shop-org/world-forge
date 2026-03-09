@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-03-08
+
+### Added
+
+- **Asset packs** — `AssetPack` type with id, label, version, description, tags, theme, source, license, author, and `PackCompatibility` metadata (minSchemaVersion, engineVersion)
+- **Pack-to-asset binding** — `AssetEntry.packId` references an `AssetPack.id`, same referential pattern as Zone→District
+- **6 new validation checks** (#43-48) — pack ID uniqueness, label non-empty, version non-empty, asset packId ref existence, orphaned pack detection, version format (semver x.y.z)
+- **Export pack preservation** — `ExportResult` gains `assetPacks` for round-trip fidelity
+- **Import pack recovery** — `importFromExportResult()` recovers packs with `asset-packs-recovered` fidelity entry; `importFromContentPack()` emits `asset-packs-dropped`
+- **Pack management UI** — AssetPanel gains pack section with add/remove/edit, group-by-pack toggle, pack assignment dropdown per asset, orphaned pack and unassigned asset diagnostics
+- **Pack diff tracking** — `diffProjects()` includes packs domain with label/version/description/tags/theme/source/license/author/compatibility field diffs; `diffAsset()` tracks packId changes
+- **Chapel Threshold pack** — `chapel-base-pack` groups all 5 chapel assets as a reference sample
+- **Pack CRUD with cascade** — `removeAssetPack()` clears `packId` from all referencing assets
+- 15 new tests across schema validation, export, import, fidelity, and template suites (178 total)
+
+### Changed
+
+- `WorldProject.assetPacks` is now a required `AssetPack[]` field (defaults to `[]`)
+- `FidelityDomain` union includes `'packs'`
+- All domain label records (ImportSummaryPanel, DiffPanel, ValidationPanel) include packs
+- Export modal shows asset pack count in content summary
+
 ## [1.7.0] - 2026-03-08
 
 ### Added

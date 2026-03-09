@@ -112,4 +112,5 @@ export const pirateTemplate: WorldProject = {
   propPlacements: [],
   ambientLayers: [],
   assets: [],
+  assetPacks: [],
 };
