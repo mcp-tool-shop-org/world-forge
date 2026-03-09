@@ -34,13 +34,14 @@ Connections automatically update each zone's neighbor list. The validator checks
 In **Select** mode, click any connection line to select it. Selected connections are highlighted in blue. The **Connection Properties** panel appears in the sidebar with:
 
 - **From / To** — read-only zone names
-- **Label** — optional display label
+- **Label** — optional display label; labels appear at the line midpoint when zoomed in above 30%
+- **Kind** — semantic path type: Passage (default), Door, Stairs, Road, Portal, Secret, or Hazard. Each kind has a distinct visual style on the canvas (color and dash pattern)
 - **Bidirectional** — checkbox toggle; non-bidirectional connections show an arrowhead on the canvas
-- **Condition** — optional condition string (e.g. `has-tag:chapel-key`); conditional connections render as dashed orange lines
+- **Condition** — optional condition string (e.g. `has-tag:chapel-key`); conditional connections render as dashed lines. Condition dashing takes priority over kind dashing
 - **Swap Direction** — reverses the from/to direction (non-bidirectional only)
 - **Delete** — removes the connection
 
-Connection lines are edge-anchored — they connect at zone edges via ray-rectangle intersection rather than zone centers. This produces cleaner routing, especially after zone resize. Connections are also listed in the **Objects** tab and indexed in **Ctrl+K** search.
+Connection lines are edge-anchored — they connect at zone edges via ray-rectangle intersection rather than zone centers. This produces cleaner routing, especially after zone resize. Connections are also listed in the **Objects** tab (with kind badges) and indexed in **Ctrl+K** search (searchable by kind name).
 
 Press **Delete** or **Backspace** with a connection selected to remove it. Undo restores the connection in one step.
 

@@ -124,4 +124,19 @@ describe('connection search', () => {
     expect(connResults.length).toBeGreaterThan(0);
     expect(connResults[0].detail).toContain('chapel-key');
   });
+
+  it('indexes connection kind in detail', () => {
+    // Chapel sample has door and secret kinds
+    const conns = index.filter((r) => r.type === 'connection');
+    const doorConn = conns.find((c) => c.detail.includes('door'));
+    expect(doorConn).toBeDefined();
+    const secretConn = conns.find((c) => c.detail.includes('secret'));
+    expect(secretConn).toBeDefined();
+  });
+
+  it('finds connection by kind text', () => {
+    const results = filterResults(index, 'secret');
+    const connResults = results.filter((r) => r.type === 'connection');
+    expect(connResults.length).toBeGreaterThan(0);
+  });
 });

@@ -2,7 +2,7 @@
 
 export type {
   WorldMap, Zone, ZoneExit, Interactable,
-  ZoneConnection, Landmark,
+  ZoneConnection, ConnectionKind, Landmark,
 } from './spatial.js';
 
 export type {

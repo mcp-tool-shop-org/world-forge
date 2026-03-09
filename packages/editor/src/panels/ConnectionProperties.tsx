@@ -1,5 +1,16 @@
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedConnection } from '../store/editor-store.js';
+import type { ConnectionKind } from '@world-forge/schema';
+
+const CONNECTION_KINDS: { value: ConnectionKind; label: string }[] = [
+  { value: 'passage', label: 'Passage' },
+  { value: 'door', label: 'Door' },
+  { value: 'stairs', label: 'Stairs' },
+  { value: 'road', label: 'Road' },
+  { value: 'portal', label: 'Portal' },
+  { value: 'secret', label: 'Secret' },
+  { value: 'hazard', label: 'Hazard' },
+];
 
 export function ConnectionProperties() {
   const { project, updateConnection, removeConnection } = useProjectStore();
@@ -41,6 +52,15 @@ export function ConnectionProperties() {
       <label style={labelStyle}>Label
         <input style={inputStyle} value={conn.label ?? ''}
           onChange={(e) => updateConnection(conn.fromZoneId, conn.toZoneId, { label: e.target.value || undefined })} />
+      </label>
+      <label style={labelStyle}>Kind
+        <select style={inputStyle} value={conn.kind ?? 'passage'}
+          onChange={(e) => {
+            const v = e.target.value as ConnectionKind;
+            updateConnection(conn.fromZoneId, conn.toZoneId, { kind: v === 'passage' ? undefined : v });
+          }}>
+          {CONNECTION_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+        </select>
       </label>
       <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
         <input type="checkbox" checked={conn.bidirectional}

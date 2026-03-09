@@ -330,6 +330,9 @@ export function ObjectListPanel() {
                     }}
                   >
                     <span style={{ color: '#8b949e', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>C</span>
+                    {c.kind && c.kind !== 'passage' && (
+                      <span style={{ fontSize: 9, color: '#8b949e', background: '#21262d', borderRadius: 2, padding: '0 3px' }}>{c.kind}</span>
+                    )}
                     <span style={{ color: isSel ? '#fff' : '#c9d1d9' }}>{connectionLabel(c, project.zones)}</span>
                     {c.condition && <span style={{ fontSize: 9, color: '#ffa657' }} title={c.condition}>&#9679;</span>}
                   </div>

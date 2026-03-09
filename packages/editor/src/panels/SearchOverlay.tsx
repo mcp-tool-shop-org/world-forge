@@ -59,7 +59,10 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
   // Connections
   for (const c of project.connections) {
     const label = connectionLabel(c, project.zones);
-    const detail = c.condition ? `condition: ${c.condition}` : c.bidirectional ? 'bidirectional' : 'one-way';
+    const kindPart = c.kind && c.kind !== 'passage' ? c.kind : '';
+    const condPart = c.condition ? `condition: ${c.condition}` : '';
+    const dirPart = c.bidirectional ? 'bidirectional' : 'one-way';
+    const detail = [kindPart, condPart || dirPart].filter(Boolean).join(', ');
     results.push({ type: 'connection', id: `${c.fromZoneId}::${c.toZoneId}`, label, detail });
   }
 

@@ -155,6 +155,37 @@ export function findConnectionAt(
   return null;
 }
 
+// ── Kind styles ─────────────────────────────────────────────────
+
+/** Visual style for a connection kind. */
+export interface KindStyle {
+  color: string;
+  hoverColor: string;
+  dash: number[] | null;
+}
+
+export const CONNECTION_KIND_STYLES: Record<string, KindStyle> = {
+  passage:  { color: 'rgba(139,148,158,0.6)', hoverColor: 'rgba(139,148,158,0.9)', dash: null },
+  door:     { color: 'rgba(210,159,34,0.7)',   hoverColor: 'rgba(210,159,34,1)',    dash: null },
+  stairs:   { color: 'rgba(139,148,158,0.6)', hoverColor: 'rgba(139,148,158,0.9)', dash: [4, 2, 2, 2] },
+  road:     { color: 'rgba(172,182,192,0.7)', hoverColor: 'rgba(172,182,192,1)',    dash: null },
+  portal:   { color: 'rgba(163,113,247,0.7)', hoverColor: 'rgba(163,113,247,1)',    dash: null },
+  secret:   { color: 'rgba(139,148,158,0.3)', hoverColor: 'rgba(139,148,158,0.6)', dash: [3, 5] },
+  hazard:   { color: 'rgba(248,81,73,0.7)',    hoverColor: 'rgba(248,81,73,1)',      dash: null },
+};
+
+/** Get the visual style for a connection kind, defaulting to passage. */
+export function getKindStyle(kind?: string): KindStyle {
+  return CONNECTION_KIND_STYLES[kind ?? 'passage'] ?? CONNECTION_KIND_STYLES.passage;
+}
+
+// ── Midpoint ────────────────────────────────────────────────────
+
+/** Compute the world-pixel midpoint of connection endpoints. */
+export function connectionMidpoint(ep: ConnectionEndpoints): { mx: number; my: number } {
+  return { mx: (ep.fx + ep.tx) / 2, my: (ep.fy + ep.ty) / 2 };
+}
+
 // ── Display helpers ─────────────────────────────────────────────
 
 /** Format a connection as a display label. */
@@ -162,5 +193,6 @@ export function connectionLabel(conn: ZoneConnection, zones: Zone[]): string {
   const from = zones.find((z) => z.id === conn.fromZoneId);
   const to = zones.find((z) => z.id === conn.toZoneId);
   const arrow = conn.bidirectional ? ' \u2194 ' : ' \u2192 ';
-  return `${from?.name ?? conn.fromZoneId}${arrow}${to?.name ?? conn.toZoneId}`;
+  const prefix = conn.kind && conn.kind !== 'passage' ? `[${conn.kind}] ` : '';
+  return `${prefix}${from?.name ?? conn.fromZoneId}${arrow}${to?.name ?? conn.toZoneId}`;
 }

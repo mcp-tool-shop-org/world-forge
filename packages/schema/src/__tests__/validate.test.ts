@@ -53,6 +53,25 @@ describe('validateProject', () => {
     )).toBe(true);
   });
 
+  it('accepts connection with valid kind', () => {
+    const proj: WorldProject = {
+      ...minimalProject,
+      connections: [{ fromZoneId: minimalProject.zones[0].id, toZoneId: minimalProject.zones[1].id, bidirectional: true, kind: 'door' }],
+    };
+    const result = validateProject(proj);
+    expect(result.errors.filter((e) => e.path === 'connections')).toHaveLength(0);
+  });
+
+  it('rejects connection with invalid kind', () => {
+    const proj: WorldProject = {
+      ...minimalProject,
+      connections: [{ fromZoneId: minimalProject.zones[0].id, toZoneId: minimalProject.zones[1].id, bidirectional: true, kind: 'teleporter' as any }],
+    };
+    const result = validateProject(proj);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path === 'connections' && e.message.includes('unsupported kind'))).toBe(true);
+  });
+
   it('rejects landmark in nonexistent zone', () => {
     const result = validateProject(invalidOrphanProject);
     expect(result.errors.some((e) =>

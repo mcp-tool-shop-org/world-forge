@@ -283,6 +283,17 @@ describe('FidelityReport accuracy', () => {
     }
   });
 
+  it('WorldProject import preserves connection kind', () => {
+    const result = importProject(chapelProject);
+    if ('ok' in result) throw new Error('import failed');
+    const imported = result.project;
+    for (const orig of chapelProject.connections) {
+      const imp = imported.connections.find((c) => c.fromZoneId === orig.fromZoneId && c.toZoneId === orig.toZoneId);
+      expect(imp).toBeDefined();
+      expect(imp!.kind).toBe(orig.kind);
+    }
+  });
+
   it('ContentPack import has asset-packs-dropped fidelity entry', () => {
     const exported = exportToEngine(minimalProject);
     if ('ok' in exported) throw new Error('export failed');

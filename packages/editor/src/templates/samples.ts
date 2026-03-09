@@ -64,10 +64,10 @@ const chapelThreshold: WorldProject = {
   ],
 
   connections: [
-    { fromZoneId: 'chapel-entrance', toZoneId: 'chapel-nave', bidirectional: true },
+    { fromZoneId: 'chapel-entrance', toZoneId: 'chapel-nave', bidirectional: true, kind: 'door' },
     { fromZoneId: 'chapel-nave', toZoneId: 'chapel-alcove', bidirectional: true },
-    { fromZoneId: 'chapel-nave', toZoneId: 'vestry-door', bidirectional: true },
-    { fromZoneId: 'chapel-alcove', toZoneId: 'crypt-chamber', bidirectional: true, condition: 'has-tag:chapel-key' },
+    { fromZoneId: 'chapel-nave', toZoneId: 'vestry-door', bidirectional: true, kind: 'door' },
+    { fromZoneId: 'chapel-alcove', toZoneId: 'crypt-chamber', bidirectional: true, kind: 'secret', condition: 'has-tag:chapel-key' },
   ],
 
   districts: [

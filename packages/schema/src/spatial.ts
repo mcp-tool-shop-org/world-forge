@@ -45,11 +45,15 @@ export interface Interactable {
   description?: string;
 }
 
+/** Semantic path type for a connection. */
+export type ConnectionKind = 'passage' | 'door' | 'stairs' | 'road' | 'portal' | 'secret' | 'hazard';
+
 /** An explicit link between two zones. */
 export interface ZoneConnection {
   fromZoneId: string;
   toZoneId: string;
   label?: string;
+  kind?: ConnectionKind;
   bidirectional: boolean;
   condition?: string;
 }

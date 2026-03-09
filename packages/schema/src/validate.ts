@@ -96,12 +96,17 @@ export function validateProject(project: WorldProject): ValidationResult {
   }
 
   // 11. Connections must reference valid zones
+  const VALID_CONNECTION_KINDS = new Set(['passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard']);
   for (const c of project.connections) {
     if (!zoneIds.has(c.fromZoneId)) {
       errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.fromZoneId}"` });
     }
     if (!zoneIds.has(c.toZoneId)) {
       errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.toZoneId}"` });
+    }
+    // 49. Connection kind must be valid
+    if (c.kind && !VALID_CONNECTION_KINDS.has(c.kind)) {
+      errors.push({ path: 'connections', message: `Connection has unsupported kind "${c.kind}"` });
     }
   }
 

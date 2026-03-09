@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/world-forge/readme.png" alt="World Forge" width="400">
+  <img src="./assets/logo.png" alt="World Forge" width="400">
 </p>
 
 <p align="center">
@@ -87,7 +87,8 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Align (left/right/top/bottom/center-h/center-v) and distribute (horizontal/vertical) for any selection
 - Object-to-object snapping during drag with visual guide lines, drag preview, and toggleable snap control
 - Zone resize handles (8 handles per zone) with edge-specific snapping, min-size clamping, and live preview
-- Connection selection, editing, and deletion — click connections to inspect/edit label, direction, and conditions
+- Connection selection, editing, and deletion — click connections to inspect/edit label, kind, direction, and conditions
+- 7 connection kinds (passage, door, stairs, road, portal, secret, hazard) with distinct visual styles and canvas labels
 - Edge-anchored connection routing with directional arrowheads and conditional dashed-line styling
 - Search / command-jump (Ctrl+K) across all object types including connections
 - Object list panel with hierarchical district → zone → entity/landmark/spawn tree view plus connections section

@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/schema",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "description": "Spatial data types for world authoring",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "logo.png"
   ],
   "publishConfig": {
     "access": "public"

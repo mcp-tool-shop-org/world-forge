@@ -6,6 +6,9 @@ import {
   hitTestConnection,
   findConnectionAt,
   connectionLabel,
+  getKindStyle,
+  connectionMidpoint,
+  CONNECTION_KIND_STYLES,
 } from '../connection-lines.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 import type { Zone, ZoneConnection } from '@world-forge/schema';
@@ -179,5 +182,44 @@ describe('connectionLabel', () => {
     const label = connectionLabel(fake, zones);
     expect(label).toContain('nonexistent');
     expect(label).toContain('also-missing');
+  });
+
+  it('includes kind prefix for non-passage connections', () => {
+    const conn: ZoneConnection = { fromZoneId: 'chapel-entrance', toZoneId: 'chapel-nave', bidirectional: true, kind: 'door' };
+    const label = connectionLabel(conn, zones);
+    expect(label).toMatch(/^\[door\] /);
+    expect(label).toContain('Chapel Entrance');
+  });
+
+  it('omits kind prefix for passage connections', () => {
+    const conn: ZoneConnection = { fromZoneId: 'chapel-entrance', toZoneId: 'chapel-nave', bidirectional: true, kind: 'passage' };
+    const label = connectionLabel(conn, zones);
+    expect(label).not.toContain('[passage]');
+  });
+});
+
+describe('getKindStyle', () => {
+  it.each(['passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard'] as const)('returns style for %s', (kind) => {
+    const style = getKindStyle(kind);
+    expect(style.color).toBeTruthy();
+    expect(style.hoverColor).toBeTruthy();
+  });
+
+  it('defaults to passage for undefined', () => {
+    const style = getKindStyle(undefined);
+    expect(style).toEqual(CONNECTION_KIND_STYLES.passage);
+  });
+
+  it('defaults to passage for unknown kind', () => {
+    const style = getKindStyle('teleporter');
+    expect(style).toEqual(CONNECTION_KIND_STYLES.passage);
+  });
+});
+
+describe('connectionMidpoint', () => {
+  it('returns correct midpoint', () => {
+    const { mx, my } = connectionMidpoint({ fx: 100, fy: 200, tx: 300, ty: 400 });
+    expect(mx).toBe(200);
+    expect(my).toBe(300);
   });
 });

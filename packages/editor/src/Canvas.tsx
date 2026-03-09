@@ -3,7 +3,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
 import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel } from './store/editor-store.js';
-import { getConnectionEndpoints, findConnectionAt } from './connection-lines.js';
+import { getConnectionEndpoints, findConnectionAt, getKindStyle, connectionMidpoint } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
 import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
@@ -183,22 +183,25 @@ export function Canvas() {
 
         const isHovered = hoveredConnection.current?.from === conn.fromZoneId && hoveredConnection.current?.to === conn.toZoneId;
         const isSelConn = selectedConnection?.from === conn.fromZoneId && selectedConnection?.to === conn.toZoneId;
+        const kindStyle = getKindStyle(conn.kind);
 
         // Visual state
         if (isSelConn) {
           ctx.strokeStyle = '#58a6ff';
           ctx.lineWidth = 3 / zoom;
         } else if (isHovered) {
-          ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.9)' : 'rgba(136,136,136,0.9)';
+          ctx.strokeStyle = kindStyle.hoverColor;
           ctx.lineWidth = 2 / zoom;
         } else {
-          ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
+          ctx.strokeStyle = kindStyle.color;
           ctx.lineWidth = 1 / zoom;
         }
 
-        // Dashed for conditional
+        // Dashing: condition overrides kind dash
         if (conn.condition && !isSelConn) {
           ctx.setLineDash([6 / zoom, 4 / zoom]);
+        } else if (!isSelConn && kindStyle.dash) {
+          ctx.setLineDash(kindStyle.dash.map((d) => d / zoom));
         }
 
         ctx.beginPath();
@@ -226,6 +229,23 @@ export function Canvas() {
             ctx.fillStyle = ctx.strokeStyle;
             ctx.fill();
           }
+        }
+
+        // Label at midpoint when zoomed in enough
+        if (conn.label && zoom > 0.3) {
+          const mid = connectionMidpoint(endpoints);
+          const fontSize = Math.max(8, Math.min(12, 10 / zoom));
+          ctx.save();
+          ctx.font = `${fontSize / zoom}px 'Segoe UI', system-ui, sans-serif`;
+          const textW = ctx.measureText(conn.label).width;
+          const pad = 3 / zoom;
+          ctx.fillStyle = 'rgba(13,17,23,0.85)';
+          ctx.fillRect(mid.mx - textW / 2 - pad, mid.my - fontSize / zoom / 2 - pad, textW + pad * 2, fontSize / zoom + pad * 2);
+          ctx.fillStyle = '#c9d1d9';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(conn.label, mid.mx, mid.my);
+          ctx.restore();
         }
       }
     }

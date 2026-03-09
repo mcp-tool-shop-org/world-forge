@@ -69,7 +69,7 @@ interface ProjectState {
 
   // Connection helpers
   addConnection: (c: ZoneConnection) => void;
-  updateConnection: (fromId: string, toId: string, updates: Partial<Pick<ZoneConnection, 'label' | 'bidirectional' | 'condition'>>) => void;
+  updateConnection: (fromId: string, toId: string, updates: Partial<Pick<ZoneConnection, 'label' | 'kind' | 'bidirectional' | 'condition'>>) => void;
   removeConnection: (fromId: string, toId: string) => void;
 
   // District helpers

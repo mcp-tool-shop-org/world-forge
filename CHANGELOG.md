@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] - 2026-03-09
+
+### Added
+
+- **Connection kinds** — 7 semantic path types: passage (default), door, stairs, road, portal, secret, hazard
+- **Kind-based visual grammar** — each kind has distinct color and dash pattern on the canvas (door=amber, portal=purple, secret=faint dashed, hazard=red-orange, stairs=step-dash)
+- **Kind dropdown** — Connection Properties panel includes a Kind selector between Label and Bidirectional
+- **Connection labels** — optional label text renders at line midpoint as a dark pill when zoom > 30%
+- **Kind badges** — Objects tab shows kind badges (e.g. `door`, `secret`) next to the "C" badge for non-passage connections
+- **Kind search** — Ctrl+K search indexes connection kind in detail text; search "secret" or "door" to find connections by kind
+- **Chapel Threshold kinds** — sample project connections now have semantic kinds: entrance→nave (door), nave→vestry (door), alcove→crypt (secret + conditional)
+- `ConnectionKind` type — exported from `@world-forge/schema` as a union of 7 string literals
+- `getKindStyle()` — returns color, hoverColor, and dash pattern for any connection kind
+- `connectionMidpoint()` — computes world-pixel midpoint of connection endpoints for label placement
+- Validation check #49 — rejects connections with invalid kind values
+- Logo embedded in all npm packages (replaces remote brand repo reference)
+
+### Changed
+
+- Condition dashing now takes priority over kind dashing (condition always means "gated")
+- `connectionLabel()` includes `[kind]` prefix for non-passage connections
+- `updateConnection` store action now supports `kind` field
+
 ## [2.6.0] - 2026-03-09
 
 ### Added
