@@ -56,7 +56,7 @@ Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`,
 
 ### @world-forge/export-ai-rpg
 
-Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, manifest, and pack metadata. Full validation pipeline with gap analysis.
+Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, manifest, and pack metadata. Full validation pipeline with gap analysis. Includes a complete **import pipeline** (8 reverse converters) that reconstructs a WorldProject from exported JSON, with structured **fidelity reporting** that tracks exactly what was lossless, approximated, or dropped during conversion.
 
 ### @world-forge/renderer-2d
 
@@ -64,7 +64,7 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app. Zustand state management with undo/redo. Six workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Issues** (live grouped validation with click-to-focus). Tools: select, zone-paint, connection, entity-place, landmark, spawn.
+React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Issues** (live grouped validation with click-to-focus), **Guide** (first-run checklist), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn.
 
 ## Authoring Surface
 
@@ -82,6 +82,8 @@ React 19 + Vite web app. Zustand state management with undo/redo. Six workspace 
 - Progression trees (skill/ability nodes with requirements and effects)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
 - Export to engine-compatible ContentPack JSON
+- Import from ContentPack or ExportResult JSON with structured fidelity reporting
+- Semantic diff tracking — see exactly what changed since import
 
 See [`dogfood/WALKTHROUGH.md`](dogfood/WALKTHROUGH.md) for the Chapel Threshold export handshake proving the current surface.
 

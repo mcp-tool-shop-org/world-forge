@@ -65,3 +65,25 @@ Click **Export** to validate your project and download the ContentPack. The expo
 4. Returns warnings for missing features (no landmarks, no faction presences, etc.)
 
 The output is a set of JSON files ready to load into ai-rpg-engine.
+
+If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
+
+## 6. Import
+
+Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
+
+- **WorldProject** — lossless, loads directly
+- **ExportResult** — the `{ contentPack, manifest, packMeta }` output from export
+- **ContentPack** — engine content without manifest wrapper
+
+After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
+
+## 7. Track Changes
+
+After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
+
+- **Modified** objects show field-level before/after values
+- **Added** objects are highlighted in green
+- **Removed** objects are highlighted in red
+
+Changes are grouped by domain (Zones, Districts, Entities, Items, etc.) so you can see exactly what you've edited since import.

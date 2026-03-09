@@ -1,6 +1,6 @@
 ---
-title: Export Pipeline
-description: How WorldProject becomes an ai-rpg-engine ContentPack
+title: Export & Import Pipeline
+description: How WorldProject becomes an ai-rpg-engine ContentPack and back
 sidebar:
   order: 5
 ---
@@ -78,6 +78,62 @@ Role-based defaults are applied when the author hasn't specified values:
 | boss | enemy | territorial | hostile, boss, elite |
 
 Authored values always override defaults. For example, if you set `ai.profileId: 'aggressive'` on a boss, it uses that instead of the default `'territorial'`.
+
+## Import Pipeline
+
+World Forge can import exported JSON back into the editor. The import pipeline reverses the export process with 8 converters:
+
+| Converter | Input | Output |
+|-----------|-------|--------|
+| `importZones` | ZoneDefinition[] | Zone[] |
+| `importDistricts` | DistrictDefinition[] | District[] |
+| `importEntities` | EntityBlueprint[] | EntityPlacement[] |
+| `importItems` | ItemDefinition[] | ItemPlacement[] |
+| `importDialogues` | DialogueDefinition[] | DialogueDefinition[] |
+| `importPlayerTemplate` | ExportedPlayerTemplate | PlayerTemplate |
+| `importBuildCatalog` | ExportedBuildCatalog | BuildCatalogDefinition |
+| `importProgressionTrees` | ProgressionTreeDefinition[] | ProgressionTreeDefinition[] |
+
+The `importProject()` function auto-detects the input format (WorldProject, ExportResult, or ContentPack) and orchestrates all converters.
+
+```typescript
+import { importProject } from '@world-forge/export-ai-rpg';
+
+const result = importProject(jsonString);
+
+if (result.success) {
+  const { project, format, lossless, fidelityReport } = result;
+}
+```
+
+### Supported Formats
+
+- **WorldProject** — lossless round-trip, no conversion needed
+- **ExportResult** — `{ contentPack, manifest, packMeta }` from `exportToEngine()`
+- **ContentPack** — engine content without manifest/metadata wrapper
+
+## Fidelity Reporting
+
+Every import produces a structured `FidelityReport` that tracks exactly what happened to each piece of data during conversion. Each entry has:
+
+- **level** — `lossless`, `approximated`, or `dropped`
+- **domain** — which system was affected (zones, districts, entities, items, etc.)
+- **severity** — `info`, `warning`, or `error`
+- **reason** — machine-stable key for programmatic use
+
+Common fidelity entries:
+
+| Reason Key | Level | Description |
+|-----------|-------|-------------|
+| `grid-auto-generated` | approximated | Zone grid positions auto-generated (engine doesn't store spatial layout) |
+| `surveillance-to-safety` | approximated | District safety reverse-mapped from engine's surveillance metric |
+| `economy-data-lost` | dropped | District economy profile not stored in engine format |
+| `zone-placement-round-robin` | approximated | Entities assigned to zones via round-robin (original zones unknown) |
+| `role-reverse-mapped` | approximated | Entity role inferred from engine tags |
+| `textblock-to-string` | approximated | Dialogue text normalized from TextBlock arrays to strings |
+| `visual-layers-dropped` | dropped | Visual layers (tiles, props, ambient) not stored in engine format |
+
+The report includes a summary with overall lossless percentage and per-domain breakdowns, displayed in the editor's Import Summary panel.
 
 ## Dogfood: Chapel Threshold
 

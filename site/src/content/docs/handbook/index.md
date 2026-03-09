@@ -26,6 +26,8 @@ World Forge is one of three projects that form the authoring-to-play pipeline:
 - **Author dialogues** — branching conversation trees with conditions and effects
 - **Place items** with slot, rarity, stat modifiers, and granted verbs
 - **Export** a validated ContentPack targeting ai-rpg-engine's content schema
+- **Import** from ContentPack or ExportResult JSON with structured fidelity reporting
+- **Track changes** with semantic diff — see exactly what was modified, added, or removed since import
 
 ## Packages
 

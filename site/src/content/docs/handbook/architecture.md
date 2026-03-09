@@ -37,23 +37,19 @@ The type authority. Defines every structure in a `WorldProject`:
 - **Dialogue types** — `DialogueDefinition`, `DialogueNode`, `DialogueChoice`, `DialogueCondition`, `DialogueEffect`
 - **Visual types** — `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
 - **Container** — `WorldProject` interface that holds everything
-- **Validation** — `validateProject()` with 17 structural checks
+- **Validation** — `validateProject()` with 32 structural checks
 
 ## @world-forge/export-ai-rpg
 
-Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format. Five converters handle the transformation:
+Bidirectional conversion between `WorldProject` and ai-rpg-engine's `ContentPack` format.
 
-| Converter | Input | Output |
-|-----------|-------|--------|
-| `convertZones` | Zone[] | ZoneDefinition[] |
-| `convertDistricts` | District[] | DistrictDefinition[] |
-| `convertEntities` | EntityPlacement[] | EntityBlueprint[] |
-| `convertItems` | ItemPlacement[] | ItemDefinition[] |
-| `convertDialogues` | DialogueDefinition[] | DialogueDefinition[] |
+**Export** — 9 converters transform WorldProject domains into engine types. `exportToEngine()` orchestrates validation, conversion, manifest generation, and warning collection. A CLI tool (`world-forge-export`) wraps the pipeline.
 
-The `exportToEngine()` function orchestrates validation, conversion, manifest generation, and warning collection.
+**Import** — 8 reverse converters reconstruct a WorldProject from exported JSON. `importProject()` auto-detects the format (WorldProject, ExportResult, or ContentPack) and orchestrates all converters.
 
-A CLI tool (`world-forge-export`) wraps the pipeline for command-line use.
+**Fidelity** — every import produces a structured `FidelityReport` tracking what was lossless, approximated, or dropped. Each entry has a domain, severity, and machine-stable reason key.
+
+**Diff** — the editor includes a semantic diff engine (`diff-model.ts`) that compares two WorldProject snapshots with domain-specific comparators.
 
 ## @world-forge/renderer-2d
 
@@ -68,7 +64,7 @@ PixiJS-based 2D renderer with six sub-renderers:
 
 ## @world-forge/editor
 
-React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, landmark, spawn. Panels: zone properties, district editor, entity reference, export modal.
+React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, landmark, spawn. Workspace tabs: Map, Player, Builds, Trees, Dialogue, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
 
 ## Build System
 
