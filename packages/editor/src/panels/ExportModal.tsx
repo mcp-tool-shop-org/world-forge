@@ -9,6 +9,7 @@ import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
 import { useKitStore } from '../kits/index.js';
+import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
@@ -101,11 +102,8 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   if (project.spawnPoints.length === 0) missing.push('No spawn points');
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-    }}>
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: 20, width: 450, maxHeight: '80vh', overflow: 'auto' }}>
+    <div style={MODAL_OVERLAY}>
+      <div style={MODAL_CARD(450)}>
         <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Export to AI RPG Engine</h3>
 
         {/* Readiness banner */}

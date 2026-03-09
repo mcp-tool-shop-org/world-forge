@@ -32,11 +32,11 @@ export const config: SiteConfig = {
       features: [
         {
           title: 'Zone Painting',
-          desc: 'Drag to create rectangular zones with spatial grid layout. Define neighbors, exits, light, noise, hazards, and interactables.',
+          desc: 'Drag to create zones with snap-to-grid layout, resize handles, multi-select with box-select, alignment and distribution tools, and object snapping with visual guides.',
         },
         {
           title: 'Districts & Factions',
-          desc: 'Group zones into districts with faction control, economy profiles, and base metrics. Track faction influence and alert levels.',
+          desc: 'Group zones into districts with faction control, economy profiles, pressure hotspots, and base metrics. Track faction influence, alert levels, and district-level presences.',
         },
         {
           title: 'Entity Placement',
@@ -48,15 +48,23 @@ export const config: SiteConfig = {
         },
         {
           title: 'Character Creation',
-          desc: 'Define player templates, build catalogs with archetypes, backgrounds, traits, disciplines, and progression trees with skill nodes.',
+          desc: 'Define player templates, build catalogs with archetypes, backgrounds, traits, disciplines, entanglements, cross-titles, and progression trees with skill nodes.',
         },
         {
-          title: 'Editor Workspaces',
-          desc: 'Six workspace tabs — Map, Player, Builds, Trees, Dialogue, Issues. Live validation with grouped errors, click-to-focus navigation, and issue badge.',
+          title: 'Starter Kits & Templates',
+          desc: '7 mode-specific starter kits, genre wizard, sample worlds, and user templates. Kit import/export (.wfkit.json) with collision handling and provenance tracking.',
         },
         {
-          title: 'Export Pipeline',
-          desc: 'One-click export to ai-rpg-engine ContentPack. Full engine handshake: zones, entities, items, dialogues, player, build catalog, progression.',
+          title: 'Dependencies & Validation',
+          desc: 'Live validation with 54 structural checks. Dependency scanner surfaces broken, mismatched, and orphaned references with one-click repair and click-to-focus navigation.',
+        },
+        {
+          title: 'Review & Export',
+          desc: 'Health dashboard, content overview, and summary export (Markdown/JSON). Export to ContentPack, ProjectBundle (.wfproject.json), or review summary. Multi-format import with fidelity reporting.',
+        },
+        {
+          title: 'Speed Panel & Shortcuts',
+          desc: 'Double-right-click command palette with context-aware actions, pinnable favorites, macros with step editor, 13 keyboard shortcuts, and Ctrl+K search across all objects.',
         },
       ],
     },
@@ -98,6 +106,10 @@ export const config: SiteConfig = {
         ['Player template (stats, inventory, equipment)', 'Shipped'],
         ['Build catalog (archetypes, backgrounds, traits)', 'Shipped'],
         ['Progression trees (skill nodes, requirements)', 'Shipped'],
+        ['Starter kits & project bundles (.wfkit.json, .wfproject.json)', 'Shipped'],
+        ['Dependency scanner (broken refs, orphan detection, repair)', 'Shipped'],
+        ['Review dashboard (health, content overview, summary export)', 'Shipped'],
+        ['Speed Panel (command palette, macros, custom groups)', 'Shipped'],
       ],
     },
   ],

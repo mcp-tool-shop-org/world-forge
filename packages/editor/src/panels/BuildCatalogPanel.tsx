@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, type BuildsSubTab } from '../store/editor-store.js';
-import { EmptyState, useFocusHighlight, sectionTitle, labelStyle, inputStyle, addBtnStyle, smallBtnStyle, xBtnStyle, itemStyle, hintStyle } from './shared.js';
+import { EmptyState, useFocusHighlight, sectionTitle, labelStyle, inputStyle, addBtnStyle, smallBtnStyle, xBtnStyle, itemStyle, hintStyle, ACTIVE_TAB_BG } from './shared.js';
 import type { BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition, TraitDefinition, DisciplineDefinition, TraitEffect } from '@world-forge/schema';
 
 const STARTER_CATALOG: BuildCatalogDefinition = {
@@ -65,7 +65,7 @@ export function BuildCatalogPanel() {
         {subTabs.map((t) => (
           <button key={t.id} onClick={() => setBuildsSubTab(t.id)} style={{
             fontSize: 10, padding: '3px 8px', cursor: 'pointer', borderRadius: 3,
-            background: buildsSubTab === t.id ? '#1f6feb' : '#21262d',
+            background: buildsSubTab === t.id ? ACTIVE_TAB_BG : '#21262d',
             color: buildsSubTab === t.id ? '#fff' : '#8b949e',
             border: '1px solid #30363d',
           }}>{t.label}</button>

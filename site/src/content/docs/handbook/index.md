@@ -32,6 +32,11 @@ World Forge is one of three projects that form the authoring-to-play pipeline:
 - **Export** a validated ContentPack targeting ai-rpg-engine's content schema
 - **Import** from ContentPack or ExportResult JSON with structured fidelity reporting
 - **Track changes** with semantic diff — see exactly what was modified, added, or removed since import
+- **Review projects** — Review tab shows health status, content overview, region summaries, and downloadable summaries (Markdown/JSON)
+- **Manage dependencies** — Deps tab scans broken, mismatched, and orphaned references with one-click repair
+- **Starter kits** — 7 built-in mode-specific kits, custom kit authoring, kit import/export (.wfkit.json)
+- **Project bundles** — portable .wfproject.json files for sharing whole projects with dependency metadata
+- **Speed Panel** — double-right-click command palette with pinned favorites, macros, and mode-suggested actions
 
 ## Packages
 

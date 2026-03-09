@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { validateProject } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
-import { MODE_STARTERS, createProjectFromModeStarter } from '../templates/registry.js';
+import { MODE_STARTERS, createProjectFromModeStarter, GENRE_TEMPLATES, SAMPLE_WORLDS } from '../templates/registry.js';
 import { getModeProfile } from '../mode-profiles.js';
+import { BUILTIN_KITS } from '../kits/index.js';
 
 describe('MODE_STARTERS', () => {
   it('has exactly 7 entries (one per mode)', () => {
@@ -122,5 +123,57 @@ describe('createProjectFromModeStarter', () => {
     const starter = MODE_STARTERS[0];
     const project = createProjectFromModeStarter('', starter);
     expect(project.name).toBe(starter.name);
+  });
+});
+
+// ── guideHints (v4.0) ─────────────────────────────────────────
+
+describe('BUILTIN_KITS guideHints', () => {
+  it('all 7 built-in kits have non-empty guideHints', () => {
+    for (const kit of BUILTIN_KITS) {
+      const keys = Object.keys(kit.guideHints);
+      expect(keys.length, `${kit.id} should have >= 3 guide hint keys`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('each guide hint has label and description', () => {
+    for (const kit of BUILTIN_KITS) {
+      for (const [key, hint] of Object.entries(kit.guideHints)) {
+        const h = hint as { label: string; description: string };
+        expect(h.label.length, `${kit.id}.${key} label should be non-empty`).toBeGreaterThan(0);
+        expect(h.description.length, `${kit.id}.${key} description should be non-empty`).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+// ── Genre templates (v4.0) ─────────────────────────────────────
+
+describe('GENRE_TEMPLATES', () => {
+  it('all have valid mode field', () => {
+    for (const t of GENRE_TEMPLATES) {
+      expect(AUTHORING_MODES).toContain(t.mode);
+    }
+  });
+});
+
+// ── Sample worlds (v4.0) ──────────────────────────────────────
+
+describe('SAMPLE_WORLDS', () => {
+  it('all have explicit mode field', () => {
+    for (const s of SAMPLE_WORLDS) {
+      expect(s.mode, `${s.id} should have mode`).toBeDefined();
+      expect(AUTHORING_MODES).toContain(s.mode);
+    }
+  });
+
+  it('filtering by dungeon returns expected samples', () => {
+    const dungeon = SAMPLE_WORLDS.filter((s) => s.mode === 'dungeon');
+    expect(dungeon.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('filtering undefined returns all', () => {
+    const all = SAMPLE_WORLDS.filter(() => true);
+    expect(all.length).toBe(SAMPLE_WORLDS.length);
   });
 });

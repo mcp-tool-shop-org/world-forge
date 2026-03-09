@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { getModeProfile } from '../mode-profiles.js';
+import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
 
 export function EncounterProperties() {
   const { project, updateEncounter, removeEncounter } = useProjectStore();
@@ -16,7 +17,7 @@ export function EncounterProperties() {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Encounter Properties</div>
+      <PanelHeader title="Encounter Properties" />
       <label style={labelStyle}>ID
         <input style={inputStyle} value={enc.id} readOnly />
       </label>
@@ -46,19 +47,12 @@ export function EncounterProperties() {
         <input style={inputStyle} value={enc.tags.join(', ')}
           onChange={(e) => updateEncounter(enc.id, { tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
       </label>
-      <button style={btnStyle} onClick={() => { removeEncounter(enc.id); clearSelection(); }}>
+      <button style={deleteBtnStyle} onClick={() => { removeEncounter(enc.id); clearSelection(); }}>
         Delete Encounter
       </button>
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, marginBottom: 6 };
-const inputStyle: React.CSSProperties = {
-  display: 'block', width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '3px 6px', fontSize: 12, marginTop: 2,
-};
-const btnStyle: React.CSSProperties = {
-  display: 'block', width: '100%', color: '#fff', background: '#da3633', border: 'none',
-  borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12, marginTop: 8,
-};
+const labelStyle: React.CSSProperties = { ...sharedLabelStyle };
+const inputStyle: React.CSSProperties = { ...sharedInputStyle, padding: '3px 6px', marginTop: 2 };

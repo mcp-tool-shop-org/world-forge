@@ -23,7 +23,13 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['crypt-district', 'dungeon-vault'],
       encounter: ['dungeon-ambush', 'boss-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Add a vault chamber', description: 'Create rooms, corridors, and trap chambers.' },
+      spawn: { label: 'Set the vault entrance', description: 'Where the party enters the dungeon.' },
+      district: { label: 'Define a dungeon level', description: 'Group chambers into dungeon levels.' },
+      player: { label: 'Create the delver', description: 'Build the character entering the vault.' },
+      npc: { label: 'Place a guard or creature', description: 'Add enemies and NPCs to chambers.' },
+    },
   },
   {
     id: 'district-starter',
@@ -38,7 +44,13 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['market-ward', 'city-slum'],
       encounter: ['district-brawl', 'hazard-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Add a market stall', description: 'Create shops, alleys, and gathering spots.' },
+      spawn: { label: 'Set the entry gate', description: 'Where visitors arrive in the ward.' },
+      district: { label: 'Define a ward', description: 'Group zones into city wards.' },
+      player: { label: 'Create the citizen', description: 'Build the character exploring the quarter.' },
+      npc: { label: 'Place a merchant', description: 'Add shopkeepers, guards, and residents.' },
+    },
   },
   {
     id: 'world-starter',
@@ -53,7 +65,13 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['market-ward', 'city-slum'],
       encounter: ['world-caravan-raid', 'discovery-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Map a territory', description: 'Create regions, settlements, and landmarks.' },
+      spawn: { label: 'Set the expedition start', description: 'Where the party begins their journey.' },
+      district: { label: 'Define a region', description: 'Group territories into larger regions.' },
+      player: { label: 'Create the explorer', description: 'Build the character charting the frontier.' },
+      npc: { label: 'Place a guide', description: 'Add scouts, traders, and frontier folk.' },
+    },
   },
   {
     id: 'ocean-starter',
@@ -68,7 +86,13 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['ocean-port', 'smuggler-dock'],
       encounter: ['ocean-pirate-attack', 'hazard-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Chart new waters', description: 'Create sea zones, harbors, and open water.' },
+      spawn: { label: 'Set the embarkation point', description: 'Where ships depart from port.' },
+      district: { label: 'Define a port', description: 'Group docks, warehouses, and markets.' },
+      player: { label: 'Create the navigator', description: 'Build the character sailing the strait.' },
+      npc: { label: 'Place a harbormaster', description: 'Add captains, traders, and pirates.' },
+    },
   },
   {
     id: 'space-starter',
@@ -83,7 +107,13 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['space-station-hub'],
       encounter: ['space-boarding-action', 'boss-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Map a sector', description: 'Create station bays, corridors, and cargo holds.' },
+      spawn: { label: 'Set the docking bay', description: 'Where ships dock at the station.' },
+      district: { label: 'Define a station wing', description: 'Group sectors into station wings.' },
+      player: { label: 'Create the pilot', description: 'Build the character operating the relay.' },
+      npc: { label: 'Place a dispatcher', description: 'Add crew, operators, and visitors.' },
+    },
   },
   {
     id: 'interior-starter',
@@ -98,7 +128,13 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['crypt-district', 'dungeon-vault'],
       encounter: ['interior-haunt', 'hazard-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Add a room', description: 'Create rooms, hallways, and hidden spaces.' },
+      spawn: { label: 'Set the entrance', description: 'Where the occupant enters the manor.' },
+      district: { label: 'Define a floor', description: 'Group rooms into floors or wings.' },
+      player: { label: 'Create the occupant', description: 'Build the character exploring the manor.' },
+      npc: { label: 'Place a resident', description: 'Add servants, automatons, and visitors.' },
+    },
   },
   {
     id: 'wilderness-starter',
@@ -113,6 +149,12 @@ export const BUILTIN_KITS: StarterKit[] = [
       region: ['wilderness-camp'],
       encounter: ['wilderness-beast-hunt', 'discovery-encounter'],
     },
-    guideHints: {},
+    guideHints: {
+      zone: { label: 'Scout a clearing', description: 'Create trails, camps, and natural sites.' },
+      spawn: { label: 'Set the trailhead', description: 'Where the ranger begins the hike.' },
+      district: { label: 'Define a territory', description: 'Group clearings into wilderness areas.' },
+      player: { label: 'Create the ranger', description: 'Build the character traversing the ridge.' },
+      npc: { label: 'Place a forester', description: 'Add wildlife, hermits, and trackers.' },
+    },
   },
 ];

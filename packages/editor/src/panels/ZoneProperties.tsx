@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { ScenePreview } from './ScenePreview.js';
 import { getModeProfile } from '../mode-profiles.js';
+import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();
@@ -16,7 +17,7 @@ export function ZoneProperties() {
   return (
     <div>
       <ScenePreview zoneId={zone.id} />
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Zone Properties</div>
+      <PanelHeader title="Zone Properties" />
       <label style={labelStyle}>Name
         <input style={inputStyle} value={zone.name}
           onChange={(e) => updateZone(zone.id, { name: e.target.value })} />
@@ -78,22 +79,15 @@ export function ZoneProperties() {
         )}
       </label>
       <button onClick={() => { removeZone(zone.id); setSelectedZone(null); }}
-        style={{ ...btnStyle, background: '#da3633', marginTop: 8 }}>
+        style={deleteBtnStyle}>
         Delete Zone
       </button>
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, marginBottom: 6 };
-const inputStyle: React.CSSProperties = {
-  display: 'block', width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '3px 6px', fontSize: 12, marginTop: 2,
-};
-const btnStyle: React.CSSProperties = {
-  display: 'block', width: '100%', color: '#fff', border: 'none',
-  borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
-};
+const labelStyle: React.CSSProperties = { ...sharedLabelStyle };
+const inputStyle: React.CSSProperties = { ...sharedInputStyle, padding: '3px 6px', marginTop: 2 };
 const chipStyle: React.CSSProperties = {
   background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
   borderRadius: 12, padding: '1px 8px', fontSize: 11, cursor: 'pointer',

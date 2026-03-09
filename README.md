@@ -35,12 +35,12 @@ Open `http://localhost:5173` to launch the editor.
 
 ### Editor Workflow
 
-1. **Paint zones** — select the Zone tool, drag on the canvas to create rectangular zones
-2. **Connect zones** — select the Connection tool, click zone A then zone B
-3. **Create districts** — group zones into districts with faction and economy metadata
-4. **Place entities** — drop NPCs, enemies, merchants, spawn points onto zones
-5. **Review** — open the Review tab for a health summary, content overview, and shareable export
-6. **Export** — click Export to validate and download an ai-rpg-engine ContentPack
+1. **Choose a mode** — dungeon, district, world, ocean, space, interior, or wilderness — to set grid defaults and connection vocabulary
+2. **Start from a kit** — pick a starter kit or genre template from the Template Manager, or start blank
+3. **Paint zones** — drag on the canvas to create zones, connect them, assign districts
+4. **Place entities** — drop NPCs, enemies, merchants, encounters, and items onto zones
+5. **Review** — open the Review tab for health status, content overview, and summary export (Markdown/JSON)
+6. **Export** — download a ContentPack, project bundle (.wfproject.json), or review summary
 
 ### CLI Export
 

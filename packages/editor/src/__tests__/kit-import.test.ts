@@ -24,7 +24,7 @@ describe('importKit store method', () => {
   it('creates new kit with generated ID', () => {
     resetStore();
     const result = useKitStore.getState().importKit(sampleInput);
-    expect(result.id).toMatch(/^kit-\d+$/);
+    expect(result.id).toMatch(/^kit-\d+-i$/);
     expect(result.name).toBe('Test Import Kit');
   });
 
@@ -81,7 +81,7 @@ describe('importKit store method', () => {
     resetStore();
     const before = useKitStore.getState().kits.length;
     const result = useKitStore.getState().importKit(sampleInput, 'nonexistent-id');
-    expect(result.id).toMatch(/^kit-\d+$/);
+    expect(result.id).toMatch(/^kit-\d+-i$/);
     expect(useKitStore.getState().kits.length).toBe(before + 1);
   });
 });

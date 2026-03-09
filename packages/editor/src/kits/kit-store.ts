@@ -132,10 +132,10 @@ export const useKitStore = create<KitState>((set, get) => ({
       }
     }
 
-    // Import as new kit
+    // Import as new kit (suffix to avoid same-ms collision with saveKit)
     const kit: StarterKit = {
       ...JSON.parse(JSON.stringify(input)),
-      id: `kit-${Date.now()}`,
+      id: `kit-${Date.now()}-i`,
       builtIn: false,
       createdAt: now,
       updatedAt: now,

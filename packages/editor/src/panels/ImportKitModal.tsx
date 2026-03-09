@@ -5,6 +5,7 @@ import { useKitStore } from '../kits/index.js';
 import { prepareKitImport } from '../kits/bundle.js';
 import type { ImportKitResult } from '../kits/bundle.js';
 import { countContent } from './TemplateManager.js';
+import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
 
 interface Props { onClose: () => void }
 
@@ -72,8 +73,8 @@ export function ImportKitModal({ onClose }: Props) {
     : [];
 
   return (
-    <div style={overlayStyle}>
-      <div style={cardStyle}>
+    <div style={MODAL_OVERLAY}>
+      <div style={MODAL_CARD(480)}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ margin: 0, color: '#e6edf3' }}>Import Starter Kit</h3>
@@ -159,16 +160,6 @@ export function ImportKitModal({ onClose }: Props) {
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-};
-
-const cardStyle: React.CSSProperties = {
-  background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
-  padding: 24, width: 480, maxHeight: '80vh', overflow: 'auto',
-};
 
 const btnStyle: React.CSSProperties = {
   background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',

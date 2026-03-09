@@ -5,6 +5,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { scanDependencies, type DependencyEdge, type DepDomain } from '@world-forge/schema';
 import { repairsForEdge, batchRepair, type RepairAction } from '../repairs.js';
+import { PanelHeader } from './shared.js';
 
 const domainLabels: Record<DepDomain, string> = {
   'zone-asset': 'Zone Assets',
@@ -107,7 +108,7 @@ export function DependencyPanel() {
   if (totalIssues === 0) {
     return (
       <div>
-        <div style={headerStyle}>Dependencies</div>
+        <PanelHeader title="Dependencies" />
         <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
           No dependency issues found.
         </div>
@@ -117,9 +118,7 @@ export function DependencyPanel() {
 
   return (
     <div>
-      <div style={headerStyle}>
-        Dependencies — {totalIssues} issue{totalIssues !== 1 ? 's' : ''}
-      </div>
+      <PanelHeader title="Dependencies" badge={`${totalIssues} issue${totalIssues !== 1 ? 's' : ''}`} />
 
       {/* Summary bar */}
       <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
@@ -254,8 +253,6 @@ export function useDependencyCount(): number {
     return r.summary.broken + r.summary.mismatched + r.summary.orphaned;
   }, [project]);
 }
-
-const headerStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginBottom: 8 };
 
 const batchBtnStyle: React.CSSProperties = {
   fontSize: 10, padding: '3px 8px', cursor: 'pointer',

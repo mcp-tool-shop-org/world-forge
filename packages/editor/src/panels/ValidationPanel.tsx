@@ -6,6 +6,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor, isRefError, type Domain } from './validation-helpers.js';
 import { scanDependencies } from '@world-forge/schema';
+import { PanelHeader, ACTIVE_TAB_BG } from './shared.js';
 
 const domainLabels: Record<Domain, string> = {
   world: 'World',
@@ -121,7 +122,7 @@ export function ValidationPanel() {
   if (result.valid) {
     return (
       <div>
-        <div style={headerStyle}>Validation</div>
+        <PanelHeader title="Validation" />
         <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
           No issues found — ready to export.
         </div>
@@ -134,9 +135,7 @@ export function ValidationPanel() {
 
   return (
     <div>
-      <div style={headerStyle}>
-        Validation — {result.errors.length} issue{result.errors.length !== 1 ? 's' : ''}
-      </div>
+      <PanelHeader title="Validation" badge={`${result.errors.length} issue${result.errors.length !== 1 ? 's' : ''}`} />
       {domainOrder.map((domain) => {
         const errors = grouped[domain];
         if (errors.length === 0) return null;
@@ -214,7 +213,7 @@ function AdvisorySuggestions({ items, collapsed, toggle }: {
           key={i}
           style={{
             fontSize: 11, color: '#58a6ff', padding: '3px 0 3px 14px',
-            borderLeft: '2px solid #1f6feb',
+            borderLeft: `2px solid ${ACTIVE_TAB_BG}`,
           }}
         >
           {item.message}
@@ -230,4 +229,3 @@ export function useIssueCount(): number {
   return useMemo(() => validateProject(project).errors.length, [project]);
 }
 
-const headerStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginBottom: 8 };

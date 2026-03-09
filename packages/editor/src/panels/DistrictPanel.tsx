@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { frameBounds } from '../viewport.js';
 import { getCanvasSize } from '../frame-helpers.js';
+import { inputStyle as sharedInputStyle, ConfirmButton } from './shared.js';
 import type { DistrictMetrics } from '@world-forge/schema';
 
 export function DistrictPanel() {
@@ -195,11 +196,9 @@ export function DistrictPanel() {
                   }}>+ Hotspot</button>
                 )}
 
-                {/* Remove District */}
-                <button style={{ ...smallBtn, color: '#f85149', marginTop: 8, border: '1px solid #da3633' }}
-                  onClick={() => { removeDistrict(d.id); if (expanded === d.id) setExpanded(null); }}>
-                  Remove District
-                </button>
+                {/* Delete District */}
+                <ConfirmButton label="Delete District" onConfirm={() => { removeDistrict(d.id); if (expanded === d.id) setExpanded(null); }}
+                  style={{ fontSize: 10, padding: '3px 8px', marginTop: 8, width: 'auto' }} />
               </div>
             )}
           </div>
@@ -207,7 +206,7 @@ export function DistrictPanel() {
       })}
       <button onClick={handleCreate}
         style={{ fontSize: 11, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3, cursor: 'pointer', padding: '3px 8px', width: '100%' }}>
-        + New District
+        + Add District
       </button>
     </div>
   );
@@ -215,8 +214,7 @@ export function DistrictPanel() {
 
 const sectionLabel: React.CSSProperties = { fontSize: 10, color: '#8b949e', marginTop: 6, marginBottom: 2 };
 const inputStyle: React.CSSProperties = {
-  display: 'block', width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '2px 5px', fontSize: 11, marginTop: 2,
+  ...sharedInputStyle, fontSize: 11, padding: '2px 5px', marginTop: 2,
 };
 const smallBtn: React.CSSProperties = {
   fontSize: 10, background: 'transparent', color: '#58a6ff', border: 'none',

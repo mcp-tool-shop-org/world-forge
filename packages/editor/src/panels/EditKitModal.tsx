@@ -7,6 +7,7 @@ import { AUTHORING_MODES } from '@world-forge/schema';
 import type { AuthoringMode } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { BUILTIN_REGION_PRESETS, BUILTIN_ENCOUNTER_PRESETS } from '../presets/index.js';
+import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
 
 interface Props {
   kit: StarterKit;
@@ -68,8 +69,8 @@ export function EditKitModal({ kit, onClose }: Props) {
   }, [name, description, icon, modes, tagsInput, regionRefs, encounterRefs, guideHints, kit.id, updateKit, onClose]);
 
   return (
-    <div style={overlayStyle}>
-      <div style={cardStyle}>
+    <div style={MODAL_OVERLAY}>
+      <div style={MODAL_CARD(480)}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0, color: '#c9d1d9', fontSize: 16 }}>Edit Kit</h2>
           <button onClick={onClose} style={closeBtnStyle}>&times;</button>
@@ -181,16 +182,6 @@ export function EditKitModal({ kit, onClose }: Props) {
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-};
-
-const cardStyle: React.CSSProperties = {
-  background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
-  padding: 24, width: 480, maxHeight: '85vh', overflow: 'auto',
-};
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: 12, color: '#8b949e', marginBottom: 4, marginTop: 12,

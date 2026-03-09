@@ -1,6 +1,6 @@
 // shared.tsx — reusable panel styles and components
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 
 // ── Shared Styles ──────────────────────────────────────────────
@@ -40,6 +40,83 @@ export const itemStyle: CSSProperties = {
 export const hintStyle: CSSProperties = {
   fontSize: 10, color: '#484f58', marginTop: 2, fontStyle: 'italic',
 };
+
+export const deleteBtnStyle: CSSProperties = {
+  width: '100%', background: '#da3633', color: '#fff', border: 'none',
+  borderRadius: 4, cursor: 'pointer', padding: '6px 12px', fontSize: 11, marginTop: 10,
+};
+
+export const ACTIVE_TAB_BG = '#58a6ff';
+
+export const MODAL_OVERLAY: CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+};
+
+export function MODAL_CARD(width: number): CSSProperties {
+  return {
+    background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
+    padding: 20, width, maxHeight: '85vh', overflow: 'auto',
+  };
+}
+
+// ── Panel Header ─────────────────────────────────────────────
+
+export function PanelHeader({ title, badge, actions }: {
+  title: string;
+  badge?: string | number;
+  actions?: ReactNode;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9' }}>{title}</span>
+      {badge != null && (
+        <span style={{
+          fontSize: 10, background: '#30363d', color: '#8b949e',
+          borderRadius: 10, padding: '1px 7px',
+        }}>{badge}</span>
+      )}
+      {actions && <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>{actions}</div>}
+    </div>
+  );
+}
+
+// ── Confirm Button ───────────────────────────────────────────
+
+export function ConfirmButton({ label, onConfirm, style: extraStyle }: {
+  label: string;
+  onConfirm: () => void;
+  style?: CSSProperties;
+}) {
+  const [armed, setArmed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = useCallback(() => {
+    if (armed) {
+      onConfirm();
+      setArmed(false);
+      if (timer.current) clearTimeout(timer.current);
+    } else {
+      setArmed(true);
+      timer.current = setTimeout(() => setArmed(false), 3000);
+    }
+  }, [armed, onConfirm]);
+
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  return (
+    <button
+      onClick={handleClick}
+      style={{
+        ...deleteBtnStyle,
+        ...(armed ? { background: '#0d1117', color: '#f85149', border: '1px solid #f85149' } : {}),
+        ...extraStyle,
+      }}
+    >
+      {armed ? 'Confirm?' : label}
+    </button>
+  );
+}
 
 // ── Empty State ────────────────────────────────────────────────
 

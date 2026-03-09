@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedConnection } from '../store/editor-store.js';
 import type { ConnectionKind, AuthoringMode } from '@world-forge/schema';
 import { getModeProfile } from '../mode-profiles.js';
+import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
 
 /** Display labels for all 12 connection kinds. */
 export const KIND_LABELS: Record<ConnectionKind, string> = {
@@ -58,7 +59,7 @@ export function ConnectionProperties() {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Connection Properties</div>
+      <PanelHeader title="Connection Properties" />
       <label style={labelStyle}>From
         <input style={inputStyle} value={fromZone?.name ?? conn.fromZoneId} readOnly />
       </label>
@@ -94,7 +95,7 @@ export function ConnectionProperties() {
           Swap Direction
         </button>
       )}
-      <button style={{ ...btnStyle, background: '#da3633' }} onClick={() => {
+      <button style={deleteBtnStyle} onClick={() => {
         removeConnection(conn.fromZoneId, conn.toZoneId);
         clearSelection();
       }}>
@@ -104,11 +105,8 @@ export function ConnectionProperties() {
   );
 }
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, marginBottom: 6 };
-const inputStyle: React.CSSProperties = {
-  display: 'block', width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '3px 6px', fontSize: 12, marginTop: 2,
-};
+const labelStyle: React.CSSProperties = { ...sharedLabelStyle };
+const inputStyle: React.CSSProperties = { ...sharedInputStyle, padding: '3px 6px', marginTop: 2 };
 const btnStyle: React.CSSProperties = {
   display: 'block', width: '100%', color: '#fff', border: 'none',
   borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12,

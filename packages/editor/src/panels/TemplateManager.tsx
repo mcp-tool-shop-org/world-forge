@@ -12,6 +12,7 @@ import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
+import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
 
 interface Props { onClose: () => void }
 
@@ -65,6 +66,9 @@ export function TemplateManager({ onClose }: Props) {
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
   useEffect(() => { loadKits(); }, [loadKits]);
 
+  // Samples mode filter
+  const [sampleModeFilter, setSampleModeFilter] = useState<AuthoringMode | undefined>(undefined);
+
   const selectGenre = (id: string) => {
     setGenre(id);
     const isTemplate = id !== 'blank';
@@ -73,6 +77,9 @@ export function TemplateManager({ onClose }: Props) {
     setIncludeProgressionTree(isTemplate);
     setIncludeDialogue(isTemplate);
     setIncludeSampleNPCs(isTemplate);
+    // Auto-default mode from genre template
+    const template = GENRE_TEMPLATES.find((t) => t.id === id);
+    if (template?.mode) setMode(template.mode);
   };
 
   const handleCreate = useCallback(() => {
@@ -154,8 +161,8 @@ export function TemplateManager({ onClose }: Props) {
   }, [confirmDeleteKit, deleteKitAction]);
 
   return (
-    <div style={overlayStyle}>
-      <div style={cardStyle}>
+    <div style={MODAL_OVERLAY}>
+      <div style={MODAL_CARD(520)}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <h3 style={{ margin: 0, fontSize: 16, color: '#c9d1d9' }}>New Project</h3>
@@ -371,11 +378,35 @@ export function TemplateManager({ onClose }: Props) {
         {/* Samples tab */}
         {tab === 'samples' && (
           <>
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
               Open a sample to explore, learn from, or build on. Each opens as an editable copy.
             </div>
+            {/* Mode filter pills */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+              <button
+                onClick={() => setSampleModeFilter(undefined)}
+                style={{
+                  fontSize: 10, padding: '3px 8px', cursor: 'pointer', borderRadius: 3,
+                  background: sampleModeFilter === undefined ? '#58a6ff' : '#21262d',
+                  color: sampleModeFilter === undefined ? '#fff' : '#8b949e',
+                  border: '1px solid #30363d',
+                }}
+              >All</button>
+              {AUTHORING_MODES.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setSampleModeFilter(sampleModeFilter === m ? undefined : m)}
+                  style={{
+                    fontSize: 10, padding: '3px 8px', cursor: 'pointer', borderRadius: 3,
+                    background: sampleModeFilter === m ? '#58a6ff' : '#21262d',
+                    color: sampleModeFilter === m ? '#fff' : '#8b949e',
+                    border: '1px solid #30363d',
+                  }}
+                >{MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}</button>
+              ))}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {SAMPLE_WORLDS.map((sample) => {
+              {SAMPLE_WORLDS.filter((s) => !sampleModeFilter || s.mode === sampleModeFilter).map((sample) => {
                 const c = countContent(sample.project);
                 return (
                   <div key={sample.id} style={sampleCardStyle}>
@@ -479,16 +510,6 @@ function CheckItem({ label, hint, checked, onChange }: { label: string; hint: st
     </label>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-};
-
-const cardStyle: React.CSSProperties = {
-  background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
-  padding: 20, width: 520, maxHeight: '85vh', overflow: 'auto',
-};
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4,

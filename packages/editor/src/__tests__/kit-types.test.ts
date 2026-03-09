@@ -56,9 +56,9 @@ describe('BUILTIN_KITS', () => {
     }
   });
 
-  it('all kit guideHints default to empty objects', () => {
+  it('all kit guideHints have at least 3 entries', () => {
     for (const kit of BUILTIN_KITS) {
-      expect(kit.guideHints).toEqual({});
+      expect(Object.keys(kit.guideHints).length).toBeGreaterThanOrEqual(3);
     }
   });
 

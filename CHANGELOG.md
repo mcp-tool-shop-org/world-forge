@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.0] - 2026-03-09
+
+### Added
+
+- **Shared component library** — `PanelHeader`, `ConfirmButton`, `deleteBtnStyle`, `MODAL_OVERLAY`, `MODAL_CARD`, `ACTIVE_TAB_BG` in shared.tsx standardize all panels and modals
+- **Kit guide hints** — all 7 built-in starter kits now have mode-specific guide step labels (zone/spawn/district/player/npc) for contextual first-run guidance
+- **Samples mode filter** — mode filter pills in the Samples tab let you browse sample worlds by authoring mode
+- **Genre→mode auto-default** — selecting a genre template in the wizard automatically sets the matching authoring mode
+- **Landing page refresh** — 9 feature cards (was 7), 16 surface table rows (was 12), updated handbook and README
+- ~16 new tests (1243 total across 55 test files)
+
+### Changed
+
+- **Button verb normalization** — all "New" buttons changed to "Add" for consistency
+- **Panel headers** — 6 property/utility panels now use shared `PanelHeader` component
+- **Modal sizing** — all 5 modals use `MODAL_CARD` with consistent 85vh maxHeight
+- **Active tab color** — BuildCatalog/ToolPalette corrected from `#1f6feb` to `#58a6ff`
+- **Delete confirmation** — district delete now uses two-click `ConfirmButton` pattern
+- **Empty states** — ObjectListPanel uses shared `EmptyState` component
+- **Advisory border** — ValidationPanel advisory border-left uses canonical `ACTIVE_TAB_BG`
+- **Delete buttons** — property panels (Zone, Connection, Encounter) use shared `deleteBtnStyle`
+
 ## [3.9.0] - 2026-03-09
 
 ### Added
