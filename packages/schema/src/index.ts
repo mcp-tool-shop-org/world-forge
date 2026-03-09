@@ -55,3 +55,11 @@ export { advisoryValidation } from './advisory.js';
 
 export type { DepStatus, DepDomain, DependencyEdge, DependencySummary, DependencyReport } from './dependencies.js';
 export { scanDependencies } from './dependencies.js';
+
+export type {
+  HealthStatus, ContentCounts, SystemCompleteness,
+  RegionSummary, EncounterSummary, ConnectionSummary,
+  ValidationSummary, AdvisorySummary, DependencyHealthSummary,
+  ReviewSnapshot,
+} from './review.js';
+export { classifyHealth, buildReviewSnapshot } from './review.js';

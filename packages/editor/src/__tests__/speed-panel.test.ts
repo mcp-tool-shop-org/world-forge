@@ -46,11 +46,11 @@ describe('SpeedPanel integration', () => {
     expect(pinned.length + contextual.length).toBe(6);
   });
 
-  it('empty context produces 6 global actions (2 core + 4 mode-suggested)', () => {
+  it('empty context produces 8 global actions (2 core + 4 mode-suggested + 2 review)', () => {
     const { pinned, contextual, modeSuggested } = filterActions(SPEED_PANEL_ACTIONS, null, '', []);
-    // No mode → modeSuggested empty, all 6 global actions in contextual
+    // No mode → modeSuggested empty, all 8 global actions in contextual
     expect(modeSuggested.length).toBe(0);
-    expect(pinned.length + contextual.length).toBe(6);
+    expect(pinned.length + contextual.length).toBe(8);
   });
 
   it('search query narrows results', () => {
@@ -184,8 +184,8 @@ describe('macros in filterActions', () => {
       'add-channel-conn', 'add-secret-conn', 'add-trail-conn', 'add-warp-conn',
       'connect-from', 'new-zone', 'place-entity',
     ]);
-    // The rest are safe
-    expect(safe.length).toBe(6);
+    // The rest are safe (6 core + 2 review)
+    expect(safe.length).toBe(8);
   });
 });
 

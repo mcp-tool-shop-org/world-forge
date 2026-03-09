@@ -628,3 +628,49 @@ Batch actions at the top: "Clear all broken refs" and "Remove all orphans" apply
 - **Import** — the import preview shows dependency health for both project-bundle and world-project formats; auto-switches to Deps tab after importing a project with issues
 - **Export** — the bundle export section warns about broken references and links to the Deps tab for repair
 - **Validation** — the Issues tab shows "Open Deps" links on reference errors for quick cross-navigation
+
+## §20 Review Mode
+
+The **Review** tab provides a read-only overview of your entire project in one place — health status, content counts, system completeness, region/encounter/connection summaries, dependency health, and validation state.
+
+### Health Classification
+
+`buildReviewSnapshot(project)` in `@world-forge/schema` runs validation, advisory checks, and dependency scanning to classify project health:
+
+| Status | Meaning |
+|--------|---------|
+| **Ready** | Valid project, no broken dependencies — ready to export |
+| **Healthy** | Valid project, some orphaned assets (cosmetic, non-blocking) |
+| **Degraded** | Fixable dependency issues (broken or mismatched refs) |
+| **Blocked** | Hard validation errors prevent export |
+
+The health banner at the top of the Review tab uses color coding: green for ready/healthy, amber for degraded, red for blocked.
+
+### Panel Sections
+
+1. **Health banner** — color-coded status with label
+2. **Project overview** — name, mode, genre, version, description
+3. **Content counts** — grid showing zones, entities, items, connections, encounters, etc.
+4. **System completeness** — green checks for present systems (spawn points, player template, build catalog, dialogues, progression trees), gray dashes for missing
+5. **Regions** — per-district cards with zone count, controlling faction, economy metrics bar, entity role breakdown (NPC/enemy/merchant/boss pills), encounter and item counts
+6. **Encounters** — type breakdown table, total count, average probability, boss encounter count (highlighted)
+7. **Connections** — kind breakdown table, conditional/one-way/bidirectional counts
+8. **Dependencies** — broken/mismatched/orphaned counts with link to the Deps tab
+9. **Validation** — error count by domain, first 5 errors with link to the Issues tab
+10. **Provenance** — active kit, import format, bundle source, fidelity percentage (only shown when import context exists)
+11. **Unassigned zones** — zones not belonging to any district (amber callout)
+
+### Summary Export
+
+Two export buttons at the top of the Review panel:
+
+- **Export Summary** — downloads a Markdown (`.md`) file with all review sections formatted as headings, tables, and checklists
+- **Export JSON** — downloads a structured JSON (`.json`) file with stable field names for programmatic consumption
+
+Both files include a generation timestamp and the project name in the filename (e.g., `chapel-threshold-review.md`).
+
+### Integration
+
+- **Search** — Ctrl+K indexes "Project Review" and "Export Summary"; selecting either navigates to the Review tab
+- **Speed Panel** — "Open Review" and "Export Summary" appear as global actions in the command palette
+- **Guide** — the checklist includes a "Review project" step near the end, linking to the Review tab

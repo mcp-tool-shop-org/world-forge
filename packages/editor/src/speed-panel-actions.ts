@@ -81,6 +81,10 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   { id: 'add-channel-conn', label: 'Add Channel',           icon: '~',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['ocean'] },
   { id: 'add-warp-conn',    label: 'Add Warp Route',        icon: '*',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['space'] },
   { id: 'add-trail-conn',   label: 'Add Trail',             icon: '^',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['wilderness'] },
+
+  // -- Review --
+  { id: 'open-review',      label: 'Open Review',           icon: '\uD83D\uDCCB', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
+  { id: 'export-summary',   label: 'Export Summary',        icon: '\uD83D\uDCC4', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
 ];
 
 /** Look up an action by id */

@@ -39,7 +39,8 @@ Open `http://localhost:5173` to launch the editor.
 2. **Connect zones** — select the Connection tool, click zone A then zone B
 3. **Create districts** — group zones into districts with faction and economy metadata
 4. **Place entities** — drop NPCs, enemies, merchants, spawn points onto zones
-5. **Export** — click Export to validate and download an ai-rpg-engine ContentPack
+5. **Review** — open the Review tab for a health summary, content overview, and shareable export
+6. **Export** — click Export to validate and download an ai-rpg-engine ContentPack
 
 ### CLI Export
 

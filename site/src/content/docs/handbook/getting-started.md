@@ -64,4 +64,7 @@ npm install @world-forge/schema @world-forge/export-ai-rpg
 import type { WorldProject } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 import { exportToEngine } from '@world-forge/export-ai-rpg';
+import { buildReviewSnapshot } from '@world-forge/schema';
 ```
+
+The `buildReviewSnapshot()` function generates a complete project health summary including validation, dependency health, content counts, and region/encounter/connection breakdowns — useful for CI checks or pre-export verification.

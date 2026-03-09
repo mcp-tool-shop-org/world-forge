@@ -12,7 +12,7 @@ import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { useKitStore } from '../kits/index.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
   id: string;
   label: string;
   detail: string;
@@ -20,13 +20,13 @@ export interface SearchResult {
 
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
   zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
-  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit', dependency: 'Dep',
+  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit', dependency: 'Dep', review: 'Rev',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
   district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
-  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e', dependency: '#d29922',
+  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e', dependency: '#d29922', review: '#bc8cff',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -94,6 +94,10 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
     if (edge.status === 'ok') continue;
     results.push({ type: 'dependency', id: `dep-${edge.sourceId}-${edge.fieldName}`, label: edge.message, detail: edge.domain });
   }
+
+  // Review actions
+  results.push({ type: 'review', id: 'open-review', label: 'Project Review', detail: 'Open review panel' });
+  results.push({ type: 'review', id: 'export-summary', label: 'Export Summary', detail: 'Export review summary' });
 
   return results;
 }
@@ -230,6 +234,8 @@ export function SearchOverlay() {
       // No specific navigation — kit is informational in search
     } else if (result.type === 'dependency') {
       setRightTab('deps');
+    } else if (result.type === 'review') {
+      setRightTab('review');
     }
   }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 

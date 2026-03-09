@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.9.0] - 2026-03-09
+
+### Added
+
+- **Review snapshot model** — `buildReviewSnapshot(project)` in `@world-forge/schema` aggregates validation, advisory, and dependency data into a single `ReviewSnapshot` with health classification (`ready` / `healthy` / `degraded` / `blocked`), content counts, system completeness, region summaries (per-district entity roles, metrics, encounters, items), encounter summary (by type, boss count, avg probability), connection summary (by kind, conditional/one-way/bidirectional counts), validation summary (errors by domain, first 5), advisory summary, and dependency health
+- **Review panel** — new "Review" right-side tab with color-coded health banner, project overview, content counts grid, system completeness checks, region cards with metrics bars and entity role pills, encounter/connection summaries, dependency and validation summaries with cross-tab navigation links, provenance section, and unassigned zones callout
+- **Summary export** — "Export Summary" (Markdown) and "Export JSON" buttons in the Review panel generate shareable project summaries as downloadable `.md` or `.json` files with all review sections, provenance, and timestamps
+- **Search integration** — Ctrl+K search indexes "Project Review" and "Export Summary" results; selecting either navigates to the Review tab
+- **Speed Panel integration** — `open-review` and `export-summary` global actions in the command palette
+- **Guide integration** — ChecklistPanel includes a "Review project" step linking to the Review tab
+- ~68 new tests (1227 total across 54 test files)
+
+### Changed
+
+- `RightTab` type extended with `'review'`
+- `SearchResult.type` union extended with `'review'`
+- `SPEED_PANEL_ACTIONS` extended with 2 macroSafe global actions (`open-review`, `export-summary`)
+
 ## [3.8.0] - 2026-03-09
 
 ### Added

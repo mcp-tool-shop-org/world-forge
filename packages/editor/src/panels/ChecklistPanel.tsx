@@ -67,6 +67,10 @@ export function ChecklistPanel() {
       id: 'export', label: 'Export your world', description: 'Generate a pack for AI RPG Engine.',
       isComplete: hasExported, tab: 'issues',
     },
+    {
+      id: 'review', label: 'Review project', description: 'Check the review summary before sharing.',
+      isComplete: false, tab: 'review',
+    },
   ];
   }, [project, hasExported, profile, activeKit]);
 
