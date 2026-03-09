@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
 import { useEditorStore, getSelectionCount, isSelected as isSel } from './store/editor-store.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
-import { findHitAt, findAllInRect } from './hit-testing.js';
+import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
 import type { Zone } from '@world-forge/schema';
 
 const ZOOM_STEP = 0.1;
@@ -14,14 +14,14 @@ let nextZoneId = 1;
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, removeSelected } = useProjectStore();
+  const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
     showConnections, showEntities, showLandmarks, showSpawns, showAmbient,
     selectZone, selectEntity, selectLandmark, selectSpawn,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
-    viewport, setViewport,
+    viewport, setViewport, setShowSearch,
   } = useEditorStore();
 
   const tileSize = project.map.tileSize;
@@ -39,6 +39,11 @@ export function Canvas() {
     startSX: number; startSY: number; startGX: number; startGY: number;
     active: boolean; lastDX: number; lastDY: number;
   } | null>(null);
+
+  // Click-cycle state for overlapping objects
+  const CYCLE_TOLERANCE = 4;
+  const lastClickPos = useRef<{ sx: number; sy: number } | null>(null);
+  const cycleIndex = useRef(0);
 
   // --- Coordinate conversion ---
   const screenToWorld = useCallback((screenX: number, screenY: number) => ({
@@ -343,6 +348,23 @@ export function Canvas() {
         return;
       }
 
+      // Ctrl/Cmd+K = open search
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
+        e.preventDefault();
+        setShowSearch(true);
+        return;
+      }
+
+      // Ctrl/Cmd+D = duplicate selected
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyD') {
+        e.preventDefault();
+        if (getSelectionCount(selection) > 0) {
+          const newSel = duplicateSelected(selection);
+          selectAll(newSel, false);
+        }
+        return;
+      }
+
       // Ctrl/Cmd+A = select all visible objects
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
         e.preventDefault();
@@ -386,7 +408,7 @@ export function Canvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [selection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected]);
+  }, [selection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, setShowSearch, duplicateSelected]);
 
   // --- Mouse coordinate helpers ---
   const getScreenXY = (e: React.MouseEvent) => {
@@ -437,7 +459,23 @@ export function Canvas() {
     const { gx, gy } = screenToGrid(sx, sy);
 
     if (activeTool === 'select') {
-      const hit = findHitAt(sx, sy, viewport, project, tileSize, visibility);
+      // Click-cycle: find all objects at this point, cycle on repeated clicks
+      const allHits = findAllHitsAt(sx, sy, viewport, project, tileSize, visibility);
+      let hit = allHits[0] ?? null;
+
+      if (allHits.length > 1 && lastClickPos.current) {
+        const dx = sx - lastClickPos.current.sx;
+        const dy = sy - lastClickPos.current.sy;
+        if (Math.sqrt(dx * dx + dy * dy) < CYCLE_TOLERANCE) {
+          cycleIndex.current = (cycleIndex.current + 1) % allHits.length;
+          hit = allHits[cycleIndex.current];
+        } else {
+          cycleIndex.current = 0;
+        }
+      } else {
+        cycleIndex.current = 0;
+      }
+      lastClickPos.current = { sx, sy };
 
       if (hit) {
         if (e.shiftKey) {

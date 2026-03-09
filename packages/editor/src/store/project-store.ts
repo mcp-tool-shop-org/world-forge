@@ -9,6 +9,7 @@ import type {
   DialogueDefinition, DialogueNode, DialogueChoice,
   AssetEntry, AssetPack,
 } from '@world-forge/schema';
+import { duplicateSelected as doDuplicate } from '../duplicate.js';
 
 export function createEmptyProject(): WorldProject {
   return {
@@ -89,6 +90,7 @@ interface ProjectState {
   // Batch helpers (multi-select operations)
   moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, dx: number, dy: number) => void;
   removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => void;
+  duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] };
 
   // Player template helpers
   setPlayerTemplate: (t: PlayerTemplate) => void;
@@ -280,6 +282,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
     };
   }),
+  duplicateSelected: (sel) => {
+    const { project, undoStack } = get();
+    const { project: newProject, newSelection } = doDuplicate(project, sel);
+    if (newProject === project) return { zones: [], entities: [], landmarks: [], spawns: [] };
+    const newStack = [...undoStack.slice(-9), project];
+    set({ project: newProject, dirty: true, undoStack: newStack, redoStack: [] });
+    return newSelection;
+  },
 
   // Player template helpers
   setPlayerTemplate: (t) => get().updateProject((p) => ({ ...p, playerTemplate: t })),

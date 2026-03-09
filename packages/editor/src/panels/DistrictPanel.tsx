@@ -1,6 +1,7 @@
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { frameBounds } from '../viewport.js';
+import { getCanvasSize } from '../frame-helpers.js';
 
 export function DistrictPanel() {
   const { project, addDistrict, updateDistrict, updateZone } = useProjectStore();
@@ -30,9 +31,9 @@ export function DistrictPanel() {
     // Frame them
     const items = district.zoneIds.map((zid) => project.zones.find((z) => z.id === zid)).filter(Boolean) as Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number }>;
     if (items.length === 0) return;
-    const canvas = document.querySelector('canvas');
-    if (!canvas) return;
-    const vp = frameBounds(items, tileSize, canvas.offsetWidth, canvas.offsetHeight);
+    const size = getCanvasSize();
+    if (!size) return;
+    const vp = frameBounds(items, tileSize, size.cw, size.ch);
     if (vp) setViewport(vp);
   };
 

@@ -21,11 +21,13 @@ import { SaveTemplateModal } from './panels/SaveTemplateModal.js';
 import { ImportSummaryPanel } from './panels/ImportSummaryPanel.js';
 import { DiffPanel } from './panels/DiffPanel.js';
 import { AssetPanel } from './panels/AssetPanel.js';
+import { ObjectListPanel } from './panels/ObjectListPanel.js';
+import { SearchOverlay } from './panels/SearchOverlay.js';
 import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selection, rightTab, setRightTab, viewport, checklistDismissed } = useEditorStore();
+  const { activeTool, selection, rightTab, setRightTab, viewport, checklistDismissed, showSearch } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
@@ -45,6 +47,7 @@ export function App() {
     { id: 'builds', label: 'Builds' },
     { id: 'trees', label: 'Trees' },
     { id: 'dialogue', label: 'Dialogue' },
+    { id: 'objects', label: 'Objects' },
     { id: 'assets', label: 'Assets', badge: project.assets.length > 0 ? `${project.assets.length}` : undefined },
     { id: 'issues', label: 'Issues' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
@@ -170,6 +173,7 @@ export function App() {
             {rightTab === 'builds' && <BuildCatalogPanel />}
             {rightTab === 'trees' && <ProgressionPanel />}
             {rightTab === 'dialogue' && <DialoguePanel />}
+            {rightTab === 'objects' && <ObjectListPanel />}
             {rightTab === 'assets' && <AssetPanel />}
             {rightTab === 'issues' && <ValidationPanel />}
             {rightTab === 'guide' && <ChecklistPanel />}
@@ -207,6 +211,7 @@ export function App() {
       {showTemplateManager && <TemplateManager onClose={() => setShowTemplateManager(false)} />}
       {showImport && <ImportModal onClose={() => setShowImport(false)} />}
       {showSaveTemplate && <SaveTemplateModal onClose={() => setShowSaveTemplate(false)} />}
+      {showSearch && <SearchOverlay />}
     </div>
   );
 }

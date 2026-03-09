@@ -16,7 +16,7 @@ export interface ScreenRect {
   y2: number;
 }
 
-interface VisibilityFlags {
+export interface VisibilityFlags {
   showEntities: boolean;
   showLandmarks: boolean;
   showSpawns: boolean;
@@ -200,4 +200,74 @@ export function findAllInRect(
   }
 
   return { zones, entities, landmarks, spawns };
+}
+
+// ── findAllHitsAt ─────────────────────────────────────────────
+
+/**
+ * Find ALL objects at a screen-space point, in priority order.
+ * Used for click-cycle disambiguation on dense maps.
+ */
+export function findAllHitsAt(
+  screenX: number,
+  screenY: number,
+  viewport: ViewportState,
+  project: WorldProject,
+  tileSize: number,
+  visibility: VisibilityFlags,
+): HitResult[] {
+  const hits: HitResult[] = [];
+
+  // Spawns
+  if (visibility.showSpawns) {
+    for (const sp of project.spawnPoints) {
+      const wx = sp.gridX * tileSize;
+      const wy = sp.gridY * tileSize;
+      const { screenX: sx, screenY: sy } = worldToScreen(wx, wy, viewport);
+      if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
+        hits.push({ type: 'spawn', id: sp.id });
+      }
+    }
+  }
+
+  // Landmarks
+  if (visibility.showLandmarks) {
+    for (const lm of project.landmarks) {
+      const zone = project.zones.find((z) => z.id === lm.zoneId);
+      if (!zone) continue;
+      const wx = lm.gridX * tileSize;
+      const wy = lm.gridY * tileSize;
+      const { screenX: sx, screenY: sy } = worldToScreen(wx, wy, viewport);
+      if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
+        hits.push({ type: 'landmark', id: lm.id });
+      }
+    }
+  }
+
+  // Entities
+  if (visibility.showEntities) {
+    for (const ep of project.entityPlacements) {
+      const zone = project.zones.find((z) => z.id === ep.zoneId);
+      if (!zone) continue;
+      const wx = (ep.gridX ?? zone.gridX + 2) * tileSize;
+      const wy = (ep.gridY ?? zone.gridY + 2) * tileSize;
+      const { screenX: sx, screenY: sy } = worldToScreen(wx, wy, viewport);
+      if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
+        hits.push({ type: 'entity', id: ep.entityId });
+      }
+    }
+  }
+
+  // Zones
+  const { worldX, worldY } = screenToWorld(screenX, screenY, viewport);
+  const gx = Math.floor(worldX / tileSize);
+  const gy = Math.floor(worldY / tileSize);
+  for (const zone of project.zones) {
+    if (gx >= zone.gridX && gx < zone.gridX + zone.gridWidth &&
+        gy >= zone.gridY && gy < zone.gridY + zone.gridHeight) {
+      hits.push({ type: 'zone', id: zone.id });
+    }
+  }
+
+  return hits;
 }

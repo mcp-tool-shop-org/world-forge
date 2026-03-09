@@ -7,7 +7,7 @@ import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
-export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff';
+export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff' | 'objects';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
 /** Transient focus target set by validation click. Panels read and clear it. */
@@ -104,6 +104,8 @@ interface EditorState {
   setImportFidelity: (report: FidelityReport, format: ImportFormat) => void;
   clearImportFidelity: () => void;
   setImportSnapshot: (project: WorldProject) => void;
+  showSearch: boolean;
+  setShowSearch: (show: boolean) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -185,4 +187,6 @@ export const useEditorStore = create<EditorState>((set) => ({
   setImportFidelity: (report, format) => set({ importFidelity: report, importSourceFormat: format }),
   clearImportFidelity: () => set({ importFidelity: null, importSourceFormat: null, importSnapshot: null }),
   setImportSnapshot: (project) => set({ importSnapshot: project }),
+  showSearch: false,
+  setShowSearch: (show) => set({ showSearch: show }),
 }));

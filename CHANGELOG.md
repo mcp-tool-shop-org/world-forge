@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-03-09
+
+### Added
+
+- **Search / command-jump** — Ctrl+K opens a search overlay to find any zone, entity, landmark, spawn, district, dialogue, or progression tree by name/ID; arrow-key navigable, Enter selects + frames on canvas, Escape dismisses
+- **Object list panel** — new "Objects" tab with hierarchical tree view (districts → zones → entities/landmarks/spawns), expand/collapse, click to select + frame, bidirectional selection highlighting, inline filter
+- **Duplicate selected** — Ctrl+D duplicates all selected objects with 2-tile offset, `(copy)` suffix, unique IDs, remapped connections/neighbors (only between co-selected zones), spawns always `isDefault: false`, district membership preserved; single `updateProject()` call for atomic undo
+- **Click-cycle disambiguation** — repeated clicks at the same screen position cycle through overlapping objects (spawn → landmark → entity → zone priority), 4px tolerance for "same spot" detection
+- **Frame helpers** — extracted `computeFrameViewport()` and `getCanvasSize()` into `frame-helpers.ts` as shared utility for SearchOverlay, ObjectListPanel, and DistrictPanel
+- 33 new tests: 15 search (index + filter), 10 duplicate, 8 overlap-cycle (291 total)
+
+### Changed
+
+- Canvas.tsx gains `findAllHitsAt()` for click-cycle, Ctrl+K for search, Ctrl+D for duplicate
+- Editor store adds `showSearch` boolean, `'objects'` to RightTab union
+- Project store gains `duplicateSelected()` action via pure `duplicate.ts` function
+- DistrictPanel refactored to use shared `getCanvasSize()` helper
+- App.tsx renders SearchOverlay conditionally, routes Objects tab to ObjectListPanel
+
 ## [2.1.0] - 2026-03-09
 
 ### Added

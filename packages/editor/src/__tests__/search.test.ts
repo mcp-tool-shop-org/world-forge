@@ -1,0 +1,100 @@
+import { describe, it, expect } from 'vitest';
+import { buildSearchIndex, filterResults } from '../panels/SearchOverlay.js';
+import { SAMPLE_WORLDS } from '../templates/samples.js';
+
+// Chapel Threshold — the richest sample world
+const chapel = SAMPLE_WORLDS[2].project;
+
+describe('buildSearchIndex', () => {
+  const index = buildSearchIndex(chapel);
+
+  it('includes all searchable object types', () => {
+    const types = new Set(index.map((r) => r.type));
+    expect(types.has('zone')).toBe(true);
+    expect(types.has('entity')).toBe(true);
+    expect(types.has('district')).toBe(true);
+    expect(types.has('spawn')).toBe(true);
+    expect(types.has('landmark')).toBe(true);
+  });
+
+  it('indexes all zones', () => {
+    const zones = index.filter((r) => r.type === 'zone');
+    expect(zones.length).toBe(chapel.zones.length);
+  });
+
+  it('indexes all entities', () => {
+    const entities = index.filter((r) => r.type === 'entity');
+    expect(entities.length).toBe(chapel.entityPlacements.length);
+  });
+
+  it('indexes all districts', () => {
+    const districts = index.filter((r) => r.type === 'district');
+    expect(districts.length).toBe(chapel.districts.length);
+  });
+
+  it('indexes all spawns', () => {
+    const spawns = index.filter((r) => r.type === 'spawn');
+    expect(spawns.length).toBe(chapel.spawnPoints.length);
+  });
+
+  it('indexes all landmarks', () => {
+    const landmarks = index.filter((r) => r.type === 'landmark');
+    expect(landmarks.length).toBe(chapel.landmarks.length);
+  });
+
+  it('indexes dialogues', () => {
+    const dialogues = index.filter((r) => r.type === 'dialogue');
+    expect(dialogues.length).toBe(chapel.dialogues.length);
+  });
+
+  it('indexes progression trees', () => {
+    const trees = index.filter((r) => r.type === 'tree');
+    expect(trees.length).toBe(chapel.progressionTrees.length);
+  });
+});
+
+describe('filterResults', () => {
+  const index = buildSearchIndex(chapel);
+
+  it('returns empty for empty query', () => {
+    expect(filterResults(index, '')).toEqual([]);
+    expect(filterResults(index, '   ')).toEqual([]);
+  });
+
+  it('matches by label (case-insensitive)', () => {
+    const results = filterResults(index, 'chapel');
+    expect(results.length).toBeGreaterThan(0);
+    // Should find zones with "Chapel" in name
+    expect(results.some((r) => r.type === 'zone' && r.label.toLowerCase().includes('chapel'))).toBe(true);
+  });
+
+  it('matches by id', () => {
+    const results = filterResults(index, 'chapel-entrance');
+    expect(results.some((r) => r.id === 'chapel-entrance')).toBe(true);
+  });
+
+  it('matches by detail context', () => {
+    // Entities have "in <zone name>" in their detail
+    const results = filterResults(index, 'npc');
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('is case-insensitive', () => {
+    const lower = filterResults(index, 'chapel');
+    const upper = filterResults(index, 'CHAPEL');
+    const mixed = filterResults(index, 'ChApEl');
+    expect(lower.length).toBe(upper.length);
+    expect(lower.length).toBe(mixed.length);
+  });
+
+  it('caps results at 20', () => {
+    // Use a very broad query that matches many items
+    const results = filterResults(index, 'chapel');
+    expect(results.length).toBeLessThanOrEqual(20);
+  });
+
+  it('returns no results for unmatched query', () => {
+    const results = filterResults(index, 'zzz_nonexistent_zzz');
+    expect(results).toEqual([]);
+  });
+});
