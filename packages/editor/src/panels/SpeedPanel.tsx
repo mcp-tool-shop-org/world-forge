@@ -29,8 +29,8 @@ export function SpeedPanel() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(
-    () => filterActions(SPEED_PANEL_ACTIONS, speedPanelContext, query, pinnedIds, recentIds, groups, macros),
-    [speedPanelContext, query, pinnedIds, recentIds, groups, macros],
+    () => filterActions(SPEED_PANEL_ACTIONS, speedPanelContext, query, pinnedIds, recentIds, groups, macros, project.mode),
+    [speedPanelContext, query, pinnedIds, recentIds, groups, macros, project.mode],
   );
 
   // Build flat navigable list: pinned actions + group actions (uncollapsed) + recents + contextual
@@ -44,6 +44,7 @@ export function SpeedPanel() {
     }
     for (const a of filtered.recents) items.push({ type: 'action', action: a });
     for (const m of filtered.macros) items.push({ type: 'macro', macro: m });
+    for (const a of filtered.modeSuggested) items.push({ type: 'action', action: a });
     for (const a of filtered.contextual) items.push({ type: 'action', action: a });
     return items;
   }, [filtered, collapsedGroups]);
@@ -367,6 +368,19 @@ export function SpeedPanel() {
               >+ New Macro</button>
             </div>
           )}
+
+          {/* === MODE SUGGESTIONS === */}
+          {filtered.modeSuggested.length > 0 && <div style={SECTION_STYLE}>MODE</div>}
+          {filtered.modeSuggested.map((a) => {
+            const idx = navIdx++;
+            return (
+              <ActionRow
+                key={'ms-' + a.id} action={a} active={idx === activeIdx} isPinned={false}
+                onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)}
+                editMode={false}
+              />
+            );
+          })}
 
           {/* === CONTEXTUAL === */}
           {filtered.contextual.length > 0 && (

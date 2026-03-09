@@ -59,9 +59,11 @@ The `mode` field on `WorldProject` is optional — projects without it default t
 
 - **Grid defaults** — `createEmptyProject(mode)` applies mode-specific width, height, and tile size
 - **Connection vocabulary** — each mode suggests relevant connection kinds (e.g., ocean uses channel/route, space uses docking/warp)
+- **Object creation defaults** — connections default to the mode's primary kind (dungeon→door, ocean→channel), entities default to mode-appropriate role (dungeon→enemy, district→npc), encounters use mode-relevant types, and zones use mode-specific name patterns (Chamber, Waters, Sector, etc.)
 - **Preset filtering** — presets with `modes` arrays are hidden when incompatible with the current mode
 - **Guide text** — the checklist adapts step labels per mode (e.g., "Add a chamber" vs "Add a sea zone")
 - **Advisory validation** — mode-specific suggestions (e.g., "Consider adding secret connections" for dungeons)
+- **Speed Panel suggestions** — mode-specific quick actions appear in a dedicated MODE section (e.g., "Add Secret Connection" for dungeons)
 
 | Mode | Grid | Tile | Key Connections |
 |------|------|------|-----------------|

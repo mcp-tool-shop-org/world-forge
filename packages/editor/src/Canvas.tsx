@@ -10,6 +10,7 @@ import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } f
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone } from '@world-forge/schema';
 import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
+import { getModeProfile, getDefaultConnectionKind } from './mode-profiles.js';
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
@@ -713,7 +714,7 @@ export function Canvas() {
       if (zone) {
         if (connectionStart) {
           if (connectionStart !== zone.id) {
-            addConnection({ fromZoneId: connectionStart, toZoneId: zone.id, bidirectional: true });
+            addConnection({ fromZoneId: connectionStart, toZoneId: zone.id, bidirectional: true, kind: getDefaultConnectionKind(project.mode) });
           }
           setConnectionStart(null);
         } else {
@@ -727,7 +728,7 @@ export function Canvas() {
           entityId: `entity-${Date.now()}`,
           zoneId: zone.id,
           gridX: gx, gridY: gy,
-          role: 'npc',
+          role: getModeProfile(project.mode).defaultEntityRole as 'npc' | 'enemy' | 'merchant' | 'boss' | 'companion',
         });
       }
     } else if (activeTool === 'spawn') {
@@ -743,7 +744,7 @@ export function Canvas() {
         addEncounter({
           id: `enc-${Date.now()}`,
           zoneId: zone.id,
-          encounterType: 'patrol',
+          encounterType: getModeProfile(project.mode).encounterTypes[0],
           enemyIds: [],
           probability: 0.5,
           cooldownTurns: 3,
@@ -836,9 +837,10 @@ export function Canvas() {
       const h = Math.abs(gy - zonePaintStart.current.y) + 1;
       if (w >= 2 && h >= 2) {
         const id = `zone-${nextZoneId++}`;
+        const zonePattern = getModeProfile(project.mode).zoneNamePattern;
         addZone({
           id,
-          name: `Zone ${nextZoneId - 1}`,
+          name: `${zonePattern} ${nextZoneId - 1}`,
           tags: [], description: '',
           gridX: sx, gridY: sy, gridWidth: w, gridHeight: h,
           neighbors: [], exits: [],

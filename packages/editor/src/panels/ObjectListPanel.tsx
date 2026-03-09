@@ -6,6 +6,12 @@ import { useEditorStore, isSelected as isSel } from '../store/editor-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
 import { connectionLabel } from '../connection-lines.js';
+import { getModeProfile } from '../mode-profiles.js';
+
+/** Build the empty-state message for the object list. Pure, exported for testing. */
+export function emptyStateMessage(mode: import('@world-forge/schema').AuthoringMode | undefined): string {
+  return `No objects yet. Use the Zone tool to add your first ${getModeProfile(mode).zoneNamePattern.toLowerCase()}.`;
+}
 
 interface DistrictGroup {
   districtId: string | null; // null = "Unassigned"
@@ -375,7 +381,7 @@ export function ObjectListPanel() {
 
         {project.zones.length === 0 && (
           <div style={{ padding: '16px 8px', color: '#8b949e', textAlign: 'center' }}>
-            No objects yet. Paint zones on the canvas to get started.
+            No objects yet. Use the Zone tool to add your first {getModeProfile(project.mode).zoneNamePattern.toLowerCase()}.
           </div>
         )}
       </div>

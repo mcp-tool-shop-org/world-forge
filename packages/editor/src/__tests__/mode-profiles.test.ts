@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MODE_PROFILES, getModeProfile } from '../mode-profiles.js';
+import { MODE_PROFILES, getModeProfile, getDefaultConnectionKind } from '../mode-profiles.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
 
 /** Valid checklist step IDs from ChecklistPanel. */
@@ -90,6 +90,62 @@ describe('ModeProfiles', () => {
       for (const key of overrideKeys) {
         expect(VALID_STEP_IDS.has(key)).toBe(true);
       }
+    }
+  });
+
+  // -- v3.3 mode-aware defaults --
+
+  it('each mode has at least 3 encounter types', () => {
+    for (const mode of AUTHORING_MODES) {
+      expect(MODE_PROFILES[mode].encounterTypes.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('each mode has non-empty defaultEntityRole', () => {
+    for (const mode of AUTHORING_MODES) {
+      expect(MODE_PROFILES[mode].defaultEntityRole.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('each mode has non-empty zoneNamePattern', () => {
+    for (const mode of AUTHORING_MODES) {
+      expect(MODE_PROFILES[mode].zoneNamePattern.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('getDefaultConnectionKind(undefined) returns door (dungeon default)', () => {
+    expect(getDefaultConnectionKind(undefined)).toBe('door');
+  });
+
+  it('getDefaultConnectionKind("ocean") returns channel', () => {
+    expect(getDefaultConnectionKind('ocean')).toBe('channel');
+  });
+
+  it('getDefaultConnectionKind("space") returns docking', () => {
+    expect(getDefaultConnectionKind('space')).toBe('docking');
+  });
+
+  it('getDefaultConnectionKind("wilderness") returns trail', () => {
+    expect(getDefaultConnectionKind('wilderness')).toBe('trail');
+  });
+
+  it('all defaultEntityRole values are valid entity roles', () => {
+    const VALID_ROLES = new Set(['npc', 'enemy', 'merchant', 'boss', 'companion']);
+    for (const mode of AUTHORING_MODES) {
+      expect(VALID_ROLES.has(MODE_PROFILES[mode].defaultEntityRole)).toBe(true);
+    }
+  });
+
+  it('no duplicate encounter types per profile', () => {
+    for (const mode of AUTHORING_MODES) {
+      const types = MODE_PROFILES[mode].encounterTypes;
+      expect(new Set(types).size).toBe(types.length);
+    }
+  });
+
+  it('getDefaultConnectionKind matches connectionKinds[0] for each mode', () => {
+    for (const mode of AUTHORING_MODES) {
+      expect(getDefaultConnectionKind(mode)).toBe(MODE_PROFILES[mode].connectionKinds[0]);
     }
   });
 });

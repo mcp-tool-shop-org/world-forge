@@ -172,6 +172,12 @@ export const CONNECTION_KIND_STYLES: Record<string, KindStyle> = {
   portal:   { color: 'rgba(163,113,247,0.7)', hoverColor: 'rgba(163,113,247,1)',    dash: null },
   secret:   { color: 'rgba(139,148,158,0.3)', hoverColor: 'rgba(139,148,158,0.6)', dash: [3, 5] },
   hazard:   { color: 'rgba(248,81,73,0.7)',    hoverColor: 'rgba(248,81,73,1)',      dash: null },
+  // v3.3: ocean/space/wilderness kinds
+  channel:  { color: 'rgba(56,154,224,0.7)',   hoverColor: 'rgba(56,154,224,1)',    dash: null },
+  route:    { color: 'rgba(56,154,224,0.5)',   hoverColor: 'rgba(56,154,224,0.8)',  dash: [6, 3] },
+  docking:  { color: 'rgba(163,113,247,0.7)',  hoverColor: 'rgba(163,113,247,1)',   dash: [3, 2] },
+  warp:     { color: 'rgba(163,113,247,0.5)',  hoverColor: 'rgba(163,113,247,0.8)', dash: [2, 4, 2, 4] },
+  trail:    { color: 'rgba(87,166,74,0.6)',    hoverColor: 'rgba(87,166,74,0.9)',   dash: [4, 3] },
 };
 
 /** Get the visual style for a connection kind, defaulting to passage. */

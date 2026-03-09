@@ -16,6 +16,12 @@ export interface ModeProfile {
   suggestedZoneTags: string[];
   /** Override labels/descriptions for guide checklist steps. */
   guideOverrides: Partial<Record<string, { label: string; description: string }>>;
+  /** Suggested encounter types for this mode (first = default). */
+  encounterTypes: string[];
+  /** Default entity role when placing entities on the canvas. */
+  defaultEntityRole: string;
+  /** Name pattern for new zones (e.g. "Chamber" → "Chamber 1"). */
+  zoneNamePattern: string;
 }
 
 export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
@@ -31,6 +37,9 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       district: { label: 'Create a dungeon level', description: 'Group rooms into a named dungeon section.' },
       zone: { label: 'Add a chamber', description: 'Use the Zone tool to create a room or corridor.' },
     },
+    encounterTypes: ['patrol', 'ambush', 'boss', 'trap'],
+    defaultEntityRole: 'enemy',
+    zoneNamePattern: 'Chamber',
   },
   district: {
     mode: 'district',
@@ -44,6 +53,9 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       district: { label: 'Create a ward', description: 'Group zones into a named city ward.' },
       zone: { label: 'Add a city block', description: 'Use the Zone tool to create a named area.' },
     },
+    encounterTypes: ['patrol', 'pickpocket', 'brawl', 'riot'],
+    defaultEntityRole: 'npc',
+    zoneNamePattern: 'Block',
   },
   world: {
     mode: 'world',
@@ -57,6 +69,9 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       district: { label: 'Create a region', description: 'Group zones into a named territory.' },
       zone: { label: 'Add a territory', description: 'Use the Zone tool to create a region or landmark area.' },
     },
+    encounterTypes: ['patrol', 'siege', 'invasion', 'caravan-raid'],
+    defaultEntityRole: 'npc',
+    zoneNamePattern: 'Territory',
   },
   ocean: {
     mode: 'ocean',
@@ -71,6 +86,9 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       zone: { label: 'Add a sea zone', description: 'Use the Zone tool to create a named stretch of ocean.' },
       spawn: { label: 'Place a port of origin', description: 'Set where players begin their voyage.' },
     },
+    encounterTypes: ['pirate', 'kraken', 'storm', 'boarding'],
+    defaultEntityRole: 'enemy',
+    zoneNamePattern: 'Waters',
   },
   space: {
     mode: 'space',
@@ -85,6 +103,9 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       zone: { label: 'Add a sector', description: 'Use the Zone tool to define a region of space.' },
       spawn: { label: 'Place an entry point', description: 'Set where players arrive in this sector.' },
     },
+    encounterTypes: ['pirate', 'asteroid', 'boarding', 'anomaly'],
+    defaultEntityRole: 'npc',
+    zoneNamePattern: 'Sector',
   },
   interior: {
     mode: 'interior',
@@ -98,6 +119,9 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       district: { label: 'Create a floor', description: 'Group rooms into a named floor or wing.' },
       zone: { label: 'Add a room', description: 'Use the Zone tool to create a room or hallway.' },
     },
+    encounterTypes: ['patrol', 'ambush', 'haunt', 'trap'],
+    defaultEntityRole: 'npc',
+    zoneNamePattern: 'Room',
   },
   wilderness: {
     mode: 'wilderness',
@@ -111,10 +135,18 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       district: { label: 'Create a biome', description: 'Group zones into a named wilderness area.' },
       zone: { label: 'Add terrain', description: 'Use the Zone tool to define a stretch of wilderness.' },
     },
+    encounterTypes: ['patrol', 'ambush', 'beast', 'hunt'],
+    defaultEntityRole: 'enemy',
+    zoneNamePattern: 'Area',
   },
 };
 
 /** Get the profile for a mode, defaulting to dungeon for undefined/legacy projects. */
 export function getModeProfile(mode: AuthoringMode | undefined): ModeProfile {
   return MODE_PROFILES[mode ?? DEFAULT_MODE];
+}
+
+/** Get the default connection kind for a mode (first in the profile's connectionKinds list). */
+export function getDefaultConnectionKind(mode: AuthoringMode | undefined): ConnectionKind {
+  return getModeProfile(mode).connectionKinds[0];
 }

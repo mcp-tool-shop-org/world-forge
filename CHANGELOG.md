@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.3.0] - 2026-03-09
+
+### Added
+
+- **Mode-aware object defaults** — creating objects now uses mode-appropriate defaults: dungeon connections default to `door`, ocean to `channel`, space to `docking`, wilderness to `trail`; dungeon entities default to `enemy` role, district/world to `npc`; encounters default to mode-relevant types (dungeon→`patrol`, ocean→`pirate`, space→`pirate`); zones use mode-specific name patterns (`Chamber 1`, `Waters 1`, `Sector 1`, etc.)
+- **ModeProfile extended** — 3 new fields: `encounterTypes` (mode-relevant encounter type suggestions), `defaultEntityRole` (role applied when placing entities), `zoneNamePattern` (name prefix for new zones)
+- **`getDefaultConnectionKind(mode)`** — pure helper returning `connectionKinds[0]` from the mode profile
+- **Connection kind visual styles** — 5 missing entries added to `CONNECTION_KIND_STYLES` for channel (ocean blue), route (ocean blue dashed), docking (purple dashed), warp (purple double-dash), trail (green dashed)
+- **Mode-ordered connection dropdown** — ConnectionProperties now shows all 12 connection kinds with mode-relevant kinds first and remaining kinds in an "Other" section
+- **Encounter type suggestions** — EncounterProperties gains a datalist populated from `getModeProfile(project.mode).encounterTypes`
+- **Suggested zone tags** — ZoneProperties shows clickable tag chips from the mode profile's `suggestedZoneTags`
+- **Mode-aware empty states** — ObjectListPanel shows mode-specific empty state messaging (e.g. "add your first chamber" in dungeon, "add your first sector" in space)
+- **Speed Panel mode suggestions** — new MODE section between MACROS and CONTEXTUAL showing mode-relevant quick actions: Add Secret Connection (dungeon/interior), Add Channel (ocean), Add Warp Route (space), Add Trail (wilderness)
+- **`modeSuggested` field** on `SpeedPanelAction` — actions with matching `modeSuggested` modes appear in the MODE section when that mode is active
+- **`getOrderedKinds(mode)`** — pure helper for generating mode-ordered connection kind lists
+- **`emptyStateMessage(mode)`** — pure helper for mode-aware empty state text
+- 56 new tests (684 total across 33 test files)
+
+### Fixed
+
+- **ConnectionProperties missing 5 kinds** — dropdown now shows all 12 connection kinds (was missing channel, route, docking, warp, trail)
+- **Connection kind styles missing** — 5 v3.2 connection kinds (channel, route, docking, warp, trail) now have distinct visual styles on the canvas instead of falling back to passage gray
+
+### Changed
+
+- `ModeProfile` interface extended with `encounterTypes`, `defaultEntityRole`, `zoneNamePattern`
+- `filterActions()` accepts optional 8th `mode` parameter and returns 6-section `FilteredActions` (added `modeSuggested`)
+- Speed Panel section layout: PINNED → GROUPS → RECENT → MACROS → **MODE** → CONTEXTUAL (was 5 sections, now 6)
+- Canvas zone creation uses `zoneNamePattern` from mode profile instead of hardcoded "Zone"
+- Canvas connection creation uses `getDefaultConnectionKind()` instead of implicit passage
+- Canvas entity creation uses mode profile's `defaultEntityRole` instead of hardcoded 'npc'
+- Canvas encounter creation uses mode profile's `encounterTypes[0]` instead of hardcoded 'patrol'
+
 ## [3.2.0] - 2026-03-09
 
 ### Added

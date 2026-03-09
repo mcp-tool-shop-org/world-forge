@@ -21,7 +21,20 @@ When creating a new project (via the Template Manager), choose an **authoring mo
 | Interior | Cabins, single buildings | 20×15 | 24 |
 | Wilderness | Trails, camps, forests | 60×50 | 48 |
 
-Mode is orthogonal to genre — a cyberpunk dungeon and a fantasy ocean are both valid. Mode governs grid defaults, connection vocabulary, preset filtering, guide wording, and advisory validation suggestions. The current mode is visible in the **top bar** (badge next to project name) and **status bar**.
+Mode is orthogonal to genre — a cyberpunk dungeon and a fantasy ocean are both valid. Mode governs grid defaults, connection vocabulary, preset filtering, guide wording, advisory validation suggestions, and **smart defaults** for object creation. The current mode is visible in the **top bar** (badge next to project name) and **status bar**.
+
+### Mode-Aware Defaults
+
+When creating objects, the editor uses mode-appropriate defaults so new content matches the world's scale immediately:
+
+| Default | Dungeon | Ocean | Space | Wilderness |
+|---------|---------|-------|-------|------------|
+| Connection kind | door | channel | docking | trail |
+| Entity role | enemy | enemy | npc | enemy |
+| Encounter type | patrol | pirate | pirate | patrol |
+| Zone name pattern | Chamber N | Waters N | Sector N | Area N |
+
+The Connection Properties dropdown reorders all 12 connection kinds by mode relevance — the mode's primary kinds appear first, with remaining kinds in an "Other" section. Encounter Properties shows a datalist of mode-suggested encounter types. Zone Properties displays clickable tag chips from the mode profile's suggested tags.
 
 ## 1. Paint Zones
 
@@ -394,7 +407,11 @@ If a macro step fails (context mismatch), execution aborts and a red status bann
 
 ### Section Order
 
-The Speed Panel displays sections in this order: **PINNED → GROUPS → RECENT → MACROS → CONTEXTUAL**. Empty sections are fully hidden.
+The Speed Panel displays sections in this order: **PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL**. Empty sections are fully hidden.
+
+### Mode Suggestions
+
+When an authoring mode is active, a **MODE** section appears between Macros and Contextual with mode-relevant quick actions — for example, "Add Secret Connection" in dungeon mode, "Add Channel" in ocean mode, "Add Warp Route" in space mode, or "Add Trail" in wilderness mode. These actions pre-set the connection tool with the appropriate kind.
 
 ### Search & Keyboard
 

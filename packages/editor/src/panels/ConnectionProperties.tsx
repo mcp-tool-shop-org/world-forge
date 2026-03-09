@@ -1,16 +1,31 @@
+import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedConnection } from '../store/editor-store.js';
-import type { ConnectionKind } from '@world-forge/schema';
+import type { ConnectionKind, AuthoringMode } from '@world-forge/schema';
+import { getModeProfile } from '../mode-profiles.js';
 
-const CONNECTION_KINDS: { value: ConnectionKind; label: string }[] = [
-  { value: 'passage', label: 'Passage' },
-  { value: 'door', label: 'Door' },
-  { value: 'stairs', label: 'Stairs' },
-  { value: 'road', label: 'Road' },
-  { value: 'portal', label: 'Portal' },
-  { value: 'secret', label: 'Secret' },
-  { value: 'hazard', label: 'Hazard' },
-];
+/** Display labels for all 12 connection kinds. */
+export const KIND_LABELS: Record<ConnectionKind, string> = {
+  passage: 'Passage', door: 'Door', stairs: 'Stairs', road: 'Road',
+  portal: 'Portal', secret: 'Secret', hazard: 'Hazard',
+  channel: 'Channel', route: 'Route', docking: 'Docking',
+  warp: 'Warp', trail: 'Trail',
+};
+
+/** All connection kinds in canonical order. */
+const ALL_KINDS: ConnectionKind[] = Object.keys(KIND_LABELS) as ConnectionKind[];
+
+/**
+ * Build a mode-ordered connection kind list.
+ * Mode-relevant kinds come first, then remaining kinds in canonical order.
+ * Pure function — exported for testing.
+ */
+export function getOrderedKinds(mode: AuthoringMode | undefined): { preferred: ConnectionKind[]; other: ConnectionKind[] } {
+  const profile = getModeProfile(mode);
+  const preferredSet = new Set(profile.connectionKinds);
+  const other = ALL_KINDS.filter((k) => !preferredSet.has(k));
+  return { preferred: profile.connectionKinds, other };
+}
 
 export function ConnectionProperties() {
   const { project, updateConnection, removeConnection } = useProjectStore();
@@ -20,6 +35,7 @@ export function ConnectionProperties() {
         (c) => c.fromZoneId === selectedConnection.from && c.toZoneId === selectedConnection.to,
       )
     : null;
+  const { preferred, other } = useMemo(() => getOrderedKinds(project.mode), [project.mode]);
   if (!conn) return null;
 
   const fromZone = project.zones.find((z) => z.id === conn.fromZoneId);
@@ -59,7 +75,9 @@ export function ConnectionProperties() {
             const v = e.target.value as ConnectionKind;
             updateConnection(conn.fromZoneId, conn.toZoneId, { kind: v === 'passage' ? undefined : v });
           }}>
-          {CONNECTION_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+          {preferred.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}
+          {other.length > 0 && <option disabled>── Other ──</option>}
+          {other.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}
         </select>
       </label>
       <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -66,7 +66,7 @@ PixiJS-based 2D renderer with six sub-renderers:
 
 ## @world-forge/editor
 
-React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). **Authoring modes** (dungeon/district/world/ocean/space/interior/wilderness) adapt grid defaults, connection vocabulary, preset filtering, guide text, and advisory validation to the world's scale. Tools: select, zone-paint, connection, entity-place, encounter-place, landmark, spawn. Workspace tabs: Map, Objects, Player, Builds, Trees, Dialogue, Presets, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
+React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). **Authoring modes** (dungeon/district/world/ocean/space/interior/wilderness) adapt grid defaults, connection vocabulary, object creation defaults (connection kind, entity role, encounter type, zone naming), preset filtering, guide text, and advisory validation to the world's scale. Tools: select, zone-paint, connection, entity-place, encounter-place, landmark, spawn. Workspace tabs: Map, Objects, Player, Builds, Trees, Dialogue, Presets, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
 
 Key editor modules:
 
@@ -80,13 +80,13 @@ Key editor modules:
 - **layout.ts** — pure functions for 6-way alignment and horizontal/vertical distribution across any combination of object types
 - **snap.ts** — pure snap computation for object-to-object snapping during drag and resize (edge/center matching, guide line generation)
 - **resize-handles.ts** — pure math for zone resize handles (8 handles per zone, axis-aware resizing, min-size clamping, screen-space hit detection)
-- **connection-lines.ts** — pure math for connection routing, edge anchoring (ray-rect intersection), line-segment hit-testing, kind-based visual styles, and display labels
+- **connection-lines.ts** — pure math for connection routing, edge anchoring (ray-rect intersection), line-segment hit-testing, kind-based visual styles (all 12 connection kinds with distinct colors and dash patterns), and display labels
 - **hotkeys.ts** — centralized keyboard shortcut registry with 13 bindings, `matchHotkey()` and `dispatchHotkey()` with input-field safety guard
 - **PresetBrowser** — preset library UI with Region/Encounter sub-tabs, merge/overwrite mode, save-from-current, built-in protection
-- **mode-profiles.ts** — `ModeProfile` interface and `MODE_PROFILES` record with grid defaults, connection kinds, zone tag suggestions, and guide overrides per authoring mode; `getModeProfile(mode)` with dungeon fallback
+- **mode-profiles.ts** — `ModeProfile` interface and `MODE_PROFILES` record with grid defaults, connection kinds, zone tag suggestions, guide overrides, encounter types, default entity role, and zone name pattern per authoring mode; `getModeProfile(mode)` with dungeon fallback; `getDefaultConnectionKind(mode)` returns the mode's primary connection kind
 - **presets/** — preset type definitions (`RegionPreset`, `EncounterPreset` with `modes?: AuthoringMode[]`), built-in presets (9 region, 3 encounter), `filterPresetsByMode()`, Zustand + localStorage preset store
 - **SpeedPanel** — double-right-click floating command palette with context-aware actions, pinnable favorites (reorder), recent actions, custom groups, lightweight macros, edit mode for CRUD, search filtering
-- **speed-panel-actions.ts** — action registry with `SpeedPanelAction` interface (including `macroSafe`), group/macro types, and `filterActions()` returning 5-section `FilteredActions`
+- **speed-panel-actions.ts** — action registry with `SpeedPanelAction` interface (including `macroSafe` and `modeSuggested`), group/macro types, and `filterActions()` returning 6-section `FilteredActions` (pinned, groups, recents, macros, modeSuggested, contextual)
 - **speed-panel-execute.ts** — extracted `executeAction()` and `executeMacro()` pure functions with `ExecuteStores` interface for testability
 - **speed-panel-store.ts** — Zustand + localStorage store for pins (with reorder), recents, groups CRUD, macros CRUD, step management
 

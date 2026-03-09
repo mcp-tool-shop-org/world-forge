@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
+import { getModeProfile } from '../mode-profiles.js';
 
 export function EncounterProperties() {
   const { project, updateEncounter, removeEncounter } = useProjectStore();
@@ -7,6 +9,7 @@ export function EncounterProperties() {
 
   const encId = selection.encounters.length === 1 ? selection.encounters[0] : null;
   const enc = encId ? project.encounterAnchors.find((e) => e.id === encId) : null;
+  const encounterSuggestions = useMemo(() => getModeProfile(project.mode).encounterTypes, [project.mode]);
   if (!enc) return null;
 
   const zone = project.zones.find((z) => z.id === enc.zoneId);
@@ -21,8 +24,11 @@ export function EncounterProperties() {
         <input style={inputStyle} value={zone?.name ?? enc.zoneId} readOnly />
       </label>
       <label style={labelStyle}>Encounter Type
-        <input style={inputStyle} value={enc.encounterType}
+        <input style={inputStyle} value={enc.encounterType} list="encounter-type-suggestions"
           onChange={(e) => updateEncounter(enc.id, { encounterType: e.target.value })} />
+        <datalist id="encounter-type-suggestions">
+          {encounterSuggestions.map((t) => <option key={t} value={t} />)}
+        </datalist>
       </label>
       <label style={labelStyle}>Enemy IDs (comma-separated)
         <input style={inputStyle} value={enc.enemyIds.join(', ')}

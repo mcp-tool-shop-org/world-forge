@@ -214,6 +214,37 @@ describe('getKindStyle', () => {
     const style = getKindStyle('teleporter');
     expect(style).toEqual(CONNECTION_KIND_STYLES.passage);
   });
+
+  // v3.3: ocean/space/wilderness kind styles
+  it('returns distinct style for channel (not passage fallback)', () => {
+    const style = getKindStyle('channel');
+    expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
+    expect(style.color).toContain('56,154,224');
+  });
+
+  it('returns dashed style for route', () => {
+    const style = getKindStyle('route');
+    expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
+    expect(style.dash).not.toBeNull();
+  });
+
+  it('returns distinct style for docking', () => {
+    const style = getKindStyle('docking');
+    expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
+    expect(style.dash).not.toBeNull();
+  });
+
+  it('returns dashed style for warp', () => {
+    const style = getKindStyle('warp');
+    expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
+    expect(style.dash).not.toBeNull();
+  });
+
+  it('returns distinct style for trail', () => {
+    const style = getKindStyle('trail');
+    expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
+    expect(style.color).toContain('87,166,74');
+  });
 });
 
 describe('connectionMidpoint', () => {

@@ -1,13 +1,17 @@
+import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { ScenePreview } from './ScenePreview.js';
+import { getModeProfile } from '../mode-profiles.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();
   const { selection, setSelectedZone } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const zone = project.zones.find((z) => z.id === selectedZoneId);
+  const suggestedTags = useMemo(() => getModeProfile(project.mode).suggestedZoneTags, [project.mode]);
   if (!zone) return null;
+  const unusedTags = suggestedTags.filter((t) => !zone.tags.includes(t));
 
   return (
     <div>
@@ -21,6 +25,16 @@ export function ZoneProperties() {
         <input style={inputStyle} value={zone.tags.join(', ')}
           onChange={(e) => updateZone(zone.id, { tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
       </label>
+      {unusedTags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+          {unusedTags.map((tag) => (
+            <button key={tag} style={chipStyle}
+              onClick={() => updateZone(zone.id, { tags: [...zone.tags, tag] })}>
+              + {tag}
+            </button>
+          ))}
+        </div>
+      )}
       <label style={labelStyle}>Description
         <textarea style={{ ...inputStyle, height: 60, resize: 'vertical' }} value={zone.description}
           onChange={(e) => updateZone(zone.id, { description: e.target.value })} />
@@ -79,4 +93,8 @@ const inputStyle: React.CSSProperties = {
 const btnStyle: React.CSSProperties = {
   display: 'block', width: '100%', color: '#fff', border: 'none',
   borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
+};
+const chipStyle: React.CSSProperties = {
+  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+  borderRadius: 12, padding: '1px 8px', fontSize: 11, cursor: 'pointer',
 };

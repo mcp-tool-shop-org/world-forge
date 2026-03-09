@@ -46,9 +46,11 @@ describe('SpeedPanel integration', () => {
     expect(pinned.length + contextual.length).toBe(6);
   });
 
-  it('empty context produces 2 global actions', () => {
-    const { pinned, contextual } = filterActions(SPEED_PANEL_ACTIONS, null, '', []);
-    expect(pinned.length + contextual.length).toBe(2);
+  it('empty context produces 6 global actions (2 core + 4 mode-suggested)', () => {
+    const { pinned, contextual, modeSuggested } = filterActions(SPEED_PANEL_ACTIONS, null, '', []);
+    // No mode → modeSuggested empty, all 6 global actions in contextual
+    expect(modeSuggested.length).toBe(0);
+    expect(pinned.length + contextual.length).toBe(6);
   });
 
   it('search query narrows results', () => {
@@ -177,15 +179,18 @@ describe('macros in filterActions', () => {
   it('macroSafe filter prevents non-safe actions in step dropdown', () => {
     const safe = SPEED_PANEL_ACTIONS.filter((a) => a.macroSafe);
     const unsafe = SPEED_PANEL_ACTIONS.filter((a) => !a.macroSafe);
-    // Verify: new-zone, place-entity, connect-from are not macroSafe
-    expect(unsafe.map((a) => a.id).sort()).toEqual(['connect-from', 'new-zone', 'place-entity']);
+    // Core non-safe actions: new-zone, place-entity, connect-from + 4 mode-suggested
+    expect(unsafe.map((a) => a.id).sort()).toEqual([
+      'add-channel-conn', 'add-secret-conn', 'add-trail-conn', 'add-warp-conn',
+      'connect-from', 'new-zone', 'place-entity',
+    ]);
     // The rest are safe
     expect(safe.length).toBe(6);
   });
 });
 
 describe('full section order', () => {
-  it('filterActions returns all five sections', () => {
+  it('filterActions returns all six sections', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const groups = [{ id: 'g1', name: 'Ops', actionIds: ['assign-district'] }];
     const macros = [{ id: 'm1', name: 'Macro', steps: [] }];
@@ -194,6 +199,7 @@ describe('full section order', () => {
     expect(result.recents.length).toBeGreaterThan(0);
     expect(result.groups.length).toBeGreaterThan(0);
     expect(result.macros.length).toBeGreaterThan(0);
+    // modeSuggested only populated when mode is provided (covered in mode-aware tests)
     expect(result.contextual.length).toBeGreaterThan(0);
   });
 
@@ -202,5 +208,59 @@ describe('full section order', () => {
     const result = filterActions(SPEED_PANEL_ACTIONS, hit, '', ['edit-props'], ['edit-props', 'delete']);
     expect(result.recents.find((a) => a.id === 'edit-props')).toBeUndefined();
     expect(result.recents.find((a) => a.id === 'delete')).toBeDefined();
+  });
+});
+
+describe('mode-aware speed panel', () => {
+  it('dungeon mode → modeSuggested includes add-secret-conn', () => {
+    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'dungeon');
+    expect(result.modeSuggested.map((a) => a.id)).toContain('add-secret-conn');
+  });
+
+  it('ocean mode → modeSuggested includes add-channel-conn', () => {
+    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'ocean');
+    expect(result.modeSuggested.map((a) => a.id)).toContain('add-channel-conn');
+  });
+
+  it('space mode → modeSuggested includes add-warp-conn', () => {
+    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'space');
+    expect(result.modeSuggested.map((a) => a.id)).toContain('add-warp-conn');
+  });
+
+  it('no mode → modeSuggested empty', () => {
+    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', []);
+    expect(result.modeSuggested.length).toBe(0);
+  });
+
+  it('mode-suggested actions excluded from contextual', () => {
+    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'dungeon');
+    const contextIds = result.contextual.map((a) => a.id);
+    const modeIds = result.modeSuggested.map((a) => a.id);
+    for (const id of modeIds) {
+      expect(contextIds).not.toContain(id);
+    }
+  });
+
+  it('mode-suggested actions are not macroSafe', () => {
+    const modeActions = SPEED_PANEL_ACTIONS.filter((a) => a.modeSuggested);
+    for (const a of modeActions) {
+      expect(a.macroSafe).toBe(false);
+    }
+  });
+
+  it('existing filterActions tests: all non-mode actions still work', () => {
+    const hit: HitResult = { type: 'zone', id: 'z1' };
+    const result = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
+    // Zone context: edit, delete, duplicate, assign, place-entity, connect-from = 6
+    expect(result.pinned.length + result.contextual.length).toBe(6);
+  });
+
+  it('section order: PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL', () => {
+    // Verify via filtered result structure
+    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', ['fit-content'], ['new-zone'], [], [], 'dungeon');
+    expect(result.pinned.length).toBeGreaterThan(0);
+    expect(result.recents.length).toBeGreaterThan(0);
+    expect(result.modeSuggested.length).toBeGreaterThan(0);
+    expect(result.contextual.length).toBeGreaterThan(0);
   });
 });
