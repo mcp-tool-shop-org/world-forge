@@ -349,9 +349,33 @@ The Speed Panel is context-aware. Actions change based on what's under the curso
 
 Click the star icon next to any action to pin it. Pinned actions always appear at the top of the Speed Panel in a dedicated section, regardless of context. Pins persist across sessions in localStorage.
 
+Click the **pencil button** (✎) to enter edit mode. In edit mode, pinned actions show up/down arrows to reorder them. The order persists in localStorage.
+
+### Custom Groups
+
+In edit mode, click **+ New Group** to create a named action group. Groups appear as collapsible sections between Pinned and Recent. Actions can belong to multiple groups — they're copied, not moved. Groups filter by context: if none of a group's actions match the current context, the group is hidden.
+
+Rename groups inline, delete them with ✕, or remove individual actions from a group in edit mode.
+
+### Recent Actions
+
+The **RECENT** section shows your last 5 unique actions, most-recent-first. Recent actions exclude anything already pinned. The list updates automatically as you use the Speed Panel.
+
+### Lightweight Macros
+
+In edit mode, click **+ New Macro** to create a multi-step macro. Macros execute their steps sequentially — each step is a separate undo entry, so you can undo individual steps.
+
+Only **macroSafe** actions can be macro steps (actions that don't require interactive picking). The step editor dropdown filters to safe actions only: Edit Properties, Delete, Duplicate, Fit to Content, Assign District, and Swap Direction.
+
+If a macro step fails (context mismatch), execution aborts and a red status banner shows which step failed and why.
+
+### Section Order
+
+The Speed Panel displays sections in this order: **PINNED → GROUPS → RECENT → MACROS → CONTEXTUAL**. Empty sections are fully hidden.
+
 ### Search & Keyboard
 
-Type in the search input to filter actions by name. Use **Arrow keys** to navigate, **Enter** to execute, and **Esc** to dismiss.
+Type in the search input to filter actions and macros by name. Use **Arrow keys** to navigate across all sections (section headers are skipped), **Enter** to execute the selected action or macro, and **Esc** to dismiss.
 
 ## 12. Objects Tab
 

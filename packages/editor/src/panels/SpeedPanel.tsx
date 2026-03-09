@@ -1,30 +1,52 @@
 // SpeedPanel.tsx — floating command palette triggered by double-right-click
+// Sections: PINNED → GROUPS → RECENTS → MACROS → CONTEXTUAL
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { useSpeedPanelPins } from '../store/speed-panel-store.js';
-import { SPEED_PANEL_ACTIONS, filterActions } from '../speed-panel-actions.js';
-import { frameBounds } from '../viewport.js';
+import { SPEED_PANEL_ACTIONS, filterActions, type SpeedPanelAction, type GroupedActions, type SpeedPanelMacro } from '../speed-panel-actions.js';
+import { executeAction, executeMacro, type ExecuteStores } from '../speed-panel-execute.js';
+
+const SECTION_STYLE: React.CSSProperties = { padding: '4px 8px', fontSize: 10, color: '#8b949e', letterSpacing: 0.5 };
 
 export function SpeedPanel() {
-  const { speedPanelPosition, speedPanelContext, closeSpeedPanel,
+  const { speedPanelPosition, speedPanelContext, closeSpeedPanel, speedPanelEditMode, toggleSpeedPanelEditMode,
     selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     setRightTab, setTool, setConnectionStart, setViewport, clearSelection } = useEditorStore();
   const { project, removeSelected, duplicateSelected, removeConnection, addConnection } = useProjectStore();
-  const { pinnedIds, togglePin } = useSpeedPanelPins();
+  const { pinnedIds, togglePin, reorderPin, addRecent, recentIds,
+    groups, addGroup, updateGroup, removeGroup, addActionToGroup, removeActionFromGroup,
+    macros, addMacro, updateMacro, removeMacro, addStepToMacro, removeStepFromMacro, reorderMacroStep,
+  } = useSpeedPanelPins();
 
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [expandedMacro, setExpandedMacro] = useState<string | null>(null);
+  const [macroStatus, setMacroStatus] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
-  const { pinned, contextual } = useMemo(
-    () => filterActions(SPEED_PANEL_ACTIONS, speedPanelContext, query, pinnedSet),
-    [speedPanelContext, query, pinnedSet],
+  const filtered = useMemo(
+    () => filterActions(SPEED_PANEL_ACTIONS, speedPanelContext, query, pinnedIds, recentIds, groups, macros),
+    [speedPanelContext, query, pinnedIds, recentIds, groups, macros],
   );
-  const allActions = useMemo(() => [...pinned, ...contextual], [pinned, contextual]);
+
+  // Build flat navigable list: pinned actions + group actions (uncollapsed) + recents + contextual
+  const allNavigable = useMemo(() => {
+    const items: Array<{ type: 'action'; action: SpeedPanelAction } | { type: 'macro'; macro: SpeedPanelMacro }> = [];
+    for (const a of filtered.pinned) items.push({ type: 'action', action: a });
+    for (const g of filtered.groups) {
+      if (!collapsedGroups.has(g.group.id)) {
+        for (const a of g.actions) items.push({ type: 'action', action: a });
+      }
+    }
+    for (const a of filtered.recents) items.push({ type: 'action', action: a });
+    for (const m of filtered.macros) items.push({ type: 'macro', macro: m });
+    for (const a of filtered.contextual) items.push({ type: 'action', action: a });
+    return items;
+  }, [filtered, collapsedGroups]);
 
   // Auto-focus
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -39,7 +61,7 @@ export function SpeedPanel() {
     const parent = panelRef.current.parentElement;
     if (!parent) return;
     const pRect = parent.getBoundingClientRect();
-    const pw = 240, ph = panelRef.current.offsetHeight || 320;
+    const pw = 240, ph = panelRef.current.offsetHeight || 400;
     let left = speedPanelPosition.x;
     let top = speedPanelPosition.y;
     if (left + pw > pRect.width) left = pRect.width - pw - 4;
@@ -49,101 +71,74 @@ export function SpeedPanel() {
     setOffset({ left, top });
   }, [speedPanelPosition]);
 
-  // Select hit from context
-  const selectFromContext = useCallback(() => {
-    const ctx = speedPanelContext;
-    if (!ctx) return;
-    if (ctx.type === 'connection') {
-      const [from, to] = ctx.id.split('::');
-      selectConnection(from, to);
-    } else if (ctx.type === 'zone') selectZone(ctx.id, false);
-    else if (ctx.type === 'entity') selectEntity(ctx.id, false);
-    else if (ctx.type === 'landmark') selectLandmark(ctx.id, false);
-    else if (ctx.type === 'spawn') selectSpawn(ctx.id, false);
-    else if (ctx.type === 'encounter') selectEncounter(ctx.id, false);
-  }, [speedPanelContext, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection]);
+  // Build the stores bag for executeAction
+  const stores: ExecuteStores = useMemo(() => ({
+    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
+    clearSelection, setRightTab, setTool, setConnectionStart, setViewport,
+    removeSelected, duplicateSelected, removeConnection, addConnection, project,
+  }), [selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
+    clearSelection, setRightTab, setTool, setConnectionStart, setViewport,
+    removeSelected, duplicateSelected, removeConnection, addConnection, project]);
 
   const execute = useCallback((actionId: string) => {
-    const ctx = speedPanelContext;
     closeSpeedPanel();
-
-    switch (actionId) {
-      case 'edit-props':
-        if (ctx) { selectFromContext(); setRightTab('map'); }
-        break;
-      case 'delete':
-        if (ctx) {
-          if (ctx.type === 'connection') {
-            const [from, to] = ctx.id.split('::');
-            removeConnection(from, to);
-          } else {
-            selectFromContext();
-            // Build a minimal selection for removeSelected
-            const sel = { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
-            const key = ctx.type === 'zone' ? 'zones' : ctx.type === 'entity' ? 'entities' : ctx.type === 'landmark' ? 'landmarks' : ctx.type === 'spawn' ? 'spawns' : 'encounters';
-            sel[key] = [ctx.id];
-            removeSelected(sel);
-          }
-          clearSelection();
-        }
-        break;
-      case 'duplicate':
-        if (ctx) {
-          selectFromContext();
-          const sel = { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
-          const key = ctx.type === 'zone' ? 'zones' : ctx.type === 'entity' ? 'entities' : ctx.type === 'landmark' ? 'landmarks' : 'spawns';
-          sel[key] = [ctx.id];
-          duplicateSelected(sel);
-        }
-        break;
-      case 'new-zone':
-        setTool('zone-paint');
-        break;
-      case 'fit-content': {
-        const tileSize = project.map.tileSize;
-        const items = project.zones.map((z) => ({ gridX: z.gridX, gridY: z.gridY, gridWidth: z.gridWidth, gridHeight: z.gridHeight }));
-        const vp = frameBounds(items, tileSize, 800, 600);
-        if (vp) setViewport(vp);
-        break;
-      }
-      case 'assign-district':
-        if (ctx?.type === 'zone') { selectZone(ctx.id, false); setRightTab('map'); }
-        break;
-      case 'place-entity':
-        if (ctx?.type === 'zone') setTool('entity-place');
-        break;
-      case 'connect-from':
-        if (ctx?.type === 'zone') { setTool('connection'); setConnectionStart(ctx.id); }
-        break;
-      case 'swap-direction':
-        if (ctx?.type === 'connection') {
-          const [from, to] = ctx.id.split('::');
-          const conn = project.connections.find((c) => c.fromZoneId === from && c.toZoneId === to);
-          if (conn) {
-            removeConnection(from, to);
-            addConnection({ ...conn, fromZoneId: to, toZoneId: from });
-          }
-        }
-        break;
+    const result = executeAction(actionId, speedPanelContext, stores);
+    if (result.executed) {
+      addRecent(actionId);
     }
-  }, [speedPanelContext, closeSpeedPanel, selectFromContext, setRightTab, setTool, setConnectionStart, setViewport, clearSelection, removeSelected, duplicateSelected, removeConnection, addConnection, project, selectZone]);
+  }, [speedPanelContext, closeSpeedPanel, stores, addRecent]);
+
+  const runMacro = useCallback((macro: SpeedPanelMacro) => {
+    const result = executeMacro(macro, speedPanelContext, stores);
+    if (result.abortedAt !== undefined) {
+      setMacroStatus(`Macro "${macro.name}" aborted at step ${result.abortedAt! + 1}: ${result.reason}`);
+    } else {
+      addRecent('macro:' + macro.id);
+      closeSpeedPanel();
+    }
+  }, [speedPanelContext, stores, addRecent, closeSpeedPanel]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.stopPropagation(); closeSpeedPanel(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, allActions.length - 1)); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, allNavigable.length - 1)); return; }
     if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); return; }
-    if (e.key === 'Enter' && allActions[activeIdx]) { e.preventDefault(); execute(allActions[activeIdx].id); return; }
+    if (e.key === 'Enter' && allNavigable[activeIdx]) {
+      e.preventDefault();
+      const item = allNavigable[activeIdx];
+      if (item.type === 'action') execute(item.action.id);
+      else runMacro(item.macro);
+      return;
+    }
+  };
+
+  const toggleGroupCollapse = (id: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleNewGroup = () => {
+    const id = 'g-' + Date.now();
+    addGroup({ id, name: 'New Group', actionIds: [] });
+  };
+
+  const handleNewMacro = () => {
+    const id = 'm-' + Date.now();
+    addMacro({ id, name: 'New Macro', steps: [] });
+    setExpandedMacro(id);
   };
 
   if (!speedPanelPosition) return null;
 
+  // Track running navigation index
+  let navIdx = 0;
+
   return (
     <>
       {/* Backdrop — click to dismiss */}
-      <div
-        onClick={closeSpeedPanel}
-        style={{ position: 'absolute', inset: 0, zIndex: 90 }}
-      />
+      <div onClick={closeSpeedPanel} style={{ position: 'absolute', inset: 0, zIndex: 90 }} />
       {/* Panel */}
       <div
         ref={panelRef}
@@ -153,7 +148,7 @@ export function SpeedPanel() {
           left: offset.left || speedPanelPosition.x,
           top: offset.top || speedPanelPosition.y,
           width: 240,
-          maxHeight: 320,
+          maxHeight: 400,
           background: '#161b22',
           border: '1px solid #30363d',
           borderRadius: 6,
@@ -164,36 +159,233 @@ export function SpeedPanel() {
           overflow: 'hidden',
         }}
       >
-        {/* Search input */}
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Quick action..."
-          style={{
-            background: '#0d1117', color: '#c9d1d9', border: 'none',
-            borderBottom: '1px solid #30363d',
-            padding: '8px 10px', fontSize: 12, outline: 'none',
-          }}
-        />
-        {/* Actions */}
+        {/* Header: search + edit toggle */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Quick action..."
+            style={{
+              background: '#0d1117', color: '#c9d1d9', border: 'none',
+              padding: '8px 10px', fontSize: 12, outline: 'none', flex: 1, minWidth: 0,
+            }}
+          />
+          <button
+            onClick={toggleSpeedPanelEditMode}
+            title={speedPanelEditMode ? 'Exit edit mode' : 'Edit favorites & groups'}
+            style={{
+              background: speedPanelEditMode ? '#30363d' : 'transparent',
+              border: 'none', color: speedPanelEditMode ? '#f0f6fc' : '#8b949e',
+              cursor: 'pointer', padding: '0 8px', fontSize: 12,
+            }}
+          >
+            {'\u270E'}
+          </button>
+        </div>
+
+        {/* Macro status banner */}
+        {macroStatus && (
+          <div style={{ padding: '4px 8px', fontSize: 10, color: '#f85149', background: '#1c1107', borderBottom: '1px solid #30363d' }}>
+            {macroStatus}
+            <span onClick={() => setMacroStatus(null)} style={{ cursor: 'pointer', marginLeft: 6, color: '#8b949e' }}>{'\u2715'}</span>
+          </div>
+        )}
+
+        {/* Scrollable body */}
         <div style={{ overflow: 'auto', flex: 1 }}>
-          {pinned.length > 0 && (
-            <div style={{ padding: '4px 8px', fontSize: 10, color: '#8b949e', letterSpacing: 0.5 }}>PINNED</div>
+
+          {/* === PINNED === */}
+          {filtered.pinned.length > 0 && <div style={SECTION_STYLE}>PINNED</div>}
+          {filtered.pinned.map((a, i) => {
+            const idx = navIdx++;
+            return (
+              <ActionRow
+                key={'p-' + a.id} action={a} active={idx === activeIdx} isPinned
+                onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)}
+                editMode={speedPanelEditMode}
+                onMoveUp={i > 0 ? () => reorderPin(i, i - 1) : undefined}
+                onMoveDown={i < filtered.pinned.length - 1 ? () => reorderPin(i, i + 1) : undefined}
+              />
+            );
+          })}
+
+          {/* === GROUPS === */}
+          {filtered.groups.map((g) => {
+            const collapsed = collapsedGroups.has(g.group.id);
+            return (
+              <div key={'grp-' + g.group.id}>
+                <div style={{ ...SECTION_STYLE, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => toggleGroupCollapse(g.group.id)}>
+                  <span style={{ marginRight: 4, fontSize: 8 }}>{collapsed ? '\u25B6' : '\u25BC'}</span>
+                  {speedPanelEditMode ? (
+                    <input
+                      value={g.group.name}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => updateGroup(g.group.id, { name: e.target.value })}
+                      style={{ background: 'transparent', border: '1px solid #30363d', color: '#c9d1d9', fontSize: 10, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
+                    />
+                  ) : (
+                    <span style={{ flex: 1 }}>{g.group.name}</span>
+                  )}
+                  {speedPanelEditMode && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); removeGroup(g.group.id); }}
+                      style={{ cursor: 'pointer', color: '#f85149', fontSize: 10, marginLeft: 4 }}
+                      title="Delete group"
+                    >{'\u2715'}</span>
+                  )}
+                </div>
+                {!collapsed && g.actions.map((a) => {
+                  const idx = navIdx++;
+                  return (
+                    <ActionRow
+                      key={'ga-' + g.group.id + '-' + a.id} action={a} active={idx === activeIdx} isPinned={false}
+                      onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)}
+                      editMode={false}
+                      groupEditMode={speedPanelEditMode}
+                      onRemoveFromGroup={() => removeActionFromGroup(g.group.id, a.id)}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+          {speedPanelEditMode && (
+            <div style={{ padding: '2px 8px' }}>
+              <button
+                onClick={handleNewGroup}
+                style={{ background: 'transparent', border: '1px dashed #30363d', color: '#8b949e', cursor: 'pointer', fontSize: 10, padding: '2px 6px', borderRadius: 3, width: '100%' }}
+              >+ New Group</button>
+            </div>
           )}
-          {pinned.map((a, i) => (
-            <ActionRow key={a.id} action={a} active={i === activeIdx} isPinned onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)} />
-          ))}
-          {contextual.length > 0 && (
-            <div style={{ padding: '4px 8px', fontSize: 10, color: '#8b949e', letterSpacing: 0.5 }}>
+
+          {/* === RECENTS === */}
+          {filtered.recents.length > 0 && <div style={SECTION_STYLE}>RECENT</div>}
+          {filtered.recents.map((a) => {
+            const idx = navIdx++;
+            return (
+              <ActionRow
+                key={'r-' + a.id} action={a} active={idx === activeIdx} isPinned={false}
+                onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)}
+                editMode={false}
+              />
+            );
+          })}
+
+          {/* === MACROS === */}
+          {filtered.macros.length > 0 && <div style={SECTION_STYLE}>MACROS</div>}
+          {filtered.macros.map((m) => {
+            const idx = navIdx++;
+            const isExpanded = expandedMacro === m.id && speedPanelEditMode;
+            return (
+              <div key={'m-' + m.id}>
+                <div
+                  onClick={() => { if (!speedPanelEditMode) runMacro(m); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '5px 8px', cursor: 'pointer', fontSize: 12,
+                    background: idx === activeIdx ? '#30363d' : 'transparent',
+                    color: idx === activeIdx ? '#f0f6fc' : '#c9d1d9',
+                  }}
+                >
+                  <span style={{ color: '#3fb950', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
+                  {speedPanelEditMode ? (
+                    <input
+                      value={m.name}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => updateMacro(m.id, { name: e.target.value })}
+                      style={{ background: 'transparent', border: '1px solid #30363d', color: '#c9d1d9', fontSize: 12, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
+                    />
+                  ) : (
+                    <span style={{ flex: 1 }}>{m.name}</span>
+                  )}
+                  <span style={{ color: '#8b949e', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
+                  {speedPanelEditMode && (
+                    <>
+                      <span
+                        onClick={(e) => { e.stopPropagation(); setExpandedMacro(isExpanded ? null : m.id); }}
+                        style={{ cursor: 'pointer', color: '#8b949e', fontSize: 10 }}
+                        title="Edit steps"
+                      >{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                      <span
+                        onClick={(e) => { e.stopPropagation(); removeMacro(m.id); }}
+                        style={{ cursor: 'pointer', color: '#f85149', fontSize: 10 }}
+                        title="Delete macro"
+                      >{'\u2715'}</span>
+                    </>
+                  )}
+                </div>
+                {/* Step editor (edit mode only) */}
+                {isExpanded && (
+                  <div style={{ padding: '2px 16px 4px', borderLeft: '2px solid #30363d', marginLeft: 12 }}>
+                    {m.steps.map((step, si) => {
+                      const action = SPEED_PANEL_ACTIONS.find((a) => a.id === step.actionId);
+                      return (
+                        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#c9d1d9', padding: '1px 0' }}>
+                          <span style={{ color: '#8b949e', width: 14 }}>{si + 1}.</span>
+                          <span style={{ flex: 1 }}>{action?.label ?? step.actionId}</span>
+                          <button
+                            onClick={() => si > 0 && reorderMacroStep(m.id, si, si - 1)}
+                            disabled={si === 0}
+                            style={{ background: 'transparent', border: 'none', color: si > 0 ? '#8b949e' : '#30363d', cursor: si > 0 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
+                          >{'\u25B2'}</button>
+                          <button
+                            onClick={() => si < m.steps.length - 1 && reorderMacroStep(m.id, si, si + 1)}
+                            disabled={si === m.steps.length - 1}
+                            style={{ background: 'transparent', border: 'none', color: si < m.steps.length - 1 ? '#8b949e' : '#30363d', cursor: si < m.steps.length - 1 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
+                          >{'\u25BC'}</button>
+                          <span
+                            onClick={() => removeStepFromMacro(m.id, si)}
+                            style={{ cursor: 'pointer', color: '#f85149', fontSize: 10 }}
+                          >{'\u2715'}</span>
+                        </div>
+                      );
+                    })}
+                    {/* Add step — only macroSafe actions */}
+                    <select
+                      value=""
+                      onChange={(e) => { if (e.target.value) addStepToMacro(m.id, e.target.value); }}
+                      style={{ background: '#0d1117', color: '#8b949e', border: '1px solid #30363d', fontSize: 10, padding: '2px', width: '100%', marginTop: 2, borderRadius: 2 }}
+                    >
+                      <option value="">+ Add step...</option>
+                      {SPEED_PANEL_ACTIONS.filter((a) => a.macroSafe).map((a) => (
+                        <option key={a.id} value={a.id}>{a.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {speedPanelEditMode && (
+            <div style={{ padding: '2px 8px' }}>
+              <button
+                onClick={handleNewMacro}
+                style={{ background: 'transparent', border: '1px dashed #30363d', color: '#8b949e', cursor: 'pointer', fontSize: 10, padding: '2px 6px', borderRadius: 3, width: '100%' }}
+              >+ New Macro</button>
+            </div>
+          )}
+
+          {/* === CONTEXTUAL === */}
+          {filtered.contextual.length > 0 && (
+            <div style={SECTION_STYLE}>
               {speedPanelContext ? speedPanelContext.type.toUpperCase() : 'CANVAS'}
             </div>
           )}
-          {contextual.map((a, i) => (
-            <ActionRow key={a.id} action={a} active={pinned.length + i === activeIdx} isPinned={false} onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)} />
-          ))}
-          {allActions.length === 0 && (
+          {filtered.contextual.map((a) => {
+            const idx = navIdx++;
+            return (
+              <ActionRow
+                key={'c-' + a.id} action={a} active={idx === activeIdx} isPinned={false}
+                onTogglePin={() => togglePin(a.id)} onExecute={() => execute(a.id)}
+                editMode={false}
+              />
+            );
+          })}
+
+          {allNavigable.length === 0 && (
             <div style={{ padding: '12px 10px', fontSize: 12, color: '#484f58' }}>No actions</div>
           )}
         </div>
@@ -202,12 +394,17 @@ export function SpeedPanel() {
   );
 }
 
-function ActionRow({ action, active, isPinned, onTogglePin, onExecute }: {
+function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode, onMoveUp, onMoveDown, groupEditMode, onRemoveFromGroup }: {
   action: { id: string; label: string; icon: string };
   active: boolean;
   isPinned: boolean;
   onTogglePin: () => void;
   onExecute: () => void;
+  editMode?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  groupEditMode?: boolean;
+  onRemoveFromGroup?: () => void;
 }) {
   return (
     <div
@@ -228,6 +425,35 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute }: {
       </span>
       <span style={{ color: '#8b949e', fontSize: 10, width: 20, textAlign: 'center', flexShrink: 0 }}>{action.icon}</span>
       <span style={{ flex: 1 }}>{action.label}</span>
+      {editMode && isPinned && (
+        <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
+            disabled={!onMoveUp}
+            style={{
+              background: 'transparent', border: 'none', color: onMoveUp ? '#8b949e' : '#30363d',
+              cursor: onMoveUp ? 'pointer' : 'default', fontSize: 10, padding: '0 2px',
+            }}
+            title="Move up"
+          >{'\u25B2'}</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+            disabled={!onMoveDown}
+            style={{
+              background: 'transparent', border: 'none', color: onMoveDown ? '#8b949e' : '#30363d',
+              cursor: onMoveDown ? 'pointer' : 'default', fontSize: 10, padding: '0 2px',
+            }}
+            title="Move down"
+          >{'\u25BC'}</button>
+        </span>
+      )}
+      {groupEditMode && onRemoveFromGroup && (
+        <span
+          onClick={(e) => { e.stopPropagation(); onRemoveFromGroup(); }}
+          style={{ cursor: 'pointer', color: '#f85149', fontSize: 10, flexShrink: 0 }}
+          title="Remove from group"
+        >{'\u2715'}</span>
+      )}
     </div>
   );
 }

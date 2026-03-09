@@ -123,8 +123,10 @@ interface EditorState {
   showSpeedPanel: boolean;
   speedPanelPosition: { x: number; y: number } | null;
   speedPanelContext: HitResult | null;
+  speedPanelEditMode: boolean;
   openSpeedPanel: (x: number, y: number, context: HitResult | null) => void;
   closeSpeedPanel: () => void;
+  toggleSpeedPanelEditMode: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -229,6 +231,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   showSpeedPanel: false,
   speedPanelPosition: null,
   speedPanelContext: null,
+  speedPanelEditMode: false,
   openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context }),
-  closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null }),
+  closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null, speedPanelEditMode: false }),
+  toggleSpeedPanelEditMode: () => set((s) => ({ speedPanelEditMode: !s.speedPanelEditMode })),
 }));

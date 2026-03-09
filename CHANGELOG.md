@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-03-09
+
+### Added
+
+- **Favorites reorder** — edit mode (pencil button) reveals up/down arrows to reorder pinned favorites; order persists in localStorage
+- **Recent actions** — last 5 unique actions tracked and shown in a RECENT section; deduped, most-recent-first
+- **Custom groups** — create named action groups in edit mode; collapsible sections with inline rename, delete, and action assignment
+- **Lightweight macros** — create multi-step macros from macroSafe actions; sequential execution with per-step undo; abort on context mismatch with inline status feedback
+- **macroSafe flag** — each action marked as safe (deterministic) or unsafe (interactive picking); only safe actions available as macro steps
+- **Extracted execute module** — `speed-panel-execute.ts` with `executeAction()` and `executeMacro()` pure functions, fully testable
+- **Speed Panel edit mode** — pencil toggle reveals CRUD controls for groups and macros alongside reorder arrows for pins
+- **Step editor** — inline macro step list with add (dropdown filtered to macroSafe), remove, and reorder controls
+- **Section layout** — Speed Panel now shows 5 sections: PINNED → GROUPS → RECENT → MACROS → CONTEXTUAL; empty sections fully hidden
+- **Macro execution feedback** — red banner shows which step failed and why when a macro aborts
+- 43 new tests (523 total)
+
+### Changed
+
+- `SpeedPanelAction` interface extended with `macroSafe: boolean`
+- `filterActions()` now returns `FilteredActions` with pinned, recents, groups, macros, and contextual sections
+- Speed panel store expanded: `reorderPin`, `addRecent`, group CRUD, macro CRUD, step management (all localStorage-backed)
+- Editor store: `speedPanelEditMode` + `toggleSpeedPanelEditMode()`, edit mode resets on close
+- Speed Panel max-height increased to 400px to accommodate additional sections
+
 ## [3.0.0] - 2026-03-09
 
 ### Added
