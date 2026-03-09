@@ -110,7 +110,71 @@ The **Viewport** section in the tool palette provides:
 
 Zone labels have dark background pills for readability at any zoom level. Line widths, entity markers, landmark diamonds, and spawn squares are zoom-compensated so they maintain a consistent screen size. Selected zones show brighter fills, thicker borders, and white label text.
 
-## 7. Scene Preview
+## 7. Selection & Editing
+
+The canvas supports rich selection and spatial editing workflows for working with multiple objects at once.
+
+### Selecting Objects
+
+| Action | Input |
+|--------|-------|
+| Select one object | Click it |
+| Add to selection | Shift + click |
+| Box select | Click and drag a rectangle (select tool) |
+| Select all | Ctrl+A |
+| Deselect all | Escape |
+
+Hit priority when clicking: spawns > landmarks > entities > zones. If objects overlap, repeated clicks at the same spot cycle through all hits — no need to move objects out of the way.
+
+### Moving & Duplicating
+
+Drag any selected object (or group) to reposition it. A 3px dead-zone prevents accidental moves. All moves are atomic — one undo step reverts the entire drag.
+
+Press **Ctrl+D** to duplicate the current selection. Duplicates appear offset by 2 grid cells with remapped IDs, `(copy)` name suffixes, and preserved district membership. Connections between co-selected zones are duplicated; connections to non-selected zones are dropped. Duplicated spawns are always non-default.
+
+### Batch Operations
+
+When multiple zones are selected, the **Batch Zone Actions** panel appears with options to assign all selected zones to a district, apply tags, or delete them in one operation.
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Escape | Deselect all |
+| Delete | Delete selected objects |
+| Ctrl+A | Select all objects |
+| Ctrl+D | Duplicate selection |
+| Ctrl+K | Open search overlay |
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z | Redo |
+| Arrow keys | Nudge selected objects by 1 grid cell |
+
+## 8. Search
+
+Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, districts, dialogues, and progression trees.
+
+Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For dialogues and progression trees, the corresponding sidebar tab opens.
+
+## 9. Objects Tab
+
+The **Objects** tab in the right sidebar provides a hierarchical tree view of your entire project:
+
+```
+District A
+  ├─ Zone: Chapel Entrance
+  │    ├─ E: Guardian Spirit (npc)
+  │    ├─ L: Altar of Passage
+  │    └─ S: player-start (default)
+  └─ Zone: Inner Sanctum
+Unassigned
+  └─ Zone: Hidden Passage
+```
+
+Click any item to select it on the canvas and frame it in view. The tree highlights the current canvas selection, and auto-scrolls to keep selected items visible. A filter input at the top narrows the tree by name or ID — matching propagates up, so a zone stays visible if any of its children match.
+
+Click a district header to select all its zones. Double-click to expand or collapse.
+
+## 10. Scene Preview
 
 When you select a zone, the **Scene Preview** panel appears above the Zone Properties form. It shows an inline HTML/CSS composition of everything visually bound to that zone:
 
@@ -141,7 +205,7 @@ The **Layers** section in the tool palette provides 7 visibility toggles:
 | Backgrounds | — | Background/tileset badges on/off |
 | Ambient | Zone tint overlays on/off | Ambient layer entries on/off |
 
-## 8. Export
+## 11. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -154,7 +218,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 9. Import
+## 12. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -164,7 +228,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 10. Track Changes
+## 13. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

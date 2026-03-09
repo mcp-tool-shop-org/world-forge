@@ -26,6 +26,8 @@ World Forge is one of three projects that form the authoring-to-play pipeline:
 - **Author dialogues** — branching conversation trees with conditions and effects
 - **Place items** with slot, rarity, stat modifiers, and granted verbs
 - **Manage assets** — portraits, sprites, backgrounds, icons, and tilesets in a typed manifest with kind-specific bindings to zones, entities, and items
+- **Search & browse** — Ctrl+K search across all object types, hierarchical Objects tree panel
+- **Select & duplicate** — multi-select, box-select, drag-move, Ctrl+D duplicate with ID remapping
 - **Export** a validated ContentPack targeting ai-rpg-engine's content schema
 - **Import** from ContentPack or ExportResult JSON with structured fidelity reporting
 - **Track changes** with semantic diff — see exactly what was modified, added, or removed since import

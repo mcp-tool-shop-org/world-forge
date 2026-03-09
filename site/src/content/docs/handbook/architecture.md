@@ -65,7 +65,15 @@ PixiJS-based 2D renderer with six sub-renderers:
 
 ## @world-forge/editor
 
-React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, landmark, spawn. Workspace tabs: Map, Player, Builds, Trees, Dialogue, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
+React 19 + Vite web app. State management with Zustand, supporting undo/redo (10-deep stack). Tools: select, zone-paint, connection, entity-place, landmark, spawn. Workspace tabs: Map, Objects, Player, Builds, Trees, Dialogue, Assets, Issues, Guide, plus conditional Import (fidelity report) and Diff (semantic change tracking) tabs after importing a project.
+
+Key editor modules:
+
+- **SearchOverlay** — Ctrl+K command-jump across all object types (zones, entities, landmarks, spawns, districts, dialogues, progression trees)
+- **ObjectListPanel** — hierarchical tree view (districts → zones → entities/landmarks/spawns) with bidirectional selection and inline filter
+- **duplicate.ts** — pure function for duplicating selections with ID remapping, connection rewiring, and district preservation
+- **frame-helpers.ts** — shared viewport framing utility (`computeFrameViewport`) used by search, object list, and district panels
+- **hit-testing.ts** — pure math hit-testing (`findHitAt`, `findAllHitsAt`) with click-cycle disambiguation for overlapping objects
 
 ## Build System
 
