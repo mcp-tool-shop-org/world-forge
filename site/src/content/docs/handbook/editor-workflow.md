@@ -29,6 +29,21 @@ Select the **Connection** tool. Click zone A, then click zone B to draw a connec
 
 Connections automatically update each zone's neighbor list. The validator checks that neighbors are symmetrical for bidirectional connections.
 
+### Selecting & Editing Connections
+
+In **Select** mode, click any connection line to select it. Selected connections are highlighted in blue. The **Connection Properties** panel appears in the sidebar with:
+
+- **From / To** — read-only zone names
+- **Label** — optional display label
+- **Bidirectional** — checkbox toggle; non-bidirectional connections show an arrowhead on the canvas
+- **Condition** — optional condition string (e.g. `has-tag:chapel-key`); conditional connections render as dashed orange lines
+- **Swap Direction** — reverses the from/to direction (non-bidirectional only)
+- **Delete** — removes the connection
+
+Connection lines are edge-anchored — they connect at zone edges via ray-rectangle intersection rather than zone centers. This produces cleaner routing, especially after zone resize. Connections are also listed in the **Objects** tab and indexed in **Ctrl+K** search.
+
+Press **Delete** or **Backspace** with a connection selected to remove it. Undo restores the connection in one step.
+
 ## 3. Create Districts
 
 Open the **District** panel. Create districts to group zones into logical regions — a chapel grounds, crypt depths, market quarter, etc.

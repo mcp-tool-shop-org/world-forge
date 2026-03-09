@@ -87,8 +87,10 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Align (left/right/top/bottom/center-h/center-v) and distribute (horizontal/vertical) for any selection
 - Object-to-object snapping during drag with visual guide lines, drag preview, and toggleable snap control
 - Zone resize handles (8 handles per zone) with edge-specific snapping, min-size clamping, and live preview
-- Search / command-jump (Ctrl+K) across all object types
-- Object list panel with hierarchical district → zone → entity/landmark/spawn tree view
+- Connection selection, editing, and deletion — click connections to inspect/edit label, direction, and conditions
+- Edge-anchored connection routing with directional arrowheads and conditional dashed-line styling
+- Search / command-jump (Ctrl+K) across all object types including connections
+- Object list panel with hierarchical district → zone → entity/landmark/spawn tree view plus connections section
 - Scene preview (inline HTML/CSS composition of all zone visual bindings with missing-asset detection)
 - Layer visibility toggles (7 layers: grid, connections, entities, landmarks, spawns, backgrounds, ambient)
 - Spawn points, encounter anchors, pressure hotspots, faction presences

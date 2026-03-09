@@ -3,9 +3,10 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
 import type { SelectionSet } from './store/editor-store.js';
+import { findConnectionAt } from './connection-lines.js';
 
 export interface HitResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'connection';
   id: string;
 }
 
@@ -20,6 +21,7 @@ export interface VisibilityFlags {
   showEntities: boolean;
   showLandmarks: boolean;
   showSpawns: boolean;
+  showConnections: boolean;
 }
 
 /** Screen-space pixel radius for point-object hit detection (entities, landmarks, spawns). */
@@ -103,7 +105,15 @@ export function findHitAt(
     }
   }
 
-  // 4. Zones (grid containment)
+  // 4. Connections (line segment proximity)
+  if (visibility.showConnections) {
+    const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport);
+    if (connKey) {
+      return { type: 'connection', id: `${connKey.from}::${connKey.to}` };
+    }
+  }
+
+  // 5. Zones (grid containment)
   const { worldX, worldY } = screenToWorld(screenX, screenY, viewport);
   const gx = Math.floor(worldX / tileSize);
   const gy = Math.floor(worldY / tileSize);
@@ -255,6 +265,14 @@ export function findAllHitsAt(
       if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
         hits.push({ type: 'entity', id: ep.entityId });
       }
+    }
+  }
+
+  // Connections
+  if (visibility.showConnections) {
+    const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport);
+    if (connKey) {
+      hits.push({ type: 'connection', id: `${connKey.from}::${connKey.to}` });
     }
   }
 

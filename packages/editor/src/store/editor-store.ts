@@ -45,6 +45,11 @@ export function isSelected(sel: SelectionSet, type: 'zone' | 'entity' | 'landmar
   return sel[key].includes(id);
 }
 
+/** Returns the selected connection, or null if none */
+export function getSelectedConnection(state: { selectedConnection: { from: string; to: string } | null }): { from: string; to: string } | null {
+  return state.selectedConnection;
+}
+
 function toggleInArray(arr: string[], id: string): string[] {
   return arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
 }
@@ -66,6 +71,7 @@ interface EditorState {
   viewport: ViewportState;
   selection: SelectionSet;
   hoveredZoneId: string | null;
+  selectedConnection: { from: string; to: string } | null;
   connectionStart: string | null;
   checklistDismissed: boolean;
   hasExported: boolean;
@@ -88,6 +94,7 @@ interface EditorState {
   selectAll: (set: SelectionSet, additive: boolean) => void;
   /** Backward compat: set single zone selection (used by validation/export navigation) */
   setSelectedZone: (id: string | null) => void;
+  selectConnection: (from: string, to: string) => void;
   setHoveredZone: (id: string | null) => void;
   setConnectionStart: (id: string | null) => void;
   toggleSnapToObjects: () => void;
@@ -127,6 +134,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   viewport: { panX: 0, panY: 0, zoom: 1 },
   selection: { ...EMPTY_SELECTION },
   hoveredZoneId: null,
+  selectedConnection: null,
   connectionStart: null,
   checklistDismissed: false,
   hasExported: false,
@@ -139,30 +147,35 @@ export const useEditorStore = create<EditorState>((set) => ({
   setBuildsSubTab: (tab) => set({ buildsSubTab: tab }),
   setFocusTarget: (target) => set({ focusTarget: target }),
 
-  // Selection actions
-  setSelection: (sel) => set({ selection: sel }),
-  clearSelection: () => set({ selection: { ...EMPTY_SELECTION } }),
+  // Selection actions (all clear selectedConnection for mutual exclusion)
+  setSelection: (sel) => set({ selection: sel, selectedConnection: null }),
+  clearSelection: () => set({ selection: { ...EMPTY_SELECTION }, selectedConnection: null }),
   selectZone: (id, additive) => set((s) => ({
+    selectedConnection: null,
     selection: additive
       ? { ...s.selection, zones: toggleInArray(s.selection.zones, id) }
       : { ...EMPTY_SELECTION, zones: [id] },
   })),
   selectEntity: (id, additive) => set((s) => ({
+    selectedConnection: null,
     selection: additive
       ? { ...s.selection, entities: toggleInArray(s.selection.entities, id) }
       : { ...EMPTY_SELECTION, entities: [id] },
   })),
   selectLandmark: (id, additive) => set((s) => ({
+    selectedConnection: null,
     selection: additive
       ? { ...s.selection, landmarks: toggleInArray(s.selection.landmarks, id) }
       : { ...EMPTY_SELECTION, landmarks: [id] },
   })),
   selectSpawn: (id, additive) => set((s) => ({
+    selectedConnection: null,
     selection: additive
       ? { ...s.selection, spawns: toggleInArray(s.selection.spawns, id) }
       : { ...EMPTY_SELECTION, spawns: [id] },
   })),
   selectAll: (incoming, additive) => set((s) => ({
+    selectedConnection: null,
     selection: additive ? {
       zones: [...new Set([...s.selection.zones, ...incoming.zones])],
       entities: [...new Set([...s.selection.entities, ...incoming.entities])],
@@ -171,7 +184,9 @@ export const useEditorStore = create<EditorState>((set) => ({
     } : incoming,
   })),
   /** Backward compat: replaces selection with single zone (or clears if null) */
-  setSelectedZone: (id) => set({ selection: id ? { ...EMPTY_SELECTION, zones: [id] } : { ...EMPTY_SELECTION } }),
+  setSelectedZone: (id) => set({ selectedConnection: null, selection: id ? { ...EMPTY_SELECTION, zones: [id] } : { ...EMPTY_SELECTION } }),
+  /** Select a connection (clears object selection) */
+  selectConnection: (from, to) => set({ selectedConnection: { from, to }, selection: { ...EMPTY_SELECTION } }),
 
   setHoveredZone: (id) => set({ hoveredZoneId: id }),
   setConnectionStart: (id) => set({ connectionStart: id }),

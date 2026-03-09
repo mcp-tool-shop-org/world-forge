@@ -6,21 +6,22 @@ import { useEditorStore } from '../store/editor-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
 import type { WorldProject } from '@world-forge/schema';
+import { connectionLabel } from '../connection-lines.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection';
   id: string;
   label: string;
   detail: string;
 }
 
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
-  zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T',
+  zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
-  district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff',
+  district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -55,6 +56,13 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
     results.push({ type: 'spawn', id: sp.id, label: sp.id, detail: `in ${zone?.name ?? 'unknown'}${sp.isDefault ? ' (default)' : ''}` });
   }
 
+  // Connections
+  for (const c of project.connections) {
+    const label = connectionLabel(c, project.zones);
+    const detail = c.condition ? `condition: ${c.condition}` : c.bidirectional ? 'bidirectional' : 'one-way';
+    results.push({ type: 'connection', id: `${c.fromZoneId}::${c.toZoneId}`, label, detail });
+  }
+
   // Dialogues
   for (const dl of project.dialogues) {
     const detail = dl.speakers.length > 0 ? `speakers: ${dl.speakers.join(', ')}` : '';
@@ -82,7 +90,7 @@ export function filterResults(index: SearchResult[], query: string): SearchResul
 export function SearchOverlay() {
   const { project } = useProjectStore();
   const {
-    setShowSearch, selectZone, selectEntity, selectLandmark, selectSpawn,
+    setShowSearch, selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection,
     setSelection, setViewport, setRightTab, setFocusTarget,
   } = useEditorStore();
 
@@ -134,6 +142,18 @@ export function SearchOverlay() {
         if (vp) setViewport(vp);
       }
       setRightTab('map');
+    } else if (result.type === 'connection') {
+      const [from, to] = result.id.split('::');
+      selectConnection(from, to);
+      if (size) {
+        const tileSize = project.map.tileSize;
+        const fromZone = project.zones.find((z) => z.id === from);
+        const toZone = project.zones.find((z) => z.id === to);
+        const items = [fromZone, toZone].filter(Boolean) as Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number }>;
+        const vp = frameBounds(items, tileSize, size.cw, size.ch);
+        if (vp) setViewport(vp);
+      }
+      setRightTab('map');
     } else if (result.type === 'district') {
       const district = project.districts.find((d) => d.id === result.id);
       if (district && district.zoneIds.length > 0) {
@@ -155,7 +175,7 @@ export function SearchOverlay() {
       setRightTab('trees');
       setFocusTarget({ domain: 'trees', subPath: result.id, timestamp: Date.now() });
     }
-  }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, setSelection, setViewport, setRightTab, setFocusTarget]);
+  }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { dismiss(); return; }

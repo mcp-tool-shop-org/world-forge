@@ -5,6 +5,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, isSelected as isSel } from '../store/editor-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
+import { connectionLabel } from '../connection-lines.js';
 
 interface DistrictGroup {
   districtId: string | null; // null = "Unassigned"
@@ -15,7 +16,7 @@ interface DistrictGroup {
 export function ObjectListPanel() {
   const { project } = useProjectStore();
   const {
-    selection, selectZone, selectEntity, selectLandmark, selectSpawn,
+    selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection,
     setSelection, setViewport, setRightTab,
   } = useEditorStore();
 
@@ -95,6 +96,18 @@ export function ObjectListPanel() {
     const size = getCanvasSize();
     if (size) {
       const vp = computeFrameViewport({ type: 'spawn', id }, project, size.cw, size.ch);
+      if (vp) setViewport(vp);
+    }
+  };
+
+  const handleSelectConnection = (from: string, to: string) => {
+    selectConnection(from, to);
+    const size = getCanvasSize();
+    if (size) {
+      const fromZone = project.zones.find((z) => z.id === from);
+      const toZone = project.zones.find((z) => z.id === to);
+      const items = [fromZone, toZone].filter(Boolean) as Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number }>;
+      const vp = frameBounds(items, project.map.tileSize, size.cw, size.ch);
       if (vp) setViewport(vp);
     }
   };
@@ -288,6 +301,43 @@ export function ObjectListPanel() {
             </div>
           );
         })}
+
+        {/* Connections section */}
+        {project.connections.length > 0 && (() => {
+          const visConns = project.connections.filter((c) => {
+            if (!q) return true;
+            const from = project.zones.find((z) => z.id === c.fromZoneId);
+            const to = project.zones.find((z) => z.id === c.toZoneId);
+            const label = connectionLabel(c, project.zones).toLowerCase();
+            const cond = (c.condition ?? '').toLowerCase();
+            return label.includes(q) || cond.includes(q);
+          });
+          if (visConns.length === 0) return null;
+          return (
+            <div style={{ marginTop: 8, marginBottom: 4 }}>
+              <div style={{ padding: '3px 4px', background: '#161b22', borderRadius: 3, fontWeight: 'bold', color: '#8b949e', fontSize: 11 }}>
+                Connections ({visConns.length})
+              </div>
+              {visConns.map((c) => {
+                const isSel = selectedConnection?.from === c.fromZoneId && selectedConnection?.to === c.toZoneId;
+                return (
+                  <div
+                    key={`${c.fromZoneId}::${c.toZoneId}`}
+                    onClick={() => handleSelectConnection(c.fromZoneId, c.toZoneId)}
+                    style={{
+                      padding: '2px 4px', marginLeft: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                      borderLeft: isSel ? '2px solid #58a6ff' : '2px solid transparent',
+                    }}
+                  >
+                    <span style={{ color: '#8b949e', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>C</span>
+                    <span style={{ color: isSel ? '#fff' : '#c9d1d9' }}>{connectionLabel(c, project.zones)}</span>
+                    {c.condition && <span style={{ fontSize: 9, color: '#ffa657' }} title={c.condition}>&#9679;</span>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {project.zones.length === 0 && (
           <div style={{ padding: '16px 8px', color: '#8b949e', textAlign: 'center' }}>

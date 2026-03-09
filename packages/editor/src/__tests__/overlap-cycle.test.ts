@@ -8,7 +8,7 @@ import { SAMPLE_WORLDS } from '../templates/samples.js';
 
 const chapel = structuredClone(SAMPLE_WORLDS[2].project); // Chapel Threshold
 const TILE = 32;
-const allVisible: VisibilityFlags = { showEntities: true, showLandmarks: true, showSpawns: true };
+const allVisible: VisibilityFlags = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true };
 const defaultVP: ViewportState = { panX: 0, panY: 0, zoom: 1 };
 
 /*
@@ -99,7 +99,7 @@ describe('findAllHitsAt', () => {
 
   it('visibility flags filter: hiding entities removes entity from results', () => {
     // brother-aldric at world (384, 704) inside chapel-nave
-    const vis: VisibilityFlags = { showEntities: false, showLandmarks: true, showSpawns: true };
+    const vis: VisibilityFlags = { showEntities: false, showLandmarks: true, showSpawns: true, showConnections: true };
     const hits = findAllHitsAt(384, 704, defaultVP, chapel, TILE, vis);
     // Should NOT contain the entity
     const entityHit = hits.find((h) => h.type === 'entity' && h.id === 'brother-aldric');

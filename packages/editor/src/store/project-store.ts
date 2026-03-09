@@ -69,6 +69,7 @@ interface ProjectState {
 
   // Connection helpers
   addConnection: (c: ZoneConnection) => void;
+  updateConnection: (fromId: string, toId: string, updates: Partial<Pick<ZoneConnection, 'label' | 'bidirectional' | 'condition'>>) => void;
   removeConnection: (fromId: string, toId: string) => void;
 
   // District helpers
@@ -222,6 +223,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       return z;
     }),
+  })),
+  updateConnection: (fromId, toId, updates) => get().updateProject((p) => ({
+    ...p, connections: p.connections.map((c) =>
+      c.fromZoneId === fromId && c.toZoneId === toId ? { ...c, ...updates } : c),
   })),
   removeConnection: (fromId, toId) => get().updateProject((p) => ({
     ...p, connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),

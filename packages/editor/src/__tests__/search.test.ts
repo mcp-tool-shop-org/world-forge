@@ -15,6 +15,7 @@ describe('buildSearchIndex', () => {
     expect(types.has('district')).toBe(true);
     expect(types.has('spawn')).toBe(true);
     expect(types.has('landmark')).toBe(true);
+    expect(types.has('connection')).toBe(true);
   });
 
   it('indexes all zones', () => {
@@ -96,5 +97,31 @@ describe('filterResults', () => {
   it('returns no results for unmatched query', () => {
     const results = filterResults(index, 'zzz_nonexistent_zzz');
     expect(results).toEqual([]);
+  });
+});
+
+describe('connection search', () => {
+  const index = buildSearchIndex(chapel);
+
+  it('indexes connections with zone names', () => {
+    const conns = index.filter((r) => r.type === 'connection');
+    expect(conns.length).toBe(chapel.connections.length);
+    // Each connection label contains zone names
+    for (const c of conns) {
+      expect(c.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('finds connections by zone name', () => {
+    const results = filterResults(index, 'Nave');
+    const connResults = results.filter((r) => r.type === 'connection');
+    expect(connResults.length).toBeGreaterThan(0);
+  });
+
+  it('finds conditional connection by condition text', () => {
+    const results = filterResults(index, 'chapel-key');
+    const connResults = results.filter((r) => r.type === 'connection');
+    expect(connResults.length).toBeGreaterThan(0);
+    expect(connResults[0].detail).toContain('chapel-key');
   });
 });

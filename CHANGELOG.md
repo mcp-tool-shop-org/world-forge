@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] - 2026-03-09
+
+### Added
+
+- **Connection selection** — click any connection line on the canvas to select it; blue highlight (#58a6ff) and thicker line indicate selection
+- **Connection properties panel** — edit label, bidirectional toggle, condition, swap direction, and delete from the Map tab sidebar
+- **Edge-anchored routing** — connection lines now anchor at zone edges (ray-rectangle intersection) instead of zone centers, producing cleaner visuals especially after resize
+- **Directional arrowheads** — non-bidirectional connections render a small triangle arrowhead at the target zone endpoint
+- **Conditional connection styling** — connections with conditions render as dashed orange lines; selected connections override to solid blue
+- **Connection hover** — hovering a connection line shows pointer cursor and increases opacity/thickness
+- **Connection hit-testing** — connections are clickable objects in the hit-testing priority chain (after spawns/landmarks/entities, before zones)
+- **Connection deletion** — Delete/Backspace removes the selected connection with full undo/redo support
+- **Objects tab connections** — Connections section in the Objects panel with click-to-select and frame-both-zones navigation
+- **Search connections** — Ctrl+K search indexes connections by zone names and condition text
+- `connection-lines.ts` — pure connection math module (getEdgeAnchor, getConnectionEndpoints, pointToSegmentDist, hitTestConnection, findConnectionAt, connectionLabel)
+- `ConnectionProperties.tsx` — connection editing panel following ZoneProperties pattern
+- `updateConnection` store action — update label/bidirectional/condition with undo/redo
+- `selectConnection` / `selectedConnection` — mutual exclusion with object selection (selecting a connection clears objects and vice versa)
+- 26 new tests (378 total)
+
 ## [2.5.0] - 2026-03-09
 
 ### Added

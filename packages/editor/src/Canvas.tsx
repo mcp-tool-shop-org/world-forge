@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore, getSelectionCount, getSelectedZoneId, isSelected as isSel } from './store/editor-store.js';
+import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel } from './store/editor-store.js';
+import { getConnectionEndpoints, findConnectionAt } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
 import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
@@ -16,11 +17,12 @@ let nextZoneId = 1;
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
+  const { project, addZone, addConnection, removeConnection, addEntity, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
     showConnections, showEntities, showLandmarks, showSpawns, showAmbient, snapToObjects,
-    selectZone, selectEntity, selectLandmark, selectSpawn,
+    selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection,
+    selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
     viewport, setViewport, setShowSearch,
@@ -53,6 +55,7 @@ export function Canvas() {
     active: boolean; lastResult: ResizeResult | null;
   } | null>(null);
   const hoveredHandle = useRef<HandleKind | null>(null);
+  const hoveredConnection = useRef<{ from: string; to: string } | null>(null);
 
   // Click-cycle state for overlapping objects
   const CYCLE_TOLERANCE = 4;
@@ -162,36 +165,68 @@ export function Canvas() {
       }
     }
 
-    // Connections
+    // Connections (edge-anchored with visual states)
     if (showConnections) {
-      ctx.lineWidth = 1 / zoom;
+      // Build override map for drag/resize preview geometry
+      const zoneOverrides = new Map<string, { gridX: number; gridY: number; gridWidth: number; gridHeight: number }>();
+      for (const zone of project.zones) {
+        if (isResizing && zone.id === resizeZoneId && resizeResult) {
+          zoneOverrides.set(zone.id, resizeResult);
+        } else if (isDragging && selection.zones.includes(zone.id)) {
+          zoneOverrides.set(zone.id, { gridX: zone.gridX + dragDX, gridY: zone.gridY + dragDY, gridWidth: zone.gridWidth, gridHeight: zone.gridHeight });
+        }
+      }
+
       for (const conn of project.connections) {
-        const from = project.zones.find((z) => z.id === conn.fromZoneId);
-        const to = project.zones.find((z) => z.id === conn.toZoneId);
-        if (!from || !to) continue;
-        const fResize = isResizing && from.id === resizeZoneId && resizeResult;
-        const tResize = isResizing && to.id === resizeZoneId && resizeResult;
-        const fOff = !fResize && isDragging && selection.zones.includes(from.id) ? dragDX : 0;
-        const fOffY = !fResize && isDragging && selection.zones.includes(from.id) ? dragDY : 0;
-        const tOff = !tResize && isDragging && selection.zones.includes(to.id) ? dragDX : 0;
-        const tOffY = !tResize && isDragging && selection.zones.includes(to.id) ? dragDY : 0;
-        const fgx = fResize ? resizeResult.gridX : from.gridX + fOff;
-        const fgy = fResize ? resizeResult.gridY : from.gridY + fOffY;
-        const fgw = fResize ? resizeResult.gridWidth : from.gridWidth;
-        const fgh = fResize ? resizeResult.gridHeight : from.gridHeight;
-        const tgx = tResize ? resizeResult.gridX : to.gridX + tOff;
-        const tgy = tResize ? resizeResult.gridY : to.gridY + tOffY;
-        const tgw = tResize ? resizeResult.gridWidth : to.gridWidth;
-        const tgh = tResize ? resizeResult.gridHeight : to.gridHeight;
-        const fx = (fgx + fgw / 2) * tileSize;
-        const fy = (fgy + fgh / 2) * tileSize;
-        const tx = (tgx + tgw / 2) * tileSize;
-        const ty = (tgy + tgh / 2) * tileSize;
-        ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
+        const endpoints = getConnectionEndpoints(conn, project.zones, tileSize, zoneOverrides);
+        if (!endpoints) continue;
+
+        const isHovered = hoveredConnection.current?.from === conn.fromZoneId && hoveredConnection.current?.to === conn.toZoneId;
+        const isSelConn = selectedConnection?.from === conn.fromZoneId && selectedConnection?.to === conn.toZoneId;
+
+        // Visual state
+        if (isSelConn) {
+          ctx.strokeStyle = '#58a6ff';
+          ctx.lineWidth = 3 / zoom;
+        } else if (isHovered) {
+          ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.9)' : 'rgba(136,136,136,0.9)';
+          ctx.lineWidth = 2 / zoom;
+        } else {
+          ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
+          ctx.lineWidth = 1 / zoom;
+        }
+
+        // Dashed for conditional
+        if (conn.condition && !isSelConn) {
+          ctx.setLineDash([6 / zoom, 4 / zoom]);
+        }
+
         ctx.beginPath();
-        ctx.moveTo(fx, fy);
-        ctx.lineTo(tx, ty);
+        ctx.moveTo(endpoints.fx, endpoints.fy);
+        ctx.lineTo(endpoints.tx, endpoints.ty);
         ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Arrowhead for non-bidirectional connections
+        if (!conn.bidirectional) {
+          const dx = endpoints.tx - endpoints.fx;
+          const dy = endpoints.ty - endpoints.fy;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0) {
+            const ux = dx / len;
+            const uy = dy / len;
+            const arrowSize = 8 / zoom;
+            const ax = endpoints.tx;
+            const ay = endpoints.ty;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax - ux * arrowSize + uy * arrowSize * 0.5, ay - uy * arrowSize - ux * arrowSize * 0.5);
+            ctx.lineTo(ax - ux * arrowSize - uy * arrowSize * 0.5, ay - uy * arrowSize + ux * arrowSize * 0.5);
+            ctx.closePath();
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fill();
+          }
+        }
       }
     }
 
@@ -412,7 +447,7 @@ export function Canvas() {
       ctx.fillStyle = '#58a6ff';
       ctx.fillText(label, 14, 22);
     }
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selection, hoveredZoneId, tileSize, viewport]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport]);
 
   useEffect(() => {
     draw();
@@ -473,6 +508,11 @@ export function Canvas() {
 
       // Delete/Backspace = delete selected
       if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (selectedConnection) {
+          removeConnection(selectedConnection.from, selectedConnection.to);
+          clearSelection();
+          return;
+        }
         const count = getSelectionCount(selection);
         if (count === 0) return;
         if (count > 3 && !confirm(`Delete ${count} objects?`)) return;
@@ -503,7 +543,7 @@ export function Canvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [selection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, setShowSearch, duplicateSelected]);
+  }, [selection, selectedConnection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, removeConnection, setShowSearch, duplicateSelected]);
 
   // --- Mouse coordinate helpers ---
   const getScreenXY = (e: React.MouseEvent) => {
@@ -522,18 +562,25 @@ export function Canvas() {
       gy >= z.gridY && gy < z.gridY + z.gridHeight,
     );
 
-  const visibility = { showEntities, showLandmarks, showSpawns };
+  const visibility = { showEntities, showLandmarks, showSpawns, showConnections };
 
   // --- Check if a hit result is already selected ---
   const hitIsSelected = (hit: { type: string; id: string } | null) => {
     if (!hit) return false;
+    if (hit.type === 'connection') {
+      const [from, to] = hit.id.split('::');
+      return selectedConnection?.from === from && selectedConnection?.to === to;
+    }
     const t = hit.type as 'zone' | 'entity' | 'landmark' | 'spawn';
     return isSel(selection, t, hit.id);
   };
 
   // --- Dispatch selection for a hit result ---
   const selectHit = (hit: { type: string; id: string }, additive: boolean) => {
-    if (hit.type === 'zone') selectZone(hit.id, additive);
+    if (hit.type === 'connection') {
+      const [from, to] = hit.id.split('::');
+      selectConnection(from, to);
+    } else if (hit.type === 'zone') selectZone(hit.id, additive);
     else if (hit.type === 'entity') selectEntity(hit.id, additive);
     else if (hit.type === 'landmark') selectLandmark(hit.id, additive);
     else if (hit.type === 'spawn') selectSpawn(hit.id, additive);
@@ -800,6 +847,13 @@ export function Canvas() {
       hoveredHandle.current = null;
     }
 
+    // Connection hover tracking
+    if (showConnections && activeTool === 'select') {
+      hoveredConnection.current = findConnectionAt(sx, sy, project.connections, project.zones, tileSize, viewport);
+    } else {
+      hoveredConnection.current = null;
+    }
+
     // Hover tracking via hit-testing
     const hit = findHitAt(sx, sy, viewport, project, tileSize, visibility);
     setHoveredZone(hit?.type === 'zone' ? hit.id : null);
@@ -855,6 +909,7 @@ export function Canvas() {
   else if (dragMove.current?.active) cursor = 'grabbing';
   else if (boxSelect.current) cursor = 'crosshair';
   else if (hoveredHandle.current) cursor = handleCursors[hoveredHandle.current];
+  else if (hoveredConnection.current) cursor = 'pointer';
   else if (activeTool === 'select') cursor = 'default';
 
   return (

@@ -8,6 +8,7 @@ import { ZoneProperties } from './panels/ZoneProperties.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
+import { ConnectionProperties } from './panels/ConnectionProperties.js';
 import { ExportModal } from './panels/ExportModal.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
@@ -27,7 +28,7 @@ import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
-  const { activeTool, selection, rightTab, setRightTab, viewport, checklistDismissed, showSearch } = useEditorStore();
+  const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSearch } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
@@ -36,6 +37,8 @@ export function App() {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
 
@@ -91,6 +94,7 @@ export function App() {
         display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
         background: '#161b22', borderBottom: '1px solid #30363d',
       }}>
+        <img src="/logo.png" alt="World Forge" style={{ height: 24, borderRadius: 4 }} />
         <strong style={{ color: '#58a6ff' }}>World Forge</strong>
         <span style={{ color: '#8b949e', fontSize: 12 }}>{project.name}{dirty ? ' *' : ''}</span>
         <div style={{ flex: 1 }} />
@@ -108,9 +112,29 @@ export function App() {
       {/* Main area */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left sidebar */}
-        <div style={{ width: 200, background: '#0d1117', borderRight: '1px solid #30363d', overflow: 'auto', padding: 8 }}>
-          <ToolPalette />
-          <DistrictPanel />
+        <div style={{
+          width: leftCollapsed ? 36 : 200,
+          background: '#0d1117', borderRight: '1px solid #30363d',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          transition: 'width 0.15s ease',
+        }}>
+          <button
+            onClick={() => setLeftCollapsed((c) => !c)}
+            title={leftCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            style={{
+              background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer',
+              padding: '6px 8px', fontSize: 14, textAlign: leftCollapsed ? 'center' : 'right',
+              borderBottom: '1px solid #30363d', flexShrink: 0,
+            }}
+          >
+            {leftCollapsed ? '▶' : '◀'}
+          </button>
+          {!leftCollapsed && (
+            <div style={{ overflow: 'auto', padding: 8, flex: 1 }}>
+              <ToolPalette />
+              <DistrictPanel />
+            </div>
+          )}
         </div>
 
         {/* Canvas */}
@@ -119,67 +143,88 @@ export function App() {
         </div>
 
         {/* Right sidebar */}
-        <div style={{ width: 300, background: '#0d1117', borderLeft: '1px solid #30363d', display: 'flex', flexDirection: 'column' }}>
-          {/* Tab bar — scrollable to handle many tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #30363d', background: '#161b22', overflowX: 'auto' }}>
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setRightTab(t.id)}
-                style={{
-                  flexShrink: 0, padding: '6px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
-                  background: rightTab === t.id ? '#0d1117' : 'transparent',
-                  color: rightTab === t.id ? '#58a6ff' : '#8b949e',
-                  border: 'none',
-                  borderBottom: rightTab === t.id ? '2px solid #58a6ff' : '2px solid transparent',
-                }}
-              >
-                {t.label}
-                {t.id === 'issues' && issueCount > 0 && (
-                  <span style={{
-                    marginLeft: 4, fontSize: 9, background: '#f85149', color: '#fff',
-                    borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
-                  }}>
-                    {issueCount}
-                  </span>
-                )}
-                {t.badge && (
-                  <span style={{
-                    marginLeft: 4, fontSize: 9, background: t.badgeColor ?? '#8b949e', color: '#fff',
-                    borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
-                  }}>
-                    {t.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+        <div style={{
+          width: rightCollapsed ? 36 : 300,
+          background: '#0d1117', borderLeft: '1px solid #30363d',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          transition: 'width 0.15s ease',
+        }}>
+          <button
+            onClick={() => setRightCollapsed((c) => !c)}
+            title={rightCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            style={{
+              background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer',
+              padding: '6px 8px', fontSize: 14, textAlign: rightCollapsed ? 'center' : 'left',
+              borderBottom: '1px solid #30363d', flexShrink: 0,
+            }}
+          >
+            {rightCollapsed ? '◀' : '▶'}
+          </button>
+          {!rightCollapsed && (
+            <>
+              {/* Tab bar — scrollable to handle many tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid #30363d', background: '#161b22', overflowX: 'auto' }}>
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setRightTab(t.id)}
+                    style={{
+                      flexShrink: 0, padding: '6px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                      background: rightTab === t.id ? '#0d1117' : 'transparent',
+                      color: rightTab === t.id ? '#58a6ff' : '#8b949e',
+                      border: 'none',
+                      borderBottom: rightTab === t.id ? '2px solid #58a6ff' : '2px solid transparent',
+                    }}
+                  >
+                    {t.label}
+                    {t.id === 'issues' && issueCount > 0 && (
+                      <span style={{
+                        marginLeft: 4, fontSize: 9, background: '#f85149', color: '#fff',
+                        borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
+                      }}>
+                        {issueCount}
+                      </span>
+                    )}
+                    {t.badge && (
+                      <span style={{
+                        marginLeft: 4, fontSize: 9, background: t.badgeColor ?? '#8b949e', color: '#fff',
+                        borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
+                      }}>
+                        {t.badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-          {/* Tab content */}
-          <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
-            {rightTab === 'map' && (
-              <>
-                {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
-                {selectedZoneId && <ZoneProperties />}
-                {activeTool === 'entity-place' && <EntityProperties />}
-                {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
-                  <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
-                    Select a zone or use a tool to see properties.
-                  </div>
+              {/* Tab content */}
+              <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+                {rightTab === 'map' && (
+                  <>
+                    {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
+                    {selectedConnection && <ConnectionProperties />}
+                    {selectedZoneId && <ZoneProperties />}
+                    {activeTool === 'entity-place' && <EntityProperties />}
+                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
+                      <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
+                        Select a zone or use a tool to see properties.
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-            {rightTab === 'player' && <PlayerTemplatePanel />}
-            {rightTab === 'builds' && <BuildCatalogPanel />}
-            {rightTab === 'trees' && <ProgressionPanel />}
-            {rightTab === 'dialogue' && <DialoguePanel />}
-            {rightTab === 'objects' && <ObjectListPanel />}
-            {rightTab === 'assets' && <AssetPanel />}
-            {rightTab === 'issues' && <ValidationPanel />}
-            {rightTab === 'guide' && <ChecklistPanel />}
-            {rightTab === 'import-summary' && <ImportSummaryPanel />}
-            {rightTab === 'diff' && <DiffPanel />}
-          </div>
+                {rightTab === 'player' && <PlayerTemplatePanel />}
+                {rightTab === 'builds' && <BuildCatalogPanel />}
+                {rightTab === 'trees' && <ProgressionPanel />}
+                {rightTab === 'dialogue' && <DialoguePanel />}
+                {rightTab === 'objects' && <ObjectListPanel />}
+                {rightTab === 'assets' && <AssetPanel />}
+                {rightTab === 'issues' && <ValidationPanel />}
+                {rightTab === 'guide' && <ChecklistPanel />}
+                {rightTab === 'import-summary' && <ImportSummaryPanel />}
+                {rightTab === 'diff' && <DiffPanel />}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

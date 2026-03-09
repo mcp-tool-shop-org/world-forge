@@ -3,12 +3,13 @@ import { findHitAt, findAllInRect, HIT_RADIUS } from '../hit-testing.js';
 import type { ScreenRect } from '../hit-testing.js';
 import type { ViewportState } from '../viewport.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
+import { getConnectionEndpoints } from '../connection-lines.js';
 
 // ── Setup ───────────────────────────────────────────────────────
 
 const chapel = structuredClone(SAMPLE_WORLDS[2].project); // Chapel Threshold
 const TILE = 32;
-const allVisible = { showEntities: true, showLandmarks: true, showSpawns: true };
+const allVisible = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true };
 const defaultVP: ViewportState = { panX: 0, panY: 0, zoom: 1 };
 
 /*
@@ -97,7 +98,7 @@ describe('findHitAt', () => {
 
   it('returns zone when entity visibility is off', () => {
     // brother-aldric at screen (384, 704) — but entities hidden
-    const vis = { showEntities: false, showLandmarks: true, showSpawns: true };
+    const vis = { showEntities: false, showLandmarks: true, showSpawns: true, showConnections: true };
     const result = findHitAt(384, 704, defaultVP, chapel, TILE, vis);
     expect(result).not.toBeNull();
     expect(result!.type).toBe('zone');
@@ -136,6 +137,7 @@ describe('findHitAt', () => {
       showEntities: true,
       showLandmarks: true,
       showSpawns: false,
+      showConnections: true,
     });
     expect(entityHit).toEqual({ type: 'entity', id: 'suspicious-pilgrim' });
 
@@ -144,6 +146,7 @@ describe('findHitAt', () => {
       showEntities: false,
       showLandmarks: true,
       showSpawns: false,
+      showConnections: true,
     });
     expect(zoneHit).toEqual({ type: 'zone', id: 'chapel-entrance' });
   });
@@ -204,7 +207,7 @@ describe('findAllInRect', () => {
   it('rect excludes entities when showEntities is false', () => {
     // Same rect as above but entities hidden
     const rect: ScreenRect = { x1: 370, y1: 690, x2: 400, y2: 720 };
-    const vis = { showEntities: false, showLandmarks: true, showSpawns: true };
+    const vis = { showEntities: false, showLandmarks: true, showSpawns: true, showConnections: true };
     const result = findAllInRect(rect, defaultVP, chapel, TILE, vis);
     expect(result.entities).toHaveLength(0);
   });
@@ -232,6 +235,41 @@ describe('findAllInRect', () => {
     const result = findAllInRect(rect, defaultVP, chapel, TILE, allVisible);
     expect(result.landmarks).toContain('altar-of-passage');
     expect(result.spawns).toContain('chapel-spawn');
+  });
+});
+
+// ── Connection hit-testing ──────────────────────────────────────
+
+describe('findHitAt — connections', () => {
+  it('hits a connection when showConnections is true', () => {
+    // Find midpoint of entrance-nave connection line
+    const conn = chapel.connections.find((c: any) => c.fromZoneId === 'chapel-entrance' && c.toZoneId === 'chapel-nave')!;
+    const ep = getConnectionEndpoints(conn, chapel.zones, TILE);
+    if (!ep) throw new Error('Expected endpoints');
+    const mx = (ep.fx + ep.tx) / 2;
+    const my = (ep.fy + ep.ty) / 2;
+    const result = findHitAt(mx, my, defaultVP, chapel, TILE, allVisible);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('connection');
+  });
+
+  it('skips connections when showConnections is false', () => {
+    const conn = chapel.connections.find((c: any) => c.fromZoneId === 'chapel-entrance' && c.toZoneId === 'chapel-nave')!;
+    const ep = getConnectionEndpoints(conn, chapel.zones, TILE);
+    if (!ep) throw new Error('Expected endpoints');
+    const mx = (ep.fx + ep.tx) / 2;
+    const my = (ep.fy + ep.ty) / 2;
+    const vis = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: false };
+    const result = findHitAt(mx, my, defaultVP, chapel, TILE, vis);
+    // Should NOT be a connection hit
+    expect(result?.type !== 'connection' || result === null).toBe(true);
+  });
+
+  it('entity takes priority over connection', () => {
+    // brother-aldric is at world (384, 704) — entities checked before connections
+    const result = findHitAt(384, 704, defaultVP, chapel, TILE, allVisible);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('entity');
   });
 });
 

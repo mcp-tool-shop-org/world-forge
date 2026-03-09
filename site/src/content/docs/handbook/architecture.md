@@ -77,6 +77,7 @@ Key editor modules:
 - **layout.ts** — pure functions for 6-way alignment and horizontal/vertical distribution across any combination of object types
 - **snap.ts** — pure snap computation for object-to-object snapping during drag and resize (edge/center matching, guide line generation)
 - **resize-handles.ts** — pure math for zone resize handles (8 handles per zone, axis-aware resizing, min-size clamping, screen-space hit detection)
+- **connection-lines.ts** — pure math for connection routing, edge anchoring (ray-rect intersection), line-segment hit-testing, and display labels
 
 ## Build System
 
