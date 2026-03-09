@@ -5,6 +5,7 @@ import { useProjectStore } from './store/project-store.js';
 import { useEditorStore, getSelectionCount, isSelected as isSel } from './store/editor-store.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
+import { computeSnap, type SnapGuide } from './snap.js';
 import type { Zone } from '@world-forge/schema';
 
 const ZOOM_STEP = 0.1;
@@ -17,7 +18,7 @@ export function Canvas() {
   const { project, addZone, addConnection, addEntity, addSpawnPoint, moveSelected, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
-    showConnections, showEntities, showLandmarks, showSpawns, showAmbient,
+    showConnections, showEntities, showLandmarks, showSpawns, showAmbient, snapToObjects,
     selectZone, selectEntity, selectLandmark, selectSpawn,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
@@ -39,6 +40,10 @@ export function Canvas() {
     startSX: number; startSY: number; startGX: number; startGY: number;
     active: boolean; lastDX: number; lastDY: number;
   } | null>(null);
+
+  // Snap state for drag
+  const activeGuides = useRef<SnapGuide[]>([]);
+  const snapDelta = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
 
   // Click-cycle state for overlapping objects
   const CYCLE_TOLERANCE = 4;
@@ -120,6 +125,11 @@ export function Canvas() {
     const { panX, panY, zoom } = viewport;
     ctx.setTransform(zoom, 0, 0, zoom, -panX * zoom, -panY * zoom);
 
+    // Drag preview offset (grid cells → world pixels)
+    const isDragging = dragMove.current?.active ?? false;
+    const dragDX = isDragging ? snapDelta.current.dx : 0;
+    const dragDY = isDragging ? snapDelta.current.dy : 0;
+
     // Grid
     if (showGrid) {
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
@@ -145,10 +155,14 @@ export function Canvas() {
         const from = project.zones.find((z) => z.id === conn.fromZoneId);
         const to = project.zones.find((z) => z.id === conn.toZoneId);
         if (!from || !to) continue;
-        const fx = (from.gridX + from.gridWidth / 2) * tileSize;
-        const fy = (from.gridY + from.gridHeight / 2) * tileSize;
-        const tx = (to.gridX + to.gridWidth / 2) * tileSize;
-        const ty = (to.gridY + to.gridHeight / 2) * tileSize;
+        const fOff = isDragging && selection.zones.includes(from.id) ? dragDX : 0;
+        const fOffY = isDragging && selection.zones.includes(from.id) ? dragDY : 0;
+        const tOff = isDragging && selection.zones.includes(to.id) ? dragDX : 0;
+        const tOffY = isDragging && selection.zones.includes(to.id) ? dragDY : 0;
+        const fx = (from.gridX + fOff + from.gridWidth / 2) * tileSize;
+        const fy = (from.gridY + fOffY + from.gridHeight / 2) * tileSize;
+        const tx = (to.gridX + tOff + to.gridWidth / 2) * tileSize;
+        const ty = (to.gridY + tOffY + to.gridHeight / 2) * tileSize;
         ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
         ctx.beginPath();
         ctx.moveTo(fx, fy);
@@ -160,15 +174,17 @@ export function Canvas() {
     // Zones
     const colors = ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#20c997'];
     for (const zone of project.zones) {
-      const x = zone.gridX * tileSize;
-      const y = zone.gridY * tileSize;
+      const selected = selection.zones.includes(zone.id);
+      const offX = selected && isDragging ? dragDX : 0;
+      const offY = selected && isDragging ? dragDY : 0;
+      const x = (zone.gridX + offX) * tileSize;
+      const y = (zone.gridY + offY) * tileSize;
       const w = zone.gridWidth * tileSize;
       const h = zone.gridHeight * tileSize;
 
       const distIdx = project.districts.findIndex((d) => d.id === zone.parentDistrictId);
       const color = colors[distIdx % colors.length] ?? '#888';
 
-      const selected = selection.zones.includes(zone.id);
       const hovered = zone.id === hoveredZoneId;
 
       ctx.fillStyle = selected ? color + '50' : hovered ? color + '30' : color + '10';
@@ -195,13 +211,14 @@ export function Canvas() {
       for (const ep of project.entityPlacements) {
         const zone = project.zones.find((z) => z.id === ep.zoneId);
         if (!zone) continue;
-        const x = (ep.gridX ?? zone.gridX + 2) * tileSize;
-        const y = (ep.gridY ?? zone.gridY + 2) * tileSize;
+        const selected = isSel(selection, 'entity', ep.entityId);
+        const canDrag = selected && isDragging && ep.gridX != null && ep.gridY != null;
+        const x = ((ep.gridX ?? zone.gridX + 2) + (canDrag ? dragDX : 0)) * tileSize;
+        const y = ((ep.gridY ?? zone.gridY + 2) + (canDrag ? dragDY : 0)) * tileSize;
         const roleColors: Record<string, string> = {
           npc: '#4a9eff', enemy: '#ff4444', merchant: '#ffd700',
           'quest-giver': '#44ff44', companion: '#44ffaa', boss: '#ff2222',
         };
-        const selected = isSel(selection, 'entity', ep.entityId);
         ctx.fillStyle = roleColors[ep.role] ?? '#888';
         ctx.beginPath();
         const radius = (ep.role === 'boss' ? 8 : 5) / zoom;
@@ -226,10 +243,10 @@ export function Canvas() {
       for (const lm of project.landmarks) {
         const zone = project.zones.find((z) => z.id === lm.zoneId);
         if (!zone) continue;
-        const x = lm.gridX * tileSize;
-        const y = lm.gridY * tileSize;
-        const s = 6 / zoom;
         const selected = isSel(selection, 'landmark', lm.id);
+        const x = (lm.gridX + (selected && isDragging ? dragDX : 0)) * tileSize;
+        const y = (lm.gridY + (selected && isDragging ? dragDY : 0)) * tileSize;
+        const s = 6 / zoom;
         ctx.fillStyle = '#ffd700';
         ctx.beginPath();
         ctx.moveTo(x, y - s);
@@ -255,10 +272,10 @@ export function Canvas() {
     // Spawn points
     if (showSpawns) {
       for (const sp of project.spawnPoints) {
-        const x = sp.gridX * tileSize;
-        const y = sp.gridY * tileSize;
-        const s = 4 / zoom;
         const selected = isSel(selection, 'spawn', sp.id);
+        const x = (sp.gridX + (selected && isDragging ? dragDX : 0)) * tileSize;
+        const y = (sp.gridY + (selected && isDragging ? dragDY : 0)) * tileSize;
+        const s = 4 / zoom;
         ctx.fillStyle = '#00ff88';
         ctx.fillRect(x - s, y - s, s * 2, s * 2);
         // Selection ring
@@ -291,6 +308,25 @@ export function Canvas() {
           ctx.fillRect(x, y, w, h);
         }
       }
+    }
+
+    // Snap guide lines (world-space)
+    if (isDragging && activeGuides.current.length > 0) {
+      ctx.strokeStyle = 'rgba(0, 180, 255, 0.7)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.setLineDash([4 / zoom, 4 / zoom]);
+      for (const guide of activeGuides.current) {
+        ctx.beginPath();
+        if (guide.axis === 'x') {
+          ctx.moveTo(guide.value * tileSize, guide.from * tileSize);
+          ctx.lineTo(guide.value * tileSize, guide.to * tileSize);
+        } else {
+          ctx.moveTo(guide.from * tileSize, guide.value * tileSize);
+          ctx.lineTo(guide.to * tileSize, guide.value * tileSize);
+        }
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
     }
 
     // Reset transform for screen-space overlays
@@ -345,6 +381,9 @@ export function Canvas() {
 
       if (e.code === 'Escape') {
         clearSelection();
+        dragMove.current = null;
+        activeGuides.current = [];
+        snapDelta.current = { dx: 0, dy: 0 };
         return;
       }
 
@@ -537,14 +576,14 @@ export function Canvas() {
 
     // Drag-move commit
     if (dragMove.current?.active) {
-      const { sx, sy } = getScreenXY(e);
-      const { gx: curGX, gy: curGY } = screenToGrid(sx, sy);
-      const dx = curGX - dragMove.current.startGX;
-      const dy = curGY - dragMove.current.startGY;
+      const dx = snapDelta.current.dx;
+      const dy = snapDelta.current.dy;
       if (dx !== 0 || dy !== 0) {
         moveSelected(selection, dx, dy);
       }
       dragMove.current = null;
+      activeGuides.current = [];
+      snapDelta.current = { dx: 0, dy: 0 };
       draw();
       return;
     }
@@ -610,7 +649,18 @@ export function Canvas() {
         }
       }
       if (dragMove.current.active) {
-        draw(); // Trigger redraw — ghost rendering handled by cursor change
+        const { gx: curGX, gy: curGY } = screenToGrid(sx, sy);
+        const rawDX = curGX - dragMove.current.startGX;
+        const rawDY = curGY - dragMove.current.startGY;
+        if (snapToObjects) {
+          const result = computeSnap(project, selection, rawDX, rawDY);
+          snapDelta.current = { dx: result.dx, dy: result.dy };
+          activeGuides.current = result.guides;
+        } else {
+          snapDelta.current = { dx: rawDX, dy: rawDY };
+          activeGuides.current = [];
+        }
+        draw();
       }
       return;
     }

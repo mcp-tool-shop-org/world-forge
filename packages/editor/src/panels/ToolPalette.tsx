@@ -15,6 +15,7 @@ export function ToolPalette() {
   const {
     activeTool, setTool, selection,
     showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient,
+    snapToObjects, toggleSnapToObjects,
     toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient,
     viewport, setViewport, resetViewport,
   } = useEditorStore();
@@ -137,6 +138,10 @@ export function ToolPalette() {
       </label>
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showAmbient} onChange={toggleAmbient} /> Ambient
+      </label>
+      <hr style={{ margin: '6px 0 4px', borderColor: '#30363d', borderStyle: 'solid', borderWidth: '1px 0 0' }} />
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={snapToObjects} onChange={toggleSnapToObjects} /> Snap to Objects
       </label>
     </div>
   );

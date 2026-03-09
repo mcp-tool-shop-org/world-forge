@@ -55,6 +55,7 @@ interface EditorState {
   buildsSubTab: BuildsSubTab;
   focusTarget: FocusTarget | null;
   gridSnap: boolean;
+  snapToObjects: boolean;
   showGrid: boolean;
   showConnections: boolean;
   showEntities: boolean;
@@ -89,6 +90,7 @@ interface EditorState {
   setSelectedZone: (id: string | null) => void;
   setHoveredZone: (id: string | null) => void;
   setConnectionStart: (id: string | null) => void;
+  toggleSnapToObjects: () => void;
   toggleGrid: () => void;
   toggleConnections: () => void;
   toggleEntities: () => void;
@@ -114,6 +116,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   buildsSubTab: 'config',
   focusTarget: null,
   gridSnap: true,
+  snapToObjects: true,
   showGrid: true,
   showConnections: true,
   showEntities: true,
@@ -172,6 +175,7 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   setHoveredZone: (id) => set({ hoveredZoneId: id }),
   setConnectionStart: (id) => set({ connectionStart: id }),
+  toggleSnapToObjects: () => set((s) => ({ snapToObjects: !s.snapToObjects })),
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   toggleConnections: () => set((s) => ({ showConnections: !s.showConnections })),
   toggleEntities: () => set((s) => ({ showEntities: !s.showEntities })),

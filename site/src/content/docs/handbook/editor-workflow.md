@@ -158,6 +158,27 @@ Zones align by bounding box edges. Point objects (entities, landmarks, spawns) a
 
 Entities without explicit grid coordinates (those positioned relative to their zone) are materialized with explicit coordinates when aligned. This is reversible via undo.
 
+### Snapping & Guides
+
+When **Snap to Objects** is enabled (on by default), dragging selected objects near the edges or centers of non-selected objects will snap to alignment.
+
+| Snap Target | What Snaps |
+|-------------|-----------|
+| Zone left/right edges | Selection left/right edges |
+| Zone top/bottom edges | Selection top/bottom edges |
+| Zone center-x/center-y | Selection center-x/center-y |
+| Point object positions | Selection edges |
+
+X and Y axes snap independently — you can snap horizontally without affecting vertical position. The snap radius is 1 grid cell: when any selection edge is within 1 cell of a target, it snaps to exact alignment.
+
+**Visual feedback during drag:**
+
+- **Drag preview** — selected objects render at their snapped position in real-time, not their original position
+- **Guide lines** — cyan dashed lines appear at snap alignment positions, spanning from the selection to the target object
+- **Connection preview** — zone connections follow dragged zones during drag
+
+Toggle snapping off in the Layers section of the tool palette to drag freely without snap behavior.
+
 ### Batch Operations
 
 The Selection Actions panel also includes zone-specific batch operations when zones are in the selection: assign all to a district, add a tag, or delete selected zones.

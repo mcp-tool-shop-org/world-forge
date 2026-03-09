@@ -75,6 +75,7 @@ Key editor modules:
 - **frame-helpers.ts** — shared viewport framing utility (`computeFrameViewport`) used by search, object list, and district panels
 - **hit-testing.ts** — pure math hit-testing (`findHitAt`, `findAllHitsAt`) with click-cycle disambiguation for overlapping objects
 - **layout.ts** — pure functions for 6-way alignment and horizontal/vertical distribution across any combination of object types
+- **snap.ts** — pure snap computation for object-to-object snapping during drag (edge/center matching, guide line generation)
 
 ## Build System
 

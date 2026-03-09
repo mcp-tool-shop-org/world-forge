@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-03-09
+
+### Added
+
+- **Object-to-object snapping** — during drag, selected objects snap to edges and centers of non-selected objects within 1 grid cell; X and Y axes snap independently; closest candidate wins
+- **Visual snap guides** — cyan dashed guide lines render at snap positions during drag, spanning the full extent of both the snapped and target objects; zoom-compensated width and dash pattern
+- **Drag preview** — selected objects render at their snapped position during drag instead of staying at original position; connections follow dragged zones in real-time
+- **Snap to Objects toggle** — checkbox in ToolPalette Layers section (default: on); disables object-to-object snapping when unchecked
+- `snap.ts` — pure snap computation module (computeSnap, getNonSelectedEdges) following the layout.ts pattern
+- 15 new tests (326 total)
+
 ## [2.3.0] - 2026-03-09
 
 ### Added
