@@ -79,7 +79,38 @@ Use the **Group** checkbox to view assets organized by pack, with an "Unassigned
 
 The validator checks that all asset references point to existing assets of the correct kind. The Assets tab shows an orphan count for unreferenced assets.
 
-## 6. Export
+## 6. Scene Preview
+
+When you select a zone, the **Scene Preview** panel appears above the Zone Properties form. It shows an inline HTML/CSS composition of everything visually bound to that zone:
+
+- **Background/tileset** — asset labels with `[background]`/`[tileset]` kind badges
+- **Ambient layers** — color swatches with name, type, and intensity
+- **Entities** — role-colored dots with name, portrait/sprite badges
+- **Landmarks** — gold diamond markers with name and icon badge
+- **Items** — rarity-colored squares with name, slot, and icon badge
+- **Spawns** — green markers with default star indicator
+- **Connections** — text summary of connected zone names with conditions
+- **Light level** — sun icon with 0-10 readout
+
+Missing assets show red `Missing: {id}` markers. The preview respects all layer toggle states — hiding entities in the Layers panel also hides them in the preview.
+
+Click the **▾ Scene Preview** header to collapse/expand the panel.
+
+### Layer Toggles
+
+The **Layers** section in the tool palette provides 7 visibility toggles:
+
+| Toggle | Canvas Effect | Preview Effect |
+|--------|--------------|----------------|
+| Grid | Grid lines on/off | — |
+| Connections | Connection lines on/off | — |
+| Entities | Entity circles on/off | Entity list on/off |
+| Landmarks | Diamond markers on/off | Landmark list on/off |
+| Spawns | Spawn squares on/off | Spawn list on/off |
+| Backgrounds | — | Background/tileset badges on/off |
+| Ambient | Zone tint overlays on/off | Ambient layer entries on/off |
+
+## 7. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -92,7 +123,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 7. Import
+## 8. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -102,7 +133,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 8. Track Changes
+## 9. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

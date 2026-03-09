@@ -136,6 +136,21 @@ A named, versioned grouping of assets for portability:
 
 Assets reference their pack via `packId`. Deleting a pack cascades by clearing `packId` on all member assets.
 
+## Scene Data Assembly
+
+`assembleSceneData(zoneId, project)` is a pure function that extracts all visual data bound to a zone into a single `SceneData` structure:
+
+- **background/tileset** — resolved asset or `{ id, missing: true }` marker
+- **entities** — placements with resolved portrait/sprite assets and missing flags
+- **landmarks** — with resolved icon assets and missing flags
+- **items** — with resolved icon assets and missing flags
+- **spawns** — spawn points in this zone
+- **ambient** — ambient layers that include this zone
+- **connections** — connected zone names with optional conditions
+- **light** — the zone's light level (0-10)
+
+This is the data source for the editor's Scene Preview component and can be used independently for testing or tooling.
+
 ## Validation
 
 `validateProject()` runs 48 structural checks:

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-03-09
+
+### Added
+
+- **Scene preview** — inline HTML/CSS composed preview in ZoneProperties showing all visual data bound to a zone (background, tileset, entities, landmarks, items, spawns, ambient layers, connections, light level)
+- **Scene data assembly** — `assembleSceneData()` pure function extracts and resolves all zone visual bindings with missing-asset detection
+- **Layer toggles** — 4 new visibility toggles (Landmarks, Spawns, Backgrounds, Ambient) in ToolPalette; all 7 toggles now drive both Canvas and ScenePreview
+- **Canvas landmarks** — gold diamond markers with name labels for landmarks on the map canvas
+- **Canvas ambient overlays** — tinted zone rectangles using ambient layer color and intensity
+- **Chapel landmark** — Altar of Passage landmark with icon binding added to Chapel Threshold sample
+- 18 scene-preview tests + 1 landmark validation test (197 total)
+
+### Changed
+
+- Canvas.tsx now respects `showConnections`, `showEntities`, and `showSpawns` toggles (previously ignored)
+- Spawn points rendering wrapped in `showSpawns` toggle guard
+
 ## [1.8.0] - 2026-03-08
 
 ### Added

@@ -1,5 +1,6 @@
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
+import { ScenePreview } from './ScenePreview.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();
@@ -9,6 +10,7 @@ export function ZoneProperties() {
 
   return (
     <div>
+      <ScenePreview zoneId={zone.id} />
       <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Zone Properties</div>
       <label style={labelStyle}>Name
         <input style={inputStyle} value={zone.name}

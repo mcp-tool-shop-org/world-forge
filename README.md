@@ -52,7 +52,7 @@ npx world-forge-export project.json --validate-only
 
 ### @world-forge/schema
 
-Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 48 structural checks.
+Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 48 structural checks. `assembleSceneData()` extracts all visual bindings for a zone with missing-asset detection.
 
 ### @world-forge/export-ai-rpg
 
@@ -64,7 +64,7 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Assets** (asset library with kind-filtered search, inline editing, orphan detection, asset pack management with group-by-pack view), **Issues** (live grouped validation with click-to-focus), **Guide** (first-run checklist), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn.
+React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Assets** (asset library with kind-filtered search, inline editing, orphan detection, asset pack management with group-by-pack view), **Issues** (live grouped validation with click-to-focus), **Guide** (first-run checklist), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn. **Scene Preview** — inline composed preview in ZoneProperties showing background, entities, landmarks, items, spawns, ambient layers, connections, and light level with missing-asset markers. **Layer toggles** — 7 visibility controls (Grid, Connections, Entities, Landmarks, Spawns, Backgrounds, Ambient) driving both canvas and scene preview.
 
 ## Authoring Surface
 
@@ -82,6 +82,8 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Progression trees (skill/ability nodes with requirements and effects)
 - Asset manifest (portraits, sprites, backgrounds, icons, tilesets) with kind-specific bindings
 - Asset packs (named, versioned groupings with compatibility metadata, theme, license)
+- Scene preview (inline HTML/CSS composition of all zone visual bindings with missing-asset detection)
+- Layer visibility toggles (7 layers: grid, connections, entities, landmarks, spawns, backgrounds, ambient)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
 - Export to engine-compatible ContentPack JSON
 - Import from ContentPack or ExportResult JSON with structured fidelity reporting

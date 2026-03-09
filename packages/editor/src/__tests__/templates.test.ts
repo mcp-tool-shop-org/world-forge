@@ -121,6 +121,14 @@ describe('chapel assets', () => {
       expect(result.valid).toBe(true);
     }
   });
+
+  it('landmark icon bindings reference valid asset IDs', () => {
+    const assetIds = new Set(chapel.project.assets.map((a) => a.id));
+    expect(chapel.project.landmarks.length).toBeGreaterThanOrEqual(1);
+    for (const lm of chapel.project.landmarks) {
+      if (lm.iconId) expect(assetIds.has(lm.iconId)).toBe(true);
+    }
+  });
 });
 
 describe('chapel asset packs', () => {

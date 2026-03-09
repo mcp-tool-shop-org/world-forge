@@ -10,7 +10,11 @@ const tools: { id: EditorTool; label: string; key: string }[] = [
 ];
 
 export function ToolPalette() {
-  const { activeTool, setTool, showGrid, showConnections, showEntities, toggleGrid, toggleConnections, toggleEntities } = useEditorStore();
+  const {
+    activeTool, setTool,
+    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient,
+    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient,
+  } = useEditorStore();
 
   return (
     <div>
@@ -39,6 +43,18 @@ export function ToolPalette() {
       </label>
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showEntities} onChange={toggleEntities} /> Entities
+      </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showLandmarks} onChange={toggleLandmarks} /> Landmarks
+      </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showSpawns} onChange={toggleSpawns} /> Spawns
+      </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showBackgrounds} onChange={toggleBackgrounds} /> Backgrounds
+      </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showAmbient} onChange={toggleAmbient} /> Ambient
       </label>
     </div>
   );

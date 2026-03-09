@@ -12,6 +12,7 @@ export function Canvas() {
   const { project, addZone, addConnection, updateZone, addEntity, addSpawnPoint } = useProjectStore();
   const {
     activeTool, showGrid, selectedZoneId, hoveredZoneId,
+    showConnections, showEntities, showLandmarks, showSpawns, showAmbient,
     setSelectedZone, setHoveredZone, connectionStart, setConnectionStart,
   } = useEditorStore();
 
@@ -47,20 +48,22 @@ export function Canvas() {
     }
 
     // Connections
-    ctx.lineWidth = 1;
-    for (const conn of project.connections) {
-      const from = project.zones.find((z) => z.id === conn.fromZoneId);
-      const to = project.zones.find((z) => z.id === conn.toZoneId);
-      if (!from || !to) continue;
-      const fx = (from.gridX + from.gridWidth / 2) * tileSize;
-      const fy = (from.gridY + from.gridHeight / 2) * tileSize;
-      const tx = (to.gridX + to.gridWidth / 2) * tileSize;
-      const ty = (to.gridY + to.gridHeight / 2) * tileSize;
-      ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
-      ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.lineTo(tx, ty);
-      ctx.stroke();
+    if (showConnections) {
+      ctx.lineWidth = 1;
+      for (const conn of project.connections) {
+        const from = project.zones.find((z) => z.id === conn.fromZoneId);
+        const to = project.zones.find((z) => z.id === conn.toZoneId);
+        if (!from || !to) continue;
+        const fx = (from.gridX + from.gridWidth / 2) * tileSize;
+        const fy = (from.gridY + from.gridHeight / 2) * tileSize;
+        const tx = (to.gridX + to.gridWidth / 2) * tileSize;
+        const ty = (to.gridY + to.gridHeight / 2) * tileSize;
+        ctx.strokeStyle = conn.condition ? 'rgba(255,170,0,0.6)' : 'rgba(136,136,136,0.6)';
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+      }
     }
 
     // Zones
@@ -89,35 +92,80 @@ export function Canvas() {
     }
 
     // Entities
-    for (const ep of project.entityPlacements) {
-      const zone = project.zones.find((z) => z.id === ep.zoneId);
-      if (!zone) continue;
-      const x = (ep.gridX ?? zone.gridX + 2) * tileSize;
-      const y = (ep.gridY ?? zone.gridY + 2) * tileSize;
-      const roleColors: Record<string, string> = {
-        npc: '#4a9eff', enemy: '#ff4444', merchant: '#ffd700',
-        'quest-giver': '#44ff44', companion: '#44ffaa', boss: '#ff2222',
-      };
-      ctx.fillStyle = roleColors[ep.role] ?? '#888';
-      ctx.beginPath();
-      ctx.arc(x, y, ep.role === 'boss' ? 8 : 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#aaa';
-      ctx.font = '9px monospace';
-      ctx.fillText(ep.entityId, x + 10, y + 3);
+    if (showEntities) {
+      for (const ep of project.entityPlacements) {
+        const zone = project.zones.find((z) => z.id === ep.zoneId);
+        if (!zone) continue;
+        const x = (ep.gridX ?? zone.gridX + 2) * tileSize;
+        const y = (ep.gridY ?? zone.gridY + 2) * tileSize;
+        const roleColors: Record<string, string> = {
+          npc: '#4a9eff', enemy: '#ff4444', merchant: '#ffd700',
+          'quest-giver': '#44ff44', companion: '#44ffaa', boss: '#ff2222',
+        };
+        ctx.fillStyle = roleColors[ep.role] ?? '#888';
+        ctx.beginPath();
+        ctx.arc(x, y, ep.role === 'boss' ? 8 : 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#aaa';
+        ctx.font = '9px monospace';
+        ctx.fillText(ep.entityId, x + 10, y + 3);
+      }
+    }
+
+    // Landmarks
+    if (showLandmarks) {
+      for (const lm of project.landmarks) {
+        const zone = project.zones.find((z) => z.id === lm.zoneId);
+        if (!zone) continue;
+        const x = lm.gridX * tileSize;
+        const y = lm.gridY * tileSize;
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.moveTo(x, y - 6);
+        ctx.lineTo(x + 5, y);
+        ctx.lineTo(x, y + 6);
+        ctx.lineTo(x - 5, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '9px monospace';
+        ctx.fillText(lm.name, x + 8, y + 3);
+      }
     }
 
     // Spawn points
-    for (const sp of project.spawnPoints) {
-      const x = sp.gridX * tileSize;
-      const y = sp.gridY * tileSize;
-      ctx.fillStyle = '#00ff88';
-      ctx.fillRect(x - 4, y - 4, 8, 8);
-      ctx.fillStyle = '#aaa';
-      ctx.font = '9px monospace';
-      ctx.fillText('SPAWN', x + 8, y + 3);
+    if (showSpawns) {
+      for (const sp of project.spawnPoints) {
+        const x = sp.gridX * tileSize;
+        const y = sp.gridY * tileSize;
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(x - 4, y - 4, 8, 8);
+        ctx.fillStyle = '#aaa';
+        ctx.font = '9px monospace';
+        ctx.fillText('SPAWN', x + 8, y + 3);
+      }
     }
-  }, [project, showGrid, selectedZoneId, hoveredZoneId, tileSize]);
+
+    // Ambient overlays
+    if (showAmbient) {
+      for (const al of project.ambientLayers) {
+        for (const azId of al.zoneIds) {
+          const zone = project.zones.find((z) => z.id === azId);
+          if (!zone) continue;
+          const x = zone.gridX * tileSize;
+          const y = zone.gridY * tileSize;
+          const w = zone.gridWidth * tileSize;
+          const h = zone.gridHeight * tileSize;
+          const color = al.color ?? '#888888';
+          const r = parseInt(color.slice(1, 3), 16);
+          const g = parseInt(color.slice(3, 5), 16);
+          const b = parseInt(color.slice(5, 7), 16);
+          ctx.fillStyle = `rgba(${r},${g},${b},${al.intensity * 0.3})`;
+          ctx.fillRect(x, y, w, h);
+        }
+      }
+    }
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selectedZoneId, hoveredZoneId, tileSize]);
 
   useEffect(() => {
     draw();

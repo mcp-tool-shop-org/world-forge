@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/renderer-2d",
-  "version": "1.8.1",
+  "version": "1.9.1",
   "description": "PixiJS 2D renderer for world maps",
   "type": "module",
   "main": "dist/index.js",

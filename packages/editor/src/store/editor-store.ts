@@ -24,6 +24,10 @@ interface EditorState {
   showGrid: boolean;
   showConnections: boolean;
   showEntities: boolean;
+  showLandmarks: boolean;
+  showSpawns: boolean;
+  showBackgrounds: boolean;
+  showAmbient: boolean;
   zoom: number;
   selectedZoneId: string | null;
   hoveredZoneId: string | null;
@@ -48,6 +52,10 @@ interface EditorState {
   toggleGrid: () => void;
   toggleConnections: () => void;
   toggleEntities: () => void;
+  toggleLandmarks: () => void;
+  toggleSpawns: () => void;
+  toggleBackgrounds: () => void;
+  toggleAmbient: () => void;
   setZoom: (z: number) => void;
   dismissChecklist: () => void;
   markExported: () => void;
@@ -66,6 +74,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   showGrid: true,
   showConnections: true,
   showEntities: true,
+  showLandmarks: true,
+  showSpawns: true,
+  showBackgrounds: true,
+  showAmbient: true,
   zoom: 1,
   selectedZoneId: null,
   hoveredZoneId: null,
@@ -88,6 +100,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   toggleConnections: () => set((s) => ({ showConnections: !s.showConnections })),
   toggleEntities: () => set((s) => ({ showEntities: !s.showEntities })),
+  toggleLandmarks: () => set((s) => ({ showLandmarks: !s.showLandmarks })),
+  toggleSpawns: () => set((s) => ({ showSpawns: !s.showSpawns })),
+  toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
+  toggleAmbient: () => set((s) => ({ showAmbient: !s.showAmbient })),
   setZoom: (z) => set({ zoom: z }),
   dismissChecklist: () => set({ checklistDismissed: true }),
   markExported: () => set({ hasExported: true }),

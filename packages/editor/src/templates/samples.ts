@@ -75,7 +75,9 @@ const chapelThreshold: WorldProject = {
     { id: 'crypt-depths', name: 'Crypt Depths', zoneIds: ['crypt-chamber'], tags: ['underground', 'cursed'], baseMetrics: { commerce: 0, morale: 10, safety: 15, stability: 20 }, economyProfile: { supplyCategories: [], scarcityDefaults: {} } },
   ],
 
-  landmarks: [],
+  landmarks: [
+    { id: 'altar-of-passage', name: 'Altar of Passage', zoneId: 'chapel-entrance', gridX: 14, gridY: 13, tags: ['sacred', 'ancient'], description: 'A weathered stone altar marking the threshold between the living world and the crypt below.', interactionType: 'inspect', iconId: 'altar-icon' },
+  ],
 
   factionPresences: [
     { factionId: 'chapel-order', districtIds: ['chapel-grounds'], influence: 0.4, alertLevel: 0.2 },
@@ -192,6 +194,7 @@ const chapelThreshold: WorldProject = {
     { id: 'pilgrim-portrait', kind: 'portrait', label: 'Suspicious Pilgrim', path: 'assets/portraits/pilgrim.png', tags: ['npc', 'pilgrim'], packId: 'chapel-base-pack' },
     { id: 'aldric-portrait', kind: 'portrait', label: 'Brother Aldric', path: 'assets/portraits/aldric.png', tags: ['npc', 'clergy'], packId: 'chapel-base-pack' },
     { id: 'bone-talisman-icon', kind: 'icon', label: 'Bone Talisman', path: 'assets/icons/bone-talisman.png', tags: ['item', 'rare'], packId: 'chapel-base-pack' },
+    { id: 'altar-icon', kind: 'icon', label: 'Altar of Passage', path: 'assets/icons/altar-of-passage.png', tags: ['landmark', 'sacred'], packId: 'chapel-base-pack' },
   ],
   assetPacks: [{
     id: 'chapel-base-pack',
