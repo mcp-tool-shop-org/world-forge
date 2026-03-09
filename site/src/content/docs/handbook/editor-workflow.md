@@ -71,6 +71,12 @@ Once assets are registered, bind them to world objects:
 - **Entities** — assign portrait and sprite assets to entity placements
 - **Items** — assign icon assets to item placements
 
+### Asset Packs
+
+Group related assets into named, versioned packs for portability. Click **+ Add Pack** to create a pack with a label, version, description, tags, theme, license, and author. Then assign assets to packs using the Pack dropdown on each asset card.
+
+Use the **Group** checkbox to view assets organized by pack, with an "Unassigned" section for loose assets. The validator warns about orphaned packs (packs with no assets) and checks that all pack references are valid.
+
 The validator checks that all asset references point to existing assets of the correct kind. The Assets tab shows an orphan count for unreferenced assets.
 
 ## 6. Export

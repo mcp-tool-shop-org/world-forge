@@ -40,6 +40,8 @@ interface WorldProject {
   itemPlacements: ItemPlacement[];
   encounterAnchors: EncounterAnchor[];
   spawnPoints: SpawnPoint[];
+  assets: AssetEntry[];
+  assetPacks: AssetPack[];
   // ... crafting, market, visual layers
 }
 ```
@@ -109,9 +111,34 @@ Skill/ability trees with:
 - `currency` — what resource is spent to unlock nodes (e.g., "xp")
 - `nodes` — each with `cost`, optional `requires` (prerequisite node IDs), and `effects`
 
+## AssetEntry
+
+A single entry in the project's asset manifest:
+
+- `id` — unique identifier
+- `kind` — `portrait`, `sprite`, `background`, `icon`, or `tileset`
+- `label` — display name
+- `path` — relative path or URI to the media file
+- `tags` — freeform tags for filtering
+- `packId` — optional reference to an `AssetPack.id`
+- `provenance` — optional metadata (source, author, license, createdAt)
+
+## AssetPack
+
+A named, versioned grouping of assets for portability:
+
+- `id`, `label`, `version` — identity and semver version
+- `description` — what this pack contains
+- `tags`, `theme` — categorization (e.g., `dark-fantasy`)
+- `source` — provenance (`hand-drawn`, `ai-generated`, `stock`)
+- `license`, `author` — ownership metadata
+- `compatibility` — optional `PackCompatibility` with `minSchemaVersion` and `engineVersion`
+
+Assets reference their pack via `packId`. Deleting a pack cascades by clearing `packId` on all member assets.
+
 ## Validation
 
-`validateProject()` runs 32 structural checks:
+`validateProject()` runs 48 structural checks:
 
 1. At least one spawn point exists
 2. At least one default spawn point
@@ -145,3 +172,16 @@ Skill/ability trees with:
 30. Node ID uniqueness within tree
 31. Required node refs exist
 32. Root node existence (at least one node without requirements)
+33. Asset ID uniqueness
+34. Asset path non-empty
+35. Zone background/tileset asset ref existence + kind match
+36. Entity portrait/sprite asset ref existence + kind match
+37. Item icon asset ref existence + kind match
+38. Landmark icon asset ref existence + kind match
+39-42. Orphaned asset detection
+43. Pack ID uniqueness
+44. Pack label non-empty
+45. Pack version non-empty
+46. Asset packId references existing pack
+47. Orphaned pack detection (no assets reference this pack)
+48. Pack version format (semver x.y.z)

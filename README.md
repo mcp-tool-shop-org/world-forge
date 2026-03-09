@@ -52,11 +52,11 @@ npx world-forge-export project.json --validate-only
 
 ### @world-forge/schema
 
-Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 42 structural checks.
+Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 48 structural checks.
 
 ### @world-forge/export-ai-rpg
 
-Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, manifest, and pack metadata. Full validation pipeline with gap analysis. Includes a complete **import pipeline** (8 reverse converters) that reconstructs a WorldProject from exported JSON, with structured **fidelity reporting** that tracks exactly what was lossless, approximated, or dropped during conversion. Asset manifests and bindings are preserved through ExportResult round-trips.
+Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, manifest, and pack metadata. Full validation pipeline with gap analysis. Includes a complete **import pipeline** (8 reverse converters) that reconstructs a WorldProject from exported JSON, with structured **fidelity reporting** that tracks exactly what was lossless, approximated, or dropped during conversion. Asset manifests, bindings, and asset packs are preserved through ExportResult round-trips.
 
 ### @world-forge/renderer-2d
 
@@ -64,7 +64,7 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Assets** (asset library with kind-filtered search, inline editing, orphan detection), **Issues** (live grouped validation with click-to-focus), **Guide** (first-run checklist), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn.
+React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs: **Map** (zone/entity/district editing), **Player** (template with stats, inventory, equipment, spawn), **Builds** (archetypes, backgrounds, traits, disciplines, combos), **Trees** (progression nodes with requirements/effects), **Dialogue** (node editing, choice linking, broken-ref detection), **Assets** (asset library with kind-filtered search, inline editing, orphan detection, asset pack management with group-by-pack view), **Issues** (live grouped validation with click-to-focus), **Guide** (first-run checklist), **Import** (fidelity report with domain-level breakdown), **Diff** (semantic change tracking since import). Tools: select, zone-paint, connection, entity-place, landmark, spawn.
 
 ## Authoring Surface
 
@@ -81,6 +81,7 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Build catalog (archetypes, backgrounds, traits, disciplines, cross-titles, entanglements)
 - Progression trees (skill/ability nodes with requirements and effects)
 - Asset manifest (portraits, sprites, backgrounds, icons, tilesets) with kind-specific bindings
+- Asset packs (named, versioned groupings with compatibility metadata, theme, license)
 - Spawn points, encounter anchors, pressure hotspots, faction presences
 - Export to engine-compatible ContentPack JSON
 - Import from ContentPack or ExportResult JSON with structured fidelity reporting
