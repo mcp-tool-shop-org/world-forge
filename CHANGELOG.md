@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-03-08
+
+### Added
+
+- **Fidelity report model** — structured `FidelityReport` with per-entry level (lossless/approximated/dropped), domain, severity, entityId, fieldPath, machine-stable reason keys, and summary with `losslessPercent` and `byDomain` breakdown
+- **Converter fidelity entries** — all 8 import converters now emit structured `FidelityEntry[]` with reason keys: `grid-auto-generated`, `interactable-type-defaulted`, `surveillance-to-safety`, `economy-data-lost`, `zone-placement-round-robin`, `role-reverse-mapped`, `zone-placement-first-zone`, `hidden-from-contraband`, `textblock-to-string`, `spawn-point-generated`, `pack-id-stripped`, `visual-layers-dropped`, `connections-reconstructed`
+- **Import summary panel** — right sidebar tab showing overall fidelity percentage bar, lossless/approximated/dropped counts, collapsible domain groups with per-entry detail
+- **Semantic diff engine** — `diffProjects()` compares two WorldProjects by domain (zones, districts, entities, items, dialogues, progression, player, builds) with field-level diffs
+- **Diff viewer panel** — right sidebar tab showing changes since import with domain groups, object-level status (modified/added/removed), and field-level before/after diffs
+- **Export comparison summary** — export modal shows "Changes Since Import" section when exporting an imported project, with domain change counts and import caveats
+- **22 fidelity tests** — `fidelity.test.ts` covering model summarization, per-converter reason keys, Minimal + Chapel round-trip field comparisons, and report accuracy
+- 10 inline fidelity tests in `import.test.ts` for converter return signatures
+
+### Changed
+
+- `ImportResult` now includes `fidelityReport: FidelityReport` alongside backwards-compatible `warnings: string[]` and `lossless: boolean`
+- All 8 import converters return structured objects with `fidelity: FidelityEntry[]` instead of flat arrays
+- Tab bar uses `flexShrink: 0` with `overflowX: auto` instead of `flex: 1` — supports up to 9 tabs without cramping
+- Import modal stores fidelity report and project snapshot, auto-switches to Import tab on lossy import
+
 ## [1.5.0] - 2026-03-08
 
 ### Added

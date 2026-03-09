@@ -1,9 +1,11 @@
 // editor-store.ts — editor UI state
 
 import { create } from 'zustand';
+import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
+import type { WorldProject } from '@world-forge/schema';
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
-export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'issues' | 'guide';
+export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'issues' | 'guide' | 'import-summary' | 'diff';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
 /** Transient focus target set by validation click. Panels read and clear it. */
@@ -30,6 +32,11 @@ interface EditorState {
   checklistDismissed: boolean;
   hasExported: boolean;
 
+  // Import fidelity tracking
+  importFidelity: FidelityReport | null;
+  importSourceFormat: ImportFormat | null;
+  importSnapshot: WorldProject | null;
+
   setTool: (tool: EditorTool) => void;
   setRightTab: (tab: RightTab) => void;
   setBuildsSubTab: (tab: BuildsSubTab) => void;
@@ -45,6 +52,9 @@ interface EditorState {
   dismissChecklist: () => void;
   markExported: () => void;
   resetChecklist: () => void;
+  setImportFidelity: (report: FidelityReport, format: ImportFormat) => void;
+  clearImportFidelity: () => void;
+  setImportSnapshot: (project: WorldProject) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -63,6 +73,9 @@ export const useEditorStore = create<EditorState>((set) => ({
   connectionStart: null,
   checklistDismissed: false,
   hasExported: false,
+  importFidelity: null,
+  importSourceFormat: null,
+  importSnapshot: null,
 
   setTool: (tool) => set({ activeTool: tool, connectionStart: null }),
   setRightTab: (tab) => set({ rightTab: tab }),
@@ -79,4 +92,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   dismissChecklist: () => set({ checklistDismissed: true }),
   markExported: () => set({ hasExported: true }),
   resetChecklist: () => set({ checklistDismissed: false, hasExported: false, rightTab: 'guide' }),
+  setImportFidelity: (report, format) => set({ importFidelity: report, importSourceFormat: format }),
+  clearImportFidelity: () => set({ importFidelity: null, importSourceFormat: null, importSnapshot: null }),
+  setImportSnapshot: (project) => set({ importSnapshot: project }),
 }));

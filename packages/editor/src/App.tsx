@@ -17,11 +17,15 @@ import { ChecklistPanel } from './panels/ChecklistPanel.js';
 import { TemplateManager } from './panels/TemplateManager.js';
 import { ImportModal } from './panels/ImportModal.js';
 import { SaveTemplateModal } from './panels/SaveTemplateModal.js';
+import { ImportSummaryPanel } from './panels/ImportSummaryPanel.js';
+import { DiffPanel } from './panels/DiffPanel.js';
 import { Canvas } from './Canvas.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
   const { activeTool, selectedZoneId, rightTab, setRightTab, zoom, checklistDismissed } = useEditorStore();
+  const importFidelity = useEditorStore((s) => s.importFidelity);
+  const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const [showExport, setShowExport] = useState(false);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -29,7 +33,9 @@ export function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
 
-  const tabs: { id: RightTab; label: string }[] = [
+  const losslessPct = importFidelity?.summary.losslessPercent;
+
+  const tabs: { id: RightTab; label: string; badge?: string; badgeColor?: string }[] = [
     { id: 'map', label: 'Map' },
     { id: 'player', label: 'Player' },
     { id: 'builds', label: 'Builds' },
@@ -37,6 +43,8 @@ export function App() {
     { id: 'dialogue', label: 'Dialogue' },
     { id: 'issues', label: 'Issues' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
+    ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? '#3fb950' : '#d29922' }] : []),
+    ...(importSnapshot ? [{ id: 'diff' as RightTab, label: 'Diff' }] : []),
   ];
 
   const handleLoad = useCallback(() => {
@@ -104,14 +112,14 @@ export function App() {
 
         {/* Right sidebar */}
         <div style={{ width: 300, background: '#0d1117', borderLeft: '1px solid #30363d', display: 'flex', flexDirection: 'column' }}>
-          {/* Tab bar */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #30363d', background: '#161b22' }}>
+          {/* Tab bar — scrollable to handle many tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #30363d', background: '#161b22', overflowX: 'auto' }}>
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setRightTab(t.id)}
                 style={{
-                  flex: 1, padding: '6px 0', fontSize: 11, cursor: 'pointer',
+                  flexShrink: 0, padding: '6px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
                   background: rightTab === t.id ? '#0d1117' : 'transparent',
                   color: rightTab === t.id ? '#58a6ff' : '#8b949e',
                   border: 'none',
@@ -125,6 +133,14 @@ export function App() {
                     borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
                   }}>
                     {issueCount}
+                  </span>
+                )}
+                {t.badge && (
+                  <span style={{
+                    marginLeft: 4, fontSize: 9, background: t.badgeColor ?? '#8b949e', color: '#fff',
+                    borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
+                  }}>
+                    {t.badge}
                   </span>
                 )}
               </button>
@@ -150,6 +166,8 @@ export function App() {
             {rightTab === 'dialogue' && <DialoguePanel />}
             {rightTab === 'issues' && <ValidationPanel />}
             {rightTab === 'guide' && <ChecklistPanel />}
+            {rightTab === 'import-summary' && <ImportSummaryPanel />}
+            {rightTab === 'diff' && <DiffPanel />}
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import type { Zone } from '@world-forge/schema';
 import type { ZoneDefinition } from '@ai-rpg-engine/content-schema';
+import type { FidelityEntry } from './fidelity.js';
 
 export interface ZoneLayoutOptions {
   defaultWidth?: number;
@@ -12,16 +13,25 @@ export interface ZoneLayoutOptions {
 export function importZones(
   engineZones: ZoneDefinition[],
   options?: ZoneLayoutOptions,
-): Zone[] {
+): { zones: Zone[]; fidelity: FidelityEntry[] } {
   const w = options?.defaultWidth ?? 6;
   const h = options?.defaultHeight ?? 5;
   const sp = options?.spacing ?? 4;
+  const fidelity: FidelityEntry[] = [];
 
   const cols = Math.max(1, Math.ceil(Math.sqrt(engineZones.length)));
 
-  return engineZones.map((ez, i) => {
+  const zones = engineZones.map((ez, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
+
+    // Grid positions are auto-generated — always approximated
+    fidelity.push({
+      level: 'approximated', domain: 'zones', severity: 'warning',
+      entityId: ez.id, fieldPath: 'gridX,gridY',
+      message: `Zone '${ez.name}' grid position auto-generated`,
+      reason: 'grid-auto-generated',
+    });
 
     // Reconstruct description from TextBlock[] or string
     let description = '';
@@ -34,10 +44,15 @@ export function importZones(
     }
 
     // Reconstruct interactables — engine only preserves names
-    const interactables = (ez.interactables ?? []).map((name: string) => ({
-      name,
-      type: 'inspect' as const,
-    }));
+    const interactables = (ez.interactables ?? []).map((name: string) => {
+      fidelity.push({
+        level: 'approximated', domain: 'zones', severity: 'info',
+        entityId: ez.id, fieldPath: `interactables.${name}`,
+        message: `Interactable '${name}' type defaulted to 'inspect'`,
+        reason: 'interactable-type-defaulted',
+      });
+      return { name, type: 'inspect' as const };
+    });
 
     // Reconstruct exits
     const exits = (ez.exits ?? []).map((e) => ({
@@ -63,4 +78,6 @@ export function importZones(
       interactables,
     };
   });
+
+  return { zones, fidelity };
 }

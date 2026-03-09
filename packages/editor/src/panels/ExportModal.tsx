@@ -6,10 +6,14 @@ import { useEditorStore } from '../store/editor-store.js';
 import { exportToEngine } from '@world-forge/export-ai-rpg';
 import { validateProject } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
+import { diffProjects } from '../diff/diff-model.js';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
   const { setRightTab, setBuildsSubTab, setFocusTarget, setSelectedZone, markExported } = useEditorStore();
+  const importSnapshot = useEditorStore((s) => s.importSnapshot);
+  const importFidelity = useEditorStore((s) => s.importFidelity);
+  const importSourceFormat = useEditorStore((s) => s.importSourceFormat);
   const [status, setStatus] = useState<'idle' | 'valid' | 'invalid' | 'exported'>('idle');
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -114,6 +118,45 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         )}
+
+        {/* Changes since import */}
+        {importSnapshot && (() => {
+          const diff = diffProjects(importSnapshot, project);
+          const totalChanges = diff.totalModified + diff.totalAdded + diff.totalRemoved;
+          const caveats = importFidelity
+            ? [...new Set(importFidelity.entries.filter((e) => e.severity === 'warning').map((e) => e.message))]
+            : [];
+          return (
+            <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#0d1117', border: '1px solid #30363d', fontSize: 12 }}>
+              <div style={{ fontWeight: 600, color: '#c9d1d9', marginBottom: 4 }}>Changes Since Import</div>
+              <div style={{ color: '#8b949e', marginBottom: 4 }}>
+                Imported from {importSourceFormat === 'export-result' ? 'ExportResult' : importSourceFormat === 'content-pack' ? 'ContentPack' : 'WorldProject'}.
+                {totalChanges === 0
+                  ? <span style={{ color: '#3fb950' }}> No changes since import.</span>
+                  : <span> Since import: <span style={{ color: '#58a6ff' }}>{diff.totalModified} modified</span>, <span style={{ color: '#3fb950' }}>{diff.totalAdded} added</span>, <span style={{ color: '#f85149' }}>{diff.totalRemoved} removed</span>.</span>
+                }
+              </div>
+              {totalChanges > 0 && (
+                <div style={{ fontSize: 11, color: '#8b949e' }}>
+                  {diff.domains.filter((d) => d.modified + d.added + d.removed > 0).map((d) => (
+                    <span key={d.domain} style={{ marginRight: 8 }}>
+                      {d.domain}: {d.modified > 0 ? `${d.modified} modified` : ''}{d.added > 0 ? ` ${d.added} added` : ''}{d.removed > 0 ? ` ${d.removed} removed` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {caveats.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, color: '#d29922' }}>
+                  Import caveats:
+                  {caveats.slice(0, 4).map((c, i) => (
+                    <div key={i} style={{ paddingLeft: 8 }}>{'\u2022'} {c}</div>
+                  ))}
+                  {caveats.length > 4 && <div style={{ paddingLeft: 8, fontStyle: 'italic' }}>...and {caveats.length - 4} more</div>}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Content summary */}
         <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4, fontWeight: 'bold' }}>Export Contents</div>

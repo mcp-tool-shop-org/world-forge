@@ -2,14 +2,21 @@
 
 import type { DialogueDefinition } from '@world-forge/schema';
 import type { DialogueDefinition as EngineDialogue } from '@ai-rpg-engine/content-schema';
+import type { FidelityEntry } from './fidelity.js';
 
-export function importDialogues(engineDialogues: EngineDialogue[]): DialogueDefinition[] {
-  return engineDialogues.map((dlg) => {
+export function importDialogues(engineDialogues: EngineDialogue[]): { dialogues: DialogueDefinition[]; fidelity: FidelityEntry[] } {
+  const fidelity: FidelityEntry[] = [];
+
+  const dialogues = engineDialogues.map((dlg) => {
     const nodes: DialogueDefinition['nodes'] = {};
+    let hasTextBlock = false;
 
     for (const [nodeId, node] of Object.entries(dlg.nodes)) {
       // Engine text may be string or TextBlock[] — normalize to string
-      const text = Array.isArray(node.text)
+      const isTextBlock = Array.isArray(node.text);
+      if (isTextBlock) hasTextBlock = true;
+
+      const text = isTextBlock
         ? (node.text as Array<{ text: string }>).map((b) => b.text).join(' ')
         : String(node.text ?? '');
 
@@ -29,6 +36,15 @@ export function importDialogues(engineDialogues: EngineDialogue[]): DialogueDefi
       };
     }
 
+    if (hasTextBlock) {
+      fidelity.push({
+        level: 'approximated', domain: 'dialogues', severity: 'info',
+        entityId: dlg.id, fieldPath: 'nodes.*.text',
+        message: `Dialogue '${dlg.id}' TextBlock arrays normalized to plain strings`,
+        reason: 'textblock-to-string',
+      });
+    }
+
     return {
       id: dlg.id,
       speakers: [...dlg.speakers],
@@ -36,4 +52,6 @@ export function importDialogues(engineDialogues: EngineDialogue[]): DialogueDefi
       nodes,
     };
   });
+
+  return { dialogues, fidelity };
 }

@@ -4,6 +4,8 @@ import type { WorldProject, ZoneConnection } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 import type { ContentPack, ExportResult } from './export.js';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
+import type { FidelityEntry, FidelityReport } from './fidelity.js';
+import { buildFidelityReport } from './fidelity.js';
 
 import { importZones } from './import-zones.js';
 import { importDistricts } from './import-districts.js';
@@ -21,6 +23,7 @@ export interface ImportResult {
   format: ImportFormat;
   warnings: string[];
   lossless: boolean;
+  fidelityReport: FidelityReport;
 }
 
 export interface ImportError {
@@ -65,7 +68,7 @@ export function importProject(data: unknown): ImportResult | ImportError {
     const project = data as WorldProject;
     const validation = validateProject(project);
     const warnings = validation.valid ? [] : validation.errors.map((e) => `${e.path}: ${e.message}`);
-    return { project, format: 'world-project', warnings, lossless: true };
+    return { project, format: 'world-project', warnings, lossless: true, fidelityReport: buildFidelityReport([]) };
   }
 
   if (format === 'export-result') {
@@ -89,19 +92,23 @@ export function importFromContentPack(
   projectName?: string,
   meta?: PackMetadata,
 ): ImportResult {
-  const warnings: string[] = [];
+  const allFidelity: FidelityEntry[] = [];
 
-  // 1. Import each domain
-  const zones = importZones(pack.zones);
-  const districts = importDistricts(pack.districts);
-  const { placements: entityPlacements, warnings: entityWarnings } = importEntities(pack.entities, zones.map((z) => z.id));
-  const { placements: itemPlacements, warnings: itemWarnings } = importItems(pack.items, zones.map((z) => z.id));
-  const dialogues = importDialogues(pack.dialogues);
-  const playerTemplate = importPlayerTemplate(pack.playerTemplate);
-  const buildCatalog = importBuildCatalog(pack.buildCatalog);
-  const progressionTrees = importProgressionTrees(pack.progressionTrees);
+  // 1. Import each domain (destructure fidelity from each converter)
+  const { zones, fidelity: zoneFidelity } = importZones(pack.zones);
+  const { districts, fidelity: districtFidelity } = importDistricts(pack.districts);
+  const { placements: entityPlacements, warnings: entityWarnings, fidelity: entityFidelity } = importEntities(pack.entities, zones.map((z) => z.id));
+  const { placements: itemPlacements, warnings: itemWarnings, fidelity: itemFidelity } = importItems(pack.items, zones.map((z) => z.id));
+  const { dialogues, fidelity: dialogueFidelity } = importDialogues(pack.dialogues);
+  const { template: playerTemplate, fidelity: playerFidelity } = importPlayerTemplate(pack.playerTemplate);
+  const { catalog: buildCatalog, fidelity: buildFidelity } = importBuildCatalog(pack.buildCatalog);
+  const { trees: progressionTrees, fidelity: treeFidelity } = importProgressionTrees(pack.progressionTrees);
 
-  warnings.push(...entityWarnings, ...itemWarnings);
+  // Collect all domain fidelity entries
+  allFidelity.push(
+    ...zoneFidelity, ...districtFidelity, ...entityFidelity, ...itemFidelity,
+    ...dialogueFidelity, ...playerFidelity, ...buildFidelity, ...treeFidelity,
+  );
 
   // 2. Cross-reference districts → zones: set parentDistrictId
   for (const d of districts) {
@@ -122,6 +129,14 @@ export function importFromContentPack(
         connections.push({ fromZoneId: zone.id, toZoneId: nid, bidirectional: true });
       }
     }
+  }
+
+  if (connections.length > 0) {
+    allFidelity.push({
+      level: 'lossless', domain: 'world', severity: 'info',
+      message: `${connections.length} connection(s) reconstructed from zone neighbor data`,
+      reason: 'connections-reconstructed',
+    });
   }
 
   // 4. Compute map dimensions from auto-layout bounds
@@ -192,13 +207,24 @@ export function importFromContentPack(
     ambientLayers: [],
   };
 
-  // 8. Add structural warnings
+  // 8. Add structural fidelity entries
+  allFidelity.push({
+    level: 'dropped', domain: 'world', severity: 'warning',
+    message: 'Visual layers not imported (tilesets, props, ambient)',
+    reason: 'visual-layers-dropped',
+  });
+
+  // 9. Build fidelity report
+  const fidelityReport = buildFidelityReport(allFidelity);
+
+  // 10. Derive backwards-compatible warnings from fidelity + entity/item warnings
+  const warnings: string[] = [...entityWarnings, ...itemWarnings];
   if (zones.length > 0) warnings.push('Zone grid positions auto-generated (original layout unknown)');
   if (pack.entities.length > 0) warnings.push('Entity zone placements reconstructed (original zones unknown)');
   if (pack.items.length > 0) warnings.push('Item zone placements reconstructed (original zones unknown)');
   warnings.push('Visual layers not imported (tilesets, props, ambient)');
 
-  // 9. Validate and surface any remaining issues
+  // 11. Validate and surface any remaining issues
   const validation = validateProject(project);
   if (!validation.valid) {
     for (const err of validation.errors) {
@@ -206,5 +232,7 @@ export function importFromContentPack(
     }
   }
 
-  return { project, format: 'content-pack', warnings, lossless: false };
+  const lossless = fidelityReport.summary.approximated === 0 && fidelityReport.summary.dropped === 0;
+
+  return { project, format: 'content-pack', warnings, lossless, fidelityReport };
 }

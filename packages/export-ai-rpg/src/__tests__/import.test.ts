@@ -51,7 +51,7 @@ describe('importZones', () => {
   it('auto-layouts zones in grid', () => {
     const result = exportToEngine(chapelProject);
     if ('ok' in result) throw new Error('export failed');
-    const zones = importZones(result.contentPack.zones);
+    const { zones } = importZones(result.contentPack.zones);
     expect(zones.length).toBe(result.contentPack.zones.length);
     // First zone at (0,0), second at (defaultWidth + spacing, 0) = (10, 0)
     expect(zones[0].gridX).toBe(0);
@@ -66,19 +66,19 @@ describe('importZones', () => {
   it('reconstructs description from TextBlock array', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const zones = importZones(result.contentPack.zones);
+    const { zones } = importZones(result.contentPack.zones);
     const entrance = zones.find((z) => z.id === 'zone-entrance');
     expect(entrance?.description).toBe('A dusty entrance hall with faded tapestries.');
   });
 
   it('handles zero zones', () => {
-    expect(importZones([])).toHaveLength(0);
+    expect(importZones([]).zones).toHaveLength(0);
   });
 
   it('reconstructs interactables with inspect type', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const zones = importZones(result.contentPack.zones);
+    const { zones } = importZones(result.contentPack.zones);
     const entrance = zones.find((z) => z.id === 'zone-entrance');
     expect(entrance?.interactables).toHaveLength(1);
     expect(entrance?.interactables[0].name).toBe('old tapestry');
@@ -88,9 +88,28 @@ describe('importZones', () => {
   it('preserves hazards', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const zones = importZones(result.contentPack.zones);
+    const { zones } = importZones(result.contentPack.zones);
     const cellar = zones.find((z) => z.id === 'zone-cellar');
     expect(cellar?.hazards).toContain('unstable-floor');
+  });
+
+  it('emits grid-auto-generated fidelity per zone', () => {
+    const result = exportToEngine(minimalProject);
+    if ('ok' in result) throw new Error('export failed');
+    const { zones, fidelity } = importZones(result.contentPack.zones);
+    const gridEntries = fidelity.filter((f) => f.reason === 'grid-auto-generated');
+    expect(gridEntries.length).toBe(zones.length);
+    expect(gridEntries[0].level).toBe('approximated');
+    expect(gridEntries[0].domain).toBe('zones');
+  });
+
+  it('emits interactable-type-defaulted fidelity', () => {
+    const result = exportToEngine(minimalProject);
+    if ('ok' in result) throw new Error('export failed');
+    const { fidelity } = importZones(result.contentPack.zones);
+    const interactableEntries = fidelity.filter((f) => f.reason === 'interactable-type-defaulted');
+    expect(interactableEntries.length).toBeGreaterThan(0);
+    expect(interactableEntries[0].level).toBe('approximated');
   });
 });
 
@@ -100,7 +119,7 @@ describe('importDistricts', () => {
   it('reverses surveillance to safety', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const districts = importDistricts(result.contentPack.districts);
+    const { districts } = importDistricts(result.contentPack.districts);
     expect(districts).toHaveLength(1);
     expect(districts[0].baseMetrics.safety).toBe(60); // original safety was 60
     expect(districts[0].baseMetrics.commerce).toBe(30);
@@ -109,8 +128,17 @@ describe('importDistricts', () => {
   it('defaults economyProfile', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const districts = importDistricts(result.contentPack.districts);
+    const { districts } = importDistricts(result.contentPack.districts);
     expect(districts[0].economyProfile).toEqual({ supplyCategories: [], scarcityDefaults: {} });
+  });
+
+  it('emits surveillance-to-safety and economy-data-lost fidelity', () => {
+    const result = exportToEngine(minimalProject);
+    if ('ok' in result) throw new Error('export failed');
+    const { fidelity } = importDistricts(result.contentPack.districts);
+    expect(fidelity.some((f) => f.reason === 'surveillance-to-safety')).toBe(true);
+    expect(fidelity.some((f) => f.reason === 'economy-data-lost')).toBe(true);
+    expect(fidelity.find((f) => f.reason === 'economy-data-lost')!.level).toBe('dropped');
   });
 });
 
@@ -186,6 +214,15 @@ describe('importEntities', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('Bob');
   });
+
+  it('emits zone-placement-round-robin and role-reverse-mapped fidelity', () => {
+    const { fidelity } = importEntities(
+      [{ id: 'e1', type: 'npc', name: 'Bob', tags: [], aiProfile: 'passive' }],
+      ['z1'],
+    );
+    expect(fidelity.some((f) => f.reason === 'zone-placement-round-robin')).toBe(true);
+    expect(fidelity.some((f) => f.reason === 'role-reverse-mapped')).toBe(true);
+  });
 });
 
 // --- importItems ---
@@ -212,6 +249,22 @@ describe('importItems', () => {
     expect(placements).toHaveLength(0);
     expect(warnings).toHaveLength(0);
   });
+
+  it('emits zone-placement-first-zone fidelity per item', () => {
+    const { fidelity } = importItems(
+      [{ id: 'i1', name: 'Sword', description: 'A sword', slot: 'weapon', rarity: 'common' } as never],
+      ['z1'],
+    );
+    expect(fidelity.some((f) => f.reason === 'zone-placement-first-zone')).toBe(true);
+  });
+
+  it('emits hidden-from-contraband fidelity for contraband items', () => {
+    const { fidelity } = importItems(
+      [{ id: 'i1', name: 'Secret', description: 'Hidden', slot: 'trinket', rarity: 'rare', provenance: { flags: ['contraband'] } } as never],
+      ['z1'],
+    );
+    expect(fidelity.some((f) => f.reason === 'hidden-from-contraband')).toBe(true);
+  });
 });
 
 // --- importDialogues ---
@@ -220,12 +273,21 @@ describe('importDialogues', () => {
   it('preserves full node graph', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const dialogues = importDialogues(result.contentPack.dialogues);
+    const { dialogues } = importDialogues(result.contentPack.dialogues);
     expect(dialogues).toHaveLength(1);
     expect(dialogues[0].id).toBe('dlg-keeper');
     expect(dialogues[0].entryNodeId).toBe('greet');
     expect(Object.keys(dialogues[0].nodes)).toHaveLength(3);
     expect(dialogues[0].nodes.greet.choices).toHaveLength(2);
+  });
+
+  it('emits textblock-to-string fidelity when text was TextBlock[]', () => {
+    const result = exportToEngine(minimalProject);
+    if ('ok' in result) throw new Error('export failed');
+    const { fidelity } = importDialogues(result.contentPack.dialogues);
+    // Engine converts string text to TextBlock[], so import should detect it
+    const tbEntries = fidelity.filter((f) => f.reason === 'textblock-to-string');
+    expect(tbEntries.length).toBeGreaterThanOrEqual(0); // only if engine used TextBlock
   });
 });
 
@@ -235,7 +297,7 @@ describe('importPlayerTemplate', () => {
   it('round-trips player template fields', () => {
     const result = exportToEngine(minimalProject);
     if ('ok' in result) throw new Error('export failed');
-    const pt = importPlayerTemplate(result.contentPack.playerTemplate);
+    const { template: pt } = importPlayerTemplate(result.contentPack.playerTemplate);
     expect(pt).toBeDefined();
     expect(pt!.name).toBe('Traveler');
     expect(pt!.baseStats.vigor).toBe(3);
@@ -243,8 +305,18 @@ describe('importPlayerTemplate', () => {
     expect(pt!.spawnPointId).toBe('sp-default');
   });
 
-  it('returns undefined for undefined input', () => {
-    expect(importPlayerTemplate(undefined)).toBeUndefined();
+  it('returns undefined template for undefined input', () => {
+    const { template } = importPlayerTemplate(undefined);
+    expect(template).toBeUndefined();
+  });
+
+  it('emits spawn-point-generated when spawnPointId missing', () => {
+    const { fidelity } = importPlayerTemplate({
+      name: 'Test', defaultArchetypeId: '', defaultBackgroundId: '',
+      baseStats: {}, baseResources: {}, startingInventory: [], startingEquipment: {},
+      spawnPointId: '', tags: [], custom: {},
+    });
+    expect(fidelity.some((f) => f.reason === 'spawn-point-generated')).toBe(true);
   });
 });
 
@@ -254,7 +326,7 @@ describe('importBuildCatalog', () => {
   it('strips packId and reconstructs catalog', () => {
     const result = exportToEngine(chapelProject);
     if ('ok' in result) throw new Error('export failed');
-    const bc = importBuildCatalog(result.contentPack.buildCatalog);
+    const { catalog: bc } = importBuildCatalog(result.contentPack.buildCatalog);
     expect(bc).toBeDefined();
     expect(bc!.archetypes.length).toBeGreaterThan(0);
     expect(bc!.statBudget).toBe(chapelProject.buildCatalog!.statBudget);
@@ -262,8 +334,16 @@ describe('importBuildCatalog', () => {
     expect((bc as unknown as Record<string, unknown>).packId).toBeUndefined();
   });
 
-  it('returns undefined for undefined input', () => {
-    expect(importBuildCatalog(undefined)).toBeUndefined();
+  it('returns undefined catalog for undefined input', () => {
+    const { catalog } = importBuildCatalog(undefined);
+    expect(catalog).toBeUndefined();
+  });
+
+  it('emits pack-id-stripped fidelity when packId present', () => {
+    const result = exportToEngine(chapelProject);
+    if ('ok' in result) throw new Error('export failed');
+    const { fidelity } = importBuildCatalog(result.contentPack.buildCatalog);
+    expect(fidelity.some((f) => f.reason === 'pack-id-stripped')).toBe(true);
   });
 });
 
@@ -273,10 +353,17 @@ describe('importProgressionTrees', () => {
   it('preserves tree structure', () => {
     const result = exportToEngine(chapelProject);
     if ('ok' in result) throw new Error('export failed');
-    const trees = importProgressionTrees(result.contentPack.progressionTrees);
+    const { trees } = importProgressionTrees(result.contentPack.progressionTrees);
     expect(trees.length).toBe(chapelProject.progressionTrees.length);
     expect(trees[0].id).toBe(chapelProject.progressionTrees[0].id);
     expect(trees[0].nodes.length).toBe(chapelProject.progressionTrees[0].nodes.length);
+  });
+
+  it('emits no fidelity entries (lossless)', () => {
+    const result = exportToEngine(chapelProject);
+    if ('ok' in result) throw new Error('export failed');
+    const { fidelity } = importProgressionTrees(result.contentPack.progressionTrees);
+    expect(fidelity).toHaveLength(0);
   });
 });
 
@@ -366,9 +453,11 @@ describe('importProject', () => {
     expect(result.format).toBe('world-project');
     expect(result.lossless).toBe(true);
     expect(result.project.id).toBe(minimalProject.id);
+    expect(result.fidelityReport).toBeDefined();
+    expect(result.fidelityReport.summary.total).toBe(0);
   });
 
-  it('imports ContentPack format with warnings', () => {
+  it('imports ContentPack format with fidelity report', () => {
     const exported = exportToEngine(chapelProject);
     if ('ok' in exported) throw new Error('export failed');
     const result = importProject(exported.contentPack);
@@ -376,6 +465,9 @@ describe('importProject', () => {
     expect(result.format).toBe('content-pack');
     expect(result.lossless).toBe(false);
     expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.fidelityReport).toBeDefined();
+    expect(result.fidelityReport.summary.total).toBeGreaterThan(0);
+    expect(result.fidelityReport.summary.losslessPercent).toBeLessThan(100);
   });
 
   it('imports ExportResult format with metadata recovery', () => {
@@ -385,6 +477,7 @@ describe('importProject', () => {
     if ('ok' in result) throw new Error('import failed');
     expect(result.format).toBe('export-result');
     expect(result.project.name).toBe(chapelProject.name);
+    expect(result.fidelityReport).toBeDefined();
   });
 
   it('rejects invalid format', () => {

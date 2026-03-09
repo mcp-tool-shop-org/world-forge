@@ -54,12 +54,23 @@ export function ImportModal({ onClose }: Props) {
     reader.readAsText(file);
   }, []);
 
+  const setImportFidelity = useEditorStore((s) => s.setImportFidelity);
+  const setImportSnapshot = useEditorStore((s) => s.setImportSnapshot);
+  const setRightTab = useEditorStore((s) => s.setRightTab);
+
   const handleImport = useCallback(() => {
     if (!result) return;
     loadProject(result.project);
     resetChecklist();
+    // Store fidelity report and snapshot for import summary + diff panels
+    setImportFidelity(result.fidelityReport, result.format);
+    setImportSnapshot(structuredClone(result.project));
+    // Auto-switch to import summary tab if lossy
+    if (!result.lossless) {
+      setRightTab('import-summary');
+    }
     onClose();
-  }, [result, loadProject, resetChecklist, onClose]);
+  }, [result, loadProject, resetChecklist, setImportFidelity, setImportSnapshot, setRightTab, onClose]);
 
   const p = result?.project;
 

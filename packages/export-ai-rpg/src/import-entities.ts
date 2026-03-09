@@ -2,6 +2,7 @@
 
 import type { EntityPlacement, EntityRole } from '@world-forge/schema';
 import type { EntityBlueprint } from '@ai-rpg-engine/content-schema';
+import type { FidelityEntry } from './fidelity.js';
 
 /** Tags injected by role during export — must be stripped on import to avoid accumulation. */
 const ROLE_INJECTED_TAGS: ReadonlySet<string> = new Set([
@@ -26,8 +27,9 @@ function reverseRole(type: string, tags: string[]): EntityRole {
 export function importEntities(
   engineEntities: EntityBlueprint[],
   zoneIds: string[],
-): { placements: EntityPlacement[]; warnings: string[] } {
+): { placements: EntityPlacement[]; warnings: string[]; fidelity: FidelityEntry[] } {
   const warnings: string[] = [];
+  const fidelity: FidelityEntry[] = [];
   const placements: EntityPlacement[] = [];
 
   for (let i = 0; i < engineEntities.length; i++) {
@@ -48,6 +50,19 @@ export function importEntities(
     // Round-robin zone assignment
     const zoneId = zoneIds.length > 0 ? zoneIds[i % zoneIds.length] : 'unplaced';
     warnings.push(`Entity '${eb.name}' placed in zone '${zoneId}' (original zone unknown)`);
+
+    fidelity.push({
+      level: 'approximated', domain: 'entities', severity: 'warning',
+      entityId: eb.id, fieldPath: 'zoneId',
+      message: `Entity '${eb.name}' zone round-robin assigned to '${zoneId}'`,
+      reason: 'zone-placement-round-robin',
+    });
+    fidelity.push({
+      level: 'approximated', domain: 'entities', severity: 'info',
+      entityId: eb.id, fieldPath: 'role',
+      message: `Entity '${eb.name}' role '${role}' reverse-mapped from type '${eb.type}'`,
+      reason: 'role-reverse-mapped',
+    });
 
     const placement: EntityPlacement = {
       entityId: eb.id,
@@ -75,5 +90,5 @@ export function importEntities(
     placements.push(placement);
   }
 
-  return { placements, warnings };
+  return { placements, warnings, fidelity };
 }

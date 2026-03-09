@@ -2,11 +2,12 @@
 
 import type { ProgressionTreeDefinition } from '@world-forge/schema';
 import type { ProgressionTreeDefinition as EngineTree } from '@ai-rpg-engine/content-schema';
+import type { FidelityEntry } from './fidelity.js';
 
 export function importProgressionTrees(
   engineTrees: EngineTree[],
-): ProgressionTreeDefinition[] {
-  return engineTrees.map((tree) => ({
+): { trees: ProgressionTreeDefinition[]; fidelity: FidelityEntry[] } {
+  const trees = engineTrees.map((tree) => ({
     id: tree.id,
     name: tree.name,
     currency: tree.currency,
@@ -19,4 +20,7 @@ export function importProgressionTrees(
       effects: node.effects.map((e) => ({ type: e.type, target: e.target, params: { ...e.params } })),
     })),
   }));
+
+  // Progression trees are lossless — no fidelity entries
+  return { trees, fidelity: [] };
 }
