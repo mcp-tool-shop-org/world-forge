@@ -247,8 +247,8 @@ export function importFromContentPack(
     districts,
     landmarks: [],
 
-    factionPresences: [],
-    pressureHotspots: [],
+    factionPresences: pack.factionPresences ?? [],
+    pressureHotspots: pack.pressureHotspots ?? [],
     dialogues,
 
     playerTemplate,
@@ -257,7 +257,7 @@ export function importFromContentPack(
 
     entityPlacements,
     itemPlacements,
-    encounterAnchors: [],
+    encounterAnchors: pack.encounterAnchors ?? [],
     spawnPoints,
     craftingStations: [],
     marketNodes: [],

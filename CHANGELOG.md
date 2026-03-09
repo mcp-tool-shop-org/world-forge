@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.8.0] - 2026-03-09
+
+### Added
+
+- **Encounter anchors on canvas** — red diamond markers at zone center, type-based coloring (boss=bright red, ambush=orange, patrol=muted yellow), selection ring, type label at zoom > 40%
+- **Encounter-place tool** — click a zone to place a new encounter anchor
+- **EncounterProperties panel** — edit encounter type, enemy IDs, probability, cooldown, tags; delete encounter
+- **Encounter hit-testing** — encounters are selectable on canvas with priority: spawns > encounters > landmarks > entities > connections > zones
+- **Encounter search** — Ctrl+K indexes encounter anchors with type and probability detail
+- **Encounter object list** — red "Enc" badges under each zone in Objects tab
+- **District panel expansion** — collapsible per-district editor with metrics sliders (commerce/morale/safety/stability), tags, controlling faction, economy profile, faction presences, pressure hotspots, and remove button
+- **Faction presence editing** — inline add/edit/remove faction influence and alert level per district
+- **Pressure hotspot editing** — inline add/edit/remove hotspot type, probability, and tags per district
+- **District name labels** — muted large text at zone centroid when zoom > 25%
+- **Remove District** — deletes district and clears `parentDistrictId` from affected zones
+- **Export round-trip** — encounterAnchors, factionPresences, and pressureHotspots now included in ContentPack and preserved through export/import cycle
+- 6 new validation checks: encounter ID uniqueness, encounter zoneId exists, encounterType non-empty, faction districtIds valid, pressure hotspot ID uniqueness, pressure hotspot zoneId exists
+- `SelectionSet` extended with `encounters: string[]`
+- Chapel Threshold sample: added `controllingFaction` to crypt-depths district, added crypt-pressure hotspot
+- 17 new tests (412 total)
+
 ## [2.7.0] - 2026-03-09
 
 ### Added

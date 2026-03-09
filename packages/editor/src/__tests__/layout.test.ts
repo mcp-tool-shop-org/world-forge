@@ -3,7 +3,7 @@ import { getSelectionBounds, alignSelected, distributeSelected } from '../layout
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 
 const chapel = SAMPLE_WORLDS[2].project;
-const empty = { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[] };
+const empty = { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
 
 // Chapel zone positions (from fixture):
 // chapel-entrance: gridX=10, gridY=10, gridWidth=8, gridHeight=6  → right=18, bottom=16
@@ -57,6 +57,7 @@ describe('getSelectionBounds', () => {
       entities: ['suspicious-pilgrim'],
       landmarks: ['altar-of-passage'],
       spawns: ['chapel-spawn'],
+      encounters: [] as string[],
     };
     const bounds = getSelectionBounds(chapel, sel);
 
@@ -85,6 +86,7 @@ describe('getSelectionBounds', () => {
       entities: ['nonexistent-entity'],
       landmarks: ['nonexistent-landmark'],
       spawns: ['nonexistent-spawn'],
+      encounters: [] as string[],
     };
     const bounds = getSelectionBounds(chapel, sel);
     expect(bounds).toHaveLength(0);
@@ -198,6 +200,7 @@ describe('alignSelected', () => {
       entities: [],
       landmarks: ['altar-of-passage'],
       spawns: [],
+      encounters: [] as string[],
     };
     const result = alignSelected(chapel, sel, 'left');
 
@@ -306,6 +309,7 @@ describe('entity materialization', () => {
       entities: ['suspicious-pilgrim'],
       landmarks: [],
       spawns: [],
+      encounters: [] as string[],
     };
     const result = alignSelected(chapel, sel, 'left');
 
@@ -332,6 +336,7 @@ describe('entity materialization', () => {
       entities: ['suspicious-pilgrim'],
       landmarks: [],
       spawns: [],
+      encounters: [] as string[],
     };
     const result = alignSelected(chapel, sel, 'left');
 
@@ -348,6 +353,7 @@ describe('entity materialization', () => {
       entities: ['suspicious-pilgrim', 'ash-ghoul'],
       landmarks: [],
       spawns: [],
+      encounters: [] as string[],
     };
     const result2 = alignSelected(chapel, sel2, 'top');
 

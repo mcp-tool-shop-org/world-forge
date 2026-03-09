@@ -4,7 +4,7 @@ import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-aut
 
 // Use Chapel Threshold as base project
 const project = chapelProject;
-const empty: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [] };
+const empty: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
 
 describe('duplicateSelected', () => {
   // 1. Empty selection returns unchanged project
@@ -47,6 +47,7 @@ describe('duplicateSelected', () => {
       entities: ['suspicious-pilgrim'],
       landmarks: [],
       spawns: [],
+      encounters: [],
     };
     const { project: p, newSelection } = duplicateSelected(project, sel);
 
@@ -66,6 +67,7 @@ describe('duplicateSelected', () => {
       entities: [],
       landmarks: [],
       spawns: [],
+      encounters: [],
     };
     const { project: p, newSelection } = duplicateSelected(project, sel);
 
@@ -129,6 +131,7 @@ describe('duplicateSelected', () => {
       entities: [],
       landmarks: ['altar-landmark'],
       spawns: [],
+      encounters: [],
     };
     const { project: p, newSelection } = duplicateSelected(project, sel);
 
@@ -148,6 +151,7 @@ describe('duplicateSelected', () => {
       entities: [],
       landmarks: [],
       spawns: [],
+      encounters: [],
     };
     const { newSelection } = duplicateSelected(project, sel);
 
@@ -170,6 +174,7 @@ describe('duplicateSelected', () => {
       entities: ['brother-aldric'],
       landmarks: [],
       spawns: [],
+      encounters: [],
     };
     const { project: p, newSelection } = duplicateSelected(project, sel);
 
@@ -186,6 +191,7 @@ describe('duplicateSelected', () => {
       entities: ['suspicious-pilgrim'],
       landmarks: ['altar-landmark'],
       spawns: ['chapel-spawn'],
+      encounters: [],
     };
     const { project: p, newSelection } = duplicateSelected(project, sel);
 

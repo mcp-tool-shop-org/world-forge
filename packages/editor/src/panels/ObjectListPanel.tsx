@@ -16,7 +16,7 @@ interface DistrictGroup {
 export function ObjectListPanel() {
   const { project } = useProjectStore();
   const {
-    selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection,
+    selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     setSelection, setViewport, setRightTab,
   } = useEditorStore();
 
@@ -100,6 +100,15 @@ export function ObjectListPanel() {
     }
   };
 
+  const handleSelectEncounter = (id: string, zoneId: string) => {
+    selectEncounter(id, false);
+    const size = getCanvasSize();
+    if (size) {
+      const vp = computeFrameViewport({ type: 'zone', id: zoneId }, project, size.cw, size.ch);
+      if (vp) setViewport(vp);
+    }
+  };
+
   const handleSelectConnection = (from: string, to: string) => {
     selectConnection(from, to);
     const size = getCanvasSize();
@@ -115,7 +124,7 @@ export function ObjectListPanel() {
   const handleSelectDistrict = (districtId: string) => {
     const district = project.districts.find((d) => d.id === districtId);
     if (!district || district.zoneIds.length === 0) return;
-    setSelection({ zones: district.zoneIds, entities: [], landmarks: [], spawns: [] });
+    setSelection({ zones: district.zoneIds, entities: [], landmarks: [], spawns: [], encounters: [] });
     const size = getCanvasSize();
     if (size) {
       const items = district.zoneIds
@@ -167,6 +176,8 @@ export function ObjectListPanel() {
             if (landmarks.some((l) => matchesFilter(l.name, l.id))) return true;
             const spawns = project.spawnPoints.filter((s) => s.zoneId === zid);
             if (spawns.some((s) => matchesFilter(s.id, s.id))) return true;
+            const encs = project.encounterAnchors.filter((e) => e.zoneId === zid);
+            if (encs.some((e) => matchesFilter(e.encounterType, e.id))) return true;
             return false;
           });
 
@@ -202,12 +213,14 @@ export function ObjectListPanel() {
                 const entities = project.entityPlacements.filter((e) => e.zoneId === zid);
                 const landmarks = project.landmarks.filter((l) => l.zoneId === zid);
                 const spawns = project.spawnPoints.filter((s) => s.zoneId === zid);
-                const childCount = entities.length + landmarks.length + spawns.length;
+                const encounters = project.encounterAnchors.filter((e) => e.zoneId === zid);
+                const childCount = entities.length + landmarks.length + spawns.length + encounters.length;
 
                 // Filter children
                 const visEntities = q ? entities.filter((e) => matchesFilter(e.name ?? e.entityId, e.entityId)) : entities;
                 const visLandmarks = q ? landmarks.filter((l) => matchesFilter(l.name, l.id)) : landmarks;
                 const visSpawns = q ? spawns.filter((s) => matchesFilter(s.id, s.id)) : spawns;
+                const visEncounters = q ? encounters.filter((e) => matchesFilter(e.encounterType, e.id)) : encounters;
 
                 return (
                   <div key={zid} style={{ marginLeft: 12 }}>
@@ -290,6 +303,24 @@ export function ObjectListPanel() {
                               <span style={{ color: '#f0883e', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>S</span>
                               <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{sp.id}</span>
                               {sp.isDefault && <span style={{ fontSize: 9, color: '#8b949e' }}>(default)</span>}
+                            </div>
+                          );
+                        })}
+                        {visEncounters.map((enc) => {
+                          const sel = isSel(selection, 'encounter', enc.id);
+                          return (
+                            <div
+                              key={enc.id}
+                              data-selected={sel}
+                              onClick={() => handleSelectEncounter(enc.id, enc.zoneId)}
+                              style={{
+                                padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                borderLeft: sel ? '2px solid #da3633' : '2px solid transparent',
+                              }}
+                            >
+                              <span style={{ color: '#da3633', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>Enc</span>
+                              <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{enc.id}</span>
+                              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{enc.encounterType}</span>
                             </div>
                           );
                         })}

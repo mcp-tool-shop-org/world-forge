@@ -52,11 +52,11 @@ npx world-forge-export project.json --validate-only
 
 ### @world-forge/schema
 
-Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 48 structural checks. `assembleSceneData()` extracts all visual bindings for a zone with missing-asset detection.
+Core TypeScript types for world authoring: `WorldMap`, `Zone`, `ZoneConnection`, `District`, `EntityPlacement`, `ItemPlacement`, `SpawnPoint`, `Landmark`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`, `AssetEntry`, `AssetPack`, visual layers (`Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`). Includes `validateProject()` with 54 structural checks. `assembleSceneData()` extracts all visual bindings for a zone with missing-asset detection.
 
 ### @world-forge/export-ai-rpg
 
-Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, manifest, and pack metadata. Full validation pipeline with gap analysis. Includes a complete **import pipeline** (8 reverse converters) that reconstructs a WorldProject from exported JSON, with structured **fidelity reporting** that tracks exactly what was lossless, approximated, or dropped during conversion. Asset manifests, bindings, and asset packs are preserved through ExportResult round-trips.
+Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, encounter anchors, faction presences, pressure hotspots, manifest, and pack metadata. Full validation pipeline with gap analysis. Includes a complete **import pipeline** (8 reverse converters) that reconstructs a WorldProject from exported JSON, with structured **fidelity reporting** that tracks exactly what was lossless, approximated, or dropped during conversion. Asset manifests, bindings, asset packs, encounter anchors, faction presences, and pressure hotspots are preserved through ExportResult round-trips.
 
 ### @world-forge/renderer-2d
 
@@ -90,8 +90,11 @@ React 19 + Vite web app. Zustand state management with undo/redo. Workspace tabs
 - Connection selection, editing, and deletion — click connections to inspect/edit label, kind, direction, and conditions
 - 7 connection kinds (passage, door, stairs, road, portal, secret, hazard) with distinct visual styles and canvas labels
 - Edge-anchored connection routing with directional arrowheads and conditional dashed-line styling
-- Search / command-jump (Ctrl+K) across all object types including connections
-- Object list panel with hierarchical district → zone → entity/landmark/spawn tree view plus connections section
+- Encounter anchors on canvas — red diamond markers at zone center with type-based coloring (boss, ambush, patrol), selectable and editable
+- District panel with metrics sliders, tags, controlling faction, economy profile, faction presence editing, pressure hotspot editing, and district removal
+- District name labels at zone centroids when zoomed in
+- Search / command-jump (Ctrl+K) across all object types including connections and encounters
+- Object list panel with hierarchical district → zone → entity/landmark/spawn/encounter tree view plus connections section
 - Scene preview (inline HTML/CSS composition of all zone visual bindings with missing-asset detection)
 - Layer visibility toggles (7 layers: grid, connections, entities, landmarks, spawns, backgrounds, ambient)
 - Spawn points, encounter anchors, pressure hotspots, faction presences

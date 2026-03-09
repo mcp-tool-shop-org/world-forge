@@ -6,7 +6,7 @@ import type { SelectionSet } from './store/editor-store.js';
 import { findConnectionAt } from './connection-lines.js';
 
 export interface HitResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'connection';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter' | 'connection';
   id: string;
 }
 
@@ -55,7 +55,7 @@ function screenDist(sx1: number, sy1: number, sx2: number, sy2: number): number 
  * Find the topmost object at a screen-space point.
  *
  * Priority order (reverse draw order — topmost rendered last = checked first):
- *   1. Spawns  2. Landmarks  3. Entities  4. Zones
+ *   1. Spawns  2. Encounters  3. Landmarks  4. Entities  5. Connections  6. Zones
  */
 export function findHitAt(
   screenX: number,
@@ -77,7 +77,19 @@ export function findHitAt(
     }
   }
 
-  // 2. Landmarks
+  // 2. Encounters (zone-anchored at zone center)
+  for (const enc of project.encounterAnchors) {
+    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    if (!zone) continue;
+    const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
+    const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
+    const { screenX: sx, screenY: sy } = worldToScreen(cx, cy, viewport);
+    if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
+      return { type: 'encounter', id: enc.id };
+    }
+  }
+
+  // 3. Landmarks
   if (visibility.showLandmarks) {
     for (const lm of project.landmarks) {
       const zone = project.zones.find((z) => z.id === lm.zoneId);
@@ -91,7 +103,7 @@ export function findHitAt(
     }
   }
 
-  // 3. Entities
+  // 4. Entities
   if (visibility.showEntities) {
     for (const ep of project.entityPlacements) {
       const zone = project.zones.find((z) => z.id === ep.zoneId);
@@ -105,7 +117,7 @@ export function findHitAt(
     }
   }
 
-  // 4. Connections (line segment proximity)
+  // 5. Connections (line segment proximity)
   if (visibility.showConnections) {
     const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport);
     if (connKey) {
@@ -113,7 +125,7 @@ export function findHitAt(
     }
   }
 
-  // 5. Zones (grid containment)
+  // 6. Zones (grid containment)
   const { worldX, worldY } = screenToWorld(screenX, screenY, viewport);
   const gx = Math.floor(worldX / tileSize);
   const gy = Math.floor(worldY / tileSize);
@@ -209,7 +221,20 @@ export function findAllInRect(
     }
   }
 
-  return { zones, entities, landmarks, spawns };
+  // Encounters — zone-anchored at zone center
+  const encounters: string[] = [];
+  for (const enc of project.encounterAnchors) {
+    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    if (!zone) continue;
+    const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
+    const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
+    const { screenX, screenY } = worldToScreen(cx, cy, viewport);
+    if (inRect(screenX, screenY)) {
+      encounters.push(enc.id);
+    }
+  }
+
+  return { zones, entities, landmarks, spawns, encounters };
 }
 
 // ── findAllHitsAt ─────────────────────────────────────────────
@@ -237,6 +262,18 @@ export function findAllHitsAt(
       if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
         hits.push({ type: 'spawn', id: sp.id });
       }
+    }
+  }
+
+  // Encounters
+  for (const enc of project.encounterAnchors) {
+    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    if (!zone) continue;
+    const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
+    const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
+    const { screenX: sx, screenY: sy } = worldToScreen(cx, cy, viewport);
+    if (screenDist(screenX, screenY, sx, sy) < HIT_RADIUS) {
+      hits.push({ type: 'encounter', id: enc.id });
     }
   }
 

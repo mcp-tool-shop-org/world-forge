@@ -17,11 +17,11 @@ let nextZoneId = 1;
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, removeConnection, addEntity, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
+  const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
     showConnections, showEntities, showLandmarks, showSpawns, showAmbient, snapToObjects,
-    selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection,
+    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
@@ -290,6 +290,28 @@ export function Canvas() {
       ctx.fillText(zone.name, labelX, labelY);
     }
 
+    // District name labels at zone centroids
+    if (zoom > 0.25) {
+      for (const d of project.districts) {
+        if (d.zoneIds.length === 0) continue;
+        const dzones = d.zoneIds.map((zid) => project.zones.find((z) => z.id === zid)).filter(Boolean);
+        if (dzones.length === 0) continue;
+        let sumX = 0, sumY = 0;
+        for (const z of dzones) {
+          sumX += (z!.gridX + z!.gridWidth / 2) * tileSize;
+          sumY += (z!.gridY + z!.gridHeight / 2) * tileSize;
+        }
+        const cx = sumX / dzones.length;
+        const cy = sumY / dzones.length;
+        const fs = Math.max(16, 24 / zoom);
+        ctx.font = `bold ${fs}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(200,200,200,0.15)';
+        ctx.fillText(d.name, cx, cy);
+        ctx.textAlign = 'start';
+      }
+    }
+
     // Entities
     if (showEntities) {
       for (const ep of project.entityPlacements) {
@@ -371,6 +393,47 @@ export function Canvas() {
         ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
         ctx.fillText('SPAWN', x + 8 / zoom, y + 3 / zoom);
+      }
+    }
+
+    // Encounter anchors (red diamond at zone center)
+    for (const enc of project.encounterAnchors) {
+      const zone = project.zones.find((z) => z.id === enc.zoneId);
+      if (!zone) continue;
+      const selected = isSel(selection, 'encounter', enc.id);
+      const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
+      const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
+      // Offset multiple encounters in same zone
+      const sameZone = project.encounterAnchors.filter((e) => e.zoneId === enc.zoneId);
+      const idx = sameZone.indexOf(enc);
+      const ox = (idx - (sameZone.length - 1) / 2) * 8 / zoom;
+      const s = 6 / zoom;
+      // Color by encounter type
+      const typeColor = enc.encounterType === 'boss' ? '#f85149'
+        : enc.encounterType === 'ambush' ? '#d29922'
+        : enc.encounterType === 'patrol' ? '#8b8422'
+        : '#da3633';
+      ctx.fillStyle = typeColor;
+      ctx.beginPath();
+      ctx.moveTo(cx + ox, cy - s);
+      ctx.lineTo(cx + ox + s, cy);
+      ctx.lineTo(cx + ox, cy + s);
+      ctx.lineTo(cx + ox - s, cy);
+      ctx.closePath();
+      ctx.fill();
+      // Selection ring
+      if (selected) {
+        ctx.strokeStyle = '#58a6ff';
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+      }
+      // Type label at zoom > 0.4
+      if (zoom > 0.4) {
+        ctx.fillStyle = '#ccc';
+        ctx.font = `${8 / zoom}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(enc.encounterType, cx + ox, cy + s + 10 / zoom);
+        ctx.textAlign = 'start';
       }
     }
 
@@ -522,7 +585,8 @@ export function Canvas() {
         const entities = showEntities ? project.entityPlacements.map((e) => e.entityId) : [];
         const landmarks = showLandmarks ? project.landmarks.map((l) => l.id) : [];
         const spawns = showSpawns ? project.spawnPoints.map((s) => s.id) : [];
-        selectAll({ zones, entities, landmarks, spawns }, false);
+        const encounters = project.encounterAnchors.map((e) => e.id);
+        selectAll({ zones, entities, landmarks, spawns, encounters }, false);
         return;
       }
 
@@ -591,7 +655,7 @@ export function Canvas() {
       const [from, to] = hit.id.split('::');
       return selectedConnection?.from === from && selectedConnection?.to === to;
     }
-    const t = hit.type as 'zone' | 'entity' | 'landmark' | 'spawn';
+    const t = hit.type as 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter';
     return isSel(selection, t, hit.id);
   };
 
@@ -604,6 +668,7 @@ export function Canvas() {
     else if (hit.type === 'entity') selectEntity(hit.id, additive);
     else if (hit.type === 'landmark') selectLandmark(hit.id, additive);
     else if (hit.type === 'spawn') selectSpawn(hit.id, additive);
+    else if (hit.type === 'encounter') selectEncounter(hit.id, additive);
   };
 
   // --- Mouse handlers ---
@@ -704,6 +769,19 @@ export function Canvas() {
         gridX: gx, gridY: gy,
         isDefault: project.spawnPoints.length === 0,
       });
+    } else if (activeTool === 'encounter-place') {
+      const zone = findZoneAt(gx, gy);
+      if (zone) {
+        addEncounter({
+          id: `enc-${Date.now()}`,
+          zoneId: zone.id,
+          encounterType: 'patrol',
+          enemyIds: [],
+          probability: 0.5,
+          cooldownTurns: 3,
+          tags: [],
+        });
+      }
     }
   };
 
@@ -744,7 +822,7 @@ export function Canvas() {
       const { startX, startY, curX, curY } = boxSelect.current;
       const rect = { x1: startX, y1: startY, x2: curX, y2: curY };
       const result = findAllInRect(rect, viewport, project, tileSize, visibility);
-      const hasItems = result.zones.length + result.entities.length + result.landmarks.length + result.spawns.length > 0;
+      const hasItems = result.zones.length + result.entities.length + result.landmarks.length + result.spawns.length + result.encounters.length > 0;
       if (hasItems) {
         selectAll(result, e.shiftKey);
       }

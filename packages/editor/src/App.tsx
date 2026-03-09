@@ -9,6 +9,7 @@ import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
 import { ConnectionProperties } from './panels/ConnectionProperties.js';
+import { EncounterProperties } from './panels/EncounterProperties.js';
 import { ExportModal } from './panels/ExportModal.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
@@ -203,6 +204,7 @@ export function App() {
                   <>
                     {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
                     {selectedConnection && <ConnectionProperties />}
+                    {selection.encounters.length === 1 && <EncounterProperties />}
                     {selectedZoneId && <ZoneProperties />}
                     {activeTool === 'entity-place' && <EntityProperties />}
                     {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (

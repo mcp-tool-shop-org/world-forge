@@ -300,4 +300,44 @@ describe('FidelityReport accuracy', () => {
     const imported = importFromContentPack(exported.contentPack);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
   });
+
+  it('encounter anchors round-trip preserved', () => {
+    const exported = exportToEngine(chapelProject);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.contentPack.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
+    const imported = importFromExportResult(exported);
+    expect(imported.project.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
+    for (const orig of chapelProject.encounterAnchors) {
+      const imp = imported.project.encounterAnchors.find((e) => e.id === orig.id);
+      expect(imp).toBeDefined();
+      expect(imp!.encounterType).toBe(orig.encounterType);
+      expect(imp!.zoneId).toBe(orig.zoneId);
+    }
+  });
+
+  it('faction presences round-trip preserved', () => {
+    const exported = exportToEngine(chapelProject);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.contentPack.factionPresences).toHaveLength(chapelProject.factionPresences.length);
+    const imported = importFromExportResult(exported);
+    expect(imported.project.factionPresences).toHaveLength(chapelProject.factionPresences.length);
+    for (const orig of chapelProject.factionPresences) {
+      const imp = imported.project.factionPresences.find((f) => f.factionId === orig.factionId);
+      expect(imp).toBeDefined();
+      expect(imp!.influence).toBe(orig.influence);
+    }
+  });
+
+  it('pressure hotspots round-trip preserved', () => {
+    const exported = exportToEngine(chapelProject);
+    if ('ok' in exported) throw new Error('export failed');
+    expect(exported.contentPack.pressureHotspots).toHaveLength(chapelProject.pressureHotspots.length);
+    const imported = importFromExportResult(exported);
+    expect(imported.project.pressureHotspots).toHaveLength(chapelProject.pressureHotspots.length);
+    for (const orig of chapelProject.pressureHotspots) {
+      const imp = imported.project.pressureHotspots.find((h) => h.id === orig.id);
+      expect(imp).toBeDefined();
+      expect(imp!.pressureType).toBe(orig.pressureType);
+    }
+  });
 });

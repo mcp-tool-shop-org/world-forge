@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type {
   WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
+  EncounterAnchor, FactionPresence, PressureHotspot,
   PlayerTemplate, BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition,
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
@@ -75,6 +76,22 @@ interface ProjectState {
   // District helpers
   addDistrict: (d: District) => void;
   updateDistrict: (id: string, updates: Partial<District>) => void;
+  removeDistrict: (id: string) => void;
+
+  // Encounter helpers
+  addEncounter: (e: EncounterAnchor) => void;
+  updateEncounter: (id: string, updates: Partial<EncounterAnchor>) => void;
+  removeEncounter: (id: string) => void;
+
+  // Faction helpers
+  addFaction: (f: FactionPresence) => void;
+  updateFaction: (factionId: string, updates: Partial<FactionPresence>) => void;
+  removeFaction: (factionId: string) => void;
+
+  // Pressure hotspot helpers
+  addPressureHotspot: (h: PressureHotspot) => void;
+  updatePressureHotspot: (id: string, updates: Partial<PressureHotspot>) => void;
+  removePressureHotspot: (id: string) => void;
 
   // Entity helpers
   addEntity: (e: EntityPlacement) => void;
@@ -92,11 +109,11 @@ interface ProjectState {
   removeSpawnPoint: (id: string) => void;
 
   // Batch helpers (multi-select operations)
-  moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, dx: number, dy: number) => void;
-  removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => void;
-  duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] };
-  alignSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, axis: AlignAxis) => void;
-  distributeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[] }, axis: DistributeAxis) => void;
+  moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, dx: number, dy: number) => void;
+  removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => void;
+  duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] };
+  alignSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, axis: AlignAxis) => void;
+  distributeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, axis: DistributeAxis) => void;
 
   // Player template helpers
   setPlayerTemplate: (t: PlayerTemplate) => void;
@@ -237,6 +254,38 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   updateDistrict: (id, updates) => get().updateProject((p) => ({
     ...p, districts: p.districts.map((d) => d.id === id ? { ...d, ...updates } : d),
   })),
+  removeDistrict: (id) => get().updateProject((p) => ({
+    ...p,
+    districts: p.districts.filter((d) => d.id !== id),
+    zones: p.zones.map((z) => z.parentDistrictId === id ? { ...z, parentDistrictId: undefined } : z),
+  })),
+
+  // Encounter helpers
+  addEncounter: (e) => get().updateProject((p) => ({ ...p, encounterAnchors: [...p.encounterAnchors, e] })),
+  updateEncounter: (id, updates) => get().updateProject((p) => ({
+    ...p, encounterAnchors: p.encounterAnchors.map((e) => e.id === id ? { ...e, ...updates } : e),
+  })),
+  removeEncounter: (id) => get().updateProject((p) => ({
+    ...p, encounterAnchors: p.encounterAnchors.filter((e) => e.id !== id),
+  })),
+
+  // Faction helpers
+  addFaction: (f) => get().updateProject((p) => ({ ...p, factionPresences: [...p.factionPresences, f] })),
+  updateFaction: (factionId, updates) => get().updateProject((p) => ({
+    ...p, factionPresences: p.factionPresences.map((f) => f.factionId === factionId ? { ...f, ...updates } : f),
+  })),
+  removeFaction: (factionId) => get().updateProject((p) => ({
+    ...p, factionPresences: p.factionPresences.filter((f) => f.factionId !== factionId),
+  })),
+
+  // Pressure hotspot helpers
+  addPressureHotspot: (h) => get().updateProject((p) => ({ ...p, pressureHotspots: [...p.pressureHotspots, h] })),
+  updatePressureHotspot: (id, updates) => get().updateProject((p) => ({
+    ...p, pressureHotspots: p.pressureHotspots.map((h) => h.id === id ? { ...h, ...updates } : h),
+  })),
+  removePressureHotspot: (id) => get().updateProject((p) => ({
+    ...p, pressureHotspots: p.pressureHotspots.filter((h) => h.id !== id),
+  })),
 
   // Entity helpers
   addEntity: (e) => get().updateProject((p) => ({ ...p, entityPlacements: [...p.entityPlacements, e] })),
@@ -285,6 +334,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const eSet = new Set(sel.entities);
     const lSet = new Set(sel.landmarks);
     const sSet = new Set(sel.spawns);
+    const encSet = new Set(sel.encounters);
     return {
       ...p,
       zones: p.zones.filter((z) => !zSet.has(z.id)),
@@ -293,12 +343,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId) && !zSet.has(e.zoneId)),
       landmarks: p.landmarks.filter((l) => !lSet.has(l.id) && !zSet.has(l.zoneId)),
       spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
+      encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id) && !zSet.has(e.zoneId)),
     };
   }),
   duplicateSelected: (sel) => {
     const { project, undoStack } = get();
     const { project: newProject, newSelection } = doDuplicate(project, sel);
-    if (newProject === project) return { zones: [], entities: [], landmarks: [], spawns: [] };
+    if (newProject === project) return { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
     const newStack = [...undoStack.slice(-9), project];
     set({ project: newProject, dirty: true, undoStack: newStack, redoStack: [] });
     return newSelection;

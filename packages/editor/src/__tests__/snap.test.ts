@@ -3,7 +3,7 @@ import { getNonSelectedEdges, computeSnap, computeResizeSnap, SNAP_RADIUS, type 
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 
 const chapel = SAMPLE_WORLDS[2].project;
-const empty = { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[] };
+const empty = { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
 
 // Chapel zone positions (from fixture):
 // chapel-entrance: gridX=10, gridY=10, gridWidth=8, gridHeight=6  → right=18, bottom=16
@@ -57,6 +57,7 @@ describe('getNonSelectedEdges', () => {
       entities: [] as string[],
       landmarks: ['altar-of-passage'],
       spawns: ['chapel-spawn'],
+      encounters: [] as string[],
     };
     const edges = getNonSelectedEdges(chapel, sel);
 

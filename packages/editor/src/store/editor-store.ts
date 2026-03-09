@@ -6,7 +6,7 @@ import type { WorldProject } from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 
-export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn';
+export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'guide' | 'import-summary' | 'diff' | 'objects';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
@@ -23,9 +23,10 @@ export interface SelectionSet {
   entities: string[];
   landmarks: string[];
   spawns: string[];
+  encounters: string[];
 }
 
-const EMPTY_SELECTION: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [] };
+const EMPTY_SELECTION: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
 
 // --- Pure selection helpers (exported for tests & panels) ---
 
@@ -36,12 +37,12 @@ export function getSelectedZoneId(sel: SelectionSet): string | null {
 
 /** Total count of all selected objects */
 export function getSelectionCount(sel: SelectionSet): number {
-  return sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length;
+  return sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
 }
 
 /** Check if a specific object is in the selection */
-export function isSelected(sel: SelectionSet, type: 'zone' | 'entity' | 'landmark' | 'spawn', id: string): boolean {
-  const key = type === 'zone' ? 'zones' : type === 'entity' ? 'entities' : type === 'landmark' ? 'landmarks' : 'spawns';
+export function isSelected(sel: SelectionSet, type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter', id: string): boolean {
+  const key = type === 'zone' ? 'zones' : type === 'entity' ? 'entities' : type === 'landmark' ? 'landmarks' : type === 'spawn' ? 'spawns' : 'encounters';
   return sel[key].includes(id);
 }
 
@@ -91,6 +92,7 @@ interface EditorState {
   selectEntity: (id: string, additive: boolean) => void;
   selectLandmark: (id: string, additive: boolean) => void;
   selectSpawn: (id: string, additive: boolean) => void;
+  selectEncounter: (id: string, additive: boolean) => void;
   selectAll: (set: SelectionSet, additive: boolean) => void;
   /** Backward compat: set single zone selection (used by validation/export navigation) */
   setSelectedZone: (id: string | null) => void;
@@ -174,6 +176,12 @@ export const useEditorStore = create<EditorState>((set) => ({
       ? { ...s.selection, spawns: toggleInArray(s.selection.spawns, id) }
       : { ...EMPTY_SELECTION, spawns: [id] },
   })),
+  selectEncounter: (id, additive) => set((s) => ({
+    selectedConnection: null,
+    selection: additive
+      ? { ...s.selection, encounters: toggleInArray(s.selection.encounters, id) }
+      : { ...EMPTY_SELECTION, encounters: [id] },
+  })),
   selectAll: (incoming, additive) => set((s) => ({
     selectedConnection: null,
     selection: additive ? {
@@ -181,6 +189,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       entities: [...new Set([...s.selection.entities, ...incoming.entities])],
       landmarks: [...new Set([...s.selection.landmarks, ...incoming.landmarks])],
       spawns: [...new Set([...s.selection.spawns, ...incoming.spawns])],
+      encounters: [...new Set([...s.selection.encounters, ...incoming.encounters])],
     } : incoming,
   })),
   /** Backward compat: replaces selection with single zone (or clears if null) */

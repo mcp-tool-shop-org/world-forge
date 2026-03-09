@@ -79,6 +79,79 @@ describe('validateProject', () => {
     )).toBe(true);
   });
 
+  // --- Encounter / Faction / Pressure validation ---
+
+  it('accepts valid encounter anchor', () => {
+    const result = validateProject(minimalProject);
+    expect(result.errors.filter((e) => e.path.includes('encounterAnchors'))).toHaveLength(0);
+  });
+
+  it('rejects duplicate encounter anchor IDs', () => {
+    const enc = minimalProject.encounterAnchors[0];
+    const bad: WorldProject = { ...minimalProject, encounterAnchors: [enc, enc] };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('Duplicate encounter anchor ID'))).toBe(true);
+  });
+
+  it('rejects encounter anchor in nonexistent zone', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      encounterAnchors: [{ id: 'enc-bad', zoneId: 'zone-ghost', encounterType: 'ambush', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('zone-ghost') && e.message.includes('nonexistent zone'))).toBe(true);
+  });
+
+  it('rejects encounter anchor with empty encounterType', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      encounterAnchors: [{ id: 'enc-empty', zoneId: 'zone-cellar', encounterType: '', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('empty encounterType'))).toBe(true);
+  });
+
+  it('accepts valid faction presence', () => {
+    const result = validateProject(minimalProject);
+    expect(result.errors.filter((e) => e.path.includes('factionPresences'))).toHaveLength(0);
+  });
+
+  it('rejects faction referencing nonexistent district', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      factionPresences: [{ factionId: 'bad-faction', districtIds: ['district-ghost'], influence: 50, alertLevel: 30 }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('district-ghost') && e.message.includes('nonexistent district'))).toBe(true);
+  });
+
+  it('rejects duplicate pressure hotspot IDs', () => {
+    const ph = minimalProject.pressureHotspots[0];
+    const bad: WorldProject = { ...minimalProject, pressureHotspots: [ph, ph] };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('Duplicate pressure hotspot ID'))).toBe(true);
+  });
+
+  it('rejects pressure hotspot in nonexistent zone', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      pressureHotspots: [{ id: 'ph-bad', zoneId: 'zone-nowhere', pressureType: 'test', baseProbability: 0.5, tags: [] }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('zone-nowhere') && e.message.includes('nonexistent zone'))).toBe(true);
+  });
+
+  it('accepts chapel project with all encounter/faction/pressure data', () => {
+    const result = validateProject(chapelProject);
+    expect(result.valid).toBe(true);
+  });
+
   it('detects duplicate zone IDs', () => {
     const duped = {
       ...minimalProject,

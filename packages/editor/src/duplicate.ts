@@ -1,12 +1,13 @@
 // duplicate.ts — pure duplication logic for selected objects
 
-import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, ZoneConnection } from '@world-forge/schema';
+import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
 
 export interface SelectionSet {
   zones: string[];
   entities: string[];
   landmarks: string[];
   spawns: string[];
+  encounters: string[];
 }
 
 export interface DuplicateResult {
@@ -20,8 +21,8 @@ export function duplicateSelected(
   project: WorldProject,
   selection: SelectionSet,
 ): DuplicateResult {
-  const count = selection.zones.length + selection.entities.length + selection.landmarks.length + selection.spawns.length;
-  if (count === 0) return { project, newSelection: { zones: [], entities: [], landmarks: [], spawns: [] } };
+  const count = selection.zones.length + selection.entities.length + selection.landmarks.length + selection.spawns.length + selection.encounters.length;
+  if (count === 0) return { project, newSelection: { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] } };
 
   // Build old-to-new ID map
   const idMap = new Map<string, string>();
@@ -31,6 +32,7 @@ export function duplicateSelected(
   for (const id of selection.entities) idMap.set(id, `entity-${now}-${counter++}`);
   for (const id of selection.landmarks) idMap.set(id, `lm-${now}-${counter++}`);
   for (const id of selection.spawns) idMap.set(id, `spawn-${now}-${counter++}`);
+  for (const id of selection.encounters) idMap.set(id, `enc-${now}-${counter++}`);
 
   // Duplicate zones
   const newZones: Zone[] = [];
@@ -91,6 +93,18 @@ export function duplicateSelected(
     });
   }
 
+  // Duplicate encounters
+  const newEncounters: EncounterAnchor[] = [];
+  for (const encId of selection.encounters) {
+    const enc = project.encounterAnchors.find(e => e.id === encId);
+    if (!enc) continue;
+    newEncounters.push({
+      ...enc,
+      id: idMap.get(encId)!,
+      zoneId: idMap.get(enc.zoneId) ?? enc.zoneId,
+    });
+  }
+
   // Duplicate connections between duplicated zones only
   const zoneSet = new Set(selection.zones);
   const newConnections: ZoneConnection[] = project.connections
@@ -113,12 +127,14 @@ export function duplicateSelected(
       entityPlacements: [...project.entityPlacements, ...newEntities],
       landmarks: [...project.landmarks, ...newLandmarks],
       spawnPoints: [...project.spawnPoints, ...newSpawns],
+      encounterAnchors: [...project.encounterAnchors, ...newEncounters],
     },
     newSelection: {
       zones: newZones.map(z => z.id),
       entities: newEntities.map(e => e.entityId),
       landmarks: newLandmarks.map(l => l.id),
       spawns: newSpawns.map(s => s.id),
+      encounters: newEncounters.map(e => e.id),
     },
   };
 }

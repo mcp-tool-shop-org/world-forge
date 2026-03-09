@@ -47,16 +47,69 @@ Press **Delete** or **Backspace** with a connection selected to remove it. Undo 
 
 ## 3. Create Districts
 
-Open the **District** panel. Create districts to group zones into logical regions — a chapel grounds, crypt depths, market quarter, etc.
+Open the **District** panel in the left sidebar. Create districts to group zones into logical regions — a chapel grounds, crypt depths, market quarter, etc. Click the expand arrow on any district to access the full region editor.
 
 District properties:
 
-- **Zone membership** — which zones belong to this district
+- **Zone membership** — which zones belong to this district; select zones and click "Assign" to add them
 - **Controlling faction** — which faction holds this territory
-- **Base metrics** — commerce, morale, safety, stability (0-100)
-- **Economy profile** — supply categories and scarcity defaults
+- **Base metrics** — 4 range sliders: commerce, morale, safety, stability (0-100)
+- **Tags** — comma-separated freeform tags (e.g. `sacred`, `underground`)
+- **Economy profile** — supply categories and scarcity defaults (key=value per line)
 
-## 4. Place Entities
+### Faction Presences
+
+The expanded district panel includes a **Faction Presences** sub-section listing all factions that operate in the district. Each faction entry has:
+
+- **Influence** — range slider (0-100) for faction control strength
+- **Alert level** — range slider (0-100) for faction readiness
+- **Remove** — delete the faction from this district
+
+Click **+ Faction** to add a new faction presence to the district.
+
+### Pressure Hotspots
+
+The **Pressure Hotspots** sub-section lists zones in the district where world pressures are more likely to trigger. Each hotspot has:
+
+- **Type** — the pressure event type (e.g. `undead-surge`, `bandit-raid`)
+- **Probability** — base trigger probability (0-1)
+- **Tags** — freeform tags for filtering
+
+Click **+ Hotspot** to add a new pressure hotspot (placed in the first zone of the district).
+
+### Removing Districts
+
+Click **Remove District** at the bottom of the expanded panel. This deletes the district and clears `parentDistrictId` from all affected zones — the zones themselves are preserved.
+
+District name labels appear as muted large text at the centroid of each district's zones when zoomed above 25%.
+
+## 4. Place Encounters
+
+Select the **Encounter** tool (or use the encounter-place tool). Click on any zone to place an encounter anchor — a point where encounters can trigger during gameplay.
+
+Encounters appear as red diamond markers at the zone center on the canvas. Multiple encounters in the same zone are offset horizontally to remain distinguishable. The marker color varies by encounter type:
+
+| Type | Color |
+|------|-------|
+| Boss | Bright red (#f85149) |
+| Ambush | Orange (#d29922) |
+| Patrol | Muted yellow (#8b8422) |
+| Default | Red (#da3633) |
+
+Click an encounter to select it. The **Encounter Properties** panel appears with:
+
+- **ID** — read-only identifier
+- **Zone** — read-only zone name
+- **Encounter Type** — text input (boss, patrol, ambush, etc.)
+- **Enemy IDs** — comma-separated entity references
+- **Probability** — trigger probability (0-1)
+- **Cooldown Turns** — turns before the encounter can trigger again
+- **Tags** — comma-separated freeform tags
+- **Delete** — remove the encounter
+
+Encounters are also listed in the **Objects** tab (red "Enc" badges under each zone) and indexed in **Ctrl+K** search (searchable by type, ID, and zone name).
+
+## 5. Place Entities
 
 Select the **Entity** tool. Click on a zone to place an entity. Choose a role:
 
@@ -71,7 +124,7 @@ Select the **Entity** tool. Click on a zone to place an entity. Choose a role:
 
 Entity properties include stats (vigor, instinct, will), resources (hp, stamina), AI profile, faction, tags, and custom metadata for companion abilities or personal goals.
 
-## 5. Manage Assets
+## 6. Manage Assets
 
 Open the **Assets** tab in the right sidebar. Click **+ Add Asset** to register a media file in your project's asset manifest. Each asset has:
 
@@ -95,7 +148,7 @@ Use the **Group** checkbox to view assets organized by pack, with an "Unassigned
 
 The validator checks that all asset references point to existing assets of the correct kind. The Assets tab shows an orphan count for unreferenced assets.
 
-## 6. Canvas Viewport
+## 7. Canvas Viewport
 
 The canvas uses a real camera model with pan and zoom. All content is drawn in world coordinates and projected through a viewport transform.
 
@@ -126,7 +179,7 @@ The **Viewport** section in the tool palette provides:
 
 Zone labels have dark background pills for readability at any zoom level. Line widths, entity markers, landmark diamonds, and spawn squares are zoom-compensated so they maintain a consistent screen size. Selected zones show brighter fills, thicker borders, and white label text.
 
-## 7. Selection & Editing
+## 8. Selection & Editing
 
 The canvas supports rich selection and spatial editing workflows for working with multiple objects at once.
 
@@ -140,7 +193,7 @@ The canvas supports rich selection and spatial editing workflows for working wit
 | Select all | Ctrl+A |
 | Deselect all | Escape |
 
-Hit priority when clicking: spawns > landmarks > entities > zones. If objects overlap, repeated clicks at the same spot cycle through all hits — no need to move objects out of the way.
+Hit priority when clicking: spawns > encounters > landmarks > entities > connections > zones. If objects overlap, repeated clicks at the same spot cycle through all hits — no need to move objects out of the way.
 
 ### Moving & Duplicating
 
@@ -225,13 +278,13 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Ctrl+Shift+Z | Redo |
 | Arrow keys | Nudge selected objects by 1 grid cell |
 
-## 8. Search
+## 9. Search
 
-Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, districts, dialogues, and progression trees.
+Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, and progression trees.
 
-Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For dialogues and progression trees, the corresponding sidebar tab opens.
+Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role, an encounter's type and probability). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For encounters, the parent zone is framed. For dialogues and progression trees, the corresponding sidebar tab opens.
 
-## 9. Objects Tab
+## 10. Objects Tab
 
 The **Objects** tab in the right sidebar provides a hierarchical tree view of your entire project:
 
@@ -250,7 +303,7 @@ Click any item to select it on the canvas and frame it in view. The tree highlig
 
 Click a district header to select all its zones. Double-click to expand or collapse.
 
-## 10. Scene Preview
+## 11. Scene Preview
 
 When you select a zone, the **Scene Preview** panel appears above the Zone Properties form. It shows an inline HTML/CSS composition of everything visually bound to that zone:
 
@@ -281,7 +334,7 @@ The **Layers** section in the tool palette provides 7 visibility toggles:
 | Backgrounds | — | Background/tileset badges on/off |
 | Ambient | Zone tint overlays on/off | Ambient layer entries on/off |
 
-## 11. Export
+## 12. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -294,7 +347,7 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-## 12. Import
+## 13. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -304,7 +357,7 @@ Click **Import** to load a previously exported JSON file back into the editor. W
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 13. Track Changes
+## 14. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 

@@ -117,6 +117,54 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
+  // 49. Encounter anchor ID uniqueness
+  const encounterIds = new Set<string>();
+  for (const ea of project.encounterAnchors) {
+    if (encounterIds.has(ea.id)) {
+      errors.push({ path: `encounterAnchors.${ea.id}`, message: `Duplicate encounter anchor ID: ${ea.id}` });
+    }
+    encounterIds.add(ea.id);
+  }
+
+  // 50. Encounter anchor zoneId must exist
+  for (const ea of project.encounterAnchors) {
+    if (!zoneIds.has(ea.zoneId)) {
+      errors.push({ path: `encounterAnchors.${ea.id}`, message: `Encounter anchor "${ea.id}" in nonexistent zone "${ea.zoneId}"` });
+    }
+  }
+
+  // 51. Encounter anchor encounterType must be non-empty
+  for (const ea of project.encounterAnchors) {
+    if (!ea.encounterType || ea.encounterType.trim().length === 0) {
+      errors.push({ path: `encounterAnchors.${ea.id}`, message: `Encounter anchor "${ea.id}" has empty encounterType` });
+    }
+  }
+
+  // 52. Faction districtIds must reference valid districts
+  for (const fp of project.factionPresences) {
+    for (const did of fp.districtIds) {
+      if (!districtIds.has(did)) {
+        errors.push({ path: `factionPresences.${fp.factionId}`, message: `Faction "${fp.factionId}" references nonexistent district "${did}"` });
+      }
+    }
+  }
+
+  // 53. Pressure hotspot ID uniqueness
+  const hotspotIds = new Set<string>();
+  for (const ph of project.pressureHotspots) {
+    if (hotspotIds.has(ph.id)) {
+      errors.push({ path: `pressureHotspots.${ph.id}`, message: `Duplicate pressure hotspot ID: ${ph.id}` });
+    }
+    hotspotIds.add(ph.id);
+  }
+
+  // 54. Pressure hotspot zoneId must exist
+  for (const ph of project.pressureHotspots) {
+    if (!zoneIds.has(ph.zoneId)) {
+      errors.push({ path: `pressureHotspots.${ph.id}`, message: `Pressure hotspot "${ph.id}" in nonexistent zone "${ph.zoneId}"` });
+    }
+  }
+
   // --- Dialogue validation ---
 
   const dialogueIds = new Set<string>();

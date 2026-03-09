@@ -1,6 +1,6 @@
 // export.ts — full export pipeline
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -27,6 +27,9 @@ export type ContentPack = {
   playerTemplate?: ExportedPlayerTemplate;
   buildCatalog?: ExportedBuildCatalog;
   progressionTrees: ProgressionTreeDefinition[];
+  encounterAnchors: EncounterAnchor[];
+  factionPresences: FactionPresence[];
+  pressureHotspots: PressureHotspot[];
 };
 
 export type AssetBindingMap = {
@@ -158,6 +161,9 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
       playerTemplate,
       buildCatalog,
       progressionTrees,
+      encounterAnchors: project.encounterAnchors,
+      factionPresences: project.factionPresences,
+      pressureHotspots: project.pressureHotspots,
     },
     manifest,
     packMeta,

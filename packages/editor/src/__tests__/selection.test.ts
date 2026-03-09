@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getSelectedZoneId, getSelectionCount, isSelected, type SelectionSet } from '../store/editor-store.js';
 
-const empty: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [] };
+const empty: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
 
 describe('getSelectedZoneId', () => {
   it('returns null for empty selection', () => {
@@ -27,7 +27,7 @@ describe('getSelectionCount', () => {
   });
 
   it('counts all types', () => {
-    const sel: SelectionSet = { zones: ['z1', 'z2'], entities: ['e1'], landmarks: ['l1', 'l2', 'l3'], spawns: [] };
+    const sel: SelectionSet = { zones: ['z1', 'z2'], entities: ['e1'], landmarks: ['l1', 'l2', 'l3'], spawns: [], encounters: [] };
     expect(getSelectionCount(sel)).toBe(6);
   });
 
@@ -37,7 +37,7 @@ describe('getSelectionCount', () => {
 });
 
 describe('isSelected', () => {
-  const sel: SelectionSet = { zones: ['z1'], entities: ['e1', 'e2'], landmarks: [], spawns: ['s1'] };
+  const sel: SelectionSet = { zones: ['z1'], entities: ['e1', 'e2'], landmarks: [], spawns: ['s1'], encounters: [] };
 
   it('finds zone in selection', () => {
     expect(isSelected(sel, 'zone', 'z1')).toBe(true);

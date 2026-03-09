@@ -44,10 +44,9 @@ describe('findAllHitsAt', () => {
   });
 
   it('returns single zone when only a zone is at position', () => {
-    // Click inside crypt-chamber center area where no entity overlaps
-    // crypt-chamber zone: grid(30,25) 10x8 -> center grid (35, 29) -> world (1120, 928)
-    // ash-ghoul entity is at world (1024, 864) — far away from (1120, 928)
-    const hits = findAllHitsAt(1120, 928, defaultVP, chapel, TILE, allVisible);
+    // Click inside crypt-chamber away from center (encounter anchor at center)
+    // crypt-chamber zone: grid(30,25) 10x8 -> grid (38, 31) -> world (1216, 992)
+    const hits = findAllHitsAt(1216, 992, defaultVP, chapel, TILE, allVisible);
     expect(hits).toHaveLength(1);
     expect(hits[0]).toEqual({ type: 'zone', id: 'crypt-chamber' });
   });

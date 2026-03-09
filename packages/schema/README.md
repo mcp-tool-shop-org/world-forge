@@ -13,7 +13,7 @@ Core TypeScript types for [World Forge](https://github.com/mcp-tool-shop-org/wor
 - **Entities:** `EntityPlacement` (with `EntityStats`, `EntityResources`, `EntityAI`), `ItemPlacement` (with `ItemSlot`, `ItemRarity`), `SpawnPoint`, `EncounterAnchor`, `CraftingStation`, `MarketNode`
 - **Visual:** `Tileset`, `TileDefinition`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
 - **Project:** `WorldProject` — the complete authored world container
-- **Validation:** `validateProject()` with 12 structural checks
+- **Validation:** `validateProject()` with 54 structural checks
 
 ## Install
 

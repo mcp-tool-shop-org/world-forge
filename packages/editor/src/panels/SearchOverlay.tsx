@@ -9,19 +9,19 @@ import type { WorldProject } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter';
   id: string;
   label: string;
   detail: string;
 }
 
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
-  zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C',
+  zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
-  district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e',
+  district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -54,6 +54,12 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
   for (const sp of project.spawnPoints) {
     const zone = project.zones.find((z) => z.id === sp.zoneId);
     results.push({ type: 'spawn', id: sp.id, label: sp.id, detail: `in ${zone?.name ?? 'unknown'}${sp.isDefault ? ' (default)' : ''}` });
+  }
+
+  // Encounters
+  for (const enc of project.encounterAnchors) {
+    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    results.push({ type: 'encounter', id: enc.id, label: enc.id, detail: `${enc.encounterType} in ${zone?.name ?? 'unknown'}, prob ${enc.probability}` });
   }
 
   // Connections
@@ -93,7 +99,7 @@ export function filterResults(index: SearchResult[], query: string): SearchResul
 export function SearchOverlay() {
   const { project } = useProjectStore();
   const {
-    setShowSearch, selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection,
+    setShowSearch, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     setSelection, setViewport, setRightTab, setFocusTarget,
   } = useEditorStore();
 
@@ -145,6 +151,14 @@ export function SearchOverlay() {
         if (vp) setViewport(vp);
       }
       setRightTab('map');
+    } else if (result.type === 'encounter') {
+      selectEncounter(result.id, false);
+      const enc = project.encounterAnchors.find((e) => e.id === result.id);
+      if (enc && size) {
+        const vp = computeFrameViewport({ type: 'zone', id: enc.zoneId }, project, size.cw, size.ch);
+        if (vp) setViewport(vp);
+      }
+      setRightTab('map');
     } else if (result.type === 'connection') {
       const [from, to] = result.id.split('::');
       selectConnection(from, to);
@@ -160,7 +174,7 @@ export function SearchOverlay() {
     } else if (result.type === 'district') {
       const district = project.districts.find((d) => d.id === result.id);
       if (district && district.zoneIds.length > 0) {
-        setSelection({ zones: district.zoneIds, entities: [], landmarks: [], spawns: [] });
+        setSelection({ zones: district.zoneIds, entities: [], landmarks: [], spawns: [], encounters: [] });
         if (size) {
           const tileSize = project.map.tileSize;
           const items = district.zoneIds
@@ -178,7 +192,7 @@ export function SearchOverlay() {
       setRightTab('trees');
       setFocusTarget({ domain: 'trees', subPath: result.id, timestamp: Date.now() });
     }
-  }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
+  }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { dismiss(); return; }

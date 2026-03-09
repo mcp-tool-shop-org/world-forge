@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findHitAt, findAllInRect, HIT_RADIUS } from '../hit-testing.js';
+import { findHitAt, findAllHitsAt, findAllInRect, HIT_RADIUS } from '../hit-testing.js';
 import type { ScreenRect } from '../hit-testing.js';
 import type { ViewportState } from '../viewport.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
@@ -54,11 +54,10 @@ describe('findHitAt', () => {
     expect(result).not.toBeNull();
   });
 
-  it('hits a zone center with no overlapping objects', () => {
-    // Click inside crypt-chamber center area where no entity is placed
-    // crypt-chamber zone: grid(30,25) 10x8 -> center grid (35, 29) -> world (1120, 928)
-    // ash-ghoul entity is at world (1024, 864) — far enough away
-    const result = findHitAt(1120, 928, defaultVP, chapel, TILE, allVisible);
+  it('hits a zone with no overlapping objects', () => {
+    // Click inside crypt-chamber away from center (encounter anchor lives at center)
+    // crypt-chamber zone: grid(30,25) 10x8 -> grid (38, 31) -> world (1216, 992)
+    const result = findHitAt(1216, 992, defaultVP, chapel, TILE, allVisible);
     expect(result).toEqual({ type: 'zone', id: 'crypt-chamber' });
   });
 
@@ -270,6 +269,67 @@ describe('findHitAt — connections', () => {
     const result = findHitAt(384, 704, defaultVP, chapel, TILE, allVisible);
     expect(result).not.toBeNull();
     expect(result!.type).toBe('entity');
+  });
+});
+
+// ── Encounter hit-testing ────────────────────────────────────────
+
+describe('findHitAt — encounters', () => {
+  it('hits encounter at zone center', () => {
+    // crypt-encounter is anchored to crypt-chamber
+    // crypt-chamber center: grid(35, 29) -> world (1120, 928)
+    const result = findHitAt(1120, 928, defaultVP, chapel, TILE, allVisible);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('encounter');
+    expect(result!.id).toBe('crypt-encounter');
+  });
+
+  it('encounter beats landmark and entity in priority', () => {
+    // Create a project with an encounter, landmark, and entity at the same zone center
+    const modified = structuredClone(chapel);
+    // Add landmark at crypt-chamber center
+    modified.landmarks.push({
+      id: 'test-lm', name: 'Test LM', zoneId: 'crypt-chamber',
+      gridX: 35, gridY: 29, interactionType: 'inspect', description: '', tags: [],
+    });
+    const result = findHitAt(1120, 928, defaultVP, modified, TILE, allVisible);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('encounter');
+  });
+
+  it('spawn beats encounter in priority', () => {
+    // Add a spawn at crypt-chamber center
+    const modified = structuredClone(chapel);
+    modified.spawnPoints.push({
+      id: 'test-spawn', zoneId: 'crypt-chamber',
+      gridX: 35, gridY: 29, isDefault: false,
+    });
+    const result = findHitAt(1120, 928, defaultVP, modified, TILE, allVisible);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('spawn');
+  });
+});
+
+describe('findAllHitsAt — encounters', () => {
+  it('includes encounter in hit list at zone center', () => {
+    // crypt-encounter at crypt-chamber center (1120, 928)
+    const hits = findAllHitsAt(1120, 928, defaultVP, chapel, TILE, allVisible);
+    const encHit = hits.find((h) => h.type === 'encounter' && h.id === 'crypt-encounter');
+    expect(encHit).toBeDefined();
+  });
+
+  it('encounter appears before landmarks in priority order', () => {
+    const modified = structuredClone(chapel);
+    modified.landmarks.push({
+      id: 'test-lm', name: 'Test LM', zoneId: 'crypt-chamber',
+      gridX: 35, gridY: 29, interactionType: 'inspect', description: '', tags: [],
+    });
+    const hits = findAllHitsAt(1120, 928, defaultVP, modified, TILE, allVisible);
+    const encIdx = hits.findIndex((h) => h.type === 'encounter');
+    const lmIdx = hits.findIndex((h) => h.type === 'landmark' && h.id === 'test-lm');
+    expect(encIdx).toBeGreaterThanOrEqual(0);
+    expect(lmIdx).toBeGreaterThanOrEqual(0);
+    expect(encIdx).toBeLessThan(lmIdx);
   });
 });
 

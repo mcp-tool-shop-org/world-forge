@@ -72,7 +72,7 @@ const chapelThreshold: WorldProject = {
 
   districts: [
     { id: 'chapel-grounds', name: 'Chapel Grounds', zoneIds: ['chapel-entrance', 'chapel-nave', 'chapel-alcove', 'vestry-door'], tags: ['sacred', 'ancient'], baseMetrics: { commerce: 10, morale: 40, safety: 60, stability: 50 }, economyProfile: { supplyCategories: ['relics'], scarcityDefaults: {} } },
-    { id: 'crypt-depths', name: 'Crypt Depths', zoneIds: ['crypt-chamber'], tags: ['underground', 'cursed'], baseMetrics: { commerce: 0, morale: 10, safety: 15, stability: 20 }, economyProfile: { supplyCategories: [], scarcityDefaults: {} } },
+    { id: 'crypt-depths', name: 'Crypt Depths', zoneIds: ['crypt-chamber'], tags: ['underground', 'cursed'], controllingFaction: 'chapel-undead', baseMetrics: { commerce: 0, morale: 10, safety: 15, stability: 20 }, economyProfile: { supplyCategories: [], scarcityDefaults: {} } },
   ],
 
   landmarks: [
@@ -180,7 +180,9 @@ const chapelThreshold: WorldProject = {
     { id: 'crypt-encounter', zoneId: 'crypt-chamber', encounterType: 'boss', enemyIds: ['ash-ghoul'], probability: 1, cooldownTurns: 0, tags: ['undead', 'boss'] },
   ],
 
-  pressureHotspots: [],
+  pressureHotspots: [
+    { id: 'crypt-pressure', zoneId: 'crypt-chamber', pressureType: 'undead-surge', baseProbability: 0.6, tags: ['undead'] },
+  ],
   craftingStations: [],
   marketNodes: [],
   tilesets: [],
