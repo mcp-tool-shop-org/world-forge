@@ -8,7 +8,36 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
+  "files": [
+    "dist",
+    "public",
+    "src",
+    "index.html",
+    "README.md",
+    "logo.png"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "mcp-tool-shop",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-tool-shop-org/world-forge.git",
+    "directory": "packages/editor"
+  },
+  "homepage": "https://mcp-tool-shop-org.github.io/world-forge/",
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/world-forge/issues"
+  },
+  "keywords": [
+    "world-forge",
+    "editor",
+    "react",
+    "game-dev",
+    "rpg",
+    "typescript"
+  ],
   "dependencies": {
     "@world-forge/schema": "*",
     "@world-forge/renderer-2d": "*",
