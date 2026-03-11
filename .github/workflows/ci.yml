@@ -38,8 +38,9 @@ jobs:
         if: matrix.node-version == 22
         run: npx vitest run --coverage
       - name: Upload coverage
-        if: matrix.node-version == 22 && secrets.CODECOV_TOKEN != ''
+        if: matrix.node-version == 22
         uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
