@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "editor",
+      "name": "editor-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace=packages/editor"],
       "port": 5173
