@@ -40,6 +40,7 @@ export type AssetBindingMap = {
 };
 
 export type ExportResult = {
+  success: true;
   contentPack: ContentPack;
   manifest: GameManifest;
   packMeta: PackMetadata;
@@ -50,7 +51,7 @@ export type ExportResult = {
 };
 
 export type ExportError = {
-  ok: false;
+  success: false;
   errors: ValidationError[];
 };
 
@@ -58,7 +59,7 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
   // 1. Validate the project
   const validation = validateProject(project);
   if (!validation.valid) {
-    return { ok: false, errors: validation.errors };
+    return { success: false, errors: validation.errors };
   }
 
   const warnings: string[] = [];
@@ -152,6 +153,7 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
   const assetPacks = project.assetPacks.length > 0 ? project.assetPacks : undefined;
 
   return {
+    success: true,
     contentPack: {
       entities,
       zones,

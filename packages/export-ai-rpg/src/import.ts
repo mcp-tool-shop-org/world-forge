@@ -19,6 +19,7 @@ import { importProgressionTrees } from './import-progression-trees.js';
 export type ImportFormat = 'world-project' | 'content-pack' | 'export-result' | 'project-bundle';
 
 export interface ImportResult {
+  success: true;
   project: WorldProject;
   format: ImportFormat;
   warnings: string[];
@@ -27,7 +28,7 @@ export interface ImportResult {
 }
 
 export interface ImportError {
-  ok: false;
+  success: false;
   message: string;
 }
 
@@ -68,20 +69,29 @@ export function inferMode(project: WorldProject): AuthoringMode {
 
 /** Detect the format of parsed JSON data. */
 export function detectImportFormat(data: unknown): ImportFormat | null {
-  if (typeof data !== 'object' || data === null) return null;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
   const obj = data as Record<string, unknown>;
 
   // ProjectBundle has bundleVersion + project (must check before WorldProject)
-  if ('bundleVersion' in obj && 'project' in obj && typeof obj.project === 'object') return 'project-bundle';
+  if ('bundleVersion' in obj && 'project' in obj
+    && typeof obj.project === 'object' && obj.project !== null
+    && 'map' in (obj.project as Record<string, unknown>)) return 'project-bundle';
 
-  // WorldProject has map + entityPlacements + zones
-  if ('map' in obj && 'entityPlacements' in obj && 'zones' in obj) return 'world-project';
+  // WorldProject has map + entityPlacements + zones (all must be correct types)
+  if ('map' in obj && 'entityPlacements' in obj && 'zones' in obj
+    && typeof obj.map === 'object' && obj.map !== null
+    && Array.isArray(obj.zones)
+    && Array.isArray(obj.entityPlacements)) return 'world-project';
 
-  // ExportResult has contentPack + manifest
-  if ('contentPack' in obj && 'manifest' in obj) return 'export-result';
+  // ExportResult has contentPack + manifest (both must be objects)
+  if ('contentPack' in obj && 'manifest' in obj
+    && typeof obj.contentPack === 'object' && obj.contentPack !== null
+    && typeof obj.manifest === 'object' && obj.manifest !== null) return 'export-result';
 
-  // ContentPack has entities + zones but no map
-  if ('entities' in obj && 'zones' in obj && !('map' in obj)) return 'content-pack';
+  // ContentPack has entities + zones arrays but no map
+  if ('entities' in obj && 'zones' in obj && !('map' in obj)
+    && Array.isArray(obj.entities)
+    && Array.isArray(obj.zones)) return 'content-pack';
 
   return null;
 }
@@ -89,13 +99,13 @@ export function detectImportFormat(data: unknown): ImportFormat | null {
 /** Import from any supported format. */
 export function importProject(data: unknown): ImportResult | ImportError {
   const format = detectImportFormat(data);
-  if (!format) return { ok: false, message: 'Unrecognized file format. Expected a WorldProject, ContentPack, or ExportResult JSON.' };
+  if (!format) return { success: false, message: 'Unrecognized file format. Expected a WorldProject, ContentPack, or ExportResult JSON.' };
 
   if (format === 'world-project') {
     const project = data as WorldProject;
     const validation = validateProject(project);
     const warnings = validation.valid ? [] : validation.errors.map((e) => `${e.path}: ${e.message}`);
-    return { project, format: 'world-project', warnings, lossless: true, fidelityReport: buildFidelityReport([]) };
+    return { success: true, project, format: 'world-project', warnings, lossless: true, fidelityReport: buildFidelityReport([]) };
   }
 
   if (format === 'export-result') {
@@ -357,5 +367,5 @@ export function importFromContentPack(
 
   const lossless = fidelityReport.summary.approximated === 0 && fidelityReport.summary.dropped === 0;
 
-  return { project, format: 'content-pack', warnings, lossless, fidelityReport };
+  return { success: true, project, format: 'content-pack', warnings, lossless, fidelityReport };
 }

@@ -1,6 +1,6 @@
-# Scorecard
+# Scorecard (Template)
 
-> Score a repo before remediation. Fill this out first, then use SHIP_GATE.md to fix.
+> **This file is a blank template.** Copy it per-release and fill it out. Use SHIP_GATE.md to drive remediation.
 
 **Repo:** <!-- repo name -->
 **Date:** <!-- YYYY-MM-DD -->

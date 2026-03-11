@@ -229,8 +229,8 @@ describe('convertProgressionTrees', () => {
 describe('exportToEngine', () => {
   it('exports minimal project successfully', () => {
     const result = exportToEngine(minimalProject);
-    expect('ok' in result).toBe(false); // not an error
-    if (!('ok' in result)) {
+    expect(result.success).toBe(true); // not an error
+    if (result.success) {
       expect(result.contentPack.zones).toHaveLength(2);
       expect(result.contentPack.entities).toHaveLength(1);
       expect(result.contentPack.districts).toHaveLength(1);
@@ -241,8 +241,8 @@ describe('exportToEngine', () => {
 
   it('exports chapel project successfully with all v1.2 domains', () => {
     const result = exportToEngine(chapelProject);
-    expect('ok' in result).toBe(false);
-    if (!('ok' in result)) {
+    expect(result.success).toBe(true);
+    if (result.success) {
       expect(result.contentPack.zones).toHaveLength(5);
       expect(result.contentPack.entities).toHaveLength(4);
       expect(result.contentPack.districts).toHaveLength(2);
@@ -264,9 +264,8 @@ describe('exportToEngine', () => {
 
   it('rejects invalid project', () => {
     const result = exportToEngine(invalidOrphanProject);
-    expect('ok' in result).toBe(true);
-    if ('ok' in result) {
-      expect(result.ok).toBe(false);
+    expect(result.success).toBe(false);
+    if (!result.success) {
       expect(result.errors.length).toBeGreaterThan(0);
     }
   });
@@ -274,7 +273,7 @@ describe('exportToEngine', () => {
   it('warns on missing v1.2 features', () => {
     const bare = { ...minimalProject, playerTemplate: undefined, buildCatalog: undefined, progressionTrees: [] as any[] };
     const result = exportToEngine(bare);
-    if (!('ok' in result)) {
+    if (result.success) {
       expect(result.warnings.some((w) => w.includes('player template'))).toBe(true);
       expect(result.warnings.some((w) => w.includes('build catalog'))).toBe(true);
       expect(result.warnings.some((w) => w.includes('progression trees'))).toBe(true);
@@ -284,7 +283,7 @@ describe('exportToEngine', () => {
   it('warns on missing landmarks', () => {
     const noLandmarks = { ...minimalProject, landmarks: [] };
     const result = exportToEngine(noLandmarks);
-    if (!('ok' in result)) {
+    if (result.success) {
       expect(result.warnings.some((w) => w.includes('landmark'))).toBe(true);
     }
   });
@@ -304,7 +303,7 @@ describe('exportToEngine', () => {
       ],
     };
     const result = exportToEngine(withAssets);
-    if (!('ok' in result)) {
+    if (result.success) {
       expect(result.assets).toHaveLength(2);
       expect(result.assetBindings?.zones?.['zone-entrance']?.backgroundId).toBe('bg-1');
       expect(result.assetBindings?.entities?.['npc-1']?.portraitId).toBe('portrait-1');
@@ -313,7 +312,7 @@ describe('exportToEngine', () => {
 
   it('omits assets and assetBindings when project has no assets', () => {
     const result = exportToEngine(minimalProject);
-    if (!('ok' in result)) {
+    if (result.success) {
       expect(result.assets).toBeUndefined();
       expect(result.assetBindings).toBeUndefined();
     }

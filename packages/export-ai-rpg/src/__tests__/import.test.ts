@@ -28,7 +28,7 @@ describe('detectImportFormat', () => {
 
   it('detects ContentPack format', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     expect(detectImportFormat(result.contentPack)).toBe('content-pack');
   });
 
@@ -44,6 +44,26 @@ describe('detectImportFormat', () => {
     expect(detectImportFormat('hello')).toBeNull();
     expect(detectImportFormat(42)).toBeNull();
   });
+
+  it('returns null for arrays', () => {
+    expect(detectImportFormat([{ map: {}, zones: [], entityPlacements: [] }])).toBeNull();
+  });
+
+  it('rejects world-project with wrong field types', () => {
+    expect(detectImportFormat({ map: 'not-obj', zones: [], entityPlacements: [] })).toBeNull();
+    expect(detectImportFormat({ map: {}, zones: 'not-arr', entityPlacements: [] })).toBeNull();
+    expect(detectImportFormat({ map: {}, zones: [], entityPlacements: 'nope' })).toBeNull();
+  });
+
+  it('rejects export-result with wrong field types', () => {
+    expect(detectImportFormat({ contentPack: 'string', manifest: {} })).toBeNull();
+    expect(detectImportFormat({ contentPack: {}, manifest: null })).toBeNull();
+  });
+
+  it('rejects content-pack with wrong field types', () => {
+    expect(detectImportFormat({ entities: 'str', zones: [] })).toBeNull();
+    expect(detectImportFormat({ entities: [], zones: 42 })).toBeNull();
+  });
 });
 
 // --- importZones ---
@@ -51,7 +71,7 @@ describe('detectImportFormat', () => {
 describe('importZones', () => {
   it('auto-layouts zones in grid', () => {
     const result = exportToEngine(chapelProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { zones } = importZones(result.contentPack.zones);
     expect(zones.length).toBe(result.contentPack.zones.length);
     // First zone at (0,0), second at (defaultWidth + spacing, 0) = (10, 0)
@@ -66,7 +86,7 @@ describe('importZones', () => {
 
   it('reconstructs description from TextBlock array', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { zones } = importZones(result.contentPack.zones);
     const entrance = zones.find((z) => z.id === 'zone-entrance');
     expect(entrance?.description).toBe('A dusty entrance hall with faded tapestries.');
@@ -78,7 +98,7 @@ describe('importZones', () => {
 
   it('reconstructs interactables with inspect type', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { zones } = importZones(result.contentPack.zones);
     const entrance = zones.find((z) => z.id === 'zone-entrance');
     expect(entrance?.interactables).toHaveLength(1);
@@ -88,7 +108,7 @@ describe('importZones', () => {
 
   it('preserves hazards', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { zones } = importZones(result.contentPack.zones);
     const cellar = zones.find((z) => z.id === 'zone-cellar');
     expect(cellar?.hazards).toContain('unstable-floor');
@@ -96,7 +116,7 @@ describe('importZones', () => {
 
   it('emits grid-auto-generated fidelity per zone', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { zones, fidelity } = importZones(result.contentPack.zones);
     const gridEntries = fidelity.filter((f) => f.reason === 'grid-auto-generated');
     expect(gridEntries.length).toBe(zones.length);
@@ -106,7 +126,7 @@ describe('importZones', () => {
 
   it('emits interactable-type-defaulted fidelity', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { fidelity } = importZones(result.contentPack.zones);
     const interactableEntries = fidelity.filter((f) => f.reason === 'interactable-type-defaulted');
     expect(interactableEntries.length).toBeGreaterThan(0);
@@ -119,7 +139,7 @@ describe('importZones', () => {
 describe('importDistricts', () => {
   it('reverses surveillance to safety', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { districts } = importDistricts(result.contentPack.districts);
     expect(districts).toHaveLength(1);
     expect(districts[0].baseMetrics.safety).toBe(60); // original safety was 60
@@ -128,14 +148,14 @@ describe('importDistricts', () => {
 
   it('defaults economyProfile', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { districts } = importDistricts(result.contentPack.districts);
     expect(districts[0].economyProfile).toEqual({ supplyCategories: [], scarcityDefaults: {} });
   });
 
   it('emits surveillance-to-safety and economy-data-lost fidelity', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { fidelity } = importDistricts(result.contentPack.districts);
     expect(fidelity.some((f) => f.reason === 'surveillance-to-safety')).toBe(true);
     expect(fidelity.some((f) => f.reason === 'economy-data-lost')).toBe(true);
@@ -148,7 +168,7 @@ describe('importDistricts', () => {
 describe('importEntities', () => {
   it('reverse-maps npc role', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { placements } = importEntities(result.contentPack.entities, ['zone-a']);
     expect(placements[0].role).toBe('npc');
   });
@@ -273,7 +293,7 @@ describe('importItems', () => {
 describe('importDialogues', () => {
   it('preserves full node graph', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { dialogues } = importDialogues(result.contentPack.dialogues);
     expect(dialogues).toHaveLength(1);
     expect(dialogues[0].id).toBe('dlg-keeper');
@@ -284,7 +304,7 @@ describe('importDialogues', () => {
 
   it('emits textblock-to-string fidelity when text was TextBlock[]', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { fidelity } = importDialogues(result.contentPack.dialogues);
     // Engine converts string text to TextBlock[], so import should detect it
     const tbEntries = fidelity.filter((f) => f.reason === 'textblock-to-string');
@@ -297,7 +317,7 @@ describe('importDialogues', () => {
 describe('importPlayerTemplate', () => {
   it('round-trips player template fields', () => {
     const result = exportToEngine(minimalProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { template: pt } = importPlayerTemplate(result.contentPack.playerTemplate);
     expect(pt).toBeDefined();
     expect(pt!.name).toBe('Traveler');
@@ -326,7 +346,7 @@ describe('importPlayerTemplate', () => {
 describe('importBuildCatalog', () => {
   it('strips packId and reconstructs catalog', () => {
     const result = exportToEngine(chapelProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { catalog: bc } = importBuildCatalog(result.contentPack.buildCatalog);
     expect(bc).toBeDefined();
     expect(bc!.archetypes.length).toBeGreaterThan(0);
@@ -342,7 +362,7 @@ describe('importBuildCatalog', () => {
 
   it('emits pack-id-stripped fidelity when packId present', () => {
     const result = exportToEngine(chapelProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { fidelity } = importBuildCatalog(result.contentPack.buildCatalog);
     expect(fidelity.some((f) => f.reason === 'pack-id-stripped')).toBe(true);
   });
@@ -353,7 +373,7 @@ describe('importBuildCatalog', () => {
 describe('importProgressionTrees', () => {
   it('preserves tree structure', () => {
     const result = exportToEngine(chapelProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { trees } = importProgressionTrees(result.contentPack.progressionTrees);
     expect(trees.length).toBe(chapelProject.progressionTrees.length);
     expect(trees[0].id).toBe(chapelProject.progressionTrees[0].id);
@@ -362,7 +382,7 @@ describe('importProgressionTrees', () => {
 
   it('emits no fidelity entries (lossless)', () => {
     const result = exportToEngine(chapelProject);
-    if ('ok' in result) throw new Error('export failed');
+    if (!result.success) throw new Error('export failed');
     const { fidelity } = importProgressionTrees(result.contentPack.progressionTrees);
     expect(fidelity).toHaveLength(0);
   });
@@ -373,7 +393,7 @@ describe('importProgressionTrees', () => {
 describe('round-trip: export → import → re-export', () => {
   it('Chapel: export → import → validate passes', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromExportResult(exported);
     const validation = validateProject(imported.project);
@@ -382,11 +402,11 @@ describe('round-trip: export → import → re-export', () => {
 
   it('Chapel: export → import → re-export → ContentPacks match', () => {
     const exported1 = exportToEngine(chapelProject);
-    if ('ok' in exported1) throw new Error('export failed');
+    if (!exported1.success) throw new Error('export failed');
 
     const imported = importFromExportResult(exported1);
     const exported2 = exportToEngine(imported.project);
-    if ('ok' in exported2) throw new Error('re-export failed');
+    if (!exported2.success) throw new Error('re-export failed');
 
     const pack1 = exported1.contentPack;
     const pack2 = exported2.contentPack;
@@ -426,7 +446,7 @@ describe('round-trip: export → import → re-export', () => {
 
   it('Minimal: export → import → validate passes', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromContentPack(exported.contentPack, 'Minimal Re-import');
     const validation = validateProject(imported.project);
@@ -437,7 +457,7 @@ describe('round-trip: export → import → re-export', () => {
     const json = JSON.stringify(chapelProject);
     const parsed = JSON.parse(json);
     const result = importProject(parsed);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     expect(result.format).toBe('world-project');
     expect(result.lossless).toBe(true);
     const validation = validateProject(result.project);
@@ -450,7 +470,7 @@ describe('round-trip: export → import → re-export', () => {
 describe('importProject', () => {
   it('imports WorldProject format losslessly', () => {
     const result = importProject(minimalProject);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     expect(result.format).toBe('world-project');
     expect(result.lossless).toBe(true);
     expect(result.project.id).toBe(minimalProject.id);
@@ -460,9 +480,9 @@ describe('importProject', () => {
 
   it('imports ContentPack format with fidelity report', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const result = importProject(exported.contentPack);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     expect(result.format).toBe('content-pack');
     expect(result.lossless).toBe(false);
     expect(result.warnings.length).toBeGreaterThan(0);
@@ -473,9 +493,9 @@ describe('importProject', () => {
 
   it('imports ExportResult format with metadata recovery', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const result = importProject(exported);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     expect(result.format).toBe('export-result');
     expect(result.project.name).toBe(chapelProject.name);
     expect(result.fidelityReport).toBeDefined();
@@ -483,7 +503,7 @@ describe('importProject', () => {
 
   it('rejects invalid format', () => {
     const result = importProject({ random: 'data' });
-    expect(result).toHaveProperty('ok', false);
+    expect(result).toHaveProperty('success', false);
   });
 });
 
@@ -506,7 +526,7 @@ describe('asset preservation', () => {
 
   it('ExportResult round-trip recovers assets', () => {
     const exported = exportToEngine(projectWithAssets);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.assets).toHaveLength(2);
 
     const imported = importFromExportResult(exported);
@@ -516,7 +536,7 @@ describe('asset preservation', () => {
 
   it('ExportResult round-trip recovers asset bindings', () => {
     const exported = exportToEngine(projectWithAssets);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromExportResult(exported);
     const entrance = imported.project.zones.find((z) => z.id === 'zone-entrance');
@@ -527,7 +547,7 @@ describe('asset preservation', () => {
 
   it('ExportResult round-trip has assets-recovered fidelity entry', () => {
     const exported = exportToEngine(projectWithAssets);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromExportResult(exported);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'assets-recovered')).toBe(true);
@@ -535,7 +555,7 @@ describe('asset preservation', () => {
 
   it('ContentPack import has assets-dropped fidelity entry', () => {
     const exported = exportToEngine(projectWithAssets);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromContentPack(exported.contentPack);
     expect(imported.project.assets).toHaveLength(0);
@@ -562,14 +582,14 @@ describe('asset pack preservation', () => {
 
   it('ExportResult includes asset packs', () => {
     const exported = exportToEngine(projectWithPacks);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.assetPacks).toHaveLength(1);
     expect(exported.assetPacks![0].id).toBe('test-pack');
   });
 
   it('ExportResult round-trip recovers asset packs', () => {
     const exported = exportToEngine(projectWithPacks);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromExportResult(exported);
     expect(imported.project.assetPacks).toHaveLength(1);
@@ -579,7 +599,7 @@ describe('asset pack preservation', () => {
 
   it('ExportResult round-trip has asset-packs-recovered fidelity entry', () => {
     const exported = exportToEngine(projectWithPacks);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromExportResult(exported);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-recovered')).toBe(true);
@@ -587,7 +607,7 @@ describe('asset pack preservation', () => {
 
   it('ContentPack import has asset-packs-dropped fidelity entry', () => {
     const exported = exportToEngine(projectWithPacks);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
 
     const imported = importFromContentPack(exported.contentPack);
     expect(imported.project.assetPacks).toHaveLength(0);
@@ -645,14 +665,14 @@ describe('mode inference and round-trip', () => {
   it('round-trip preserves mode on WorldProject', () => {
     const project: WorldProject = { ...chapelProject, mode: 'ocean' };
     const exported = exportToEngine(project);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     expect(imported.project.mode).toBe('ocean');
   });
 
   it('pre-mode ContentPack import triggers mode inference', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromContentPack(exported.contentPack);
     // Mode was not set on minimalProject, so it should be inferred
     expect(imported.project.mode).toBeDefined();
@@ -661,7 +681,7 @@ describe('mode inference and round-trip', () => {
 
   it('fidelity mentions mode inference', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromContentPack(exported.contentPack);
     const modeEntry = imported.fidelityReport.entries.find((e) => e.reason === 'mode-inferred');
     expect(modeEntry).toBeDefined();
@@ -671,26 +691,26 @@ describe('mode inference and round-trip', () => {
   it('PackMetadata includes mode tag', () => {
     const project: WorldProject = { ...minimalProject, mode: 'ocean' };
     const exported = exportToEngine(project);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.packMeta.tags).toContain('mode:ocean');
   });
 
   it('PackMetadata has no mode tag when mode is undefined', () => {
     const project: WorldProject = { ...minimalProject, mode: undefined };
     const exported = exportToEngine(project);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.packMeta.tags.some((t: string) => t.startsWith('mode:'))).toBe(false);
   });
 
   it('existing import tests still pass (regression)', () => {
     // WorldProject round-trip
     const result = importProject(minimalProject);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     expect(result.lossless).toBe(true);
 
     // ContentPack import
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromContentPack(exported.contentPack);
     expect(validateProject(imported.project).valid).toBe(true);
   });

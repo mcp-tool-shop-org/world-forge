@@ -39,7 +39,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const handleExport = () => {
     const result = exportToEngine(project);
-    if ('ok' in result) {
+    if (!result.success) {
       setStatus('invalid');
       setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
       return;

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useProjectStore } from './store/project-store.js';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
+import { useModalStore } from './store/modal-store.js';
 import { ToolPalette } from './panels/ToolPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
@@ -10,26 +11,21 @@ import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
 import { ConnectionProperties } from './panels/ConnectionProperties.js';
 import { EncounterProperties } from './panels/EncounterProperties.js';
-import { ExportModal } from './panels/ExportModal.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
 import { BuildCatalogPanel } from './panels/BuildCatalogPanel.js';
 import { ProgressionPanel } from './panels/ProgressionPanel.js';
 import { DialoguePanel } from './panels/DialoguePanel.js';
 import { ChecklistPanel } from './panels/ChecklistPanel.js';
-import { TemplateManager } from './panels/TemplateManager.js';
-import { ImportModal } from './panels/ImportModal.js';
-import { SaveTemplateModal } from './panels/SaveTemplateModal.js';
 import { ImportSummaryPanel } from './panels/ImportSummaryPanel.js';
 import { DiffPanel } from './panels/DiffPanel.js';
 import { AssetPanel } from './panels/AssetPanel.js';
 import { ObjectListPanel } from './panels/ObjectListPanel.js';
 import { PresetBrowser } from './panels/PresetBrowser.js';
-import { SearchOverlay } from './panels/SearchOverlay.js';
 import { SpeedPanel } from './panels/SpeedPanel.js';
-import { SaveKitModal } from './panels/SaveKitModal.js';
 import { DependencyPanel, useDependencyCount } from './panels/DependencyPanel.js';
 import { ReviewPanel } from './panels/ReviewPanel.js';
+import { ModalLayer } from './panels/ModalLayer.js';
 import { Canvas } from './Canvas.js';
 import { getModeProfile } from './mode-profiles.js';
 
@@ -40,11 +36,7 @@ export function App() {
   const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
-  const [showExport, setShowExport] = useState(false);
-  const [showTemplateManager, setShowTemplateManager] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
-  const [showSaveKit, setShowSaveKit] = useState(false);
+  const openModal = useModalStore((s) => s.openModal);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -113,15 +105,15 @@ export function App() {
           {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}
         </span>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setShowTemplateManager(true)} style={btnStyle}>New</button>
-        <button onClick={() => setShowImport(true)} style={btnStyle}>Import</button>
+        <button onClick={() => openModal('template-manager')} style={btnStyle}>New</button>
+        <button onClick={() => openModal('import')} style={btnStyle}>Import</button>
         <button onClick={handleLoad} style={btnStyle}>Load</button>
         <button onClick={handleSave} style={btnStyle}>Save</button>
-        <button onClick={() => setShowSaveTemplate(true)} style={btnStyle}>Save as Template</button>
-        <button onClick={() => setShowSaveKit(true)} style={btnStyle}>Save as Kit</button>
+        <button onClick={() => openModal('save-template')} style={btnStyle}>Save as Template</button>
+        <button onClick={() => openModal('save-kit')} style={btnStyle}>Save as Kit</button>
         <button onClick={undo} style={btnStyle}>Undo</button>
         <button onClick={redo} style={btnStyle}>Redo</button>
-        <button onClick={() => setShowExport(true)} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Export</button>
+        <button onClick={() => openModal('export')} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Export</button>
         <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
       </div>
 
@@ -274,12 +266,7 @@ export function App() {
         )}
       </div>
 
-      {showExport && <ExportModal onClose={() => setShowExport(false)} />}
-      {showTemplateManager && <TemplateManager onClose={() => setShowTemplateManager(false)} />}
-      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
-      {showSaveTemplate && <SaveTemplateModal onClose={() => setShowSaveTemplate(false)} />}
-      {showSaveKit && <SaveKitModal onClose={() => setShowSaveKit(false)} />}
-      {showSearch && <SearchOverlay />}
+      <ModalLayer />
     </div>
   );
 }

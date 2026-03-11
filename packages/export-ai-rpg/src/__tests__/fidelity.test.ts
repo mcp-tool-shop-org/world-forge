@@ -65,7 +65,7 @@ describe('FidelityReport', () => {
 describe('Round-trip fidelity: Minimal', () => {
   function getMinimalImport() {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     return importFromExportResult(exported);
   }
 
@@ -78,7 +78,7 @@ describe('Round-trip fidelity: Minimal', () => {
 
   it('zone names, descriptions, tags are lossless', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     for (const origZone of minimalProject.zones) {
       const importedZone = imported.project.zones.find((z) => z.id === origZone.id);
@@ -106,7 +106,7 @@ describe('Round-trip fidelity: Minimal', () => {
 
   it('dialogue nodes match', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     for (const origDlg of minimalProject.dialogues) {
       const importedDlg = imported.project.dialogues.find((d) => d.id === origDlg.id);
@@ -117,7 +117,7 @@ describe('Round-trip fidelity: Minimal', () => {
 
   it('player template fields match', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     expect(imported.project.playerTemplate?.name).toBe(minimalProject.playerTemplate?.name);
     expect(imported.project.playerTemplate?.baseStats).toEqual(minimalProject.playerTemplate?.baseStats);
@@ -130,7 +130,7 @@ describe('Round-trip fidelity: Minimal', () => {
 describe('Round-trip fidelity: Chapel Threshold', () => {
   function getChapelImport() {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     return importFromExportResult(exported);
   }
 
@@ -174,7 +174,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
 
   it('entity roles reverse-mapped with fidelity entries per entity', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     const report = imported.fidelityReport;
     const roleMapped = report.entries.filter((e) => e.reason === 'role-reverse-mapped');
@@ -248,7 +248,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
 describe('FidelityReport accuracy', () => {
   it('report claims match actual data differences', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     const report = imported.fidelityReport;
 
@@ -267,14 +267,14 @@ describe('FidelityReport accuracy', () => {
 
   it('WorldProject import produces empty fidelity report', () => {
     const result = importProject(chapelProject);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     expect(result.fidelityReport.summary.total).toBe(0);
     expect(result.fidelityReport.summary.losslessPercent).toBe(100);
   });
 
   it('connections-reconstructed entry present when zones have neighbors', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromExportResult(exported);
     const connEntry = imported.fidelityReport.entries.find((e) => e.reason === 'connections-reconstructed');
     if (chapelProject.connections.length > 0) {
@@ -285,7 +285,7 @@ describe('FidelityReport accuracy', () => {
 
   it('WorldProject import preserves connection kind', () => {
     const result = importProject(chapelProject);
-    if ('ok' in result) throw new Error('import failed');
+    if (!result.success) throw new Error('import failed');
     const imported = result.project;
     for (const orig of chapelProject.connections) {
       const imp = imported.connections.find((c) => c.fromZoneId === orig.fromZoneId && c.toZoneId === orig.toZoneId);
@@ -296,14 +296,14 @@ describe('FidelityReport accuracy', () => {
 
   it('ContentPack import has asset-packs-dropped fidelity entry', () => {
     const exported = exportToEngine(minimalProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     const imported = importFromContentPack(exported.contentPack);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
   });
 
   it('encounter anchors round-trip preserved', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
     const imported = importFromExportResult(exported);
     expect(imported.project.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
@@ -317,7 +317,7 @@ describe('FidelityReport accuracy', () => {
 
   it('faction presences round-trip preserved', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.factionPresences).toHaveLength(chapelProject.factionPresences.length);
     const imported = importFromExportResult(exported);
     expect(imported.project.factionPresences).toHaveLength(chapelProject.factionPresences.length);
@@ -330,7 +330,7 @@ describe('FidelityReport accuracy', () => {
 
   it('pressure hotspots round-trip preserved', () => {
     const exported = exportToEngine(chapelProject);
-    if ('ok' in exported) throw new Error('export failed');
+    if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.pressureHotspots).toHaveLength(chapelProject.pressureHotspots.length);
     const imported = importFromExportResult(exported);
     expect(imported.project.pressureHotspots).toHaveLength(chapelProject.pressureHotspots.length);

@@ -65,7 +65,7 @@ export function ImportModal({ onClose }: Props) {
         }
 
         const res = importProject(data);
-        if ('ok' in res) {
+        if (!res.success) {
           setImportError(res.message);
         } else {
           setResult(res);

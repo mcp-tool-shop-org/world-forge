@@ -43,7 +43,7 @@ async function main(): Promise<void> {
   // Export
   const result = exportToEngine(project);
 
-  if ('ok' in result) {
+  if (!result.success) {
     console.error('Validation failed:');
     for (const e of result.errors) {
       console.error(`  [${e.path}] ${e.message}`);
