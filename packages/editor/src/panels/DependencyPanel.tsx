@@ -6,6 +6,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { scanDependencies, type DependencyEdge, type DepDomain } from '@world-forge/schema';
 import { repairsForEdge, batchRepair, type RepairAction } from '../repairs.js';
 import { PanelHeader } from './shared.js';
+import { buttonBase, buttonAccent } from '../ui/styles.js';
 
 const domainLabels: Record<DepDomain, string> = {
   'zone-asset': 'Zone Assets',
@@ -255,11 +256,9 @@ export function useDependencyCount(): number {
 }
 
 const batchBtnStyle: React.CSSProperties = {
-  fontSize: 10, padding: '3px 8px', cursor: 'pointer',
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 4,
+  ...buttonBase, fontSize: 10, padding: '3px 8px',
 };
 
 const repairBtnStyle: React.CSSProperties = {
-  fontSize: 10, padding: '2px 6px', cursor: 'pointer',
-  background: '#1c2128', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 3,
+  ...buttonAccent, fontSize: 10, padding: '2px 6px', borderRadius: 3,
 };

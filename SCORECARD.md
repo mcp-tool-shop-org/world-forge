@@ -1,49 +1,39 @@
-# Scorecard (Template)
+# Scorecard
 
-> **This file is a blank template.** Copy it per-release and fill it out. Use SHIP_GATE.md to drive remediation.
+> **Release:** v4.0.3  
+> **Repo:** world-forge  
+> **Date:** 2026-03-11  
+> **Type tags:** `[npm]` `[cli]`
 
-**Repo:** <!-- repo name -->
-**Date:** <!-- YYYY-MM-DD -->
-**Type tags:** <!-- [npm] [mcp] [cli] etc. -->
-
-## Pre-Remediation Assessment
+## Assessment
 
 | Category | Score | Notes |
 |----------|-------|-------|
-| A. Security | /10 | |
-| B. Error Handling | /10 | |
-| C. Operator Docs | /10 | |
-| D. Shipping Hygiene | /10 | |
-| E. Identity (soft) | /10 | |
-| **Overall** | **/50** | |
+| A. Security | 10/10 | SECURITY.md, threat model, no secrets, no telemetry |
+| B. Error Handling | 9/10 | Typed validation results, CLI exit codes, no raw stacks. ErrorBoundary on Canvas. |
+| C. Operator Docs | 10/10 | README current, CHANGELOG up to date (4.0.3), LICENSE present, `--help` accurate, DESIGN-SYSTEM.md for editor contributors |
+| D. Shipping Hygiene | 10/10 | verify script, version/tag match, npm audit in CI, engines.node set, lockfile committed |
+| E. Identity (soft) | 8/10 | Logo in README. No landing page or translations (internal tool — acceptable skip). |
+| **Overall** | **47/50** | |
 
-## Key Gaps
+## Remaining Edges
 
-<!-- List the 3-5 most critical gaps that need fixing. Be specific. -->
+1. **ExportModal** — not yet migrated to ModalFrame (intentionally deferred, non-standard layout). Known special case, not hidden debt.
+2. **shared.tsx legacy exports** — `sectionTitle`, `addBtnStyle`, `smallBtnStyle`, `xBtnStyle`, `itemStyle`, `hintStyle`, `deleteBtnStyle` still imported by 14+ files. Internals now use CSS variables, but the export surface could consolidate into `styles.ts` in a future pass.
+3. **SpeedPanel / SearchOverlay** — extensive inline styles not yet tokenized. Lower priority (floating panels with complex positional logic).
 
-1.
-2.
-3.
+## What Shipped in This Release
 
-## Remediation Priority
+- Design-system token layer (theme.css + styles.ts + ModalFrame)
+- Modal migration (6/7 modals)
+- Control standardization (14 files)
+- Panel shell tokenization (shared.tsx, App.tsx, ChecklistPanel)
+- Audit follow-up hardening (result discriminants, ErrorBoundary, CLI tests, viewport tests, shape guards)
+- CI fix (secrets context in step-level if)
+- Multilingual READMEs (7 languages)
 
-<!-- What to fix first, second, third. Informed by the gaps above. -->
+## Test Integrity
 
-| Priority | Item | Estimated effort |
-|----------|------|-----------------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
-
-## Post-Remediation
-
-<!-- Fill this out after applying SHIP_GATE.md -->
-
-| Category | Before | After |
-|----------|--------|-------|
-| A. Security | /10 | /10 |
-| B. Error Handling | /10 | /10 |
-| C. Operator Docs | /10 | /10 |
-| D. Shipping Hygiene | /10 | /10 |
-| E. Identity (soft) | /10 | /10 |
-| **Overall** | /50 | /50 |
+- **57 test files, 1,268 tests, 0 failures**
+- Build: clean (tsc --build, zero errors)
+- All 4 packages published to npm at 4.0.3

@@ -8,6 +8,7 @@ import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
+import { buttonBase, buttonAccent } from '../ui/styles.js';
 import { useKitStore } from '../kits/index.js';
 import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
 
@@ -185,18 +186,18 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onClick={handleValidate} style={modalBtnStyle}>Validate</button>
+          <button onClick={handleValidate} style={buttonBase}>Validate</button>
           <button onClick={handleExport} style={{
-            ...modalBtnStyle,
-            background: precheck.valid ? '#238636' : '#21262d',
-            color: precheck.valid ? '#fff' : '#484f58',
+            ...buttonBase,
+            background: precheck.valid ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+            color: precheck.valid ? '#fff' : 'var(--wf-text-hint)',
             cursor: precheck.valid ? 'pointer' : 'not-allowed',
             opacity: precheck.valid ? 1 : 0.6,
           }} disabled={!precheck.valid}>Export JSON</button>
           {!precheck.valid && precheck.errors.length > 0 && (
-            <button onClick={handleGoToFirstIssue} style={{ ...modalBtnStyle, color: '#58a6ff' }}>Fix first issue</button>
+            <button onClick={handleGoToFirstIssue} style={buttonAccent}>Fix first issue</button>
           )}
-          <button onClick={onClose} style={modalBtnStyle}>Close</button>
+          <button onClick={onClose} style={buttonBase}>Close</button>
         </div>
 
         {status === 'valid' && <div style={{ color: '#3fb950', fontSize: 13 }}>Validation passed!</div>}
@@ -254,7 +255,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             a.click();
             URL.revokeObjectURL(url);
             setBundleExported(true);
-          }} style={{ ...modalBtnStyle, background: ACTIVE_TAB_BG, color: '#fff' }}>
+          }} style={{ ...buttonBase, background: ACTIVE_TAB_BG, color: '#fff' }}>
             Export Project Bundle
           </button>
           {bundleExported && <span style={{ color: '#3fb950', fontSize: 12, marginLeft: 8 }}>Bundle saved!</span>}
@@ -264,7 +265,3 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-const modalBtnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13,
-};

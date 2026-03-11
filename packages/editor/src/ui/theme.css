@@ -1,0 +1,81 @@
+/* theme.css — World Forge editor design tokens
+ *
+ * Single source of truth for all visual decisions.
+ * Import once in main.tsx; reference via var(--wf-*) everywhere.
+ *
+ * To change the editor look-and-feel, edit values here.
+ * No component files need to move.
+ */
+
+:root {
+  /* ── Colors: backgrounds ──────────────────────────── */
+  --wf-bg-app:       #0d1117;
+  --wf-bg-panel:     #161b22;
+  --wf-bg-elevated:  #1c2128;
+  --wf-bg-input:     #0d1117;
+  --wf-bg-control:   #21262d;
+  --wf-bg-hover:     #30363d;
+  --wf-bg-overlay:   rgba(0, 0, 0, 0.7);
+
+  /* ── Colors: text ─────────────────────────────────── */
+  --wf-text-primary: #c9d1d9;
+  --wf-text-muted:   #8b949e;
+  --wf-text-faint:   #6e7681;
+  --wf-text-hint:    #484f58;
+
+  /* ── Colors: accent / semantic ────────────────────── */
+  --wf-accent:       #58a6ff;
+  --wf-success:      #238636;
+  --wf-success-text: #3fb950;
+  --wf-danger:       #da3633;
+  --wf-danger-text:  #f85149;
+  --wf-warning:      #d29922;
+
+  /* ── Borders ──────────────────────────────────────── */
+  --wf-border-default: #30363d;
+  --wf-border-subtle:  #21262d;
+
+  /* ── Spacing scale (4-px grid) ────────────────────── */
+  --wf-space-1: 4px;
+  --wf-space-2: 8px;
+  --wf-space-3: 12px;
+  --wf-space-4: 16px;
+  --wf-space-5: 20px;
+  --wf-space-6: 24px;
+
+  /* ── Border radius ────────────────────────────────── */
+  --wf-radius-sm:  3px;
+  --wf-radius-md:  4px;
+  --wf-radius-lg:  8px;
+  --wf-radius-pill: 20px;
+
+  /* ── Shadows ──────────────────────────────────────── */
+  --wf-shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* ── Typography ───────────────────────────────────── */
+  --wf-font-family: 'Segoe UI', system-ui, sans-serif;
+  --wf-font-xs:  10px;
+  --wf-font-sm:  11px;
+  --wf-font-md:  12px;
+  --wf-font-lg:  13px;
+  --wf-font-xl:  14px;
+  --wf-font-2xl: 16px;
+  --wf-font-3xl: 24px;
+
+  /* ── Z-index layers ───────────────────────────────── */
+  --wf-z-panel:   10;
+  --wf-z-speed:   90;
+  --wf-z-modal:   100;
+  --wf-z-overlay: 200;
+  --wf-z-drag:    1000;
+
+  /* ── Layout dimensions ────────────────────────────── */
+  --wf-sidebar-width:  220px;
+  --wf-inspector-width: 280px;
+  --wf-topbar-height:  36px;
+  --wf-bottombar-height: 24px;
+
+  /* ── Transitions ──────────────────────────────────── */
+  --wf-transition-fast: 120ms ease;
+  --wf-transition-normal: 200ms ease;
+}

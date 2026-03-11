@@ -4,6 +4,7 @@ import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { frameBounds } from '../viewport.js';
 import { getCanvasSize } from '../frame-helpers.js';
 import { inputStyle as sharedInputStyle, ConfirmButton } from './shared.js';
+import { inputCompact } from '../ui/styles.js';
 import type { DistrictMetrics } from '@world-forge/schema';
 
 export function DistrictPanel() {
@@ -214,7 +215,7 @@ export function DistrictPanel() {
 
 const sectionLabel: React.CSSProperties = { fontSize: 10, color: '#8b949e', marginTop: 6, marginBottom: 2 };
 const inputStyle: React.CSSProperties = {
-  ...sharedInputStyle, fontSize: 11, padding: '2px 5px', marginTop: 2,
+  ...inputCompact, fontSize: 11, padding: '2px 5px',
 };
 const smallBtn: React.CSSProperties = {
   fontSize: 10, background: 'transparent', color: '#58a6ff', border: 'none',

@@ -10,7 +10,7 @@ import {
 
 describe('deleteBtnStyle', () => {
   it('uses danger red background', () => {
-    expect(deleteBtnStyle.background).toBe('#da3633');
+    expect(deleteBtnStyle.background).toBe('var(--wf-danger)');
     expect(deleteBtnStyle.color).toBe('#fff');
   });
   it('is full-width', () => {
@@ -50,8 +50,8 @@ describe('MODAL_CARD', () => {
   });
   it('uses dark background and border', () => {
     const card = MODAL_CARD(500);
-    expect(card.background).toBe('#161b22');
-    expect(card.border).toBe('1px solid #30363d');
+    expect(card.background).toBe('var(--wf-bg-panel)');
+    expect(card.border).toBe('1px solid var(--wf-border-default)');
   });
 });
 

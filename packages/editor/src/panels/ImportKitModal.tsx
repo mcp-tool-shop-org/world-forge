@@ -5,7 +5,8 @@ import { useKitStore } from '../kits/index.js';
 import { prepareKitImport } from '../kits/bundle.js';
 import type { ImportKitResult } from '../kits/bundle.js';
 import { countContent } from './TemplateManager.js';
-import { MODAL_OVERLAY, MODAL_CARD } from './shared.js';
+import { ModalFrame } from '../ui/ModalFrame.js';
+import { buttonBase, buttonPrimary, modalFooter } from '../ui/styles.js';
 
 interface Props { onClose: () => void }
 
@@ -73,17 +74,11 @@ export function ImportKitModal({ onClose }: Props) {
     : [];
 
   return (
-    <div style={MODAL_OVERLAY}>
-      <div style={MODAL_CARD(480)}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ margin: 0, color: '#e6edf3' }}>Import Starter Kit</h3>
-          <button onClick={onClose} style={closeBtnStyle}>&times;</button>
-        </div>
+    <ModalFrame title="Import Starter Kit" width={480} onClose={onClose}>
 
         {/* File picker */}
         <input ref={fileInput} type="file" accept=".wfkit.json,.json" onChange={handleFile} style={{ display: 'none' }} />
-        <button onClick={() => fileInput.current?.click()} style={btnStyle}>
+        <button onClick={() => fileInput.current?.click()} style={buttonBase}>
           {fileName || 'Choose .wfkit.json file\u2026'}
         </button>
 
@@ -142,38 +137,23 @@ export function ImportKitModal({ onClose }: Props) {
         )}
 
         {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+        <div style={modalFooter}>
           {result && result.isValid && collision && (
             <>
-              <button onClick={handleImportAsCopy} style={importBtnStyle}>Import as Copy</button>
+              <button onClick={handleImportAsCopy} style={buttonPrimary}>Import as Copy</button>
               {!collision.isBuiltIn && (
-                <button onClick={handleReplace} style={{ ...btnStyle, color: '#d29922' }}>Replace Existing</button>
+                <button onClick={handleReplace} style={{ ...buttonBase, color: 'var(--wf-warning)' }}>Replace Existing</button>
               )}
             </>
           )}
           {result && result.isValid && !collision && (
-            <button onClick={handleImport} style={importBtnStyle}>Import</button>
+            <button onClick={handleImport} style={buttonPrimary}>Import</button>
           )}
-          <button onClick={onClose} style={btnStyle}>Cancel</button>
+          <button onClick={onClose} style={buttonBase}>Cancel</button>
         </div>
-      </div>
-    </div>
+    </ModalFrame>
   );
 }
-
-const btnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 12,
-};
-
-const importBtnStyle: React.CSSProperties = {
-  background: '#238636', color: '#fff', border: '1px solid #238636',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-};
-
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer',
-};
 
 const modeBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,

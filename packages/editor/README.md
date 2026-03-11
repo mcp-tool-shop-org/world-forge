@@ -37,6 +37,16 @@ npm run dev --workspace=packages/editor
 
 Open `http://localhost:5173` to launch the editor.
 
+## Styling Architecture
+
+The editor uses inline `style={}` props with a two-layer design-token system:
+
+1. **CSS custom properties** (`src/ui/theme.css`) — single source of truth for colors, spacing, typography, z-indices
+2. **TypeScript style objects** (`src/ui/styles.ts`) — reusable `CSSProperties` objects referencing the CSS variables
+3. **ModalFrame component** (`src/ui/ModalFrame.tsx`) — shared modal shell used by 6 of 7 modals
+
+See [`src/ui/DESIGN-SYSTEM.md`](src/ui/DESIGN-SYSTEM.md) for the full token reference and contributor conventions.
+
 ## License
 
 MIT

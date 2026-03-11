@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.3] - 2026-03-11
+
+### Added
+
+- **Design-system token layer** — `src/ui/theme.css` with ~85 CSS custom properties covering backgrounds, text colors, semantic colors, borders, spacing (4 px grid), border radius, shadows, typography scale, z-index layers, layout dimensions, and transitions. Imported once in `main.tsx`
+- **Style primitives library** — `src/ui/styles.ts` exports ~22 reusable `CSSProperties` objects: `panelShell`, `inspectorShell`, `sectionHeader`, `toolbarRow`, `buttonBase`, `buttonPrimary`, `buttonDanger`, `buttonAccent`, `buttonGhost`, `inputBase`, `inputCompact`, `selectBase`, `labelText`, `overlayBackdrop`, `modalCard()`, `modalTitleRow`, `modalTitle`, `modalFooter`, `closeButton`, `scrollArea`, `badgePill`, `cardItem`, `hintText`
+- **ModalFrame component** — `src/ui/ModalFrame.tsx` shared modal shell (backdrop + card + title row + close button) used by 6 modals
+- **Design-system documentation** — `src/ui/DESIGN-SYSTEM.md` with token reference, primitive catalog, ModalFrame usage example, and contributor conventions
+
+### Changed
+
+- **Modal migration** — 6 of 7 modals migrated to `<ModalFrame>`: SaveTemplateModal, SaveKitModal, ImportModal, EditKitModal, ImportKitModal, TemplateManager. Dead local `btnStyle` / `closeBtnStyle` constants removed from each. ExportModal intentionally deferred (non-standard layout)
+- **Control standardization** — local button/input/select/label style constants replaced with design-token equivalents across 14 files: App, ExportModal, ChecklistPanel, DependencyPanel, ReviewPanel, SelectionActionsPanel, BatchZoneActions, ConnectionProperties, EncounterProperties, ZoneProperties, DistrictPanel, AssetPanel, PresetBrowser, ToolPalette
+- **Panel shell tokenization** — `shared.tsx` internals migrated to CSS custom properties (cascading to 14+ consumer files). App.tsx layout shells (toolbar, sidebars, tab bar, status bar, collapse buttons) fully tokenized. ChecklistPanel fully tokenized (headers, progress bar, step cards, hotkey table, health indicators)
+- **Audit follow-up hardening** — result discriminant migration to `{ ok, fail }` pattern, ErrorBoundary for Canvas, CLI integration tests, viewport tests, import shape guards, modal extraction from App.tsx
+- **CI fix** — replaced invalid `secrets.CODECOV_TOKEN != ''` in step-level `if` with `continue-on-error: true`
+
+## [4.0.2] - 2026-03-10
+
+### Added
+
+- **Multilingual READMEs** — all package READMEs translated into 7 languages (Spanish, French, Hindi, Italian, Japanese, Portuguese-BR, Chinese) via polyglot-mcp
+
 ## [4.0.1] - 2026-03-09
 
 ### Changed

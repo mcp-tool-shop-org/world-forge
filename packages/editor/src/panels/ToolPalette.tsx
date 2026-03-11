@@ -2,6 +2,7 @@ import { useEditorStore, getSelectedZoneId, getSelectionCount, type EditorTool }
 import { useProjectStore } from '../store/project-store.js';
 import { computeContentBounds, fitBoundsToViewport, centerOnZone, frameBounds, MIN_ZOOM, MAX_ZOOM } from '../viewport.js';
 import { ACTIVE_TAB_BG } from './shared.js';
+import { buttonBase } from '../ui/styles.js';
 
 const tools: { id: EditorTool; label: string; key: string }[] = [
   { id: 'select', label: 'Select', key: 'V' },
@@ -83,8 +84,7 @@ export function ToolPalette() {
   const zoomPercent = Math.round(viewport.zoom * 100);
 
   const btnStyle = {
-    padding: '2px 6px', fontSize: 11, cursor: 'pointer',
-    background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3,
+    ...buttonBase, padding: '2px 6px', fontSize: 11, borderRadius: 3,
   };
 
   return (

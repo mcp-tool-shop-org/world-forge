@@ -4,6 +4,7 @@ import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { ScenePreview } from './ScenePreview.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
+import { labelText, inputCompact } from '../ui/styles.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();
@@ -86,8 +87,8 @@ export function ZoneProperties() {
   );
 }
 
-const labelStyle: React.CSSProperties = { ...sharedLabelStyle };
-const inputStyle: React.CSSProperties = { ...sharedInputStyle, padding: '3px 6px', marginTop: 2 };
+const labelStyle: React.CSSProperties = labelText;
+const inputStyle: React.CSSProperties = inputCompact;
 const chipStyle: React.CSSProperties = {
   background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
   borderRadius: 12, padding: '1px 8px', fontSize: 11, cursor: 'pointer',

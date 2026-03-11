@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
+import { buttonAccent, inputBase, selectBase } from '../ui/styles.js';
 
 export function BatchZoneActions() {
   const { project, updateProject } = useProjectStore();
@@ -113,16 +114,13 @@ export function BatchZoneActions() {
 }
 
 const smallBtn: React.CSSProperties = {
-  fontSize: 10, background: '#21262d', color: '#58a6ff',
-  border: '1px solid #30363d', borderRadius: 2, cursor: 'pointer', padding: '2px 6px',
+  ...buttonAccent, fontSize: 10, padding: '2px 6px', borderRadius: 2,
 };
 
 const selectStyle: React.CSSProperties = {
-  width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '3px 4px', fontSize: 12,
+  ...selectBase, padding: '3px 4px', fontSize: 12,
 };
 
 const inputStyle: React.CSSProperties = {
-  background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 3, padding: '3px 4px', fontSize: 12,
+  ...inputBase, padding: '3px 4px', fontSize: 12, width: 'auto',
 };

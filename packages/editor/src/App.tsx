@@ -28,6 +28,7 @@ import { ReviewPanel } from './panels/ReviewPanel.js';
 import { ModalLayer } from './panels/ModalLayer.js';
 import { Canvas } from './Canvas.js';
 import { getModeProfile } from './mode-profiles.js';
+import { buttonBase, buttonPrimary } from './ui/styles.js';
 
 export function App() {
   const { project, dirty, loadProject, undo, redo } = useProjectStore();
@@ -96,24 +97,24 @@ export function App() {
       {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-        background: '#161b22', borderBottom: '1px solid #30363d',
+        background: 'var(--wf-bg-panel)', borderBottom: '1px solid var(--wf-border-default)',
       }}>
         <img src="/logo.png" alt="World Forge" style={{ height: 24, borderRadius: 4 }} />
-        <strong style={{ color: '#58a6ff' }}>World Forge</strong>
-        <span style={{ color: '#8b949e', fontSize: 12 }}>{project.name}{dirty ? ' *' : ''}</span>
-        <span style={{ fontSize: 11, color: '#6e7681', background: '#21262d', borderRadius: 8, padding: '1px 6px' }}>
+        <strong style={{ color: 'var(--wf-accent)' }}>World Forge</strong>
+        <span style={{ color: 'var(--wf-text-muted)', fontSize: 12 }}>{project.name}{dirty ? ' *' : ''}</span>
+        <span style={{ fontSize: 11, color: 'var(--wf-text-hint)', background: 'var(--wf-bg-control)', borderRadius: 8, padding: '1px 6px' }}>
           {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}
         </span>
         <div style={{ flex: 1 }} />
-        <button onClick={() => openModal('template-manager')} style={btnStyle}>New</button>
-        <button onClick={() => openModal('import')} style={btnStyle}>Import</button>
-        <button onClick={handleLoad} style={btnStyle}>Load</button>
-        <button onClick={handleSave} style={btnStyle}>Save</button>
-        <button onClick={() => openModal('save-template')} style={btnStyle}>Save as Template</button>
-        <button onClick={() => openModal('save-kit')} style={btnStyle}>Save as Kit</button>
-        <button onClick={undo} style={btnStyle}>Undo</button>
-        <button onClick={redo} style={btnStyle}>Redo</button>
-        <button onClick={() => openModal('export')} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Export</button>
+        <button onClick={() => openModal('template-manager')} style={buttonBase}>New</button>
+        <button onClick={() => openModal('import')} style={buttonBase}>Import</button>
+        <button onClick={handleLoad} style={buttonBase}>Load</button>
+        <button onClick={handleSave} style={buttonBase}>Save</button>
+        <button onClick={() => openModal('save-template')} style={buttonBase}>Save as Template</button>
+        <button onClick={() => openModal('save-kit')} style={buttonBase}>Save as Kit</button>
+        <button onClick={undo} style={buttonBase}>Undo</button>
+        <button onClick={redo} style={buttonBase}>Redo</button>
+        <button onClick={() => openModal('export')} style={buttonPrimary}>Export</button>
         <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
       </div>
 
@@ -122,7 +123,7 @@ export function App() {
         {/* Left sidebar */}
         <div style={{
           width: leftCollapsed ? 36 : 200,
-          background: '#0d1117', borderRight: '1px solid #30363d',
+          background: 'var(--wf-bg-app)', borderRight: '1px solid var(--wf-border-default)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column',
           transition: 'width 0.15s ease',
         }}>
@@ -130,9 +131,9 @@ export function App() {
             onClick={() => setLeftCollapsed((c) => !c)}
             title={leftCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
-              background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer',
+              background: 'none', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer',
               padding: '6px 8px', fontSize: 14, textAlign: leftCollapsed ? 'center' : 'right',
-              borderBottom: '1px solid #30363d', flexShrink: 0,
+              borderBottom: '1px solid var(--wf-border-default)', flexShrink: 0,
             }}
           >
             {leftCollapsed ? '▶' : '◀'}
@@ -154,7 +155,7 @@ export function App() {
         {/* Right sidebar */}
         <div style={{
           width: rightCollapsed ? 36 : 300,
-          background: '#0d1117', borderLeft: '1px solid #30363d',
+          background: 'var(--wf-bg-app)', borderLeft: '1px solid var(--wf-border-default)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transition: 'width 0.15s ease',
         }}>
@@ -162,9 +163,9 @@ export function App() {
             onClick={() => setRightCollapsed((c) => !c)}
             title={rightCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             style={{
-              background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer',
+              background: 'none', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer',
               padding: '6px 8px', fontSize: 14, textAlign: rightCollapsed ? 'center' : 'left',
-              borderBottom: '1px solid #30363d', flexShrink: 0,
+              borderBottom: '1px solid var(--wf-border-default)', flexShrink: 0,
             }}
           >
             {rightCollapsed ? '◀' : '▶'}
@@ -172,23 +173,23 @@ export function App() {
           {!rightCollapsed && (
             <>
               {/* Tab bar — scrollable to handle many tabs */}
-              <div style={{ display: 'flex', borderBottom: '1px solid #30363d', background: '#161b22', overflowX: 'auto' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)', background: 'var(--wf-bg-panel)', overflowX: 'auto' }}>
                 {tabs.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => setRightTab(t.id)}
                     style={{
                       flexShrink: 0, padding: '6px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
-                      background: rightTab === t.id ? '#0d1117' : 'transparent',
-                      color: rightTab === t.id ? '#58a6ff' : '#8b949e',
+                      background: rightTab === t.id ? 'var(--wf-bg-app)' : 'transparent',
+                      color: rightTab === t.id ? 'var(--wf-accent)' : 'var(--wf-text-muted)',
                       border: 'none',
-                      borderBottom: rightTab === t.id ? '2px solid #58a6ff' : '2px solid transparent',
+                      borderBottom: rightTab === t.id ? '2px solid var(--wf-accent)' : '2px solid transparent',
                     }}
                   >
                     {t.label}
                     {t.id === 'issues' && issueCount > 0 && (
                       <span style={{
-                        marginLeft: 4, fontSize: 9, background: '#f85149', color: '#fff',
+                        marginLeft: 4, fontSize: 9, background: 'var(--wf-danger)', color: '#fff',
                         borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
                       }}>
                         {issueCount}
@@ -216,7 +217,7 @@ export function App() {
                     {selectedZoneId && <ZoneProperties />}
                     {activeTool === 'entity-place' && <EntityProperties />}
                     {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
-                      <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
+                      <div style={{ fontSize: 12, color: 'var(--wf-text-muted)', padding: '8px 0' }}>
                         Select a zone or use a tool to see properties.
                       </div>
                     )}
@@ -244,7 +245,7 @@ export function App() {
       {/* Bottom bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '4px 12px',
-        background: '#161b22', borderTop: '1px solid #30363d', fontSize: 11, color: '#8b949e',
+        background: 'var(--wf-bg-panel)', borderTop: '1px solid var(--wf-border-default)', fontSize: 11, color: 'var(--wf-text-muted)',
       }}>
         <span>Mode: {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}</span>
         <span>Tool: {activeTool}</span>
@@ -257,12 +258,12 @@ export function App() {
         {issueCount > 0 ? (
           <span
             onClick={() => setRightTab('issues')}
-            style={{ color: '#f85149', cursor: 'pointer' }}
+            style={{ color: 'var(--wf-danger)', cursor: 'pointer' }}
           >
             {issueCount} issue{issueCount !== 1 ? 's' : ''}
           </span>
         ) : (
-          <span style={{ color: '#3fb950' }}>Valid</span>
+          <span style={{ color: 'var(--wf-success)' }}>Valid</span>
         )}
       </div>
 
@@ -271,7 +272,4 @@ export function App() {
   );
 }
 
-const btnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12,
-};
+

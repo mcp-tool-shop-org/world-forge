@@ -3,7 +3,9 @@
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useTemplateStore } from '../store/template-store.js';
-import { MODAL_OVERLAY, MODAL_CARD, labelStyle, inputStyle } from './shared.js';
+import { labelStyle, inputStyle } from './shared.js';
+import { ModalFrame } from '../ui/ModalFrame.js';
+import { buttonBase, modalFooter } from '../ui/styles.js';
 
 interface Props { onClose: () => void }
 
@@ -31,12 +33,7 @@ export function SaveTemplateModal({ onClose }: Props) {
   }, [name, description, genre, icon, project, saveTemplate, onClose]);
 
   return (
-    <div style={MODAL_OVERLAY}>
-      <div style={MODAL_CARD(400)}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, color: '#c9d1d9', fontSize: 16 }}>Save as Template</h2>
-          <button onClick={onClose} style={closeBtnStyle}>×</button>
-        </div>
+    <ModalFrame title="Save as Template" width={400} onClose={onClose}>
 
         {/* Name */}
         <label style={labelStyle}>Name</label>
@@ -80,30 +77,23 @@ export function SaveTemplateModal({ onClose }: Props) {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={btnStyle}>Cancel</button>
+        <div style={modalFooter}>
+          <button onClick={onClose} style={buttonBase}>Cancel</button>
           <button
             onClick={handleSave}
             disabled={!name.trim()}
             style={{
-              ...btnStyle,
-              background: name.trim() ? '#238636' : '#21262d',
-              color: name.trim() ? '#fff' : '#484f58',
+              ...buttonBase,
+              background: name.trim() ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+              color: name.trim() ? '#fff' : 'var(--wf-text-hint)',
+              border: 'none',
             }}
           >
             Save Template
           </button>
         </div>
-      </div>
-    </div>
+    </ModalFrame>
   );
 }
 
-const btnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 12,
-};
 
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer',
-};

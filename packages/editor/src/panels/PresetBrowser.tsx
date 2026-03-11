@@ -4,6 +4,7 @@ import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { usePresetStore } from '../presets/preset-store.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import type { AuthoringMode } from '@world-forge/schema';
+import { buttonBase, buttonAccent } from '../ui/styles.js';
 
 type SubTab = 'region' | 'encounter';
 
@@ -273,12 +274,9 @@ const tagChip: React.CSSProperties = {
   borderRadius: 8, padding: '1px 6px',
 };
 const smallBtn: React.CSSProperties = {
-  fontSize: 10, padding: '2px 8px', cursor: 'pointer',
-  background: '#21262d', color: '#8b949e',
-  border: '1px solid #30363d', borderRadius: 3,
+  ...buttonBase, fontSize: 10, padding: '2px 8px', color: 'var(--wf-text-muted)',
 };
 const saveBtn: React.CSSProperties = {
-  display: 'block', width: '100%', fontSize: 11, padding: '4px 8px',
-  cursor: 'pointer', background: '#21262d', color: '#58a6ff',
-  border: '1px solid #30363d', borderRadius: 3, marginBottom: 8,
+  ...buttonAccent, display: 'block', width: '100%', fontSize: 11, padding: '4px 8px',
+  marginBottom: 8,
 };

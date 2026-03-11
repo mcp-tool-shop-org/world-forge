@@ -6,56 +6,56 @@ import { useEditorStore } from '../store/editor-store.js';
 // ── Shared Styles ──────────────────────────────────────────────
 
 export const sectionTitle: CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginTop: 14, marginBottom: 6,
-  borderBottom: '1px solid #21262d', paddingBottom: 4,
+  fontSize: 12, fontWeight: 600, color: 'var(--wf-text-primary)', marginTop: 14, marginBottom: 6,
+  borderBottom: '1px solid var(--wf-border-subtle)', paddingBottom: 4,
 };
 
-export const labelStyle: CSSProperties = { display: 'block', fontSize: 12, color: '#8b949e', marginBottom: 8 };
+export const labelStyle: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--wf-text-muted)', marginBottom: 8 };
 
 export const inputStyle: CSSProperties = {
-  display: 'block', width: '100%', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 3, padding: '4px 8px', fontSize: 12, marginTop: 3,
+  display: 'block', width: '100%', background: 'var(--wf-bg-input)', color: 'var(--wf-text-primary)',
+  border: '1px solid var(--wf-border-default)', borderRadius: 3, padding: '4px 8px', fontSize: 12, marginTop: 3,
   outline: 'none',
 };
 
 export const addBtnStyle: CSSProperties = {
-  fontSize: 11, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
+  fontSize: 11, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)',
   borderRadius: 4, cursor: 'pointer', padding: '6px 12px', width: '100%', marginTop: 6,
 };
 
 export const smallBtnStyle: CSSProperties = {
-  fontSize: 10, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
+  fontSize: 10, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)',
   borderRadius: 3, cursor: 'pointer', padding: '3px 10px',
 };
 
 export const xBtnStyle: CSSProperties = {
-  background: 'transparent', border: 'none', color: '#f85149',
+  background: 'transparent', border: 'none', color: 'var(--wf-danger)',
   cursor: 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1,
 };
 
 export const itemStyle: CSSProperties = {
-  padding: 8, background: '#161b22', borderRadius: 4, marginBottom: 4, border: '1px solid #30363d',
+  padding: 8, background: 'var(--wf-bg-panel)', borderRadius: 4, marginBottom: 4, border: '1px solid var(--wf-border-default)',
 };
 
 export const hintStyle: CSSProperties = {
-  fontSize: 10, color: '#484f58', marginTop: 2, fontStyle: 'italic',
+  fontSize: 10, color: 'var(--wf-text-hint)', marginTop: 2, fontStyle: 'italic',
 };
 
 export const deleteBtnStyle: CSSProperties = {
-  width: '100%', background: '#da3633', color: '#fff', border: 'none',
+  width: '100%', background: 'var(--wf-danger)', color: '#fff', border: 'none',
   borderRadius: 4, cursor: 'pointer', padding: '6px 12px', fontSize: 11, marginTop: 10,
 };
 
 export const ACTIVE_TAB_BG = '#58a6ff';
 
 export const MODAL_OVERLAY: CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+  position: 'fixed', inset: 0, background: 'var(--wf-bg-overlay)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
 };
 
 export function MODAL_CARD(width: number): CSSProperties {
   return {
-    background: '#161b22', border: '1px solid #30363d', borderRadius: 8,
+    background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)', borderRadius: 8,
     padding: 20, width, maxHeight: '85vh', overflow: 'auto',
   };
 }
@@ -69,10 +69,10 @@ export function PanelHeader({ title, badge, actions }: {
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9' }}>{title}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-text-primary)' }}>{title}</span>
       {badge != null && (
         <span style={{
-          fontSize: 10, background: '#30363d', color: '#8b949e',
+          fontSize: 10, background: 'var(--wf-bg-hover)', color: 'var(--wf-text-muted)',
           borderRadius: 10, padding: '1px 7px',
         }}>{badge}</span>
       )}
@@ -109,7 +109,7 @@ export function ConfirmButton({ label, onConfirm, style: extraStyle }: {
       onClick={handleClick}
       style={{
         ...deleteBtnStyle,
-        ...(armed ? { background: '#0d1117', color: '#f85149', border: '1px solid #f85149' } : {}),
+        ...(armed ? { background: 'var(--wf-bg-app)', color: 'var(--wf-danger)', border: '1px solid var(--wf-danger)' } : {}),
         ...extraStyle,
       }}
     >
@@ -127,8 +127,8 @@ export function EmptyState({ title, description, actions }: {
 }) {
   return (
     <div style={{ padding: '8px 0' }}>
-      <div style={{ fontSize: 13, color: '#c9d1d9', fontWeight: 600, marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 11, color: '#8b949e', lineHeight: 1.5, marginBottom: 10 }}>{description}</div>
+      <div style={{ fontSize: 13, color: 'var(--wf-text-primary)', fontWeight: 600, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', lineHeight: 1.5, marginBottom: 10 }}>{description}</div>
       {actions.map((a, i) => (
         <button key={i} onClick={a.onClick} style={{ ...addBtnStyle, marginTop: i > 0 ? 4 : 0 }}>
           {a.label}
@@ -151,7 +151,7 @@ export function useFocusHighlight(domain: string) {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     // Pulse highlight
     if (ref.current) {
-      ref.current.style.outline = '2px solid #58a6ff';
+      ref.current.style.outline = '2px solid var(--wf-accent)';
       ref.current.style.outlineOffset = '2px';
       const timer = setTimeout(() => {
         if (ref.current) {

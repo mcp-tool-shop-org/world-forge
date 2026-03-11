@@ -12,7 +12,9 @@ import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
-import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
+import { ACTIVE_TAB_BG } from './shared.js';
+import { ModalFrame } from '../ui/ModalFrame.js';
+import { buttonBase, modalFooter } from '../ui/styles.js';
 
 interface Props { onClose: () => void }
 
@@ -161,13 +163,7 @@ export function TemplateManager({ onClose }: Props) {
   }, [confirmDeleteKit, deleteKitAction]);
 
   return (
-    <div style={MODAL_OVERLAY}>
-      <div style={MODAL_CARD(520)}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: '#c9d1d9' }}>New Project</h3>
-          <button onClick={onClose} style={closeBtnStyle}>×</button>
-        </div>
+    <ModalFrame title="New Project" width={520} onClose={onClose}>
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #30363d', marginBottom: 16 }}>
@@ -479,23 +475,22 @@ export function TemplateManager({ onClose }: Props) {
         )}
 
         {/* Footer */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+        <div style={modalFooter}>
           {tab === 'genres' && step === 2 && (
-            <button onClick={() => setStep(1)} style={btnStyle}>Back</button>
+            <button onClick={() => setStep(1)} style={buttonBase}>Back</button>
           )}
           <div style={{ flex: 1 }} />
-          <button onClick={onClose} style={btnStyle}>Cancel</button>
+          <button onClick={onClose} style={buttonBase}>Cancel</button>
           {tab === 'genres' && step === 1 && (
-            <button onClick={() => setStep(2)} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Next</button>
+            <button onClick={() => setStep(2)} style={{ ...buttonBase, background: 'var(--wf-success)', color: '#fff' }}>Next</button>
           )}
           {tab === 'genres' && step === 2 && (
-            <button onClick={handleCreate} style={{ ...btnStyle, background: '#238636', color: '#fff' }}>Create</button>
+            <button onClick={handleCreate} style={{ ...buttonBase, background: 'var(--wf-success)', color: '#fff' }}>Create</button>
           )}
         </div>
-      </div>
       {editingKit && <EditKitModal kit={editingKit} onClose={() => setEditingKit(null)} />}
       {showImportKit && <ImportKitModal onClose={() => { setShowImportKit(false); loadKits(); }} />}
-    </div>
+    </ModalFrame>
   );
 }
 
@@ -551,14 +546,7 @@ const smallBtnStyle: React.CSSProperties = {
   padding: '4px 10px', cursor: 'pointer', fontSize: 10,
 };
 
-const btnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 13,
-};
 
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer',
-};
 
 const importedBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,

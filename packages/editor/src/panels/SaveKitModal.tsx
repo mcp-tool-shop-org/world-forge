@@ -6,7 +6,9 @@ import { useKitStore } from '../kits/index.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import type { AuthoringMode } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
-import { MODAL_OVERLAY, MODAL_CARD, labelStyle, inputStyle } from './shared.js';
+import { labelStyle, inputStyle } from './shared.js';
+import { ModalFrame } from '../ui/ModalFrame.js';
+import { buttonBase, modalFooter } from '../ui/styles.js';
 
 interface Props { onClose: () => void }
 
@@ -47,12 +49,7 @@ export function SaveKitModal({ onClose }: Props) {
   }, [name, description, icon, modes, tagsInput, project, saveKit, onClose]);
 
   return (
-    <div style={MODAL_OVERLAY}>
-      <div style={MODAL_CARD(440)}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, color: '#c9d1d9', fontSize: 16 }}>Save as Starter Kit</h2>
-          <button onClick={onClose} style={closeBtnStyle}>&times;</button>
-        </div>
+    <ModalFrame title="Save as Starter Kit" width={440} onClose={onClose}>
 
         {/* Name */}
         <label style={labelStyle}>Name</label>
@@ -119,30 +116,23 @@ export function SaveKitModal({ onClose }: Props) {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={btnStyle}>Cancel</button>
+        <div style={modalFooter}>
+          <button onClick={onClose} style={buttonBase}>Cancel</button>
           <button
             onClick={handleSave}
             disabled={!name.trim() || modes.length === 0}
             style={{
-              ...btnStyle,
-              background: name.trim() && modes.length > 0 ? '#238636' : '#21262d',
-              color: name.trim() && modes.length > 0 ? '#fff' : '#484f58',
+              ...buttonBase,
+              background: name.trim() && modes.length > 0 ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+              color: name.trim() && modes.length > 0 ? '#fff' : 'var(--wf-text-hint)',
+              border: 'none',
             }}
           >
             Save Kit
           </button>
         </div>
-      </div>
-    </div>
+    </ModalFrame>
   );
 }
 
-const btnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 12,
-};
 
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer',
-};

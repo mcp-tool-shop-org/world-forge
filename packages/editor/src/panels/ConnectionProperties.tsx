@@ -4,6 +4,7 @@ import { useEditorStore, getSelectedConnection } from '../store/editor-store.js'
 import type { ConnectionKind, AuthoringMode } from '@world-forge/schema';
 import { getModeProfile } from '../mode-profiles.js';
 import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
+import { labelText, inputCompact } from '../ui/styles.js';
 
 /** Display labels for all 12 connection kinds. */
 export const KIND_LABELS: Record<ConnectionKind, string> = {
@@ -105,8 +106,8 @@ export function ConnectionProperties() {
   );
 }
 
-const labelStyle: React.CSSProperties = { ...sharedLabelStyle };
-const inputStyle: React.CSSProperties = { ...sharedInputStyle, padding: '3px 6px', marginTop: 2 };
+const labelStyle: React.CSSProperties = labelText;
+const inputStyle: React.CSSProperties = inputCompact;
 const btnStyle: React.CSSProperties = {
   display: 'block', width: '100%', color: '#fff', border: 'none',
   borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12,

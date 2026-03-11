@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
+import { labelText, inputCompact } from '../ui/styles.js';
 
 export function EncounterProperties() {
   const { project, updateEncounter, removeEncounter } = useProjectStore();
@@ -54,5 +55,5 @@ export function EncounterProperties() {
   );
 }
 
-const labelStyle: React.CSSProperties = { ...sharedLabelStyle };
-const inputStyle: React.CSSProperties = { ...sharedInputStyle, padding: '3px 6px', marginTop: 2 };
+const labelStyle: React.CSSProperties = labelText;
+const inputStyle: React.CSSProperties = inputCompact;

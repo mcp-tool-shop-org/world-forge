@@ -5,6 +5,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { buildReviewSnapshot, type ReviewSnapshot, type HealthStatus } from '@world-forge/schema';
 import { reviewSnapshotToMarkdown, reviewSnapshotToJSON, summaryFilename } from '../review/export-summary.js';
+import { buttonBase } from '../ui/styles.js';
 
 // ── Enriched snapshot (adds editor-only context) ────────────
 
@@ -406,6 +407,5 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
 const headerStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginBottom: 8 };
 
 const exportBtnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 10,
+  ...buttonBase, padding: '2px 8px', fontSize: 10,
 };

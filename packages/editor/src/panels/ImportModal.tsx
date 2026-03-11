@@ -7,7 +7,9 @@ import { importProject, detectImportFormat, type ImportResult, type ImportFormat
 import { buildFidelityReport } from '@world-forge/export-ai-rpg';
 import { prepareProjectImport, extractDependencies, type ImportProjectResult } from '../projects/index.js';
 import { scanDependencies } from '@world-forge/schema';
-import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
+import { ACTIVE_TAB_BG } from './shared.js';
+import { ModalFrame } from '../ui/ModalFrame.js';
+import { buttonBase, modalFooter } from '../ui/styles.js';
 
 interface Props { onClose: () => void }
 
@@ -126,16 +128,11 @@ export function ImportModal({ onClose }: Props) {
   const deps = bundleResult ? extractDependencies(bundleResult.bundle) : null;
 
   return (
-    <div style={MODAL_OVERLAY}>
-      <div style={MODAL_CARD(480)}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, color: '#c9d1d9', fontSize: 16 }}>Import Project</h2>
-          <button onClick={onClose} style={closeBtnStyle}>&times;</button>
-        </div>
+    <ModalFrame title="Import Project" width={480} onClose={onClose}>
 
         {/* File picker */}
         <div style={{ marginBottom: 16 }}>
-          <button onClick={() => fileInput.current?.click()} style={btnStyle}>Choose File</button>
+          <button onClick={() => fileInput.current?.click()} style={buttonBase}>Choose File</button>
           {fileName && <span style={{ marginLeft: 8, color: '#8b949e', fontSize: 12 }}>{fileName}</span>}
           <input ref={fileInput} type="file" accept=".json,.wfproject.json" style={{ display: 'none' }} onChange={handleFile} />
         </div>
@@ -263,34 +260,25 @@ export function ImportModal({ onClose }: Props) {
         )}
 
         {/* Import button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={btnStyle}>Cancel</button>
+        <div style={modalFooter}>
+          <button onClick={onClose} style={buttonBase}>Cancel</button>
           <button
             onClick={handleImport}
             disabled={!hasResult}
             style={{
-              ...btnStyle,
-              background: hasResult ? (confirmOverwrite ? '#9e6a03' : '#238636') : '#21262d',
-              color: hasResult ? '#fff' : '#484f58',
+              ...buttonBase,
+              background: hasResult ? (confirmOverwrite ? '#9e6a03' : 'var(--wf-success)') : 'var(--wf-bg-control)',
+              color: hasResult ? '#fff' : 'var(--wf-text-hint)',
               cursor: hasResult ? 'pointer' : 'default',
+              border: 'none',
             }}
           >
             {confirmOverwrite ? 'Confirm Import' : 'Import'}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalFrame>
   );
 }
-
-const btnStyle: React.CSSProperties = {
-  background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d',
-  borderRadius: 4, padding: '6px 14px', cursor: 'pointer', fontSize: 12,
-};
-
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer',
-};
 
 const badgeStyle: React.CSSProperties = {
   display: 'inline-block', fontSize: 11, borderRadius: 12, padding: '2px 10px', fontWeight: 600,

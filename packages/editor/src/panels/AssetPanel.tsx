@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import type { AssetKind } from '@world-forge/schema';
 import { sectionTitle, inputStyle, addBtnStyle, smallBtnStyle } from './shared.js';
+import { labelText } from '../ui/styles.js';
 
 const KIND_COLORS: Record<AssetKind, string> = {
   portrait: '#58a6ff',
@@ -15,7 +16,7 @@ const KIND_COLORS: Record<AssetKind, string> = {
 
 const KINDS: AssetKind[] = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4 };
+const labelStyle: React.CSSProperties = labelText;
 
 export function AssetPanel() {
   const { project, addAsset, updateAsset, removeAsset, addAssetPack, updateAssetPack, removeAssetPack } = useProjectStore();

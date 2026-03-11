@@ -7,6 +7,7 @@ import { HOTKEY_BINDINGS } from '../hotkeys.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { useKitStore } from '../kits/index.js';
 import { scanDependencies } from '@world-forge/schema';
+import { buttonBase } from '../ui/styles.js';
 
 interface Step {
   id: string;
@@ -86,30 +87,30 @@ export function ChecklistPanel() {
     <div>
       <div style={headerStyle}>Getting Started</div>
       {activeKit?.source === 'imported' && (
-        <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--wf-accent)', marginBottom: 6 }}>
           Using imported kit: {activeKit.name}
         </div>
       )}
       {useEditorStore((s) => s.projectBundleSource) === 'imported' && (
-        <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--wf-accent)', marginBottom: 6 }}>
           Imported from project bundle
         </div>
       )}
       <DependencyHealthStep project={project} setRightTab={setRightTab} />
       {profile.modeTip && (
-        <div style={{ fontSize: 11, color: '#58a6ff', marginBottom: 8, fontStyle: 'italic' }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-accent)', marginBottom: 8, fontStyle: 'italic' }}>
           {profile.icon} {profile.modeTip}
         </div>
       )}
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 12 }}>
         {allDone
           ? 'All steps complete! Your world is ready.'
           : `${completed} of ${steps.length} steps complete`}
       </div>
 
       {/* Progress bar */}
-      <div style={{ height: 4, background: '#21262d', borderRadius: 2, marginBottom: 12 }}>
-        <div style={{ height: 4, background: '#238636', borderRadius: 2, width: `${(completed / steps.length) * 100}%`, transition: 'width 0.3s' }} />
+      <div style={{ height: 4, background: 'var(--wf-bg-control)', borderRadius: 2, marginBottom: 12 }}>
+        <div style={{ height: 4, background: 'var(--wf-success)', borderRadius: 2, width: `${(completed / steps.length) * 100}%`, transition: 'width 0.3s' }} />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -120,24 +121,24 @@ export function ChecklistPanel() {
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 8px',
               borderRadius: 4, cursor: 'pointer',
-              background: step.isComplete ? 'transparent' : '#0d1117',
-              border: `1px solid ${step.isComplete ? 'transparent' : '#30363d'}`,
+              background: step.isComplete ? 'transparent' : 'var(--wf-bg-app)',
+              border: `1px solid ${step.isComplete ? 'transparent' : 'var(--wf-border-default)'}`,
             }}
           >
             <span style={{
               fontSize: 14, lineHeight: '18px', flexShrink: 0,
-              color: step.isComplete ? '#3fb950' : '#484f58',
+              color: step.isComplete ? 'var(--wf-success)' : 'var(--wf-text-hint)',
             }}>
               {step.isComplete ? '\u2713' : '\u25CB'}
             </span>
             <div>
               <div style={{
-                fontSize: 12, color: step.isComplete ? '#8b949e' : '#c9d1d9',
+                fontSize: 12, color: step.isComplete ? 'var(--wf-text-muted)' : 'var(--wf-text-primary)',
                 textDecoration: step.isComplete ? 'line-through' : 'none',
               }}>
                 {step.label}
               </div>
-              <div style={{ fontSize: 10, color: '#484f58' }}>{step.description}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-hint)' }}>{step.description}</div>
             </div>
           </div>
         ))}
@@ -146,35 +147,35 @@ export function ChecklistPanel() {
       {allDone && (
         <button
           onClick={() => setRightTab('issues')}
-          style={{ ...actionBtnStyle, background: '#238636', color: '#fff', marginTop: 12 }}
+          style={{ ...buttonBase, width: '100%', background: 'var(--wf-success)', color: '#fff', marginTop: 12 }}
         >
           Go to Export
         </button>
       )}
 
-      <button onClick={dismissChecklist} style={{ ...actionBtnStyle, marginTop: 8 }}>
+      <button onClick={dismissChecklist} style={{ ...buttonBase, width: '100%', marginTop: 8 }}>
         Dismiss Guide
       </button>
 
       {/* Hotkey reference */}
       <div style={{ ...headerStyle, marginTop: 16 }}>Keyboard Shortcuts</div>
-      <table style={{ width: '100%', fontSize: 11, color: '#8b949e', borderCollapse: 'collapse' }}>
+      <table style={{ width: '100%', fontSize: 11, color: 'var(--wf-text-muted)', borderCollapse: 'collapse' }}>
         <tbody>
           {HOTKEY_BINDINGS.filter((b, i, arr) =>
             // Deduplicate by action (e.g. Delete and Backspace both → 'delete')
             arr.findIndex((x) => x.action === b.action) === i
           ).map((b) => (
-            <tr key={b.action} style={{ borderBottom: '1px solid #21262d' }}>
-              <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: '#58a6ff', whiteSpace: 'nowrap' }}>{b.label}</td>
+            <tr key={b.action} style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
+              <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: 'var(--wf-accent)', whiteSpace: 'nowrap' }}>{b.label}</td>
               <td style={{ padding: '3px 4px' }}>{b.description}</td>
             </tr>
           ))}
-          <tr style={{ borderBottom: '1px solid #21262d' }}>
-            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: '#58a6ff', whiteSpace: 'nowrap' }}>Space</td>
+          <tr style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
+            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: 'var(--wf-accent)', whiteSpace: 'nowrap' }}>Space</td>
             <td style={{ padding: '3px 4px' }}>Hold to pan canvas</td>
           </tr>
-          <tr style={{ borderBottom: '1px solid #21262d' }}>
-            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: '#58a6ff', whiteSpace: 'nowrap' }}>Dbl-click</td>
+          <tr style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
+            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: 'var(--wf-accent)', whiteSpace: 'nowrap' }}>Dbl-click</td>
             <td style={{ padding: '3px 4px' }}>Open details for clicked object</td>
           </tr>
         </tbody>
@@ -184,15 +185,10 @@ export function ChecklistPanel() {
 }
 
 const headerStyle: React.CSSProperties = {
-  fontSize: 13, fontWeight: 'bold', color: '#c9d1d9',
-  borderBottom: '1px solid #30363d', paddingBottom: 6, marginBottom: 8,
+  fontSize: 13, fontWeight: 'bold', color: 'var(--wf-text-primary)',
+  borderBottom: '1px solid var(--wf-border-default)', paddingBottom: 6, marginBottom: 8,
 };
 
-const actionBtnStyle: React.CSSProperties = {
-  width: '100%', padding: '6px 0', fontSize: 11, cursor: 'pointer',
-  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
-  borderRadius: 4,
-};
 
 function DependencyHealthStep({ project, setRightTab }: { project: import('@world-forge/schema').WorldProject; setRightTab: (tab: RightTab) => void }) {
   const report = useMemo(() => scanDependencies(project), [project]);
@@ -201,7 +197,7 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
 
   if (issues === 0 && orphaned === 0) {
     return (
-      <div style={{ fontSize: 10, color: '#3fb950', marginBottom: 6 }}>
+      <div style={{ fontSize: 10, color: 'var(--wf-success)', marginBottom: 6 }}>
         All references resolved
       </div>
     );
@@ -212,7 +208,7 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
       {issues > 0 && (
         <div
           onClick={() => setRightTab('deps')}
-          style={{ fontSize: 10, color: '#d29922', marginBottom: 4, cursor: 'pointer' }}
+          style={{ fontSize: 10, color: 'var(--wf-warning)', marginBottom: 4, cursor: 'pointer' }}
         >
           {issues} broken reference{issues !== 1 ? 's' : ''} — open Deps tab to repair
         </div>
