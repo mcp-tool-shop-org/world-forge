@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.0.5] - 2026-03-19
+
+### Changed
+
+- **ExportModal → ModalFrame** — migrated the last remaining modal (ExportModal) to the shared `<ModalFrame>` shell, completing the 7/7 modal migration
+- **shared.tsx cleanup** — stripped 11 style-constant exports from `shared.tsx`; all style primitives now live exclusively in `styles.ts`. `shared.tsx` exports only 4 reusable components: `PanelHeader`, `ConfirmButton`, `EmptyState`, `useFocusHighlight`
+- **SpeedPanel tokenization** — replaced 30+ hardcoded hex colors with CSS custom properties from `theme.css` (backgrounds, text, borders, shadows). Unique colors (gold pins, warning banners) preserved intentionally
+- **SearchOverlay tokenization** — replaced 15+ hardcoded hex colors and z-index literals with CSS custom properties (`--wf-bg-overlay`, `--wf-z-overlay`, `--wf-bg-panel`, `--wf-bg-elevated`, `--wf-bg-app`, `--wf-bg-control`)
+- **18 consumer file import migration** — updated import paths across `ToolPalette`, `ImportModal`, `TemplateManager`, `ValidationPanel`, `SaveTemplateModal`, `SaveKitModal`, `DistrictPanel`, `ConnectionProperties`, `EncounterProperties`, `ZoneProperties`, `AssetPanel`, `BuildCatalogPanel`, `DialoguePanel`, `ProgressionPanel`, `PlayerTemplatePanel`, and 3 others to source styles from `styles.ts` instead of `shared.tsx`
+- **PLAN.md rewrite** — replaced stale implementation plan with architectural decisions summary, shipped version history (v1.0–v4.0.4), and categorized future ideas
+
 ## [4.0.3] - 2026-03-11
 
 ### Added

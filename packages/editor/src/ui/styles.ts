@@ -84,6 +84,42 @@ export const buttonGhost: CSSProperties = {
   lineHeight: 1,
 };
 
+export const buttonFullWidth: CSSProperties = {
+  ...buttonBase,
+  width: '100%',
+  marginTop: 6,
+  fontSize: 'var(--wf-font-sm)',
+  padding: '6px 12px',
+};
+
+export const buttonCompact: CSSProperties = {
+  ...buttonBase,
+  fontSize: 'var(--wf-font-xs)',
+  padding: '3px 10px',
+};
+
+export const buttonRemove: CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--wf-danger-text)',
+  cursor: 'pointer',
+  fontSize: 'var(--wf-font-xl)',
+  padding: '0 4px',
+  lineHeight: 1,
+};
+
+export const buttonDangerFull: CSSProperties = {
+  ...buttonDanger,
+  width: '100%',
+  padding: '6px 12px',
+  fontSize: 'var(--wf-font-sm)',
+  marginTop: 10,
+};
+
+// ── Constants ────────────────────────────────────────────────
+
+export const activeTabBg = 'var(--wf-accent)';
+
 // ── Form controls ────────────────────────────────────────────
 
 export const inputBase: CSSProperties = {

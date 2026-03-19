@@ -6,7 +6,7 @@ import { useKitStore } from '../kits/index.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import type { AuthoringMode } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
-import { labelStyle, inputStyle } from './shared.js';
+import { labelText as labelStyle, inputBase as inputStyle } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
 

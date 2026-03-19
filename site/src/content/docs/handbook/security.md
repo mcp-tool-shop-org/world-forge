@@ -35,6 +35,6 @@ World Forge is a local-only authoring tool with a minimal threat surface.
 
 If you discover a security issue, please email [64996768+mcp-tool-shop@users.noreply.github.com](mailto:64996768+mcp-tool-shop@users.noreply.github.com).
 
-- Supported versions: v1.x
+- Supported versions: v4.x
 - Response timeline: 72 hours for initial acknowledgment
 - We will work with you to understand and address the issue before any public disclosure

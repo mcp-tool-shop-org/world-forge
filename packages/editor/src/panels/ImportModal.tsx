@@ -7,7 +7,7 @@ import { importProject, detectImportFormat, type ImportResult, type ImportFormat
 import { buildFidelityReport } from '@world-forge/export-ai-rpg';
 import { prepareProjectImport, extractDependencies, type ImportProjectResult } from '../projects/index.js';
 import { scanDependencies } from '@world-forge/schema';
-import { ACTIVE_TAB_BG } from './shared.js';
+import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
 

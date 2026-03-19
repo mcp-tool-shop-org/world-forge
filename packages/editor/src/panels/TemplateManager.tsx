@@ -12,7 +12,7 @@ import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
-import { ACTIVE_TAB_BG } from './shared.js';
+import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
 

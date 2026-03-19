@@ -3,7 +3,8 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { frameBounds } from '../viewport.js';
 import { getCanvasSize } from '../frame-helpers.js';
-import { inputStyle as sharedInputStyle, ConfirmButton } from './shared.js';
+import { inputBase as sharedInputStyle } from '../ui/styles.js';
+import { ConfirmButton } from './shared.js';
 import { inputCompact } from '../ui/styles.js';
 import type { DistrictMetrics } from '@world-forge/schema';
 

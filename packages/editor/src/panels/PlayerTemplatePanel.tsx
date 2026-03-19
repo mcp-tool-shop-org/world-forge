@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { EmptyState, useFocusHighlight, sectionTitle, labelStyle, inputStyle, addBtnStyle, xBtnStyle, hintStyle } from './shared.js';
+import { EmptyState, useFocusHighlight } from './shared.js';
+import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonRemove as xBtnStyle, hintText as hintStyle } from '../ui/styles.js';
 import type { PlayerTemplate } from '@world-forge/schema';
 
 function createDefaultTemplate(): PlayerTemplate {

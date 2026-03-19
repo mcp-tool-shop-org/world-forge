@@ -1,64 +1,8 @@
-// shared.tsx — reusable panel styles and components
+// shared.tsx — reusable panel components and hooks
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
-
-// ── Shared Styles ──────────────────────────────────────────────
-
-export const sectionTitle: CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: 'var(--wf-text-primary)', marginTop: 14, marginBottom: 6,
-  borderBottom: '1px solid var(--wf-border-subtle)', paddingBottom: 4,
-};
-
-export const labelStyle: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--wf-text-muted)', marginBottom: 8 };
-
-export const inputStyle: CSSProperties = {
-  display: 'block', width: '100%', background: 'var(--wf-bg-input)', color: 'var(--wf-text-primary)',
-  border: '1px solid var(--wf-border-default)', borderRadius: 3, padding: '4px 8px', fontSize: 12, marginTop: 3,
-  outline: 'none',
-};
-
-export const addBtnStyle: CSSProperties = {
-  fontSize: 11, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)',
-  borderRadius: 4, cursor: 'pointer', padding: '6px 12px', width: '100%', marginTop: 6,
-};
-
-export const smallBtnStyle: CSSProperties = {
-  fontSize: 10, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)',
-  borderRadius: 3, cursor: 'pointer', padding: '3px 10px',
-};
-
-export const xBtnStyle: CSSProperties = {
-  background: 'transparent', border: 'none', color: 'var(--wf-danger)',
-  cursor: 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1,
-};
-
-export const itemStyle: CSSProperties = {
-  padding: 8, background: 'var(--wf-bg-panel)', borderRadius: 4, marginBottom: 4, border: '1px solid var(--wf-border-default)',
-};
-
-export const hintStyle: CSSProperties = {
-  fontSize: 10, color: 'var(--wf-text-hint)', marginTop: 2, fontStyle: 'italic',
-};
-
-export const deleteBtnStyle: CSSProperties = {
-  width: '100%', background: 'var(--wf-danger)', color: '#fff', border: 'none',
-  borderRadius: 4, cursor: 'pointer', padding: '6px 12px', fontSize: 11, marginTop: 10,
-};
-
-export const ACTIVE_TAB_BG = '#58a6ff';
-
-export const MODAL_OVERLAY: CSSProperties = {
-  position: 'fixed', inset: 0, background: 'var(--wf-bg-overlay)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-};
-
-export function MODAL_CARD(width: number): CSSProperties {
-  return {
-    background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)', borderRadius: 8,
-    padding: 20, width, maxHeight: '85vh', overflow: 'auto',
-  };
-}
+import { buttonDangerFull, buttonFullWidth } from '../ui/styles.js';
 
 // ── Panel Header ─────────────────────────────────────────────
 
@@ -108,7 +52,7 @@ export function ConfirmButton({ label, onConfirm, style: extraStyle }: {
     <button
       onClick={handleClick}
       style={{
-        ...deleteBtnStyle,
+        ...buttonDangerFull,
         ...(armed ? { background: 'var(--wf-bg-app)', color: 'var(--wf-danger)', border: '1px solid var(--wf-danger)' } : {}),
         ...extraStyle,
       }}
@@ -130,7 +74,7 @@ export function EmptyState({ title, description, actions }: {
       <div style={{ fontSize: 13, color: 'var(--wf-text-primary)', fontWeight: 600, marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', lineHeight: 1.5, marginBottom: 10 }}>{description}</div>
       {actions.map((a, i) => (
-        <button key={i} onClick={a.onClick} style={{ ...addBtnStyle, marginTop: i > 0 ? 4 : 0 }}>
+        <button key={i} onClick={a.onClick} style={{ ...buttonFullWidth, marginTop: i > 0 ? 4 : 0 }}>
           {a.label}
         </button>
       ))}

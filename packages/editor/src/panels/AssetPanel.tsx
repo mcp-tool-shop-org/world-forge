@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import type { AssetKind } from '@world-forge/schema';
-import { sectionTitle, inputStyle, addBtnStyle, smallBtnStyle } from './shared.js';
-import { labelText } from '../ui/styles.js';
+import { sectionHeader as sectionTitle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, labelText } from '../ui/styles.js';
 
 const KIND_COLORS: Record<AssetKind, string> = {
   portrait: '#58a6ff',

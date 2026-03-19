@@ -8,9 +8,9 @@ import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
-import { buttonBase, buttonAccent } from '../ui/styles.js';
+import { buttonBase, buttonAccent, activeTabBg } from '../ui/styles.js';
 import { useKitStore } from '../kits/index.js';
-import { MODAL_OVERLAY, MODAL_CARD, ACTIVE_TAB_BG } from './shared.js';
+import { ModalFrame } from '../ui/ModalFrame.js';
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
@@ -103,9 +103,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   if (project.spawnPoints.length === 0) missing.push('No spawn points');
 
   return (
-    <div style={MODAL_OVERLAY}>
-      <div style={MODAL_CARD(450)}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Export to AI RPG Engine</h3>
+    <ModalFrame title="Export to AI RPG Engine" width={450} onClose={onClose}>
 
         {/* Readiness banner */}
         {precheck.valid ? (
@@ -255,13 +253,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             a.click();
             URL.revokeObjectURL(url);
             setBundleExported(true);
-          }} style={{ ...buttonBase, background: ACTIVE_TAB_BG, color: '#fff' }}>
+          }} style={{ ...buttonBase, background: activeTabBg, color: '#fff' }}>
             Export Project Bundle
           </button>
           {bundleExported && <span style={{ color: '#3fb950', fontSize: 12, marginLeft: 8 }}>Bundle saved!</span>}
         </div>
-      </div>
-    </div>
+    </ModalFrame>
   );
 }
 

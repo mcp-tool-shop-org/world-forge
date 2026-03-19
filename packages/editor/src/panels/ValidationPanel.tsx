@@ -6,7 +6,8 @@ import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor, isRefError, type Domain } from './validation-helpers.js';
 import { scanDependencies } from '@world-forge/schema';
-import { PanelHeader, ACTIVE_TAB_BG } from './shared.js';
+import { PanelHeader } from './shared.js';
+import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 
 const domainLabels: Record<Domain, string> = {
   world: 'World',

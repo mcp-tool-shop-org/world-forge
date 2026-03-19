@@ -3,8 +3,8 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedConnection } from '../store/editor-store.js';
 import type { ConnectionKind, AuthoringMode } from '@world-forge/schema';
 import { getModeProfile } from '../mode-profiles.js';
-import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
-import { labelText, inputCompact } from '../ui/styles.js';
+import { PanelHeader } from './shared.js';
+import { labelText, inputCompact, labelText as sharedLabelStyle, inputBase as sharedInputStyle, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
 
 /** Display labels for all 12 connection kinds. */
 export const KIND_LABELS: Record<ConnectionKind, string> = {

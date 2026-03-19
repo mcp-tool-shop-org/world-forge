@@ -92,6 +92,16 @@ Key editor modules:
 - **speed-panel-execute.ts** — extracted `executeAction()` and `executeMacro()` pure functions with `ExecuteStores` interface for testability
 - **speed-panel-store.ts** — Zustand + localStorage store for pins (with reorder), recents, groups CRUD, macros CRUD, step management
 
+## Design System
+
+The editor uses a three-layer design system:
+
+1. **`theme.css`** — ~85 CSS custom properties (backgrounds, text, semantic colors, borders, spacing, shadows, typography, z-index, layout, transitions). Imported once in `main.tsx`
+2. **`styles.ts`** — ~27 reusable `CSSProperties` objects (`panelShell`, `buttonBase`, `buttonAccent`, `inputBase`, `overlayBackdrop`, `modalCard()`, etc.) that reference the CSS variables
+3. **`ModalFrame.tsx`** — shared modal shell (backdrop + card + title + close button) used by all 7 modals
+
+Panel components in `shared.tsx` (`PanelHeader`, `ConfirmButton`, `EmptyState`, `useFocusHighlight`) consume style primitives from `styles.ts`. All consumer files import styles from `styles.ts`, not from component files.
+
 ## Build System
 
 `tsc --build` at the root builds all packages in dependency order using TypeScript project references. Each package has its own `tsconfig.json` that references its dependencies. Vitest runs tests across the monorepo.

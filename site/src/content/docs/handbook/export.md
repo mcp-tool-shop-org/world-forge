@@ -9,7 +9,7 @@ The `@world-forge/export-ai-rpg` package converts a `WorldProject` into a set of
 
 ## Pipeline Steps
 
-1. **Validate** — `validateProject()` runs all 48 structural checks. If any fail, export aborts with error details.
+1. **Validate** — `validateProject()` runs all 54 structural checks. If any fail, export aborts with error details.
 2. **Convert zones** — `Zone[]` becomes `ZoneDefinition[]` with description as TextBlock, exits, neighbors, hazards.
 3. **Convert districts** — `District[]` becomes `DistrictDefinition[]` with safety mapped to surveillance.
 4. **Convert entities** — `EntityPlacement[]` becomes `EntityBlueprint[]` with role-based defaults, authored stats/resources/AI.

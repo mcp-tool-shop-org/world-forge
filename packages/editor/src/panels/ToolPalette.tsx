@@ -1,7 +1,7 @@
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type EditorTool } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { computeContentBounds, fitBoundsToViewport, centerOnZone, frameBounds, MIN_ZOOM, MAX_ZOOM } from '../viewport.js';
-import { ACTIVE_TAB_BG } from './shared.js';
+import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { buttonBase } from '../ui/styles.js';
 
 const tools: { id: EditorTool; label: string; key: string }[] = [

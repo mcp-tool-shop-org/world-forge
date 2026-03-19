@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, type BuildsSubTab } from '../store/editor-store.js';
-import { EmptyState, useFocusHighlight, sectionTitle, labelStyle, inputStyle, addBtnStyle, smallBtnStyle, xBtnStyle, itemStyle, hintStyle, ACTIVE_TAB_BG } from './shared.js';
+import { EmptyState, useFocusHighlight } from './shared.js';
+import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, buttonRemove as xBtnStyle, cardItem as itemStyle, hintText as hintStyle, activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import type { BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition, TraitDefinition, DisciplineDefinition, TraitEffect } from '@world-forge/schema';
 
 const STARTER_CATALOG: BuildCatalogDefinition = {

@@ -3,8 +3,8 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { ScenePreview } from './ScenePreview.js';
 import { getModeProfile } from '../mode-profiles.js';
-import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
-import { labelText, inputCompact } from '../ui/styles.js';
+import { PanelHeader } from './shared.js';
+import { labelText, inputCompact, labelText as sharedLabelStyle, inputBase as sharedInputStyle, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();

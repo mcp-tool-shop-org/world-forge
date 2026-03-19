@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { getModeProfile } from '../mode-profiles.js';
-import { PanelHeader, labelStyle as sharedLabelStyle, inputStyle as sharedInputStyle, deleteBtnStyle } from './shared.js';
-import { labelText, inputCompact } from '../ui/styles.js';
+import { PanelHeader } from './shared.js';
+import { labelText, inputCompact, labelText as sharedLabelStyle, inputBase as sharedInputStyle, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
 
 export function EncounterProperties() {
   const { project, updateEncounter, removeEncounter } = useProjectStore();

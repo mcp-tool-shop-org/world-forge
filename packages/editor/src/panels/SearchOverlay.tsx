@@ -256,18 +256,18 @@ export function SearchOverlay() {
     <div
       onClick={dismiss}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-        zIndex: 200, display: 'flex', justifyContent: 'center', paddingTop: 80,
+        position: 'fixed', inset: 0, background: 'var(--wf-bg-overlay)',
+        zIndex: 'var(--wf-z-overlay)' as unknown as number, display: 'flex', justifyContent: 'center', paddingTop: 80,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 480, maxHeight: 420, background: '#161b22', border: '1px solid #30363d',
+          width: 480, maxHeight: 420, background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',
           borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '12px 12px 8px', borderBottom: '1px solid #30363d' }}>
+        <div style={{ padding: '12px 12px 8px', borderBottom: '1px solid var(--wf-border-default)' }}>
           <input
             ref={inputRef}
             value={query}
@@ -275,15 +275,15 @@ export function SearchOverlay() {
             onKeyDown={handleKeyDown}
             placeholder="Search zones, entities, districts..."
             style={{
-              width: '100%', background: '#0d1117', border: '1px solid #30363d',
-              borderRadius: 4, padding: '8px 10px', color: '#c9d1d9', fontSize: 13,
+              width: '100%', background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)',
+              borderRadius: 4, padding: '8px 10px', color: 'var(--wf-text-primary)', fontSize: 13,
               outline: 'none',
             }}
           />
         </div>
         <div ref={listRef} style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
           {results.length === 0 && query.trim() && (
-            <div style={{ padding: '16px 12px', color: '#8b949e', fontSize: 12, textAlign: 'center' }}>
+            <div style={{ padding: '16px 12px', color: 'var(--wf-text-muted)', fontSize: 12, textAlign: 'center' }}>
               No results for "{query}"
             </div>
           )}
@@ -293,24 +293,24 @@ export function SearchOverlay() {
               onClick={() => handleSelect(r)}
               style={{
                 padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                background: i === activeIdx ? '#1c2128' : 'transparent',
+                background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
               }}
             >
               <span style={{
                 fontSize: 9, fontWeight: 'bold', color: TYPE_COLORS[r.type],
-                background: '#0d1117', borderRadius: 3, padding: '1px 4px', minWidth: 18, textAlign: 'center',
+                background: 'var(--wf-bg-app)', borderRadius: 3, padding: '1px 4px', minWidth: 18, textAlign: 'center',
               }}>
                 {TYPE_ICONS[r.type]}
               </span>
-              <span style={{ color: '#c9d1d9', fontSize: 12 }}>{r.label}</span>
-              <span style={{ color: '#8b949e', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
+              <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
+              <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
             </div>
           ))}
         </div>
-        <div style={{ padding: '6px 12px', borderTop: '1px solid #30363d', fontSize: 10, color: '#484f58' }}>
-          <kbd style={{ background: '#21262d', padding: '1px 4px', borderRadius: 2 }}>↑↓</kbd> navigate
-          {' '}<kbd style={{ background: '#21262d', padding: '1px 4px', borderRadius: 2 }}>Enter</kbd> select
-          {' '}<kbd style={{ background: '#21262d', padding: '1px 4px', borderRadius: 2 }}>Esc</kbd> close
+        <div style={{ padding: '6px 12px', borderTop: '1px solid var(--wf-border-default)', fontSize: 10, color: 'var(--wf-text-hint)' }}>
+          <kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>↑↓</kbd> navigate
+          {' '}<kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>Enter</kbd> select
+          {' '}<kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>Esc</kbd> close
         </div>
       </div>
     </div>

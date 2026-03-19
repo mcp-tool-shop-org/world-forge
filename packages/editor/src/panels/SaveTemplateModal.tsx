@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useTemplateStore } from '../store/template-store.js';
-import { labelStyle, inputStyle } from './shared.js';
+import { labelText as labelStyle, inputBase as inputStyle } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
 

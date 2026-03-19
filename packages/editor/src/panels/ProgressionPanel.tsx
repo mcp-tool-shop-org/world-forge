@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { EmptyState, useFocusHighlight, sectionTitle, labelStyle, inputStyle, addBtnStyle, smallBtnStyle, xBtnStyle, itemStyle, hintStyle } from './shared.js';
+import { EmptyState, useFocusHighlight } from './shared.js';
+import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, buttonRemove as xBtnStyle, cardItem as itemStyle, hintText as hintStyle } from '../ui/styles.js';
 import type { ProgressionNode, ProgressionEffect } from '@world-forge/schema';
 
 const STARTER_TREE = {

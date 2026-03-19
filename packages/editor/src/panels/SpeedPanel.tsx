@@ -8,7 +8,7 @@ import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 import { SPEED_PANEL_ACTIONS, filterActions, type SpeedPanelAction, type GroupedActions, type SpeedPanelMacro } from '../speed-panel-actions.js';
 import { executeAction, executeMacro, type ExecuteStores } from '../speed-panel-execute.js';
 
-const SECTION_STYLE: React.CSSProperties = { padding: '4px 8px', fontSize: 10, color: '#8b949e', letterSpacing: 0.5 };
+const SECTION_STYLE: React.CSSProperties = { padding: '4px 8px', fontSize: 10, color: 'var(--wf-text-muted)', letterSpacing: 0.5 };
 
 export function SpeedPanel() {
   const { speedPanelPosition, speedPanelContext, closeSpeedPanel, speedPanelEditMode, toggleSpeedPanelEditMode,
@@ -150,10 +150,10 @@ export function SpeedPanel() {
           top: offset.top || speedPanelPosition.y,
           width: 240,
           maxHeight: 400,
-          background: '#161b22',
-          border: '1px solid #30363d',
+          background: 'var(--wf-bg-panel)',
+          border: '1px solid var(--wf-border-default)',
           borderRadius: 6,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          boxShadow: 'var(--wf-shadow-panel)',
           zIndex: 91,
           display: 'flex',
           flexDirection: 'column',
@@ -161,7 +161,7 @@ export function SpeedPanel() {
         }}
       >
         {/* Header: search + edit toggle */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #30363d' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)' }}>
           <input
             ref={inputRef}
             value={query}
@@ -169,7 +169,7 @@ export function SpeedPanel() {
             onKeyDown={handleKeyDown}
             placeholder="Quick action..."
             style={{
-              background: '#0d1117', color: '#c9d1d9', border: 'none',
+              background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: 'none',
               padding: '8px 10px', fontSize: 12, outline: 'none', flex: 1, minWidth: 0,
             }}
           />
@@ -177,8 +177,8 @@ export function SpeedPanel() {
             onClick={toggleSpeedPanelEditMode}
             title={speedPanelEditMode ? 'Exit edit mode' : 'Edit favorites & groups'}
             style={{
-              background: speedPanelEditMode ? '#30363d' : 'transparent',
-              border: 'none', color: speedPanelEditMode ? '#f0f6fc' : '#8b949e',
+              background: speedPanelEditMode ? 'var(--wf-bg-hover)' : 'transparent',
+              border: 'none', color: speedPanelEditMode ? '#f0f6fc' : 'var(--wf-text-muted)',
               cursor: 'pointer', padding: '0 8px', fontSize: 12,
             }}
           >
@@ -188,9 +188,9 @@ export function SpeedPanel() {
 
         {/* Macro status banner */}
         {macroStatus && (
-          <div style={{ padding: '4px 8px', fontSize: 10, color: '#f85149', background: '#1c1107', borderBottom: '1px solid #30363d' }}>
+          <div style={{ padding: '4px 8px', fontSize: 10, color: 'var(--wf-danger-text)', background: '#1c1107', borderBottom: '1px solid var(--wf-border-default)' }}>
             {macroStatus}
-            <span onClick={() => setMacroStatus(null)} style={{ cursor: 'pointer', marginLeft: 6, color: '#8b949e' }}>{'\u2715'}</span>
+            <span onClick={() => setMacroStatus(null)} style={{ cursor: 'pointer', marginLeft: 6, color: 'var(--wf-text-muted)' }}>{'\u2715'}</span>
           </div>
         )}
 
@@ -225,7 +225,7 @@ export function SpeedPanel() {
                       value={g.group.name}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => updateGroup(g.group.id, { name: e.target.value })}
-                      style={{ background: 'transparent', border: '1px solid #30363d', color: '#c9d1d9', fontSize: 10, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
+                      style={{ background: 'transparent', border: '1px solid var(--wf-border-default)', color: 'var(--wf-text-primary)', fontSize: 10, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
                     />
                   ) : (
                     <span style={{ flex: 1 }}>{g.group.name}</span>
@@ -233,7 +233,7 @@ export function SpeedPanel() {
                   {speedPanelEditMode && (
                     <span
                       onClick={(e) => { e.stopPropagation(); removeGroup(g.group.id); }}
-                      style={{ cursor: 'pointer', color: '#f85149', fontSize: 10, marginLeft: 4 }}
+                      style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, marginLeft: 4 }}
                       title="Delete group"
                     >{'\u2715'}</span>
                   )}
@@ -257,7 +257,7 @@ export function SpeedPanel() {
             <div style={{ padding: '2px 8px' }}>
               <button
                 onClick={handleNewGroup}
-                style={{ background: 'transparent', border: '1px dashed #30363d', color: '#8b949e', cursor: 'pointer', fontSize: 10, padding: '2px 6px', borderRadius: 3, width: '100%' }}
+                style={{ background: 'transparent', border: '1px dashed var(--wf-border-default)', color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 10, padding: '2px 6px', borderRadius: 3, width: '100%' }}
               >+ New Group</button>
             </div>
           )}
@@ -287,32 +287,32 @@ export function SpeedPanel() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '5px 8px', cursor: 'pointer', fontSize: 12,
-                    background: idx === activeIdx ? '#30363d' : 'transparent',
-                    color: idx === activeIdx ? '#f0f6fc' : '#c9d1d9',
+                    background: idx === activeIdx ? 'var(--wf-bg-hover)' : 'transparent',
+                    color: idx === activeIdx ? '#f0f6fc' : 'var(--wf-text-primary)',
                   }}
                 >
-                  <span style={{ color: '#3fb950', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
+                  <span style={{ color: 'var(--wf-success-text)', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
                   {speedPanelEditMode ? (
                     <input
                       value={m.name}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => updateMacro(m.id, { name: e.target.value })}
-                      style={{ background: 'transparent', border: '1px solid #30363d', color: '#c9d1d9', fontSize: 12, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
+                      style={{ background: 'transparent', border: '1px solid var(--wf-border-default)', color: 'var(--wf-text-primary)', fontSize: 12, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
                     />
                   ) : (
                     <span style={{ flex: 1 }}>{m.name}</span>
                   )}
-                  <span style={{ color: '#8b949e', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
+                  <span style={{ color: 'var(--wf-text-muted)', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
                   {speedPanelEditMode && (
                     <>
                       <span
                         onClick={(e) => { e.stopPropagation(); setExpandedMacro(isExpanded ? null : m.id); }}
-                        style={{ cursor: 'pointer', color: '#8b949e', fontSize: 10 }}
+                        style={{ cursor: 'pointer', color: 'var(--wf-text-muted)', fontSize: 10 }}
                         title="Edit steps"
                       >{isExpanded ? '\u25BC' : '\u25B6'}</span>
                       <span
                         onClick={(e) => { e.stopPropagation(); removeMacro(m.id); }}
-                        style={{ cursor: 'pointer', color: '#f85149', fontSize: 10 }}
+                        style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10 }}
                         title="Delete macro"
                       >{'\u2715'}</span>
                     </>
@@ -320,26 +320,26 @@ export function SpeedPanel() {
                 </div>
                 {/* Step editor (edit mode only) */}
                 {isExpanded && (
-                  <div style={{ padding: '2px 16px 4px', borderLeft: '2px solid #30363d', marginLeft: 12 }}>
+                  <div style={{ padding: '2px 16px 4px', borderLeft: '2px solid var(--wf-border-default)', marginLeft: 12 }}>
                     {m.steps.map((step, si) => {
                       const action = SPEED_PANEL_ACTIONS.find((a) => a.id === step.actionId);
                       return (
-                        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#c9d1d9', padding: '1px 0' }}>
-                          <span style={{ color: '#8b949e', width: 14 }}>{si + 1}.</span>
+                        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--wf-text-primary)', padding: '1px 0' }}>
+                          <span style={{ color: 'var(--wf-text-muted)', width: 14 }}>{si + 1}.</span>
                           <span style={{ flex: 1 }}>{action?.label ?? step.actionId}</span>
                           <button
                             onClick={() => si > 0 && reorderMacroStep(m.id, si, si - 1)}
                             disabled={si === 0}
-                            style={{ background: 'transparent', border: 'none', color: si > 0 ? '#8b949e' : '#30363d', cursor: si > 0 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
+                            style={{ background: 'transparent', border: 'none', color: si > 0 ? 'var(--wf-text-muted)' : 'var(--wf-border-default)', cursor: si > 0 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
                           >{'\u25B2'}</button>
                           <button
                             onClick={() => si < m.steps.length - 1 && reorderMacroStep(m.id, si, si + 1)}
                             disabled={si === m.steps.length - 1}
-                            style={{ background: 'transparent', border: 'none', color: si < m.steps.length - 1 ? '#8b949e' : '#30363d', cursor: si < m.steps.length - 1 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
+                            style={{ background: 'transparent', border: 'none', color: si < m.steps.length - 1 ? 'var(--wf-text-muted)' : 'var(--wf-border-default)', cursor: si < m.steps.length - 1 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
                           >{'\u25BC'}</button>
                           <span
                             onClick={() => removeStepFromMacro(m.id, si)}
-                            style={{ cursor: 'pointer', color: '#f85149', fontSize: 10 }}
+                            style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10 }}
                           >{'\u2715'}</span>
                         </div>
                       );
@@ -348,7 +348,7 @@ export function SpeedPanel() {
                     <select
                       value=""
                       onChange={(e) => { if (e.target.value) addStepToMacro(m.id, e.target.value); }}
-                      style={{ background: '#0d1117', color: '#8b949e', border: '1px solid #30363d', fontSize: 10, padding: '2px', width: '100%', marginTop: 2, borderRadius: 2 }}
+                      style={{ background: 'var(--wf-bg-app)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)', fontSize: 10, padding: '2px', width: '100%', marginTop: 2, borderRadius: 2 }}
                     >
                       <option value="">+ Add step...</option>
                       {SPEED_PANEL_ACTIONS.filter((a) => a.macroSafe).map((a) => (
@@ -364,7 +364,7 @@ export function SpeedPanel() {
             <div style={{ padding: '2px 8px' }}>
               <button
                 onClick={handleNewMacro}
-                style={{ background: 'transparent', border: '1px dashed #30363d', color: '#8b949e', cursor: 'pointer', fontSize: 10, padding: '2px 6px', borderRadius: 3, width: '100%' }}
+                style={{ background: 'transparent', border: '1px dashed var(--wf-border-default)', color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 10, padding: '2px 6px', borderRadius: 3, width: '100%' }}
               >+ New Macro</button>
             </div>
           )}
@@ -400,7 +400,7 @@ export function SpeedPanel() {
           })}
 
           {allNavigable.length === 0 && (
-            <div style={{ padding: '12px 10px', fontSize: 12, color: '#484f58' }}>No actions</div>
+            <div style={{ padding: '12px 10px', fontSize: 12, color: 'var(--wf-text-hint)' }}>No actions</div>
           )}
         </div>
       </div>
@@ -426,18 +426,18 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
       style={{
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '5px 8px', cursor: 'pointer', fontSize: 12,
-        background: active ? '#30363d' : 'transparent',
-        color: active ? '#f0f6fc' : '#c9d1d9',
+        background: active ? 'var(--wf-bg-hover)' : 'transparent',
+        color: active ? '#f0f6fc' : 'var(--wf-text-primary)',
       }}
     >
       <span
         onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
-        style={{ cursor: 'pointer', fontSize: 11, color: isPinned ? '#ffd700' : '#484f58', userSelect: 'none', flexShrink: 0 }}
+        style={{ cursor: 'pointer', fontSize: 11, color: isPinned ? '#ffd700' : 'var(--wf-text-hint)', userSelect: 'none', flexShrink: 0 }}
         title={isPinned ? 'Unpin' : 'Pin'}
       >
         {isPinned ? '\u2605' : '\u2606'}
       </span>
-      <span style={{ color: '#8b949e', fontSize: 10, width: 20, textAlign: 'center', flexShrink: 0 }}>{action.icon}</span>
+      <span style={{ color: 'var(--wf-text-muted)', fontSize: 10, width: 20, textAlign: 'center', flexShrink: 0 }}>{action.icon}</span>
       <span style={{ flex: 1 }}>{action.label}</span>
       {editMode && isPinned && (
         <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
@@ -445,7 +445,7 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
             onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
             disabled={!onMoveUp}
             style={{
-              background: 'transparent', border: 'none', color: onMoveUp ? '#8b949e' : '#30363d',
+              background: 'transparent', border: 'none', color: onMoveUp ? 'var(--wf-text-muted)' : 'var(--wf-border-default)',
               cursor: onMoveUp ? 'pointer' : 'default', fontSize: 10, padding: '0 2px',
             }}
             title="Move up"
@@ -454,7 +454,7 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
             onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
             disabled={!onMoveDown}
             style={{
-              background: 'transparent', border: 'none', color: onMoveDown ? '#8b949e' : '#30363d',
+              background: 'transparent', border: 'none', color: onMoveDown ? 'var(--wf-text-muted)' : 'var(--wf-border-default)',
               cursor: onMoveDown ? 'pointer' : 'default', fontSize: 10, padding: '0 2px',
             }}
             title="Move down"
@@ -464,7 +464,7 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
       {groupEditMode && onRemoveFromGroup && (
         <span
           onClick={(e) => { e.stopPropagation(); onRemoveFromGroup(); }}
-          style={{ cursor: 'pointer', color: '#f85149', fontSize: 10, flexShrink: 0 }}
+          style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, flexShrink: 0 }}
           title="Remove from group"
         >{'\u2715'}</span>
       )}
