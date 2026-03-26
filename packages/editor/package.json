@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/editor",
-  "version": "4.0.5",
+  "version": "4.0.6",
   "description": "Web-based world authoring editor",
   "type": "module",
   "scripts": {
