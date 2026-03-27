@@ -38,6 +38,9 @@ type ContentPack = {
   playerTemplate?: ExportedPlayerTemplate;
   buildCatalog?: ExportedBuildCatalog;
   progressionTrees: ProgressionTreeDefinition[];
+  encounterAnchors: EncounterAnchor[];
+  factionPresences: FactionPresence[];
+  pressureHotspots: PressureHotspot[];
 };
 ```
 
@@ -58,7 +61,7 @@ import { exportToEngine } from '@world-forge/export-ai-rpg';
 
 const result = exportToEngine(myProject);
 
-if ('ok' in result) {
+if (!result.success) {
   // Validation failed
   console.error(result.errors);
 } else {

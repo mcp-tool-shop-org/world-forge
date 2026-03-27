@@ -20,7 +20,15 @@ World Forge is a monorepo with four packages:
 | `@world-forge/renderer-2d` | PixiJS 2D canvas with pan, zoom, overlays, and minimap |
 | `@world-forge/editor` | React 19 web app with Zustand state management and undo/redo |
 
-## 2. Installation and Setup
+## 2. Who is This For?
+
+World Forge is built for game designers, content authors, and hobbyists who want to create playable worlds for ai-rpg-engine without writing JSON by hand. If you can use a drawing program, you can use World Forge -- the canvas-based editor handles spatial layout, validation, and export so you can focus on world design rather than data plumbing.
+
+You do not need programming experience to use the editor. Familiarity with RPG concepts (zones, NPCs, items, stats) is helpful but not required -- the glossary at the end of this page defines every term.
+
+Developers who want to integrate World Forge types or the export pipeline into their own tooling can use the published npm packages (`@world-forge/schema` and `@world-forge/export-ai-rpg`) directly.
+
+## 3. Installation and Setup
 
 **Prerequisites:** Node.js 20+ and npm 10+.
 
@@ -45,7 +53,7 @@ Open `http://localhost:5173` in your browser. You will see the Template Manager.
 
 Run `npm run verify` to build and test everything in one command. If it exits cleanly, your environment is ready.
 
-## 3. Core Concepts
+## 4. Core Concepts
 
 ### Projects
 
@@ -84,7 +92,7 @@ Mode affects everything: grid defaults, connection vocabulary, zone naming patte
 
 A **ContentPack** is the export format that ai-rpg-engine understands. It contains zones, districts, entities, items, dialogues, a player template, and metadata. The export pipeline validates your project (54 structural checks) before converting it.
 
-## 4. Step-by-Step Tutorial
+## 5. Step-by-Step Tutorial
 
 Follow these steps to build a small playable world.
 
@@ -134,7 +142,7 @@ Open the **Review** tab to check your project's health. The health banner shows 
 
 When the project is Ready or Healthy, click **Export** to download a ContentPack. The export pipeline validates, converts, and packages your world as JSON files that ai-rpg-engine can load.
 
-## 5. Common Pitfalls
+## 6. Common Pitfalls
 
 **No spawn point defined.** Every project needs at least one spawn point marked as default. Without it, the validator blocks export. Use the Spawn tool to place one and check the "default" box.
 
@@ -148,7 +156,7 @@ When the project is Ready or Healthy, click **Export** to download a ContentPack
 
 **Export with validation errors.** The export pipeline requires `validateProject()` to pass all 54 structural checks. If export fails, check the Issues tab for the specific errors. Common blockers include missing spawn points, broken dialogue node references, and duplicate IDs.
 
-## 6. Glossary
+## 7. Glossary
 
 | Term | Definition |
 |------|-----------|
@@ -170,7 +178,7 @@ When the project is Ready or Healthy, click **Export** to download a ContentPack
 | **WorldProject** | The top-level container holding an entire authored world. Everything in the editor is part of this structure. |
 | **Zone** | A rectangular area on the canvas representing a distinct location (room, territory, sector) with spatial coordinates and environmental properties. |
 
-## 7. Where to Go Next
+## 8. Where to Go Next
 
 - **[Editor Workflow](/world-forge/handbook/editor-workflow/)** -- detailed walkthrough of every editor feature, including selection, alignment, snapping, presets, and the Speed Panel
 - **[Architecture](/world-forge/handbook/architecture/)** -- package structure, dependency graph, and design system details
