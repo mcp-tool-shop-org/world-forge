@@ -27,12 +27,17 @@ World Forge is one of three projects that form the authoring-to-play pipeline:
 - **Author dialogues** — branching conversation trees with conditions and effects
 - **Place items** with slot, rarity, stat modifiers, and granted verbs
 - **Manage assets** — portraits, sprites, backgrounds, icons, and tilesets in a typed manifest with kind-specific bindings to zones, entities, and items
-- **Search & browse** — Ctrl+K search across all object types, hierarchical Objects tree panel
-- **Select & duplicate** — multi-select, box-select, drag-move, Ctrl+D duplicate with ID remapping
+- **Search & browse** — Ctrl+K fuzzy search across all object types with recent history, hierarchical Objects tree panel
+- **Select & edit** — multi-select, box-select, drag-move, Ctrl+D duplicate, Ctrl+C/V copy-paste with ID remapping
+- **Canvas tools** — minimap, viewport culling, connection preview, context menu, per-object visibility, performance stats overlay
+- **Auto-save** — 30-second throttled auto-save with 3-version recovery history
+- **Templates** — 6 layout templates (zone arrangements) and 5 dialogue templates (conversation starters)
+- **Batch operations** — zone merge, batch entity placement (grid/random/circle patterns)
+- **Theme** — dark/light mode toggle with localStorage persistence
 - **Export** a validated ContentPack targeting ai-rpg-engine's content schema
-- **Import** from ContentPack or ExportResult JSON with structured fidelity reporting
+- **Import** from ContentPack or ExportResult JSON with structured fidelity reporting and repair suggestions
 - **Track changes** with semantic diff — see exactly what was modified, added, or removed since import
-- **Review projects** — Review tab shows health status, content overview, region summaries, and downloadable summaries (Markdown/JSON)
+- **Review projects** — Review tab with health status, content overview, statistics, project metadata editor, and downloadable summaries (Markdown/JSON)
 - **Manage dependencies** — Deps tab scans broken, mismatched, and orphaned references with one-click repair
 - **Starter kits** — 7 built-in mode-specific kits, custom kit authoring, kit import/export (.wfkit.json)
 - **Project bundles** — portable .wfproject.json files for sharing whole projects with dependency metadata
@@ -45,4 +50,4 @@ World Forge is a monorepo with four packages:
 - `@world-forge/schema` — TypeScript types, validation, and the `WorldProject` container
 - `@world-forge/export-ai-rpg` — conversion pipeline and CLI tool
 - `@world-forge/renderer-2d` — PixiJS 2D canvas with pan, zoom, overlays, and minimap
-- `@world-forge/editor` — React 19 web app with Zustand state management
+- `@world-forge/editor` — React 19 web app with Zustand state management, auto-save, undo labels, and dark/light theme

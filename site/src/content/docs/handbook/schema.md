@@ -43,6 +43,12 @@ interface WorldProject {
   spawnPoints: SpawnPoint[];
   assets: AssetEntry[];
   assetPacks: AssetPack[];
+
+  // Project metadata (v4.1.0)
+  author?: string;
+  license?: string;
+  category?: string;
+  projectTags?: string[];
   // ... crafting, market, visual layers
 }
 ```
@@ -206,7 +212,7 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 
 ## Validation
 
-`validateProject()` runs 54 structural checks:
+`validateProject()` runs 54 structural checks using precomputed Map lookups for O(n) performance. Returns `{ valid, errors, warningCount }`. An optional `ValidateOptions` parameter supports `verbose` mode for detailed output.
 
 1. At least one spawn point exists
 2. At least one default spawn point
@@ -260,6 +266,8 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 `advisoryValidation(project)` returns mode-specific **suggestions** that never block export. These appear in the editor as a collapsible blue section below hard validation errors.
 
 Each mode generates relevant suggestions — for example, dungeon mode suggests adding secret connections and trap hazards, ocean mode suggests channel connections and port zones. Universal suggestions (e.g., "add at least 2 zones", "add connections between zones") apply to all modes.
+
+v4.1.0 added **metadata advisories** (missing author, license, category) and **asset naming advisories** (detects generic names like 'untitled', 'image', short or purely numeric labels).
 
 ```typescript
 interface AdvisoryItem {

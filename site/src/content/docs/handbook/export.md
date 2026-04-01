@@ -52,6 +52,9 @@ npx world-forge-export project.json --out ./my-pack
 
 # Validate only (no output files)
 npx world-forge-export project.json --validate-only
+
+# Verbose output (detailed conversion log)
+npx world-forge-export project.json --out ./my-pack --verbose
 ```
 
 ## Programmatic Usage

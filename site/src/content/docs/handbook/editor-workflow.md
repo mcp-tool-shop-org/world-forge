@@ -194,6 +194,34 @@ The canvas uses a real camera model with pan and zoom. All content is drawn in w
 
 The viewport auto-fits all content when a project first loads, so zones at any grid position are immediately visible.
 
+### Minimap
+
+A 200×150px minimap overlay sits in the bottom-right corner of the canvas. It shows a scaled-down view of all zones with the current viewport highlighted. Click anywhere on the minimap to jump the camera to that position. Toggle the minimap from the tool palette.
+
+### Viewport Culling
+
+Objects outside the visible viewport (plus a 64px margin) are not rendered, improving performance on large projects. Culling is automatic and transparent — objects reappear as you pan or zoom to include them.
+
+### Performance Stats
+
+Toggle the performance overlay from the tool palette to see object count, render time, and current zoom level. Useful for diagnosing slow canvases on large projects.
+
+### Context Menu
+
+Right-click any object on the canvas for a context menu with 7 actions: properties, delete, duplicate, copy, hide, and context-specific operations like "Connect from here" or "Place entity here".
+
+### Per-Object Visibility
+
+Hide individual objects (zones, entities, landmarks, etc.) to declutter the canvas while working on specific areas. Hidden objects are dimmed in the Objects tab and excluded from canvas rendering and hit-testing. Visibility state persists in localStorage across sessions. Use **Show All** in the tool palette to restore everything.
+
+### Connection Preview
+
+When using the Connection tool, a dashed cyan line follows your cursor from the source zone to the current mouse position, giving visual feedback before you click the target zone.
+
+### Theme Toggle
+
+Click the moon/sun icon in the top bar to switch between dark and light themes. The preference is persisted in localStorage.
+
 ### Viewport Controls
 
 The **Viewport** section in the tool palette provides:
@@ -301,6 +329,8 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Escape | Deselect all |
 | Delete | Delete selected objects |
 | Ctrl+A | Select all objects |
+| Ctrl+C | Copy selection to clipboard |
+| Ctrl+V | Paste from clipboard (with ID remapping and offset) |
 | Ctrl+D | Duplicate selection |
 | Ctrl+K | Open search overlay |
 | Ctrl+Z | Undo |
@@ -311,6 +341,18 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Shift+P | Save current selection as preset |
 | Double-click | Select object and open its details panel |
 | Double-right-click | Open Speed Panel (floating command palette at cursor) |
+
+### Undo/Redo Labels
+
+Each undo entry carries a descriptive action label (e.g., "Move 3 zones", "Delete entity", "Assign district"). The undo/redo buttons in the toolbar show count badges and tooltip labels so you can see what you're undoing before clicking.
+
+### Auto-Save
+
+The editor auto-saves your project to localStorage every 30 seconds (throttled — only writes when changes exist). Up to 3 recovery versions are retained. If the editor detects an auto-save on startup, a recovery prompt offers to restore the saved project or discard it. An unsaved-changes guard (`beforeunload`) prevents accidental tab closure.
+
+### Copy & Paste
+
+Press **Ctrl+C** to copy selected objects to the editor clipboard. Press **Ctrl+V** to paste — pasted objects receive new IDs, `(copy)` name suffixes, and a 2-cell offset. Connections between co-copied zones are preserved. The clipboard persists for the session but is not shared across browser tabs.
 
 ## 9. Presets
 
@@ -377,7 +419,9 @@ Custom presets are stored in localStorage and persist across sessions.
 
 Press **Ctrl+K** anywhere in the editor to open the search overlay. Type to filter across all object types — zones, entities, landmarks, spawns, encounters, districts, connections, dialogues, progression trees, presets, and starter kits.
 
-Search matches against names, IDs, and contextual detail (e.g., an entity's zone or role, an encounter's type and probability, a preset's description). Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For encounters, the parent zone is framed. For dialogues and progression trees, the corresponding sidebar tab opens. For presets, the Presets tab opens.
+Search uses **fuzzy matching** — characters must appear in order but don't need to be consecutive (e.g., "chpl" matches "Chapel"). Results are scored by consecutive matches, word-start bonuses, and shorter-text preference. Results are capped at 20, keyboard-navigable with arrow keys, and pressing Enter selects the object and frames it on the canvas. For districts, all member zones are selected. For encounters, the parent zone is framed. For dialogues and progression trees, the corresponding sidebar tab opens. For presets, the Presets tab opens.
+
+**Recent searches** are persisted in localStorage so you can quickly re-run previous queries.
 
 ## 11. Speed Panel
 
@@ -526,7 +570,52 @@ Imported kits are tagged with a blue "imported" badge so you can tell them apart
 
 Use the mode filter pills at the top of the Starter Kits tab to show only kits compatible with a specific mode. Kits can support multiple modes — a kit tagged with both "dungeon" and "interior" appears under either filter.
 
-## 15. Export
+## 15. Layout & Dialogue Templates
+
+### Layout Templates
+
+Six prebuilt zone arrangements are available from the Speed Panel or Template Manager. Each template creates a set of connected zones in a specific pattern:
+
+| Template | Zones | Pattern |
+|----------|-------|---------|
+| Linear Corridor | 4 | Straight sequence of rooms |
+| Hub and Spoke | 5 | Central room with 4 branches |
+| Loop | 4 | Circular zone arrangement |
+| Grid Quarter | 4 | 2×2 city block layout |
+| T-Junction | 3 | Three-way intersection |
+| Grand Hall | 5 | Large central area with flanking wings |
+
+The first three are dungeon-oriented; the latter three suit district/city modes.
+
+### Dialogue Templates
+
+Five conversation starters provide ready-made dialogue trees:
+
+| Template | Nodes | Use Case |
+|----------|-------|----------|
+| Greeting | 3 | NPC introduction with friendly/suspicious branches |
+| Quest Giver | 5 | Accept/decline quest with requirements check |
+| Merchant | 4 | Buy/sell/browse with inventory conditions |
+| Warning | 3 | Danger ahead with choice to proceed or retreat |
+| Farewell | 2 | Simple goodbye with optional follow-up |
+
+### Zone Merge
+
+Select 2+ zones and use **Merge Zones** (from the Selection Actions panel or Speed Panel) to combine them into one. The merge reassigns all connections, entities, items, landmarks, spawns, and encounters from the absorbed zones to the surviving zone, then removes the absorbed zones. This is a single undo step.
+
+### Batch Entity Placement
+
+Place multiple entities at once using one of three patterns:
+
+| Pattern | Description |
+|---------|-------------|
+| **Grid** | Evenly spaced in rows and columns within the zone |
+| **Random** | Randomly distributed positions within the zone bounds |
+| **Circle** | Arranged in a circle around the zone center |
+
+Access batch placement from the Speed Panel or Selection Actions panel.
+
+## 16. Export
 
 Click **Export** to validate your project and download the ContentPack. The export pipeline:
 
@@ -539,9 +628,9 @@ The output is a set of JSON files ready to load into ai-rpg-engine.
 
 If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
 
-Below the engine export section, a separate **Export Project Bundle** button lets you save the project as a portable `.wfproject.json` file (see §18).
+Below the engine export section, a separate **Export Project Bundle** button lets you save the project as a portable `.wfproject.json` file (see §19).
 
-## 16. Import
+## 17. Import
 
 Click **Import** to load a previously exported JSON file back into the editor. World Forge auto-detects the format:
 
@@ -554,7 +643,7 @@ For ProjectBundle imports, the preview shows bundle metadata (name, mode, genre,
 
 After import, the **Import** tab appears in the right sidebar showing a fidelity report — a domain-by-domain breakdown of what was lossless, what was approximated (e.g., zone grid positions), and what was dropped (e.g., visual layers). Each entry has a severity level and a human-readable explanation.
 
-## 17. Track Changes
+## 18. Track Changes
 
 After importing a project, the **Diff** tab appears in the right sidebar. It shows a semantic diff between the imported snapshot and your current project state:
 
@@ -564,7 +653,7 @@ After importing a project, the **Diff** tab appears in the right sidebar. It sho
 
 Changes are grouped by domain (Zones, Districts, Entities, Items, etc.) so you can see exactly what you've edited since import.
 
-## 18. Project Bundles
+## 19. Project Bundles
 
 Project bundles make authored worlds portable. A `.wfproject.json` file contains everything needed to re-open a project on another machine.
 
@@ -588,7 +677,7 @@ Open the Import modal and choose a `.wfproject.json` file. The format is auto-de
 
 After importing a project bundle, the Guide checklist and Export modal show an "Imported from project bundle" indicator. This is cleared when you start a new project or reset the checklist.
 
-## 19. Dependency Manager
+## 20. Dependency Manager
 
 The **Deps** tab scans every cross-entity reference in the project and classifies each edge as ok, broken, mismatched, or orphaned.
 
@@ -629,7 +718,7 @@ Batch actions at the top: "Clear all broken refs" and "Remove all orphans" apply
 - **Export** — the bundle export section warns about broken references and links to the Deps tab for repair
 - **Validation** — the Issues tab shows "Open Deps" links on reference errors for quick cross-navigation
 
-## §20 Review Mode
+## §21 Review Mode
 
 The **Review** tab provides a read-only overview of your entire project in one place — health status, content counts, system completeness, region/encounter/connection summaries, dependency health, and validation state.
 
@@ -650,15 +739,17 @@ The health banner at the top of the Review tab uses color coding: green for read
 
 1. **Health banner** — color-coded status with label
 2. **Project overview** — name, mode, genre, version, description
-3. **Content counts** — grid showing zones, entities, items, connections, encounters, etc.
-4. **System completeness** — green checks for present systems (spawn points, player template, build catalog, dialogues, progression trees), gray dashes for missing
-5. **Regions** — per-district cards with zone count, controlling faction, economy metrics bar, entity role breakdown (NPC/enemy/merchant/boss pills), encounter and item counts
-6. **Encounters** — type breakdown table, total count, average probability, boss encounter count (highlighted)
-7. **Connections** — kind breakdown table, conditional/one-way/bidirectional counts
-8. **Dependencies** — broken/mismatched/orphaned counts with link to the Deps tab
-9. **Validation** — error count by domain, first 5 errors with link to the Issues tab
-10. **Provenance** — active kit, import format, bundle source, fidelity percentage (only shown when import context exists)
-11. **Unassigned zones** — zones not belonging to any district (amber callout)
+3. **Project metadata** — editable author, license, category, and tags fields (saved to project)
+4. **Content counts** — grid showing zones, entities, items, connections, encounters, etc.
+5. **Statistics** — role distribution chart, connection kind breakdown, encounter type distribution, zones-per-district histogram
+6. **System completeness** — green checks for present systems (spawn points, player template, build catalog, dialogues, progression trees), gray dashes for missing
+7. **Regions** — per-district cards with zone count, controlling faction, economy metrics bar, entity role breakdown (NPC/enemy/merchant/boss pills), encounter and item counts
+8. **Encounters** — type breakdown table, total count, average probability, boss encounter count (highlighted)
+9. **Connections** — kind breakdown table, conditional/one-way/bidirectional counts
+10. **Dependencies** — broken/mismatched/orphaned counts with link to the Deps tab
+11. **Validation** — error count by domain, first 5 errors with link to the Issues tab
+12. **Provenance** — active kit, import format, bundle source, fidelity percentage (only shown when import context exists)
+13. **Unassigned zones** — zones not belonging to any district (amber callout)
 
 ### Summary Export
 
