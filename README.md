@@ -17,6 +17,8 @@
 
 <p align="center">2D world authoring studio for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete ContentPack ready to play.</p>
 
+<p align="center"><strong>v4.1.0</strong> — 80 test files, 1660 tests, 4 packages, 7 authoring modes</p>
+
 ## Architecture
 
 ```
@@ -63,7 +65,7 @@ Core TypeScript types and validation for world authoring.
 - **Content types** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
 - **Visual layers** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
 - **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
-- **Validation** — `validateProject()` (54 structural checks), `advisoryValidation()` (mode-specific suggestions)
+- **Validation** — `validateProject()` (54 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
 - **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
 
 ### @world-forge/export-ai-rpg
@@ -74,7 +76,7 @@ Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format.
 - **Import** — 8 reverse converters reconstruct a WorldProject from exported JSON
 - **Fidelity reporting** — structured tracking of what was lossless, approximated, or dropped during conversion
 - **Format detection** — auto-detects WorldProject, ExportResult, ContentPack, and ProjectBundle formats
-- **CLI** — `world-forge-export` command with `--out` and `--validate-only` flags
+- **CLI** — `world-forge-export` command with `--out`, `--validate-only`, and `--verbose` flags
 
 ### @world-forge/renderer-2d
 
@@ -82,7 +84,7 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app with Zustand state management and undo/redo.
+React 19 + Vite web app with Zustand state management, undo/redo with action labels, auto-save (30s throttle, 3-version history), dark/light theme toggle, and unsaved changes guard.
 
 #### Workspace Tabs
 
@@ -109,15 +111,22 @@ React 19 + Vite web app with Zustand state management and undo/redo.
 - **Snapping** — drag-time snap to edges/centers of nearby objects with visual guide lines
 - **Resize** — 8 handles per zone with edge snapping, min-size clamping, live preview
 - **Duplicate** — Ctrl+D with remapped IDs, connections, and district assignments
+- **Copy/Paste** — Ctrl+C / Ctrl+V with ID remapping and configurable offset
 - **Click-cycle** — repeated clicks at same position cycle through overlapping objects
+- **Context menu** — right-click for 7 context-sensitive actions (properties, delete, duplicate, etc.)
+- **Connection preview** — dashed cyan line during connection tool placement
+- **Minimap** — 200×150 overview (bottom-right), click to jump
+- **Viewport culling** — only renders objects within visible bounds (64px margin)
+- **Performance stats** — toggle FPS/object count/render time overlay
+- **Per-object visibility** — hide/show individual objects (persisted in localStorage)
 - **Layers** — 7 visibility toggles (grid, connections, entities, landmarks, spawns, backgrounds, ambient)
 
 #### Navigation & Shortcuts
 
 - **Viewport** — pan/zoom camera, mousewheel zoom (cursor-anchored), spacebar/middle-mouse/right-click drag-pan, auto fit-to-content, double-click to center
-- **Search** — Ctrl+K opens overlay to find any object by name/ID with keyboard navigation
+- **Search** — Ctrl+K opens overlay to find any object by name/ID with fuzzy matching, keyboard navigation, and recent search history (localStorage)
 - **Speed Panel** — double-right-click for a floating command palette with context-aware actions, pinnable favorites, macros, and mode-suggested quick actions
-- **Hotkeys** — 13 keyboard shortcuts including Enter (open details), P (apply preset), Shift+P (save preset)
+- **Hotkeys** — 15 keyboard shortcuts including Enter (open details), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste)
 
 #### Import & Export
 
@@ -177,13 +186,22 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 
 - Region presets (9 built-in, mode-filtered) and encounter presets (10 built-in) with merge/overwrite application and custom preset CRUD
 - Starter kits (7 built-in, mode-specific) with kit export/import (`.wfkit.json`), collision handling, and provenance tracking
-- Ctrl+K search across all object types including connections and encounters
+- Layout templates (6 prebuilt zone arrangements) and dialogue templates (5 conversation starters)
+- Zone merge and batch entity placement (grid/random/circle patterns)
+- Auto-save with 30-second throttle and 3-version recovery history
+- Ctrl+K search across all object types with fuzzy matching and recent history
 - Speed Panel command palette with pinnable favorites, macros, custom groups, and mode suggestions
-- 13 centralized keyboard shortcuts
+- 15 centralized keyboard shortcuts
+- Project metadata editor (author, license, category, tags)
+- Review statistics (role distribution, connection kinds, encounter types, zones per district)
 - Export to ContentPack JSON, project bundles, and review summaries
-- Import from 4 formats with structured fidelity reporting and semantic diff tracking
+- Import from 4 formats with structured fidelity reporting, repair suggestions, and semantic diff tracking
 
 See [`dogfood/WALKTHROUGH.md`](dogfood/WALKTHROUGH.md) for the Chapel Threshold export handshake proving the current surface.
+
+## Dogfood Directory
+
+The `dogfood/` directory contains an integration test harness that exercises the full authoring-to-export pipeline outside of unit tests. The Chapel Threshold example (`chapel-threshold.ts`) builds a small but complete world project, runs it through export, and writes the output to `dogfood/output/`. This proves that schema types, validation, and the export pipeline work end-to-end with real data — not just isolated mocks.
 
 ## Engine Compatibility
 
