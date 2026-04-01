@@ -196,7 +196,7 @@ export function prepareProjectImport(data: unknown): ImportProjectResult | Parse
     parseWarnings,
     validationWarnings: validation.valid ? [] : validation.errors.map((e) => `${e.path}: ${e.message}`),
     validationErrors: [],
-    isValid: validation.valid || validation.errors.length === 0,
+    isValid: validation.valid,
   };
 }
 

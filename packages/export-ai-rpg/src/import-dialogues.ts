@@ -17,7 +17,7 @@ export function importDialogues(engineDialogues: EngineDialogue[]): { dialogues:
       if (isTextBlock) hasTextBlock = true;
 
       const text = isTextBlock
-        ? (node.text as Array<{ text: string }>).map((b) => b.text).join(' ')
+        ? (node.text as Array<{ text?: string }>).filter((b) => b && typeof b.text === 'string').map((b) => b.text).join(' ')
         : String(node.text ?? '');
 
       nodes[nodeId] = {

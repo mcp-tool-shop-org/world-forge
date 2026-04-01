@@ -73,7 +73,7 @@ describe('BUILTIN_KITS', () => {
 describe.each(BUILTIN_KITS)('built-in kit: $name ($id)', (kit) => {
   it('project validates cleanly', () => {
     const result = validateProject(kit.project);
-    expect(result).toEqual({ valid: true, errors: [] });
+    expect(result).toEqual({ valid: true, errors: [], warningCount: 0 });
   });
 
   it('all region preset refs exist in built-ins', () => {
@@ -130,7 +130,7 @@ describe('MODE_STARTERS backward compatibility', () => {
     const project = createProjectFromModeStarter('Test', starter);
     expect(project.name).toBe('Test');
     expect(project.id).toMatch(/^project-\d+$/);
-    expect(validateProject(project)).toEqual({ valid: true, errors: [] });
+    expect(validateProject(project)).toEqual({ valid: true, errors: [], warningCount: 0 });
   });
 
   it('deep-clones (no shared references with source)', () => {

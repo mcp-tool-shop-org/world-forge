@@ -350,4 +350,99 @@ describe('scanDependencies', () => {
     const entityAssets = report.edges.filter((e) => e.domain === 'entity-asset');
     expect(entityAssets).toHaveLength(0);
   });
+
+  // --- S-007: Orphan edge type safety ---
+
+  it('orphan asset edges omit fieldName/targetType/targetId (optional fields)', () => {
+    const proj = withOverrides({
+      assets: [
+        { id: 'orphan-bg', kind: 'background', label: 'Unused BG', path: '/bg.png', tags: [] },
+      ],
+    });
+    const report = scanDependencies(proj);
+    const orphans = report.edges.filter((e) => e.domain === 'orphan-asset');
+    expect(orphans).toHaveLength(1);
+    expect(orphans[0].fieldName).toBeUndefined();
+    expect(orphans[0].targetType).toBeUndefined();
+    expect(orphans[0].targetId).toBeUndefined();
+    // Consumers can safely check with optional chaining
+    expect(orphans[0].targetType?.length ?? 0).toBe(0);
+  });
+
+  it('orphan pack edges omit fieldName/targetType/targetId (optional fields)', () => {
+    const proj = withOverrides({
+      assetPacks: [{ id: 'lonely-pack', label: 'Lonely Pack', version: '1.0.0', tags: [] }],
+    });
+    const report = scanDependencies(proj);
+    const orphans = report.edges.filter((e) => e.domain === 'orphan-pack');
+    expect(orphans).toHaveLength(1);
+    expect(orphans[0].fieldName).toBeUndefined();
+    expect(orphans[0].targetType).toBeUndefined();
+    expect(orphans[0].targetId).toBeUndefined();
+  });
+
+  // --- SB-004: null/undefined asset refs are silently skipped (optional fields) ---
+
+  it('does not report broken edge for zone with no backgroundId set', () => {
+    // Zone without backgroundId should produce no edge, not a broken edge
+    const report = scanDependencies(minimalProject);
+    const zoneAssets = report.edges.filter((e) => e.domain === 'zone-asset');
+    expect(zoneAssets).toHaveLength(0);
+  });
+
+  it('does not report broken edge for entity with no portraitId/spriteId', () => {
+    // Entity without portrait/sprite refs — optional, not broken
+    const report = scanDependencies(minimalProject);
+    const entityAssets = report.edges.filter((e) => e.domain === 'entity-asset');
+    expect(entityAssets).toHaveLength(0);
+  });
+
+  // --- SB-005: Orphan detection uses extracted helper ---
+
+  it('orphan detection covers all reference sources (zones, entities, items, landmarks)', () => {
+    const proj = withOverrides({
+      assets: [
+        { id: 'bg-1', kind: 'background', label: 'BG', path: '/bg.png', tags: [] },
+        { id: 'sp-1', kind: 'sprite', label: 'SP', path: '/sp.png', tags: [] },
+        { id: 'ic-1', kind: 'icon', label: 'IC', path: '/ic.png', tags: [] },
+        { id: 'ic-2', kind: 'icon', label: 'IC2', path: '/ic2.png', tags: [] },
+      ],
+      zones: [
+        { ...minimalProject.zones[0], backgroundId: 'bg-1' },
+        minimalProject.zones[1],
+      ],
+      entityPlacements: [
+        { ...minimalProject.entityPlacements[0], spriteId: 'sp-1' },
+      ],
+      itemPlacements: [
+        { ...minimalProject.itemPlacements[0], iconId: 'ic-1' },
+      ],
+      landmarks: [
+        { ...minimalProject.landmarks[0], iconId: 'ic-2' },
+      ],
+    });
+    const report = scanDependencies(proj);
+    const orphans = report.edges.filter((e) => e.domain === 'orphan-asset');
+    // All 4 assets are referenced — no orphans
+    expect(orphans).toHaveLength(0);
+  });
+
+  it('non-orphan edges always have fieldName/targetType/targetId defined', () => {
+    const proj = withOverrides({
+      assets: [
+        { id: 'bg-1', kind: 'background', label: 'Hall BG', path: '/bg.png', tags: [] },
+      ],
+      zones: [
+        { ...minimalProject.zones[0], backgroundId: 'bg-1' },
+        minimalProject.zones[1],
+      ],
+    });
+    const report = scanDependencies(proj);
+    const nonOrphans = report.edges.filter((e) => !e.domain.startsWith('orphan'));
+    for (const edge of nonOrphans) {
+      expect(edge.fieldName).toBeDefined();
+      expect(edge.targetType).toBeDefined();
+      expect(edge.targetId).toBeDefined();
+    }
+  });
 });

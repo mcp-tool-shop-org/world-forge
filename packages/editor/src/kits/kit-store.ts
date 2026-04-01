@@ -63,7 +63,7 @@ export const useKitStore = create<KitState>((set, get) => ({
   saveKit: (input) => {
     const now = new Date().toISOString();
     const kit: StarterKit = {
-      ...JSON.parse(JSON.stringify(input)),
+      ...structuredClone(input),
       id: `kit-${Date.now()}`,
       builtIn: false,
       source: input.source ?? 'local',
@@ -97,7 +97,7 @@ export const useKitStore = create<KitState>((set, get) => ({
     if (!original) return undefined;
     const now = new Date().toISOString();
     const copy: StarterKit = {
-      ...JSON.parse(JSON.stringify(original)),
+      ...structuredClone(original),
       id: `kit-${Date.now()}`,
       name: `${original.name} (copy)`,
       builtIn: false,
@@ -119,7 +119,7 @@ export const useKitStore = create<KitState>((set, get) => ({
       const existing = get().kits.find((k) => k.id === replaceId);
       if (existing && !existing.builtIn) {
         const updated: StarterKit = {
-          ...JSON.parse(JSON.stringify(input)),
+          ...structuredClone(input),
           id: replaceId,
           builtIn: false,
           createdAt: existing.createdAt,
@@ -134,7 +134,7 @@ export const useKitStore = create<KitState>((set, get) => ({
 
     // Import as new kit (suffix to avoid same-ms collision with saveKit)
     const kit: StarterKit = {
-      ...JSON.parse(JSON.stringify(input)),
+      ...structuredClone(input),
       id: `kit-${Date.now()}-i`,
       builtIn: false,
       createdAt: now,

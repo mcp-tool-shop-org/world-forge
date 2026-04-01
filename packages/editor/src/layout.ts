@@ -15,7 +15,10 @@ export interface ObjectBound {
   bottom: number;
 }
 
-// Entity fallback offset when gridX/gridY are not set (matches renderer convention)
+// Entity fallback offset (in grid cells) when gridX/gridY are not set.
+// Matches the renderer convention: entities without explicit positions are
+// rendered 2 cells inward from their zone's top-left corner. This offset
+// is shared by hit-testing.ts, snap.ts, and the Canvas renderer.
 const ENTITY_FALLBACK_OFFSET = 2;
 
 /** Compute bounding rects for all selected objects in grid coordinates. */

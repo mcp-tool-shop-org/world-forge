@@ -44,7 +44,7 @@ function cleanSummary(overrides: Partial<DependencySummary> = {}): DependencySum
 }
 
 function validResult(overrides: Partial<ValidationResult> = {}): ValidationResult {
-  return { valid: true, errors: [], ...overrides };
+  return { valid: true, errors: [], warningCount: 0, ...overrides };
 }
 
 // ── classifyHealth ──────────────────────────────────────────
@@ -341,6 +341,41 @@ describe('buildReviewSnapshot', () => {
     // Base is actually valid with 1 spawn + 1 zone, no broken deps
     expect(snap.health).toBe('ready');
     expect(snap.healthLabel).toBe('Ready to export');
+  });
+
+  // --- SB-009: District with missing baseMetrics defaults to zero ---
+
+  it('handles district with missing baseMetrics gracefully', () => {
+    const proj = clone({
+      zones: [
+        base.zones[0],
+        { ...base.zones[0], id: 'z2', name: 'Zone 2' },
+      ],
+      districts: [{
+        id: 'd1', name: 'Draft District', zoneIds: ['z1', 'z2'], tags: [],
+        baseMetrics: undefined as any,
+        economyProfile: { supplyCategories: [], scarcityDefaults: {} },
+      }],
+    });
+    const snap = buildReviewSnapshot(proj);
+    expect(snap.regions).toHaveLength(1);
+    expect(snap.regions[0].metrics).toEqual({ commerce: 0, morale: 0, safety: 0, stability: 0 });
+  });
+
+  it('handles district with partial baseMetrics gracefully', () => {
+    const proj = clone({
+      zones: [
+        base.zones[0],
+      ],
+      districts: [{
+        id: 'd1', name: 'Partial District', zoneIds: ['z1'], tags: [],
+        baseMetrics: { commerce: 42 } as any,
+        economyProfile: { supplyCategories: [], scarcityDefaults: {} },
+      }],
+    });
+    const snap = buildReviewSnapshot(proj);
+    expect(snap.regions[0].metrics.commerce).toBe(42);
+    expect(snap.regions[0].metrics.morale).toBe(0);
   });
 
   it('zonesWithEncounters counts distinct zones', () => {

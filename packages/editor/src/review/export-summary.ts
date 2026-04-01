@@ -11,8 +11,13 @@ export function summaryFilename(projectName: string, format: 'md' | 'json'): str
   return `${slug || 'project'}-review.${format}`;
 }
 
-/** Convert an enriched review snapshot to clean Markdown. */
-export function reviewSnapshotToMarkdown(snapshot: EnrichedReviewSnapshot): string {
+/**
+ * Convert an enriched review snapshot to clean Markdown.
+ * @param maxItems - Optional cap on how many regions/encounters/connections to render.
+ *   When set, excess items are summarized with a "... and N more" line.
+ *   Useful for large projects where the full summary would be unwieldy.
+ */
+export function reviewSnapshotToMarkdown(snapshot: EnrichedReviewSnapshot, maxItems?: number): string {
   const lines: string[] = [];
 
   lines.push(`# ${snapshot.projectName} — Review Summary`);
@@ -71,7 +76,8 @@ export function reviewSnapshotToMarkdown(snapshot: EnrichedReviewSnapshot): stri
   if (snapshot.regions.length > 0) {
     lines.push('## Regions');
     lines.push('');
-    for (const r of snapshot.regions) {
+    const regionSlice = maxItems != null ? snapshot.regions.slice(0, maxItems) : snapshot.regions;
+    for (const r of regionSlice) {
       lines.push(`### ${r.name}`);
       lines.push('');
       lines.push(`- **Zones:** ${r.zoneCount} — ${r.zoneNames.join(', ')}`);
@@ -85,6 +91,11 @@ export function reviewSnapshotToMarkdown(snapshot: EnrichedReviewSnapshot): stri
       if (r.itemCount > 0) lines.push(`- **Items:** ${r.itemCount}`);
       lines.push('');
     }
+    if (maxItems != null && snapshot.regions.length > maxItems) {
+      lines.push(`*... and ${snapshot.regions.length - maxItems} more region(s)*`);
+      lines.push('');
+    }
+
     // Unassigned zones
     if (snapshot.unassignedZoneNames && snapshot.unassignedZoneNames.length > 0) {
       lines.push(`### Unassigned Zones`);

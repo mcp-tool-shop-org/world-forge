@@ -32,7 +32,7 @@ export function countContent(p: WorldProject) {
 
 /** Create a new project from a StarterKit (deep clone + new ID). */
 export function createProjectFromKit(kit: StarterKit, projectName?: string): WorldProject {
-  const copy: WorldProject = JSON.parse(JSON.stringify(kit.project));
+  const copy: WorldProject = structuredClone(kit.project);
   copy.id = `project-${Date.now()}`;
   copy.name = projectName || kit.name;
   return copy;
@@ -109,7 +109,7 @@ export function TemplateManager({ onClose }: Props) {
   }, [name, loadProject, resetChecklist, setActiveKitId, onClose]);
 
   const handleOpenSample = useCallback((project: WorldProject) => {
-    const copy: WorldProject = JSON.parse(JSON.stringify(project));
+    const copy: WorldProject = structuredClone(project);
     copy.id = `sample-${Date.now()}`;
     loadProject(copy);
     resetChecklist();
@@ -117,7 +117,7 @@ export function TemplateManager({ onClose }: Props) {
   }, [loadProject, resetChecklist, onClose]);
 
   const handleOpenTemplate = useCallback((template: UserTemplate) => {
-    const copy: WorldProject = JSON.parse(JSON.stringify(template.project));
+    const copy: WorldProject = structuredClone(template.project);
     copy.id = `from-template-${Date.now()}`;
     copy.name = `${template.name} Project`;
     loadProject(copy);

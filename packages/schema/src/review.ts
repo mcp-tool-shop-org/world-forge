@@ -120,6 +120,8 @@ export interface ReviewSnapshot {
 
 // ── Mode labels ────────────────────────────────────────────
 
+// MAINTENANCE: When adding a new AuthoringMode in authoring-mode.ts,
+// add a label here. Otherwise the mode will display its raw key as the label.
 const MODE_LABELS: Record<string, string> = {
   dungeon: 'Dungeon Crawl',
   district: 'City District',
@@ -207,6 +209,10 @@ export function buildReviewSnapshot(project: WorldProject): ReviewSnapshot {
   };
 
   // Region summaries
+  // NOTE: Memoization opportunity — zoneMap and district-entity lookups could be
+  // cached if buildReviewSnapshot is called repeatedly on the same project
+  // (e.g. during editor live-refresh with sub-second intervals). Currently
+  // expected to be called once per user action, so rebuild cost is acceptable.
   const zoneMap = new Map(project.zones.map((z) => [z.id, z]));
   const regions: RegionSummary[] = project.districts.map((d) => {
     const districtZoneIds = new Set(d.zoneIds);
@@ -227,6 +233,10 @@ export function buildReviewSnapshot(project: WorldProject): ReviewSnapshot {
     // Items in this district's zones
     const itemCount = project.itemPlacements.filter((ip) => districtZoneIds.has(ip.zoneId)).length;
 
+    // Safely access baseMetrics — if missing (e.g. draft district), default all to 0.
+    // This avoids a runtime crash and surfaces the gap in the review output.
+    const metrics = d.baseMetrics ?? { commerce: 0, morale: 0, safety: 0, stability: 0 };
+
     return {
       id: d.id,
       name: d.name,
@@ -235,10 +245,10 @@ export function buildReviewSnapshot(project: WorldProject): ReviewSnapshot {
       controllingFaction: d.controllingFaction,
       tags: d.tags,
       metrics: {
-        commerce: d.baseMetrics.commerce,
-        morale: d.baseMetrics.morale,
-        safety: d.baseMetrics.safety,
-        stability: d.baseMetrics.stability,
+        commerce: metrics.commerce ?? 0,
+        morale: metrics.morale ?? 0,
+        safety: metrics.safety ?? 0,
+        stability: metrics.stability ?? 0,
       },
       entityCount: districtEntities.length,
       entityRoles,

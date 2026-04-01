@@ -29,7 +29,7 @@ console.log();
 
 const result = exportToEngine(chapelProject);
 
-if ('ok' in result && result.ok === false) {
+if ('success' in result && result.success === false) {
   console.error('EXPORT FAILED — validation errors:');
   for (const err of result.errors) {
     console.error(`  - ${err.message}`);

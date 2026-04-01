@@ -11,6 +11,7 @@ const USAGE = `Usage: world-forge-export <project.json> [options]
 Options:
   --out <dir>        Output directory (default: ./export)
   --validate-only    Validate without writing files
+  --verbose          Show detailed export diagnostics
   --help             Show this help`;
 
 async function main(): Promise<void> {
@@ -23,14 +24,24 @@ async function main(): Promise<void> {
 
   const projectPath = args[0];
   const validateOnly = args.includes('--validate-only');
+  const verbose = args.includes('--verbose');
   const outIdx = args.indexOf('--out');
-  const outDir = outIdx !== -1 && args[outIdx + 1] ? args[outIdx + 1] : './export';
+
+  // EB-002: Bounds check for --out flag argument
+  if (outIdx !== -1 && !args[outIdx + 1]) {
+    console.error('Error: --out requires a path value (e.g., --out ./my-export)');
+    process.exit(1);
+  }
+  const outDir = outIdx !== -1 ? args[outIdx + 1] : './export';
 
   // Read project file
-  const raw = await readFile(resolve(projectPath), 'utf-8').catch(() => {
-    console.error(`Error: cannot read "${projectPath}"`);
+  let raw: string;
+  try {
+    raw = await readFile(resolve(projectPath), 'utf-8');
+  } catch (err) {
+    console.error(`Error: cannot read "${projectPath}": ${(err as Error).message}`);
     process.exit(1);
-  });
+  }
 
   let project: WorldProject;
   try {
@@ -92,6 +103,25 @@ async function main(): Promise<void> {
       console.log(`  - ${w}`);
     }
   }
+
+  // EB-013: Verbose diagnostics for debugging export failures
+  if (verbose) {
+    console.log('\n--- Verbose Diagnostics ---');
+    console.log(`  Zones: ${exportResult.contentPack.zones.length}`);
+    console.log(`  Entities: ${exportResult.contentPack.entities.length}`);
+    console.log(`  Districts: ${exportResult.contentPack.districts.length}`);
+    console.log(`  Dialogues: ${exportResult.contentPack.dialogues.length}`);
+    console.log(`  Items: ${exportResult.contentPack.items.length}`);
+    console.log(`  Progression Trees: ${exportResult.contentPack.progressionTrees.length}`);
+    console.log(`  Encounter Anchors: ${exportResult.contentPack.encounterAnchors.length}`);
+    console.log(`  Faction Presences: ${exportResult.contentPack.factionPresences.length}`);
+    console.log(`  Pressure Hotspots: ${exportResult.contentPack.pressureHotspots.length}`);
+    console.log(`  Player Template: ${exportResult.contentPack.playerTemplate ? 'yes' : 'no'}`);
+    console.log(`  Build Catalog: ${exportResult.contentPack.buildCatalog ? 'yes' : 'no'}`);
+  }
 }
 
-main();
+main().catch((err: Error) => {
+  console.error(`Fatal: ${err.message}`);
+  process.exit(1);
+});

@@ -37,7 +37,13 @@ export interface ProjectDiff {
 }
 
 function deepEqual(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch (e) {
+    // Circular references or other stringify failures — fall back to reference equality.
+    console.warn('deepEqual: JSON.stringify failed, falling back to reference equality.', e);
+    return a === b;
+  }
 }
 
 function fieldDiff(field: string, a: unknown, b: unknown): FieldDiff | null {

@@ -35,11 +35,16 @@ export class ErrorBoundary extends Component<Props, State> {
       <div style={{ padding: 40, fontFamily: 'system-ui, sans-serif', color: '#e4e4e7', background: '#18181b', minHeight: '100vh' }}>
         <h1 style={{ margin: '0 0 12px', fontSize: 24 }}>Something went wrong</h1>
         <p style={{ margin: '0 0 20px', color: '#a1a1aa' }}>
-          The editor encountered an unexpected error. Your project data is preserved in local storage.
+          The editor encountered an unexpected error.{' '}
+          {/* EUB-015: localStorage access is wrapped in try-catch to handle SecurityError in restricted contexts */}
+          {(() => { try { return typeof localStorage !== 'undefined' && localStorage.length >= 0 ? 'Your project data is preserved in local storage.' : ''; } catch { return 'Local storage is unavailable \u2014 data may not be preserved.'; } })()}
         </p>
         {this.state.error && (
           <pre style={{ padding: 16, background: '#27272a', borderRadius: 8, overflow: 'auto', fontSize: 13, color: '#f87171', marginBottom: 20 }}>
             {this.state.error.message}
+            {(import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV && this.state.error.stack && (
+              <>{'\n\n'}{this.state.error.stack}</>
+            )}
           </pre>
         )}
         <div style={{ display: 'flex', gap: 12 }}>

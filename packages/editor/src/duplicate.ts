@@ -13,6 +13,8 @@ export interface SelectionSet {
 export interface DuplicateResult {
   project: WorldProject;
   newSelection: SelectionSet;
+  /** IDs that were in the selection but not found in the project (e.g. stale references). */
+  skipped: string[];
 }
 
 const DUPE_OFFSET = 2;
@@ -22,7 +24,9 @@ export function duplicateSelected(
   selection: SelectionSet,
 ): DuplicateResult {
   const count = selection.zones.length + selection.entities.length + selection.landmarks.length + selection.spawns.length + selection.encounters.length;
-  if (count === 0) return { project, newSelection: { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] } };
+  if (count === 0) return { project, newSelection: { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] }, skipped: [] };
+
+  const skipped: string[] = [];
 
   // Build old-to-new ID map
   const idMap = new Map<string, string>();
@@ -38,7 +42,7 @@ export function duplicateSelected(
   const newZones: Zone[] = [];
   for (const zoneId of selection.zones) {
     const zone = project.zones.find(z => z.id === zoneId);
-    if (!zone) continue;
+    if (!zone) { skipped.push(zoneId); continue; }
     newZones.push({
       ...zone,
       id: idMap.get(zoneId)!,
@@ -54,7 +58,7 @@ export function duplicateSelected(
   const newEntities: EntityPlacement[] = [];
   for (const entityId of selection.entities) {
     const ep = project.entityPlacements.find(e => e.entityId === entityId);
-    if (!ep) continue;
+    if (!ep) { skipped.push(entityId); continue; }
     newEntities.push({
       ...ep,
       entityId: idMap.get(entityId)!,
@@ -68,7 +72,7 @@ export function duplicateSelected(
   const newLandmarks: Landmark[] = [];
   for (const lmId of selection.landmarks) {
     const lm = project.landmarks.find(l => l.id === lmId);
-    if (!lm) continue;
+    if (!lm) { skipped.push(lmId); continue; }
     newLandmarks.push({
       ...lm,
       id: idMap.get(lmId)!,
@@ -82,7 +86,7 @@ export function duplicateSelected(
   const newSpawns: SpawnPoint[] = [];
   for (const spId of selection.spawns) {
     const sp = project.spawnPoints.find(s => s.id === spId);
-    if (!sp) continue;
+    if (!sp) { skipped.push(spId); continue; }
     newSpawns.push({
       ...sp,
       id: idMap.get(spId)!,
@@ -97,7 +101,7 @@ export function duplicateSelected(
   const newEncounters: EncounterAnchor[] = [];
   for (const encId of selection.encounters) {
     const enc = project.encounterAnchors.find(e => e.id === encId);
-    if (!enc) continue;
+    if (!enc) { skipped.push(encId); continue; }
     newEncounters.push({
       ...enc,
       id: idMap.get(encId)!,
@@ -118,6 +122,12 @@ export function duplicateSelected(
     return { ...d, zoneIds: [...d.zoneIds, ...dupeZonesInDistrict.map(zid => idMap.get(zid)!)] };
   });
 
+  if (skipped.length > 0) {
+    console.warn(
+      `duplicateSelected: ${skipped.length} item(s) not found in project and were skipped: ${skipped.join(', ')}`,
+    );
+  }
+
   return {
     project: {
       ...project,
@@ -136,5 +146,6 @@ export function duplicateSelected(
       spawns: newSpawns.map(s => s.id),
       encounters: newEncounters.map(e => e.id),
     },
+    skipped,
   };
 }

@@ -7,6 +7,8 @@ import { useEditorStore } from '../store/editor-store.js';
 import { diffProjects } from '../diff/diff-model.js';
 import type { FidelityDomain } from '@world-forge/export-ai-rpg';
 
+// EUB-019: DOMAIN_LABELS must stay exhaustive with the FidelityDomain union.
+// When adding a new FidelityDomain variant in export-ai-rpg, add a corresponding label here.
 const DOMAIN_LABELS: Record<FidelityDomain, string> = {
   zones: 'Zones', districts: 'Districts', entities: 'Entities', items: 'Items',
   dialogues: 'Dialogues', player: 'Player Template', builds: 'Build Catalog',

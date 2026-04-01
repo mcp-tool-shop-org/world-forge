@@ -34,15 +34,23 @@ export interface ExecuteStores {
   project: WorldProject;
 }
 
-function selectFromContext(ctx: HitResult, stores: ExecuteStores): void {
+function parseConnectionId(id: string): [string, string] | null {
+  const parts = id.split('::');
+  if (parts.length !== 2) return null;
+  return [parts[0], parts[1]];
+}
+
+function selectFromContext(ctx: HitResult, stores: ExecuteStores): boolean {
   if (ctx.type === 'connection') {
-    const [from, to] = ctx.id.split('::');
-    stores.selectConnection(from, to);
+    const parsed = parseConnectionId(ctx.id);
+    if (!parsed) return false;
+    stores.selectConnection(parsed[0], parsed[1]);
   } else if (ctx.type === 'zone') stores.selectZone(ctx.id, false);
   else if (ctx.type === 'entity') stores.selectEntity(ctx.id, false);
   else if (ctx.type === 'landmark') stores.selectLandmark(ctx.id, false);
   else if (ctx.type === 'spawn') stores.selectSpawn(ctx.id, false);
   else if (ctx.type === 'encounter') stores.selectEncounter(ctx.id, false);
+  return true;
 }
 
 function emptySelection() {
@@ -61,15 +69,16 @@ export function executeAction(
   switch (actionId) {
     case 'edit-props':
       if (!context) return { executed: false };
-      selectFromContext(context, stores);
+      if (!selectFromContext(context, stores)) return { executed: false };
       stores.setRightTab('map');
       return { executed: true };
 
     case 'delete':
       if (!context) return { executed: false };
       if (context.type === 'connection') {
-        const [from, to] = context.id.split('::');
-        stores.removeConnection(from, to);
+        const parsed = parseConnectionId(context.id);
+        if (!parsed) return { executed: false };
+        stores.removeConnection(parsed[0], parsed[1]);
       } else {
         selectFromContext(context, stores);
         const sel = emptySelection();
@@ -84,7 +93,7 @@ export function executeAction(
       if (!context || (context.type !== 'zone' && context.type !== 'entity' && context.type !== 'landmark')) {
         return { executed: false };
       }
-      selectFromContext(context, stores);
+      if (!selectFromContext(context, stores)) return { executed: false };
       {
         const sel = emptySelection();
         const key = context.type === 'zone' ? 'zones' : context.type === 'entity' ? 'entities' : 'landmarks';
@@ -102,6 +111,9 @@ export function executeAction(
       const items = stores.project.zones.map((z) => ({
         gridX: z.gridX, gridY: z.gridY, gridWidth: z.gridWidth, gridHeight: z.gridHeight,
       }));
+      // TODO: 800x600 is a hardcoded fallback canvas size. Ideally this should
+      // read the actual canvas element dimensions (e.g. from a canvasSize field
+      // in ExecuteStores) so fit-content adapts to the user's window size.
       const vp = frameBounds(items, tileSize, 800, 600);
       if (vp) stores.setViewport(vp);
       return { executed: true };
@@ -127,7 +139,9 @@ export function executeAction(
     case 'swap-direction':
       if (context?.type !== 'connection') return { executed: false };
       {
-        const [from, to] = context.id.split('::');
+        const parsed = parseConnectionId(context.id);
+        if (!parsed) return { executed: false };
+        const [from, to] = parsed;
         const conn = stores.project.connections.find(
           (c) => c.fromZoneId === from && c.toZoneId === to,
         );
@@ -146,6 +160,7 @@ export function executeAction(
 /**
  * Execute a macro — runs steps sequentially, each step = separate undo entry.
  * Aborts on first step that fails (context mismatch).
+ * Returns step-by-step results for feedback UI.
  */
 export function executeMacro(
   macro: SpeedPanelMacro,
@@ -153,11 +168,21 @@ export function executeMacro(
   stores: ExecuteStores,
 ): MacroExecutionResult {
   const total = macro.steps.length;
+  const steps: MacroExecutionResult['steps'] = [];
+
   for (let i = 0; i < total; i++) {
     const result = executeAction(macro.steps[i].actionId, context, stores);
+    steps.push({ action: macro.steps[i].actionId, success: result.executed });
     if (!result.executed) {
-      return { completed: i, total, abortedAt: i, reason: `Step ${i + 1} (${macro.steps[i].actionId}) failed — context mismatch` };
+      return {
+        completed: i, total,
+        abortedAt: i,
+        reason: `Step ${i + 1} (${macro.steps[i].actionId}) failed — context mismatch`,
+        steps,
+        totalSteps: total,
+        completedSteps: i,
+      };
     }
   }
-  return { completed: total, total };
+  return { completed: total, total, steps, totalSteps: total, completedSteps: total };
 }

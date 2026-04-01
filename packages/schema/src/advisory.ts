@@ -19,6 +19,17 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   const mode: AuthoringMode = project.mode ?? DEFAULT_MODE;
   const items: AdvisoryItem[] = [];
 
+  // ── Project metadata advisories ────────────────────────────
+  if (!project.author || project.author.trim().length === 0) {
+    items.push({ path: 'author', message: 'Consider specifying an author for attribution and discoverability.', severity: 'suggestion' });
+  }
+  if (!project.license || project.license.trim().length === 0) {
+    items.push({ path: 'license', message: 'Consider specifying a license (e.g. CC-BY-4.0, MIT, custom) so consumers know usage rights.', severity: 'suggestion' });
+  }
+  if (project.category !== undefined && (typeof project.category !== 'string' || project.category.trim().length === 0)) {
+    items.push({ path: 'category', message: 'Category is present but empty — provide a value like "fantasy", "sci-fi", or "horror".', severity: 'suggestion' });
+  }
+
   // ── Universal suggestions ──────────────────────────────────
   if (project.zones.length < 2) {
     items.push({ path: 'zones', message: 'Consider adding at least 2 zones for a richer world.', severity: 'suggestion' });
@@ -27,7 +38,30 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
     items.push({ path: 'connections', message: 'Zones exist but none are connected. Consider linking them.', severity: 'suggestion' });
   }
 
+  // ── Asset naming advisories ────────────────────────────────
+  for (const asset of project.assets) {
+    const label = asset.label;
+    const lower = label.toLowerCase();
+    const isGeneric =
+      lower.includes('untitled') ||
+      lower.includes('image') ||
+      lower.includes('sprite_copy') ||
+      /^\d+$/.test(label) ||
+      label.trim().length < 3;
+
+    if (isGeneric) {
+      items.push({
+        path: `assets[${asset.id}].label`,
+        message: `Asset '${label}' has a generic name — consider something descriptive like 'npc-merchant-portrait'`,
+        severity: 'suggestion',
+      });
+    }
+  }
+
   // ── Mode-specific suggestions ──────────────────────────────
+  // MAINTENANCE: When adding a new AuthoringMode in authoring-mode.ts,
+  // add a corresponding case below. Otherwise the new mode will silently
+  // produce no mode-specific suggestions.
   const kinds = project.connections.map((c) => c.kind);
 
   switch (mode) {
@@ -35,7 +69,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('secret')) {
         items.push({ path: 'connections', message: 'Dungeon tip: add a secret passage for hidden exploration.', severity: 'suggestion' });
       }
-      if (!project.pressureHotspots.some((h) => h.tags?.includes('trap') || h.pressureType.includes('trap'))) {
+      if (!project.pressureHotspots.some((h) => h.tags?.includes('trap') || (typeof h.pressureType === 'string' && h.pressureType.length > 0 && h.pressureType.includes('trap')))) {
         items.push({ path: 'pressureHotspots', message: 'Dungeon tip: consider adding hazard zones with traps.', severity: 'suggestion' });
       }
       break;

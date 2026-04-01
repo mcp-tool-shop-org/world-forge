@@ -7,7 +7,7 @@ import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
 import { connectionLabel } from '../connection-lines.js';
 import { getModeProfile } from '../mode-profiles.js';
-import { EmptyState } from './shared.js';
+import { EmptyState, VisibilityToggle } from './shared.js';
 
 /** Build the empty-state message for the object list. Pure, exported for testing. */
 export function emptyStateMessage(mode: import('@world-forge/schema').AuthoringMode | undefined): string {
@@ -24,7 +24,7 @@ export function ObjectListPanel() {
   const { project } = useProjectStore();
   const {
     selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
-    setSelection, setViewport, setRightTab,
+    setSelection, setViewport, setRightTab, hiddenIds,
   } = useEditorStore();
 
   const [filter, setFilter] = useState('');
@@ -38,7 +38,12 @@ export function ObjectListPanel() {
     const result: DistrictGroup[] = [];
 
     for (const d of project.districts) {
-      const zoneIds = d.zoneIds.filter((zid) => project.zones.some((z) => z.id === zid));
+      const zoneIds = d.zoneIds.filter((zid) => {
+        const exists = project.zones.some((z) => z.id === zid);
+        // EUB-014: log when orphaned zone IDs are filtered from districts
+        if (!exists) console.warn(`[ObjectListPanel] District "${d.name}" references orphaned zone "${zid}" — filtered out.`);
+        return exists;
+      });
       for (const zid of zoneIds) assigned.add(zid);
       result.push({ districtId: d.id, districtName: d.name, zoneIds });
     }
@@ -239,8 +244,10 @@ export function ObjectListPanel() {
                       style={{
                         padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                         borderLeft: zoneSelected ? '2px solid #58a6ff' : '2px solid transparent',
+                        opacity: hiddenIds.has(zid) ? 0.4 : 1,
                       }}
                     >
+                      <VisibilityToggle id={zid} />
                       {childCount > 0 && (
                         <span
                           onClick={(e) => { e.stopPropagation(); toggleZone(zid); }}
@@ -270,8 +277,10 @@ export function ObjectListPanel() {
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #3fb950' : '2px solid transparent',
+                                opacity: hiddenIds.has(ep.entityId) ? 0.4 : 1,
                               }}
                             >
+                              <VisibilityToggle id={ep.entityId} />
                               <span style={{ color: '#3fb950', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>E</span>
                               <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{ep.name ?? ep.entityId}</span>
                               <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{ep.role}</span>
@@ -288,8 +297,10 @@ export function ObjectListPanel() {
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #d2a8ff' : '2px solid transparent',
+                                opacity: hiddenIds.has(lm.id) ? 0.4 : 1,
                               }}
                             >
+                              <VisibilityToggle id={lm.id} />
                               <span style={{ color: '#d2a8ff', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>L</span>
                               <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{lm.name}</span>
                             </div>
@@ -305,8 +316,10 @@ export function ObjectListPanel() {
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #f0883e' : '2px solid transparent',
+                                opacity: hiddenIds.has(sp.id) ? 0.4 : 1,
                               }}
                             >
+                              <VisibilityToggle id={sp.id} />
                               <span style={{ color: '#f0883e', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>S</span>
                               <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{sp.id}</span>
                               {sp.isDefault && <span style={{ fontSize: 9, color: '#8b949e' }}>(default)</span>}
@@ -323,8 +336,10 @@ export function ObjectListPanel() {
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #da3633' : '2px solid transparent',
+                                opacity: hiddenIds.has(enc.id) ? 0.4 : 1,
                               }}
                             >
+                              <VisibilityToggle id={enc.id} />
                               <span style={{ color: '#da3633', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>Enc</span>
                               <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{enc.id}</span>
                               <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{enc.encounterType}</span>

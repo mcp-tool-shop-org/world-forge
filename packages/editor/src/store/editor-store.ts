@@ -2,10 +2,19 @@
 
 import { create } from 'zustand';
 import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
-import type { WorldProject } from '@world-forge/schema';
+import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor } from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 import type { HitResult } from '../hit-testing.js';
+
+/** Deep-cloned selection data for clipboard operations. */
+export interface ClipboardData {
+  zones: Zone[];
+  entities: EntityPlacement[];
+  landmarks: Landmark[];
+  spawns: SpawnPoint[];
+  encounters: EncounterAnchor[];
+}
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'deps' | 'review' | 'guide' | 'import-summary' | 'diff' | 'objects' | 'presets';
@@ -70,6 +79,7 @@ interface EditorState {
   showSpawns: boolean;
   showBackgrounds: boolean;
   showAmbient: boolean;
+  showMinimap: boolean;
   viewport: ViewportState;
   selection: SelectionSet;
   hoveredZoneId: string | null;
@@ -111,6 +121,7 @@ interface EditorState {
   toggleSpawns: () => void;
   toggleBackgrounds: () => void;
   toggleAmbient: () => void;
+  toggleMinimap: () => void;
   setViewport: (vp: Partial<ViewportState>) => void;
   resetViewport: () => void;
   dismissChecklist: () => void;
@@ -123,6 +134,22 @@ interface EditorState {
   showSearch: boolean;
   setShowSearch: (show: boolean) => void;
 
+  // Clipboard
+  clipboard: ClipboardData | null;
+  copySelection: (project: WorldProject) => void;
+  getClipboard: () => ClipboardData | null;
+
+  // Per-object visibility (FT-009)
+  hiddenIds: Set<string>;
+  toggleHidden: (id: string) => void;
+  isHidden: (id: string) => boolean;
+  showAll: () => void;
+  hideSelected: () => void;
+
+  // Performance stats overlay (FT-010)
+  showPerfStats: boolean;
+  togglePerfStats: () => void;
+
   // Speed panel (double-right-click command palette)
   showSpeedPanel: boolean;
   speedPanelPosition: { x: number; y: number } | null;
@@ -133,7 +160,7 @@ interface EditorState {
   toggleSpeedPanelEditMode: () => void;
 }
 
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = create<EditorState>((set, get) => ({
   activeTool: 'select',
   rightTab: 'map',
   buildsSubTab: 'config',
@@ -147,6 +174,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   showSpawns: true,
   showBackgrounds: true,
   showAmbient: true,
+  showMinimap: true,
   viewport: { panX: 0, panY: 0, zoom: 1 },
   selection: { ...EMPTY_SELECTION },
   hoveredZoneId: null,
@@ -223,6 +251,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   toggleSpawns: () => set((s) => ({ showSpawns: !s.showSpawns })),
   toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
   toggleAmbient: () => set((s) => ({ showAmbient: !s.showAmbient })),
+  toggleMinimap: () => set((s) => ({ showMinimap: !s.showMinimap })),
   setViewport: (vp) => set((s) => ({ viewport: { ...s.viewport, ...vp } })),
   resetViewport: () => set({ viewport: { ...DEFAULT_VIEWPORT } }),
   dismissChecklist: () => set({ checklistDismissed: true }),
@@ -235,6 +264,51 @@ export const useEditorStore = create<EditorState>((set) => ({
   setImportSnapshot: (project) => set({ importSnapshot: project }),
   showSearch: false,
   setShowSearch: (show) => set({ showSearch: show }),
+
+  clipboard: null,
+  copySelection: (project) => set((s) => {
+    const sel = s.selection;
+    const zones = project.zones.filter((z) => sel.zones.includes(z.id)).map((z) => structuredClone(z));
+    const entities = project.entityPlacements.filter((e) => sel.entities.includes(e.entityId)).map((e) => structuredClone(e));
+    const landmarks = project.landmarks.filter((l) => sel.landmarks.includes(l.id)).map((l) => structuredClone(l));
+    const spawns = project.spawnPoints.filter((sp) => sel.spawns.includes(sp.id)).map((sp) => structuredClone(sp));
+    const encounters = project.encounterAnchors.filter((enc) => sel.encounters.includes(enc.id)).map((enc) => structuredClone(enc));
+    if (zones.length + entities.length + landmarks.length + spawns.length + encounters.length === 0) return {};
+    return { clipboard: { zones, entities, landmarks, spawns, encounters } };
+  }),
+  getClipboard: () => get().clipboard,
+
+  // FT-009: Per-object visibility (persisted to localStorage)
+  hiddenIds: (() => {
+    try {
+      const raw = localStorage.getItem('wf-hidden-ids');
+      return raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+    } catch { return new Set<string>(); }
+  })(),
+  toggleHidden: (id) => set((s) => {
+    const next = new Set(s.hiddenIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    try { localStorage.setItem('wf-hidden-ids', JSON.stringify([...next])); } catch { /* ignore */ }
+    return { hiddenIds: next };
+  }),
+  isHidden: (id) => get().hiddenIds.has(id),
+  showAll: () => {
+    try { localStorage.removeItem('wf-hidden-ids'); } catch { /* ignore */ }
+    set({ hiddenIds: new Set<string>() });
+  },
+  hideSelected: () => set((s) => {
+    const sel = s.selection;
+    const ids = [...sel.zones, ...sel.entities, ...sel.landmarks, ...sel.spawns, ...sel.encounters];
+    if (ids.length === 0) return {};
+    const next = new Set(s.hiddenIds);
+    for (const id of ids) next.add(id);
+    try { localStorage.setItem('wf-hidden-ids', JSON.stringify([...next])); } catch { /* ignore */ }
+    return { hiddenIds: next };
+  }),
+
+  // FT-010: Performance stats overlay
+  showPerfStats: false,
+  togglePerfStats: () => set((s) => ({ showPerfStats: !s.showPerfStats })),
 
   showSpeedPanel: false,
   speedPanelPosition: null,

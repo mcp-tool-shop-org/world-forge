@@ -59,9 +59,20 @@ export function convertEntities(project: WorldProject): EntityBlueprint[] {
       blueprint.baseResources = { ...ep.resources } as Record<string, number>;
     }
 
-    // Pass through custom fields
-    if (ep.custom && Object.keys(ep.custom).length > 0) {
-      (blueprint as Record<string, unknown>).custom = { ...ep.custom };
+    // Pass through custom fields (validate object type + JSON-serializable values)
+    if (ep.custom && typeof ep.custom === 'object' && !Array.isArray(ep.custom) && Object.keys(ep.custom).length > 0) {
+      const sanitized: Record<string, string> = {};
+      for (const [k, v] of Object.entries(ep.custom)) {
+        try {
+          JSON.stringify(v);
+          sanitized[k] = v;
+        } catch {
+          console.warn(`[convert-entities] Entity '${ep.name || ep.entityId}': custom field '${k}' has a non-JSON-serializable value (${typeof v}) — skipping this field.`);
+        }
+      }
+      if (Object.keys(sanitized).length > 0) {
+        (blueprint as Record<string, unknown>).custom = sanitized;
+      }
     }
 
     return blueprint;

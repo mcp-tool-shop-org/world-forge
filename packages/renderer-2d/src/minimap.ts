@@ -26,6 +26,14 @@ export class MinimapRenderer {
   update(zones: Zone[], districts: District[], viewportRect?: { x: number; y: number; w: number; h: number }): void {
     this.container.removeChildren();
     const { size, gridWidth, gridHeight } = this.opts;
+
+    if (gridWidth === 0 || gridHeight === 0) {
+      console.warn(
+        `MinimapRenderer.update: skipping render — gridWidth (${gridWidth}) or gridHeight (${gridHeight}) is zero, which would cause division by zero.`,
+      );
+      return;
+    }
+
     const scaleX = size / gridWidth;
     const scaleY = size / gridHeight;
 

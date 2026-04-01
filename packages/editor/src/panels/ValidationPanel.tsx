@@ -22,6 +22,8 @@ const domainLabels: Record<Domain, string> = {
   deps: 'Dependencies',
 };
 
+// EUB-006: domainOrder must stay exhaustive — when adding a new Domain variant to
+// validation-helpers.ts, add a corresponding entry here and in domainLabels above.
 const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'deps'];
 
 export function ValidationPanel() {

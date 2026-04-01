@@ -15,6 +15,12 @@ const KIND_COLORS: Record<AssetKind, string> = {
 
 const KINDS: AssetKind[] = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
 
+// FT-028: Generic name patterns that should trigger a naming advisory
+const GENERIC_NAME_PATTERNS = /^(\d+|.*\b(image|sprite|copy|untitled)\b.*)/i;
+export function isGenericAssetName(name: string): boolean {
+  return GENERIC_NAME_PATTERNS.test(name.trim());
+}
+
 const labelStyle: React.CSSProperties = labelText;
 
 export function AssetPanel() {
@@ -24,6 +30,8 @@ export function AssetPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedPackId, setExpandedPackId] = useState<string | null>(null);
   const [groupByPack, setGroupByPack] = useState(false);
+  // FT-027: track which asset is currently being dragged
+  const [draggingAssetId, setDraggingAssetId] = useState<string | null>(null);
 
   const assets = project.assets.filter((a) => {
     if (filterKind && a.kind !== filterKind) return false;
@@ -72,13 +80,23 @@ export function AssetPanel() {
     return (
       <div
         key={a.id}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('application/x-wf-asset', a.id);
+          e.dataTransfer.effectAllowed = 'copy';
+          setDraggingAssetId(a.id);
+        }}
+        onDragEnd={() => setDraggingAssetId(null)}
         style={{
-          border: '1px solid #30363d', borderRadius: 4, padding: 8, marginBottom: 4,
-          background: isExpanded ? '#161b22' : '#0d1117', cursor: 'pointer',
+          border: draggingAssetId === a.id ? '1px solid #58a6ff' : '1px solid #30363d',
+          borderRadius: 4, padding: 8, marginBottom: 4,
+          background: isExpanded ? '#161b22' : '#0d1117', cursor: 'grab',
         }}
         onClick={() => setExpandedId(isExpanded ? null : a.id)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* FT-027: Drag grip handle */}
+          <span style={{ fontSize: 10, color: '#484f58', cursor: 'grab', userSelect: 'none' }} title="Drag onto a zone or entity to assign this asset">{'\u2630'}</span>
           <span style={{
             fontSize: 10, fontWeight: 600, color: '#fff', padding: '1px 6px',
             borderRadius: 3, background: KIND_COLORS[a.kind],
@@ -86,6 +104,15 @@ export function AssetPanel() {
             {a.kind}
           </span>
           <span style={{ fontSize: 12, color: '#c9d1d9', flex: 1 }}>{a.label}</span>
+          {/* FT-028: Generic name advisory */}
+          {isGenericAssetName(a.label) && (
+            <span
+              title="Consider a descriptive name like 'npc-merchant-01'"
+              style={{ fontSize: 10, color: '#d29922', cursor: 'help' }}
+            >
+              {'\u26A0'} name
+            </span>
+          )}
           {isOrphan && <span style={{ fontSize: 10, color: '#d29922' }}>unused</span>}
           <button
             onClick={(e) => { e.stopPropagation(); removeAsset(a.id); }}
@@ -292,6 +319,17 @@ export function AssetPanel() {
           assets.map(renderAssetCard)
         )}
       </div>
+
+      {/* FT-027: Drag-and-drop hint tooltip */}
+      {draggingAssetId && (
+        <div style={{
+          position: 'sticky', bottom: 0, fontSize: 10, color: '#58a6ff',
+          background: 'rgba(22,27,34,0.95)', padding: '6px 8px', borderRadius: 4,
+          border: '1px solid #30363d', marginTop: 4, textAlign: 'center',
+        }}>
+          Drag onto a zone or entity to assign this asset
+        </div>
+      )}
 
       {/* Diagnostics */}
       {(orphanCount > 0 || orphanedPackCount > 0 || unassignedCount > 0) && (

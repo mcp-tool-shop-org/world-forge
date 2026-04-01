@@ -82,6 +82,27 @@ export function EmptyState({ title, description, actions }: {
   );
 }
 
+// ── Visibility Toggle (FT-009) ────────────────────────────────
+
+/** Eye icon button for toggling per-object visibility on the canvas. */
+export function VisibilityToggle({ id }: { id: string }) {
+  const hidden = useEditorStore((s) => s.hiddenIds.has(id));
+  const toggleHidden = useEditorStore((s) => s.toggleHidden);
+  return (
+    <button
+      data-testid={`visibility-toggle-${id}`}
+      onClick={(e) => { e.stopPropagation(); toggleHidden(id); }}
+      title={hidden ? 'Show on canvas' : 'Hide on canvas'}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px',
+        fontSize: 12, color: hidden ? '#484f58' : '#8b949e', lineHeight: 1,
+      }}
+    >
+      {hidden ? '\u25C9' : '\u25CE'}
+    </button>
+  );
+}
+
 // ── Focus Highlight Hook ───────────────────────────────────────
 
 /** Scrolls into view and pulses the border when focusTarget matches the given domain. */

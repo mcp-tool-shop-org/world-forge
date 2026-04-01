@@ -2,6 +2,11 @@
 
 import { create } from 'zustand';
 
+/**
+ * Union of all known modal identifiers. Add new entries here when introducing
+ * new modals — the type system will surface any switch/if branches that need
+ * updating. `null` means no modal is active.
+ */
 export type ModalId = 'export' | 'import' | 'template-manager' | 'save-template' | 'save-kit' | null;
 
 interface ModalState {

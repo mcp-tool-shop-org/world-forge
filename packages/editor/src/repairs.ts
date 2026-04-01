@@ -29,7 +29,8 @@ function clearAssetRef(edge: DependencyEdge): RepairAction {
     edge,
     label: `Clear ${edge.fieldName}`,
     apply: (p) => {
-      const field = edge.fieldName;
+      const field = edge.fieldName as string;
+      if (!field) return p;
       const id = edge.sourceId;
       const st = edge.sourceType;
 
@@ -76,7 +77,8 @@ function relinkAsset(edge: DependencyEdge, newAssetId: string, newAssetLabel: st
     edge,
     label: `Relink to "${newAssetLabel}"`,
     apply: (p) => {
-      const field = edge.fieldName;
+      const field = edge.fieldName as string;
+      if (!field) return p;
       const id = edge.sourceId;
       const st = edge.sourceType;
 
@@ -252,6 +254,10 @@ export function repairsForEdge(edge: DependencyEdge, project: WorldProject): Rep
     return repairs;
   }
 
+  // If we reach here, the edge has a status/domain combination we don't
+  // handle yet (e.g. new edge domains added to the schema). Returning an
+  // empty array is intentional — callers display "no repairs available."
+  // When adding new edge domains, add a corresponding repair branch above.
   return repairs;
 }
 

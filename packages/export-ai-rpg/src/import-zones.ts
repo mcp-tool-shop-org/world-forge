@@ -20,6 +20,16 @@ export function importZones(
   const fidelity: FidelityEntry[] = [];
 
   const cols = Math.max(1, Math.ceil(Math.sqrt(engineZones.length)));
+  const rows = Math.ceil(engineZones.length / cols);
+
+  if (cols > 20 || rows > 20) {
+    fidelity.push({
+      level: 'approximated', domain: 'zones', severity: 'warning',
+      fieldPath: 'grid-layout',
+      message: `Auto-layout grid is ${cols}\u00d7${rows} — exceeds 20\u00d720 recommended maximum. Consider grouping zones into districts.`,
+      reason: 'grid-exceeds-recommended-size',
+    });
+  }
 
   const zones = engineZones.map((ez, i) => {
     const col = i % cols;

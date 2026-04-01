@@ -29,6 +29,17 @@ export interface SnapEdge {
 
 export const SNAP_RADIUS = 1; // grid cells
 
+/** Colour for snap guide lines (cyan-400). */
+export const SNAP_GUIDE_COLOR = '#22d3ee';
+
+/** Dash pattern [dash, gap] for snap guide lines. */
+export const SNAP_GUIDE_DASH: readonly [number, number] = [6, 4];
+
+/** Return the absolute pixel distance between a snap candidate edge and the dragged edge. */
+export function computeSnapDistance(snapEdge: number, draggedEdge: number): number {
+  return Math.abs(snapEdge - draggedEdge);
+}
+
 // Entity fallback offset (matches layout.ts)
 const ENTITY_FALLBACK_OFFSET = 2;
 
@@ -89,7 +100,14 @@ export function getNonSelectedEdges(
   return edges;
 }
 
-/** Compute snapped delta and guide lines for a drag operation. */
+/**
+ * Compute snapped delta and guide lines for a drag operation.
+ *
+ * Snap priority: the closest candidate edge within SNAP_RADIUS wins.
+ * When two candidates are equidistant, the one encountered first in the
+ * iteration order (i.e. array order from getNonSelectedEdges) acts as
+ * the tiebreaker. X and Y axes are resolved independently.
+ */
 export function computeSnap(
   project: WorldProject,
   selection: SelectionSet,

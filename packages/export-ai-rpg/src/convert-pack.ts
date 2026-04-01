@@ -38,6 +38,9 @@ const DIFFICULTY_MAP: Record<string, PackDifficulty> = {
   hard: 'advanced',
 };
 
+// EB-011: DEFAULT_MODULES must stay in sync with @ai-rpg-engine/core module registry.
+// When the engine adds or removes core modules, update this list to match.
+// Current baseline: engine v2.0.0 standard module set.
 const DEFAULT_MODULES = [
   'combat-core',
   'movement-core',
@@ -73,9 +76,20 @@ export function convertManifest(project: WorldProject): GameManifest {
 
 export function convertPackMeta(project: WorldProject): PackMetadata {
   const genre = GENRE_MAP[project.genre] ?? 'fantasy';
+  const invalidTones: string[] = [];
   const tones = project.tones
-    .map((t) => TONE_MAP[t])
+    .map((t) => {
+      const mapped = TONE_MAP[t];
+      if (!mapped) invalidTones.push(t);
+      return mapped;
+    })
     .filter((t): t is PackTone => t !== undefined);
+  if (invalidTones.length > 0) {
+    console.warn(`[convert-pack] Unrecognized tone values skipped: ${invalidTones.map((t) => `'${t}'`).join(', ')}. Valid tones: ${Object.keys(TONE_MAP).join(', ')}`);
+  }
+  if (tones.length === 0) {
+    console.warn(`[convert-pack] No valid tones mapped from project tones [${project.tones.join(', ')}] — falling back to 'atmospheric'`);
+  }
   const difficulty = DIFFICULTY_MAP[project.difficulty] ?? 'intermediate';
 
   const tags: string[] = [];

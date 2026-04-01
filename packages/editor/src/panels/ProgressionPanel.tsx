@@ -1,7 +1,8 @@
 // ProgressionPanel.tsx — progression tree editor
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
+import { useEditorStore } from '../store/editor-store.js';
 import { EmptyState, useFocusHighlight } from './shared.js';
 import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, buttonRemove as xBtnStyle, cardItem as itemStyle, hintText as hintStyle } from '../ui/styles.js';
 import type { ProgressionNode, ProgressionEffect } from '@world-forge/schema';
@@ -19,9 +20,59 @@ const STARTER_TREE = {
 export function ProgressionPanel() {
   const { project, addProgressionTree, updateProgressionTree, removeProgressionTree,
     addProgressionNode, updateProgressionNode, removeProgressionNode } = useProjectStore();
+  const { selectEntity, setRightTab } = useEditorStore();
   const focusRef = useFocusHighlight('progression');
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+
+  // FT-025: Cross-reference progression nodes with entities that reference them.
+  // Scans dialogue effects for grant-verb/grant-ability that match node IDs,
+  // then links back to the dialogue's speaker entities.
+  const nodeEntityRefs = useMemo(() => {
+    const refs = new Map<string, { entityId: string; name: string }[]>();
+
+    // Collect all node IDs across all trees for quick lookup
+    const allNodeIds = new Set<string>();
+    for (const tree of project.progressionTrees) {
+      for (const node of tree.nodes) allNodeIds.add(node.id);
+    }
+    if (allNodeIds.size === 0) return refs;
+
+    // Scan dialogues for effects that grant abilities matching node IDs
+    for (const dialogue of project.dialogues) {
+      // Collect which node IDs this dialogue grants
+      const grantedNodeIds = new Set<string>();
+      for (const dn of Object.values(dialogue.nodes)) {
+        for (const eff of (dn.effects ?? [])) {
+          if (eff.type === 'grant-ability' || eff.type === 'grant-verb') {
+            const val = String(eff.params?.ability ?? eff.params?.verb ?? '');
+            if (val && allNodeIds.has(val)) grantedNodeIds.add(val);
+          }
+        }
+      }
+      if (grantedNodeIds.size === 0) continue;
+
+      // Find entities that are speakers in this dialogue
+      const speakerEntityIds = new Set<string>();
+      for (const speaker of dialogue.speakers) {
+        const ep = project.entityPlacements.find((e) => e.entityId === speaker || e.name === speaker);
+        if (ep) speakerEntityIds.add(ep.entityId);
+      }
+
+      // Link granted nodes to speaker entities
+      for (const nodeId of grantedNodeIds) {
+        const existing = refs.get(nodeId) ?? [];
+        for (const eid of speakerEntityIds) {
+          if (!existing.some((r) => r.entityId === eid)) {
+            const ep = project.entityPlacements.find((e) => e.entityId === eid);
+            existing.push({ entityId: eid, name: ep?.name ?? eid });
+          }
+        }
+        refs.set(nodeId, existing);
+      }
+    }
+    return refs;
+  }, [project.entityPlacements, project.progressionTrees, project.dialogues]);
 
   const trees = project.progressionTrees;
   const selectedTree = trees.find((t) => t.id === selectedTreeId);
@@ -95,8 +146,23 @@ export function ProgressionPanel() {
                   onDone={() => setEditingNodeId(null)} />
               ) : (
                 <div onClick={() => setEditingNodeId(node.id)} style={{ cursor: 'pointer' }}>
-                  <div style={{ fontSize: 12, color: '#c9d1d9' }}>
+                  <div style={{ fontSize: 12, color: '#c9d1d9', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {node.name} <span style={{ fontSize: 10, color: '#d29922' }}>({node.cost} {selectedTree.currency})</span>
+                    {/* FT-025: cross-link hint */}
+                    {(nodeEntityRefs.get(node.id)?.length ?? 0) > 0 && (
+                      <span
+                        data-testid={`cross-link-${node.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const first = nodeEntityRefs.get(node.id)?.[0];
+                          if (first) { selectEntity(first.entityId, false); setRightTab('map'); }
+                        }}
+                        style={{ fontSize: 10, color: '#58a6ff', cursor: 'pointer' }}
+                        title={`Referenced by: ${nodeEntityRefs.get(node.id)!.map((r) => r.name).join(', ')}`}
+                      >
+                        (used by {nodeEntityRefs.get(node.id)!.length} entit{nodeEntityRefs.get(node.id)!.length === 1 ? 'y' : 'ies'})
+                      </span>
+                    )}
                   </div>
                   {node.requires && node.requires.length > 0 && (
                     <div style={{ fontSize: 10, color: '#8b949e' }}>requires: {node.requires.join(', ')}</div>

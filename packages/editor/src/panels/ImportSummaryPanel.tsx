@@ -26,15 +26,37 @@ const SEVERITY_ICONS = {
   error: '\u2716',
 };
 
+/** FT-019: Map common fidelity reasons to actionable repair hints. */
+function repairHint(entry: FidelityEntry): string | null {
+  if (entry.severity !== 'warning' && entry.severity !== 'error') return null;
+  const msg = entry.message.toLowerCase();
+  if (entry.level === 'dropped' || msg.includes('dropped') || msg.includes('removed') || msg.includes('lost')) {
+    return 'Re-add this data manually after import.';
+  }
+  if (entry.level === 'approximated' || msg.includes('approximat') || msg.includes('converted') || msg.includes('mapped')) {
+    return 'Review the imported values for accuracy.';
+  }
+  if (msg.includes('missing') || msg.includes('not found')) {
+    return 'The referenced item may need to be recreated.';
+  }
+  if (msg.includes('truncat')) {
+    return 'Check if important data was cut off during import.';
+  }
+  return 'Review this entry and correct manually if needed.';
+}
+
 export function ImportSummaryPanel() {
   const report = useEditorStore((s) => s.importFidelity);
   const format = useEditorStore((s) => s.importSourceFormat);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!report) {
+    // EUB-020: log why fidelity report is null for debugging
+    console.warn('[ImportSummaryPanel] No fidelity report available. This tab is only populated after importing a project via the Import modal.');
     return (
       <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
-        No import data. Import a project to see fidelity details.
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>No import data</div>
+        <div>Import a project via the Import button to see a fidelity breakdown showing what was preserved, approximated, or dropped during conversion.</div>
       </div>
     );
   }
@@ -120,18 +142,28 @@ export function ImportSummaryPanel() {
             </div>
             {!isCollapsed && (
               <div style={{ paddingLeft: 12, marginTop: 4 }}>
-                {domainEntries.map((entry, i) => (
-                  <div key={i} style={{
-                    fontSize: 11, padding: '2px 0', color: LEVEL_COLORS[entry.level],
-                    display: 'flex', gap: 4, alignItems: 'flex-start',
-                  }}>
-                    <span>{SEVERITY_ICONS[entry.severity]}</span>
-                    <span>
-                      {entry.entityId && <span style={{ color: '#8b949e' }}>{entry.entityId}: </span>}
-                      {entry.message}
-                    </span>
-                  </div>
-                ))}
+                {domainEntries.map((entry, i) => {
+                  const hint = repairHint(entry);
+                  return (
+                    <div key={i} style={{ padding: '2px 0' }}>
+                      <div style={{
+                        fontSize: 11, color: LEVEL_COLORS[entry.level],
+                        display: 'flex', gap: 4, alignItems: 'flex-start',
+                      }}>
+                        <span>{SEVERITY_ICONS[entry.severity]}</span>
+                        <span>
+                          {entry.entityId && <span style={{ color: '#8b949e' }}>{entry.entityId}: </span>}
+                          {entry.message}
+                        </span>
+                      </div>
+                      {hint && (
+                        <div data-testid="repair-hint" style={{ fontSize: 10, color: '#8b949e', fontStyle: 'italic', paddingLeft: 18, marginTop: 1 }}>
+                          {hint}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

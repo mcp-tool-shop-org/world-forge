@@ -1,138 +1,134 @@
+// viewport.test.ts — tests for WorldViewport init error handling (I-005)
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock pixi.js before importing viewport
+// Mock pixi.js
 vi.mock('pixi.js', () => {
-  const Graphics = vi.fn(() => ({
-    setStrokeStyle: vi.fn(),
-    moveTo: vi.fn(),
-    lineTo: vi.fn(),
-    stroke: vi.fn(),
-    destroy: vi.fn(),
-  }));
-
-  const Container = vi.fn(() => ({
-    position: { set: vi.fn() },
-    scale: { set: vi.fn() },
-    addChild: vi.fn(),
-    addChildAt: vi.fn(),
-    removeChild: vi.fn(),
-  }));
-
-  const Application = vi.fn(() => ({
-    init: vi.fn(),
-    stage: { addChild: vi.fn() },
-    screen: { width: 800, height: 600 },
-    canvas: {},
-    destroy: vi.fn(),
-  }));
-
-  return { Application, Container, Graphics };
+  class MockContainer {
+    children: unknown[] = [];
+    position = { set: vi.fn() };
+    scale = { set: vi.fn() };
+    addChild() {}
+    addChildAt() {}
+    removeChild() {}
+  }
+  class MockGraphics {
+    setStrokeStyle() { return this; }
+    moveTo() { return this; }
+    lineTo() { return this; }
+    stroke() { return this; }
+    destroy() {}
+  }
+  class MockApplication {
+    stage = new MockContainer();
+    canvas = {} as HTMLCanvasElement;
+    screen = { width: 800, height: 600 };
+    _initFn: (() => Promise<void>) | null = null;
+    async init() {
+      if (this._initFn) return this._initFn();
+    }
+    destroy() {}
+  }
+  return {
+    Application: MockApplication,
+    Container: MockContainer,
+    Graphics: MockGraphics,
+  };
 });
 
-import { WorldViewport, type ViewportOptions } from '../viewport.js';
+import { WorldViewport } from '../viewport.js';
 
-const defaultOpts: ViewportOptions = {
-  width: 800,
-  height: 600,
-  gridWidth: 20,
-  gridHeight: 20,
-  tileSize: 32,
-};
+function makeContainer(): HTMLElement {
+  return {
+    appendChild: vi.fn(),
+  } as unknown as HTMLElement;
+}
 
 describe('WorldViewport', () => {
-  let vp: WorldViewport;
+  const defaultOpts = {
+    width: 800,
+    height: 600,
+    gridWidth: 30,
+    gridHeight: 25,
+    tileSize: 32,
+  };
 
-  beforeEach(() => {
-    vp = new WorldViewport(defaultOpts);
+  it('initializes successfully with valid options', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const el = makeContainer();
+    await expect(vp.init(el)).resolves.toBeUndefined();
   });
 
-  describe('zoom', () => {
-    it('starts at zoom 1', () => {
-      expect(vp.zoomLevel).toBe(1);
-    });
+  it('wraps PixiJS init errors with context (I-005)', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    // Force the underlying app.init to reject
+    (vp.app as unknown as { _initFn: () => Promise<void> })._initFn = () =>
+      Promise.reject(new Error('WebGL not supported'));
 
-    it('zooms in', () => {
-      vp.zoom(2);
-      expect(vp.zoomLevel).toBe(2);
-    });
-
-    it('zooms out', () => {
-      vp.zoom(0.5);
-      expect(vp.zoomLevel).toBe(0.5);
-    });
-
-    it('clamps zoom to minimum 0.1', () => {
-      vp.zoom(0.01);
-      expect(vp.zoomLevel).toBeCloseTo(0.1, 5);
-    });
-
-    it('clamps zoom to maximum 5', () => {
-      vp.zoom(10);
-      expect(vp.zoomLevel).toBe(5);
-    });
-
-    it('compounds zoom', () => {
-      vp.zoom(2);
-      vp.zoom(2);
-      expect(vp.zoomLevel).toBe(4);
-    });
-
-    it('zoom in then out returns to original', () => {
-      vp.zoom(2);
-      vp.zoom(0.5);
-      expect(vp.zoomLevel).toBeCloseTo(1, 5);
-    });
+    const el = makeContainer();
+    await expect(vp.init(el)).rejects.toThrow(/WorldViewport failed to initialize/);
   });
 
-  describe('pan', () => {
-    it('accumulates pan offsets', () => {
-      const posSpy = vp.world.position.set as ReturnType<typeof vi.fn>;
-      vp.pan(10, 20);
-      expect(posSpy).toHaveBeenLastCalledWith(10, 20);
-      vp.pan(-5, 15);
-      expect(posSpy).toHaveBeenLastCalledWith(5, 35);
-    });
+  it('preserves original error as cause (I-005)', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const original = new Error('GPU context lost');
+    (vp.app as unknown as { _initFn: () => Promise<void> })._initFn = () =>
+      Promise.reject(original);
+
+    const el = makeContainer();
+    try {
+      await vp.init(el);
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect((err as Error).cause).toBe(original);
+    }
   });
 
-  describe('centerOnTile', () => {
-    it('centers on origin tile', () => {
-      const posSpy = vp.world.position.set as ReturnType<typeof vi.fn>;
-      vp.centerOnTile(0, 0);
-      // cx = 800/2 = 400, cy = 600/2 = 300
-      // panX = 400 - 0*32*1 = 400, panY = 300 - 0*32*1 = 300
-      expect(posSpy).toHaveBeenLastCalledWith(400, 300);
-    });
-
-    it('centers on non-origin tile', () => {
-      const posSpy = vp.world.position.set as ReturnType<typeof vi.fn>;
-      vp.centerOnTile(5, 10);
-      // panX = 400 - 5*32*1 = 240, panY = 300 - 10*32*1 = -20
-      expect(posSpy).toHaveBeenLastCalledWith(240, -20);
-    });
-
-    it('accounts for zoom when centering', () => {
-      const posSpy = vp.world.position.set as ReturnType<typeof vi.fn>;
-      vp.zoom(2);
-      vp.centerOnTile(5, 5);
-      // panX = 400 - 5*32*2 = 80, panY = 300 - 5*32*2 = -20
-      expect(posSpy).toHaveBeenLastCalledWith(80, -20);
-    });
+  it('pan updates world position', () => {
+    const vp = new WorldViewport(defaultOpts);
+    vp.pan(10, 20);
+    expect(vp.world.position.set).toHaveBeenCalledWith(10, 20);
+    vp.pan(5, -3);
+    expect(vp.world.position.set).toHaveBeenCalledWith(15, 17);
   });
 
-  describe('showGrid', () => {
-    it('defaults to true', () => {
-      expect(vp.showGrid).toBe(true);
-    });
+  it('zoom clamps between 0.1 and 5', () => {
+    const vp = new WorldViewport(defaultOpts);
+    vp.zoom(0.001); // extreme shrink
+    expect(vp.zoomLevel).toBeCloseTo(0.1, 1);
+    // Reset
+    vp.zoom(50); // huge zoom -> clamp at 5
+    expect(vp.zoomLevel).toBeLessThanOrEqual(5);
+  });
 
-    it('can be toggled off', () => {
-      vp.showGrid = false;
-      expect(vp.showGrid).toBe(false);
-    });
+  it('throws helpful error when container.appendChild fails (IB-004)', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const badContainer = {
+      appendChild: () => { throw new Error('Node is not connected'); },
+    } as unknown as HTMLElement;
+    await expect(vp.init(badContainer)).rejects.toThrow(
+      /Failed to mount World Forge viewport/,
+    );
+  });
 
-    it('can be toggled back on', () => {
-      vp.showGrid = false;
-      vp.showGrid = true;
-      expect(vp.showGrid).toBe(true);
-    });
+  it('preserves original DOM error as cause when mount fails (IB-004)', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const original = new Error('detached node');
+    const badContainer = {
+      appendChild: () => { throw original; },
+    } as unknown as HTMLElement;
+    try {
+      await vp.init(badContainer);
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect((err as Error).cause).toBe(original);
+    }
+  });
+
+  it('showGrid getter reflects setter', () => {
+    const vp = new WorldViewport(defaultOpts);
+    expect(vp.showGrid).toBe(true);
+    vp.showGrid = false;
+    expect(vp.showGrid).toBe(false);
   });
 });

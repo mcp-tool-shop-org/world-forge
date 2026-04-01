@@ -53,7 +53,11 @@ export function ImportModal({ onClose }: Props) {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const data = JSON.parse(reader.result as string);
+        if (reader.result == null || typeof reader.result !== 'string') {
+          setParseError('Could not read file \u2014 please try a different file.');
+          return;
+        }
+        const data = JSON.parse(reader.result);
         const format = detectImportFormat(data);
 
         if (format === 'project-bundle') {
@@ -75,6 +79,13 @@ export function ImportModal({ onClose }: Props) {
       } catch {
         setParseError('Invalid JSON file');
       }
+    };
+    // EU-003: Handle FileReader error and abort events
+    reader.onerror = () => {
+      setParseError(`Failed to read file: ${reader.error?.message ?? 'unknown error'}`);
+    };
+    reader.onabort = () => {
+      setParseError('File reading was aborted.');
     };
     reader.readAsText(file);
   }, []);

@@ -60,10 +60,11 @@ function userEncounterPresets(all: EncounterPreset[]): EncounterPreset[] {
   return all.filter((p) => !p.builtIn);
 }
 
-function persistState(state: PresetState): void {
+/** Persist user-created presets (excluding built-ins) to localStorage. */
+function persistUserPresets(regionPresets: RegionPreset[], encounterPresets: EncounterPreset[]): void {
   persist({
-    regionPresets: userRegionPresets(state.regionPresets),
-    encounterPresets: userEncounterPresets(state.encounterPresets),
+    regionPresets: userRegionPresets(regionPresets),
+    encounterPresets: userEncounterPresets(encounterPresets),
   });
 }
 
@@ -83,13 +84,13 @@ export const usePresetStore = create<PresetState>((set, get) => ({
 
   saveRegionPreset: (input) => {
     const preset: RegionPreset = {
-      ...JSON.parse(JSON.stringify(input)),
+      ...structuredClone(input),
       id: `region-preset-${Date.now()}`,
       builtIn: false,
     };
     const regionPresets = [...get().regionPresets, preset];
     set({ regionPresets });
-    persistState({ ...get(), regionPresets });
+    persistUserPresets(regionPresets, get().encounterPresets);
     return preset;
   },
 
@@ -98,27 +99,27 @@ export const usePresetStore = create<PresetState>((set, get) => ({
       p.id === id && !p.builtIn ? { ...p, ...updates } : p,
     );
     set({ regionPresets });
-    persistState({ ...get(), regionPresets });
+    persistUserPresets(regionPresets, get().encounterPresets);
   },
 
   deleteRegionPreset: (id) => {
     const regionPresets = get().regionPresets.filter((p) => !(p.id === id && !p.builtIn));
     set({ regionPresets });
-    persistState({ ...get(), regionPresets });
+    persistUserPresets(regionPresets, get().encounterPresets);
   },
 
   duplicateRegionPreset: (id) => {
     const original = get().regionPresets.find((p) => p.id === id);
     if (!original) return undefined;
     const copy: RegionPreset = {
-      ...JSON.parse(JSON.stringify(original)),
+      ...structuredClone(original),
       id: `region-preset-${Date.now()}`,
       name: `${original.name} (copy)`,
       builtIn: false,
     };
     const regionPresets = [...get().regionPresets, copy];
     set({ regionPresets });
-    persistState({ ...get(), regionPresets });
+    persistUserPresets(regionPresets, get().encounterPresets);
     return copy;
   },
 
@@ -126,13 +127,13 @@ export const usePresetStore = create<PresetState>((set, get) => ({
 
   saveEncounterPreset: (input) => {
     const preset: EncounterPreset = {
-      ...JSON.parse(JSON.stringify(input)),
+      ...structuredClone(input),
       id: `encounter-preset-${Date.now()}`,
       builtIn: false,
     };
     const encounterPresets = [...get().encounterPresets, preset];
     set({ encounterPresets });
-    persistState({ ...get(), encounterPresets });
+    persistUserPresets(get().regionPresets, encounterPresets);
     return preset;
   },
 
@@ -141,27 +142,27 @@ export const usePresetStore = create<PresetState>((set, get) => ({
       p.id === id && !p.builtIn ? { ...p, ...updates } : p,
     );
     set({ encounterPresets });
-    persistState({ ...get(), encounterPresets });
+    persistUserPresets(get().regionPresets, encounterPresets);
   },
 
   deleteEncounterPreset: (id) => {
     const encounterPresets = get().encounterPresets.filter((p) => !(p.id === id && !p.builtIn));
     set({ encounterPresets });
-    persistState({ ...get(), encounterPresets });
+    persistUserPresets(get().regionPresets, encounterPresets);
   },
 
   duplicateEncounterPreset: (id) => {
     const original = get().encounterPresets.find((p) => p.id === id);
     if (!original) return undefined;
     const copy: EncounterPreset = {
-      ...JSON.parse(JSON.stringify(original)),
+      ...structuredClone(original),
       id: `encounter-preset-${Date.now()}`,
       name: `${original.name} (copy)`,
       builtIn: false,
     };
     const encounterPresets = [...get().encounterPresets, copy];
     set({ encounterPresets });
-    persistState({ ...get(), encounterPresets });
+    persistUserPresets(get().regionPresets, encounterPresets);
     return copy;
   },
 }));

@@ -37,8 +37,11 @@ jobs:
       - name: Coverage
         if: matrix.node-version == 22
         run: npx vitest run --coverage
+      # Coverage upload uses continue-on-error because Codecov availability
+      # should never block CI — the token may be missing in forks or the
+      # Codecov service may be temporarily unreachable.
       - name: Upload coverage
-        if: matrix.node-version == 22
+        if: matrix.node-version == 22 && secrets.CODECOV_TOKEN != ''
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         continue-on-error: true
         with:

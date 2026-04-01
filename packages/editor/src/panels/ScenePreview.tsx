@@ -36,7 +36,23 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
   const { showBackgrounds, showEntities, showLandmarks, showSpawns, showAmbient } = useEditorStore();
   const [collapsed, setCollapsed] = useState(false);
 
-  const data = assembleSceneData(zoneId, project);
+  let data: ReturnType<typeof assembleSceneData>;
+  try {
+    data = assembleSceneData(zoneId, project);
+  } catch (err) {
+    console.error('[ScenePreview] assembleSceneData failed for zone', zoneId, err);
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Scene Preview</div>
+        <div style={{
+          padding: 12, background: '#0d1117', border: '1px solid #30363d', borderRadius: 4,
+          fontSize: 11, color: '#d29922', textAlign: 'center',
+        }}>
+          Preview unavailable for this zone.
+        </div>
+      </div>
+    );
+  }
 
   const hasContent = data.background || data.tileset || data.entities.length > 0 ||
     data.landmarks.length > 0 || data.items.length > 0 || data.spawns.length > 0 ||

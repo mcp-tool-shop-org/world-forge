@@ -83,9 +83,14 @@ export function SpeedPanel() {
 
   const execute = useCallback((actionId: string) => {
     closeSpeedPanel();
-    const result = executeAction(actionId, speedPanelContext, stores);
-    if (result.executed) {
-      addRecent(actionId);
+    try {
+      const result = executeAction(actionId, speedPanelContext, stores);
+      if (result.executed) {
+        addRecent(actionId);
+      }
+    } catch (err) {
+      // EUB-018: catch and log action execution errors
+      console.error(`[SpeedPanel] Action "${actionId}" threw an error:`, err);
     }
   }, [speedPanelContext, closeSpeedPanel, stores, addRecent]);
 

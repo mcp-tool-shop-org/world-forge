@@ -5,6 +5,7 @@ import { ScenePreview } from './ScenePreview.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { PanelHeader } from './shared.js';
 import { labelText, inputCompact, labelText as sharedLabelStyle, inputBase as sharedInputStyle, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
+import { VisibilityToggle } from './shared.js';
 
 export function ZoneProperties() {
   const { project, updateZone, removeZone } = useProjectStore();
@@ -12,13 +13,17 @@ export function ZoneProperties() {
   const selectedZoneId = getSelectedZoneId(selection);
   const zone = project.zones.find((z) => z.id === selectedZoneId);
   const suggestedTags = useMemo(() => getModeProfile(project.mode).suggestedZoneTags, [project.mode]);
-  if (!zone) return null;
+  if (!zone) return (
+    <div style={{ fontSize: 12, color: '#d29922', padding: '8px 0' }}>
+      This zone was deleted. Select another zone to see its properties.
+    </div>
+  );
   const unusedTags = suggestedTags.filter((t) => !zone.tags.includes(t));
 
   return (
     <div>
       <ScenePreview zoneId={zone.id} />
-      <PanelHeader title="Zone Properties" />
+      <PanelHeader title="Zone Properties" actions={<VisibilityToggle id={zone.id} />} />
       <label style={labelStyle}>Name
         <input style={inputStyle} value={zone.name}
           onChange={(e) => updateZone(zone.id, { name: e.target.value })} />

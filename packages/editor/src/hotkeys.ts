@@ -15,6 +15,8 @@ export interface HotkeyBinding {
 
 export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyK', ctrl: true, action: 'search', label: 'Ctrl+K', description: 'Open search overlay' },
+  { key: 'KeyC', ctrl: true, action: 'copy', label: 'Ctrl+C', description: 'Copy selected objects' },
+  { key: 'KeyV', ctrl: true, action: 'paste', label: 'Ctrl+V', description: 'Paste from clipboard' },
   { key: 'KeyD', ctrl: true, action: 'duplicate', label: 'Ctrl+D', description: 'Duplicate selected objects' },
   { key: 'KeyA', ctrl: true, action: 'select-all', label: 'Ctrl+A', description: 'Select all visible objects' },
   { key: 'Delete', action: 'delete', label: 'Del', description: 'Delete selected objects' },
@@ -28,6 +30,11 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyP', action: 'apply-preset', label: 'P', description: 'Open preset browser for selection' },
   { key: 'KeyP', shift: true, action: 'save-preset', label: 'Shift+P', description: 'Save current selection as preset' },
 ];
+
+/** Return a flat list of all registered hotkeys for display in a guide panel. */
+export function getHotkeyList(): { key: string; label: string; description: string }[] {
+  return HOTKEY_BINDINGS.map((b) => ({ key: b.key, label: b.label, description: b.description }));
+}
 
 /** Context passed from the editor to the hotkey dispatcher. */
 export interface HotkeyContext {
@@ -44,6 +51,8 @@ export interface HotkeyContext {
   removeSelected: (sel: SelectionSet) => void;
   removeConnection: (from: string, to: string) => void;
   duplicateSelected: (sel: SelectionSet) => SelectionSet;
+  copySelection?: (project: WorldProject) => void;
+  pasteClipboard?: () => void;
   setShowSearch: (show: boolean) => void;
   setRightTab: (tab: RightTab) => void;
   showSpeedPanel: boolean;
@@ -92,6 +101,20 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       e.preventDefault();
       ctx.setShowSearch(true);
       return { handled: true, action };
+
+    case 'copy': {
+      e.preventDefault();
+      if (getSelectionCount(ctx.selection) > 0 && ctx.copySelection) {
+        ctx.copySelection(ctx.project);
+      }
+      return { handled: true, action };
+    }
+
+    case 'paste': {
+      e.preventDefault();
+      if (ctx.pasteClipboard) ctx.pasteClipboard();
+      return { handled: true, action };
+    }
 
     case 'duplicate': {
       e.preventDefault();

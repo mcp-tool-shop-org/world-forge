@@ -25,9 +25,9 @@ export interface DependencyEdge {
   sourceType: string;
   sourceId: string;
   sourceLabel?: string;
-  fieldName: string;
-  targetType: string;
-  targetId: string;
+  fieldName?: string;
+  targetType?: string;
+  targetId?: string;
   expectedKind?: string;
   actualKind?: string;
   message: string;
@@ -60,16 +60,49 @@ function addToSummary(summary: DependencySummary, status: DepStatus): void {
 }
 
 /**
+ * Collect all asset IDs referenced by zones, entities, items, and landmarks.
+ *
+ * MAINTENANCE NOTE: When adding new entity types with asset refs, add extraction
+ * here. This is the single source of truth for "which assets are in use" —
+ * both orphan detection and future cleanup tools depend on it.
+ */
+function collectReferencedAssetIds(project: WorldProject): Set<string> {
+  const ids = new Set<string>();
+  for (const z of project.zones) {
+    if (z.backgroundId) ids.add(z.backgroundId);
+    if (z.tilesetId) ids.add(z.tilesetId);
+  }
+  for (const ep of project.entityPlacements) {
+    if (ep.portraitId) ids.add(ep.portraitId);
+    if (ep.spriteId) ids.add(ep.spriteId);
+  }
+  for (const ip of project.itemPlacements) {
+    if (ip.iconId) ids.add(ip.iconId);
+  }
+  for (const lm of project.landmarks) {
+    if (lm.iconId) ids.add(lm.iconId);
+  }
+  return ids;
+}
+
+/**
  * Scan the full reference graph of a WorldProject and classify every edge.
  *
  * Asset refs are checked for existence and kind match.
  * Structural refs (zones, dialogues, packs) are checked for existence.
  * Orphan detection finds assets/packs not referenced by anything.
+ *
+ * NOTE: For verbose/debug output, callers can inspect the returned edges array
+ * directly — each edge includes domain, status, and a human-readable message.
+ * A future enhancement could add an optional `verbose` flag to emit additional
+ * diagnostic detail (e.g. timing, ref counts per domain).
  */
 export function scanDependencies(project: WorldProject): DependencyReport {
   const edges: DependencyEdge[] = [];
 
   // Build lookup maps
+  // NOTE: Caching opportunity — if scanDependencies is called repeatedly on the
+  // same project (e.g. during editor live-refresh), these maps could be memoized.
   const assetMap = new Map<string, { kind: string; label: string }>();
   for (const a of project.assets) {
     assetMap.set(a.id, { kind: a.kind, label: a.label });
@@ -79,7 +112,11 @@ export function scanDependencies(project: WorldProject): DependencyReport {
   const zoneIds = new Set(project.zones.map((z) => z.id));
   const dialogueIds = new Set(project.dialogues.map((d) => d.id));
 
-  // Helper: check an asset ref field
+  // Helper: check an asset ref field.
+  // When refId is null/undefined, the ref is optional and unset — this is not an error.
+  // Optional asset refs include: zone.backgroundId, zone.tilesetId, entity.portraitId,
+  // entity.spriteId, item.iconId, landmark.iconId. They become required only when
+  // the project is ready for visual export.
   function checkAssetRef(
     domain: DepDomain,
     sourceType: string,
@@ -89,6 +126,7 @@ export function scanDependencies(project: WorldProject): DependencyReport {
     refId: string | undefined,
     expectedKind: string,
   ) {
+    // Optional ref — null/undefined means "not yet assigned", not broken
     if (!refId) return;
     const asset = assetMap.get(refId);
     if (!asset) {
@@ -227,27 +265,15 @@ export function scanDependencies(project: WorldProject): DependencyReport {
   }
 
   // --- Orphan asset detection ---
-  const referencedAssetIds = new Set<string>();
-  for (const z of project.zones) {
-    if (z.backgroundId) referencedAssetIds.add(z.backgroundId);
-    if (z.tilesetId) referencedAssetIds.add(z.tilesetId);
-  }
-  for (const ep of project.entityPlacements) {
-    if (ep.portraitId) referencedAssetIds.add(ep.portraitId);
-    if (ep.spriteId) referencedAssetIds.add(ep.spriteId);
-  }
-  for (const ip of project.itemPlacements) {
-    if (ip.iconId) referencedAssetIds.add(ip.iconId);
-  }
-  for (const lm of project.landmarks) {
-    if (lm.iconId) referencedAssetIds.add(lm.iconId);
-  }
+  // MAINTENANCE NOTE: If a new entity type gains asset refs (e.g. encounterAnchors
+  // get a spriteId), add it to collectReferencedAssetIds() below. Otherwise those
+  // refs won't prevent orphan false-positives.
+  const referencedAssetIds = collectReferencedAssetIds(project);
   for (const a of project.assets) {
     if (!referencedAssetIds.has(a.id)) {
       edges.push({
         domain: 'orphan-asset', status: 'orphaned',
         sourceType: 'asset', sourceId: a.id, sourceLabel: a.label,
-        fieldName: '', targetType: '', targetId: '',
         message: `Asset "${a.label}" (${a.kind}) is not referenced by any zone, entity, item, or landmark`,
       });
     }
@@ -263,7 +289,6 @@ export function scanDependencies(project: WorldProject): DependencyReport {
       edges.push({
         domain: 'orphan-pack', status: 'orphaned',
         sourceType: 'assetPack', sourceId: pack.id, sourceLabel: pack.label,
-        fieldName: '', targetType: '', targetId: '',
         message: `Asset pack "${pack.label}" has no assets assigned to it`,
       });
     }

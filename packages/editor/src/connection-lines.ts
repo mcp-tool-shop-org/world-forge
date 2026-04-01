@@ -46,19 +46,15 @@ export function getEdgeAnchor(
   const dx = targetWX - cx;
   const dy = targetWY - cy;
 
-  // Degenerate: same center
+  // If the target is the zone's own center, there's no direction to project —
+  // return the center itself.
   if (dx === 0 && dy === 0) return { wx: cx, wy: cy };
 
-  // Parametric intersection with each edge, take smallest positive t
-  let t = Infinity;
-  if (dx !== 0) {
-    const t1 = hw / Math.abs(dx);   // right or left edge
-    if (t1 < t) t = t1;
-  }
-  if (dy !== 0) {
-    const t2 = hh / Math.abs(dy);   // bottom or top edge
-    if (t2 < t) t = t2;
-  }
+  // Parametric ray intersection: find the smallest t that reaches a zone edge.
+  // We check whichever axes have nonzero delta and pick the closer edge.
+  const tX = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+  const tY = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+  const t = Math.min(tX, tY);
 
   return { wx: cx + dx * t, wy: cy + dy * t };
 }

@@ -136,6 +136,10 @@ export function computeContentBounds(
  * Compute viewport state that fits the given bounds into the given
  * canvas dimensions (screen pixels). Centers the content.
  * Clamps zoom to [minZoom, maxZoom] range.
+ *
+ * If bounds have zero width or height (e.g. a single point), returns
+ * a default viewport centered on the bounds midpoint at zoom 1.0.
+ * This prevents division-by-zero producing Infinity/NaN.
  */
 export function fitBoundsToViewport(
   bounds: WorldBounds,
@@ -146,6 +150,19 @@ export function fitBoundsToViewport(
 ): ViewportState {
   const boundsWidth = bounds.maxX - bounds.minX;
   const boundsHeight = bounds.maxY - bounds.minY;
+
+  // Guard: zero-dimension bounds would cause division by zero.
+  // Return a safe viewport centered on the bounds midpoint instead.
+  if (boundsWidth <= 0 || boundsHeight <= 0) {
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    const safeZoom = Math.max(minZoom, Math.min(maxZoom, 1));
+    return {
+      panX: centerX - canvasWidth / (2 * safeZoom),
+      panY: centerY - canvasHeight / (2 * safeZoom),
+      zoom: safeZoom,
+    };
+  }
 
   let zoom = Math.min(canvasWidth / boundsWidth, canvasHeight / boundsHeight);
   zoom = Math.max(minZoom, Math.min(maxZoom, zoom));

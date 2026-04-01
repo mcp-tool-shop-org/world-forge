@@ -11,6 +11,8 @@ import { pirateTemplate } from './genre-pirate.js';
 import { zombieTemplate } from './genre-zombie.js';
 import { BUILTIN_KITS } from '../kits/index.js';
 import { SAMPLE_WORLDS } from './samples.js';
+import { LAYOUT_TEMPLATES } from './layout-templates.js';
+export type { LayoutTemplate } from './layout-templates.js';
 
 export interface GenreTemplate {
   id: string;
@@ -78,6 +80,7 @@ export function createProjectFromModeStarter(name: string, starter: ModeStarter)
 }
 
 export { SAMPLE_WORLDS };
+export { LAYOUT_TEMPLATES };
 export type { SampleWorld as SampleWorldType };
 
 export function createProjectFromWizard(options: WizardOptions): WorldProject {

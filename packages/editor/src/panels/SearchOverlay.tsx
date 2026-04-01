@@ -46,18 +46,24 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
   // Entities
   for (const ep of project.entityPlacements) {
     const zone = project.zones.find((z) => z.id === ep.zoneId);
+    // EUB-008: warn when parent zone is missing for entity
+    if (!zone) console.warn(`[SearchOverlay] Entity "${ep.entityId}" references missing zone "${ep.zoneId}"`);
     results.push({ type: 'entity', id: ep.entityId, label: ep.name ?? ep.entityId, detail: `${ep.role} in ${zone?.name ?? 'unknown'}` });
   }
 
   // Landmarks
   for (const lm of project.landmarks) {
     const zone = project.zones.find((z) => z.id === lm.zoneId);
+    // EUB-008: warn when parent zone is missing for landmark
+    if (!zone) console.warn(`[SearchOverlay] Landmark "${lm.id}" references missing zone "${lm.zoneId}"`);
     results.push({ type: 'landmark', id: lm.id, label: lm.name, detail: `in ${zone?.name ?? 'unknown'}` });
   }
 
   // Spawns
   for (const sp of project.spawnPoints) {
     const zone = project.zones.find((z) => z.id === sp.zoneId);
+    // EUB-008: warn when parent zone is missing for spawn
+    if (!zone) console.warn(`[SearchOverlay] Spawn "${sp.id}" references missing zone "${sp.zoneId}"`);
     results.push({ type: 'spawn', id: sp.id, label: sp.id, detail: `in ${zone?.name ?? 'unknown'}${sp.isDefault ? ' (default)' : ''}` });
   }
 
@@ -112,6 +118,28 @@ export function filterResults(index: SearchResult[], query: string): SearchResul
   ).slice(0, 20);
 }
 
+const RECENT_SEARCHES_KEY = 'wf-recent-searches';
+const MAX_RECENT = 5;
+
+function loadRecentSearches(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_SEARCHES_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((s: unknown) => typeof s === 'string').slice(0, MAX_RECENT) : [];
+  } catch { return []; }
+}
+
+function saveRecentSearch(query: string): void {
+  const q = query.trim();
+  if (!q) return;
+  const recent = loadRecentSearches().filter((s) => s !== q);
+  recent.unshift(q);
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+}
+
+export { loadRecentSearches, saveRecentSearch, RECENT_SEARCHES_KEY };
+
 export function SearchOverlay() {
   const { project } = useProjectStore();
   const {
@@ -123,6 +151,7 @@ export function SearchOverlay() {
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches);
 
   const { regionPresets, encounterPresets } = usePresetStore();
   const { kits } = useKitStore();
@@ -157,6 +186,11 @@ export function SearchOverlay() {
   const dismiss = useCallback(() => { setShowSearch(false); }, [setShowSearch]);
 
   const handleSelect = useCallback((result: SearchResult) => {
+    // FT-006: save recent search
+    if (query.trim()) {
+      saveRecentSearch(query.trim());
+      setRecentSearches(loadRecentSearches());
+    }
     dismiss();
     const size = getCanvasSize();
 
@@ -257,7 +291,7 @@ export function SearchOverlay() {
       onClick={dismiss}
       style={{
         position: 'fixed', inset: 0, background: 'var(--wf-bg-overlay)',
-        zIndex: 'var(--wf-z-overlay)' as unknown as number, display: 'flex', justifyContent: 'center', paddingTop: 80,
+        zIndex: 9999, display: 'flex', justifyContent: 'center', paddingTop: 80,
       }}
     >
       <div
@@ -282,6 +316,27 @@ export function SearchOverlay() {
           />
         </div>
         <div ref={listRef} style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+          {/* FT-006: Recent searches when query is empty */}
+          {!query.trim() && recentSearches.length > 0 && (
+            <div>
+              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-hint)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                Recent
+              </div>
+              {recentSearches.map((term) => (
+                <div
+                  key={term}
+                  onClick={() => setQuery(term)}
+                  style={{
+                    padding: '5px 12px', cursor: 'pointer', fontSize: 12,
+                    color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: 'var(--wf-text-hint)' }}>{'\u23F0'}</span>
+                  {term}
+                </div>
+              ))}
+            </div>
+          )}
           {results.length === 0 && query.trim() && (
             <div style={{ padding: '16px 12px', color: 'var(--wf-text-muted)', fontSize: 12, textAlign: 'center' }}>
               No results for "{query}"

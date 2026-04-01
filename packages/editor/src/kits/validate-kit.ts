@@ -43,6 +43,11 @@ export function validateKit(kit: StarterKit): KitValidationResult {
 
   // --- Warnings (non-blocking) ---
 
+  // Opportunity: validate that kit.project.mode (if set) is consistent with
+  // kit.modes[]. A kit declaring modes: ['space'] but whose embedded project
+  // uses mode: 'fantasy' is likely a misconfiguration. Not enforced yet
+  // because kits can be mode-agnostic templates.
+
   for (const refId of kit.presetRefs.region) {
     if (!regionPresetIds.has(refId)) {
       warnings.push(`Region preset ref not found: ${refId}`);

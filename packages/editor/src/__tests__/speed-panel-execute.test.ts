@@ -87,6 +87,30 @@ describe('executeAction', () => {
     const result = executeAction('unknown-action', null, stores);
     expect(result.executed).toBe(false);
   });
+
+  it('edit-props returns false for malformed connection ID (no ::)', () => {
+    const stores = makeStores();
+    const ctx: HitResult = { type: 'connection', id: 'bad-id-no-separator' };
+    const result = executeAction('edit-props', ctx, stores);
+    expect(result.executed).toBe(false);
+    expect(stores.selectConnection).not.toHaveBeenCalled();
+  });
+
+  it('delete returns false for malformed connection ID (single element)', () => {
+    const stores = makeStores();
+    const ctx: HitResult = { type: 'connection', id: 'only-one-part' };
+    const result = executeAction('delete', ctx, stores);
+    expect(result.executed).toBe(false);
+    expect(stores.removeConnection).not.toHaveBeenCalled();
+  });
+
+  it('swap-direction returns false for malformed connection ID (triple ::)', () => {
+    const stores = makeStores();
+    const ctx: HitResult = { type: 'connection', id: 'a::b::c' };
+    const result = executeAction('swap-direction', ctx, stores);
+    expect(result.executed).toBe(false);
+    expect(stores.removeConnection).not.toHaveBeenCalled();
+  });
 });
 
 describe('executeMacro', () => {

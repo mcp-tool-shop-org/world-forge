@@ -30,6 +30,15 @@ export interface WorldProject {
   /** Scale/scope of the world (dungeon, ocean, space, etc.). Optional for backward compat. */
   mode?: AuthoringMode;
 
+  /** Who created this project. */
+  author?: string;
+  /** License governing the project content (e.g. 'CC-BY-4.0', 'MIT', 'custom'). */
+  license?: string;
+  /** High-level category for the project (e.g. 'fantasy', 'sci-fi', 'horror'). */
+  category?: string;
+  /** Freeform tags for discovery and filtering. */
+  projectTags?: string[];
+
   map: WorldMap;
   zones: Zone[];
   connections: ZoneConnection[];

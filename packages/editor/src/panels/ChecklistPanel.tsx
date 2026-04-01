@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, type RightTab, type EditorTool } from '../store/editor-store.js';
-import { HOTKEY_BINDINGS } from '../hotkeys.js';
+import { HOTKEY_BINDINGS, getHotkeyList } from '../hotkeys.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { useKitStore } from '../kits/index.js';
 import { scanDependencies } from '@world-forge/schema';
@@ -40,10 +40,16 @@ export function ChecklistPanel() {
       isComplete: project.districts.length > 0, tab: 'map',
     },
     {
+      id: 'first-zone',
+      label: hint('first-zone')?.label ?? `Create your first zone`,
+      description: hint('first-zone')?.description ?? `Select the Zone tool and drag on the canvas to paint a ${profile.zoneNamePattern.toLowerCase()}. ${profile.mode === 'dungeon' ? 'Draw a Chamber' : profile.mode === 'interior' ? 'Draw a Room' : profile.mode === 'ocean' ? 'Draw a Sea Zone' : profile.mode === 'space' ? 'Draw a Sector' : 'Draw a zone'} by clicking and dragging at least 2x2 tiles.`,
+      isComplete: project.zones.length > 0, tab: 'map', tool: 'zone-paint',
+    },
+    {
       id: 'zone',
       label: hint('zone')?.label ?? 'Add a zone',
       description: hint('zone')?.description ?? 'Use the Zone tool to create a named location.',
-      isComplete: project.zones.length > 0, tab: 'map', tool: 'zone-paint',
+      isComplete: project.zones.length > 1, tab: 'map', tool: 'zone-paint',
     },
     {
       id: 'spawn',
@@ -72,6 +78,21 @@ export function ChecklistPanel() {
       id: 'review', label: 'Review project', description: 'Check the review summary before sharing.',
       isComplete: false, tab: 'review',
     },
+    // FT-029: Dependency check step (shown only when broken deps exist)
+    ...(() => {
+      const depReport = scanDependencies(project);
+      const depIssues = depReport.summary.broken + depReport.summary.mismatched;
+      if (depIssues > 0) {
+        return [{
+          id: 'check-deps',
+          label: 'Check Dependencies',
+          description: `${depIssues} broken reference${depIssues !== 1 ? 's' : ''} found. Open the Deps tab to repair.`,
+          isComplete: false,
+          tab: 'deps' as RightTab,
+        }];
+      }
+      return [];
+    })(),
   ];
   }, [project, hasExported, profile, activeKit]);
 
@@ -157,25 +178,27 @@ export function ChecklistPanel() {
         Dismiss Guide
       </button>
 
-      {/* Hotkey reference */}
+      {/* FT-017: Keyboard cheat sheet with visual kbd styling */}
       <div style={{ ...headerStyle, marginTop: 16 }}>Keyboard Shortcuts</div>
       <table style={{ width: '100%', fontSize: 11, color: 'var(--wf-text-muted)', borderCollapse: 'collapse' }}>
         <tbody>
-          {HOTKEY_BINDINGS.filter((b, i, arr) =>
-            // Deduplicate by action (e.g. Delete and Backspace both → 'delete')
-            arr.findIndex((x) => x.action === b.action) === i
+          {getHotkeyList().filter((b, i, arr) =>
+            // Deduplicate by description
+            arr.findIndex((x) => x.description === b.description) === i
           ).map((b) => (
-            <tr key={b.action} style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
-              <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: 'var(--wf-accent)', whiteSpace: 'nowrap' }}>{b.label}</td>
+            <tr key={b.label} style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
+              <td style={{ padding: '3px 4px', whiteSpace: 'nowrap' }}>
+                <kbd style={kbdStyle}>{b.label}</kbd>
+              </td>
               <td style={{ padding: '3px 4px' }}>{b.description}</td>
             </tr>
           ))}
           <tr style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
-            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: 'var(--wf-accent)', whiteSpace: 'nowrap' }}>Space</td>
+            <td style={{ padding: '3px 4px', whiteSpace: 'nowrap' }}><kbd style={kbdStyle}>Space</kbd></td>
             <td style={{ padding: '3px 4px' }}>Hold to pan canvas</td>
           </tr>
           <tr style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
-            <td style={{ padding: '3px 4px', fontFamily: 'monospace', color: 'var(--wf-accent)', whiteSpace: 'nowrap' }}>Dbl-click</td>
+            <td style={{ padding: '3px 4px', whiteSpace: 'nowrap' }}><kbd style={kbdStyle}>Dbl-click</kbd></td>
             <td style={{ padding: '3px 4px' }}>Open details for clicked object</td>
           </tr>
         </tbody>
@@ -187,6 +210,20 @@ export function ChecklistPanel() {
 const headerStyle: React.CSSProperties = {
   fontSize: 13, fontWeight: 'bold', color: 'var(--wf-text-primary)',
   borderBottom: '1px solid var(--wf-border-default)', paddingBottom: 6, marginBottom: 8,
+};
+
+const kbdStyle: React.CSSProperties = {
+  display: 'inline-block',
+  background: 'var(--wf-bg-control, #21262d)',
+  border: '1px solid var(--wf-border-default, #30363d)',
+  borderRadius: 3,
+  padding: '1px 5px',
+  fontFamily: 'monospace',
+  fontSize: 10,
+  color: 'var(--wf-accent, #58a6ff)',
+  lineHeight: '16px',
+  minWidth: 20,
+  textAlign: 'center',
 };
 
 

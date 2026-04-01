@@ -32,6 +32,15 @@ export function importEntities(
   const fidelity: FidelityEntry[] = [];
   const placements: EntityPlacement[] = [];
 
+  // EB-008: Informational fidelity entry when no entities to import
+  if (engineEntities.length === 0) {
+    fidelity.push({
+      level: 'lossless', domain: 'entities', severity: 'info',
+      message: 'No entities in content pack — imported world will have no NPCs or encounters.',
+      reason: 'no-entities-in-source',
+    });
+  }
+
   for (let i = 0; i < engineEntities.length; i++) {
     const eb = engineEntities[i];
     const role = reverseRole(eb.type, eb.tags ?? []);
@@ -47,9 +56,12 @@ export function importEntities(
       }
     }
 
-    // Round-robin zone assignment
+    // Round-robin zone assignment — only warn when zoneIds is empty (a real problem),
+    // not for every entity placement (EB-004: reduce warning noise)
     const zoneId = zoneIds.length > 0 ? zoneIds[i % zoneIds.length] : 'unplaced';
-    warnings.push(`Entity '${eb.name}' placed in zone '${zoneId}' (original zone unknown)`);
+    if (zoneIds.length === 0) {
+      warnings.push(`Entity '${eb.name}' has no zones available for placement — assigned to 'unplaced'. Import zones first or create at least one zone.`);
+    }
 
     fidelity.push({
       level: 'approximated', domain: 'entities', severity: 'warning',
@@ -80,8 +92,12 @@ export function importEntities(
       placement.resources = { ...(eb.baseResources as Record<string, number>) };
     }
     const customField = (eb as Record<string, unknown>).custom;
-    if (customField && typeof customField === 'object') {
-      placement.custom = Object.assign({}, customField) as Record<string, string>;
+    if (customField && typeof customField === 'object' && !Array.isArray(customField)) {
+      const validated: Record<string, string> = {};
+      for (const [k, v] of Object.entries(customField as Record<string, unknown>)) {
+        validated[k] = typeof v === 'string' ? v : String(v);
+      }
+      placement.custom = validated;
     }
     if (eb.aiProfile) {
       placement.ai = { profileId: eb.aiProfile };

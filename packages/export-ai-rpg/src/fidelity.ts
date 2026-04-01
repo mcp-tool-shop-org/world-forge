@@ -1,12 +1,43 @@
-// fidelity.ts — structured import fidelity reporting
+/**
+ * fidelity.ts — Structured import fidelity reporting
+ *
+ * ## Purpose
+ *
+ * The fidelity system tracks how faithfully data survives format conversions
+ * (especially the lossy ContentPack → WorldProject round-trip). Every import
+ * converter produces {@link FidelityEntry} records that are aggregated into a
+ * {@link FidelityReport}.
+ *
+ * ## How to Create Fidelity Entries for a Custom Converter
+ *
+ * 1. Import {@link FidelityEntry} and {@link FidelityDomain} from this module.
+ * 2. If your converter introduces a new data category, add it to the
+ *    {@link FidelityDomain} union type (e.g. `'my-domain'`).
+ * 3. In your converter, create entries with the appropriate {@link FidelityLevel}:
+ *    - `'lossless'` — data was preserved exactly.
+ *    - `'approximated'` — data was reconstructed with heuristics (e.g. inferred
+ *      grid positions, default values substituted).
+ *    - `'dropped'` — data could not be recovered and was lost.
+ * 4. Set `severity` to `'info'` for routine observations, `'warning'` for data
+ *    the user should review, or `'error'` for data loss that may break the project.
+ * 5. Return your entries array alongside your converted data. The import pipeline
+ *    collects all entries and calls {@link buildFidelityReport} to produce the
+ *    aggregate {@link FidelityReport}.
+ *
+ * @module fidelity
+ */
 
+/** How faithfully a field survived the export→import round-trip. */
 export type FidelityLevel = 'lossless' | 'approximated' | 'dropped';
+/** Severity of a fidelity observation. */
 export type FidelitySeverity = 'info' | 'warning' | 'error';
+/** Domain that a fidelity entry belongs to. */
 export type FidelityDomain =
   | 'zones' | 'districts' | 'entities' | 'items'
   | 'dialogues' | 'player' | 'builds' | 'progression'
   | 'world' | 'assets' | 'packs';
 
+/** A single fidelity observation recorded during import. */
 export interface FidelityEntry {
   level: FidelityLevel;
   domain: FidelityDomain;
@@ -17,6 +48,7 @@ export interface FidelityEntry {
   reason: string;
 }
 
+/** Per-domain count breakdown of fidelity levels. */
 export interface DomainSummary {
   total: number;
   lossless: number;
@@ -24,6 +56,7 @@ export interface DomainSummary {
   dropped: number;
 }
 
+/** Aggregate summary of all fidelity entries for an import operation. */
 export interface FidelitySummary {
   total: number;
   lossless: number;
@@ -33,6 +66,7 @@ export interface FidelitySummary {
   byDomain: Partial<Record<FidelityDomain, DomainSummary>>;
 }
 
+/** Complete fidelity report containing all entries and their summary. */
 export interface FidelityReport {
   entries: FidelityEntry[];
   summary: FidelitySummary;

@@ -1,4 +1,47 @@
-// import.ts — main import pipeline: ContentPack/ExportResult/WorldProject → WorldProject
+/**
+ * import.ts — Main import pipeline: ContentPack / ExportResult / WorldProject → WorldProject
+ *
+ * ## Import Pipeline Architecture
+ *
+ * The import pipeline follows a three-stage process:
+ *
+ * 1. **Format Detection** (`detectImportFormat`)
+ *    Inspects the shape of parsed JSON to determine which import format it matches.
+ *    Supported formats: `world-project`, `content-pack`, `export-result`, `project-bundle`.
+ *
+ * 2. **Conversion** (per-domain converter functions)
+ *    Each domain (zones, entities, items, dialogues, etc.) has a dedicated import
+ *    converter in its own module (e.g. `import-zones.ts`, `import-entities.ts`).
+ *    Converters transform engine-format data back into WorldProject domain objects
+ *    and produce {@link FidelityEntry} records documenting any data loss.
+ *
+ * 3. **Assembly** (`importProject` / `importFromContentPack` / `importFromExportResult`)
+ *    Combines converted domains into a complete {@link WorldProject}, infers missing
+ *    metadata (mode, connections, spawn points), runs validation, and builds the
+ *    {@link FidelityReport}.
+ *
+ * ## How to Add a New Import Format
+ *
+ * 1. Add the new format name to the {@link ImportFormat} union type.
+ * 2. Add a detection clause in {@link detectImportFormat} that identifies the new
+ *    format by its structural shape (check for unique top-level keys).
+ * 3. Write a converter function (e.g. `importFromMyFormat`) that accepts the raw
+ *    data and returns an {@link ImportResult}. Use per-domain importers where possible.
+ * 4. Add a branch in {@link importProject} that dispatches to your converter.
+ * 5. Re-export any new public functions/types from `index.ts`.
+ *
+ * ## Extension Points
+ *
+ * - {@link detectImportFormat} — Add detection logic for new shapes.
+ * - Per-domain converters (`importZones`, `importEntities`, etc.) — Reuse or extend
+ *   for formats that share the engine's domain schemas.
+ * - {@link importProject} — The main entry point; add dispatch branches here.
+ * - {@link ImportFormat} — The union type listing all recognized formats.
+ * - {@link FidelityEntry} / {@link FidelityDomain} (in `fidelity.ts`) — Extend with
+ *   new domains if your format introduces data categories not yet tracked.
+ *
+ * @module import
+ */
 
 import type { WorldProject, ZoneConnection, AuthoringMode } from '@world-forge/schema';
 import { validateProject, isValidMode } from '@world-forge/schema';
@@ -32,7 +75,8 @@ export interface ImportError {
   message: string;
 }
 
-// Reverse maps for recovering genre/tones/difficulty from PackMetadata
+// EB-012: Reverse maps must stay in sync with GENRE_MAP / DIFFICULTY_MAP in convert-pack.ts.
+// When new genres or difficulties are added to the forward maps, add their reverse entries here.
 const REVERSE_GENRE: Record<string, string> = {
   fantasy: 'fantasy', 'sci-fi': 'sci-fi', cyberpunk: 'cyberpunk',
   horror: 'horror', mystery: 'detective', western: 'western',
@@ -99,7 +143,14 @@ export function detectImportFormat(data: unknown): ImportFormat | null {
 /** Import from any supported format. */
 export function importProject(data: unknown): ImportResult | ImportError {
   const format = detectImportFormat(data);
-  if (!format) return { success: false, message: 'Unrecognized file format. Expected a WorldProject, ContentPack, or ExportResult JSON.' };
+
+  // EB-010: Explicit error path for null/unrecognized format
+  if (format === null) {
+    return {
+      success: false,
+      message: 'Unrecognized file format. Expected a WorldProject (.map + .zones + .entityPlacements), ContentPack (.entities + .zones), ExportResult (.contentPack + .manifest), or ProjectBundle (.bundleVersion + .project). Check that your JSON structure matches one of these shapes.',
+    };
+  }
 
   if (format === 'world-project') {
     const project = data as WorldProject;
@@ -112,7 +163,18 @@ export function importProject(data: unknown): ImportResult | ImportError {
     return importFromExportResult(data as ExportResult);
   }
 
-  return importFromContentPack(data as ContentPack);
+  if (format === 'content-pack') {
+    return importFromContentPack(data as ContentPack);
+  }
+
+  // project-bundle: extract the embedded project
+  if (format === 'project-bundle') {
+    const bundle = data as { project: WorldProject };
+    return importProject(bundle.project);
+  }
+
+  // Exhaustive: this should never be reached
+  return { success: false, message: `Internal error: unhandled import format '${format as string}'.` };
 }
 
 /** Import from an ExportResult (has contentPack + manifest + packMeta). */
@@ -249,16 +311,25 @@ export function importFromContentPack(
     });
   }
 
-  // 4. Compute map dimensions from auto-layout bounds
-  let maxX = 40, maxY = 30;
+  // 4. Compute map dimensions from auto-layout bounds (40×30 minimum floor)
+  let maxX = 0, maxY = 0;
   for (const z of zones) {
     maxX = Math.max(maxX, z.gridX + z.gridWidth + 4);
     maxY = Math.max(maxY, z.gridY + z.gridHeight + 4);
   }
+  maxX = Math.max(maxX, 40);
+  maxY = Math.max(maxY, 30);
 
   // 5. Create spawn point
+  if (zones.length === 0) {
+    allFidelity.push({
+      level: 'dropped', domain: 'zones', severity: 'warning',
+      message: 'No zones found — cannot create spawn point. The imported world will have no navigable areas.',
+      reason: 'no-zones-no-spawn',
+    });
+  }
   const spawnZone = zones[0];
-  const spawnPointId = playerTemplate?.spawnPointId ?? 'imported-spawn';
+  const spawnPointId = (playerTemplate?.spawnPointId && playerTemplate.spawnPointId !== '') ? playerTemplate.spawnPointId : 'imported-spawn';
   const spawnPoints = spawnZone ? [{
     id: spawnPointId,
     zoneId: spawnZone.id,
@@ -267,20 +338,21 @@ export function importFromContentPack(
     isDefault: true,
   }] : [];
 
-  // Update player template spawnPointId if it was created fresh
-  if (playerTemplate && !playerTemplate.spawnPointId && spawnPoints.length > 0) {
+  // Update player template spawnPointId if it was created fresh (check empty string too)
+  if (playerTemplate && (!playerTemplate.spawnPointId || playerTemplate.spawnPointId === '') && spawnPoints.length > 0) {
     playerTemplate.spawnPointId = spawnPointId;
   }
 
   // 6. Recover metadata from PackMetadata if available
+  // EB-015: Null-coalescing for meta.genres and meta.tones before .map()
   const genre = meta?.genres?.[0] ? (REVERSE_GENRE[meta.genres[0]] ?? meta.genres[0]) : 'fantasy';
-  const tones = meta?.tones ? meta.tones.map(String) : ['atmospheric'];
+  const tones = (meta?.tones ?? []).length > 0 ? (meta?.tones ?? []).map(String) : ['atmospheric'];
   const difficulty = meta?.difficulty ? (REVERSE_DIFFICULTY[meta.difficulty] ?? 'intermediate') : 'intermediate';
   const narratorTone = meta?.narratorTone ?? '';
 
   // 7. Build the WorldProject
   const project: WorldProject = {
-    id: `imported-${Date.now()}`,
+    id: `imported-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name: projectName ?? 'Imported World',
     description: meta?.description ?? 'Imported from engine content pack.',
     version: '0.1.0',

@@ -257,6 +257,14 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             Export Project Bundle
           </button>
           {bundleExported && <span style={{ color: '#3fb950', fontSize: 12, marginLeft: 8 }}>Bundle saved!</span>}
+          {/* FT-018: Multi-user documentation hint */}
+          <div style={{ fontSize: 10, color: '#484f58', marginTop: 8, fontStyle: 'italic' }}>
+            Projects are designed for single-author use. For team collaboration, consider versioning project files with Git.
+          </div>
+          {/* FT-033: Version tracking tip */}
+          <div style={{ fontSize: 10, color: '#484f58', marginTop: 4, fontStyle: 'italic' }}>
+            Tip: Use descriptive filenames with dates (e.g., &apos;my-world-2026-03-31.wfproject.json&apos;) for version tracking.
+          </div>
         </div>
     </ModalFrame>
   );

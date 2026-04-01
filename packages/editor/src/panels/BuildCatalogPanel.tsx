@@ -131,7 +131,12 @@ function ArchetypeSection({ cat, trees, onAdd, onUpdate, onRemove }: {
   return (
     <div>
       {cat.archetypes.length === 0 && <div style={hintStyle}>No archetypes. Add one below.</div>}
-      {cat.archetypes.map((a) => (
+      {cat.archetypes.map((a) => {
+        // EUB-016: warn if referenced progressionTreeId not found
+        if (a.progressionTreeId && !trees.some((t) => t.id === a.progressionTreeId)) {
+          console.warn(`[BuildCatalog] Archetype "${a.name}" references missing progressionTreeId "${a.progressionTreeId}"`);
+        }
+        return (
         <div key={a.id} style={itemStyle}>
           {editing === a.id ? (
             <>
@@ -169,7 +174,8 @@ function ArchetypeSection({ cat, trees, onAdd, onUpdate, onRemove }: {
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
       <button onClick={handleAdd} style={addBtnStyle}>+ Add Archetype</button>
     </div>
   );

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFile } from 'node:child_process';
-import { writeFile, readFile, rm, mkdtemp } from 'node:fs/promises';
+import { writeFile, readFile, rm, mkdtemp, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
@@ -11,6 +11,14 @@ import { dirname, resolve } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
+
+beforeAll(async () => {
+  try {
+    await access(CLI_PATH);
+  } catch {
+    throw new Error(`CLI binary not found at ${CLI_PATH}. Run "npm run build" first.`);
+  }
+});
 
 function runCli(args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {

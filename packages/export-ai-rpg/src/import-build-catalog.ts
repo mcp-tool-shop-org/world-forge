@@ -10,11 +10,12 @@ export function importBuildCatalog(
   const fidelity: FidelityEntry[] = [];
   if (!exported) return { catalog: undefined, fidelity };
 
-  if ((exported as Record<string, unknown>).packId) {
+  const packId = (exported as Record<string, unknown>).packId;
+  if (packId !== undefined && packId !== null && packId !== '') {
     fidelity.push({
       level: 'dropped', domain: 'builds', severity: 'info',
       fieldPath: 'packId',
-      message: 'Build catalog packId stripped (editor-only field)',
+      message: `Build catalog packId '${String(packId)}' stripped (editor-only field)`,
       reason: 'pack-id-stripped',
     });
   }

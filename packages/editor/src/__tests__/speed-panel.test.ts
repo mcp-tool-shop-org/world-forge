@@ -31,6 +31,8 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     removeSelected: () => {},
     removeConnection: () => {},
     duplicateSelected: () => ({ zones: [], entities: [], landmarks: [], spawns: [], encounters: [] }),
+    copySelection: () => {},
+    pasteClipboard: () => {},
     setShowSearch: () => {},
     setRightTab: () => {},
     showSpeedPanel: false,
@@ -40,10 +42,10 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
 }
 
 describe('SpeedPanel integration', () => {
-  it('zone context produces 6 actions', () => {
+  it('zone context produces 7 actions', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const { pinned, contextual } = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    expect(pinned.length + contextual.length).toBe(6);
+    expect(pinned.length + contextual.length).toBe(7);
   });
 
   it('empty context produces 8 global actions (2 core + 4 mode-suggested + 2 review)', () => {
@@ -184,8 +186,8 @@ describe('macros in filterActions', () => {
       'add-channel-conn', 'add-secret-conn', 'add-trail-conn', 'add-warp-conn',
       'connect-from', 'new-zone', 'place-entity',
     ]);
-    // The rest are safe (6 core + 2 review)
-    expect(safe.length).toBe(8);
+    // The rest are safe (6 core + merge-zones + 2 review)
+    expect(safe.length).toBe(9);
   });
 });
 
@@ -251,8 +253,8 @@ describe('mode-aware speed panel', () => {
   it('existing filterActions tests: all non-mode actions still work', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const result = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    // Zone context: edit, delete, duplicate, assign, place-entity, connect-from = 6
-    expect(result.pinned.length + result.contextual.length).toBe(6);
+    // Zone context: edit, delete, duplicate, assign, place-entity, connect-from, merge-zones = 7
+    expect(result.pinned.length + result.contextual.length).toBe(7);
   });
 
   it('section order: PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL', () => {

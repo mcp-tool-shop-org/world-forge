@@ -136,13 +136,14 @@ export function ReviewPanel() {
         <span style={{ fontSize: 12, color: '#c9d1d9' }}>{enriched.healthLabel}</span>
       </div>
 
-      {/* Project overview */}
-      <Section title="Project" isOpen={isOpen('project')} toggle={() => toggle('project')}>
+      {/* FT-035: Project Metadata UI */}
+      <Section title="Project Info" isOpen={isOpen('project-info')} toggle={() => toggle('project-info')}>
         <Row label="Name" value={enriched.projectName} />
         <Row label="Mode" value={`${enriched.modeLabel}`} />
         <Row label="Genre" value={enriched.genre} />
         <Row label="Version" value={enriched.version} />
         {enriched.description && <Row label="Desc" value={enriched.description} />}
+        <ProjectMetadataFields />
       </Section>
 
       {/* Content counts */}
@@ -265,6 +266,11 @@ export function ReviewPanel() {
         )}
       </Section>
 
+      {/* FT-031: Project Statistics */}
+      <Section title="Statistics" isOpen={isOpen('statistics')} toggle={() => toggle('statistics')}>
+        <StatisticsSection project={project} snapshot={enriched} />
+      </Section>
+
       {/* Provenance */}
       {(enriched.kitName || enriched.importFormat || enriched.bundleSource) && (
         <Section title="Provenance" isOpen={isOpen('provenance')} toggle={() => toggle('provenance')}>
@@ -285,6 +291,209 @@ export function ReviewPanel() {
 export function useReviewHealth(): HealthStatus {
   const { project } = useProjectStore();
   return useMemo(() => buildReviewSnapshot(project).health, [project]);
+}
+
+// ── FT-035: Project Metadata editor ────────────────────────
+
+function ProjectMetadataFields() {
+  const { project, updateProject } = useProjectStore();
+
+  const setField = (field: 'author' | 'license' | 'category', value: string) => {
+    updateProject((p) => ({ ...p, [field]: value || undefined }));
+  };
+
+  const [tagInput, setTagInput] = useState('');
+
+  const addTag = () => {
+    const tag = tagInput.trim();
+    if (!tag) return;
+    const existing = project.projectTags ?? [];
+    if (existing.includes(tag)) return;
+    updateProject((p) => ({ ...p, projectTags: [...(p.projectTags ?? []), tag] }));
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    updateProject((p) => ({ ...p, projectTags: (p.projectTags ?? []).filter((t) => t !== tag) }));
+  };
+
+  const metaInputStyle: React.CSSProperties = {
+    width: '100%', background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)',
+    borderRadius: 3, padding: '3px 6px', color: 'var(--wf-text-primary)', fontSize: 11, outline: 'none',
+  };
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: '#8b949e' }}>Author</span>
+        <input
+          value={project.author ?? ''}
+          onChange={(e) => setField('author', e.target.value)}
+          placeholder="Author name"
+          style={metaInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: '#8b949e' }}>License</span>
+        <input
+          value={project.license ?? ''}
+          onChange={(e) => setField('license', e.target.value)}
+          placeholder="e.g. CC-BY-4.0, MIT"
+          style={metaInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: '#8b949e' }}>Category</span>
+        <input
+          value={project.category ?? ''}
+          onChange={(e) => setField('category', e.target.value)}
+          placeholder="e.g. fantasy, sci-fi, horror"
+          style={metaInputStyle}
+        />
+      </div>
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: '#8b949e' }}>Tags</span>
+        <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
+          <input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+            placeholder="Add tag..."
+            style={{ ...metaInputStyle, flex: 1 }}
+          />
+          <button onClick={addTag} style={{ background: 'var(--wf-bg-control)', border: '1px solid var(--wf-border-default)', borderRadius: 3, color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 11, padding: '2px 6px' }}>+</button>
+        </div>
+        {(project.projectTags ?? []).length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+            {(project.projectTags ?? []).map((tag) => (
+              <span key={tag} style={{ fontSize: 10, background: 'var(--wf-bg-control)', border: '1px solid var(--wf-border-default)', borderRadius: 8, padding: '1px 6px', color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                {tag}
+                <span onClick={() => removeTag(tag)} style={{ cursor: 'pointer', color: 'var(--wf-danger, #f85149)', fontWeight: 'bold' }}>{'\u00D7'}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── FT-031: Statistics Section ─────────────────────────────
+
+/** Simple colored bar with label and count */
+export function StatBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, padding: '2px 0' }}>
+      <span style={{ color: '#8b949e', minWidth: 80 }}>{label}</span>
+      <div style={{ flex: 1, height: 8, background: '#21262d', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, minWidth: count > 0 ? 2 : 0 }} />
+      </div>
+      <span style={{ color: '#c9d1d9', minWidth: 32, textAlign: 'right' }}>{count}</span>
+      <span style={{ color: '#6e7681', minWidth: 32, fontSize: 10 }}>{pct}%</span>
+    </div>
+  );
+}
+
+/** Compute and render entity role distribution, connection kinds, encounter types, zones per district */
+export function computeStatistics(project: import('@world-forge/schema').WorldProject) {
+  // Entity role distribution
+  const roleMap: Record<string, number> = {};
+  for (const ep of project.entityPlacements) {
+    roleMap[ep.role] = (roleMap[ep.role] ?? 0) + 1;
+  }
+
+  // Connection kind breakdown
+  const kindMap: Record<string, number> = {};
+  for (const conn of project.connections) {
+    const kind = conn.kind ?? 'passage';
+    kindMap[kind] = (kindMap[kind] ?? 0) + 1;
+  }
+
+  // Encounter type summary
+  const encTypeMap: Record<string, number> = {};
+  for (const enc of project.encounterAnchors) {
+    const type = enc.encounterType ?? 'unknown';
+    encTypeMap[type] = (encTypeMap[type] ?? 0) + 1;
+  }
+
+  // Zone count per district
+  const districtZones: Array<{ name: string; count: number }> = [];
+  for (const d of project.districts) {
+    districtZones.push({ name: d.name, count: d.zoneIds.length });
+  }
+  // Unassigned zones
+  const assignedZoneIds = new Set(project.districts.flatMap((d) => d.zoneIds));
+  const unassignedCount = project.zones.filter((z) => !assignedZoneIds.has(z.id)).length;
+  if (unassignedCount > 0) {
+    districtZones.push({ name: 'Unassigned', count: unassignedCount });
+  }
+
+  return { roleMap, kindMap, encTypeMap, districtZones };
+}
+
+const STAT_COLORS = ['#58a6ff', '#f85149', '#3fb950', '#d29922', '#bc8cff', '#79c0ff', '#ff7b72', '#39d5ff'];
+
+function StatisticsSection({ project, snapshot }: { project: import('@world-forge/schema').WorldProject; snapshot: EnrichedReviewSnapshot }) {
+  const stats = useMemo(() => computeStatistics(project), [project]);
+  const totalEntities = project.entityPlacements.length;
+  const totalConnections = project.connections.length;
+  const totalEncounters = project.encounterAnchors.length;
+  const totalDistrictZones = stats.districtZones.reduce((s, d) => s + d.count, 0);
+
+  return (
+    <div>
+      {/* Entity role distribution */}
+      {totalEntities > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Entity Roles ({totalEntities})</div>
+          {Object.entries(stats.roleMap)
+            .sort(([, a], [, b]) => b - a)
+            .map(([role, count], i) => (
+              <StatBar key={role} label={role} count={count} total={totalEntities} color={STAT_COLORS[i % STAT_COLORS.length]} />
+            ))}
+        </div>
+      )}
+
+      {/* Connection kind breakdown */}
+      {totalConnections > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Connection Kinds ({totalConnections})</div>
+          {Object.entries(stats.kindMap)
+            .sort(([, a], [, b]) => b - a)
+            .map(([kind, count], i) => (
+              <StatBar key={kind} label={kind} count={count} total={totalConnections} color={STAT_COLORS[(i + 2) % STAT_COLORS.length]} />
+            ))}
+        </div>
+      )}
+
+      {/* Encounter type summary */}
+      {totalEncounters > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Encounter Types ({totalEncounters})</div>
+          {Object.entries(stats.encTypeMap)
+            .sort(([, a], [, b]) => b - a)
+            .map(([type, count], i) => (
+              <StatBar key={type} label={type} count={count} total={totalEncounters} color={STAT_COLORS[(i + 4) % STAT_COLORS.length]} />
+            ))}
+        </div>
+      )}
+
+      {/* Zone count per district */}
+      {stats.districtZones.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Zones per District ({totalDistrictZones})</div>
+          {stats.districtZones.map((d, i) => (
+            <StatBar key={d.name} label={d.name} count={d.count} total={totalDistrictZones} color={STAT_COLORS[(i + 1) % STAT_COLORS.length]} />
+          ))}
+        </div>
+      )}
+
+      {totalEntities === 0 && totalConnections === 0 && totalEncounters === 0 && stats.districtZones.length === 0 && (
+        <EmptyNote>No data to display statistics for yet.</EmptyNote>
+      )}
+    </div>
+  );
 }
 
 // ── Sub-components ──────────────────────────────────────────

@@ -42,6 +42,9 @@ export function ConnectionProperties() {
 
   const fromZone = project.zones.find((z) => z.id === conn.fromZoneId);
   const toZone = project.zones.find((z) => z.id === conn.toZoneId);
+  // EUB-005: warn when a connected zone is missing (deleted)
+  if (!fromZone) console.warn(`[ConnectionProperties] fromZone missing: ${conn.fromZoneId}`);
+  if (!toZone) console.warn(`[ConnectionProperties] toZone missing: ${conn.toZoneId}`);
 
   const handleSwapDirection = () => {
     // Atomic: remove old + add reversed in single updateProject
@@ -63,9 +66,11 @@ export function ConnectionProperties() {
       <PanelHeader title="Connection Properties" />
       <label style={labelStyle}>From
         <input style={inputStyle} value={fromZone?.name ?? conn.fromZoneId} readOnly />
+        {!fromZone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>To
         <input style={inputStyle} value={toZone?.name ?? conn.toZoneId} readOnly />
+        {!toZone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>Label
         <input style={inputStyle} value={conn.label ?? ''}

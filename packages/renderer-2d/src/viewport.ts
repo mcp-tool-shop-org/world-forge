@@ -28,14 +28,28 @@ export class WorldViewport {
   }
 
   async init(container: HTMLElement): Promise<void> {
-    await this.app.init({
-      width: this.opts.width,
-      height: this.opts.height,
-      backgroundColor: this.opts.backgroundColor ?? 0x1a1a2e,
-      antialias: true,
-      resizeTo: container,
-    });
-    container.appendChild(this.app.canvas as HTMLCanvasElement);
+    try {
+      await this.app.init({
+        width: this.opts.width,
+        height: this.opts.height,
+        backgroundColor: this.opts.backgroundColor ?? 0x1a1a2e,
+        antialias: true,
+        resizeTo: container,
+      });
+    } catch (err) {
+      throw new Error(
+        `WorldViewport failed to initialize PixiJS Application (${this.opts.width}x${this.opts.height})`,
+        { cause: err },
+      );
+    }
+    try {
+      container.appendChild(this.app.canvas as HTMLCanvasElement);
+    } catch (err) {
+      throw new Error(
+        'Failed to mount World Forge viewport — check that the container element is attached to the DOM.',
+        { cause: err },
+      );
+    }
     this.app.stage.addChild(this.world);
     this.drawGrid();
   }

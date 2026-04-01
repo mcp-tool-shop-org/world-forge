@@ -169,6 +169,15 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
   },
 };
 
+/**
+ * Generate an auto-name for a new zone based on the mode's zoneNamePattern.
+ * Example: generateZoneName('dungeon', 3) → "Chamber 3"
+ */
+export function generateZoneName(mode: AuthoringMode, index: number): string {
+  const profile = MODE_PROFILES[mode ?? DEFAULT_MODE];
+  return `${profile.zoneNamePattern} ${index}`;
+}
+
 /** Get the profile for a mode, defaulting to dungeon for undefined/legacy projects. */
 export function getModeProfile(mode: AuthoringMode | undefined): ModeProfile {
   return MODE_PROFILES[mode ?? DEFAULT_MODE];

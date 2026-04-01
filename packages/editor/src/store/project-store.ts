@@ -55,18 +55,30 @@ export function createEmptyProject(mode?: AuthoringMode): WorldProject {
   };
 }
 
+/** Entry in the undo/redo stack: snapshot + human-readable label. */
+export interface UndoEntry {
+  project: WorldProject;
+  label: string;
+}
+
 interface ProjectState {
   project: WorldProject;
   dirty: boolean;
-  undoStack: WorldProject[];
-  redoStack: WorldProject[];
+  undoStack: UndoEntry[];
+  redoStack: UndoEntry[];
 
   // Actions
   loadProject: (p: WorldProject) => void;
   newProject: () => void;
-  updateProject: (updater: (p: WorldProject) => WorldProject) => void;
+  updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
   undo: () => void;
   redo: () => void;
+
+  // Undo/redo label accessors
+  getUndoLabel: () => string | null;
+  getRedoLabel: () => string | null;
+  getUndoCount: () => number;
+  getRedoCount: () => number;
 
   // Zone helpers
   addZone: (z: Zone) => void;
@@ -174,7 +186,21 @@ interface ProjectState {
   // Preset apply helpers
   applyRegionPreset: (districtId: string, preset: RegionPreset, mode: 'merge' | 'overwrite') => void;
   createEncounterFromPreset: (zoneId: string, preset: EncounterPreset) => string;
+
+  // Zone merge (FT-008)
+  mergeZones: (zoneIds: string[]) => string | null;
+
+  // Bulk entity spawner (FT-015)
+  batchPlaceEntities: (config: { role: string; count: number; zoneId: string; pattern: 'grid' | 'random' | 'circle'; spacing: number }) => void;
 }
+
+/**
+ * Maximum number of undo snapshots retained. When a new snapshot is pushed,
+ * the oldest entries beyond this limit are silently discarded (truncated from
+ * the front of the stack). Keeping this bounded prevents unbounded memory
+ * growth in long editing sessions.
+ */
+const UNDO_DEPTH_LIMIT = 9;
 
 function ensureBuildCatalog(p: WorldProject): BuildCatalogDefinition {
   return p.buildCatalog ?? {
@@ -182,6 +208,95 @@ function ensureBuildCatalog(p: WorldProject): BuildCatalogDefinition {
     archetypes: [], backgrounds: [], traits: [],
     disciplines: [], crossTitles: [], entanglements: [],
   };
+}
+
+// ── Auto-save constants ──────────────────────────────────────
+const AUTOSAVE_KEY = 'wf-autosave';
+const AUTOSAVE_HISTORY_KEY = 'wf-autosave-history';
+const AUTOSAVE_MAX_HISTORY = 3;
+const AUTOSAVE_INTERVAL_MS = 30_000;
+
+interface AutoSaveEntry {
+  project: WorldProject;
+  timestamp: number;
+}
+
+/** Check whether recoverable auto-save data exists in localStorage. */
+export function hasAutoSaveRecovery(): boolean {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return false;
+    const entry: AutoSaveEntry = JSON.parse(raw);
+    return entry != null && entry.project != null && typeof entry.timestamp === 'number';
+  } catch {
+    return false;
+  }
+}
+
+/** Load the most recent auto-saved project (or null if none). */
+export function recoverAutoSave(): WorldProject | null {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return null;
+    const entry: AutoSaveEntry = JSON.parse(raw);
+    return entry?.project ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remove all auto-save data from localStorage. */
+export function clearAutoSave(): void {
+  try {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    localStorage.removeItem(AUTOSAVE_HISTORY_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/** Save the current project to localStorage auto-save slot. */
+function writeAutoSave(project: WorldProject): void {
+  try {
+    const now = Date.now();
+    const entry: AutoSaveEntry = { project, timestamp: now };
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(entry));
+
+    // Maintain history (last N saves)
+    let history: AutoSaveEntry[] = [];
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_HISTORY_KEY);
+      if (raw) history = JSON.parse(raw);
+    } catch { /* ignore */ }
+    history.push(entry);
+    if (history.length > AUTOSAVE_MAX_HISTORY) {
+      history = history.slice(history.length - AUTOSAVE_MAX_HISTORY);
+    }
+    localStorage.setItem(AUTOSAVE_HISTORY_KEY, JSON.stringify(history));
+  } catch {
+    // Quota exceeded or storage unavailable — silently skip
+  }
+}
+
+let _autoSaveTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Start the auto-save interval. Safe to call multiple times. */
+export function startAutoSave(): void {
+  if (_autoSaveTimer != null) return;
+  _autoSaveTimer = setInterval(() => {
+    const state = useProjectStore.getState();
+    if (state.dirty) {
+      writeAutoSave(state.project);
+    }
+  }, AUTOSAVE_INTERVAL_MS);
+}
+
+/** Stop the auto-save interval. */
+export function stopAutoSave(): void {
+  if (_autoSaveTimer != null) {
+    clearInterval(_autoSaveTimer);
+    _autoSaveTimer = null;
+  }
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -193,9 +308,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadProject: (p) => set({ project: p, dirty: false, undoStack: [], redoStack: [] }),
   newProject: () => set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] }),
 
-  updateProject: (updater) => {
+  updateProject: (updater, label) => {
     const { project, undoStack } = get();
-    const newStack = [...undoStack.slice(-9), project];
+    const entry: UndoEntry = { project, label: label ?? 'Edit' };
+    const newStack = [...undoStack.slice(-UNDO_DEPTH_LIMIT), entry];
     set({ project: updater(project), dirty: true, undoStack: newStack, redoStack: [] });
   },
 
@@ -203,10 +319,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const { project, undoStack, redoStack } = get();
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
+    // The current project becomes a redo entry; use the label from the undo entry being restored
+    const redoEntry: UndoEntry = { project, label: prev.label };
     set({
-      project: prev,
+      project: prev.project,
       undoStack: undoStack.slice(0, -1),
-      redoStack: [...redoStack, project],
+      redoStack: [...redoStack, redoEntry],
       dirty: true,
     });
   },
@@ -215,27 +333,40 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const { project, undoStack, redoStack } = get();
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
+    const undoEntry: UndoEntry = { project, label: next.label };
     set({
-      project: next,
-      undoStack: [...undoStack, project],
+      project: next.project,
+      undoStack: [...undoStack, undoEntry],
       redoStack: redoStack.slice(0, -1),
       dirty: true,
     });
   },
 
+  // Undo/redo label accessors
+  getUndoLabel: () => {
+    const { undoStack } = get();
+    return undoStack.length > 0 ? undoStack[undoStack.length - 1].label : null;
+  },
+  getRedoLabel: () => {
+    const { redoStack } = get();
+    return redoStack.length > 0 ? redoStack[redoStack.length - 1].label : null;
+  },
+  getUndoCount: () => get().undoStack.length,
+  getRedoCount: () => get().redoStack.length,
+
   // Zone helpers
-  addZone: (z) => get().updateProject((p) => ({ ...p, zones: [...p.zones, z] })),
+  addZone: (z) => get().updateProject((p) => ({ ...p, zones: [...p.zones, z] }), 'Add zone'),
   updateZone: (id, updates) => get().updateProject((p) => ({
     ...p, zones: p.zones.map((z) => z.id === id ? { ...z, ...updates } : z),
-  })),
+  }), 'Update zone'),
   removeZone: (id) => get().updateProject((p) => ({
     ...p,
     zones: p.zones.filter((z) => z.id !== id),
     connections: p.connections.filter((c) => c.fromZoneId !== id && c.toZoneId !== id),
-  })),
+  }), 'Delete zone'),
   resizeZone: (zoneId, result) => get().updateProject((p) => ({
     ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, ...result } : z),
-  })),
+  }), 'Resize zone'),
 
   // Connection helpers
   addConnection: (c) => get().updateProject((p) => ({
@@ -250,34 +381,34 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       return z;
     }),
-  })),
+  }), 'Add connection'),
   updateConnection: (fromId, toId, updates) => get().updateProject((p) => ({
     ...p, connections: p.connections.map((c) =>
       c.fromZoneId === fromId && c.toZoneId === toId ? { ...c, ...updates } : c),
-  })),
+  }), 'Update connection'),
   removeConnection: (fromId, toId) => get().updateProject((p) => ({
     ...p, connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
-  })),
+  }), 'Delete connection'),
 
   // District helpers
-  addDistrict: (d) => get().updateProject((p) => ({ ...p, districts: [...p.districts, d] })),
+  addDistrict: (d) => get().updateProject((p) => ({ ...p, districts: [...p.districts, d] }), 'Add district'),
   updateDistrict: (id, updates) => get().updateProject((p) => ({
     ...p, districts: p.districts.map((d) => d.id === id ? { ...d, ...updates } : d),
-  })),
+  }), 'Update district'),
   removeDistrict: (id) => get().updateProject((p) => ({
     ...p,
     districts: p.districts.filter((d) => d.id !== id),
     zones: p.zones.map((z) => z.parentDistrictId === id ? { ...z, parentDistrictId: undefined } : z),
-  })),
+  }), 'Delete district'),
 
   // Encounter helpers
-  addEncounter: (e) => get().updateProject((p) => ({ ...p, encounterAnchors: [...p.encounterAnchors, e] })),
+  addEncounter: (e) => get().updateProject((p) => ({ ...p, encounterAnchors: [...p.encounterAnchors, e] }), 'Add encounter'),
   updateEncounter: (id, updates) => get().updateProject((p) => ({
     ...p, encounterAnchors: p.encounterAnchors.map((e) => e.id === id ? { ...e, ...updates } : e),
-  })),
+  }), 'Update encounter'),
   removeEncounter: (id) => get().updateProject((p) => ({
     ...p, encounterAnchors: p.encounterAnchors.filter((e) => e.id !== id),
-  })),
+  }), 'Delete encounter'),
 
   // Faction helpers
   addFaction: (f) => get().updateProject((p) => ({ ...p, factionPresences: [...p.factionPresences, f] })),
@@ -298,34 +429,37 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   })),
 
   // Entity helpers
-  addEntity: (e) => get().updateProject((p) => ({ ...p, entityPlacements: [...p.entityPlacements, e] })),
+  addEntity: (e) => get().updateProject((p) => ({ ...p, entityPlacements: [...p.entityPlacements, e] }), 'Add entity'),
   updateEntity: (entityId, updates) => get().updateProject((p) => ({
     ...p, entityPlacements: p.entityPlacements.map((e) => e.entityId === entityId ? { ...e, ...updates } : e),
-  })),
+  }), 'Update entity'),
   removeEntity: (entityId) => get().updateProject((p) => ({
     ...p, entityPlacements: p.entityPlacements.filter((e) => e.entityId !== entityId),
-  })),
+  }), 'Delete entity'),
 
   // Landmark helpers
-  addLandmark: (l) => get().updateProject((p) => ({ ...p, landmarks: [...p.landmarks, l] })),
+  addLandmark: (l) => get().updateProject((p) => ({ ...p, landmarks: [...p.landmarks, l] }), 'Add landmark'),
   updateLandmark: (id, updates) => get().updateProject((p) => ({
     ...p, landmarks: p.landmarks.map((l) => l.id === id ? { ...l, ...updates } : l),
-  })),
+  }), 'Update landmark'),
   removeLandmark: (id) => get().updateProject((p) => ({
     ...p, landmarks: p.landmarks.filter((l) => l.id !== id),
-  })),
+  }), 'Delete landmark'),
 
   // Spawn helpers
-  addSpawnPoint: (s) => get().updateProject((p) => ({ ...p, spawnPoints: [...p.spawnPoints, s] })),
+  addSpawnPoint: (s) => get().updateProject((p) => ({ ...p, spawnPoints: [...p.spawnPoints, s] }), 'Add spawn point'),
   updateSpawnPoint: (id, updates) => get().updateProject((p) => ({
     ...p, spawnPoints: p.spawnPoints.map((s) => s.id === id ? { ...s, ...updates } : s),
-  })),
+  }), 'Update spawn point'),
   removeSpawnPoint: (id) => get().updateProject((p) => ({
     ...p, spawnPoints: p.spawnPoints.filter((s) => s.id !== id),
-  })),
+  }), 'Delete spawn point'),
 
   // Batch helpers — single updateProject call for atomic undo
-  moveSelected: (sel, dx, dy) => get().updateProject((p) => {
+  moveSelected: (sel, dx, dy) => {
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const label = `Move ${count} ${count === 1 ? 'object' : 'objects'}`;
+    get().updateProject((p) => {
     const zSet = new Set(sel.zones);
     const eSet = new Set(sel.entities);
     const lSet = new Set(sel.landmarks);
@@ -338,8 +472,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       landmarks: p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
       spawnPoints: p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
     };
-  }),
-  removeSelected: (sel) => get().updateProject((p) => {
+  }, label);
+  },
+  removeSelected: (sel) => {
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const label = `Delete ${count} ${count === 1 ? 'object' : 'objects'}`;
+    get().updateProject((p) => {
     const zSet = new Set(sel.zones);
     const eSet = new Set(sel.entities);
     const lSet = new Set(sel.landmarks);
@@ -355,12 +493,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
       encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id) && !zSet.has(e.zoneId)),
     };
-  }),
+  }, label);
+  },
   duplicateSelected: (sel) => {
     const { project, undoStack } = get();
     const { project: newProject, newSelection } = doDuplicate(project, sel);
     if (newProject === project) return { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
-    const newStack = [...undoStack.slice(-9), project];
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const label = `Duplicate ${count} ${count === 1 ? 'object' : 'objects'}`;
+    const entry: UndoEntry = { project, label };
+    const newStack = [...undoStack.slice(-UNDO_DEPTH_LIMIT), entry];
     set({ project: newProject, dirty: true, undoStack: newStack, redoStack: [] });
     return newSelection;
   },
@@ -531,7 +673,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   applyRegionPreset: (districtId, preset, mode) => get().updateProject((p) => {
     const district = p.districts.find((d) => d.id === districtId);
-    if (!district) return p;
+    if (!district) {
+      console.warn(`applyRegionPreset: district "${districtId}" not found in project — preset was not applied.`);
+      return p;
+    }
 
     const isMerge = mode === 'merge';
 
@@ -645,5 +790,131 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }],
     }));
     return id;
+  },
+
+  // ── FT-008: Zone Merge ─────────────────────────────────────────
+  mergeZones: (zoneIds) => {
+    if (zoneIds.length < 2) return null;
+    const { project } = get();
+    const zones = project.zones.filter((z) => zoneIds.includes(z.id));
+    if (zones.length < 2) return null;
+
+    const mergedId = `zone-merged-${Date.now()}`;
+    const idSet = new Set(zoneIds);
+
+    // Compute bounding box
+    const minX = Math.min(...zones.map((z) => z.gridX));
+    const minY = Math.min(...zones.map((z) => z.gridY));
+    const maxX = Math.max(...zones.map((z) => z.gridX + z.gridWidth));
+    const maxY = Math.max(...zones.map((z) => z.gridY + z.gridHeight));
+
+    // Merge tags, hazards, interactables
+    const allTags = [...new Set(zones.flatMap((z) => z.tags))];
+    const allHazards = [...new Set(zones.flatMap((z) => z.hazards))];
+    const allInteractables = zones.flatMap((z) => z.interactables);
+
+    // External neighbors (not in merge set)
+    const externalNeighbors = [...new Set(zones.flatMap((z) => z.neighbors).filter((n) => !idSet.has(n)))];
+
+    const mergedZone: Zone = {
+      id: mergedId,
+      name: `Merged (${zones.map((z) => z.name).join(' + ')})`,
+      description: zones.map((z) => z.description).filter(Boolean).join(' '),
+      tags: allTags,
+      gridX: minX,
+      gridY: minY,
+      gridWidth: maxX - minX,
+      gridHeight: maxY - minY,
+      neighbors: externalNeighbors,
+      exits: zones.flatMap((z) => z.exits.filter((e) => !idSet.has(e.targetZoneId))),
+      light: Math.round(zones.reduce((s, z) => s + z.light, 0) / zones.length),
+      noise: Math.round(zones.reduce((s, z) => s + z.noise, 0) / zones.length),
+      hazards: allHazards,
+      interactables: allInteractables,
+      parentDistrictId: zones.find((z) => z.parentDistrictId)?.parentDistrictId,
+    };
+
+    get().updateProject((p) => {
+      // Remove old zones, add merged
+      const newZones = [...p.zones.filter((z) => !idSet.has(z.id)), mergedZone];
+
+      // Reassign entities, landmarks, spawns, encounters
+      const entityPlacements = p.entityPlacements.map((e) =>
+        idSet.has(e.zoneId) ? { ...e, zoneId: mergedId } : e);
+      const landmarks = p.landmarks.map((l) =>
+        idSet.has(l.zoneId) ? { ...l, zoneId: mergedId } : l);
+      const spawnPoints = p.spawnPoints.map((s) =>
+        idSet.has(s.zoneId) ? { ...s, zoneId: mergedId } : s);
+      const encounterAnchors = p.encounterAnchors.map((e) =>
+        idSet.has(e.zoneId) ? { ...e, zoneId: mergedId } : e);
+
+      // Remove internal connections, repoint external ones
+      const connections = p.connections
+        .filter((c) => !(idSet.has(c.fromZoneId) && idSet.has(c.toZoneId)))
+        .map((c) => ({
+          ...c,
+          fromZoneId: idSet.has(c.fromZoneId) ? mergedId : c.fromZoneId,
+          toZoneId: idSet.has(c.toZoneId) ? mergedId : c.toZoneId,
+        }))
+        // Deduplicate connections that now point to same pair
+        .filter((c, i, arr) => arr.findIndex((x) => x.fromZoneId === c.fromZoneId && x.toZoneId === c.toZoneId) === i);
+
+      // Update districts
+      const districts = p.districts.map((d) => {
+        const hasOld = d.zoneIds.some((zid) => idSet.has(zid));
+        if (!hasOld) return d;
+        const filtered = d.zoneIds.filter((zid) => !idSet.has(zid));
+        return { ...d, zoneIds: [...filtered, mergedId] };
+      });
+
+      return { ...p, zones: newZones, entityPlacements, landmarks, spawnPoints, encounterAnchors, connections, districts };
+    }, `Merge ${zoneIds.length} zones`);
+
+    return mergedId;
+  },
+
+  // ── FT-015: Bulk Entity Spawner ────────────────────────────────
+  batchPlaceEntities: (config) => {
+    const { project } = get();
+    const zone = project.zones.find((z) => z.id === config.zoneId);
+    if (!zone) return;
+
+    const entities: EntityPlacement[] = [];
+    for (let i = 0; i < config.count; i++) {
+      let gx = zone.gridX;
+      let gy = zone.gridY;
+
+      if (config.pattern === 'grid') {
+        const cols = Math.max(1, Math.floor(zone.gridWidth / Math.max(1, config.spacing)));
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        gx = zone.gridX + col * config.spacing;
+        gy = zone.gridY + row * config.spacing;
+      } else if (config.pattern === 'random') {
+        gx = zone.gridX + Math.floor(Math.random() * zone.gridWidth);
+        gy = zone.gridY + Math.floor(Math.random() * zone.gridHeight);
+      } else if (config.pattern === 'circle') {
+        const cx = zone.gridX + zone.gridWidth / 2;
+        const cy = zone.gridY + zone.gridHeight / 2;
+        const radius = Math.min(zone.gridWidth, zone.gridHeight) / 2 - 1;
+        const angle = (2 * Math.PI * i) / config.count;
+        gx = Math.round(cx + radius * Math.cos(angle));
+        gy = Math.round(cy + radius * Math.sin(angle));
+      }
+
+      entities.push({
+        entityId: `entity-batch-${Date.now()}-${i}`,
+        name: `${config.role} ${i + 1}`,
+        zoneId: config.zoneId,
+        gridX: gx,
+        gridY: gy,
+        role: config.role as EntityPlacement['role'],
+      });
+    }
+
+    get().updateProject((p) => ({
+      ...p,
+      entityPlacements: [...p.entityPlacements, ...entities],
+    }), `Place ${config.count} entities`);
   },
 }));

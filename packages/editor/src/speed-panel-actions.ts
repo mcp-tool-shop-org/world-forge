@@ -1,7 +1,7 @@
 // speed-panel-actions.ts — action registry for the Speed Panel command palette
 
 import type { HitResult } from './hit-testing.js';
-import type { AuthoringMode } from '@world-forge/schema';
+import type { AuthoringMode, WorldProject } from '@world-forge/schema';
 
 export interface SpeedPanelAction {
   id: string;
@@ -34,11 +34,21 @@ export interface SpeedPanelMacro {
   steps: MacroStep[];
 }
 
+/** Result of a single macro step execution. */
+export interface MacroStepResult {
+  action: string;
+  success: boolean;
+}
+
 export interface MacroExecutionResult {
   completed: number;
   total: number;
   abortedAt?: number;
   reason?: string;
+  /** Step-by-step breakdown of execution. */
+  steps: MacroStepResult[];
+  totalSteps: number;
+  completedSteps: number;
 }
 
 export interface GroupedActions {
@@ -82,14 +92,78 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   { id: 'add-warp-conn',    label: 'Add Warp Route',        icon: '*',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['space'] },
   { id: 'add-trail-conn',   label: 'Add Trail',             icon: '^',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['wilderness'] },
 
+  // -- Multi-zone --
+  { id: 'merge-zones',      label: 'Merge Zones',           icon: 'M',  category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },
+
   // -- Review --
   { id: 'open-review',      label: 'Open Review',           icon: '\uD83D\uDCCB', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
   { id: 'export-summary',   label: 'Export Summary',        icon: '\uD83D\uDCC4', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
 ];
 
+/**
+ * Fuzzy-match: returns true when all characters in `query` appear in `text`
+ * in order (case-insensitive). Score rewards consecutive runs, word-start
+ * hits, and shorter targets.
+ */
+export function fuzzyMatch(query: string, text: string): { match: boolean; score: number } {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  if (q.length === 0) return { match: true, score: 0 };
+
+  let qi = 0;
+  let score = 0;
+  let consecutive = 0;
+
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) {
+      // Consecutive-match bonus: each additional consecutive char doubles value
+      consecutive++;
+      score += consecutive;
+
+      // Word-start bonus: first char of text or preceded by space / hyphen / underscore
+      if (ti === 0 || t[ti - 1] === ' ' || t[ti - 1] === '-' || t[ti - 1] === '_') {
+        score += 5;
+      }
+
+      qi++;
+    } else {
+      consecutive = 0;
+    }
+  }
+
+  if (qi < q.length) return { match: false, score: 0 };
+
+  // Shorter text bonus — prefer tighter matches
+  score += Math.max(0, 50 - t.length);
+
+  return { match: true, score };
+}
+
 /** Look up an action by id */
 export function getActionById(id: string): SpeedPanelAction | undefined {
   return SPEED_PANEL_ACTIONS.find((a) => a.id === id);
+}
+
+/** Maximum number of actions returned by getContextMenuActions. */
+const CONTEXT_MENU_LIMIT = 7;
+
+/**
+ * Return the top context-menu actions for a right-click hit result.
+ * Context-sensitive: zone hit shows zone actions, entity hit shows entity actions,
+ * empty canvas (null hit) shows create/global actions. Returns at most 7 actions.
+ */
+export function getContextMenuActions(
+  hitResult: HitResult | null,
+  _project: WorldProject,
+): SpeedPanelAction[] {
+  const matching = SPEED_PANEL_ACTIONS.filter((a) => a.contextFilter(hitResult));
+  // Prioritize: context actions first (more specific), then global
+  const sorted = [...matching].sort((a, b) => {
+    if (a.category === 'context' && b.category !== 'context') return -1;
+    if (a.category !== 'context' && b.category === 'context') return 1;
+    return 0;
+  });
+  return sorted.slice(0, CONTEXT_MENU_LIMIT);
 }
 
 /**
@@ -107,8 +181,17 @@ export function filterActions(
   mode?: AuthoringMode,
 ): FilteredActions {
   const matching = actions.filter((a) => a.contextFilter(context));
-  const q = query.trim().toLowerCase();
-  const filtered = q ? matching.filter((a) => a.label.toLowerCase().includes(q)) : matching;
+  const q = query.trim();
+  let filtered: SpeedPanelAction[];
+  if (q) {
+    const scored = matching
+      .map((a) => ({ action: a, ...fuzzyMatch(q, a.label) }))
+      .filter((r) => r.match);
+    scored.sort((a, b) => b.score - a.score);
+    filtered = scored.map((r) => r.action);
+  } else {
+    filtered = matching;
+  }
 
   const pinnedSet = new Set(pinnedIds);
   const recentSet = new Set(recentIds ?? []);
@@ -129,9 +212,9 @@ export function filterActions(
     }
   }
 
-  // Filter macros by query
+  // Filter macros by query (fuzzy)
   const macroResults = (macros ?? []).filter(
-    (m) => !q || m.name.toLowerCase().includes(q),
+    (m) => !q || fuzzyMatch(q, m.name).match,
   );
 
   // Build pinned — preserve order from pinnedIds

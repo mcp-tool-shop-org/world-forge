@@ -31,7 +31,12 @@ export class TileLayerRenderer {
 
       for (const placement of layer.tiles) {
         const def = tileDefs.get(placement.tileId);
-        if (!def) continue;
+        if (!def) {
+          console.warn(
+            `TileLayerRenderer.update: tile placement references tileId "${placement.tileId}" which is not defined in any loaded tileset — skipping. Ensure the tileset containing this tile is included.`,
+          );
+          continue;
+        }
 
         // Without actual tileset images, render colored rectangles based on tags
         const g = new Graphics();

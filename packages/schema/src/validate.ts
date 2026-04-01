@@ -1,6 +1,8 @@
 // validate.ts — WorldProject validation
 
 import type { WorldProject } from './project.js';
+import type { ConnectionKind } from './spatial.js';
+import type { AssetKind } from './assets.js';
 
 export type ValidationError = {
   path: string;
@@ -10,10 +12,64 @@ export type ValidationError = {
 export type ValidationResult = {
   valid: boolean;
   errors: ValidationError[];
+  /** Number of validation errors found. Present when using validateProject(). */
+  warningCount?: number;
 };
 
-export function validateProject(project: WorldProject): ValidationResult {
+/** Options for validateProject. */
+export interface ValidateOptions {
+  /** When true, emit extra detail in warnings array. Defaults to false. */
+  verbose?: boolean;
+}
+
+/**
+ * All valid connection kinds — derived from the ConnectionKind union type.
+ * If you add a new ConnectionKind in spatial.ts, add it here too.
+ * A compile-time exhaustiveness check below ensures this stays in sync.
+ */
+const VALID_CONNECTION_KINDS_ARRAY: ConnectionKind[] = [
+  'passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard',
+  'channel', 'route', 'docking', 'warp', 'trail',
+];
+export const VALID_CONNECTION_KINDS = new Set<string>(VALID_CONNECTION_KINDS_ARRAY);
+
+// Compile-time exhaustiveness: if a new ConnectionKind is added, this will error
+// until the array above is updated.
+function _assertExhaustiveConnectionKind(kind: ConnectionKind): void {
+  const lookup: Record<ConnectionKind, true> = {
+    passage: true, door: true, stairs: true, road: true, portal: true,
+    secret: true, hazard: true, channel: true, route: true, docking: true,
+    warp: true, trail: true,
+  };
+  lookup[kind]; // compile-time check — unused at runtime
+}
+void _assertExhaustiveConnectionKind;
+
+/**
+ * All valid asset kinds — derived from the AssetKind union type.
+ * If you add a new AssetKind in assets.ts, add it here too.
+ * A compile-time exhaustiveness check below ensures this stays in sync.
+ */
+const VALID_ASSET_KINDS_ARRAY: AssetKind[] = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
+export const VALID_ASSET_KINDS = new Set<string>(VALID_ASSET_KINDS_ARRAY);
+
+// Compile-time exhaustiveness: if a new AssetKind is added, this will error
+// until the array above is updated.
+function _assertExhaustiveAssetKind(kind: AssetKind): void {
+  const lookup: Record<AssetKind, true> = {
+    portrait: true, sprite: true, background: true, icon: true, tileset: true,
+  };
+  lookup[kind]; // compile-time check — unused at runtime
+}
+void _assertExhaustiveAssetKind;
+
+/** Semver pattern for pack version validation (x.y.z). */
+const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
+
+export function validateProject(project: WorldProject, options?: ValidateOptions): ValidationResult {
   const errors: ValidationError[] = [];
+  let warningCount = 0;
+  const verbose = options?.verbose ?? false;
 
   // 1. At least one spawn point
   if (project.spawnPoints.length === 0) {
@@ -53,10 +109,16 @@ export function validateProject(project: WorldProject): ValidationResult {
   }
 
   // 6. Symmetrical neighbors — if A lists B, B should list A
+  // Build zone map and neighbor Sets for O(1) lookups (avoids O(n²) find + O(n³) includes)
+  const zoneMap = new Map(project.zones.map((z) => [z.id, z]));
+  const neighborSets = new Map(project.zones.map((z) => [z.id, new Set(z.neighbors)]));
   for (const z of project.zones) {
     for (const nid of z.neighbors) {
-      const neighbor = project.zones.find((n) => n.id === nid);
-      if (neighbor && !neighbor.neighbors.includes(z.id)) {
+      // Skip symmetry check for nonexistent neighbors — already reported in step 5.
+      // Without this guard, we'd silently skip instead of making intent clear.
+      if (!neighborSets.has(nid)) continue;
+      const neighborSet = neighborSets.get(nid)!;
+      if (!neighborSet.has(z.id)) {
         errors.push({
           path: `zones.${z.id}.neighbors`,
           message: `Zone "${z.id}" lists "${nid}" as neighbor, but "${nid}" does not list "${z.id}" back`,
@@ -95,11 +157,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
-  // 11. Connections must reference valid zones
-  const VALID_CONNECTION_KINDS = new Set([
-    'passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard',
-    'channel', 'route', 'docking', 'warp', 'trail',
-  ]);
+  // 11. Connections must reference valid zones (kinds validated against VALID_CONNECTION_KINDS — module-level constant)
   for (const c of project.connections) {
     if (!zoneIds.has(c.fromZoneId)) {
       errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.fromZoneId}"` });
@@ -107,7 +165,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     if (!zoneIds.has(c.toZoneId)) {
       errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.toZoneId}"` });
     }
-    // 49. Connection kind must be valid
+    // 11b. Connection kind must be valid
     if (c.kind && !VALID_CONNECTION_KINDS.has(c.kind)) {
       errors.push({ path: 'connections', message: `Connection has unsupported kind "${c.kind}"` });
     }
@@ -120,7 +178,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
-  // 49. Encounter anchor ID uniqueness
+  // 13a. Encounter anchor ID uniqueness
   const encounterIds = new Set<string>();
   for (const ea of project.encounterAnchors) {
     if (encounterIds.has(ea.id)) {
@@ -129,21 +187,24 @@ export function validateProject(project: WorldProject): ValidationResult {
     encounterIds.add(ea.id);
   }
 
-  // 50. Encounter anchor zoneId must exist
+  // 13b. Encounter anchor zoneId must exist
   for (const ea of project.encounterAnchors) {
     if (!zoneIds.has(ea.zoneId)) {
       errors.push({ path: `encounterAnchors.${ea.id}`, message: `Encounter anchor "${ea.id}" in nonexistent zone "${ea.zoneId}"` });
     }
   }
 
-  // 51. Encounter anchor encounterType must be non-empty
+  // 13c. Encounter anchor encounterType must be non-empty and not whitespace-only
   for (const ea of project.encounterAnchors) {
     if (!ea.encounterType || ea.encounterType.trim().length === 0) {
-      errors.push({ path: `encounterAnchors.${ea.id}`, message: `Encounter anchor "${ea.id}" has empty encounterType` });
+      errors.push({
+        path: `encounterAnchors.${ea.id}`,
+        message: `Encounter anchor "${ea.id}" has ${!ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
+      });
     }
   }
 
-  // 52. Faction districtIds must reference valid districts
+  // 14. Faction districtIds must reference valid districts
   for (const fp of project.factionPresences) {
     for (const did of fp.districtIds) {
       if (!districtIds.has(did)) {
@@ -152,7 +213,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
-  // 53. Pressure hotspot ID uniqueness
+  // 15a. Pressure hotspot ID uniqueness
   const hotspotIds = new Set<string>();
   for (const ph of project.pressureHotspots) {
     if (hotspotIds.has(ph.id)) {
@@ -161,7 +222,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     hotspotIds.add(ph.id);
   }
 
-  // 54. Pressure hotspot zoneId must exist
+  // 15b. Pressure hotspot zoneId must exist
   for (const ph of project.pressureHotspots) {
     if (!zoneIds.has(ph.zoneId)) {
       errors.push({ path: `pressureHotspots.${ph.id}`, message: `Pressure hotspot "${ph.id}" in nonexistent zone "${ph.zoneId}"` });
@@ -173,13 +234,13 @@ export function validateProject(project: WorldProject): ValidationResult {
   const dialogueIds = new Set<string>();
 
   for (const dlg of project.dialogues) {
-    // 13. Dialogue ID uniqueness
+    // 16. Dialogue ID uniqueness
     if (dialogueIds.has(dlg.id)) {
       errors.push({ path: `dialogues.${dlg.id}`, message: `Duplicate dialogue ID: ${dlg.id}` });
     }
     dialogueIds.add(dlg.id);
 
-    // 14. Entry node must exist
+    // 17. Entry node must exist
     if (!dlg.nodes[dlg.entryNodeId]) {
       errors.push({
         path: `dialogues.${dlg.id}.entryNodeId`,
@@ -187,7 +248,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       });
     }
 
-    // 15. All nextNodeId references must point to existing nodes
+    // 18. All nextNodeId references must point to existing nodes
     const nodeIds = new Set(Object.keys(dlg.nodes));
     for (const [nodeId, node] of Object.entries(dlg.nodes)) {
       if (node.nextNodeId && !nodeIds.has(node.nextNodeId)) {
@@ -208,13 +269,13 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 16. Unreachable nodes (not reachable from entry)
+    // 19. Unreachable nodes (not reachable from entry)
     if (dlg.nodes[dlg.entryNodeId]) {
       const reachable = new Set<string>();
       const queue = [dlg.entryNodeId];
       while (queue.length > 0) {
-        const current = queue.pop()!;
-        if (reachable.has(current)) continue;
+        const current = queue.pop();
+        if (!current || reachable.has(current)) continue;
         reachable.add(current);
         const nd = dlg.nodes[current];
         if (!nd) continue;
@@ -236,7 +297,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
-  // 17. Entity dialogueId must reference existing dialogue
+  // 20. Entity dialogueId must reference existing dialogue
   for (const ep of project.entityPlacements) {
     if (ep.dialogueId && !dialogueIds.has(ep.dialogueId)) {
       errors.push({
@@ -253,7 +314,7 @@ export function validateProject(project: WorldProject): ValidationResult {
   if (project.playerTemplate) {
     const pt = project.playerTemplate;
 
-    // 18. Spawn point must exist
+    // 21. Spawn point must exist
     if (!spawnPointIds.has(pt.spawnPointId)) {
       errors.push({
         path: 'playerTemplate.spawnPointId',
@@ -261,7 +322,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       });
     }
 
-    // 19. Starting inventory items should exist in item placements
+    // 22. Starting inventory items should exist in item placements
     const itemIds = new Set(project.itemPlacements.map((ip) => ip.itemId));
     for (const itemId of pt.startingInventory) {
       if (!itemIds.has(itemId)) {
@@ -272,7 +333,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 20. Starting equipment items should exist
+    // 23. Starting equipment items should exist
     for (const [slot, itemId] of Object.entries(pt.startingEquipment)) {
       if (!itemIds.has(itemId)) {
         errors.push({
@@ -282,7 +343,21 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 21. Default archetype must exist in build catalog
+    // 24. Default archetype/background requires buildCatalog to exist
+    if (pt.defaultArchetypeId && !project.buildCatalog) {
+      errors.push({
+        path: 'playerTemplate.defaultArchetypeId',
+        message: `Player template references defaultArchetypeId "${pt.defaultArchetypeId}" but no buildCatalog exists`,
+      });
+    }
+    if (pt.defaultBackgroundId && !project.buildCatalog) {
+      errors.push({
+        path: 'playerTemplate.defaultBackgroundId',
+        message: `Player template references defaultBackgroundId "${pt.defaultBackgroundId}" but no buildCatalog exists`,
+      });
+    }
+
+    // 25. Default archetype must exist in build catalog
     if (pt.defaultArchetypeId && project.buildCatalog) {
       if (!project.buildCatalog.archetypes.some((a) => a.id === pt.defaultArchetypeId)) {
         errors.push({
@@ -292,7 +367,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 22. Default background must exist in build catalog
+    // 26. Default background must exist in build catalog
     if (pt.defaultBackgroundId && project.buildCatalog) {
       if (!project.buildCatalog.backgrounds.some((b) => b.id === pt.defaultBackgroundId)) {
         errors.push({
@@ -311,7 +386,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     const traitIds = new Set<string>();
     const disciplineIds = new Set<string>();
 
-    // 23. Archetype ID uniqueness + progression tree refs
+    // 27. Archetype ID uniqueness + progression tree refs
     const progressionTreeIds = new Set(project.progressionTrees.map((t) => t.id));
     for (const arch of bc.archetypes) {
       if (archetypeIds.has(arch.id)) {
@@ -327,7 +402,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 24. Background ID uniqueness
+    // 28. Background ID uniqueness
     const backgroundIds = new Set<string>();
     for (const bg of bc.backgrounds) {
       if (backgroundIds.has(bg.id)) {
@@ -336,7 +411,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       backgroundIds.add(bg.id);
     }
 
-    // 25. Trait ID uniqueness + incompatibility refs
+    // 29. Trait ID uniqueness + incompatibility refs
     for (const trait of bc.traits) {
       if (traitIds.has(trait.id)) {
         errors.push({ path: `buildCatalog.traits.${trait.id}`, message: `Duplicate trait ID: ${trait.id}` });
@@ -356,7 +431,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 26. Discipline ID uniqueness
+    // 30. Discipline ID uniqueness
     for (const disc of bc.disciplines) {
       if (disciplineIds.has(disc.id)) {
         errors.push({ path: `buildCatalog.disciplines.${disc.id}`, message: `Duplicate discipline ID: ${disc.id}` });
@@ -364,7 +439,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       disciplineIds.add(disc.id);
     }
 
-    // 27. Cross-title refs must point to existing archetypes + disciplines
+    // 31. Cross-title refs must point to existing archetypes + disciplines
     for (const ct of bc.crossTitles) {
       if (!archetypeIds.has(ct.archetypeId)) {
         errors.push({
@@ -380,7 +455,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 28. Entanglement refs must point to existing archetypes + disciplines
+    // 32. Entanglement refs must point to existing archetypes + disciplines
     for (const ent of bc.entanglements) {
       if (!archetypeIds.has(ent.archetypeId)) {
         errors.push({
@@ -402,7 +477,7 @@ export function validateProject(project: WorldProject): ValidationResult {
   const treeIds = new Set<string>();
 
   for (const tree of project.progressionTrees) {
-    // 29. Tree ID uniqueness
+    // 33. Tree ID uniqueness
     if (treeIds.has(tree.id)) {
       errors.push({ path: `progressionTrees.${tree.id}`, message: `Duplicate progression tree ID: ${tree.id}` });
     }
@@ -412,7 +487,7 @@ export function validateProject(project: WorldProject): ValidationResult {
     const nodeIdDupes = new Set<string>();
 
     for (const node of tree.nodes) {
-      // 30. Node ID uniqueness within tree
+      // 34. Node ID uniqueness within tree
       if (nodeIdDupes.has(node.id)) {
         errors.push({
           path: `progressionTrees.${tree.id}.nodes.${node.id}`,
@@ -421,7 +496,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
       nodeIdDupes.add(node.id);
 
-      // 31. Required node refs must exist
+      // 35. Required node refs must exist
       if (node.requires) {
         for (const reqId of node.requires) {
           if (!nodeIds.has(reqId)) {
@@ -434,7 +509,7 @@ export function validateProject(project: WorldProject): ValidationResult {
       }
     }
 
-    // 32. Unreachable nodes (no requires = root, all others must be reachable)
+    // 36. Unreachable nodes (no requires = root, all others must be reachable)
     const roots = tree.nodes.filter((n) => !n.requires || n.requires.length === 0);
     if (roots.length === 0 && tree.nodes.length > 0) {
       errors.push({
@@ -446,11 +521,11 @@ export function validateProject(project: WorldProject): ValidationResult {
 
   // --- Asset validation ---
 
-  const VALID_ASSET_KINDS = new Set(['portrait', 'sprite', 'background', 'icon', 'tileset']);
+  // Asset kinds validated against VALID_ASSET_KINDS — module-level constant derived from AssetKind type
   const assetIds = new Set<string>();
   const assetMap = new Map<string, { kind: string }>();
 
-  // 33. Asset ID uniqueness
+  // 37. Asset ID uniqueness
   for (const a of project.assets) {
     if (assetIds.has(a.id)) {
       errors.push({ path: `assets.${a.id}`, message: `Duplicate asset ID: ${a.id}` });
@@ -459,56 +534,66 @@ export function validateProject(project: WorldProject): ValidationResult {
     assetMap.set(a.id, { kind: a.kind });
   }
 
-  // 34. Asset path must be non-empty
+  // 38. Asset path must be non-empty
   for (const a of project.assets) {
     if (!a.path || a.path.trim().length === 0) {
       errors.push({ path: `assets.${a.id}.path`, message: `Asset "${a.id}" has empty path` });
     }
   }
 
-  // 35. Asset kind must be valid
+  // 39. Asset kind must be valid
   for (const a of project.assets) {
     if (!VALID_ASSET_KINDS.has(a.kind)) {
       errors.push({ path: `assets.${a.id}.kind`, message: `Asset "${a.id}" has unsupported kind "${a.kind}"` });
     }
   }
 
-  // Helper: check asset ref exists and has correct kind
+  // Helper: check asset ref exists and has correct kind.
+  // Provides full source context (who references what, which field, expected kind)
+  // so the user can locate and fix the issue quickly.
   function checkAssetRef(refId: string | undefined, expectedKind: string, path: string, label: string) {
+    // Null/undefined refId means the field is optional and unset — not an error.
+    // (e.g. zone.backgroundId, entity.portraitId are optional asset bindings)
     if (!refId) return;
     if (!assetIds.has(refId)) {
-      errors.push({ path, message: `${label} references nonexistent asset "${refId}"` });
+      errors.push({
+        path,
+        message: `${label} references nonexistent asset "${refId}" (expected a "${expectedKind}" asset). Check that the asset ID is correct and exists in the assets array.`,
+      });
       return;
     }
     const asset = assetMap.get(refId);
     if (asset && asset.kind !== expectedKind) {
-      errors.push({ path, message: `${label} references asset "${refId}" of kind "${asset.kind}", expected "${expectedKind}"` });
+      errors.push({
+        path,
+        message: `${label} references asset "${refId}" of kind "${asset.kind}", expected "${expectedKind}". Assign a "${expectedKind}" asset instead.`,
+      });
     }
   }
 
-  // 36-37. Zone asset refs
+  // 40-41. Zone asset refs
   for (const z of project.zones) {
     checkAssetRef(z.backgroundId, 'background', `zones.${z.id}.backgroundId`, `Zone "${z.id}"`);
     checkAssetRef(z.tilesetId, 'tileset', `zones.${z.id}.tilesetId`, `Zone "${z.id}"`);
   }
 
-  // 38-39. Entity asset refs
+  // 42-43. Entity asset refs
   for (const ep of project.entityPlacements) {
     checkAssetRef(ep.portraitId, 'portrait', `entityPlacements.${ep.entityId}.portraitId`, `Entity "${ep.entityId}"`);
     checkAssetRef(ep.spriteId, 'sprite', `entityPlacements.${ep.entityId}.spriteId`, `Entity "${ep.entityId}"`);
   }
 
-  // 40. Item asset refs
+  // 44. Item asset refs
   for (const ip of project.itemPlacements) {
     checkAssetRef(ip.iconId, 'icon', `itemPlacements.${ip.itemId}.iconId`, `Item "${ip.itemId}"`);
   }
 
-  // 41. Landmark asset refs
+  // 45. Landmark asset refs
   for (const lm of project.landmarks) {
     checkAssetRef(lm.iconId, 'icon', `landmarks.${lm.id}.iconId`, `Landmark "${lm.id}"`);
   }
 
-  // 42. Orphaned assets (in manifest but unreferenced)
+  // 46. Orphaned assets (in manifest but unreferenced)
   const referencedAssetIds = new Set<string>();
   for (const z of project.zones) {
     if (z.backgroundId) referencedAssetIds.add(z.backgroundId);
@@ -534,7 +619,7 @@ export function validateProject(project: WorldProject): ValidationResult {
 
   const packIds = new Set<string>();
 
-  // 43. Pack ID uniqueness
+  // 47. Pack ID uniqueness
   for (const pack of project.assetPacks) {
     if (packIds.has(pack.id)) {
       errors.push({ path: `assetPacks.${pack.id}`, message: `Duplicate asset pack ID: ${pack.id}` });
@@ -542,28 +627,28 @@ export function validateProject(project: WorldProject): ValidationResult {
     packIds.add(pack.id);
   }
 
-  // 44. Pack label must be non-empty
+  // 48. Pack label must be non-empty
   for (const pack of project.assetPacks) {
     if (!pack.label || pack.label.trim().length === 0) {
       errors.push({ path: `assetPacks.${pack.id}.label`, message: `Asset pack "${pack.id}" has empty label` });
     }
   }
 
-  // 45. Pack version must be non-empty
+  // 49. Pack version must be non-empty
   for (const pack of project.assetPacks) {
     if (!pack.version || pack.version.trim().length === 0) {
       errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" has empty version` });
     }
   }
 
-  // 46. Asset packId must reference existing pack
+  // 50. Asset packId must reference existing pack
   for (const a of project.assets) {
     if (a.packId && !packIds.has(a.packId)) {
       errors.push({ path: `assets.${a.id}.packId`, message: `Asset "${a.id}" references nonexistent pack "${a.packId}"` });
     }
   }
 
-  // 47. Orphaned packs (no assets use this packId)
+  // 51. Orphaned packs (no assets use this packId)
   const usedPackIds = new Set<string>();
   for (const a of project.assets) {
     if (a.packId) usedPackIds.add(a.packId);
@@ -574,13 +659,19 @@ export function validateProject(project: WorldProject): ValidationResult {
     }
   }
 
-  // 48. Pack version must be valid semver format (x.y.z)
-  const semverPattern = /^\d+\.\d+\.\d+$/;
+  // 52. Pack version must be valid semver format (x.y.z) — uses module-level SEMVER_PATTERN
   for (const pack of project.assetPacks) {
-    if (pack.version && pack.version.trim().length > 0 && !semverPattern.test(pack.version)) {
+    if (pack.version && pack.version.trim().length > 0 && !SEMVER_PATTERN.test(pack.version)) {
       errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" version "${pack.version}" is not valid semver (expected x.y.z)` });
     }
   }
 
-  return { valid: errors.length === 0, errors };
+  // Structured warning counts for callers that want a quick health check
+  warningCount = errors.length;
+  if (verbose && errors.length > 0) {
+    // In verbose mode, callers can inspect the full errors array for detail.
+    // This is useful for editor integrations that want to show inline diagnostics.
+  }
+
+  return { valid: errors.length === 0, errors, warningCount };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateProject } from '../validate.js';
+import { validateProject, VALID_CONNECTION_KINDS, VALID_ASSET_KINDS } from '../validate.js';
 import type { WorldProject } from '../project.js';
 import { minimalProject } from './fixtures/minimal.js';
 import { chapelProject } from './fixtures/chapel-authored.js';
@@ -120,7 +120,7 @@ describe('validateProject', () => {
     };
     const result = validateProject(bad);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.message.includes('empty encounterType'))).toBe(true);
+    expect(result.errors.some((e) => e.message.includes('encounterType'))).toBe(true);
   });
 
   it('accepts valid faction presence', () => {
@@ -578,6 +578,191 @@ describe('validateProject', () => {
     };
     const result = validateProject(bad);
     expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('not valid semver'))).toBe(true);
+  });
+
+  // --- S-010: Cross-validation — playerTemplate refs require buildCatalog ---
+
+  it('rejects playerTemplate with defaultArchetypeId when no buildCatalog exists', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      buildCatalog: undefined,
+      playerTemplate: { ...minimalProject.playerTemplate!, defaultArchetypeId: 'arch-warrior' },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) =>
+      e.path === 'playerTemplate.defaultArchetypeId' && e.message.includes('no buildCatalog exists'),
+    )).toBe(true);
+  });
+
+  it('rejects playerTemplate with defaultBackgroundId when no buildCatalog exists', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      buildCatalog: undefined,
+      playerTemplate: { ...minimalProject.playerTemplate!, defaultBackgroundId: 'bg-noble' },
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) =>
+      e.path === 'playerTemplate.defaultBackgroundId' && e.message.includes('no buildCatalog exists'),
+    )).toBe(true);
+  });
+
+  it('accepts playerTemplate without archetype/background refs when no buildCatalog', () => {
+    const good: WorldProject = {
+      ...minimalProject,
+      buildCatalog: undefined,
+    };
+    const result = validateProject(good);
+    // Should not have any buildCatalog cross-ref errors
+    expect(result.errors.filter((e) => e.message.includes('no buildCatalog'))).toHaveLength(0);
+  });
+
+  // --- S-003/S-005: Neighbor symmetry still works correctly with Map/Set optimization ---
+
+  it('detects asymmetrical neighbors with many zones (performance regression guard)', () => {
+    const zones = Array.from({ length: 50 }, (_, i) => ({
+      ...minimalProject.zones[0],
+      id: `zone-${i}`,
+      name: `Zone ${i}`,
+      neighbors: i < 49 ? [`zone-${i + 1}`] : [],
+    }));
+    // zone-0 lists zone-1, but zone-1 does NOT list zone-0 back
+    const bad: WorldProject = { ...minimalProject, zones, districts: [], connections: [] };
+    const result = validateProject(bad);
+    expect(result.errors.some((e) => e.message.includes('does not list'))).toBe(true);
+  });
+
+  // --- SB-001: Nonexistent neighbor reported before symmetry check ---
+
+  it('reports nonexistent neighbor before symmetry check', () => {
+    const zones = [
+      { ...minimalProject.zones[0], id: 'z-a', neighbors: ['z-b', 'z-ghost'] },
+      { ...minimalProject.zones[1], id: 'z-b', neighbors: ['z-a'] },
+    ];
+    const bad: WorldProject = { ...minimalProject, zones, districts: [], connections: [] };
+    const result = validateProject(bad);
+    // Should report nonexistent neighbor
+    expect(result.errors.some((e) =>
+      e.path.includes('neighbors') && e.message.includes('nonexistent neighbor "z-ghost"'),
+    )).toBe(true);
+    // Should NOT report symmetry error for nonexistent zone
+    expect(result.errors.some((e) =>
+      e.message.includes('z-ghost') && e.message.includes('does not list'),
+    )).toBe(false);
+  });
+
+  // --- SB-002: No non-null assertion on queue.pop() ---
+
+  it('handles unreachable node detection without crashing', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      dialogues: [{
+        id: 'dlg-safe', speakers: ['npc'], entryNodeId: 'start',
+        nodes: {
+          start: { id: 'start', speaker: 'NPC', text: 'Hello' },
+          island: { id: 'island', speaker: 'NPC', text: 'Unreachable' },
+        },
+      }],
+    };
+    const result = validateProject(bad);
+    expect(result.errors.some((e) => e.message.includes('unreachable') && e.message.includes('island'))).toBe(true);
+  });
+
+  // --- SB-003: warningCount in result ---
+
+  it('returns warningCount equal to error count', () => {
+    const result = validateProject(minimalProject);
+    expect(result.warningCount).toBe(0);
+    expect(result.warningCount).toBe(result.errors.length);
+  });
+
+  it('warningCount matches errors when invalid', () => {
+    const bad: WorldProject = { ...minimalProject, spawnPoints: [] };
+    const result = validateProject(bad);
+    expect(result.warningCount).toBe(result.errors.length);
+    expect(result.warningCount).toBeGreaterThan(0);
+  });
+
+  it('accepts verbose option without changing result shape', () => {
+    const normal = validateProject(minimalProject);
+    const verbose = validateProject(minimalProject, { verbose: true });
+    expect(normal.valid).toBe(verbose.valid);
+    expect(normal.errors.length).toBe(verbose.errors.length);
+  });
+
+  // --- SB-006: VALID_CONNECTION_KINDS derived from ConnectionKind ---
+
+  it('VALID_CONNECTION_KINDS matches all ConnectionKind values', () => {
+    const expected = ['passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard', 'channel', 'route', 'docking', 'warp', 'trail'];
+    for (const kind of expected) {
+      expect(VALID_CONNECTION_KINDS.has(kind)).toBe(true);
+    }
+    expect(VALID_CONNECTION_KINDS.size).toBe(expected.length);
+  });
+
+  // --- SB-007: VALID_ASSET_KINDS derived from AssetKind ---
+
+  it('VALID_ASSET_KINDS matches all AssetKind values', () => {
+    const expected = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
+    for (const kind of expected) {
+      expect(VALID_ASSET_KINDS.has(kind)).toBe(true);
+    }
+    expect(VALID_ASSET_KINDS.size).toBe(expected.length);
+  });
+
+  // --- SB-012: Whitespace-only encounterType rejected ---
+
+  it('rejects encounter anchor with whitespace-only encounterType', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      encounterAnchors: [{ id: 'enc-ws', zoneId: 'zone-cellar', encounterType: '   ', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.message.includes('whitespace-only') && e.message.includes('encounterType'))).toBe(true);
+  });
+
+  // --- SB-013: Enhanced checkAssetRef error messages ---
+
+  it('asset ref error includes expected kind context', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0 ? { ...z, backgroundId: 'ghost-bg' } : z,
+      ),
+    };
+    const result = validateProject(bad);
+    const err = result.errors.find((e) => e.message.includes('ghost-bg'));
+    expect(err).toBeDefined();
+    expect(err!.message).toContain('expected a "background" asset');
+  });
+
+  it('asset kind mismatch error suggests correct kind', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assets: [{ id: 'portrait-1', kind: 'portrait', label: 'Face', path: 'face.png', tags: [] }],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0 ? { ...z, backgroundId: 'portrait-1' } : z,
+      ),
+    };
+    const result = validateProject(bad);
+    const err = result.errors.find((e) => e.message.includes('portrait-1') && e.message.includes('portrait'));
+    expect(err).toBeDefined();
+    expect(err!.message).toContain('Assign a "background" asset instead');
+  });
+
+  // --- SB-014: semverPattern extracted to module-level ---
+
+  it('still validates semver format correctly', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      assetPacks: [{ id: 'p1', label: 'Pack', version: 'abc', tags: [] }],
+      assets: [{ id: 'a1', kind: 'background', label: 'A', path: 'a.png', tags: [], packId: 'p1' }],
+      zones: minimalProject.zones.map((z, i) => i === 0 ? { ...z, backgroundId: 'a1' } : z),
+    };
+    const result = validateProject(bad);
     expect(result.errors.some((e) => e.message.includes('not valid semver'))).toBe(true);
   });
 });

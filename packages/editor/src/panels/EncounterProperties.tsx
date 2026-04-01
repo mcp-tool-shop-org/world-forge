@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { getModeProfile } from '../mode-profiles.js';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, VisibilityToggle } from './shared.js';
 import { labelText, inputCompact, labelText as sharedLabelStyle, inputBase as sharedInputStyle, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
 
 export function EncounterProperties() {
@@ -18,12 +18,14 @@ export function EncounterProperties() {
 
   return (
     <div>
-      <PanelHeader title="Encounter Properties" />
+      <PanelHeader title="Encounter Properties" actions={<VisibilityToggle id={enc.id} />} />
       <label style={labelStyle}>ID
         <input style={inputStyle} value={enc.id} readOnly />
       </label>
       <label style={labelStyle}>Zone
         <input style={inputStyle} value={zone?.name ?? enc.zoneId} readOnly />
+        {/* EUB-017: show zone-deleted indicator for orphaned encounters */}
+        {!zone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>Encounter Type
         <input style={inputStyle} value={enc.encounterType} list="encounter-type-suggestions"

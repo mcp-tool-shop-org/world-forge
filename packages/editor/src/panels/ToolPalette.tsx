@@ -16,10 +16,11 @@ const tools: { id: EditorTool; label: string; key: string }[] = [
 export function ToolPalette() {
   const {
     activeTool, setTool, selection,
-    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient,
+    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient, showMinimap,
     snapToObjects, toggleSnapToObjects,
-    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient,
+    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient, toggleMinimap,
     viewport, setViewport, resetViewport,
+    showPerfStats, togglePerfStats,
   } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const { project } = useProjectStore();
@@ -27,7 +28,11 @@ export function ToolPalette() {
 
   const getCanvasSize = () => {
     const canvas = document.querySelector('canvas');
-    if (!canvas) return null;
+    if (!canvas) {
+      // EUB-013: warn when canvas DOM element is missing
+      console.warn('[ToolPalette] Canvas DOM element not found — viewport operations will be skipped.');
+      return null;
+    }
     const cw = canvas.offsetWidth;
     const ch = canvas.offsetHeight;
     return cw > 0 && ch > 0 ? { cw, ch } : null;
@@ -140,9 +145,15 @@ export function ToolPalette() {
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showAmbient} onChange={toggleAmbient} /> Ambient
       </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showMinimap} onChange={toggleMinimap} /> Minimap
+      </label>
       <hr style={{ margin: '6px 0 4px', borderColor: '#30363d', borderStyle: 'solid', borderWidth: '1px 0 0' }} />
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={snapToObjects} onChange={toggleSnapToObjects} /> Snap to Objects
+      </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showPerfStats} onChange={togglePerfStats} /> Perf Stats
       </label>
     </div>
   );

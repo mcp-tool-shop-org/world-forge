@@ -78,6 +78,11 @@ export function findHitAt(
   }
 
   // 2. Encounters (zone-anchored at zone center)
+  // Note: Encounters are always hit-testable regardless of visibility flags.
+  // VisibilityFlags does not include showEncounters because encounters are
+  // considered structural (tied to zone identity) rather than decorative.
+  // If a showEncounters toggle is added to VisibilityFlags in the future,
+  // gate this block the same way spawns/landmarks/entities are gated.
   for (const enc of project.encounterAnchors) {
     const zone = project.zones.find((z) => z.id === enc.zoneId);
     if (!zone) continue;
@@ -221,7 +226,7 @@ export function findAllInRect(
     }
   }
 
-  // Encounters — zone-anchored at zone center
+  // Encounters — zone-anchored at zone center (always visible; see findHitAt comment)
   const encounters: string[] = [];
   for (const enc of project.encounterAnchors) {
     const zone = project.zones.find((z) => z.id === enc.zoneId);
@@ -265,7 +270,7 @@ export function findAllHitsAt(
     }
   }
 
-  // Encounters
+  // Encounters (always visible; see findHitAt comment)
   for (const enc of project.encounterAnchors) {
     const zone = project.zones.find((z) => z.id === enc.zoneId);
     if (!zone) continue;

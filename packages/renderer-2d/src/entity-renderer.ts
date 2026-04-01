@@ -35,12 +35,17 @@ export class EntityRenderer {
 
     for (const ep of entities) {
       const zonePos = zonePositions.get(ep.zoneId);
-      if (!zonePos) continue;
+      if (!zonePos) {
+        console.warn(
+          `EntityRenderer.update: entity "${ep.entityId}" references zoneId "${ep.zoneId}" which has no known position — skipping placement. Check that the zone exists and is registered in zonePositions.`,
+        );
+        continue;
+      }
 
       const x = (ep.gridX ?? zonePos.x + 2) * this.tileSize;
       const y = (ep.gridY ?? zonePos.y + 2) * this.tileSize;
-      const color = ROLE_COLORS[ep.role];
-      const shape = ROLE_SHAPES[ep.role];
+      const color = ROLE_COLORS[ep.role] ?? 0xcccccc;
+      const shape = ROLE_SHAPES[ep.role] ?? 'circle';
       const size = ep.role === 'boss' ? 10 : 6;
 
       const g = new Graphics();
@@ -60,7 +65,7 @@ export class EntityRenderer {
 
       this.container.addChild(g);
 
-      // Name label on hover would go here — for now, always show
+      // TODO: Show name label only on hover instead of always-visible
       const label = new Text({
         text: ep.entityId,
         style: { fontSize: 9, fill: 0xaaaaaa, fontFamily: 'monospace' },

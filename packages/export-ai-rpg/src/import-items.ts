@@ -10,13 +10,20 @@ export function importItems(
 ): { placements: ItemPlacement[]; warnings: string[]; fidelity: FidelityEntry[] } {
   const warnings: string[] = [];
   const fidelity: FidelityEntry[] = [];
+
+  // EB-014: Early return with empty result when no items to import
+  if (engineItems.length === 0) {
+    return { placements: [], warnings, fidelity };
+  }
+
   const defaultZone = zoneIds.length > 0 ? zoneIds[0] : 'unplaced';
   if (engineItems.length > 0) {
     warnings.push(`All ${engineItems.length} item(s) placed in zone '${defaultZone}' (original zones unknown)`);
   }
 
   const placements = engineItems.map((ei) => {
-    const hidden = !!(ei.provenance?.flags as string[] | undefined)?.includes('contraband');
+    const flags = ei.provenance?.flags;
+    const hidden = Array.isArray(flags) && flags.includes('contraband');
 
     fidelity.push({
       level: 'approximated', domain: 'items', severity: 'warning',

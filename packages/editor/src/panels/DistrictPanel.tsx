@@ -36,8 +36,11 @@ export function DistrictPanel() {
   const handleFrameDistrict = (districtId: string) => {
     const district = project.districts.find((d) => d.id === districtId);
     if (!district || district.zoneIds.length === 0) return;
-    setSelection({ zones: district.zoneIds, entities: [], landmarks: [], spawns: [], encounters: [] });
-    const items = district.zoneIds.map((zid) => project.zones.find((z) => z.id === zid)).filter(Boolean) as Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number }>;
+    // EUB-007: filter to only zones that still exist (guard against deleted zones)
+    const liveZoneIds = district.zoneIds.filter((zid) => project.zones.some((z) => z.id === zid));
+    if (liveZoneIds.length === 0) return;
+    setSelection({ zones: liveZoneIds, entities: [], landmarks: [], spawns: [], encounters: [] });
+    const items = liveZoneIds.map((zid) => project.zones.find((z) => z.id === zid)).filter(Boolean) as Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number }>;
     if (items.length === 0) return;
     const size = getCanvasSize();
     if (!size) return;

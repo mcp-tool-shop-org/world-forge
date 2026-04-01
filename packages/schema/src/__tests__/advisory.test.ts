@@ -130,4 +130,123 @@ describe('advisoryValidation', () => {
       }
     }
   });
+
+  // --- FT-028: Asset naming validation ---
+
+  it('warns on asset with "untitled" in the name', () => {
+    const project = emptyProject('dungeon');
+    project.assets = [
+      { id: 'a1', kind: 'portrait', label: 'Untitled', path: 'a.png', tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    const hit = result.items.find((i) => i.path.includes('a1'));
+    expect(hit).toBeDefined();
+    expect(hit!.severity).toBe('suggestion');
+    expect(hit!.message).toContain("Asset 'Untitled' has a generic name");
+  });
+
+  it('warns on purely numeric asset label', () => {
+    const project = emptyProject('dungeon');
+    project.assets = [
+      { id: 'a2', kind: 'sprite', label: '12345', path: 'b.png', tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    expect(result.items.some((i) => i.path.includes('a2') && i.message.includes("'12345'"))).toBe(true);
+  });
+
+  it('warns on asset label shorter than 3 characters', () => {
+    const project = emptyProject('world');
+    project.assets = [
+      { id: 'a3', kind: 'icon', label: 'ab', path: 'c.png', tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    expect(result.items.some((i) => i.path.includes('a3'))).toBe(true);
+  });
+
+  it('warns on asset label containing "sprite_copy"', () => {
+    const project = emptyProject('dungeon');
+    project.assets = [
+      { id: 'a4', kind: 'sprite', label: 'hero_sprite_copy', path: 'd.png', tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    expect(result.items.some((i) => i.path.includes('a4') && i.message.includes('generic name'))).toBe(true);
+  });
+
+  it('warns on asset label containing "image"', () => {
+    const project = emptyProject('dungeon');
+    project.assets = [
+      { id: 'a5', kind: 'background', label: 'new image 2', path: 'e.png', tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    expect(result.items.some((i) => i.path.includes('a5'))).toBe(true);
+  });
+
+  it('does not warn on descriptive asset names', () => {
+    const project = emptyProject('dungeon');
+    project.assets = [
+      { id: 'a6', kind: 'portrait', label: 'npc-merchant-portrait', path: 'f.png', tags: [] },
+      { id: 'a7', kind: 'sprite', label: 'goblin-warrior', path: 'g.png', tags: [] },
+      { id: 'a8', kind: 'tileset', label: 'forest-floor', path: 'h.png', tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    const assetWarnings = result.items.filter((i) => i.path.startsWith('assets['));
+    expect(assetWarnings).toHaveLength(0);
+  });
+
+  // --- S-006: pressureType null safety ---
+
+  it('dungeon advisory handles hotspot with undefined pressureType', () => {
+    const project = emptyProject('dungeon');
+    project.zones = [
+      { id: 'z1', name: 'Room 1', x: 0, y: 0, width: 5, height: 5, tags: [] } as any,
+      { id: 'z2', name: 'Room 2', x: 6, y: 0, width: 5, height: 5, tags: [] } as any,
+    ];
+    project.connections = [
+      { id: 'c1', fromZoneId: 'z1', toZoneId: 'z2', kind: 'secret', bidirectional: true } as any,
+    ];
+    // Hotspot with undefined pressureType (simulates missing field)
+    project.pressureHotspots = [
+      { id: 'h1', zoneId: 'z1', pressureType: undefined as any, baseProbability: 0.5, tags: [] },
+    ];
+    // Should not throw — optional chaining prevents crash
+    expect(() => advisoryValidation(project)).not.toThrow();
+    const result = advisoryValidation(project);
+    // With no trap tag and undefined pressureType, the trap suggestion should appear
+    expect(result.items.some((i) => i.message.includes('trap'))).toBe(true);
+  });
+
+  it('dungeon advisory handles hotspot with empty-string pressureType', () => {
+    const project = emptyProject('dungeon');
+    project.zones = [
+      { id: 'z1', name: 'Room 1', x: 0, y: 0, width: 5, height: 5, tags: [] } as any,
+      { id: 'z2', name: 'Room 2', x: 6, y: 0, width: 5, height: 5, tags: [] } as any,
+    ];
+    project.connections = [
+      { id: 'c1', fromZoneId: 'z1', toZoneId: 'z2', kind: 'secret', bidirectional: true } as any,
+    ];
+    // Empty string pressureType — should not crash and trap suggestion should appear
+    project.pressureHotspots = [
+      { id: 'h1', zoneId: 'z1', pressureType: '', baseProbability: 0.5, tags: [] },
+    ];
+    expect(() => advisoryValidation(project)).not.toThrow();
+    const result = advisoryValidation(project);
+    expect(result.items.some((i) => i.message.includes('trap'))).toBe(true);
+  });
+
+  it('dungeon advisory recognizes trap in pressureType string', () => {
+    const project = emptyProject('dungeon');
+    project.zones = [
+      { id: 'z1', name: 'Room 1', x: 0, y: 0, width: 5, height: 5, tags: [] } as any,
+      { id: 'z2', name: 'Room 2', x: 6, y: 0, width: 5, height: 5, tags: [] } as any,
+    ];
+    project.connections = [
+      { id: 'c1', fromZoneId: 'z1', toZoneId: 'z2', kind: 'secret', bidirectional: true } as any,
+    ];
+    project.pressureHotspots = [
+      { id: 'h1', zoneId: 'z1', pressureType: 'trap-activation', baseProbability: 0.5, tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    // No trap suggestion since pressureType contains 'trap'
+    expect(result.items.filter((i) => i.message.includes('trap'))).toHaveLength(0);
+  });
 });

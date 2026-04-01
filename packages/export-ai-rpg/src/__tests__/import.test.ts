@@ -227,13 +227,13 @@ describe('importEntities', () => {
     expect(placements[2].zoneId).toBe('z1');
   });
 
-  it('generates warnings for each entity', () => {
+  it('generates no per-entity warnings when zoneIds is non-empty', () => {
     const { warnings } = importEntities(
       [{ id: 'e1', type: 'npc', name: 'Bob', tags: [], aiProfile: 'passive' }],
       ['z1'],
     );
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain('Bob');
+    // EB-004: warnings only emitted when zoneIds is empty (real problem)
+    expect(warnings).toHaveLength(0);
   });
 
   it('emits zone-placement-round-robin and role-reverse-mapped fidelity', () => {
