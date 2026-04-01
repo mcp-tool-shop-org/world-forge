@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.1.0] - 2026-03-31
+
+### Added
+
+- **Auto-save** — 30-second throttled auto-save with 3-version recovery history (localStorage)
+- **Undo labels** — undo/redo stack entries now carry descriptive action labels with count badges
+- **Copy/paste** — Ctrl+C / Ctrl+V with full ID remapping and configurable offset
+- **Per-object visibility** — hide/show individual objects, persisted in localStorage
+- **Context menu** — right-click for 7 context-sensitive actions on canvas
+- **Connection preview** — dashed cyan line during connection tool placement
+- **Minimap** — 200×150 overview overlay with click-to-jump navigation
+- **Viewport culling** — only renders objects within visible bounds (64px margin)
+- **Performance stats** — toggle object count, render time, and zoom overlay
+- **Theme toggle** — dark/light mode switch persisted in localStorage
+- **Unsaved changes guard** — beforeunload warning prevents accidental navigation
+- **Layout templates** — 6 prebuilt zone arrangements (3 dungeon + 3 district)
+- **Dialogue templates** — 5 conversation starters (greeting, quest-giver, merchant, warning, farewell)
+- **Zone merge** — merge multiple zones into one with full reassignment of connections, entities, items
+- **Batch entity placement** — grid, random, and circle placement patterns
+- **Fuzzy search** — character-order matching with scoring (consecutive, word-start, shorter-text bonuses)
+- **Search history** — recent searches persisted in localStorage
+- **Project metadata editor** — author, license, category, tags fields in Review panel
+- **Review statistics** — role distribution, connection kinds, encounter types, zones per district
+- **Role filter pills** — entity list filterable by role with counts
+- **Import fidelity repair suggestions** — actionable fix recommendations in ImportSummaryPanel
+- **Export versioning tips** — multi-user footnote and version guidance in ExportModal
+- **Progression cross-links** — progression tree nodes link to associated entities
+- **Checklist keyboard shortcuts** — hotkey reference section in guide panel
+- **Asset drag handles** — reorderable asset entries in AssetPanel
+- **Validation toast** — green auto-dismiss toast on successful validation
+- **Zone auto-naming** — mode-aware default names (e.g., "Chamber 3" for dungeon, "Sector 3" for space)
+- **Snap distance** — `computeSnapDistance()` pure function, exported snap guide constants
+- **Modal guards** — `confirmDiscard()` utility for unsaved changes confirmation
+- **Schema metadata** — optional `author`, `license`, `category`, `projectTags` on WorldProject
+- **Schema warningCount** — `ValidationResult` now includes `warningCount` and optional `ValidateOptions`
+- **Advisory enhancements** — metadata completeness advisories, asset generic-name detection
+- **Export --verbose flag** — verbose output mode for CLI export
+- **Export JSDoc** — comprehensive documentation of export/import pipeline architecture
+
+### Changed
+
+- **Validation performance** — replaced O(n²) zone lookups with precomputed Maps and Sets
+- **structuredClone** — replaced JSON.parse(JSON.stringify()) for deep cloning throughout
+- **Error boundary** — localStorage availability check with try-catch, dev-mode stack traces
+- **Renderer hardening** — fallback colors/shapes for missing assets, division-by-zero guards
+
+### Fixed
+
+- **CI workflow** — removed invalid `secrets` context from step-level if expression
+- **Bundle validation** — fixed isValid logic (now checks `.valid` only, not OR with errors.length)
+- **Import safety** — null guards on FileReader result, empty zone checks before spawn creation
+- **Repairs** — added null guard on optional `fieldName` in computed property access
+- **Chapel threshold** — fixed discriminant field (success → ok)
+
 ## [4.0.6] - 2026-03-25
 
 ### Fixed
