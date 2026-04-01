@@ -41,7 +41,7 @@ jobs:
       # should never block CI — the token may be missing in forks or the
       # Codecov service may be temporarily unreachable.
       - name: Upload coverage
-        if: matrix.node-version == 22 && secrets.CODECOV_TOKEN != ''
+        if: matrix.node-version == 22
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         continue-on-error: true
         with:
