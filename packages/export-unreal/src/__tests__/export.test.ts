@@ -273,11 +273,11 @@ describe('exportToUnreal', () => {
     }
   });
 
-  it('UE-B-006: importFromUnreal dispatches by FormatVersion major (future-proofing seam)', () => {
-    // UE-B-006: the dispatcher must route v1.x packs through deserializeV1
-    // AND must fall through to v1 for unknown / missing versions (until
-    // UE-FT-008 upgrades this to a hard error). Prove both paths round-trip
-    // the minimal project without crashing.
+  it('UE-B-006 / UE-FT-008: importFromUnreal dispatches by FormatVersion major', () => {
+    // UE-B-006: the dispatcher routes v1.x packs through deserializeV1.
+    // UE-FT-008: unknown majors are now a hard error (was: fall-through to v1).
+    // Malformed / missing FormatVersion still falls through to v1 for legacy
+    // packs produced before UE-A-001 stamped a version.
     const result = exportToUnreal(minimalProject);
     if (!result.success) throw new Error('export failed');
 
@@ -285,15 +285,18 @@ describe('exportToUnreal', () => {
     const back = importFromUnreal(result.contentPack);
     expect(back.success).toBe(true);
 
-    // Unknown major — dispatcher falls through to v1, still succeeds.
+    // Unknown major — hard error naming the version (UE-FT-008 upgrade).
     const futurePack = {
       ...result.contentPack,
       Meta: { ...result.contentPack.Meta, FormatVersion: '99.0.0' },
     };
     const futureBack = importFromUnreal(futurePack);
-    expect(futureBack.success).toBe(true);
+    expect(futureBack.success).toBe(false);
+    if (!futureBack.success) {
+      expect(futureBack.errors.some((e) => e.includes('99.0.0'))).toBe(true);
+    }
 
-    // Malformed FormatVersion — dispatcher still doesn't crash.
+    // Malformed FormatVersion — dispatcher still doesn't crash (legacy path).
     const malformedPack = {
       ...result.contentPack,
       Meta: { ...result.contentPack.Meta, FormatVersion: 'not-a-version' },

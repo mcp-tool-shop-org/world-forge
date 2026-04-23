@@ -4,6 +4,8 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from './export.js';
+import { summarizePack, formatSummary } from './summary.js';
+import { diffPacks, formatDiff } from './diff.js';
 import type { WorldProject } from '@world-forge/schema';
 
 // UE-A-003: help text is parametrized by UNREAL_PACK_FORMAT_VERSION so the
@@ -11,14 +13,22 @@ import type { WorldProject } from '@world-forge/schema';
 // in minor versions (e.g. UE-FT-007 signing, UE-FT-008 version migration) —
 // callers are told to rely on the format version, not a frozen field list.
 const USAGE = `Usage: world-forge-export-unreal <project.json> [options]
+       world-forge-export-unreal --summary <pack-dir>
+       world-forge-export-unreal --diff <prev-dir> <new-dir>  [--detailed]
 
-Options:
+Export options:
   --out <dir>        Output directory (default: ./UnrealPack)
   --tile-size-cm N   Override world scale (default: 100 cm per tile)
+  --sign             Attach a sha256 integrity hash to Meta.Signature
   --validate-only    Validate without writing files
   --verbose          Show detailed export diagnostics
   --warnings-only    With --verbose, hide lossless/info fidelity entries
   --help             Show this help
+
+Summary / diff options:
+  --summary <dir>    Print summary of the pack at <dir>
+  --diff <a> <b>     Compare packs at <a> (previous) and <b> (new)
+  --detailed         With --diff, list added/removed/changed ids
 
 Pack format version: ${UNREAL_PACK_FORMAT_VERSION}
   Additional Meta fields may be added in minor versions (e.g. integrity hash,
@@ -43,10 +53,49 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // UE-FT-005: read-only subcommands (--summary, --diff) short-circuit before
+  // the export pipeline so they work without a project.json argument.
+  const summaryIdx = args.indexOf('--summary');
+  if (summaryIdx !== -1) {
+    const dir = args[summaryIdx + 1];
+    if (!dir) {
+      console.error('Error: --summary requires a pack directory path (e.g., --summary ./UnrealPack)');
+      process.exit(1);
+    }
+    const result = await summarizePack(resolve(dir));
+    if ('error' in result) {
+      console.error(`Error: ${result.error}`);
+      if (result.hint) console.error(`Hint: ${result.hint}`);
+      process.exit(1);
+    }
+    console.log(formatSummary(result));
+    process.exit(0);
+  }
+
+  const diffIdx = args.indexOf('--diff');
+  if (diffIdx !== -1) {
+    const prev = args[diffIdx + 1];
+    const next = args[diffIdx + 2];
+    if (!prev || !next || prev.startsWith('--') || next.startsWith('--')) {
+      console.error('Error: --diff requires two pack directory paths (e.g., --diff ./prev ./new)');
+      process.exit(1);
+    }
+    const detailed = args.includes('--detailed');
+    const result = await diffPacks(resolve(prev), resolve(next));
+    if ('error' in result) {
+      console.error(`Error: ${result.error}`);
+      if (result.hint) console.error(`Hint: ${result.hint}`);
+      process.exit(1);
+    }
+    console.log(formatDiff(result, detailed));
+    process.exit(0);
+  }
+
   const projectPath = args[0];
   const validateOnly = args.includes('--validate-only');
   const verbose = args.includes('--verbose');
   const warningsOnly = args.includes('--warnings-only');
+  const sign = args.includes('--sign');
 
   const outIdx = args.indexOf('--out');
   if (outIdx !== -1 && !args[outIdx + 1]) {
@@ -82,7 +131,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const result = exportToUnreal(project, tileSizeCm !== undefined ? { tileSizeCm } : undefined);
+  const exportOptions: { tileSizeCm?: number; signing?: { algorithm: 'sha256' } } = {};
+  if (tileSizeCm !== undefined) exportOptions.tileSizeCm = tileSizeCm;
+  if (sign) exportOptions.signing = { algorithm: 'sha256' };
+  const result = exportToUnreal(
+    project,
+    Object.keys(exportOptions).length > 0 ? exportOptions : undefined,
+  );
 
   if (!result.success) {
     console.error('Validation failed:');

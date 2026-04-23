@@ -284,4 +284,60 @@ describe('CLI: world-forge-export-unreal', () => {
     const district = JSON.parse(await readFile(join(outDir, 'districts', `${firstDistrictId}.json`), 'utf-8'));
     expect(district.Id).toBe(minimalProject.districts[0].id);
   });
+
+  // UE-FT-007: --sign attaches an integrity hash to pack.json.
+  it('UE-FT-007: --sign attaches a sha256 Signature to pack.json', async () => {
+    const outDir = join(tmpDir, 'signed-out');
+    const { code } = await runCli([validJsonPath, '--out', outDir, '--sign']);
+    expect(code).toBe(0);
+    const pack = JSON.parse(await readFile(join(outDir, 'pack.json'), 'utf-8'));
+    expect(pack.Signature).toBeDefined();
+    expect(pack.Signature.algorithm).toBe('sha256');
+    expect(typeof pack.Signature.value).toBe('string');
+    expect(pack.Signature.value).toMatch(/^[0-9a-f]{64}$/);
+    expect(Array.isArray(pack.Signature.signedFields)).toBe(true);
+  });
+
+  it('UE-FT-007: export without --sign has no Signature (backward compat)', async () => {
+    const outDir = join(tmpDir, 'unsigned-out');
+    const { code } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    const pack = JSON.parse(await readFile(join(outDir, 'pack.json'), 'utf-8'));
+    expect(pack.Signature).toBeUndefined();
+  });
+
+  // UE-FT-005: --summary prints a human-readable overview of a pack dir.
+  it('UE-FT-005: --summary prints a human-readable summary', async () => {
+    const outDir = join(tmpDir, 'summary-src-out');
+    await runCli([validJsonPath, '--out', outDir]);
+    const { code, stdout } = await runCli(['--summary', outDir]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Pack:');
+    expect(stdout).toContain('FormatVersion:');
+    expect(stdout).toContain('Zones:');
+    expect(stdout).toContain('Signed:');
+  });
+
+  it('UE-FT-005: --summary on a missing directory exits non-zero with a hint', async () => {
+    const { code, stderr } = await runCli(['--summary', join(tmpDir, 'no-such-dir')]);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('pack.json');
+  });
+
+  it('UE-FT-005: --diff on identical packs reports all zeros', async () => {
+    const aDir = join(tmpDir, 'diff-id-a');
+    const bDir = join(tmpDir, 'diff-id-b');
+    await runCli([validJsonPath, '--out', aDir]);
+    await runCli([validJsonPath, '--out', bDir]);
+    const { code, stdout } = await runCli(['--diff', aDir, bDir]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Zones:');
+    expect(stdout).toContain('0 added, 0 removed, 0 changed');
+  });
+
+  it('UE-FT-005: --diff with only one path exits non-zero', async () => {
+    const { code, stderr } = await runCli(['--diff', tmpDir]);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('--diff requires two');
+  });
 });

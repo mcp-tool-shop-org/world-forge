@@ -28,7 +28,40 @@ if (!result.success) {
 ```bash
 npx world-forge-export-unreal project.json --out ./UnrealPack
 npx world-forge-export-unreal project.json --validate-only
+npx world-forge-export-unreal project.json --out ./UnrealPack --sign
+npx world-forge-export-unreal --summary ./UnrealPack
+npx world-forge-export-unreal --diff ./prev ./new [--detailed]
 ```
+
+### `--sign` (UE-FT-007)
+
+Attaches an optional integrity hash to `pack.json` under `Meta.Signature`:
+
+```json
+{
+  "Signature": {
+    "algorithm": "sha256",
+    "value": "<64-char hex>",
+    "signedFields": ["Id", "Name", "Description", "Version", "...", "FormatVersion"]
+  }
+}
+```
+
+The signature is an integrity check, not a MAC — anyone with the pack can re-hash it. The UE5 loader or a CI step calls `verifyPackSignature(meta)` (exported from this package) to detect tampering between export and import. Omit `--sign` for unsigned packs (default, backward compatible).
+
+### `--summary <pack-dir>` / `--diff <prev> <new>` (UE-FT-005)
+
+Human-readable change review over exported packs. `--summary` prints counts + FormatVersion + signed-or-not. `--diff` compares two pack directories and reports added / removed / changed zones, districts, actors, plus FormatVersion and Signature changes. Add `--detailed` to list the ids.
+
+## Pack format versioning (UE-FT-008)
+
+`Meta.FormatVersion` is a semver string. Versioning rules:
+
+- **Major bump** — required field added/removed, or semantics change. Old loaders must refuse.
+- **Minor bump** — optional field added (additive, back-compatible). Old loaders ignore new fields.
+- **Patch bump** — doc-only.
+
+The current format is `1.1.0` (v1.0.0 → v1.1.0 added the optional `Signature` field). A migration framework (`migratePack` + `MIGRATIONS` chain) walks older packs forward on import; unknown majors are rejected with a clear error naming the version, and newer minors load with a forward-compat warning.
 
 ## Output layout
 
@@ -36,7 +69,7 @@ Writing to `--out ./UnrealPack` produces:
 
 ```
 UnrealPack/
-  pack.json                  — manifest (id, name, version, source project hash)
+  pack.json                  — manifest (id, name, version, FormatVersion, optional Signature)
   zones/<id>.json            — one Primary Data Asset JSON per zone
   districts/<id>.json        — one per district
   actors/manifest.json       — entity placements grouped by zone, BP-class tag per role

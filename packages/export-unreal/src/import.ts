@@ -12,7 +12,9 @@ import type {
   ZoneConnection, ParallaxLayer,
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
-import type { UnrealContentPack } from './export.js';
+import type { UnrealContentPack, UnrealPackMeta } from './export.js';
+import { UNREAL_PACK_FORMAT_VERSION } from './export.js';
+import { migratePack, parseSemVer, compareSemVer, type MigrationWarning } from './migrations.js';
 import type { UnrealZoneDataAsset } from './convert-zones.js';
 import type { UnrealDistrictDataAsset } from './convert-districts.js';
 import type { UnrealActorSpawnEntry } from './convert-entities.js';
@@ -45,38 +47,98 @@ type PackDeserializer = (pack: UnrealContentPack) => UnrealImportResult | Unreal
 const V1_DESERIALIZER: PackDeserializer = (pack) => deserializeV1(pack);
 
 /**
- * UE-B-006: registered version dispatchers. Keys are semver majors (`'1'`,
- * `'2'`, ...). UE-FT-008 will register a `'2'` entry pointing at a new
- * deserializer that handles the v2 pack structure.
+ * UE-B-006 / UE-FT-008: registered version dispatchers. Keys are semver
+ * majors (`'1'`, `'2'`, ...). A major bump means the pack's structure has
+ * changed in a way the v1 deserializer can't read — register a new entry
+ * here that normalizes the new shape back into the V1 code path, or writes
+ * its own deserializer.
+ *
+ * Minor-version differences within the same major are handled by
+ * `migratePack` BEFORE dispatch, so a single major-keyed deserializer sees
+ * a Meta already rewritten to the current minor.
  */
 const VERSION_DISPATCHERS: Record<string, PackDeserializer> = {
   '1': V1_DESERIALIZER,
 };
 
-function majorOfFormatVersion(formatVersion: unknown): string | undefined {
-  if (typeof formatVersion !== 'string') return undefined;
-  const match = /^(\d+)\./.exec(formatVersion);
-  return match ? match[1] : undefined;
-}
-
 export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
-  // UE-B-006: version-aware dispatch. Must run *before* deserialization so a
-  // v2 pack isn't parsed with v1 rules. For unknown versions we fall through
-  // to V1 with a warning — UE-FT-008 will upgrade this to a hard error.
+  // UE-B-006 / UE-FT-008: version-aware dispatch. Steps:
+  //   1. Extract FormatVersion from Meta.
+  //   2. If parseable, run `migratePack` to rewrite older minors up to the
+  //      current version (or capture forward-compat warnings / hard errors).
+  //   3. Dispatch by semver major. Unknown majors are rejected with a clear
+  //      error naming the version.
+  //   4. If FormatVersion is missing / unparseable, fall through to V1 (legacy
+  //      behavior — keeps pre-UE-A-001 packs loadable with a fidelity warning
+  //      already emitted by deserializeV1).
   const metaUnknown: unknown = pack?.Meta;
   const formatVersion = typeof metaUnknown === 'object' && metaUnknown !== null
     ? (metaUnknown as { FormatVersion?: unknown }).FormatVersion
     : undefined;
-  const major = majorOfFormatVersion(formatVersion);
-  if (major !== undefined) {
-    const deserializer = VERSION_DISPATCHERS[major];
-    if (deserializer) {
-      return deserializer(pack);
+  const parsed = parseSemVer(formatVersion);
+  if (!parsed) {
+    // Legacy / hand-edited pack — fall through to V1 dispatcher. deserializeV1
+    // will push a `dropped` fidelity entry flagging the guess.
+    return V1_DESERIALIZER(pack);
+  }
+
+  const current = parseSemVer(UNREAL_PACK_FORMAT_VERSION);
+  // `current` is a constant; if it ever fails to parse it's a programmer bug,
+  // not user input — fall through to V1 rather than throw.
+  if (!current) return V1_DESERIALIZER(pack);
+
+  const sameMajor = compareSemVer(parsed, current).sameMajor;
+  let migrated: UnrealPackMeta = pack.Meta;
+  let migrationWarnings: MigrationWarning[] = [];
+  if (sameMajor) {
+    const result = migratePack(pack.Meta, UNREAL_PACK_FORMAT_VERSION);
+    if ('code' in result) {
+      return {
+        success: false,
+        errors: [`Migration failed (${result.code}): ${result.message}`],
+      };
+    }
+    migrated = result.meta;
+    migrationWarnings = result.warnings;
+  }
+
+  const major = String(parsed.major);
+  const deserializer = VERSION_DISPATCHERS[major];
+  if (!deserializer) {
+    return {
+      success: false,
+      errors: [
+        `Unsupported pack FormatVersion "${pack.Meta.FormatVersion}" (major ${major}). ` +
+        `This loader supports major ${current.major}.x. Re-export the pack with a compatible exporter ` +
+        `or update the loader.`,
+      ],
+    };
+  }
+
+  // Dispatch with the migrated Meta swapped in so deserializers always see the
+  // current minor's shape.
+  const packForDispatch: UnrealContentPack = migrated === pack.Meta
+    ? pack
+    : { ...pack, Meta: migrated };
+  const result = deserializer(packForDispatch);
+
+  // Thread forward-compat warnings into the fidelity report. They're info-
+  // level: loading succeeded, but the caller should know a newer-minor pack
+  // may have fields this loader ignored.
+  if (result.success && migrationWarnings.length > 0) {
+    for (const w of migrationWarnings) {
+      result.fidelity.entries.push({
+        level: 'dropped',
+        domain: 'world',
+        severity: 'warning',
+        fieldPath: 'Meta.FormatVersion',
+        message: w.message,
+        reason: `Pack at ${w.fromVersion}, loader at ${w.toVersion} — forward-compat load.`,
+      });
     }
   }
-  // Fallback: unknown / missing FormatVersion — use V1 and let deserializeV1
-  // push a `dropped` fidelity entry so the loader knows we guessed.
-  return V1_DESERIALIZER(pack);
+
+  return result;
 }
 
 function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
