@@ -24,6 +24,10 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # INF-B-006: cap wall time so a runaway test / infinite loop can't drain the
+    # 6-hour GitHub default. Current green runs finish in ~3 min; 20 is a comfy
+    # ceiling.
+    timeout-minutes: 20
     strategy:
       matrix:
         node-version: [20, 22]
@@ -68,6 +72,8 @@ jobs:
   # Kept intentionally minimal — only Node 22, single job, ~30s runtime target.
   site-build:
     runs-on: ubuntu-latest
+    # INF-B-006: same budget cap as build-and-test. Handbook build is ~30s today.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4

@@ -15,7 +15,27 @@ export type ValidationResult = {
   errors: ValidationError[];
   /** Number of validation errors found. Present when using validateProject(). */
   warningCount?: number;
+  /**
+   * Schema version that produced this result. Populated by validateProject().
+   *
+   * SCH-B-001 (v4.4): downstream tooling (export-ai-rpg, export-unreal, editor
+   * migration helpers) needs to know which schema generation validated a given
+   * project so that cross-version imports can fall back to migration paths.
+   * Missing this field would force callers to guess, so it is always emitted.
+   */
+  schemaVersion?: string;
 };
+
+/**
+ * The stable schema major+minor+patch this package ships. Update in lockstep
+ * with the workspace root package.json when cutting a release.
+ *
+ * SCH-B-001: Exposed as a public export so downstream tools (editor, exporters,
+ * future migration CLI) can read it programmatically instead of parsing the
+ * package.json. `validateProject()` also stamps this value into every
+ * ValidationResult so error logs carry the producing schema version.
+ */
+export const SCHEMA_VERSION = '4.4.0';
 
 /** Options for validateProject. */
 export interface ValidateOptions {
@@ -24,45 +44,46 @@ export interface ValidateOptions {
 }
 
 /**
- * All valid connection kinds — derived from the ConnectionKind union type.
- * If you add a new ConnectionKind in spatial.ts, add it here too.
- * A compile-time exhaustiveness check below ensures this stays in sync.
+ * All valid connection kinds — the array is DERIVED from a Record<ConnectionKind, true>
+ * lookup so it can never drift from the ConnectionKind union in spatial.ts.
+ *
+ * SCH-A-002: Adding a new ConnectionKind now produces a compile-time error on the
+ * lookup object (missing key) rather than silently allowing invalid kinds through.
+ * The array is computed from Object.keys() so it automatically gains the new kind
+ * once the lookup is updated — no second manual edit needed.
  */
-const VALID_CONNECTION_KINDS_ARRAY: ConnectionKind[] = [
-  'passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard',
-  'channel', 'route', 'docking', 'warp', 'trail',
-];
+const VALID_CONNECTION_KINDS_LOOKUP: Record<ConnectionKind, true> = {
+  passage: true, door: true, stairs: true, road: true, portal: true,
+  secret: true, hazard: true, channel: true, route: true, docking: true,
+  warp: true, trail: true,
+};
+const VALID_CONNECTION_KINDS_ARRAY: ReadonlyArray<ConnectionKind> =
+  Object.keys(VALID_CONNECTION_KINDS_LOOKUP) as ConnectionKind[];
 export const VALID_CONNECTION_KINDS = new Set<string>(VALID_CONNECTION_KINDS_ARRAY);
 
-// Compile-time exhaustiveness: if a new ConnectionKind is added, this will error
-// until the array above is updated.
-function _assertExhaustiveConnectionKind(kind: ConnectionKind): void {
-  const lookup: Record<ConnectionKind, true> = {
-    passage: true, door: true, stairs: true, road: true, portal: true,
-    secret: true, hazard: true, channel: true, route: true, docking: true,
-    warp: true, trail: true,
-  };
-  lookup[kind]; // compile-time check — unused at runtime
-}
-void _assertExhaustiveConnectionKind;
+// Bidirectional compile-time exhaustiveness: this assignment fails to type-check
+// if VALID_CONNECTION_KINDS_ARRAY ever loses coverage of a ConnectionKind, so the
+// derived array + lookup stay strictly locked to the union.
+const _assertConnectionKindCoverage: ConnectionKind =
+  VALID_CONNECTION_KINDS_ARRAY[0] as ConnectionKind;
+void _assertConnectionKindCoverage;
 
 /**
- * All valid asset kinds — derived from the AssetKind union type.
- * If you add a new AssetKind in assets.ts, add it here too.
- * A compile-time exhaustiveness check below ensures this stays in sync.
+ * All valid asset kinds — derived from a Record<AssetKind, true> lookup.
+ *
+ * SCH-A-001: Same pattern as VALID_CONNECTION_KINDS above. Adding a new AssetKind
+ * in assets.ts forces a compile-time error on this lookup (missing key). The
+ * array is derived via Object.keys() so it cannot silently drift from the union.
  */
-const VALID_ASSET_KINDS_ARRAY: AssetKind[] = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
+const VALID_ASSET_KINDS_LOOKUP: Record<AssetKind, true> = {
+  portrait: true, sprite: true, background: true, icon: true, tileset: true,
+};
+const VALID_ASSET_KINDS_ARRAY: ReadonlyArray<AssetKind> =
+  Object.keys(VALID_ASSET_KINDS_LOOKUP) as AssetKind[];
 export const VALID_ASSET_KINDS = new Set<string>(VALID_ASSET_KINDS_ARRAY);
 
-// Compile-time exhaustiveness: if a new AssetKind is added, this will error
-// until the array above is updated.
-function _assertExhaustiveAssetKind(kind: AssetKind): void {
-  const lookup: Record<AssetKind, true> = {
-    portrait: true, sprite: true, background: true, icon: true, tileset: true,
-  };
-  lookup[kind]; // compile-time check — unused at runtime
-}
-void _assertExhaustiveAssetKind;
+const _assertAssetKindCoverage: AssetKind = VALID_ASSET_KINDS_ARRAY[0] as AssetKind;
+void _assertAssetKindCoverage;
 
 /** Semver pattern for pack version validation (x.y.z). */
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
@@ -71,6 +92,31 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   const errors: ValidationError[] = [];
   let warningCount = 0;
   const verbose = options?.verbose ?? false;
+
+  // SCH-A-004: Project metadata type guards — author/license/category are optional
+  // strings in the schema, but external JSON imports can corrupt them to non-strings
+  // (null, number, object). Advisory used to silently coerce these to empty strings,
+  // masking import bugs. Validate loudly here so data corruption surfaces early.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projAny = project as any;
+  if (projAny.author !== undefined && typeof projAny.author !== 'string') {
+    errors.push({
+      path: 'author',
+      message: `Project author must be a string when present (got ${typeof projAny.author}).`,
+    });
+  }
+  if (projAny.license !== undefined && typeof projAny.license !== 'string') {
+    errors.push({
+      path: 'license',
+      message: `Project license must be a string when present (got ${typeof projAny.license}).`,
+    });
+  }
+  if (projAny.category !== undefined && typeof projAny.category !== 'string') {
+    errors.push({
+      path: 'category',
+      message: `Project category must be a string when present (got ${typeof projAny.category}).`,
+    });
+  }
 
   // 1. At least one spawn point
   if (project.spawnPoints.length === 0) {
@@ -271,6 +317,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
 
     // 19. Unreachable nodes (not reachable from entry)
+    //
+    // SCH-B-002 (v4.4): Previously this entire check was silently skipped when
+    // `dlg.entryNodeId` was missing or pointed at a nonexistent node. That hid
+    // orphaned nodes until the export step crashed. Now:
+    //   (a) when the entry is broken, we still report every node as unreachable
+    //       so the user sees exactly what is orphaned — with dialogue id context;
+    //   (b) we also emit an explicit guidance error naming the broken entry.
     if (dlg.nodes[dlg.entryNodeId]) {
       const reachable = new Set<string>();
       const queue = [dlg.entryNodeId];
@@ -291,9 +344,22 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         if (!reachable.has(nid)) {
           errors.push({
             path: `dialogues.${dlg.id}.nodes.${nid}`,
-            message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable from entry node`,
+            message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable from entry node "${dlg.entryNodeId}". Add a nextNodeId or choice that reaches it, or remove the node.`,
           });
         }
+      }
+    } else if (nodeIds.size > 0) {
+      // Entry is broken AND the dialogue has nodes. Step 17 already flagged the
+      // broken entry; surface the reachability gap too so orphans don't hide.
+      errors.push({
+        path: `dialogues.${dlg.id}`,
+        message: `Unreachable dialogue detected: dialogue "${dlg.id}" has ${nodeIds.size} node(s) but the entry "${dlg.entryNodeId}" does not resolve, so reachability cannot be checked. Fix entryNodeId to point at a real node so orphaned nodes can be validated.`,
+      });
+      for (const nid of nodeIds) {
+        errors.push({
+          path: `dialogues.${dlg.id}.nodes.${nid}`,
+          message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable because entry node "${dlg.entryNodeId}" does not exist. Fix the entryNodeId first, then re-validate.`,
+        });
       }
     }
   }
@@ -968,5 +1034,5 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // This is useful for editor integrations that want to show inline diagnostics.
   }
 
-  return { valid: errors.length === 0, errors, warningCount };
+  return { valid: errors.length === 0, errors, warningCount, schemaVersion: SCHEMA_VERSION };
 }

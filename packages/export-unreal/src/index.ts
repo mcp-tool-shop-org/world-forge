@@ -17,7 +17,7 @@ export type { UnrealDistrictDataAsset, ConvertDistrictsResult } from './convert-
 
 export { convertEntities } from './convert-entities.js';
 export type {
-  UnrealActorSpawnEntry, UnrealActorManifest, UnrealBlueprintTag, ConvertEntitiesResult,
+  UnrealActorSpawnEntry, UnrealActorManifest, UnrealBlueprintTag, UnrealDroppedEntity, ConvertEntitiesResult,
 } from './convert-entities.js';
 
 export { convertConnections } from './convert-connections.js';
@@ -49,3 +49,21 @@ export type {
   FidelityLevel, FidelitySeverity, FidelityDomain,
   FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,
 } from './fidelity.js';
+
+// UE-FT-007: pack signing
+export { signMeta, composeSignedMeta, verifyPackSignature } from './signing.js';
+export type { PackSignature, SigningAlgorithm, VerifyResult } from './signing.js';
+
+// UE-FT-008: schema versioning + migration framework
+export {
+  migratePack, parseSemVer, compareSemVer, isMigrationError, MIGRATIONS,
+} from './migrations.js';
+export type {
+  SemVer, Migration, MigrationResult, MigrationError, MigrationWarning,
+} from './migrations.js';
+
+// UE-FT-005: CLI summary + diff helpers
+export { summarizePack, formatSummary } from './summary.js';
+export type { PackSummary, SummaryError } from './summary.js';
+export { diffPacks, formatDiff } from './diff.js';
+export type { PackDiff, CategoryDiff, DiffError } from './diff.js';

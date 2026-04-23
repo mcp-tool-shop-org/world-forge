@@ -4,10 +4,28 @@ import type { WorldProject } from './project.js';
 import type { ValidationResult } from './validate.js';
 import type { DependencySummary } from './dependencies.js';
 import type { AuthoringMode } from './authoring-mode.js';
-import { validateProject } from './validate.js';
+import { validateProject, SCHEMA_VERSION } from './validate.js';
 import { advisoryValidation } from './advisory.js';
 import { scanDependencies } from './dependencies.js';
 import { DEFAULT_MODE } from './authoring-mode.js';
+
+/**
+ * Options for buildReviewSnapshot.
+ *
+ * SCH-B-005 (v4.4): suppressUnknownPrefixWarnings lets callers (e.g. parallel
+ * health-dashboard workers, unit tests) silence the per-process dedupe so
+ * downstream aggregators can decide their own noise policy without relying on
+ * whoever happens to hit the path first.
+ */
+export interface BuildReviewSnapshotOptions {
+  /**
+   * When true, suppress `console.warn` emitted by the validation domain
+   * classifier for unknown path prefixes. Defaults to false (warn once per
+   * unknown prefix per process). Dashboards running many validators in
+   * parallel should set this to true so all workers behave the same.
+   */
+  suppressUnknownPrefixWarnings?: boolean;
+}
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -98,6 +116,12 @@ export interface ReviewSnapshot {
   modeLabel: string;
   description: string;
   generatedAt: string;
+  /**
+   * Schema version that produced this snapshot. Mirrors ValidationResult.schemaVersion
+   * so snapshots shipped to disk or logs can be traced back to the correct
+   * schema generation. SCH-B-001 (v4.4).
+   */
+  schemaVersion: string;
 
   // Health
   health: HealthStatus;
@@ -120,9 +144,16 @@ export interface ReviewSnapshot {
 
 // ── Mode labels ────────────────────────────────────────────
 
-// MAINTENANCE: When adding a new AuthoringMode in authoring-mode.ts,
-// add a label here. Otherwise the mode will display its raw key as the label.
-const MODE_LABELS: Record<string, string> = {
+/**
+ * Labels shown to users for each AuthoringMode.
+ *
+ * SCH-B-003 (v4.4): Typed as `Record<AuthoringMode, string>` so that adding a
+ * new AuthoringMode in authoring-mode.ts produces a COMPILE-TIME error here
+ * (missing key) rather than silently falling through to the raw mode key as
+ * a label. This mirrors the SCH-A-002 pattern used for VALID_CONNECTION_KINDS
+ * in validate.ts.
+ */
+const MODE_LABELS: Record<AuthoringMode, string> = {
   dungeon: 'Dungeon Crawl',
   district: 'City District',
   world: 'Open World',
@@ -131,6 +162,12 @@ const MODE_LABELS: Record<string, string> = {
   interior: 'Interior',
   wilderness: 'Wilderness',
 };
+
+// Bidirectional compile-time exhaustiveness: if AuthoringMode ever grows a new
+// variant and MODE_LABELS is not updated in lockstep, this assignment fails to
+// type-check. Forces developers to update the label map.
+const _assertModeLabelsCoverage: AuthoringMode = (Object.keys(MODE_LABELS) as AuthoringMode[])[0];
+void _assertModeLabelsCoverage;
 
 // ── Health classification ──────────────────────────────────
 
@@ -185,7 +222,7 @@ const WARNED_UNKNOWN_PREFIXES = new Set<string>();
  * the regression test in `__tests__/review.test.ts` so every known domain has
  * a non-default classification.
  */
-function classifyValidationDomain(path: string): string {
+function classifyValidationDomain(path: string, suppressUnknownPrefixWarnings = false): string {
   if (path.startsWith('assetPacks')) return 'packs';
   if (path.startsWith('assets')) return 'assets';
   if (path.startsWith('entityPlacements')) return 'entities';
@@ -201,7 +238,7 @@ function classifyValidationDomain(path: string): string {
   // `zones.z1.field` and `zones.z2.other` only warn once for `zones`.
   const firstDot = path.indexOf('.');
   const prefix = firstDot === -1 ? path : path.slice(0, firstDot);
-  if (prefix && !WARNED_UNKNOWN_PREFIXES.has(prefix)) {
+  if (!suppressUnknownPrefixWarnings && prefix && !WARNED_UNKNOWN_PREFIXES.has(prefix)) {
     WARNED_UNKNOWN_PREFIXES.add(prefix);
     // Known-world prefixes that we intentionally route through the catch-all
     // (zones, map, etc.) are silenced from the warn to keep the channel clean.
@@ -236,11 +273,24 @@ export function __resetClassifyDomainWarnings(): void {
 
 // ── Build snapshot ─────────────────────────────────────────
 
-export function buildReviewSnapshot(project: WorldProject): ReviewSnapshot {
+export function buildReviewSnapshot(
+  project: WorldProject,
+  options?: BuildReviewSnapshotOptions,
+): ReviewSnapshot {
   const validation = validateProject(project);
   const advisory = advisoryValidation(project);
-  const depReport = scanDependencies(project);
+  // SCH-B-006: build lookup maps once and share with scanDependencies so we
+  // don't rebuild four maps inside scan when the snapshot already has them
+  // available. Future passes (validate, advisory) can adopt the same shape.
+  const sharedLookups = {
+    assetMap: new Map(project.assets.map((a) => [a.id, { kind: a.kind, label: a.label }])),
+    packIds: new Set(project.assetPacks.map((p) => p.id)),
+    zoneIds: new Set(project.zones.map((z) => z.id)),
+    dialogueIds: new Set(project.dialogues.map((d) => d.id)),
+  };
+  const depReport = scanDependencies(project, sharedLookups);
   const mode: AuthoringMode = project.mode ?? DEFAULT_MODE;
+  const suppressUnknownPrefixWarnings = options?.suppressUnknownPrefixWarnings ?? false;
 
   // Health
   const health = classifyHealth(validation, depReport.summary);
@@ -373,7 +423,7 @@ export function buildReviewSnapshot(project: WorldProject): ReviewSnapshot {
   // Validation summary
   const errorsByDomain: Record<string, number> = {};
   for (const err of validation.errors) {
-    const domain = classifyValidationDomain(err.path);
+    const domain = classifyValidationDomain(err.path, suppressUnknownPrefixWarnings);
     errorsByDomain[domain] = (errorsByDomain[domain] || 0) + 1;
   }
   const validationSummary: ValidationSummary = {
@@ -406,6 +456,7 @@ export function buildReviewSnapshot(project: WorldProject): ReviewSnapshot {
     modeLabel: MODE_LABELS[mode] || mode,
     description: project.description,
     generatedAt: new Date().toISOString(),
+    schemaVersion: validation.schemaVersion ?? SCHEMA_VERSION,
 
     health,
     healthLabel: HEALTH_LABELS[health],

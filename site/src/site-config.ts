@@ -1,4 +1,10 @@
 import type { SiteConfig } from '@mcptoolshop/site-theme';
+// Version is sourced from the root workspace package.json at build time so the
+// landing page hero always reflects the current release (see INF-B-001). Do not
+// hardcode the version string below — bumping root package.json is sufficient.
+import rootPkg from '../../package.json' with { type: 'json' };
+
+const VERSION = rootPkg.version;
 
 export const config: SiteConfig = {
   title: 'World Forge',
@@ -10,7 +16,7 @@ export const config: SiteConfig = {
   footerText: 'MIT Licensed — built by <a href="https://mcp-tool-shop.github.io/" style="color:var(--color-muted);text-decoration:underline">MCP Tool Shop</a>',
 
   hero: {
-    badge: '2D / 2.5D World Authoring Studio',
+    badge: `v${VERSION} — 2D / 2.5D World Authoring Studio`,
     headline: 'World Forge:',
     headlineAccent: 'Author. Validate. Export.',
     description: 'Paint zones on a 2D canvas, define districts and factions, place entities with stats and AI profiles, author branching dialogue trees, author 2.5D elevation + parallax backdrops — export a complete content pack for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine" style="text-decoration:underline">ai-rpg-engine</a> or <a href="https://www.unrealengine.com/" style="text-decoration:underline">Unreal Engine 5</a>.',

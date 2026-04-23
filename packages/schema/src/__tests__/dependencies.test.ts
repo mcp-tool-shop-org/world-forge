@@ -445,4 +445,65 @@ describe('scanDependencies', () => {
       expect(edge.targetId).toBeDefined();
     }
   });
+
+  // --- SCH-A-003: 2.5D assets (skyline + parallax) must NOT be orphan-flagged ---
+
+  it('SCH-A-003: parallax layer assetRefs are counted as references (no orphan)', () => {
+    const proj = withOverrides({
+      assets: [
+        { id: 'bg-far', kind: 'background', label: 'Far Parallax', path: '/far.png', tags: [] },
+      ],
+      zones: [
+        {
+          ...minimalProject.zones[0],
+          parallaxLayers: [
+            { id: 'far', depth: 100, assetRef: 'bg-far', scrollFactor: 0.5 },
+          ],
+        },
+        minimalProject.zones[1],
+      ],
+    });
+    const report = scanDependencies(proj);
+    const orphans = report.edges.filter((e) => e.domain === 'orphan-asset');
+    expect(orphans).toHaveLength(0);
+  });
+
+  it('SCH-A-003: zone.skylineRef is counted as a reference (no orphan)', () => {
+    const proj = withOverrides({
+      assets: [
+        { id: 'sky-dawn', kind: 'background', label: 'Dawn Sky', path: '/sky.png', tags: [] },
+      ],
+      zones: [
+        { ...minimalProject.zones[0], skylineRef: 'sky-dawn' },
+        minimalProject.zones[1],
+      ],
+    });
+    const report = scanDependencies(proj);
+    const orphans = report.edges.filter((e) => e.domain === 'orphan-asset');
+    expect(orphans).toHaveLength(0);
+  });
+
+  it('SCH-A-003: combined parallax + skyline 2.5D assets all counted (no orphans)', () => {
+    const proj = withOverrides({
+      assets: [
+        { id: 'sky-1', kind: 'background', label: 'Sky', path: '/sky.png', tags: [] },
+        { id: 'bg-mid', kind: 'background', label: 'Mid', path: '/mid.png', tags: [] },
+        { id: 'bg-far', kind: 'background', label: 'Far', path: '/far.png', tags: [] },
+      ],
+      zones: [
+        {
+          ...minimalProject.zones[0],
+          skylineRef: 'sky-1',
+          parallaxLayers: [
+            { id: 'mid', depth: 50, assetRef: 'bg-mid', scrollFactor: 0.7 },
+            { id: 'far', depth: 100, assetRef: 'bg-far', scrollFactor: 0.3 },
+          ],
+        },
+        minimalProject.zones[1],
+      ],
+    });
+    const report = scanDependencies(proj);
+    const orphans = report.edges.filter((e) => e.domain === 'orphan-asset');
+    expect(orphans).toHaveLength(0);
+  });
 });

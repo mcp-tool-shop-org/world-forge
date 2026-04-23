@@ -8,6 +8,8 @@ import { frameBounds } from '../viewport.js';
 import { connectionLabel } from '../connection-lines.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { EmptyState, VisibilityToggle } from './shared.js';
+import { findOrphanedEncounters, reassignEncounterZone, deleteEncounter } from '../orphans.js';
+import { pushToast } from '../ui/Toast.js';
 
 /** Build the empty-state message for the object list. Pure, exported for testing. */
 export function emptyStateMessage(mode: import('@world-forge/schema').AuthoringMode | undefined): string {
@@ -21,11 +23,15 @@ interface DistrictGroup {
 }
 
 export function ObjectListPanel() {
-  const { project } = useProjectStore();
+  const { project, updateProject } = useProjectStore();
   const {
     selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     setSelection, setViewport, setRightTab, hiddenIds,
   } = useEditorStore();
+
+  // ED-B-002: orphaned encounters surface as a dedicated group so the user
+  // can see, select, and repair work that would otherwise be invisible.
+  const orphanedEncounters = useMemo(() => findOrphanedEncounters(project), [project]);
 
   const [filter, setFilter] = useState('');
   const [expandedDistricts, setExpandedDistricts] = useState<Set<string>>(() => new Set(['__unassigned__']));
@@ -131,6 +137,23 @@ export function ObjectListPanel() {
       const vp = frameBounds(items, project.map.tileSize, size.cw, size.ch);
       if (vp) setViewport(vp);
     }
+  };
+
+  // ED-B-002: repair handlers for orphaned encounters. We go through
+  // updateProject so the change is undoable — the user isn't punished for
+  // experimenting with Reassign vs Delete.
+  const handleReassignOrphan = (encounterId: string, newZoneId: string) => {
+    updateProject((p) => reassignEncounterZone(p, encounterId, newZoneId), 'Reassign encounter');
+    pushToast('Encounter reassigned. Check the zone it moved into.', 'success', 2500);
+  };
+
+  const handleDeleteOrphan = (encounterId: string) => {
+    updateProject((p) => deleteEncounter(p, encounterId), 'Delete orphaned encounter');
+    pushToast('Orphaned encounter deleted. Use Undo if this was wrong.', 'info', 3000);
+  };
+
+  const handleSelectOrphanEncounter = (encounterId: string) => {
+    selectEncounter(encounterId, false);
   };
 
   const handleSelectDistrict = (districtId: string) => {
@@ -394,6 +417,86 @@ export function ObjectListPanel() {
             </div>
           );
         })()}
+
+        {/* ED-B-002: Orphaned encounters — encounters whose zone was deleted.
+            Kept visible + selectable + repairable so the user never silently
+            loses authored encounter data when a zone is removed. */}
+        {orphanedEncounters.length > 0 && (
+          <div data-testid="orphaned-encounters" style={{ marginTop: 12, marginBottom: 4 }}>
+            <div
+              style={{
+                padding: '3px 4px', background: '#3a1d1d', borderRadius: 3, fontWeight: 'bold',
+                color: '#ffa198', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6,
+              }}
+              title="These encounters reference a zone that has been deleted. Reassign or delete them below."
+            >
+              <span>Orphaned encounters ({orphanedEncounters.length})</span>
+            </div>
+            <div style={{ marginLeft: 12, fontSize: 11, color: '#8b949e', padding: '3px 4px' }}>
+              Their zone was deleted. Reassign or delete — either action can be undone.
+            </div>
+            {orphanedEncounters.map(({ encounter, missingZoneId }) => {
+              const sel = isSel(selection, 'encounter', encounter.id);
+              return (
+                <div
+                  key={encounter.id}
+                  data-selected={sel}
+                  data-testid={`orphaned-encounter-${encounter.id}`}
+                  onClick={() => handleSelectOrphanEncounter(encounter.id)}
+                  style={{
+                    padding: '3px 4px', marginLeft: 12, cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', gap: 3,
+                    borderLeft: sel ? '2px solid #da3633' : '2px solid transparent',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{
+                      color: '#ffa198', fontSize: 9, fontWeight: 'bold',
+                      background: '#0d1117', borderRadius: 2, padding: '0 3px',
+                    }}>Orphan</span>
+                    <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{encounter.id}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>
+                      {encounter.encounterType}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#8b949e', marginLeft: 2 }}>
+                    was in zone "{missingZoneId}" (missing)
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 2 }}>
+                    <select
+                      aria-label={`Reassign encounter ${encounter.id} to another zone`}
+                      defaultValue=""
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const target = e.target.value;
+                        if (target) handleReassignOrphan(encounter.id, target);
+                      }}
+                      style={{
+                        background: '#0d1117', border: '1px solid #30363d', borderRadius: 3,
+                        color: '#c9d1d9', fontSize: 11, padding: '2px 4px', flex: 1,
+                      }}
+                    >
+                      <option value="">Reassign to zone…</option>
+                      {project.zones.map((z) => (
+                        <option key={z.id} value={z.id}>{z.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteOrphan(encounter.id); }}
+                      style={{
+                        background: '#21262d', border: '1px solid #30363d', borderRadius: 3,
+                        color: '#ffa198', fontSize: 11, padding: '2px 8px', cursor: 'pointer',
+                      }}
+                      title="Remove this orphaned encounter. Use Undo to restore."
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {project.zones.length === 0 && (
           <EmptyState

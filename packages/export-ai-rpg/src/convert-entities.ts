@@ -44,7 +44,15 @@ const ROLE_AI_PROFILE: Record<EntityRole, string> = {
  * is the programmatic signal that mirrors the pattern used by the import-side
  * converters.
  */
-export function convertEntities(project: WorldProject, fidelity?: FidelityEntry[]): EntityBlueprint[] {
+export function convertEntities(
+  project: WorldProject,
+  fidelity?: FidelityEntry[],
+  warnings?: string[],
+): EntityBlueprint[] {
+  // AIR-B-003: Collect known faction ids so we can flag dangling references.
+  // Factions in WorldProject are identified by `factionPresences[].factionId`.
+  const knownFactionIds = new Set(project.factionPresences.map((fp) => fp.factionId));
+
   return project.entityPlacements.map((ep) => {
     // Merge role-based tags with author-provided tags
     const tags = [...ROLE_TAGS[ep.role]];
@@ -53,7 +61,17 @@ export function convertEntities(project: WorldProject, fidelity?: FidelityEntry[
         if (!tags.includes(t)) tags.push(t);
       }
     }
-    if (ep.factionId) tags.push(`faction:${ep.factionId}`);
+    if (ep.factionId) {
+      if (warnings && !knownFactionIds.has(ep.factionId)) {
+        const entityLabel = ep.name || ep.entityId;
+        warnings.push(
+          `Entity "${ep.entityId}" (${entityLabel}) references factionId "${ep.factionId}" which is not declared in factionPresences — tagged as faction:UNKNOWN so downstream behavior stays safe. Either add a factionPresence for "${ep.factionId}" or clear this entity's factionId.`,
+        );
+        tags.push(`faction:UNKNOWN`);
+      } else {
+        tags.push(`faction:${ep.factionId}`);
+      }
+    }
 
     const blueprint: EntityBlueprint = {
       id: ep.entityId,

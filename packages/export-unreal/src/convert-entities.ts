@@ -47,11 +47,35 @@ export interface UnrealActorSpawnEntry {
   SpriteAssetId?: string;
 }
 
+/**
+ * UE-B-003: record of an entity placement dropped from the manifest because its
+ * zone reference was orphaned or it otherwise couldn't be reconstructed into a
+ * valid spawn entry. Kept on the manifest so a UE5 loader can detect an
+ * incomplete pack by checking `Dropped.length > 0` or `Incomplete === true`.
+ */
+export interface UnrealDroppedEntity {
+  ActorId: string;
+  ZoneId: string;
+  Reason: string;
+}
+
 export interface UnrealActorManifest {
   /** Actor spawns grouped by zone id for per-level streaming. */
   ByZone: Record<string, UnrealActorSpawnEntry[]>;
   /** Flat list for callers that want a single iteration. */
   All: UnrealActorSpawnEntry[];
+  /**
+   * UE-B-003: entities skipped during conversion (e.g. orphan zone refs).
+   * Always present — empty array when everything converted cleanly. The UE5
+   * loader SHOULD treat any non-empty array as a partial/incomplete pack.
+   */
+  Dropped: UnrealDroppedEntity[];
+  /**
+   * UE-B-003: explicit incompleteness flag. `true` when at least one entity
+   * was dropped during conversion. Lets a loader fail-fast without walking
+   * the Dropped array.
+   */
+  Incomplete: boolean;
 }
 
 export interface ConvertEntitiesResult {
@@ -64,10 +88,12 @@ export function convertEntities(project: WorldProject, tileSizeCm: number = DEFA
   const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));
   const byZone: Record<string, UnrealActorSpawnEntry[]> = {};
   const all: UnrealActorSpawnEntry[] = [];
+  const dropped: UnrealDroppedEntity[] = [];
 
   for (const placement of project.entityPlacements) {
     const zone = zonesById.get(placement.zoneId);
     if (!zone) {
+      const reason = `Zone "${placement.zoneId}" not found in project.zones.`;
       fidelity.push({
         level: 'dropped',
         domain: 'entities',
@@ -76,6 +102,11 @@ export function convertEntities(project: WorldProject, tileSizeCm: number = DEFA
         fieldPath: `entityPlacements.${placement.entityId}.zoneId`,
         message: `Entity "${placement.entityId}" dropped — zone "${placement.zoneId}" not found.`,
         reason: 'Orphan zone reference.',
+      });
+      dropped.push({
+        ActorId: placement.entityId,
+        ZoneId: placement.zoneId,
+        Reason: reason,
       });
       continue;
     }
@@ -138,7 +169,10 @@ export function convertEntities(project: WorldProject, tileSizeCm: number = DEFA
     (byZone[placement.zoneId] ??= []).push(entry);
   }
 
-  return { manifest: { ByZone: byZone, All: all }, fidelity };
+  return {
+    manifest: { ByZone: byZone, All: all, Dropped: dropped, Incomplete: dropped.length > 0 },
+    fidelity,
+  };
 }
 
 function scalarRecord(source?: Record<string, number | undefined>): Record<string, number> | undefined {

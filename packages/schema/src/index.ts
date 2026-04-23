@@ -75,18 +75,21 @@ export type { AuthoringMode } from './authoring-mode.js';
 export { AUTHORING_MODES, isValidMode, DEFAULT_MODE } from './authoring-mode.js';
 
 export type { ValidationError, ValidationResult, ValidateOptions } from './validate.js';
-export { validateProject, VALID_CONNECTION_KINDS, VALID_ASSET_KINDS } from './validate.js';
+export { validateProject, VALID_CONNECTION_KINDS, VALID_ASSET_KINDS, SCHEMA_VERSION } from './validate.js';
+
+export type { CanonAdapterErrorCode } from './canon-adapter.js';
+export { CanonAdapterError } from './canon-adapter.js';
 
 export type { AdvisoryItem, AdvisoryResult } from './advisory.js';
 export { advisoryValidation } from './advisory.js';
 
-export type { DepStatus, DepDomain, DependencyEdge, DependencySummary, DependencyReport } from './dependencies.js';
+export type { DepStatus, DepDomain, DependencyEdge, DependencySummary, DependencyReport, ScanDependenciesLookups } from './dependencies.js';
 export { scanDependencies } from './dependencies.js';
 
 export type {
   HealthStatus, ContentCounts, SystemCompleteness,
   RegionSummary, EncounterSummary, ConnectionSummary,
   ValidationSummary, AdvisorySummary, DependencyHealthSummary,
-  ReviewSnapshot,
+  ReviewSnapshot, BuildReviewSnapshotOptions,
 } from './review.js';
 export { classifyHealth, buildReviewSnapshot } from './review.js';

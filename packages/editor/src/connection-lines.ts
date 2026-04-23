@@ -5,6 +5,16 @@ import type { ZoneConnection, Zone } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
 import { HIT_RADIUS } from './hit-testing.js';
 
+// ED-B-003: one-time dev warnings for missing zones on a connection. Keyed by
+// "from::to" so importers leaving multiple dangling connections each surface
+// once instead of flooding the console every render tick.
+const _warnedDangling = new Set<string>();
+
+/** Reset the dangling-connection warning cache. Exported for tests only. */
+export function _resetDanglingConnectionWarnings(): void {
+  _warnedDangling.clear();
+}
+
 /** Edge-anchored connection endpoints in world pixels. */
 export interface ConnectionEndpoints {
   fx: number; fy: number;  // from zone edge anchor
@@ -74,7 +84,23 @@ export function getConnectionEndpoints(
 ): ConnectionEndpoints | null {
   const fromZone = zones.find((z) => z.id === conn.fromZoneId);
   const toZone = zones.find((z) => z.id === conn.toZoneId);
-  if (!fromZone || !toZone) return null;
+  if (!fromZone || !toZone) {
+    // ED-B-003: surface the reason this connection will not render. The user
+    // saw it in the Connections list but the line is missing on the canvas
+    // because one endpoint zone was deleted (or never imported).
+    const key = `${conn.fromZoneId}::${conn.toZoneId}`;
+    if (!_warnedDangling.has(key)) {
+      const missing = !fromZone && !toZone
+        ? `${conn.fromZoneId} and ${conn.toZoneId}`
+        : (!fromZone ? conn.fromZoneId : conn.toZoneId);
+      console.warn(
+        `[connection-lines] Connection ${key} will not render — zone "${missing}" is missing. ` +
+        'Check the Dependency panel to remove or re-link this connection.',
+      );
+      _warnedDangling.add(key);
+    }
+    return null;
+  }
 
   const fRect = zoneOverrides?.get(conn.fromZoneId) ?? fromZone;
   const tRect = zoneOverrides?.get(conn.toZoneId) ?? toZone;

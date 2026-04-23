@@ -41,6 +41,56 @@ export interface CanonMotifSceneRef {
 }
 
 /**
+ * Classified error codes for concrete CanonAdapter implementations.
+ *
+ * SCH-B-004 (v4.4): Callers (editor, CLI tools) previously had to string-match
+ * or try/catch without structure to distinguish a typo (NOT_FOUND) from a
+ * corrupt file (PARSE_ERROR) or filesystem failure (IO_ERROR). Providing a
+ * structured code lets the UI show the RIGHT recovery hint:
+ *   - NOT_FOUND   → "Did you mean <similar slug>?"
+ *   - IO_ERROR    → "Check file permissions or retry"
+ *   - PARSE_ERROR → "Kit payload is malformed; regenerate or report"
+ *   - INVALID_ARG → "Arguments failed validation before any I/O"
+ */
+export type CanonAdapterErrorCode =
+  | 'NOT_FOUND'
+  | 'IO_ERROR'
+  | 'PARSE_ERROR'
+  | 'INVALID_ARG';
+
+/**
+ * Structured error thrown by CanonAdapter implementations.
+ *
+ * Message format is `[code] what went wrong — gameSlug=<slug> kitId=<id>` so
+ * that log output includes the context a user needs to file a bug report or
+ * fix the call site, without callers needing to reconstruct it.
+ */
+export class CanonAdapterError extends Error {
+  readonly code: CanonAdapterErrorCode;
+  readonly gameSlug: string;
+  readonly kitId?: string;
+
+  constructor(
+    code: CanonAdapterErrorCode,
+    message: string,
+    context: { gameSlug: string; kitId?: string; cause?: unknown },
+  ) {
+    const ctx = context.kitId
+      ? `gameSlug=${context.gameSlug} kitId=${context.kitId}`
+      : `gameSlug=${context.gameSlug}`;
+    super(`[${code}] ${message} — ${ctx}`);
+    this.name = 'CanonAdapterError';
+    this.code = code;
+    this.gameSlug = context.gameSlug;
+    this.kitId = context.kitId;
+    if (context.cause !== undefined) {
+      // Preserve cause chain for structured loggers.
+      (this as { cause?: unknown }).cause = context.cause;
+    }
+  }
+}
+
+/**
  * Read-only adapter contract. Concrete implementations live outside @world-forge/schema
  * (e.g. in the editor, wired to filesystem or CLI helpers).
  *
@@ -50,6 +100,10 @@ export interface CanonMotifSceneRef {
  *   read (I/O error), or when the payload fails structural parsing. Callers MUST
  *   handle rejection. A successful resolve always returns a fully populated
  *   `CanonStarterKit`.
+ *
+ *   Concrete implementations SHOULD throw {@link CanonAdapterError} so callers
+ *   can branch on `err.code` (NOT_FOUND vs IO_ERROR vs PARSE_ERROR vs
+ *   INVALID_ARG) and surface the right recovery hint.
  *
  * `listMotifScenes(gameSlug)` — RESOLVES with an empty array `[]` when
  *   `gameSlug` is unknown or the game has no Motif scenes. It does NOT reject

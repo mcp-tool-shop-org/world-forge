@@ -42,6 +42,20 @@ export interface FidelitySummary {
   dropped: number;
   losslessPercent: number;
   byDomain: Partial<Record<FidelityDomain, DomainSummary>>;
+  /**
+   * UE-B-003: `true` when at least one entity placement was dropped during
+   * conversion (e.g. orphan zone reference). Lets a UE5 loader fail-fast or
+   * warn when the pack is known-incomplete. Counts only dropped entities,
+   * not every `level: 'dropped'` fidelity entry (which may include expected
+   * lossy-projection drops like `dialogues`).
+   */
+  incomplete: boolean;
+  /**
+   * UE-B-003: count of entity placements dropped during conversion. Mirrors
+   * `UnrealActorManifest.Dropped.length` and is the canonical number the UE5
+   * loader should use to decide whether the manifest is complete.
+   */
+  droppedEntityCount: number;
 }
 
 export interface FidelityReport {
@@ -49,7 +63,10 @@ export interface FidelityReport {
   summary: FidelitySummary;
 }
 
-export function summarizeFidelity(entries: FidelityEntry[]): FidelitySummary {
+export function summarizeFidelity(
+  entries: FidelityEntry[],
+  options?: { droppedEntityCount?: number },
+): FidelitySummary {
   let lossless = 0;
   let approximated = 0;
   let dropped = 0;
@@ -70,6 +87,7 @@ export function summarizeFidelity(entries: FidelityEntry[]): FidelitySummary {
   }
 
   const total = entries.length;
+  const droppedEntityCount = options?.droppedEntityCount ?? 0;
   return {
     total,
     lossless,
@@ -77,9 +95,14 @@ export function summarizeFidelity(entries: FidelityEntry[]): FidelitySummary {
     dropped,
     losslessPercent: total === 0 ? 100 : Math.round((lossless / total) * 100),
     byDomain,
+    incomplete: droppedEntityCount > 0,
+    droppedEntityCount,
   };
 }
 
-export function buildFidelityReport(entries: FidelityEntry[]): FidelityReport {
-  return { entries, summary: summarizeFidelity(entries) };
+export function buildFidelityReport(
+  entries: FidelityEntry[],
+  options?: { droppedEntityCount?: number },
+): FidelityReport {
+  return { entries, summary: summarizeFidelity(entries, options) };
 }

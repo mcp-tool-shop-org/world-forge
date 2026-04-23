@@ -24,7 +24,7 @@ describe('MODE_STARTERS', () => {
 describe.each(MODE_STARTERS)('mode starter: $name ($mode)', (starter) => {
   it('validates cleanly', () => {
     const result = validateProject(starter.project);
-    expect(result).toEqual({ valid: true, errors: [], warningCount: 0 });
+    expect(result).toMatchObject({ valid: true, errors: [], warningCount: 0 });
   });
 
   it('has correct mode field', () => {
@@ -107,7 +107,7 @@ describe('createProjectFromModeStarter', () => {
     const project = createProjectFromModeStarter('My Dungeon', starter);
     expect(project.name).toBe('My Dungeon');
     expect(project.id).toMatch(/^project-\d+$/);
-    expect(validateProject(project)).toEqual({ valid: true, errors: [], warningCount: 0 });
+    expect(validateProject(project)).toMatchObject({ valid: true, errors: [], warningCount: 0 });
   });
 
   it('deep-clones (no shared references)', () => {

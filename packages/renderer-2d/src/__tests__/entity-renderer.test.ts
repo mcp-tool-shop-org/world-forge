@@ -86,7 +86,7 @@ describe('EntityRenderer', () => {
     warnSpy.mockRestore();
   });
 
-  it('warns per entity when multiple have missing zones (IB-017)', () => {
+  it('aggregates missing-zone warnings into one call (IB-017 / R2D-B-002)', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const entities: EntityPlacement[] = [
       { entityId: 'ghost-a', zoneId: 'bad-zone-1', role: 'npc' },
@@ -94,7 +94,13 @@ describe('EntityRenderer', () => {
     ];
     renderer.update(entities, zonePositions);
     expect(renderer.container.children.length).toBe(0);
-    expect(warnSpy).toHaveBeenCalledTimes(2);
+    // R2D-B-002: single aggregated warning, not one per entity.
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const msg = String(warnSpy.mock.calls[0][0]);
+    expect(msg).toMatch(/ghost-a/);
+    expect(msg).toMatch(/ghost-b/);
+    expect(msg).toMatch(/bad-zone-1/);
+    expect(msg).toMatch(/bad-zone-2/);
     warnSpy.mockRestore();
   });
 

@@ -340,3 +340,4 @@ describe('HIT_RADIUS', () => {
     expect(HIT_RADIUS).toBe(8);
   });
 });
+

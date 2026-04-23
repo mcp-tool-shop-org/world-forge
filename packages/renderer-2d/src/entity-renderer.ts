@@ -65,12 +65,21 @@ export class EntityRenderer {
     const removed = this.container.removeChildren();
     for (const child of removed) child.destroy({ children: true });
 
+    // R2D-B-002: Aggregate missing-zone refs into a single warning per update
+    // rather than per entity. The log stays readable when many entities share
+    // the same orphan zone, and a high-churn scene no longer drowns
+    // diagnostics.
+    const missingByZone = new Map<string, string[]>();
+
     for (const ep of entities) {
       const zonePos = zonePositions.get(ep.zoneId);
       if (!zonePos) {
-        console.warn(
-          `EntityRenderer.update: entity "${ep.entityId}" references zoneId "${ep.zoneId}" which has no known position — skipping placement. Check that the zone exists and is registered in zonePositions.`,
-        );
+        let bucket = missingByZone.get(ep.zoneId);
+        if (!bucket) {
+          bucket = [];
+          missingByZone.set(ep.zoneId, bucket);
+        }
+        bucket.push(ep.entityId);
         continue;
       }
 
@@ -104,6 +113,22 @@ export class EntityRenderer {
       });
       label.position.set(x + size + 2, y - 4);
       this.container.addChild(label);
+    }
+
+    // R2D-B-002: emit one consolidated warning summarising all orphan entities.
+    if (missingByZone.size > 0) {
+      const totalEntities = Array.from(missingByZone.values()).reduce((n, b) => n + b.length, 0);
+      const parts = Array.from(missingByZone.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([zoneId, ids]) => {
+          const preview = ids.slice(0, 5).map((id) => `"${id}"`).join(', ');
+          const more = ids.length > 5 ? ` … (+${ids.length - 5} more)` : '';
+          return `  - zone "${zoneId}" (${ids.length} entit${ids.length === 1 ? 'y' : 'ies'}): ${preview}${more}`;
+        })
+        .join('\n');
+      console.warn(
+        `EntityRenderer.update: ${totalEntities} entit${totalEntities === 1 ? 'y' : 'ies'} reference ${missingByZone.size} missing zone${missingByZone.size === 1 ? '' : 's'} (no position registered) — skipping placement.\n${parts}\nCheck that each zone exists and is registered in zonePositions.`,
+      );
     }
   }
 }

@@ -8,6 +8,7 @@
 import type { WorldProject, ValidationError } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 
+import { composeSignedMeta, type PackSignature, type SigningAlgorithm } from './signing.js';
 import { convertZones, type UnrealZoneDataAsset } from './convert-zones.js';
 import { convertDistricts, type UnrealDistrictDataAsset } from './convert-districts.js';
 import { convertEntities, type UnrealActorManifest } from './convert-entities.js';
@@ -39,14 +40,28 @@ export interface UnrealPackMeta {
    * content changes. Bumped only when the UnrealContentPack *structure* changes.
    */
   FormatVersion: string;
+  /**
+   * UE-FT-007: optional integrity hash over the pack Meta. Present only when
+   * export was run with the `signing` option (`--sign` on the CLI). Importers
+   * do NOT auto-verify — callers use `verifyPackSignature(meta)` explicitly
+   * (see signing.ts).
+   */
+  Signature?: PackSignature;
 }
 
 /**
  * Current Unreal content-pack format version. Bumped when the structure of
  * UnrealContentPack changes in a way that a loader must know about. This is
  * NOT the project version.
+ *
+ * Versioning rules (see migrations.ts for the full framework):
+ *   - Major bump — required field added/removed, or semantics change.
+ *   - Minor bump — optional field added (additive, back-compatible).
+ *   - Patch bump — doc-only clarification.
+ *
+ * v1.0.0 → v1.1.0 (UE-FT-007): optional `Signature` Meta field added.
  */
-export const UNREAL_PACK_FORMAT_VERSION = '1.0.0';
+export const UNREAL_PACK_FORMAT_VERSION = '1.1.0';
 
 export interface UnrealContentPack {
   Meta: UnrealPackMeta;
@@ -64,6 +79,12 @@ export interface UnrealContentPack {
 export interface UnrealExportOptions {
   /** Override the default world scale (100 cm/tile). */
   tileSizeCm?: number;
+  /**
+   * UE-FT-007: attach a `Signature` integrity hash to the exported Meta.
+   * Pass `{ algorithm: 'sha256' }` to enable. Default (undefined) leaves the
+   * pack unsigned for backward compatibility.
+   */
+  signing?: { algorithm: SigningAlgorithm };
 }
 
 export interface UnrealExportResult {
@@ -161,7 +182,7 @@ export function exportToUnreal(
   }
 
   const contentPack: UnrealContentPack = {
-    Meta: buildMeta(project, tileSizeCm),
+    Meta: buildMeta(project, tileSizeCm, options),
     Zones: zonesResult.zones,
     Districts: districtsResult.districts,
     Actors: entitiesResult.manifest,
@@ -171,15 +192,36 @@ export function exportToUnreal(
     Transitions: transitionsResult.transitions,
   };
 
+  // UE-B-003: surface dropped-entity count on the fidelity summary so callers
+  // (CLI stderr, UE5 loader) can detect an incomplete pack without walking
+  // manifest.Actors.Dropped themselves.
+  const droppedEntityCount = entitiesResult.manifest.Dropped.length;
+
   return {
     success: true,
     contentPack,
     warnings,
-    fidelity: buildFidelityReport(fidelityEntries),
+    fidelity: buildFidelityReport(fidelityEntries, { droppedEntityCount }),
   };
 }
 
-function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
+/**
+ * UE-B-005 / UE-FT-007 / UE-FT-008 seam: the pack meta is built as a
+ * composition chain so later passes (pack signing, schema migration) can slot
+ * in without rewriting this file. Each step takes the previous meta and
+ * returns an extended meta.
+ *
+ * Current pipeline: base → (future: signed → versioned). UE-FT-007 will add
+ * `composeSignedMeta`, UE-FT-008 will add `composeVersionedMeta`. Both will
+ * live here and be invoked from `buildMeta()`.
+ */
+export type MetaStep<TIn extends UnrealPackMeta, TOut extends UnrealPackMeta> = (meta: TIn) => TOut;
+
+/**
+ * UE-B-005: base meta builder. Starts the composition chain with fields that
+ * don't require signing keys or schema migration context.
+ */
+export function composeBaseMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
   return {
     Id: project.id,
     Name: project.name,
@@ -194,4 +236,21 @@ function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
     SourceTileSizePx: project.map.tileSize,
     FormatVersion: UNREAL_PACK_FORMAT_VERSION,
   };
+}
+
+/**
+ * UE-B-005: final meta builder. Composes the base meta then optionally threads
+ * it through `composeSignedMeta` when signing is requested. The signing step
+ * runs LAST so the hash covers every earlier-composed field.
+ */
+function buildMeta(
+  project: WorldProject,
+  tileSizeCm: number,
+  options: UnrealExportOptions | undefined,
+): UnrealPackMeta {
+  let meta: UnrealPackMeta = composeBaseMeta(project, tileSizeCm);
+  if (options?.signing) {
+    meta = composeSignedMeta(meta, options.signing);
+  }
+  return meta;
 }

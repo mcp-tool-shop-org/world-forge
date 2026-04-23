@@ -356,44 +356,100 @@ function writeAutoSave(project: WorldProject): void {
     return;
   }
 
+  // ED-B-001: Transactional write. Snapshot the prior values of BOTH keys before
+  // touching anything, so if either setItem throws (quota / disabled storage)
+  // we can roll the pair back to a consistent state. Otherwise the project
+  // could land while history stays stale — the user recovers a snapshot whose
+  // undo stack doesn't match its canvas.
+  let priorProject: string | null = null;
+  let priorHistoryRaw: string | null = null;
   try {
-    localStorage.setItem(AUTOSAVE_KEY, serialized);
+    priorProject = localStorage.getItem(AUTOSAVE_KEY);
+    priorHistoryRaw = localStorage.getItem(AUTOSAVE_HISTORY_KEY);
+  } catch { /* ignore — we'll fail on the write below with a better message */ }
 
-    // Maintain history (last N saves)
-    let history: AutoSaveEntry[] = [];
+  // Pre-compute the new history payload up front so the second write is just
+  // a string setItem with a known size.
+  let history: AutoSaveEntry[] = [];
+  if (priorHistoryRaw) {
     try {
-      const raw = localStorage.getItem(AUTOSAVE_HISTORY_KEY);
-      if (raw) history = JSON.parse(raw);
-    } catch { /* ignore */ }
-    history.push(entry);
-    if (history.length > AUTOSAVE_MAX_HISTORY) {
-      history = history.slice(history.length - AUTOSAVE_MAX_HISTORY);
-    }
-    localStorage.setItem(AUTOSAVE_HISTORY_KEY, JSON.stringify(history));
-    // Success: clear prior error + reset warn flags so we'll warn again if the
-    // user hits the same condition later.
-    _lastAutoSaveError = null;
-    _warnedQuota = false;
-    _warnedOversize = false;
-    _oversize = false;
+      const parsed = JSON.parse(priorHistoryRaw);
+      if (Array.isArray(parsed)) history = parsed;
+    } catch { /* ignore malformed prior history */ }
+  }
+  history.push(entry);
+  if (history.length > AUTOSAVE_MAX_HISTORY) {
+    history = history.slice(history.length - AUTOSAVE_MAX_HISTORY);
+  }
+  let serializedHistory: string;
+  try {
+    serializedHistory = JSON.stringify(history);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    const isQuota =
-      err instanceof Error &&
-      (err.name === 'QuotaExceededError' || /quota/i.test(err.message));
-    if (isQuota && !_warnedQuota) {
-      console.warn(
-        '[auto-save] localStorage quota exceeded; auto-save suspended until space is freed. ' +
-        'Use Export Project Bundle to preserve work.',
-      );
-      _warnedQuota = true;
-    } else if (!isQuota) {
-      console.warn(`[auto-save] localStorage write failed: ${msg}`);
-    }
-    _lastAutoSaveError = isQuota
-      ? 'Auto-save suspended: local storage is full.'
-      : `Auto-save failed: ${msg}`;
+    _lastAutoSaveError = `Auto-save skipped — could not serialize undo history (${msg}). Your canvas is safe; use File → Export Project Bundle to back up.`;
+    return;
   }
+
+  const rollbackProject = () => {
+    try {
+      if (priorProject != null) localStorage.setItem(AUTOSAVE_KEY, priorProject);
+      else localStorage.removeItem(AUTOSAVE_KEY);
+    } catch { /* best-effort — if rollback itself fails, we already reported the first failure */ }
+  };
+
+  // 1. Project write
+  try {
+    localStorage.setItem(AUTOSAVE_KEY, serialized);
+  } catch (err) {
+    surfaceAutoSaveFailure(err, 'project snapshot');
+    return;
+  }
+
+  // 2. History write — on failure, roll back the project so both keys stay in sync.
+  try {
+    localStorage.setItem(AUTOSAVE_HISTORY_KEY, serializedHistory);
+  } catch (err) {
+    rollbackProject();
+    surfaceAutoSaveFailure(err, 'undo history', /* afterRollback */ true);
+    return;
+  }
+
+  // Success: clear prior error + reset warn flags so we'll warn again if the
+  // user hits the same condition later.
+  _lastAutoSaveError = null;
+  _warnedQuota = false;
+  _warnedOversize = false;
+  _oversize = false;
+}
+
+/**
+ * ED-B-001: shared error surface for the two-phase auto-save. `stage` names the
+ * specific write that failed ("project snapshot" vs "undo history") so the
+ * user-facing message can be specific rather than "something failed." When
+ * `afterRollback` is true we add a line confirming the previous save is still
+ * intact — that's the user's safety net after a mid-transaction failure.
+ */
+function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = false): void {
+  const msg = err instanceof Error ? err.message : String(err);
+  const isQuota =
+    err instanceof Error &&
+    (err.name === 'QuotaExceededError' || /quota/i.test(err.message));
+  if (isQuota && !_warnedQuota) {
+    console.warn(
+      `[auto-save] localStorage quota exceeded while writing ${stage}; ` +
+      'auto-save suspended until space is freed. ' +
+      'Use File → Export Project Bundle to preserve your work.',
+    );
+    _warnedQuota = true;
+  } else if (!isQuota) {
+    console.warn(`[auto-save] localStorage write failed on ${stage}: ${msg}`);
+  }
+  const rollbackNote = afterRollback
+    ? ' Your previous auto-save is still intact.'
+    : '';
+  _lastAutoSaveError = isQuota
+    ? `Auto-save paused — local storage is full (${stage}). Free space or export the project to keep saving.${rollbackNote}`
+    : `Auto-save failed on ${stage}: ${msg}.${rollbackNote}`;
 }
 
 /**

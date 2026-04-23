@@ -12,7 +12,9 @@ import type {
   ZoneConnection, ParallaxLayer,
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
-import type { UnrealContentPack } from './export.js';
+import type { UnrealContentPack, UnrealPackMeta } from './export.js';
+import { UNREAL_PACK_FORMAT_VERSION } from './export.js';
+import { migratePack, parseSemVer, compareSemVer, type MigrationWarning } from './migrations.js';
 import type { UnrealZoneDataAsset } from './convert-zones.js';
 import type { UnrealDistrictDataAsset } from './convert-districts.js';
 import type { UnrealActorSpawnEntry } from './convert-entities.js';
@@ -30,7 +32,116 @@ export interface UnrealImportError {
   errors: string[];
 }
 
+/**
+ * UE-B-006 / UE-FT-008 seam: version-aware import dispatcher. Routes a pack to
+ * the correct deserializer based on `pack.Meta.FormatVersion`. Today there is
+ * only one deserializer (`deserializeV1`), but adding a V2 import path means
+ * registering it here — no changes to call sites, no refactor of the body of
+ * this file.
+ *
+ * Dispatch is by semver major. Unknown majors fall through to V1 with a
+ * fidelity warning; UE-FT-008 will swap the fallback to an explicit error.
+ */
+type PackDeserializer = (pack: UnrealContentPack) => UnrealImportResult | UnrealImportError;
+
+const V1_DESERIALIZER: PackDeserializer = (pack) => deserializeV1(pack);
+
+/**
+ * UE-B-006 / UE-FT-008: registered version dispatchers. Keys are semver
+ * majors (`'1'`, `'2'`, ...). A major bump means the pack's structure has
+ * changed in a way the v1 deserializer can't read — register a new entry
+ * here that normalizes the new shape back into the V1 code path, or writes
+ * its own deserializer.
+ *
+ * Minor-version differences within the same major are handled by
+ * `migratePack` BEFORE dispatch, so a single major-keyed deserializer sees
+ * a Meta already rewritten to the current minor.
+ */
+const VERSION_DISPATCHERS: Record<string, PackDeserializer> = {
+  '1': V1_DESERIALIZER,
+};
+
 export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
+  // UE-B-006 / UE-FT-008: version-aware dispatch. Steps:
+  //   1. Extract FormatVersion from Meta.
+  //   2. If parseable, run `migratePack` to rewrite older minors up to the
+  //      current version (or capture forward-compat warnings / hard errors).
+  //   3. Dispatch by semver major. Unknown majors are rejected with a clear
+  //      error naming the version.
+  //   4. If FormatVersion is missing / unparseable, fall through to V1 (legacy
+  //      behavior — keeps pre-UE-A-001 packs loadable with a fidelity warning
+  //      already emitted by deserializeV1).
+  const metaUnknown: unknown = pack?.Meta;
+  const formatVersion = typeof metaUnknown === 'object' && metaUnknown !== null
+    ? (metaUnknown as { FormatVersion?: unknown }).FormatVersion
+    : undefined;
+  const parsed = parseSemVer(formatVersion);
+  if (!parsed) {
+    // Legacy / hand-edited pack — fall through to V1 dispatcher. deserializeV1
+    // will push a `dropped` fidelity entry flagging the guess.
+    return V1_DESERIALIZER(pack);
+  }
+
+  const current = parseSemVer(UNREAL_PACK_FORMAT_VERSION);
+  // `current` is a constant; if it ever fails to parse it's a programmer bug,
+  // not user input — fall through to V1 rather than throw.
+  if (!current) return V1_DESERIALIZER(pack);
+
+  const sameMajor = compareSemVer(parsed, current).sameMajor;
+  let migrated: UnrealPackMeta = pack.Meta;
+  let migrationWarnings: MigrationWarning[] = [];
+  if (sameMajor) {
+    const result = migratePack(pack.Meta, UNREAL_PACK_FORMAT_VERSION);
+    if ('code' in result) {
+      return {
+        success: false,
+        errors: [`Migration failed (${result.code}): ${result.message}`],
+      };
+    }
+    migrated = result.meta;
+    migrationWarnings = result.warnings;
+  }
+
+  const major = String(parsed.major);
+  const deserializer = VERSION_DISPATCHERS[major];
+  if (!deserializer) {
+    return {
+      success: false,
+      errors: [
+        `Unsupported pack FormatVersion "${pack.Meta.FormatVersion}" (major ${major}). ` +
+        `This loader supports major ${current.major}.x. Re-export the pack with a compatible exporter ` +
+        `or update the loader.`,
+      ],
+    };
+  }
+
+  // Dispatch with the migrated Meta swapped in so deserializers always see the
+  // current minor's shape.
+  const packForDispatch: UnrealContentPack = migrated === pack.Meta
+    ? pack
+    : { ...pack, Meta: migrated };
+  const result = deserializer(packForDispatch);
+
+  // Thread forward-compat warnings into the fidelity report. They're info-
+  // level: loading succeeded, but the caller should know a newer-minor pack
+  // may have fields this loader ignored.
+  if (result.success && migrationWarnings.length > 0) {
+    for (const w of migrationWarnings) {
+      result.fidelity.entries.push({
+        level: 'dropped',
+        domain: 'world',
+        severity: 'warning',
+        fieldPath: 'Meta.FormatVersion',
+        message: w.message,
+        reason: `Pack at ${w.fromVersion}, loader at ${w.toVersion} — forward-compat load.`,
+      });
+    }
+  }
+
+  return result;
+}
+
+function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
   const fidelity: FidelityEntry[] = [];
 
   // Reconstruct a sensible tile size. Default is 100 cm/tile.
@@ -52,9 +163,14 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
   // Reconstruct the original pixel tile size. Older packs (pre UE-A-001 fix) did
   // not serialize SourceTileSizePx — in that case we fall back to 32 and flag
   // the loss so the importer is honest about it.
+  //
+  // UE-A-001: Meta may have been hand-edited or come from an older pack format,
+  // so we cannot trust its shape. Use a runtime type guard instead of a cast.
+  // This prepares for UE-FT-008 (schema versioning) where pack.Meta structure
+  // evolves and version-aware deserialization needs a safe extraction point.
   let tileSizePx = 32;
-  const rawTileSizePx = (pack.Meta as { SourceTileSizePx?: number }).SourceTileSizePx;
-  if (typeof rawTileSizePx === 'number' && Number.isFinite(rawTileSizePx) && rawTileSizePx > 0) {
+  const rawTileSizePx = readOptionalPositiveNumber(pack.Meta, 'SourceTileSizePx');
+  if (rawTileSizePx !== undefined) {
     tileSizePx = rawTileSizePx;
   } else {
     fidelity.push({
@@ -327,4 +443,25 @@ function connectionFromUnreal(u: UnrealLevelStreamingHint): ZoneConnection {
 function isEntityRole(value: string): value is EntityRole {
   return value === 'npc' || value === 'enemy' || value === 'merchant'
     || value === 'quest-giver' || value === 'companion' || value === 'boss';
+}
+
+/**
+ * UE-A-001: safely extract a positive finite number from an unknown-shaped meta
+ * object without an unsafe cast. Returns undefined if the field is missing,
+ * the wrong type, non-finite, or non-positive.
+ *
+ * Prefer this over `(meta as { X?: number }).X` for any field whose presence
+ * may vary across pack-format versions.
+ */
+function readOptionalPositiveNumber(
+  meta: unknown,
+  field: string,
+): number | undefined {
+  if (typeof meta !== 'object' || meta === null) return undefined;
+  const record = meta as Record<string, unknown>;
+  const value = record[field];
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  return undefined;
 }

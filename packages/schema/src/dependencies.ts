@@ -95,6 +95,28 @@ function collectReferencedAssetIds(project: WorldProject): Set<string> {
 }
 
 /**
+ * Pre-built lookup maps that callers can pass to {@link scanDependencies} to
+ * skip the per-call rebuild cost. All maps are optional; any omitted ones are
+ * rebuilt from the project. Callers that invoke multiple validators against
+ * the same project (e.g. buildReviewSnapshot → validate + advisory + scan)
+ * can build these once and share.
+ *
+ * SCH-B-006 (v4.4): Editor live-refresh was rebuilding the same four lookups
+ * on every keystroke via buildReviewSnapshot. Sharing pre-built maps cuts
+ * allocation churn without invalidating callers that don't opt in.
+ */
+export interface ScanDependenciesLookups {
+  /** id → { kind, label } for each asset in project.assets. */
+  assetMap?: Map<string, { kind: string; label: string }>;
+  /** Set of asset-pack ids. */
+  packIds?: Set<string>;
+  /** Set of zone ids. */
+  zoneIds?: Set<string>;
+  /** Set of dialogue ids. */
+  dialogueIds?: Set<string>;
+}
+
+/**
  * Scan the full reference graph of a WorldProject and classify every edge.
  *
  * Asset refs are checked for existence and kind match.
@@ -105,21 +127,27 @@ function collectReferencedAssetIds(project: WorldProject): Set<string> {
  * directly — each edge includes domain, status, and a human-readable message.
  * A future enhancement could add an optional `verbose` flag to emit additional
  * diagnostic detail (e.g. timing, ref counts per domain).
+ *
+ * @param prebuilt optional pre-built lookup maps to reuse. When omitted they
+ *                 are rebuilt from project — matches the legacy behaviour.
  */
-export function scanDependencies(project: WorldProject): DependencyReport {
+export function scanDependencies(
+  project: WorldProject,
+  prebuilt?: ScanDependenciesLookups,
+): DependencyReport {
   const edges: DependencyEdge[] = [];
 
-  // Build lookup maps
-  // NOTE: Caching opportunity — if scanDependencies is called repeatedly on the
-  // same project (e.g. during editor live-refresh), these maps could be memoized.
-  const assetMap = new Map<string, { kind: string; label: string }>();
-  for (const a of project.assets) {
-    assetMap.set(a.id, { kind: a.kind, label: a.label });
-  }
+  // Build lookup maps (or reuse prebuilt ones from the caller).
+  // SCH-B-006: callers like buildReviewSnapshot that also run validateProject
+  // and advisoryValidation against the same project can share these to avoid
+  // rebuilding four maps per validator pass.
+  const assetMap: Map<string, { kind: string; label: string }> =
+    prebuilt?.assetMap ??
+    new Map(project.assets.map((a) => [a.id, { kind: a.kind, label: a.label }]));
 
-  const packIds = new Set(project.assetPacks.map((p) => p.id));
-  const zoneIds = new Set(project.zones.map((z) => z.id));
-  const dialogueIds = new Set(project.dialogues.map((d) => d.id));
+  const packIds = prebuilt?.packIds ?? new Set(project.assetPacks.map((p) => p.id));
+  const zoneIds = prebuilt?.zoneIds ?? new Set(project.zones.map((z) => z.id));
+  const dialogueIds = prebuilt?.dialogueIds ?? new Set(project.dialogues.map((d) => d.id));
 
   // Helper: check an asset ref field.
   // When refId is null/undefined, the ref is optional and unset — this is not an error.

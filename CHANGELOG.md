@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.4.0] - 2026-04-23
+
+Star-Freight-driven release. Full 10-phase dogfood swarm: Stage A bug/security pass, Stage B proactive audit, Stage C humanization amend, then a focused feature pass on the Unreal export lane to get the UnrealContentPack contract ready for the `star-freight-ue5` project's future loader plugin.
+
+### Added — Unreal export feature pass
+
+**@world-forge/export-unreal:**
+- **Schema versioning + migration framework** (UE-FT-008) — `UNREAL_PACK_FORMAT_VERSION` bumped 1.0.0 → 1.1.0. New `migratePack(meta, targetVersion)` walks a chain of pure migration steps from the pack's recorded FormatVersion to the current version. `importFromUnreal` now migrates-then-dispatches: unknown majors → hard error naming the version; older minors → run through `migratePack`; newer minors → forward-compat warning surfaced via fidelity. Rules in README: major = breaking semantics, minor = additive optional field, patch = docs.
+- **Pack signing / integrity hash** (UE-FT-007) — optional `Signature` field on `pack.Meta`: `{ algorithm: 'sha256', value, signedFields: string[] }`. `composeSignedMeta` runs last in `buildMeta` so the hash covers every other built field. FormatVersion is signed to block downgrade attacks. `verifyPackSignature(meta)` exported for loader / CI use; import does NOT auto-verify (opt-in). CLI: `--sign`. No external deps (node `crypto` only).
+- **CLI `--summary` and `--diff <prev> <new> [--detailed]`** (UE-FT-005) — `summarizePack` prints zone / entity / landmark / asset counts, FormatVersion, signature status, pack size. `diffPacks` uses sorted-key canonical stringify; reports added / removed / changed per object kind plus FormatVersion delta and Signature state change. `--detailed` lists changed ids.
+
+### Fixed — health pass (Stages A + B + C)
+
+**Schema (@world-forge/schema):**
+- SCH-A-001/002 — `VALID_ASSET_KINDS` / `VALID_CONNECTION_KINDS` now derive from a `Record<Kind, true>` lookup (enum drift trap closed, compile-time enforced).
+- SCH-A-003 — regression tests guarding 2.5D parallax + skyline asset refs (recurring v4.3.0 orphan-check lesson).
+- SCH-A-004 — advisory type coercion on non-string metadata now raises `ValidationError`.
+- SCH-B-001 — `SCHEMA_VERSION` exported; `ValidationResult` + `ReviewSnapshot` carry it.
+- SCH-B-002 — dialogue reachability emits structured "Unreachable dialogue" errors with ids + fix hint.
+- `MODE_LABELS` typed `Record<AuthoringMode, string>` — compile-time exhaustiveness.
+- `CanonAdapterError` structured class with gameSlug / kitId context.
+
+**Unreal export (@world-forge/export-unreal):**
+- UE-A-001 — unsafe `pack.Meta` cast replaced with `readOptionalPositiveNumber` type guard.
+- UE-A-002 — FormatVersion pinned to exported constant via test.
+- UE-A-003 — CLI help advertises the pack format version; tests shape-check `pack.json`.
+- UE-B-001 — `Promise.allSettled` for zone / district writes with aggregated per-file stderr + non-zero exit on write failure.
+- UE-B-002 — progress status lines to stderr so long exports don't look hung.
+- UE-B-003 — `UnrealDroppedEntity[]` + `Incomplete` flag on manifest; CLI lists dropped actors with zone id (silent-failure closed).
+
+**AI RPG export + renderer (@world-forge/export-ai-rpg, @world-forge/renderer-2d):**
+- AIR-B-002 / AIR-B-003 / AIR-B-009 — validate `exit.targetZoneId`, `factionId`, `spawnPointId`; tagged `UNKNOWN` with named warning.
+- AIR-B-007 — drop-tracking in `exportToEngine` with multi-entity / zone summary.
+- R2D-A-001 — `zoomLevel` getter guards destroyed state (lifecycle contract).
+- R2D-B-002 / R2D-B-003 — `EntityRenderer` + `TileLayerRenderer` aggregate missing-ref warnings (dedup, not flood).
+
+**Editor (@world-forge/editor):**
+- ED-B-001 — transactional autosave; human-readable "Local storage is full" on quota failure.
+- ED-B-002 — orphaned-encounter repair UI: red "Orphaned encounters" group in `ObjectListPanel` with zone-reassign dropdown and delete, both undoable.
+- ED-B-003 — connection line dangling-ref one-time warnings naming missing zones.
+
+**CI / docs / site:**
+- INF-A-001 — `pages.yml` setup-node npm cache (cache hits on Pages deploy).
+- INF-B-001 — root `package.json` drives README version block (via `scripts/sync-version.mjs` + `prebuild` hook) AND site hero (build-time import). No more manual version bumps across repo at release time.
+- INF-B-006 — `timeout-minutes: 20` on all four CI jobs.
+- INF-B-009 — `pages.yml` post-deploy curl verifies deploy returned 200 with 5-retry backoff.
+
+### Investigated and reverted
+
+- **ED-A-001** — an initial CRITICAL finding claiming an operator-precedence bug in entity hit-test defaults was investigated and reverted as a false positive. `(ep.gridX ?? zone.gridX + 2)` is intentional: `+2` is a fallback default when `ep.gridX` is undefined, not a universal offset. Landmarks and spawn points use pure absolute `gridX` (no `+2`); entities are the only placement type with optional `gridX`, hence the fallback shape. The would-be "fix" would have visually shifted every explicitly-placed entity by 2 tiles.
+
+### Stats
+
+- **Tests:** 1959 → 2067 (+108).
+- **Test files:** 98 → 103.
+- **Findings closed:** 9 Stage A CRIT+HIGH, 8 Stage B HIGH, 22 Stage B MED + LOW.
+- **Features shipped:** 3 (UE-FT-005, UE-FT-007, UE-FT-008).
+
+### Deferred to v4.5+
+
+INF-B-002 (UE5 handbook page — rolled into v4.4.0 Full Treatment), INF-B-003 (dogfood stdout artifact), INF-B-005 (Node-version matrix on site-build), INF-B-007 (snapshot-diff regression tests), ED-B-005 (CanonAdapter error boundary), ED-B-004 / ED-B-006 / ED-B-007 / ED-B-008 (elevation defaults, hidden-object persistence, tab overflow, autosave startup warning), GO-B-001 (export-godot stub coordinate transform signature).
+
 ## [4.3.0] - 2026-04-22
 
 ### Added — Feature Pass (2.5D-focused wave)
