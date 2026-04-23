@@ -10,3 +10,6 @@ site/node_modules/
 
 # Dogfood run artifacts (regenerated; not source)
 dogfood/output/
+
+# taste-engine artifacts (separate tool, not source)
+taste/
