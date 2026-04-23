@@ -2,16 +2,24 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const destroyCalls: Array<{ kind: string; opts: unknown }> = [];
+
 vi.mock('pixi.js', () => {
   class MockContainer {
     children: unknown[] = [];
     addChild(child: unknown) { this.children.push(child); }
-    removeChildren() { this.children = []; }
+    removeChildren(): unknown[] {
+      const removed = this.children;
+      this.children = [];
+      return removed;
+    }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
     rect() { return this; }
     fill() { return this; }
     stroke() { return this; }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Graphics', opts }); }
   }
   return { Container: MockContainer, Graphics: MockGraphics };
 });
@@ -66,5 +74,33 @@ describe('MinimapRenderer', () => {
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(renderer.container.children.length).toBe(0);
     warnSpy.mockRestore();
+  });
+
+  it('destroys previous Graphics on re-update to prevent leaks (INF-A-004)', () => {
+    destroyCalls.length = 0;
+    const renderer = new MinimapRenderer({ size: 100, gridWidth: 10, gridHeight: 10 });
+    renderer.update(zones, districts);
+    // First update: container was empty, nothing to destroy.
+    expect(destroyCalls.length).toBe(0);
+    // background + 1 zone = 2 children
+    expect(renderer.container.children.length).toBe(2);
+
+    renderer.update(zones, districts);
+    // Second update: 2 previous Graphics objects should have been destroyed.
+    const graphicsDestroyed = destroyCalls.filter((c) => c.kind === 'Graphics').length;
+    expect(graphicsDestroyed).toBe(2);
+    for (const call of destroyCalls) {
+      expect(call.opts).toEqual({ children: true });
+    }
+    // Bounded child count after re-update.
+    expect(renderer.container.children.length).toBe(2);
+  });
+
+  it('keeps container child count bounded across many updates (INF-A-004)', () => {
+    const renderer = new MinimapRenderer({ size: 100, gridWidth: 10, gridHeight: 10 });
+    for (let i = 0; i < 10; i++) {
+      renderer.update(zones, districts);
+    }
+    expect(renderer.container.children.length).toBe(2);
   });
 });

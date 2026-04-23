@@ -22,7 +22,7 @@ npm install @world-forge/export-ai-rpg
 import { exportToEngine } from '@world-forge/export-ai-rpg';
 
 const result = exportToEngine(myProject);
-if ('ok' in result) {
+if (!result.success) {
   console.error(result.errors);
 } else {
   const { contentPack, manifest, packMeta, warnings } = result;

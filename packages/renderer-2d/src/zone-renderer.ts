@@ -39,7 +39,10 @@ export class ZoneOverlayRenderer {
   }
 
   private render(): void {
-    this.container.removeChildren();
+    // INF-A-001: destroy removed children so Graphics + Text objects don't leak.
+    // PixiJS v8 removeChildren() returns the removed children array.
+    const removed = this.container.removeChildren();
+    for (const child of removed) child.destroy({ children: true });
     const { tileSize, selectedZoneId, hoveredZoneId } = this.opts;
 
     for (const zone of this.zones) {

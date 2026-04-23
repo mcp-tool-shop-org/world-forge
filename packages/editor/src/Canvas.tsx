@@ -706,18 +706,29 @@ export function Canvas() {
   }, []);
 
   // --- Keyboard events (delegated to hotkeys.ts) ---
-  useEffect(() => {
-    const editorState = useEditorStore.getState();
-    const hotkeyCtx: HotkeyContext = {
-      selection, selectedConnection, project,
-      showEntities, showLandmarks, showSpawns,
-      clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
-      duplicateSelected, setShowSearch, setRightTab,
-      showSpeedPanel, closeSpeedPanel,
-      copySelection: editorState.copySelection,
-      pasteClipboard: () => { /* paste handled by project-store when available */ },
-    };
+  // ED-A-003 / ED-A-010: Keep the handler identity stable so we register window
+  // listeners exactly ONCE (not every render). Latest store/prop values flow
+  // through a ref, and zustand actions are read via `getState()` at call time —
+  // both are stable, so the effect's dep array is empty and listeners never
+  // thrash during re-render storms.
+  const hotkeyCtxRef = useRef<HotkeyContext | null>(null);
+  const contextMenuRef = useRef(contextMenu);
+  contextMenuRef.current = contextMenu;
 
+  // ED-A-010: HotkeyContext object was previously constructed inline in the effect
+  // on every dep change. Now it's rebuilt once per render into a ref — no listener
+  // churn, and dispatchHotkey() always sees current values.
+  hotkeyCtxRef.current = {
+    selection, selectedConnection, project,
+    showEntities, showLandmarks, showSpawns,
+    clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
+    duplicateSelected, setShowSearch, setRightTab,
+    showSpeedPanel, closeSpeedPanel,
+    copySelection: useEditorStore.getState().copySelection,
+    pasteClipboard: () => { /* paste handled by project-store when available */ },
+  };
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       // Space handled locally (depends on ref)
       const tag = (e.target as HTMLElement)?.tagName;
@@ -730,13 +741,16 @@ export function Canvas() {
       }
 
       // FT-005: Escape closes context menu
-      if (e.key === 'Escape' && contextMenu) {
+      if (e.key === 'Escape' && contextMenuRef.current) {
         setContextMenu(null);
         return;
       }
 
-      // Delegate to centralized dispatch
-      const result = dispatchHotkey(e, hotkeyCtx);
+      // Delegate to centralized dispatch — pull latest ctx from ref so the
+      // handler reflects current selection/project without re-binding.
+      const ctx = hotkeyCtxRef.current;
+      if (!ctx) return;
+      const result = dispatchHotkey(e, ctx);
       if (result.handled && result.action === 'escape') {
         // Also clear canvas-local drag state
         dragMove.current = null;
@@ -756,7 +770,7 @@ export function Canvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [selection, selectedConnection, project, showEntities, showLandmarks, showSpawns, clearSelection, selectAll, moveSelected, removeSelected, removeConnection, setShowSearch, duplicateSelected, setRightTab, showSpeedPanel, closeSpeedPanel, contextMenu]);
+  }, []);
 
   // --- Mouse coordinate helpers ---
   const getScreenXY = (e: React.MouseEvent) => {

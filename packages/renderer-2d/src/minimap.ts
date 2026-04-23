@@ -24,7 +24,9 @@ export class MinimapRenderer {
   }
 
   update(zones: Zone[], districts: District[], viewportRect?: { x: number; y: number; w: number; h: number }): void {
-    this.container.removeChildren();
+    // INF-A-004: destroy removed children so Graphics objects don't leak.
+    const removed = this.container.removeChildren();
+    for (const child of removed) child.destroy({ children: true });
     const { size, gridWidth, gridHeight } = this.opts;
 
     if (gridWidth === 0 || gridHeight === 0) {

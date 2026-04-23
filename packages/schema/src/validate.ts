@@ -598,6 +598,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   for (const z of project.zones) {
     if (z.backgroundId) referencedAssetIds.add(z.backgroundId);
     if (z.tilesetId) referencedAssetIds.add(z.tilesetId);
+    // 2.5D (v4.2.0): skyline + parallax assetRefs also count as valid references.
+    if (z.skylineRef) referencedAssetIds.add(z.skylineRef);
+    if (z.parallaxLayers) {
+      for (const layer of z.parallaxLayers) {
+        if (layer.assetRef) referencedAssetIds.add(layer.assetRef);
+      }
+    }
   }
   for (const ep of project.entityPlacements) {
     if (ep.portraitId) referencedAssetIds.add(ep.portraitId);
@@ -666,11 +673,18 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
-  // 53. 2.5D elevation range sanity — floor < ceiling
+  // 53. 2.5D elevation range sanity — floor < ceiling, both must be finite.
+  // Without the finite-number guard, NaN/Infinity slip through because
+  // `!(NaN < Infinity)` evaluates true and would fail silently elsewhere.
   for (const zone of project.zones) {
     if (zone.elevationRange) {
       const { floor, ceiling } = zone.elevationRange;
-      if (!(floor < ceiling)) {
+      if (!Number.isFinite(floor) || !Number.isFinite(ceiling)) {
+        errors.push({
+          path: `zones.${zone.id}.elevationRange`,
+          message: `Zone "${zone.id}" elevationRange floor and ceiling must be finite numbers (got floor=${floor}, ceiling=${ceiling}).`,
+        });
+      } else if (!(floor < ceiling)) {
         errors.push({
           path: `zones.${zone.id}.elevationRange`,
           message: `Zone "${zone.id}" elevationRange requires floor (${floor}) < ceiling (${ceiling}).`,
@@ -679,7 +693,9 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
-  // 54. 2.5D parallax layer depth must be unique per zone
+  // 54. 2.5D parallax layer depth must be unique per zone.
+  // Also validates assetRef resolves to an asset of kind 'background' or 'sprite'
+  // (SCH-A-002) and that scrollFactor is finite in [0.0, 1.0] (SCH-A-003).
   for (const zone of project.zones) {
     if (!zone.parallaxLayers || zone.parallaxLayers.length === 0) continue;
     const seenDepths = new Map<number, string>();
@@ -702,7 +718,49 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       } else {
         seenDepths.set(layer.depth, layer.id);
       }
+
+      // SCH-A-002: assetRef must resolve to a 'background' or 'sprite' asset.
+      // checkAssetRef only supports a single expectedKind, so we inline the
+      // two-kind variant here rather than extending the helper signature.
+      const refId = layer.assetRef;
+      const refPath = `zones.${zone.id}.parallaxLayers.${layer.id}.assetRef`;
+      const refLabel = `Zone "${zone.id}" parallax layer "${layer.id}"`;
+      if (!refId) {
+        errors.push({
+          path: refPath,
+          message: `${refLabel} is missing assetRef (expected a "background" or "sprite" asset).`,
+        });
+      } else if (!assetIds.has(refId)) {
+        errors.push({
+          path: refPath,
+          message: `${refLabel} references nonexistent asset "${refId}" (expected a "background" or "sprite" asset). Check that the asset ID is correct and exists in the assets array.`,
+        });
+      } else {
+        const asset = assetMap.get(refId);
+        if (asset && asset.kind !== 'background' && asset.kind !== 'sprite') {
+          errors.push({
+            path: refPath,
+            message: `${refLabel} references asset "${refId}" of kind "${asset.kind}", expected "background" or "sprite". Assign a "background" or "sprite" asset instead.`,
+          });
+        }
+      }
+
+      // SCH-A-003: scrollFactor must be finite and within [0.0, 1.0] inclusive.
+      // Rejects NaN, Infinity, negatives, and values > 1.
+      const sf = layer.scrollFactor;
+      if (!Number.isFinite(sf) || sf < 0 || sf > 1) {
+        errors.push({
+          path: `zones.${zone.id}.parallaxLayers.${layer.id}.scrollFactor`,
+          message: `Zone "${zone.id}" parallax layer "${layer.id}" scrollFactor (${sf}) must be a finite number in [0.0, 1.0].`,
+        });
+      }
     }
+  }
+
+  // 55. 2.5D Zone.skylineRef — if set, must resolve to a 'background' asset.
+  // (SCH-A-004) Mirrors the zone backgroundId/tilesetId pattern above.
+  for (const zone of project.zones) {
+    checkAssetRef(zone.skylineRef, 'background', `zones.${zone.id}.skylineRef`, `Zone "${zone.id}"`);
   }
 
   // Structured warning counts for callers that want a quick health check

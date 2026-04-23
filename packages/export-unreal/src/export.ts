@@ -29,6 +29,8 @@ export interface UnrealPackMeta {
   SourceProjectId: string;
   /** Tile size in cm used for all coordinate transforms in this pack. */
   TileSizeCm: number;
+  /** Original pixel tile size from WorldProject.map.tileSize — preserved for lossless round-trip. */
+  SourceTileSizePx: number;
 }
 
 export interface UnrealContentPack {
@@ -127,5 +129,6 @@ function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
     Tags: project.projectTags,
     SourceProjectId: project.id,
     TileSizeCm: tileSizeCm,
+    SourceTileSizePx: project.map.tileSize,
   };
 }

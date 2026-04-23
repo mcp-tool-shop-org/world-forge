@@ -13,7 +13,9 @@ export class ConnectionRenderer {
   }
 
   update(zones: Zone[], connections: ZoneConnection[]): void {
-    this.container.removeChildren();
+    // INF-A-003: destroy removed children so Graphics objects don't leak.
+    const removed = this.container.removeChildren();
+    for (const child of removed) child.destroy({ children: true });
     const zoneMap = new Map(zones.map((z) => [z.id, z]));
 
     for (const conn of connections) {

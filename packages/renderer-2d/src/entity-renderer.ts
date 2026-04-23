@@ -31,7 +31,9 @@ export class EntityRenderer {
   }
 
   update(entities: EntityPlacement[], zonePositions: Map<string, { x: number; y: number }>): void {
-    this.container.removeChildren();
+    // INF-A-002: destroy removed children so Graphics + Text objects don't leak.
+    const removed = this.container.removeChildren();
+    for (const child of removed) child.destroy({ children: true });
 
     for (const ep of entities) {
       const zonePos = zonePositions.get(ep.zoneId);

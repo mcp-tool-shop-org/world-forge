@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   }
   const tileSizeCm = tileIdx !== -1 ? Number(args[tileIdx + 1]) : undefined;
   if (tileSizeCm !== undefined && (!Number.isFinite(tileSizeCm) || tileSizeCm <= 0)) {
-    console.error(`Error: --tile-size-cm must be a positive number (got "${args[tileIdx + 1]}")`);
+    console.error(`Error: --tile-size-cm must be a positive finite number (got "${args[tileIdx + 1]}")`);
     process.exit(1);
   }
 

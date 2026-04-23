@@ -8,6 +8,14 @@ function withElevation(project: WorldProject): WorldProject {
   return {
     ...project,
     mode: 'space',
+    // Declare the parallax + skyline assets the zone patches below reference.
+    // Required since SCH-A-002/004 tightened validation to require matching AssetEntry.
+    assets: [
+      ...project.assets,
+      { id: 'asset-sky', kind: 'background', label: 'Sky', path: 'bg/sky.png', tags: [] },
+      { id: 'asset-mid', kind: 'background', label: 'Mid', path: 'bg/mid.png', tags: [] },
+      { id: 'asset-skyline', kind: 'background', label: 'Skyline', path: 'bg/skyline.png', tags: [] },
+    ],
     zones: project.zones.map((z, i) => ({
       ...z,
       elevation: i * 2,
@@ -77,6 +85,12 @@ describe('exportToUnreal', () => {
     expect(result.success).toBe(false);
   });
 
+  it('persists SourceTileSizePx on pack meta for lossless round-trip', () => {
+    const result = exportToUnreal(minimalProject);
+    if (!result.success) throw new Error('export failed');
+    expect(result.contentPack.Meta.SourceTileSizePx).toBe(minimalProject.map.tileSize);
+  });
+
   it('maps every connection kind to a StreamMode', () => {
     const project: WorldProject = {
       ...minimalProject,
@@ -113,6 +127,50 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     const zoneCellar = imported.project.zones.find((z) => z.id === 'zone-cellar');
     expect(zoneCellar?.elevation).toBe(2);
     expect(zoneCellar?.elevationRange).toEqual({ floor: -1, ceiling: 5 });
+  });
+
+  it('round-trips a non-default pixel tileSize (48) through SourceTileSizePx', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      map: { ...minimalProject.map, tileSize: 48 },
+    };
+    const exported = exportToUnreal(project);
+    if (!exported.success) throw new Error('export failed');
+    expect(exported.contentPack.Meta.SourceTileSizePx).toBe(48);
+
+    const imported = importFromUnreal(exported.contentPack);
+    if (!imported.success) throw new Error('import failed');
+    expect(imported.project.map.tileSize).toBe(48);
+
+    // No "tile size missing" fidelity entry should be emitted on a fresh pack.
+    const lossEntry = imported.fidelity.entries.find(
+      (e) => e.domain === 'world' && e.fieldPath === 'map.tileSize',
+    );
+    expect(lossEntry).toBeUndefined();
+  });
+
+  it('falls back to tileSize=32 and emits a dropped fidelity entry for older packs missing SourceTileSizePx', () => {
+    const exported = exportToUnreal(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+
+    // Simulate an older pack by stripping SourceTileSizePx.
+    const legacyPack = {
+      ...exported.contentPack,
+      Meta: { ...exported.contentPack.Meta },
+    };
+    delete (legacyPack.Meta as { SourceTileSizePx?: number }).SourceTileSizePx;
+
+    const imported = importFromUnreal(legacyPack);
+    if (!imported.success) throw new Error('import failed');
+    expect(imported.project.map.tileSize).toBe(32);
+
+    const lossEntry = imported.fidelity.entries.find(
+      (e) => e.domain === 'world' && e.fieldPath === 'map.tileSize',
+    );
+    expect(lossEntry).toBeDefined();
+    expect(lossEntry?.level).toBe('dropped');
+    expect(lossEntry?.severity).toBe('warning');
+    expect(lossEntry?.reason).toContain('SourceTileSizePx');
   });
 
   it('flags dialogues as dropped during the round-trip', () => {

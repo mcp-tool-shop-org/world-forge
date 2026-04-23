@@ -36,6 +36,24 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
   // Reconstruct a sensible tile size. Default is 100 cm/tile.
   const tileSizeCm = pack.Meta.TileSizeCm > 0 ? pack.Meta.TileSizeCm : 100;
 
+  // Reconstruct the original pixel tile size. Older packs (pre UE-A-001 fix) did
+  // not serialize SourceTileSizePx — in that case we fall back to 32 and flag
+  // the loss so the importer is honest about it.
+  let tileSizePx = 32;
+  const rawTileSizePx = (pack.Meta as { SourceTileSizePx?: number }).SourceTileSizePx;
+  if (typeof rawTileSizePx === 'number' && Number.isFinite(rawTileSizePx) && rawTileSizePx > 0) {
+    tileSizePx = rawTileSizePx;
+  } else {
+    fidelity.push({
+      level: 'dropped',
+      domain: 'world',
+      severity: 'warning',
+      fieldPath: 'map.tileSize',
+      message: 'Original pixel tile size not present on pack — defaulting to 32.',
+      reason: 'UnrealPackMeta.SourceTileSizePx missing (pre UE-A-001 pack or hand-edited meta).',
+    });
+  }
+
   const zones: Zone[] = pack.Zones.map((z) => zoneFromUnreal(z, tileSizeCm, fidelity));
   const districts: District[] = pack.Districts.map(districtFromUnreal);
   const entityPlacements: EntityPlacement[] = pack.Actors.All.map((a) =>
@@ -66,7 +84,7 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
       description: pack.Meta.Description,
       gridWidth: Math.max(1, Math.round(pack.WorldPartition.ExtentCm.WidthCm / tileSizeCm)),
       gridHeight: Math.max(1, Math.round(pack.WorldPartition.ExtentCm.DepthCm / tileSizeCm)),
-      tileSize: 32,
+      tileSize: tileSizePx,
     },
     zones,
     connections,

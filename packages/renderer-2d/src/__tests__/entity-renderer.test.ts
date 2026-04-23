@@ -2,12 +2,20 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Track destroy calls across all mock children so tests can assert leak-free cleanup (INF-A-002).
+const destroyCalls: Array<{ kind: string; opts: unknown }> = [];
+
 // Mock pixi.js before importing the module under test
 vi.mock('pixi.js', () => {
   class MockContainer {
     children: unknown[] = [];
     addChild(child: unknown) { this.children.push(child); }
-    removeChildren() { this.children = []; }
+    removeChildren(): unknown[] {
+      const removed = this.children;
+      this.children = [];
+      return removed;
+    }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
     calls: string[] = [];
@@ -17,6 +25,7 @@ vi.mock('pixi.js', () => {
     lineTo() { this.calls.push('lineTo'); return this; }
     closePath() { this.calls.push('closePath'); return this; }
     fill() { this.calls.push('fill'); return this; }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Graphics', opts }); }
   }
   class MockText {
     text: string;
@@ -26,6 +35,7 @@ vi.mock('pixi.js', () => {
       this.text = opts.text;
       this.style = opts.style;
     }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Text', opts }); }
   }
   return { Container: MockContainer, Graphics: MockGraphics, Text: MockText };
 });
@@ -38,6 +48,7 @@ describe('EntityRenderer', () => {
   const zonePositions = new Map([['zone-1', { x: 0, y: 0 }]]);
 
   beforeEach(() => {
+    destroyCalls.length = 0;
     renderer = new EntityRenderer(32);
   });
 
@@ -95,5 +106,45 @@ describe('EntityRenderer', () => {
     expect(renderer.container.children.length).toBe(2);
     renderer.update([], zonePositions);
     expect(renderer.container.children.length).toBe(0);
+  });
+
+  it('destroys previous children on re-update to prevent leaks (INF-A-002)', () => {
+    const first: EntityPlacement[] = [
+      { entityId: 'npc-1', zoneId: 'zone-1', role: 'npc' },
+      { entityId: 'enemy-1', zoneId: 'zone-1', role: 'enemy' },
+    ];
+    renderer.update(first, zonePositions);
+    // First update: nothing to destroy (container was empty).
+    expect(destroyCalls.length).toBe(0);
+    expect(renderer.container.children.length).toBe(4); // 2 entities x (graphic+label)
+
+    const second: EntityPlacement[] = [
+      { entityId: 'npc-2', zoneId: 'zone-1', role: 'merchant' },
+    ];
+    renderer.update(second, zonePositions);
+    // Second update should destroy all 4 previous children (2 Graphics + 2 Text)
+    // and pass { children: true } to destroy recursively.
+    const graphicsDestroyed = destroyCalls.filter((c) => c.kind === 'Graphics').length;
+    const textDestroyed = destroyCalls.filter((c) => c.kind === 'Text').length;
+    expect(graphicsDestroyed).toBe(2);
+    expect(textDestroyed).toBe(2);
+    for (const call of destroyCalls) {
+      expect(call.opts).toEqual({ children: true });
+    }
+    // Bounded child count: after re-update, only the new entity's 2 children remain.
+    expect(renderer.container.children.length).toBe(2);
+  });
+
+  it('keeps container child count bounded across many updates (INF-A-002)', () => {
+    const entities: EntityPlacement[] = [
+      { entityId: 'npc-1', zoneId: 'zone-1', role: 'npc' },
+      { entityId: 'enemy-1', zoneId: 'zone-1', role: 'enemy' },
+      { entityId: 'merchant-1', zoneId: 'zone-1', role: 'merchant' },
+    ];
+    for (let i = 0; i < 10; i++) {
+      renderer.update(entities, zonePositions);
+    }
+    // 3 entities x 2 children = 6 regardless of update count
+    expect(renderer.container.children.length).toBe(6);
   });
 });
