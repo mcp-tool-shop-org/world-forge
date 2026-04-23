@@ -15,7 +15,9 @@
 
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and (planned) Godot 4.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
-<p align="center"><strong>v4.3.0</strong> — 1959 tests, 5 shipping packages + 1 planned Godot stub (6 total), 7 authoring modes, 2.5D authoring end-to-end</p>
+<!-- version:start -->
+<p align="center"><strong>v4.4.0</strong> — 2067 tests, 5 shipping packages + 1 planned Godot stub (6 total), 7 authoring modes, 2.5D authoring, Unreal pack versioning + signing + diff</p>
+<!-- version:end -->
 
 ## Arquitetura
 
@@ -42,7 +44,7 @@ Abra `http://localhost:5173` para iniciar o editor.
 ### Fluxo de Trabalho do Editor
 
 1. **Escolha um modo** — masmorra, distrito, mundo, oceano, espaço, interior ou natureza — para definir as configurações padrão da grade e o vocabulário de conexões.
-2. **Comece com um kit** — escolha um kit inicial ou modelo de gênero no Gerenciador de Modelos, ou comece do zero.
+2. **Comece com um kit** — escolha um kit inicial ou um modelo de gênero no Gerenciador de Modelos, ou comece do zero.
 3. **Pinte zonas** — arraste na tela para criar zonas, conecte-as e atribua distritos.
 4. **Coloque entidades** — arraste NPCs, inimigos, comerciantes, encontros e itens para as zonas.
 5. **Revise** — abra a guia "Revisão" para verificar o status, obter uma visão geral do conteúdo e exportar um resumo (Markdown/JSON).
@@ -61,22 +63,22 @@ npx world-forge-export project.json --validate-only
 
 Tipos e validações Core TypeScript para a criação de mundos.
 
-- **Tipos espaciais** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
-- **Tipos de conteúdo** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
-- **Camadas visuais** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
-- **Sistema de modos** — `AuthoringMode` (7 modos), perfis específicos do modo para grade/conexão/validação.
-- **Validação** — `validateProject()` (54 verificações estruturais com pesquisas baseadas em mapa O(n), `warningCount`), `advisoryValidation()` (sugestões específicas do modo, integridade de metadados, nomenclatura de ativos).
+- **Tipos espaciais** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`.
+- **Tipos de conteúdo** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`.
+- **Camadas visuais** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`.
+- **Sistema de modos** — `AuthoringMode` (7 modos), perfis específicos para cada modo (grade, conexões, validação).
+- **Validação** — `validateProject()` (54 verificações estruturais com pesquisas baseadas em mapas, O(n), e contagem de avisos), `advisoryValidation()` (sugestões específicas para cada modo, completude de metadados, nomenclatura de ativos).
 - **Utilitários** — `assembleSceneData()` (vinculações visuais com detecção de ativos ausentes), `scanDependencies()` (análise de grafo de referências), `buildReviewSnapshot()` (classificação de saúde).
 
 ### @world-forge/export-unreal
 
 Converte um `WorldProject` em um pacote de conteúdo para o Unreal Engine 5, otimizado para jogos 2.5D.
 
-- **Saída** — `pack.json`, dados primários JSON por zona e por distrito, manifesto de spawn de atores agrupados, dicas de streaming de níveis por conexão, dicas de células de World Partition e um relatório de fidelidade estruturado.
-- **Campos 2.5D** — `Zone.elevation`, `elevationRange`, `parallaxLayers`, `skylineRef` são preservados e convertidos em coordenadas UE cm / Z-up.
+- **Saída** — `pack.json`, JSON de dados primários por zona e distrito, manifesto de spawn de atores agrupados, dicas de streaming de níveis por conexão, dicas de células de World Partition e um relatório de fidelidade estruturado.
+- **Campos 2.5D** — `Zone.elevation`, `elevationRange`, `parallaxLayers`, `skylineRef` são preservados e convertidos em coordenadas UE (cm / Z-up).
 - **Transformação de coordenadas** — funções puras (`pixelsToUnrealCm`, `elevationToZ`, `worldForgeToUnrealAxis`, `gridToUnrealAxis`). A escala padrão do mundo é 1 tile = 100 cm.
 - **Importação de ida e volta** — `importFromUnreal` reconstrói um WorldProject a partir de um pacote Unreal; dados apenas de jogabilidade (diálogos, progressão, construções) são marcados como removidos no relatório de fidelidade.
-- **CLI** — `world-forge-export-unreal` com as opções `--out`, `--tile-size-cm`, `--validate-only` e `--verbose`.
+- **Linha de comando (CLI)** — `world-forge-export-unreal` com as opções `--out`, `--tile-size-cm`, `--validate-only` e `--verbose`.
 
 ### @world-forge/export-godot
 
@@ -84,49 +86,49 @@ Espaço de trabalho reservado para a futura exportação para o Godot 4 (Fractur
 
 ### @world-forge/export-ai-rpg
 
-Converte um `WorldProject` no formato `ContentPack` do ai-rpg-engine.
+Converte um `WorldProject` para o formato `ContentPack` do ai-rpg-engine.
 
-- **Exportação** — zonas, distritos, entidades, itens, diálogos, modelo de jogador, catálogo de construções, árvores de progressão, encontros, facções, pontos de interesse, manifesto e metadados do pacote.
+- **Exportação** — zonas, distritos, entidades, itens, diálogos, modelo de jogador, catálogo de construções, árvores de progressão, encontros, facções, hotspots, manifesto e metadados do pacote.
 - **Importação** — 8 conversores inversos reconstroem um WorldProject a partir de JSON exportado.
 - **Relatório de fidelidade** — rastreamento estruturado do que foi convertido sem perdas, aproximado ou removido durante a conversão.
 - **Detecção de formato** — detecta automaticamente os formatos WorldProject, ExportResult, ContentPack e ProjectBundle.
-- **CLI** — comando `world-forge-export` com as opções `--out`, `--validate-only` e `--verbose`.
+- **Linha de comando (CLI)** — comando `world-forge-export` com as opções `--out`, `--validate-only` e `--verbose`.
 
 ### @world-forge/renderer-2d
 
-Renderizador 2D baseado em PixiJS: viewport com pan/zoom, sobreposições de zonas com cores de distrito, setas de conexão, ícones de entidades por função, camadas de tiles e um minimapa.
+Renderizador 2D baseado em PixiJS: viewport com pan/zoom, sobreposições de zonas com cores de distritos, setas de conexão, ícones de entidades por função, camadas de tiles e um minimapa.
 
 ### @world-forge/editor
 
-React 19 + aplicativo web Vite com gerenciamento de estado Zustand, desfazer/refazer com rótulos de ação, salvamento automático (limite de 30 segundos, histórico de 3 versões), alternância de tema claro/escuro e proteção contra alterações não salvas.
+Aplicação web React 19 + Vite com gerenciamento de estado Zustand, desfazer/refazer com rótulos de ação, salvamento automático (limite de 30 segundos, histórico de 3 versões), alternância entre tema claro/escuro e proteção contra alterações não salvas.
 
 #### Abas de Trabalho
 
 | Aba | Propósito |
 |-----|---------|
-| Mapa | Edição de zonas/entidades/distritos em uma tela 2D. |
+| Mapa | Edição de zonas/entidades/distritos na tela 2D. |
 | Objetos | Árvore hierárquica: distritos → zonas → entidades/pontos de referência/geradores. |
-| Jogador | Modelo de jogador com estatísticas, inventário, equipamentos, ponto de geração. |
+| Jogador | Modelo de jogador com estatísticas, inventário, equipamentos, ponto de spawn. |
 | Construções | Arquétipos, históricos, características, disciplinas, combinações. |
 | Árvores | Nós de progressão com requisitos e efeitos. |
 | Diálogo | Edição de nós, vinculação de escolhas, detecção de referências quebradas. |
 | Predefinições | Navegador de predefinições de região e encontros com opções de mesclar/substituir. |
 | Recursos | Biblioteca de recursos com pesquisa filtrada por tipo, detecção de recursos órfãos, pacotes de recursos. |
-| Problemas | Validação em tempo real, agrupada, com navegação por clique para focar. |
+| Problemas | Validação em tempo real, agrupada, com navegação por clique para foco. |
 | Dependências | Scanner de dependências com botões de correção inline. |
 | Revisão | Painel de saúde, visão geral do conteúdo, exportação de resumo. |
 | Guia | Lista de verificação para a primeira execução com referência de atalhos. |
 
 #### Tela e Edição
 
-- **Ferramentas** — seleção, pintura de zonas, conexão, colocação de entidades, ponto de referência, gerador.
-- **Multiseleção** — clique com Shift, seleção por caixa, Ctrl+A; movimentação por arrasto com desfazer atômico.
+- **Ferramentas** — seleção, pintura de zona, conexão, colocação de entidade, ponto de referência, gerador.
+- **Multi-seleção** — clique com Shift, seleção por caixa, Ctrl+A; mover arrastando com desfazer atômico.
 - **Alinhamento** — alinhamento em 6 direções (esquerda/direita/cima/baixo/centro-horizontal/centro-vertical) e distribuição horizontal/vertical.
-- **Ajuste** — ajuste por tempo de arrasto para as bordas/centros de objetos próximos, com linhas de guia visuais.
-- **Redimensionamento** — 8 alças por zona, com ajuste às bordas, limite de tamanho mínimo, visualização em tempo real.
+- **Ajuste** — ajuste durante o arrasto para as bordas/centros de objetos próximos, com linhas de guia visuais.
+- **Redimensionamento** — 8 alças por zona, com ajuste de borda, limite de tamanho mínimo, visualização em tempo real.
 - **Duplicar** — Ctrl+D com IDs remapeados, conexões e atribuições de distrito.
 - **Copiar/Colar** — Ctrl+C / Ctrl+V com remapeamento de ID e deslocamento configurável.
-- **Ciclo por clique** — cliques repetidos na mesma posição alternam entre objetos sobrepostos.
+- **Ciclo por clique** — cliques repetidos na mesma posição percorrem objetos sobrepostos.
 - **Menu de contexto** — clique com o botão direito para 7 ações sensíveis ao contexto (propriedades, excluir, duplicar, etc.).
 - **Visualização de conexão** — linha tracejada em ciano durante a colocação da ferramenta de conexão.
 - **Mini mapa** — visão geral de 200x150 (canto inferior direito), clique para ir para lá.
@@ -137,23 +139,23 @@ React 19 + aplicativo web Vite com gerenciamento de estado Zustand, desfazer/ref
 
 #### Navegação e Atalhos
 
-- **Tela** — panorâmica/zoom da câmera, zoom com a roda do mouse (cursor fixo), barra de espaço/botão do meio do mouse/clique com o botão direito para arrastar e panorâmica, ajuste automático ao conteúdo, clique duplo para centralizar.
+- **Tela** — panorâmica/zoom da câmera, roda do mouse para zoom (ancorado ao cursor), barra de espaço/botão do meio do mouse/clique com o botão direito para panorâmica, ajuste automático ao conteúdo, clique duplo para centralizar.
 - **Pesquisa** — Ctrl+K abre uma sobreposição para encontrar qualquer objeto por nome/ID com correspondência aproximada, navegação por teclado e histórico de pesquisa recente (localStorage).
-- **Painel de Velocidade** — clique duplo com o botão direito para abrir uma paleta de comandos flutuante com ações contextuais, favoritos fixáveis, macros e ações rápidas sugeridas pelo modo.
+- **Painel de Velocidade** — clique duplo com o botão direito para uma paleta de comandos flutuante com ações contextuais, favoritos fixáveis, macros e ações rápidas sugeridas pelo modo.
 - **Atalhos** — 15 atalhos de teclado, incluindo Enter (abrir detalhes), P (aplicar predefinição), Shift+P (salvar predefinição), Ctrl+C/V (copiar/colar).
 
 #### Importação e Exportação
 
-- **Pacote de Conteúdo** — exportação com um clique para o formato ai-rpg-engine com validação completa.
-- **Pacotes de projeto** — arquivos portáteis `.wfproject.json` com metadados de origem e informações de dependência.
-- **Pacotes de kit** — exportação/importação de `.wfkit.json` com validação, tratamento de colisões e rastreamento de origem.
-- **Importação** — detecta automaticamente 4 formatos com relatórios estruturados de fidelidade.
-- **Diferenças** — rastreamento semântico de alterações desde a importação.
-- **Visualização da cena** — composição inline de HTML/CSS de todas as associações visuais da zona.
+- **Pacotes de conteúdo:** Exportação com um clique para o formato ai-rpg-engine, com validação completa.
+- **Pacotes de projetos:** Arquivos `.wfproject.json` portáteis, com metadados de origem e informações de dependências.
+- **Pacotes de kits:** Exportação/importação de arquivos `.wfkit.json` com validação, tratamento de colisões e rastreamento de origem.
+- **Importação:** Detecção automática de 4 formatos, com relatórios estruturados de fidelidade.
+- **Diferenças (Diff):** Rastreamento de alterações semânticas desde a importação.
+- **Visualização da cena:** Composição HTML/CSS integrada de todas as ligações visuais das áreas.
 
 ## Modos de Criação
 
-O World Forge separa o **gênero** (fantasia, cyberpunk, pirata) do **modo** (masmorra, oceano, espaço). O gênero define o estilo, enquanto o modo define a escala. O modo controla as configurações padrão da grade, o vocabulário de conexões, as sugestões de validação, a redação dos guias e os filtros predefinidos.
+O World Forge separa o **gênero** (fantasia, cyberpunk, pirata) do **modo** (masmorra, oceano, espaço). O gênero define o estilo, enquanto o modo define a escala. O modo controla as configurações padrão da grade, o vocabulário de conexões, as sugestões de validação, a redação dos guias e a filtragem de predefinições.
 
 | Modo | Grade | Tile (Peça) | Conexões Principais |
 |------|------|------|-----------------|
@@ -161,40 +163,40 @@ O World Forge separa o **gênero** (fantasia, cyberpunk, pirata) do **modo** (ma
 | Distrito / Cidade | 50x40 | 32 | estrada, porta, passagem, portal |
 | Região / Mundo | 80x60 | 48 | estrada, portal, passagem |
 | Oceano / Mar | 60x50 | 48 | canal, rota, portal, perigo |
-| Espaço | 100x80 | 64 | doca, teletransporte, passagem, portal |
+| Espaço | 100x80 | 64 | doca, salto, passagem, portal |
 | Interior | 20x15 | 24 | porta, escadas, passagem, segredo |
 | Selva | 60x50 | 48 | trilha, estrada, passagem, perigo |
 
-O modo é definido ao criar um projeto e armazenado como `mode?: AuthoringMode` em `WorldProject`. Cada modo oferece **configurações padrão inteligentes** — os tipos de conexão, os papéis das entidades, os nomes das zonas e as sugestões do Painel de Velocidade se adaptam automaticamente.
+O modo é definido ao criar um projeto e armazenado como `mode?: AuthoringMode` em `WorldProject`. Cada modo oferece **configurações padrão inteligentes** — tipos de conexão, papéis de entidade, nomes de áreas e sugestões do Painel de Velocidade se adaptam automaticamente.
 
 ## Superfície de Criação
 
 ### Estrutura do Mundo
 
-- Zonas com layout espacial, vizinhos, saídas, luz, ruído, perigos e elementos interativos.
-- 12 tipos de conexão (passagem, porta, escadas, estrada, portal, segredo, perigo, canal, rota, doca, teletransporte, trilha) com estilos visuais distintos, roteamento ancorado nas bordas, setas direcionais e estilos tracejados condicionais.
-- Distritos com controle de facção, perfis econômicos, controles deslizantes de métricas, tags e rótulos de nomes de distritos nos centros das zonas.
-- Pontos de referência (pontos de interesse nomeados dentro das zonas).
-- Pontos de spawn, âncoras de encontro (coloração baseada no tipo), presença de facções e pontos de pressão.
+- Áreas com layout espacial, vizinhos, saídas, luz, som, perigos e elementos interativos.
+- 12 tipos de conexão (passagem, porta, escadas, estrada, portal, segredo, perigo, canal, rota, doca, salto, trilha) com estilos visuais distintos, roteamento ancorado nas bordas, setas direcionais e estilos tracejados condicionais.
+- Distritos com controle de facção, perfis econômicos, controles deslizantes de métricas, tags e rótulos de nome de distrito nos centros das áreas.
+- Pontos de referência (pontos de interesse nomeados dentro das áreas).
+- Pontos de surgimento, âncoras de encontro (coloração baseada em tipo), presença de facções e pontos de pressão.
 
 ### Conteúdo
 
 - Posicionamento de entidades com estatísticas, recursos, perfis de IA e metadados personalizados.
-- Posicionamento de itens com slot, raridade, modificadores de estatísticas e ações concedidas.
+- Posicionamento de itens com slot, raridade, modificadores de estatísticas e verbos concedidos.
 - Árvores de diálogo com conversas ramificadas, condições e efeitos.
 - Âncoras de encontro na tela — marcadores de diamante vermelho com tipos de chefe/emboscada/patrulha.
 
 ### Sistemas de Personagens
 
-- Modelo de jogador (estatísticas iniciais, inventário, equipamento, ponto de spawn).
-- Catálogo de construção (arquétipos, históricos, traços, disciplinas, títulos cruzados, laços).
+- Modelo de jogador (estatísticas iniciais, inventário, equipamento, ponto de surgimento).
+- Catálogo de construção (arquétipos, históricos, traços, disciplinas, títulos cruzados, entrelaçamentos).
 - Árvores de progressão (nós de habilidades/capacidades com requisitos e efeitos).
 
 ### Recursos
 
-- Manifesto de ativos (retratos, sprites, fundos, ícones, conjuntos de peças) com associações específicas para cada tipo.
-- Pacotes de ativos (grupos nomeados e versionados com metadados de compatibilidade, tema e licença).
-- Visualização da cena (composição inline de todas as associações visuais das zonas com detecção de ativos ausentes).
+- Manifesto de recursos (retratos, sprites, fundos, ícones, conjuntos de peças) com associações específicas para cada tipo.
+- Pacotes de recursos (grupos nomeados e versionados com metadados de compatibilidade, tema, licença).
+- Visualização da cena (composição integrada de todas as ligações visuais das áreas, com detecção de recursos ausentes).
 
 ### Fluxo de Trabalho
 
@@ -203,12 +205,12 @@ O modo é definido ao criar um projeto e armazenado como `mode?: AuthoringMode` 
 - Modelos de layout (6 arranjos de zonas pré-definidos) e modelos de diálogo (5 inícios de conversa).
 - Mesclagem de zonas e posicionamento em lote de entidades (padrões de grade, aleatório e círculo).
 - Salvamento automático com intervalo de 30 segundos e histórico de recuperação de 3 versões.
-- Busca com Ctrl+K em todos os tipos de objetos, com correspondência aproximada e histórico recente.
+- Pesquisa com Ctrl+K em todos os tipos de objetos, com correspondência aproximada e histórico recente.
 - Paleta de comandos do Painel de Velocidade com favoritos fixáveis, macros, grupos personalizados e sugestões de modo.
 - 15 atalhos de teclado centralizados.
 - Editor de metadados do projeto (autor, licença, categoria, tags).
 - Estatísticas de revisão (distribuição de papéis, tipos de conexão, tipos de encontro, zonas por distrito).
-- Exportação para ContentPack JSON, pacotes de projeto e resumos de revisão.
+- Exportação para JSON de ContentPack, pacotes de projeto e resumos de revisão.
 - Importação de 4 formatos com relatórios de fidelidade estruturados, sugestões de correção e rastreamento de diferenças semânticas.
 
 Consulte [`dogfood/WALKTHROUGH.md`](dogfood/WALKTHROUGH.md) para ver a sequência de exportação do Chapel Threshold, que demonstra a funcionalidade atual.
