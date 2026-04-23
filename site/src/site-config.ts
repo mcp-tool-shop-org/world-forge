@@ -2,7 +2,7 @@ import type { SiteConfig } from '@mcptoolshop/site-theme';
 
 export const config: SiteConfig = {
   title: 'World Forge',
-  description: '2D world authoring studio for AI RPG Engine',
+  description: '2D / 2.5D world authoring studio with peer export lanes for AI RPG Engine, Unreal Engine 5, and (planned) Godot 4.',
   logoBadge: 'WF',
   brandName: 'World Forge',
   repoUrl: 'https://github.com/mcp-tool-shop-org/world-forge',
@@ -10,16 +10,16 @@ export const config: SiteConfig = {
   footerText: 'MIT Licensed — built by <a href="https://mcp-tool-shop.github.io/" style="color:var(--color-muted);text-decoration:underline">MCP Tool Shop</a>',
 
   hero: {
-    badge: '2D World Authoring Studio',
+    badge: '2D / 2.5D World Authoring Studio',
     headline: 'World Forge:',
     headlineAccent: 'Author. Validate. Export.',
-    description: 'Paint zones on a 2D canvas, define districts and factions, place entities with stats and AI profiles, author branching dialogue trees — export a complete ContentPack for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine" style="text-decoration:underline">ai-rpg-engine</a>.',
+    description: 'Paint zones on a 2D canvas, define districts and factions, place entities with stats and AI profiles, author branching dialogue trees, author 2.5D elevation + parallax backdrops — export a complete content pack for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine" style="text-decoration:underline">ai-rpg-engine</a> or <a href="https://www.unrealengine.com/" style="text-decoration:underline">Unreal Engine 5</a>.',
     primaryCta: { href: '#quickstart', label: 'Get Started' },
     secondaryCta: { href: 'handbook/', label: 'Read the Handbook' },
     previews: [
       { label: 'Install', code: 'npm install\nnpm run build' },
       { label: 'Editor', code: 'npm run dev --workspace=packages/editor\n# → http://localhost:5173' },
-      { label: 'Export', code: 'npx world-forge-export project.json \\\n  --out ./my-pack' },
+      { label: 'Export (UE5)', code: 'npx world-forge-export-unreal project.json \\\n  --out ./UnrealPack' },
     ],
   },
 
@@ -56,11 +56,15 @@ export const config: SiteConfig = {
         },
         {
           title: 'Dependencies & Validation',
-          desc: 'Live validation with 54 structural checks. Dependency scanner surfaces broken, mismatched, and orphaned references with one-click repair and click-to-focus navigation.',
+          desc: 'Live validation with 65 structural checks including 2.5D parallax/skyline asset refs, finite-number guards, and spawn-condition grammar. Dependency scanner with one-click repair and click-to-focus navigation.',
         },
         {
           title: 'Review & Export',
-          desc: 'Health dashboard, content overview, and summary export (Markdown/JSON). Export to ContentPack, ProjectBundle (.wfproject.json), or review summary. Multi-format import with fidelity reporting.',
+          desc: 'Health dashboard, content overview, summary export. Peer export lanes: AI RPG Engine ContentPack, Unreal Engine 5 UnrealContentPack (2.5D-aware), plus portable ProjectBundle (.wfproject.json). Multi-format import with fidelity reporting.',
+        },
+        {
+          title: '2.5D Authoring',
+          desc: 'Zones carry elevation, multi-level elevation ranges, parallax layers, and skyline refs. Canvas shows elevation badges and drop shadows; UE5 export emits Z-up coordinates, sky/lighting metadata, collision channels, and parallax spawn manifests.',
         },
         {
           title: 'Speed Panel & Shortcuts',
@@ -83,7 +87,7 @@ export const config: SiteConfig = {
         },
         {
           title: 'CLI Export',
-          code: '# Export a project file\nnpx world-forge-export project.json --out ./pack\n\n# Validate without exporting\nnpx world-forge-export project.json --validate-only',
+          code: '# AI RPG Engine\nnpx world-forge-export project.json --out ./pack\n\n# Unreal Engine 5 (2.5D-aware)\nnpx world-forge-export-unreal project.json --out ./UnrealPack\n\n# Validate without writing files\nnpx world-forge-export project.json --dry-run',
         },
       ],
     },
@@ -110,6 +114,16 @@ export const config: SiteConfig = {
         ['Dependency scanner (broken refs, orphan detection, repair)', 'Shipped'],
         ['Review dashboard (health, content overview, summary export)', 'Shipped'],
         ['Speed Panel (command palette, macros, custom groups)', 'Shipped'],
+        ['2.5D fields: elevation, elevationRange, parallaxLayers, skylineRef', 'Shipped (v4.2.0)'],
+        ['Zone 2.5D editor UI + canvas elevation badge + parallax preview', 'Shipped (v4.3.0)'],
+        ['Unreal Engine 5 export (UnrealContentPack, 2.5D aware)', 'Shipped (v4.2.0)'],
+        ['UE5 sky/lighting metadata, collision channels, parallax spawn manifest', 'Shipped (v4.3.0)'],
+        ['LootTable, SpawnCondition grammar, TransitionEntity', 'Shipped (v4.3.0)'],
+        ['Zone physics overrides (gravity, zero-g, aquatic)', 'Shipped (v4.3.0)'],
+        ['AI RPG Engine export profiles (debug/release) + --dry-run', 'Shipped (v4.3.0)'],
+        ['Godot 4 export lane', 'Planned'],
+        ['UE5 reference loader plugin', 'Ships with Star Freight'],
+        ['Quest system + Canon adapter v1 + faction relationships', 'Planned'],
       ],
     },
   ],
