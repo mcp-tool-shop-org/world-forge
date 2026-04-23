@@ -79,6 +79,9 @@ export interface ParallaxLayer {
   depth: number;
   /** Reference to an AssetEntry id (kind = background or sprite). */
   assetRef: string;
-  /** Parallax scroll factor (0.0 static, 1.0 locked to camera). */
+  /**
+   * Parallax scroll factor (0.0 static, 1.0 locked to camera).
+   * Must be in [0.0, 1.0] inclusive; values outside this range are rejected by validateProject.
+   */
   scrollFactor: number;
 }

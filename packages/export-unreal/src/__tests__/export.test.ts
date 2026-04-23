@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { exportToUnreal } from '../export.js';
 import { importFromUnreal } from '../import.js';
+import { convertEntities } from '../convert-entities.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import type { WorldProject } from '@world-forge/schema';
 
@@ -89,6 +90,82 @@ describe('exportToUnreal', () => {
     const result = exportToUnreal(minimalProject);
     if (!result.success) throw new Error('export failed');
     expect(result.contentPack.Meta.SourceTileSizePx).toBe(minimalProject.map.tileSize);
+  });
+
+  it('returns a validation error for an empty project (0 zones)', () => {
+    // UE-A-006: empty project — should fail cleanly via validateProject rather
+    // than crashing the pipeline.
+    const empty: WorldProject = {
+      ...minimalProject,
+      zones: [],
+      connections: [],
+      districts: [],
+      landmarks: [],
+      factionPresences: [],
+      pressureHotspots: [],
+      entityPlacements: [],
+      itemPlacements: [],
+      encounterAnchors: [],
+      spawnPoints: [],
+    };
+    const result = exportToUnreal(empty);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('emits a dropped world-partition fidelity entry for zero-width map', () => {
+    // UE-A-005 / UE-A-006: gridWidth=0 should emit a "dropped" world-partition
+    // entry but still produce a structurally valid pack with clamped extent.
+    const bad: WorldProject = {
+      ...minimalProject,
+      map: { ...minimalProject.map, gridWidth: 0 },
+    };
+    const result = exportToUnreal(bad);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'world-partition' && e.level === 'dropped',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.severity).toBe('warning');
+    // Clamped output: extent must still be structurally valid.
+    expect(result.contentPack.WorldPartition.CellsX).toBeGreaterThanOrEqual(1);
+    expect(result.contentPack.WorldPartition.CellsY).toBeGreaterThanOrEqual(1);
+  });
+
+  it('emits a dropped world-partition fidelity entry for zero-height map', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      map: { ...minimalProject.map, gridHeight: 0 },
+    };
+    const result = exportToUnreal(bad);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'world-partition' && e.level === 'dropped',
+    );
+    expect(entry).toBeDefined();
+  });
+
+  it('drops an entity placement referencing a non-existent zone (convertEntities direct)', () => {
+    // UE-A-006: orphan zone reference must produce a dropped fidelity entry
+    // and NOT be included in the actor manifest. Exercised at the converter
+    // level because validateProject would reject this project upstream.
+    const orphan: WorldProject = {
+      ...minimalProject,
+      entityPlacements: [
+        ...minimalProject.entityPlacements,
+        { entityId: 'npc-ghost', zoneId: 'zone-does-not-exist', role: 'npc' },
+      ],
+    };
+    const result = convertEntities(orphan);
+    const dropped = result.fidelity.find(
+      (e) => e.domain === 'entities' && e.level === 'dropped' && e.entityId === 'npc-ghost',
+    );
+    expect(dropped).toBeDefined();
+    expect(dropped?.severity).toBe('error');
+    expect(result.manifest.All.find((a) => a.ActorId === 'npc-ghost')).toBeUndefined();
   });
 
   it('maps every connection kind to a StreamMode', () => {

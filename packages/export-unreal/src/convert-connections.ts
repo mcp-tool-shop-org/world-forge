@@ -18,7 +18,7 @@ export interface UnrealLevelStreamingHint {
   StreamMode: 'load' | 'stream' | 'portal' | 'teleport';
 }
 
-const KIND_TO_STREAM_MODE: Record<ConnectionKind, UnrealLevelStreamingHint['StreamMode']> = {
+const KIND_TO_STREAM_MODE = {
   passage: 'stream',
   door: 'load',
   stairs: 'load',
@@ -31,7 +31,7 @@ const KIND_TO_STREAM_MODE: Record<ConnectionKind, UnrealLevelStreamingHint['Stre
   docking: 'load',
   warp: 'teleport',
   trail: 'stream',
-};
+} as const satisfies Record<ConnectionKind, UnrealLevelStreamingHint['StreamMode']>;
 
 const DEFAULT_STREAM_MODE: UnrealLevelStreamingHint['StreamMode'] = 'stream';
 

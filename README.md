@@ -15,7 +15,7 @@
 
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and (planned) Godot 4.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
-<p align="center"><strong>v4.2.0</strong> — 1692 tests, 6 packages (4 shipping, 1 new UE5 lane, 1 Godot stub), 7 authoring modes</p>
+<p align="center"><strong>v4.2.0</strong> — 1768 tests, 5 shipping packages + 1 planned Godot stub (6 total), 7 authoring modes</p>
 
 ## Architecture
 

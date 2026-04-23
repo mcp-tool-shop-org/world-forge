@@ -17,13 +17,30 @@ export interface MinimapOptions {
 export class MinimapRenderer {
   container: Container;
   private opts: MinimapOptions;
+  private destroyed = false;
 
   constructor(opts: MinimapOptions) {
     this.opts = opts;
     this.container = new Container();
   }
 
+  /**
+   * INF-A-011: Tear down the renderer and release all PixiJS resources.
+   * Destroys the container and every Graphics child recursively.
+   * After calling destroy(), subsequent update() calls are no-ops (with a warning).
+   * Idempotent — safe to call multiple times.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.container.destroy({ children: true });
+  }
+
   update(zones: Zone[], districts: District[], viewportRect?: { x: number; y: number; w: number; h: number }): void {
+    if (this.destroyed) {
+      console.warn('MinimapRenderer.update: renderer has been destroyed — skipping. Create a new MinimapRenderer instance to continue rendering.');
+      return;
+    }
     // INF-A-004: destroy removed children so Graphics objects don't leak.
     const removed = this.container.removeChildren();
     for (const child of removed) child.destroy({ children: true });

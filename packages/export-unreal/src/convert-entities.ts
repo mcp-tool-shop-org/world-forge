@@ -25,6 +25,9 @@ const ROLE_TO_BP_TAG: Record<EntityRole, UnrealBlueprintTag> = {
   boss: 'BP_Boss',
 };
 
+/** Safe fallback tag used when a role is not in `ROLE_TO_BP_TAG`. */
+const FALLBACK_BP_TAG: UnrealBlueprintTag = 'BP_NPC_Generic';
+
 export interface UnrealActorSpawnEntry {
   ActorId: string;
   DisplayName?: string;
@@ -93,12 +96,29 @@ export function convertEntities(project: WorldProject, tileSizeCm: number = DEFA
       });
     }
 
+    const mappedTag: UnrealBlueprintTag | undefined = ROLE_TO_BP_TAG[placement.role];
+    let blueprintTag: UnrealBlueprintTag;
+    if (mappedTag === undefined) {
+      blueprintTag = FALLBACK_BP_TAG;
+      fidelity.push({
+        level: 'approximated',
+        domain: 'entities',
+        severity: 'warning',
+        entityId: placement.entityId,
+        fieldPath: `entityPlacements.${placement.entityId}.role`,
+        message: `Entity "${placement.entityId}" has unknown role "${String(placement.role)}" — defaulted BlueprintTag to "${FALLBACK_BP_TAG}".`,
+        reason: 'Role has no mapping in ROLE_TO_BP_TAG.',
+      });
+    } else {
+      blueprintTag = mappedTag;
+    }
+
     const entry: UnrealActorSpawnEntry = {
       ActorId: placement.entityId,
       DisplayName: placement.name,
       ZoneId: placement.zoneId,
       LocationCm: gridToUnrealAxis(gridX, gridY, tileSizeCm, elevationMeters),
-      BlueprintTag: ROLE_TO_BP_TAG[placement.role],
+      BlueprintTag: blueprintTag,
       Role: placement.role,
       FactionId: placement.factionId,
       DialogueId: placement.dialogueId,

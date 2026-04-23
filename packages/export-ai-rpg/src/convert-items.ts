@@ -3,14 +3,44 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { ItemDefinition } from '@ai-rpg-engine/equipment';
 
+/**
+ * AIR-A-004: Explicit allowlists for item slot and rarity values.
+ * Mirrors the VALID_CONNECTION_KINDS pattern used in @world-forge/schema validate.ts.
+ * Values outside these sets fall back to the defaults ('trinket' / 'common') silently
+ * with a comment — convertItems returns ItemDefinition[] and has no warning channel.
+ */
+const VALID_ITEM_SLOTS = new Set<ItemDefinition['slot']>([
+  'weapon', 'armor', 'accessory', 'tool', 'trinket',
+]);
+
+const VALID_ITEM_RARITIES = new Set<ItemDefinition['rarity']>([
+  'common', 'uncommon', 'rare', 'legendary',
+]);
+
+function narrowSlot(value: string | undefined): ItemDefinition['slot'] {
+  if (value && VALID_ITEM_SLOTS.has(value as ItemDefinition['slot'])) {
+    return value as ItemDefinition['slot'];
+  }
+  // Fallback default — unknown/unset slot becomes 'trinket'.
+  return 'trinket';
+}
+
+function narrowRarity(value: string | undefined): ItemDefinition['rarity'] {
+  if (value && VALID_ITEM_RARITIES.has(value as ItemDefinition['rarity'])) {
+    return value as ItemDefinition['rarity'];
+  }
+  // Fallback default — unknown/unset rarity becomes 'common'.
+  return 'common';
+}
+
 export function convertItems(project: WorldProject): ItemDefinition[] {
   return project.itemPlacements.map((ip) => {
     const item: ItemDefinition = {
       id: ip.itemId,
       name: ip.name || ip.itemId,
       description: ip.description || (ip.container ? `Found in ${ip.container}` : 'An item.'),
-      slot: (ip.slot || 'trinket') as ItemDefinition['slot'],
-      rarity: (ip.rarity || 'common') as ItemDefinition['rarity'],
+      slot: narrowSlot(ip.slot),
+      rarity: narrowRarity(ip.rarity),
     };
 
     // Pass through stat modifiers if authored

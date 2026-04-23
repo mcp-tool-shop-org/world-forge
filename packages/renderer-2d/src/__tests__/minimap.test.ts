@@ -103,4 +103,27 @@ describe('MinimapRenderer', () => {
     }
     expect(renderer.container.children.length).toBe(2);
   });
+
+  it('destroy() clears the container and prevents subsequent render leaks (INF-A-011)', () => {
+    destroyCalls.length = 0;
+    const renderer = new MinimapRenderer({ size: 100, gridWidth: 10, gridHeight: 10 });
+    renderer.update(zones, districts);
+    expect(renderer.container.children.length).toBe(2);
+
+    renderer.destroy();
+    const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
+    expect(containerDestroyed.length).toBe(1);
+    expect(containerDestroyed[0].opts).toEqual({ children: true });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = renderer.container.children.length;
+    renderer.update(zones, districts);
+    expect(renderer.container.children.length).toBe(before);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+    warnSpy.mockRestore();
+
+    renderer.destroy();
+    expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
+  });
 });

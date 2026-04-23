@@ -98,4 +98,28 @@ describe('ZoneOverlayRenderer', () => {
     const zones = [zone('z1'), zone('z2')];
     expect(() => renderer.update(zones, districts, { selectedZoneId: 'z1', hoveredZoneId: 'z2' })).not.toThrow();
   });
+
+  it('destroy() clears the container and prevents subsequent render leaks (INF-A-008)', () => {
+    renderer.update([zone('z1'), zone('z2')], districts);
+    expect(renderer.container.children.length).toBe(4);
+
+    renderer.destroy();
+    // Container.destroy({ children: true }) should have been invoked once.
+    const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
+    expect(containerDestroyed.length).toBe(1);
+    expect(containerDestroyed[0].opts).toEqual({ children: true });
+
+    // Subsequent update() is a no-op and warns — no new children are added.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = renderer.container.children.length;
+    renderer.update([zone('z3')], districts);
+    expect(renderer.container.children.length).toBe(before);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+    warnSpy.mockRestore();
+
+    // destroy() is idempotent — second call does not re-destroy.
+    renderer.destroy();
+    expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
+  });
 });

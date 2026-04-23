@@ -19,6 +19,7 @@ export class ZoneOverlayRenderer {
   private zones: Zone[] = [];
   private districts: District[] = [];
   private opts: ZoneRenderOptions;
+  private destroyed = false;
 
   constructor(opts: ZoneRenderOptions) {
     this.opts = opts;
@@ -26,10 +27,26 @@ export class ZoneOverlayRenderer {
   }
 
   update(zones: Zone[], districts: District[], opts?: Partial<ZoneRenderOptions>): void {
+    if (this.destroyed) {
+      console.warn('ZoneOverlayRenderer.update: renderer has been destroyed — skipping. Create a new ZoneOverlayRenderer instance to continue rendering.');
+      return;
+    }
     this.zones = zones;
     this.districts = districts;
     if (opts) Object.assign(this.opts, opts);
     this.render();
+  }
+
+  /**
+   * INF-A-008: Tear down the renderer and release all PixiJS resources.
+   * Destroys the container and every Graphics/Text child recursively.
+   * After calling destroy(), subsequent update() calls are no-ops (with a warning).
+   * Idempotent — safe to call multiple times.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.container.destroy({ children: true });
   }
 
   private getDistrictColor(zone: Zone): number {

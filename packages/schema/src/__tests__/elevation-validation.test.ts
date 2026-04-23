@@ -350,6 +350,202 @@ describe('SCH-A-004: Zone.skylineRef must resolve to a background asset', () => 
   });
 });
 
+// ---------------------------------------------------------------------------
+// Wave 2 schema domain findings (SCH-A-005..008)
+// ---------------------------------------------------------------------------
+
+describe('SCH-A-005: parallax layer depth must be a finite number', () => {
+  function projectWithDepth(depth: number): WorldProject {
+    return {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-far', kind: 'background', label: 'Far', path: 'bg/far.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              parallaxLayers: [
+                { id: 'far', depth, assetRef: 'bg-far', scrollFactor: 0.5 },
+              ],
+            }
+          : z,
+      ),
+    };
+  }
+
+  it('rejects NaN depth', () => {
+    const result = validateProject(projectWithDepth(NaN));
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) => e.path.includes('parallaxLayers.far.depth') && e.message.includes('finite'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects +Infinity depth', () => {
+    const result = validateProject(projectWithDepth(Infinity));
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) => e.path.includes('parallaxLayers.far.depth') && e.message.includes('finite'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects -Infinity depth', () => {
+    const result = validateProject(projectWithDepth(-Infinity));
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) => e.path.includes('parallaxLayers.far.depth') && e.message.includes('finite'),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('SCH-A-006: parallax layer id must be non-empty and not whitespace-only', () => {
+  it('rejects empty layer id', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-far', kind: 'background', label: 'Far', path: 'bg/far.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              parallaxLayers: [
+                { id: '', depth: 100, assetRef: 'bg-far', scrollFactor: 0.1 },
+              ],
+            }
+          : z,
+      ),
+    };
+    const result = validateProject(project);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) => e.path.includes('parallaxLayers') && e.message.includes('missing'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects whitespace-only layer id', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-far', kind: 'background', label: 'Far', path: 'bg/far.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              parallaxLayers: [
+                { id: '   ', depth: 100, assetRef: 'bg-far', scrollFactor: 0.1 },
+              ],
+            }
+          : z,
+      ),
+    };
+    const result = validateProject(project);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) => e.path.includes('parallaxLayers') && e.message.includes('whitespace-only'),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('SCH-A-007 / SCH-A-008: parallax layer additional coverage', () => {
+  it('rejects parallax layer with missing assetRef (undefined)', () => {
+    const project = withZone(minimalProject, {
+      // Cast: the schema requires assetRef, but validateProject must defend
+      // against callers that omit it at runtime (JSON from disk, external tools).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parallaxLayers: [
+        { id: 'orphan', depth: 100, scrollFactor: 0.5 } as any,
+      ],
+    });
+    const result = validateProject(project);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) =>
+          e.path.includes('parallaxLayers.orphan.assetRef') &&
+          e.message.includes('missing'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects parallax layer with empty-string assetRef', () => {
+    const project = withZone(minimalProject, {
+      parallaxLayers: [
+        { id: 'blank', depth: 100, assetRef: '', scrollFactor: 0.5 },
+      ],
+    });
+    const result = validateProject(project);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some(
+        (e) =>
+          e.path.includes('parallaxLayers.blank.assetRef') &&
+          e.message.includes('missing'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects scrollFactor just above 1.0 (out-of-bounds upper)', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-far', kind: 'background', label: 'Far', path: 'bg/far.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              parallaxLayers: [
+                { id: 'far', depth: 100, assetRef: 'bg-far', scrollFactor: 1.0001 },
+              ],
+            }
+          : z,
+      ),
+    };
+    const result = validateProject(project);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((e) => e.path.includes('scrollFactor')),
+    ).toBe(true);
+  });
+
+  it('rejects scrollFactor just below 0.0 (out-of-bounds lower)', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        { id: 'bg-far', kind: 'background', label: 'Far', path: 'bg/far.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              parallaxLayers: [
+                { id: 'far', depth: 100, assetRef: 'bg-far', scrollFactor: -0.0001 },
+              ],
+            }
+          : z,
+      ),
+    };
+    const result = validateProject(project);
+    expect(result.valid).toBe(false);
+    expect(
+      result.errors.some((e) => e.path.includes('scrollFactor')),
+    ).toBe(true);
+  });
+});
+
 describe('2.5D advisory suggestions', () => {
   it('suggests setting elevation when mode is space and no zone has elevation', () => {
     const project: WorldProject = { ...minimalProject, mode: 'space' };

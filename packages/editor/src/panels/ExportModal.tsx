@@ -3,8 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { exportToEngine } from '@world-forge/export-ai-rpg';
-import { exportToUnreal } from '@world-forge/export-unreal';
+import { runEngineExport, runUnrealExport } from './export-handlers.js';
 import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
@@ -40,54 +39,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleExport = () => {
-    const result = exportToEngine(project);
-    if (!result.success) {
-      setStatus('invalid');
-      setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
-      return;
-    }
-
-    setWarnings(result.warnings);
-
-    const blob = new Blob([JSON.stringify({
-      contentPack: result.contentPack,
-      manifest: result.manifest,
-      packMeta: result.packMeta,
-    }, null, 2)], { type: 'application/json' });
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.id}-engine-pack.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus('exported');
-    markExported();
+    runEngineExport(project, { setErrors, setWarnings, setStatus, markExported });
   };
 
   const handleExportUnreal = () => {
-    const result = exportToUnreal(project);
-    if (!result.success) {
-      setStatus('invalid');
-      setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
-      return;
-    }
-
-    setWarnings(result.warnings);
-
-    const bundle = {
-      contentPack: result.contentPack,
-      fidelity: result.fidelity,
-    };
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.id}-unreal-pack.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus('exported');
-    markExported();
+    runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported });
   };
 
   const handleGoToFirstIssue = () => {
@@ -153,6 +109,10 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         {/* Changes since import */}
         {importSnapshot && (() => {
           const diff = diffProjects(importSnapshot, project);
+          // ED-A-015: Guard against a malformed diff (e.g. corrupt import snapshot
+          // that yields no domain summaries). Without this, rendering would throw
+          // when we iterate `diff.domains`.
+          if (!diff || !diff.domains) return null;
           const totalChanges = diff.totalModified + diff.totalAdded + diff.totalRemoved;
           const caveats = importFidelity
             ? [...new Set(importFidelity.entries.filter((e) => e.severity === 'warning').map((e) => e.message))]

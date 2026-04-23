@@ -7,6 +7,19 @@ import type { AuthoringMode } from '@world-forge/schema';
 
 const STORAGE_KEY = 'world-forge-kits';
 
+/**
+ * ED-A-012: monotonic counter used to disambiguate ids generated in the same
+ * millisecond. `Date.now()` alone can collide under rapid batch imports (which
+ * is exactly how importKit gets called for multi-kit bundles). Keeping a
+ * module-scoped counter is the simplest always-unique fallback and works in
+ * every JS runtime (no `crypto.randomUUID` dependency).
+ */
+let _kitIdCounter = 0;
+function nextKitId(prefix: string): string {
+  _kitIdCounter += 1;
+  return `${prefix}-${Date.now()}-${_kitIdCounter}`;
+}
+
 interface StoredKits {
   kits: StarterKit[];
 }
@@ -132,10 +145,11 @@ export const useKitStore = create<KitState>((set, get) => ({
       }
     }
 
-    // Import as new kit (suffix to avoid same-ms collision with saveKit)
+    // Import as new kit. ED-A-012: use a monotonic counter so same-ms imports
+    // can't collide (previously `kit-<ts>-i` repeated on bulk imports).
     const kit: StarterKit = {
       ...structuredClone(input),
-      id: `kit-${Date.now()}-i`,
+      id: nextKitId('kit-import'),
       builtIn: false,
       createdAt: now,
       updatedAt: now,

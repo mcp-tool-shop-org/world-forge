@@ -41,7 +41,10 @@ export interface Zone {
   skylineRef?: string;
 }
 
-/** Vertical span for a multi-level zone, in meters. */
+/**
+ * Vertical span for a multi-level zone, in meters.
+ * Both floor and ceiling must be finite numbers; NaN and Infinity are rejected by validateProject.
+ */
 export interface ZoneElevationRange {
   floor: number;
   ceiling: number;

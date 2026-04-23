@@ -160,6 +160,13 @@ interface EditorState {
   toggleSpeedPanelEditMode: () => void;
 }
 
+/**
+ * ED-A-005: one-time warning flag for hidden-ids persistence failures. We
+ * surface the first failure to the console so the user has a breadcrumb, then
+ * fall silent so a broken localStorage doesn't flood the log on every toggle.
+ */
+let _warnedHiddenWrite = false;
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   activeTool: 'select',
   rightTab: 'map',
@@ -288,7 +295,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   toggleHidden: (id) => set((s) => {
     const next = new Set(s.hiddenIds);
     if (next.has(id)) next.delete(id); else next.add(id);
-    try { localStorage.setItem('wf-hidden-ids', JSON.stringify([...next])); } catch { /* ignore */ }
+    // ED-A-005: Mirror the auto-save pattern — if persistence fails, surface a
+    // one-time console.warn but never block the in-memory update. The user can
+    // still hide/show this session; they just won't persist across reloads.
+    try {
+      localStorage.setItem('wf-hidden-ids', JSON.stringify([...next]));
+    } catch (err) {
+      if (!_warnedHiddenWrite) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[editor] could not persist hidden-ids to localStorage: ${msg}`);
+        _warnedHiddenWrite = true;
+      }
+    }
     return { hiddenIds: next };
   }),
   isHidden: (id) => get().hiddenIds.has(id),

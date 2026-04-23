@@ -98,4 +98,29 @@ describe('ConnectionRenderer', () => {
     }
     expect(renderer.container.children.length).toBe(2);
   });
+
+  it('destroy() clears the container and prevents subsequent render leaks (INF-A-010)', () => {
+    const conns: ZoneConnection[] = [
+      { fromZoneId: 'a', toZoneId: 'b', bidirectional: true } as unknown as ZoneConnection,
+      { fromZoneId: 'b', toZoneId: 'c', bidirectional: false } as unknown as ZoneConnection,
+    ];
+    renderer.update(zones, conns);
+    expect(renderer.container.children.length).toBe(2);
+
+    renderer.destroy();
+    const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
+    expect(containerDestroyed.length).toBe(1);
+    expect(containerDestroyed[0].opts).toEqual({ children: true });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = renderer.container.children.length;
+    renderer.update(zones, conns);
+    expect(renderer.container.children.length).toBe(before);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+    warnSpy.mockRestore();
+
+    renderer.destroy();
+    expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
+  });
 });

@@ -77,13 +77,15 @@ export interface ImportError {
 
 // EB-012: Reverse maps must stay in sync with GENRE_MAP / DIFFICULTY_MAP in convert-pack.ts.
 // When new genres or difficulties are added to the forward maps, add their reverse entries here.
-const REVERSE_GENRE: Record<string, string> = {
+/** @internal Exported for drift-guard tests only (AIR-A-005/006). */
+export const REVERSE_GENRE: Record<string, string> = {
   fantasy: 'fantasy', 'sci-fi': 'sci-fi', cyberpunk: 'cyberpunk',
   horror: 'horror', mystery: 'detective', western: 'western',
   pirate: 'pirate', 'post-apocalyptic': 'zombie', historical: 'historical',
 };
 
-const REVERSE_DIFFICULTY: Record<string, string> = {
+/** @internal Exported for drift-guard tests only (AIR-A-005/006). */
+export const REVERSE_DIFFICULTY: Record<string, string> = {
   beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced',
 };
 

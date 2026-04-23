@@ -2,15 +2,19 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
+const destroyCalls: Array<{ kind: string; opts: unknown }> = [];
+
 vi.mock('pixi.js', () => {
   class MockContainer {
     children: unknown[] = [];
     addChild(child: unknown) { this.children.push(child); }
     removeChildren() { this.children = []; }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
     rect() { return this; }
     fill() { return this; }
+    destroy(opts?: unknown) { destroyCalls.push({ kind: 'Graphics', opts }); }
   }
   return { Container: MockContainer, Graphics: MockGraphics };
 });
@@ -88,5 +92,33 @@ describe('TileLayerRenderer', () => {
     const renderer = new TileLayerRenderer(32);
     expect(() => renderer.update([], [])).not.toThrow();
     expect(renderer.container.children.length).toBe(0);
+  });
+
+  it('destroy() clears the container and prevents subsequent render leaks (INF-A-012)', () => {
+    destroyCalls.length = 0;
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'floor-1', tags: [] }])];
+    const layers: TileLayer[] = [{
+      id: 'layer-1', name: 'Ground', zIndex: 0,
+      tiles: [{ tileId: 'floor-1', gridX: 0, gridY: 0 }],
+    }];
+    renderer.update(layers, tilesets);
+    expect(renderer.container.children.length).toBe(1);
+
+    renderer.destroy();
+    const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
+    expect(containerDestroyed.length).toBe(1);
+    expect(containerDestroyed[0].opts).toEqual({ children: true });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = renderer.container.children.length;
+    renderer.update(layers, tilesets);
+    expect(renderer.container.children.length).toBe(before);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+    warnSpy.mockRestore();
+
+    renderer.destroy();
+    expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
   });
 });

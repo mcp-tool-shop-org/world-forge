@@ -4,7 +4,8 @@ import type { WorldProject } from '@world-forge/schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
 import type { PackMetadata, PackGenre, PackDifficulty, PackTone, VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES } from '@ai-rpg-engine/pack-registry';
 
-const GENRE_MAP: Record<string, PackGenre> = {
+/** @internal Exported for drift-guard tests only (AIR-A-005/006). */
+export const GENRE_MAP: Record<string, PackGenre> = {
   fantasy: 'fantasy',
   'sci-fi': 'sci-fi',
   cyberpunk: 'cyberpunk',
@@ -18,7 +19,8 @@ const GENRE_MAP: Record<string, PackGenre> = {
   historical: 'historical',
 };
 
-const TONE_MAP: Record<string, PackTone> = {
+/** @internal Exported for drift-guard tests only (AIR-A-005/006). */
+export const TONE_MAP: Record<string, PackTone> = {
   dark: 'dark',
   gritty: 'gritty',
   heroic: 'heroic',
@@ -29,7 +31,8 @@ const TONE_MAP: Record<string, PackTone> = {
   atmospheric: 'atmospheric',
 };
 
-const DIFFICULTY_MAP: Record<string, PackDifficulty> = {
+/** @internal Exported for drift-guard tests only (AIR-A-005/006). */
+export const DIFFICULTY_MAP: Record<string, PackDifficulty> = {
   beginner: 'beginner',
   easy: 'beginner',
   intermediate: 'intermediate',
@@ -41,7 +44,8 @@ const DIFFICULTY_MAP: Record<string, PackDifficulty> = {
 // EB-011: DEFAULT_MODULES must stay in sync with @ai-rpg-engine/core module registry.
 // When the engine adds or removes core modules, update this list to match.
 // Current baseline: engine v2.0.0 standard module set.
-const DEFAULT_MODULES = [
+/** @internal Exported for drift-guard tests only (AIR-A-005/006). */
+export const DEFAULT_MODULES = [
   'combat-core',
   'movement-core',
   'npc-ai-core',

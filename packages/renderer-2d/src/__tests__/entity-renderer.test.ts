@@ -147,4 +147,31 @@ describe('EntityRenderer', () => {
     // 3 entities x 2 children = 6 regardless of update count
     expect(renderer.container.children.length).toBe(6);
   });
+
+  it('destroy() clears the container and prevents subsequent render leaks (INF-A-009)', () => {
+    const entities: EntityPlacement[] = [
+      { entityId: 'npc-1', zoneId: 'zone-1', role: 'npc' },
+      { entityId: 'enemy-1', zoneId: 'zone-1', role: 'enemy' },
+    ];
+    renderer.update(entities, zonePositions);
+    expect(renderer.container.children.length).toBe(4);
+
+    renderer.destroy();
+    const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
+    expect(containerDestroyed.length).toBe(1);
+    expect(containerDestroyed[0].opts).toEqual({ children: true });
+
+    // update() after destroy is a no-op that warns.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = renderer.container.children.length;
+    renderer.update(entities, zonePositions);
+    expect(renderer.container.children.length).toBe(before);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+    warnSpy.mockRestore();
+
+    // Idempotent.
+    renderer.destroy();
+    expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
+  });
 });

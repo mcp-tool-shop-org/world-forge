@@ -83,6 +83,13 @@ describe('CLI: world-forge-export', () => {
     expect(stderr).toContain('cannot read');
   });
 
+  // AIR-A-002: --out requires a path value (cli.ts lines 31-34)
+  it('rejects --out with no value with exit code 1', async () => {
+    const { code, stderr } = await runCli([validJsonPath, '--out']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('requires a path');
+  });
+
   it('exports output files with --out', async () => {
     const outDir = join(tmpDir, 'export-out');
     const { code, stdout } = await runCli([validJsonPath, '--out', outDir]);

@@ -99,7 +99,7 @@ describe('full round-trip', () => {
 
     const imported = useKitStore.getState().importKit(parsed.kit);
     expect(imported.id).not.toBe(saved.id);
-    expect(imported.id).toMatch(/^kit-\d+-i$/);
+    expect(imported.id).toMatch(/^kit-import-\d+-\d+$/);
   });
 
   it('imported kit passes validateKit cleanly', () => {

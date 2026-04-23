@@ -6,13 +6,30 @@ import type { Zone, ZoneConnection } from '@world-forge/schema';
 export class ConnectionRenderer {
   container: Container;
   private tileSize: number;
+  private destroyed = false;
 
   constructor(tileSize: number) {
     this.tileSize = tileSize;
     this.container = new Container();
   }
 
+  /**
+   * INF-A-010: Tear down the renderer and release all PixiJS resources.
+   * Destroys the container and every Graphics child recursively.
+   * After calling destroy(), subsequent update() calls are no-ops (with a warning).
+   * Idempotent — safe to call multiple times.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.container.destroy({ children: true });
+  }
+
   update(zones: Zone[], connections: ZoneConnection[]): void {
+    if (this.destroyed) {
+      console.warn('ConnectionRenderer.update: renderer has been destroyed — skipping. Create a new ConnectionRenderer instance to continue rendering.');
+      return;
+    }
     // INF-A-003: destroy removed children so Graphics objects don't leak.
     const removed = this.container.removeChildren();
     for (const child of removed) child.destroy({ children: true });

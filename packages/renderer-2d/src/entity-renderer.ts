@@ -24,13 +24,30 @@ const ROLE_SHAPES: Record<EntityRole, 'circle' | 'diamond' | 'square'> = {
 export class EntityRenderer {
   container: Container;
   private tileSize: number;
+  private destroyed = false;
 
   constructor(tileSize: number) {
     this.tileSize = tileSize;
     this.container = new Container();
   }
 
+  /**
+   * INF-A-009: Tear down the renderer and release all PixiJS resources.
+   * Destroys the container and every Graphics/Text child recursively.
+   * After calling destroy(), subsequent update() calls are no-ops (with a warning).
+   * Idempotent — safe to call multiple times.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.container.destroy({ children: true });
+  }
+
   update(entities: EntityPlacement[], zonePositions: Map<string, { x: number; y: number }>): void {
+    if (this.destroyed) {
+      console.warn('EntityRenderer.update: renderer has been destroyed — skipping. Create a new EntityRenderer instance to continue rendering.');
+      return;
+    }
     // INF-A-002: destroy removed children so Graphics + Text objects don't leak.
     const removed = this.container.removeChildren();
     for (const child of removed) child.destroy({ children: true });

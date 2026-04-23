@@ -115,9 +115,8 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
     warnings.push('No entities found — exported world will have no NPCs or encounters. Add entity placements in the editor to populate your world.');
   }
   const entities = convertEntities(project);
-  if (entities.length === 0 && project.entityPlacements.length > 0) {
-    warnings.push('No entities in the world — the engine expects at least one NPC or enemy');
-  }
+  // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
+  // entities will exist. The earlier "no placements" warning above is sufficient.
 
   // 5. Convert items
   const items = convertItems(project);

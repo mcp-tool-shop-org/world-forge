@@ -71,3 +71,45 @@ describe('gridToUnrealAxis', () => {
     expect(result.Z).toBe(300);
   });
 });
+
+describe('coordinate-transform float precision at very large values (UE-A-010)', () => {
+  it('pixelsToUnrealCm stays finite and within tolerance at 1e6 pixels, tileSize=32', () => {
+    const px = 1_000_000;
+    const result = pixelsToUnrealCm(px, 32);
+    // Expected: 1_000_000 * 100 / 32 = 3_125_000 cm
+    expect(Number.isFinite(result)).toBe(true);
+    expect(result).toBeCloseTo(3_125_000, 3);
+    // Relative error must be tiny (< 1e-9).
+    expect(Math.abs(result - 3_125_000) / 3_125_000).toBeLessThan(1e-9);
+  });
+
+  it('elevationToZ stays finite and exact at 1e6 metres', () => {
+    const z = elevationToZ(1_000_000);
+    // 1e6 m × 100 = 1e8 cm.
+    expect(Number.isFinite(z)).toBe(true);
+    expect(z).toBe(100_000_000);
+  });
+
+  it('worldForgeToUnrealAxis handles 1e6-pixel canvas + 1e6-metre elevation without drift', () => {
+    const result = worldForgeToUnrealAxis(
+      { x: 1_000_000, y: 1_000_000, elevation: 1_000_000 },
+      32,
+    );
+    expect(Number.isFinite(result.X)).toBe(true);
+    expect(Number.isFinite(result.Y)).toBe(true);
+    expect(Number.isFinite(result.Z)).toBe(true);
+    expect(result.X).toBeCloseTo(3_125_000, 3);
+    expect(result.Y).toBeCloseTo(-3_125_000, 3);
+    expect(result.Z).toBe(100_000_000);
+  });
+
+  it('gridToUnrealAxis stays finite at 1e6 grid tiles with 1e6-metre elevation', () => {
+    const result = gridToUnrealAxis(1_000_000, 1_000_000, 100, 1_000_000);
+    expect(Number.isFinite(result.X)).toBe(true);
+    expect(Number.isFinite(result.Y)).toBe(true);
+    expect(Number.isFinite(result.Z)).toBe(true);
+    expect(result.X).toBe(100_000_000);
+    expect(result.Y).toBe(-100_000_000);
+    expect(result.Z).toBe(100_000_000);
+  });
+});

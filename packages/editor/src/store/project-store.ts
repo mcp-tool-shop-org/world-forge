@@ -215,11 +215,40 @@ const AUTOSAVE_KEY = 'wf-autosave';
 const AUTOSAVE_HISTORY_KEY = 'wf-autosave-history';
 const AUTOSAVE_MAX_HISTORY = 3;
 const AUTOSAVE_INTERVAL_MS = 30_000;
+/**
+ * ED-A-014: practical per-key localStorage limit. Most browsers cap the entire
+ * origin at ~5 MB. A single project pushed past ~4.5 MB is a sign the shape has
+ * grown beyond what auto-save can sustain; we skip the write and log once so
+ * the failure is observable rather than silent.
+ */
+const AUTOSAVE_MAX_BYTES = 4.5 * 1024 * 1024;
 
 interface AutoSaveEntry {
   project: WorldProject;
   timestamp: number;
 }
+
+/**
+ * ED-A-007: last non-quota auto-save error message, exposed so the UI (modal or
+ * future toast) can surface persistent failures. `null` when the latest attempt
+ * succeeded or hasn't run yet.
+ */
+let _lastAutoSaveError: string | null = null;
+
+/** Accessor for the last auto-save error (ED-A-007). */
+export function getLastAutoSaveError(): string | null {
+  return _lastAutoSaveError;
+}
+
+/** Clear the last auto-save error — call after the user acknowledges it. */
+export function clearLastAutoSaveError(): void {
+  _lastAutoSaveError = null;
+}
+
+// ED-A-007 + ED-A-014: track single-emission console warnings so the log isn't
+// flooded across 30s tick cycles.
+let _warnedQuota = false;
+let _warnedOversize = false;
 
 /** Check whether recoverable auto-save data exists in localStorage. */
 export function hasAutoSaveRecovery(): boolean {
@@ -255,12 +284,43 @@ export function clearAutoSave(): void {
   }
 }
 
-/** Save the current project to localStorage auto-save slot. */
+/**
+ * Save the current project to localStorage auto-save slot.
+ *
+ * ED-A-007: Quota-exceeded errors are surfaced via `_lastAutoSaveError` AND a
+ * one-time console.warn (so we don't flood the console on every 30s tick).
+ * ED-A-014: If the serialized project size exceeds the practical per-origin
+ * limit, we skip the setItem call entirely (and warn once).
+ */
 function writeAutoSave(project: WorldProject): void {
+  const now = Date.now();
+  const entry: AutoSaveEntry = { project, timestamp: now };
+  let serialized: string;
   try {
-    const now = Date.now();
-    const entry: AutoSaveEntry = { project, timestamp: now };
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(entry));
+    serialized = JSON.stringify(entry);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    _lastAutoSaveError = `Auto-save skipped: could not serialize project (${msg}).`;
+    return;
+  }
+
+  // ED-A-014: oversize guard — don't even attempt the write. localStorage would
+  // reject it with QuotaExceededError and we'd lose the history entry anyway.
+  if (serialized.length > AUTOSAVE_MAX_BYTES) {
+    if (!_warnedOversize) {
+      console.warn(
+        `[auto-save] project exceeds ${Math.round(AUTOSAVE_MAX_BYTES / 1024 / 1024)} MB ` +
+        `(${Math.round(serialized.length / 1024 / 1024 * 10) / 10} MB); skipping auto-save. ` +
+        `Use Export Project Bundle to preserve work.`,
+      );
+      _warnedOversize = true;
+    }
+    _lastAutoSaveError = 'Auto-save skipped: project is too large for local storage.';
+    return;
+  }
+
+  try {
+    localStorage.setItem(AUTOSAVE_KEY, serialized);
 
     // Maintain history (last N saves)
     let history: AutoSaveEntry[] = [];
@@ -273,11 +333,44 @@ function writeAutoSave(project: WorldProject): void {
       history = history.slice(history.length - AUTOSAVE_MAX_HISTORY);
     }
     localStorage.setItem(AUTOSAVE_HISTORY_KEY, JSON.stringify(history));
-  } catch {
-    // Quota exceeded or storage unavailable — silently skip
+    // Success: clear prior error + reset warn flags so we'll warn again if the
+    // user hits the same condition later.
+    _lastAutoSaveError = null;
+    _warnedQuota = false;
+    _warnedOversize = false;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const isQuota =
+      err instanceof Error &&
+      (err.name === 'QuotaExceededError' || /quota/i.test(err.message));
+    if (isQuota && !_warnedQuota) {
+      console.warn(
+        '[auto-save] localStorage quota exceeded; auto-save suspended until space is freed. ' +
+        'Use Export Project Bundle to preserve work.',
+      );
+      _warnedQuota = true;
+    } else if (!isQuota) {
+      console.warn(`[auto-save] localStorage write failed: ${msg}`);
+    }
+    _lastAutoSaveError = isQuota
+      ? 'Auto-save suspended: local storage is full.'
+      : `Auto-save failed: ${msg}`;
   }
 }
 
+/**
+ * ED-A-004: `_autoSaveTimer` is module-scoped so `startAutoSave` /
+ * `stopAutoSave` can be called from anywhere (App mount, tests, teardown).
+ *
+ * Lifecycle contract:
+ *   - Exactly one interval per process — `startAutoSave` is idempotent.
+ *   - `stopAutoSave` MUST be called on app teardown (or between tests) to
+ *     release the interval handle.
+ *   - Calling `loadProject` / `newProject` resets the in-memory project but
+ *     does NOT touch the timer; callers that reinitialize the store in-place
+ *     should pair that with `stopAutoSave()` + `startAutoSave()` if they want
+ *     a clean tick cadence.
+ */
 let _autoSaveTimer: ReturnType<typeof setInterval> | null = null;
 
 /** Start the auto-save interval. Safe to call multiple times. */
@@ -291,7 +384,7 @@ export function startAutoSave(): void {
   }, AUTOSAVE_INTERVAL_MS);
 }
 
-/** Stop the auto-save interval. */
+/** Stop the auto-save interval. Also used as the store/app teardown hook (ED-A-004). */
 export function stopAutoSave(): void {
   if (_autoSaveTimer != null) {
     clearInterval(_autoSaveTimer);

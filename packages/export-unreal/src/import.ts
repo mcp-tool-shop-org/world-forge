@@ -205,6 +205,21 @@ function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity
   const gridX = Math.round(u.LocationCm.X / tileSizeCm);
   const gridY = Math.round(-u.LocationCm.Y / tileSizeCm);
 
+  // Flag sub-grid placements: any actor whose cm location doesn't fall exactly
+  // on a tile boundary will be snapped by the Math.round() above. The original
+  // authored placement may have been fractional in UE and is lost on import.
+  if (u.LocationCm.X % tileSizeCm !== 0 || u.LocationCm.Y % tileSizeCm !== 0) {
+    fidelity.push({
+      level: 'approximated',
+      domain: 'entities',
+      severity: 'info',
+      entityId: u.ActorId,
+      fieldPath: `entityPlacements.${u.ActorId}.gridX/gridY`,
+      message: `Entity "${u.ActorId}" sub-grid placement (${u.LocationCm.X}, ${u.LocationCm.Y} cm) snapped to grid (${gridX}, ${gridY}).`,
+      reason: `LocationCm not aligned to tileSizeCm=${tileSizeCm}; WorldProject grid is integer-only.`,
+    });
+  }
+
   if (!isEntityRole(u.Role)) {
     fidelity.push({
       level: 'approximated',

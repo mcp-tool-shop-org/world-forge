@@ -84,7 +84,9 @@ export function exportToUnreal(
   const connectionsResult = convertConnections(project);
   fidelityEntries.push(...connectionsResult.fidelity);
 
-  const worldPartition = convertWorldPartition(project, tileSizeCm);
+  const worldPartitionResult = convertWorldPartition(project, tileSizeCm);
+  fidelityEntries.push(...worldPartitionResult.fidelity);
+  const worldPartition = worldPartitionResult.hint;
 
   // Advisory warnings (non-fatal).
   if (project.entityPlacements.length === 0) {

@@ -24,7 +24,9 @@ export { convertConnections } from './convert-connections.js';
 export type { UnrealLevelStreamingHint, ConvertConnectionsResult } from './convert-connections.js';
 
 export { convertWorldPartition } from './convert-world-partition.js';
-export type { UnrealWorldPartitionHint } from './convert-world-partition.js';
+export type {
+  UnrealWorldPartitionHint, ConvertWorldPartitionResult,
+} from './convert-world-partition.js';
 
 export {
   pixelsToUnrealCm, elevationToZ, worldForgeToUnrealAxis, gridToUnrealAxis,

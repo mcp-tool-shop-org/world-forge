@@ -701,6 +701,15 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     const seenDepths = new Map<number, string>();
     const seenIds = new Set<string>();
     for (const layer of zone.parallaxLayers) {
+      // SCH-A-006: layer.id must be non-empty and not whitespace-only.
+      // Checked before dedup so an empty id still errors informatively instead
+      // of colliding under the dedup Set on the empty string.
+      if (!layer.id || layer.id.trim().length === 0) {
+        errors.push({
+          path: `zones.${zone.id}.parallaxLayers.${layer.id}`,
+          message: `Zone "${zone.id}" has a parallax layer with ${!layer.id ? 'missing' : 'whitespace-only'} id — provide a non-empty id.`,
+        });
+      }
       if (seenIds.has(layer.id)) {
         errors.push({
           path: `zones.${zone.id}.parallaxLayers.${layer.id}`,
@@ -708,6 +717,14 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         });
       } else {
         seenIds.add(layer.id);
+      }
+      // SCH-A-005: layer.depth must be a finite number. Without this guard
+      // NaN/Infinity slip through dedup (NaN !== NaN) and break renderer sort.
+      if (!Number.isFinite(layer.depth)) {
+        errors.push({
+          path: `zones.${zone.id}.parallaxLayers.${layer.id}.depth`,
+          message: `Zone "${zone.id}" parallax layer "${layer.id}" depth (${layer.depth}) must be a finite number.`,
+        });
       }
       const prior = seenDepths.get(layer.depth);
       if (prior !== undefined) {

@@ -6,13 +6,30 @@ import type { TileLayer, TileDefinition, Tileset } from '@world-forge/schema';
 export class TileLayerRenderer {
   container: Container;
   private tileSize: number;
+  private destroyed = false;
 
   constructor(tileSize: number) {
     this.tileSize = tileSize;
     this.container = new Container();
   }
 
+  /**
+   * INF-A-012: Tear down the renderer and release all PixiJS resources.
+   * Destroys the container and every Graphics/Container child recursively.
+   * After calling destroy(), subsequent update() calls are no-ops (with a warning).
+   * Idempotent — safe to call multiple times.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.container.destroy({ children: true });
+  }
+
   update(layers: TileLayer[], tilesets: Tileset[]): void {
+    if (this.destroyed) {
+      console.warn('TileLayerRenderer.update: renderer has been destroyed — skipping. Create a new TileLayerRenderer instance to continue rendering.');
+      return;
+    }
     this.container.removeChildren();
 
     // Build tile lookup

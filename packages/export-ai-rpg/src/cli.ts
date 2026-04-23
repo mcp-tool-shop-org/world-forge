@@ -9,7 +9,7 @@ import type { WorldProject } from '@world-forge/schema';
 const USAGE = `Usage: world-forge-export <project.json> [options]
 
 Options:
-  --out <dir>        Output directory (default: ./export)
+  --out <dir>        Output directory (default: ./export) (created if missing)
   --validate-only    Validate without writing files
   --verbose          Show detailed export diagnostics
   --help             Show this help`;
