@@ -29,21 +29,35 @@ if (!result.success) {
 }
 ```
 
-## Interfaz de línea de comandos (CLI)
+## CLI
 
 ```bash
 npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
 ```
 
-## ¿Qué convierte?
+## ¿Qué exportador usar?
 
-| World Forge | Motor (Engine) |
+World Forge incluye varios exportadores para diferentes motores. Elija el que se adapte a su
+entorno de ejecución:
+
+| Exportador | Objetivo | Úselo cuando… |
+|----------|--------|-----------|
+| `@world-forge/export-ai-rpg` (este paquete) | `ContentPack` para [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine) | Quiere un RPG con IA basado en texto y sistemas: personajes no jugables, distritos, facciones, gráficos de diálogo, árboles de progresión. |
+| `@world-forge/export-unreal` | Proyectos 2.5D para Unreal Engine 5 | Está creando un juego 2.5D para Unreal Engine y necesita transferir niveles, actores y tablas de datos. |
+| `@world-forge/export-godot` | Proyectos para Godot 4 | Está creando un RPG para Godot 4 y desea escenas y recursos. |
+
+Si tiene dudas, comience aquí (`export-ai-rpg`) — es el exportador de referencia y
+produce la capa de sistemas más completa.
+
+## Qué convierte
+
+| World Forge | Motor |
 |-------------|--------|
 | Zonas | `ZoneDefinition[]` |
 | Distritos | `DistrictDefinition[]` |
-| Ubicaciones de entidades | `EntityBlueprint[]` (con estadísticas, recursos, IA) |
-| Ubicaciones de objetos | `ItemDefinition[]` (con ranura, rareza, modificadores) |
+| Colocaciones de entidades | `EntityBlueprint[]` (con estadísticas, recursos, IA) |
+| Colocaciones de objetos | `ItemDefinition[]` (con ranura, rareza, modificadores) |
 | Metadatos del proyecto | `GameManifest` + `PackMetadata` |
 
 ## Licencia

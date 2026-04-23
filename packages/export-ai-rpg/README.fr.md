@@ -36,9 +36,22 @@ npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
 ```
 
-## Ce qui est converti
+## Quel exportateur choisir ?
 
-| World Forge | Moteur (Engine) |
+World Forge propose plusieurs exportateurs pour différents moteurs. Choisissez celui qui correspond à votre
+environnement d'exécution cible :
+
+| Exportateur | Cible | Utiliser lorsque… |
+|----------|--------|-----------|
+| `@world-forge/export-ai-rpg` (ce paquet) | `ContentPack` pour [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine) | Vous souhaitez un RPG basé sur l'IA, axé sur le texte et les systèmes : PNJ, districts, factions, graphiques de dialogue, arbres de progression. |
+| `@world-forge/export-unreal` | Projets Unreal Engine 5 en 2.5D | Vous développez un jeu Unreal en 2.5D et avez besoin de transférer des niveaux, des acteurs et des tableaux de données. |
+| `@world-forge/export-godot` | Projets Godot 4 | Vous développez un RPG Godot 4 et souhaitez exporter des scènes et des ressources. |
+
+En cas de doute, commencez par celui-ci (`export-ai-rpg`) — c'est l'exportateur de référence et il produit la couche de système la plus complète.
+
+## Ce que cela convertit
+
+| World Forge | Moteur |
 |-------------|--------|
 | Zones | `ZoneDefinition[]` |
 | Districts | `DistrictDefinition[]` |
