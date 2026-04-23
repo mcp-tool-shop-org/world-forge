@@ -47,6 +47,8 @@ import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { ItemDefinition } from '@ai-rpg-engine/equipment';
 
+import { createRequire } from 'node:module';
+
 import { convertZones } from './convert-zones.js';
 import { convertDistricts } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
@@ -57,7 +59,74 @@ import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-
 import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 
+// AIR-FT-005: Resolve @world-forge/schema's package.json at runtime so the
+// schemaVersion we emit always matches the schema this build was linked
+// against. Using createRequire avoids the ESM JSON import assertion churn.
+// Cached at module load — the schema package version does not change mid-process.
+const schemaPkgRequire = createRequire(import.meta.url);
+let cachedSchemaVersion: string | undefined;
+function resolveSchemaVersion(): string {
+  if (cachedSchemaVersion !== undefined) return cachedSchemaVersion;
+  try {
+    const pkg = schemaPkgRequire('@world-forge/schema/package.json') as { version?: string };
+    cachedSchemaVersion = typeof pkg.version === 'string' ? pkg.version : 'unknown';
+  } catch {
+    cachedSchemaVersion = 'unknown';
+  }
+  return cachedSchemaVersion;
+}
+
+/**
+ * Export profile controls how much diagnostic metadata is emitted.
+ *
+ * - `'release'` (default) — minimal, stable, deterministic output suitable for
+ *   shipping. No `_debug` block. Fidelity entries are emitted normally.
+ * - `'debug'` — adds a top-level `_debug` block (timestamp, schemaVersion,
+ *   sourceProjectId, fidelityVerbose: true) to the ContentPack and instructs
+ *   downstream consumers to preserve every fidelity entry (no level filtering).
+ *   Still deterministic for a fixed project + fixed timestamp.
+ */
+export type ExportProfile = 'debug' | 'release';
+
+/** Optional settings for {@link exportToEngine}. */
+export interface ExportOptions {
+  /** Export profile — `'release'` by default. */
+  profile?: ExportProfile;
+  /**
+   * Override the timestamp used in the debug block. Only consulted when
+   * `profile === 'debug'`. Defaults to `new Date().toISOString()`. Tests and
+   * reproducible pipelines can pin this to get byte-identical output across
+   * runs.
+   */
+  debugTimestamp?: string;
+  /**
+   * Include `schemaVersion` in the ContentPack (AIR-FT-005). Defaults to
+   * `true`. When `true`, the version is pulled from `@world-forge/schema`'s
+   * `package.json`.
+   */
+  emitSchemaVersion?: boolean;
+}
+
+/**
+ * Debug metadata block injected at the top of the ContentPack when
+ * `profile === 'debug'`.
+ *
+ * Field ordering here (timestamp → schemaVersion → sourceProjectId →
+ * fidelityVerbose) is stable across runs — JSON.stringify preserves object
+ * insertion order, so identical inputs produce byte-identical output.
+ */
+export interface ExportDebugBlock {
+  timestamp: string;
+  schemaVersion: string;
+  sourceProjectId: string;
+  fidelityVerbose: true;
+}
+
 export type ContentPack = {
+  /** Debug metadata — present only when exported with `profile: 'debug'`. */
+  _debug?: ExportDebugBlock;
+  /** Schema version pulled from `@world-forge/schema`. Omitted when `emitSchemaVersion: false`. */
+  schemaVersion?: string;
   entities: EntityBlueprint[];
   zones: ZoneDefinition[];
   districts: DistrictDefinition[];
@@ -94,8 +163,20 @@ export type ExportError = {
   errors: ValidationError[];
 };
 
-/** Export a WorldProject to engine-compatible ContentPack, GameManifest, and PackMetadata. */
-export function exportToEngine(project: WorldProject): ExportResult | ExportError {
+/**
+ * Export a WorldProject to engine-compatible ContentPack, GameManifest, and PackMetadata.
+ *
+ * @param project The authored world.
+ * @param options Optional export settings. Backward compatible — omitting
+ *   `options` behaves identically to pre-AIR-FT-001 callers.
+ */
+export function exportToEngine(
+  project: WorldProject,
+  options?: ExportOptions,
+): ExportResult | ExportError {
+  const profile: ExportProfile = options?.profile ?? 'release';
+  const emitSchemaVersion = options?.emitSchemaVersion ?? true;
+
   // 1. Validate the project
   const validation = validateProject(project);
   if (!validation.valid) {
@@ -217,21 +298,83 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
   // 12. Collect asset packs for round-trip preservation
   const assetPacks = project.assetPacks.length > 0 ? project.assetPacks : undefined;
 
+  // AIR-FT-001 / AIR-FT-005: Assemble the ContentPack with deterministic key
+  // order. `_debug` and `schemaVersion` go FIRST (when present) so they are
+  // easy to spot at the top of the JSON. The rest of the fields keep their
+  // historical order so release-profile output is byte-identical to the
+  // pre-options signature.
+  const contentPack: ContentPack = {
+    entities,
+    zones,
+    districts,
+    dialogues,
+    items,
+    playerTemplate,
+    buildCatalog,
+    progressionTrees,
+    encounterAnchors: project.encounterAnchors,
+    factionPresences: project.factionPresences,
+    pressureHotspots: project.pressureHotspots,
+  };
+
+  if (profile === 'debug' || emitSchemaVersion) {
+    // Rebuild with the metadata keys in front, preserving insertion order.
+    const prefixed: ContentPack = {
+      entities: [],
+      zones: [],
+      districts: [],
+      dialogues: [],
+      items: [],
+      progressionTrees: [],
+      encounterAnchors: [],
+      factionPresences: [],
+      pressureHotspots: [],
+    };
+    // Wipe the placeholder keys so we can re-insert them in the canonical order
+    // *after* the metadata keys.
+    for (const k of Object.keys(prefixed) as (keyof ContentPack)[]) {
+      delete (prefixed as Record<string, unknown>)[k as string];
+    }
+
+    if (profile === 'debug') {
+      prefixed._debug = {
+        timestamp: options?.debugTimestamp ?? new Date().toISOString(),
+        schemaVersion: resolveSchemaVersion(),
+        sourceProjectId: project.id,
+        fidelityVerbose: true,
+      };
+    }
+    if (emitSchemaVersion) {
+      prefixed.schemaVersion = resolveSchemaVersion();
+    }
+
+    prefixed.entities = contentPack.entities;
+    prefixed.zones = contentPack.zones;
+    prefixed.districts = contentPack.districts;
+    prefixed.dialogues = contentPack.dialogues;
+    prefixed.items = contentPack.items;
+    if (contentPack.playerTemplate) prefixed.playerTemplate = contentPack.playerTemplate;
+    if (contentPack.buildCatalog) prefixed.buildCatalog = contentPack.buildCatalog;
+    prefixed.progressionTrees = contentPack.progressionTrees;
+    prefixed.encounterAnchors = contentPack.encounterAnchors;
+    prefixed.factionPresences = contentPack.factionPresences;
+    prefixed.pressureHotspots = contentPack.pressureHotspots;
+
+    return {
+      success: true,
+      contentPack: prefixed,
+      manifest,
+      packMeta,
+      warnings,
+      assets,
+      assetBindings,
+      assetPacks,
+    };
+  }
+
   return {
     success: true,
-    contentPack: {
-      entities,
-      zones,
-      districts,
-      dialogues,
-      items,
-      playerTemplate,
-      buildCatalog,
-      progressionTrees,
-      encounterAnchors: project.encounterAnchors,
-      factionPresences: project.factionPresences,
-      pressureHotspots: project.pressureHotspots,
-    },
+    contentPack,
     manifest,
     packMeta,
     warnings,

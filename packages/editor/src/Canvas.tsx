@@ -47,7 +47,7 @@ export function Canvas() {
     connectionStart, setConnectionStart,
     viewport, setViewport, setShowSearch, setRightTab,
     openSpeedPanel, showSpeedPanel, closeSpeedPanel,
-    hiddenIds, showPerfStats,
+    hiddenIds, showPerfStats, showElevation,
   } = useEditorStore();
 
   const tileSize = project.map.tileSize;
@@ -365,6 +365,34 @@ export function Canvas() {
       ctx.fillRect(labelX - labelPad, labelY - fontSize + labelPad, textWidth + labelPad * 2, fontSize + labelPad);
       ctx.fillStyle = selected ? '#fff' : '#ccc';
       ctx.fillText(zone.name, labelX, labelY);
+
+      // ED-FT-003: elevation badge (e.g. "+12m" or "-4m..+8m"). Shown only when
+      // the layer toggle is on and the zone carries elevation data. The renderer
+      // agent will extend ZoneOverlayRenderer with fuller visualization (tint,
+      // dashed outline, drop-shadow) in Wave 2; this gives authors an immediate
+      // cue today.
+      if (showElevation && (zone.elevation != null || zone.elevationRange != null)) {
+        let text = '';
+        if (zone.elevationRange) {
+          const { floor, ceiling } = zone.elevationRange;
+          text = `${floor}m\u2192${ceiling}m`;
+        } else if (zone.elevation != null) {
+          const sign = zone.elevation >= 0 ? '+' : '';
+          text = `${sign}${zone.elevation}m`;
+        }
+        if (text) {
+          const badgeFont = Math.max(8, Math.min(12, 10 / zoom));
+          ctx.font = `${badgeFont}px monospace`;
+          const tw = ctx.measureText(text).width;
+          const bpad = 3 / zoom;
+          const bx = x + w - tw - bpad * 2 - 2 / zoom;
+          const by = y + 2 / zoom;
+          ctx.fillStyle = 'rgba(88, 166, 255, 0.35)';
+          ctx.fillRect(bx, by, tw + bpad * 2, badgeFont + bpad);
+          ctx.fillStyle = '#e6f0ff';
+          ctx.fillText(text, bx + bpad, by + badgeFont);
+        }
+      }
     }
 
     // District name labels at zone centroids
@@ -681,7 +709,7 @@ export function Canvas() {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation]);
 
   useEffect(() => {
     draw();

@@ -80,6 +80,8 @@ interface EditorState {
   showBackgrounds: boolean;
   showAmbient: boolean;
   showMinimap: boolean;
+  /** ED-FT-003: toggle elevation visualization overlay on the canvas. */
+  showElevation: boolean;
   viewport: ViewportState;
   selection: SelectionSet;
   hoveredZoneId: string | null;
@@ -122,6 +124,7 @@ interface EditorState {
   toggleBackgrounds: () => void;
   toggleAmbient: () => void;
   toggleMinimap: () => void;
+  toggleElevation: () => void;
   setViewport: (vp: Partial<ViewportState>) => void;
   resetViewport: () => void;
   dismissChecklist: () => void;
@@ -149,6 +152,10 @@ interface EditorState {
   // Performance stats overlay (FT-010)
   showPerfStats: boolean;
   togglePerfStats: () => void;
+
+  // INF-FT-003: Renderer diagnostics overlay toggle.
+  showRendererDiagnostics: boolean;
+  toggleRendererDiagnostics: () => void;
 
   // Speed panel (double-right-click command palette)
   showSpeedPanel: boolean;
@@ -182,6 +189,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showBackgrounds: true,
   showAmbient: true,
   showMinimap: true,
+  // ED-FT-003: Rehydrate from localStorage. If unset, default on — Wave 2 ships
+  // mostly to the modes that care about elevation (space, wilderness); other
+  // modes can flip it off manually. Any read failure falls back to true.
+  showElevation: (() => {
+    try {
+      const raw = localStorage.getItem('wf-show-elevation');
+      if (raw == null) return true;
+      return raw === 'true';
+    } catch { return true; }
+  })(),
   viewport: { panX: 0, panY: 0, zoom: 1 },
   selection: { ...EMPTY_SELECTION },
   hoveredZoneId: null,
@@ -259,6 +276,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
   toggleAmbient: () => set((s) => ({ showAmbient: !s.showAmbient })),
   toggleMinimap: () => set((s) => ({ showMinimap: !s.showMinimap })),
+  toggleElevation: () => set((s) => {
+    const next = !s.showElevation;
+    try { localStorage.setItem('wf-show-elevation', String(next)); } catch { /* ignore */ }
+    return { showElevation: next };
+  }),
   setViewport: (vp) => set((s) => ({ viewport: { ...s.viewport, ...vp } })),
   resetViewport: () => set({ viewport: { ...DEFAULT_VIEWPORT } }),
   dismissChecklist: () => set({ checklistDismissed: true }),
@@ -327,6 +349,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // FT-010: Performance stats overlay
   showPerfStats: false,
   togglePerfStats: () => set((s) => ({ showPerfStats: !s.showPerfStats })),
+
+  // INF-FT-003: Renderer diagnostics overlay — opt-in debug HUD.
+  showRendererDiagnostics: false,
+  toggleRendererDiagnostics: () => set((s) => ({ showRendererDiagnostics: !s.showRendererDiagnostics })),
 
   showSpeedPanel: false,
   speedPanelPosition: null,

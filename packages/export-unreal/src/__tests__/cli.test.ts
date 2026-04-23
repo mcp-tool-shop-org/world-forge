@@ -171,6 +171,18 @@ describe('CLI: world-forge-export-unreal', () => {
     const actorsManifest = JSON.parse(await readFile(join(outDir, 'actors', 'manifest.json'), 'utf-8'));
     expect(actorsManifest.All).toBeDefined();
 
+    // UE-FT-004: parallax manifest + transitions file are always written, even
+    // if empty, so the UE5 loader can blindly read them.
+    const parallax = JSON.parse(
+      await readFile(join(outDir, 'actors', 'parallax-manifest.json'), 'utf-8'),
+    );
+    expect(Array.isArray(parallax.Actors)).toBe(true);
+
+    const transitions = JSON.parse(
+      await readFile(join(outDir, 'actors', 'transitions.json'), 'utf-8'),
+    );
+    expect(Array.isArray(transitions)).toBe(true);
+
     // At least one zone file was written.
     const firstZoneId = minimalProject.zones[0].id.replace(/[^a-zA-Z0-9._-]/g, '_');
     const zone = JSON.parse(await readFile(join(outDir, 'zones', `${firstZoneId}.json`), 'utf-8'));

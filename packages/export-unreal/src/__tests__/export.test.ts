@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { exportToUnreal } from '../export.js';
 import { importFromUnreal } from '../import.js';
 import { convertEntities } from '../convert-entities.js';
+import { convertParallax } from '../convert-parallax.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
-import type { WorldProject } from '@world-forge/schema';
+import type { WorldProject, TransitionEntity } from '@world-forge/schema';
 
 function withElevation(project: WorldProject): WorldProject {
   return {
@@ -204,6 +205,226 @@ describe('exportToUnreal', () => {
     if (!result.success) throw new Error('export failed');
     expect(result.contentPack.Connections[0].StreamMode).toBe('teleport');
     expect(result.contentPack.Connections[1].StreamMode).toBe('load');
+  });
+});
+
+// ── Wave 2 features (UE-FT-002 / UE-FT-003 / UE-FT-004 + passthroughs) ──
+describe('exportToUnreal: Wave 2 — sky / lighting / collision / parallax / physics / transitions', () => {
+  it('round-trips sky + lighting metadata onto UnrealZoneDataAsset (UE-FT-002)', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        ...minimalProject.assets,
+        { id: 'asset-sky-atmo', kind: 'background', label: 'SkyAtmo', path: 'bg/sa.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              // Mark the asset as used so SCH-A-002/004 unreferenced-asset check passes.
+              backgroundId: 'asset-sky-atmo',
+              skyAtmosphereRef: 'asset-sky-atmo',
+              directionalLightYaw: 45,
+              directionalLightPitch: -30,
+              skyLightIntensity: 1.5,
+              timeOfDay: 'dusk',
+            }
+          : z,
+      ),
+    };
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const zone = result.contentPack.Zones.find((z) => z.Id === 'zone-entrance');
+    expect(zone?.SkyAtmosphereAssetId).toBe('asset-sky-atmo');
+    expect(zone?.DirectionalLightYaw).toBe(45);
+    expect(zone?.DirectionalLightPitch).toBe(-30);
+    expect(zone?.SkyLightIntensity).toBe(1.5);
+    expect(zone?.TimeOfDayKey).toBe('dusk');
+
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'lighting' && e.entityId === 'zone-entrance' && e.level === 'lossless',
+    );
+    expect(entry).toBeDefined();
+  });
+
+  it('infers CollisionChannel="hazard" when zone has hazards but no collisionType (UE-FT-003)', () => {
+    // minimalProject's zone-cellar already has hazards: ['unstable-floor'] and no collisionType.
+    const result = exportToUnreal(minimalProject);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const cellar = result.contentPack.Zones.find((z) => z.Id === 'zone-cellar');
+    expect(cellar?.CollisionChannel).toBe('hazard');
+
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'collision' && e.entityId === 'zone-cellar' && e.level === 'approximated',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.message).toContain('hazards');
+  });
+
+  it('round-trips explicit collisionType 1:1 (UE-FT-003)', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) => (i === 0 ? { ...z, collisionType: 'water' as const } : z)),
+    };
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const zone = result.contentPack.Zones.find((z) => z.Id === 'zone-entrance');
+    expect(zone?.CollisionChannel).toBe('water');
+
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'collision' && e.entityId === 'zone-entrance' && e.level === 'lossless',
+    );
+    expect(entry).toBeDefined();
+  });
+
+  it('produces UnrealParallaxManifest with one entry per ParallaxLayer (UE-FT-004)', () => {
+    // 2-zone project with 3 layers total: zone-entrance has 2, zone-cellar has 1.
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        ...minimalProject.assets,
+        { id: 'asset-sky', kind: 'background', label: 'Sky', path: 'bg/sky.png', tags: [] },
+        { id: 'asset-mid', kind: 'background', label: 'Mid', path: 'bg/mid.png', tags: [] },
+        { id: 'asset-far', kind: 'background', label: 'Far', path: 'bg/far.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              parallaxLayers: [
+                { id: 'sky', depth: 100, assetRef: 'asset-sky', scrollFactor: 0.1 },
+                { id: 'mid', depth: 50, assetRef: 'asset-mid', scrollFactor: 0.5 },
+              ],
+            }
+          : { ...z, parallaxLayers: [{ id: 'far', depth: 200, assetRef: 'asset-far', scrollFactor: 0.2 }] },
+      ),
+    };
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.contentPack.Parallax.Actors.length).toBe(3);
+
+    const entranceActors = result.contentPack.Parallax.Actors.filter((a) => a.ZoneId === 'zone-entrance');
+    expect(entranceActors.length).toBe(2);
+    // zone-entrance origin: gridX=0, gridY=0, tileSizeCm=100 → (0, 0, 0). Use
+    // toBeCloseTo to stay immune to -0 / +0 floating-point quirks from the Y flip.
+    expect(entranceActors[0].ParentZoneOriginCm.X).toBeCloseTo(0, 5);
+    expect(entranceActors[0].ParentZoneOriginCm.Y).toBeCloseTo(0, 5);
+    expect(entranceActors[0].ParentZoneOriginCm.Z).toBeCloseTo(0, 5);
+    // SuggestedScale is width × depth in cm: 10 tiles × 100 = 1000.
+    expect(entranceActors[0].SuggestedScale).toEqual({ X: 1000, Y: 1000 });
+
+    const cellarActors = result.contentPack.Parallax.Actors.filter((a) => a.ZoneId === 'zone-cellar');
+    expect(cellarActors.length).toBe(1);
+    // zone-cellar: gridX=0, gridY=10 → Y flipped: Y = -10 * 100 = -1000.
+    expect(cellarActors[0].ParentZoneOriginCm.X).toBeCloseTo(0, 5);
+    expect(cellarActors[0].ParentZoneOriginCm.Y).toBeCloseTo(-1000, 5);
+    expect(cellarActors[0].ParentZoneOriginCm.Z).toBeCloseTo(0, 5);
+    expect(cellarActors[0].AssetRef).toBe('asset-far');
+    expect(cellarActors[0].ScrollFactor).toBe(0.2);
+  });
+
+  it('convertParallax standalone returns an empty manifest when no parallax layers exist', () => {
+    const result = convertParallax(minimalProject);
+    expect(result.manifest.Actors).toEqual([]);
+    expect(result.fidelity).toEqual([]);
+  });
+
+  it('round-trips gravity + physicsMode onto UnrealZoneDataAsset', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              gravityOverride: 3.7, // m/s²
+              gravityDirection: 'down' as const,
+              physicsMode: 'platformer' as const,
+            }
+          : z,
+      ),
+    };
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const zone = result.contentPack.Zones.find((z) => z.Id === 'zone-entrance');
+    // m/s² → cm/s² (×100).
+    expect(zone?.GravityCmPerSec2).toBeCloseTo(370, 5);
+    expect(zone?.GravityDirection).toBe('down');
+    expect(zone?.PhysicsMode).toBe('platformer');
+
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'physics' && e.entityId === 'zone-entrance' && e.level === 'lossless',
+    );
+    expect(entry).toBeDefined();
+  });
+
+  it('passes TransitionEntity through to UnrealContentPack.Transitions', () => {
+    const transition: TransitionEntity = {
+      id: 't-lift',
+      zoneId: 'zone-entrance',
+      targetZoneId: 'zone-cellar',
+      type: 'elevator',
+      gridX: 3,
+      gridY: 4,
+      label: 'Entrance → Cellar Lift',
+      animation: 'elevator_descend',
+      durationSeconds: 2.5,
+      tags: ['vertical'],
+    };
+    const project: WorldProject = { ...minimalProject, transitions: [transition] };
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.contentPack.Transitions.length).toBe(1);
+    const t = result.contentPack.Transitions[0];
+    expect(t.Id).toBe('t-lift');
+    expect(t.ZoneId).toBe('zone-entrance');
+    expect(t.TargetZoneId).toBe('zone-cellar');
+    expect(t.Type).toBe('elevator');
+    expect(t.Label).toBe('Entrance → Cellar Lift');
+    expect(t.Animation).toBe('elevator_descend');
+    expect(t.DurationSeconds).toBe(2.5);
+    expect(t.Tags).toEqual(['vertical']);
+    // Y-flipped: gridY=4 at tileSizeCm=100 → Y = -400.
+    expect(t.LocationCm).toEqual({ X: 300, Y: -400, Z: 0 });
+
+    const entry = result.fidelity.entries.find(
+      (e) => e.domain === 'transitions' && e.entityId === 't-lift' && e.level === 'lossless',
+    );
+    expect(entry).toBeDefined();
+  });
+
+  it('falls back to parent zone origin when TransitionEntity has no grid coords', () => {
+    const transition: TransitionEntity = {
+      id: 't-warp',
+      zoneId: 'zone-cellar',
+      targetZoneId: 'zone-entrance',
+      type: 'warp',
+    };
+    const project: WorldProject = { ...minimalProject, transitions: [transition] };
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const t = result.contentPack.Transitions[0];
+    // zone-cellar origin: gridX=0, gridY=10 → Y = -1000.
+    expect(t.LocationCm).toEqual({ X: 0, Y: -1000, Z: 0 });
+  });
+
+  it('emits an empty Transitions array when project.transitions is undefined', () => {
+    const result = exportToUnreal(minimalProject);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.contentPack.Transitions).toEqual([]);
   });
 });
 

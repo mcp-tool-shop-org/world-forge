@@ -36,6 +36,21 @@ export interface UnrealZoneDataAsset {
   TilesetAssetId?: string;
   SkylineAssetId?: string;
   ParallaxLayers?: UnrealParallaxLayer[];
+
+  // ── Sky / lighting metadata (UE-FT-002) ─────────────────────
+  SkyAtmosphereAssetId?: string;
+  DirectionalLightYaw?: number;
+  DirectionalLightPitch?: number;
+  SkyLightIntensity?: number;
+  TimeOfDayKey?: string;
+
+  // ── Collision channel (UE-FT-003) ───────────────────────────
+  CollisionChannel?: 'walkable' | 'water' | 'hazard' | 'void' | 'custom';
+
+  // ── Physics overrides (SCH-FT-006 passthrough) ──────────────
+  GravityCmPerSec2?: number;
+  GravityDirection?: 'down' | 'up' | 'none';
+  PhysicsMode?: string;
 }
 
 export interface UnrealParallaxLayer {
@@ -134,6 +149,83 @@ function convertZone(z: Zone, tileSize: number, tileSizeCm: number, fidelity: Fi
       fieldPath: `zones.${z.id}.elevation`,
       message: `Zone "${z.id}" elevation preserved.`,
       reason: 'Converted metres → UE cm via elevationToZ.',
+    });
+  }
+
+  // ── UE-FT-002: sky / lighting ────────────────────────────────
+  const hasSkyData =
+    z.skyAtmosphereRef !== undefined ||
+    z.directionalLightYaw !== undefined ||
+    z.directionalLightPitch !== undefined ||
+    z.skyLightIntensity !== undefined ||
+    z.timeOfDay !== undefined;
+
+  if (z.skyAtmosphereRef !== undefined) asset.SkyAtmosphereAssetId = z.skyAtmosphereRef;
+  if (z.directionalLightYaw !== undefined) asset.DirectionalLightYaw = z.directionalLightYaw;
+  if (z.directionalLightPitch !== undefined) asset.DirectionalLightPitch = z.directionalLightPitch;
+  if (z.skyLightIntensity !== undefined) asset.SkyLightIntensity = z.skyLightIntensity;
+  if (z.timeOfDay !== undefined) asset.TimeOfDayKey = z.timeOfDay;
+
+  if (hasSkyData) {
+    fidelity.push({
+      level: 'lossless',
+      domain: 'lighting',
+      severity: 'info',
+      entityId: z.id,
+      fieldPath: `zones.${z.id}.sky`,
+      message: `Zone "${z.id}" sky/lighting metadata preserved.`,
+      reason: 'Mapped 1:1 to SkyAtmosphereAssetId / DirectionalLight* / SkyLightIntensity / TimeOfDayKey.',
+    });
+  }
+
+  // ── UE-FT-003: collision channel (with hazard inference) ─────
+  if (z.collisionType !== undefined) {
+    asset.CollisionChannel = z.collisionType;
+    fidelity.push({
+      level: 'lossless',
+      domain: 'collision',
+      severity: 'info',
+      entityId: z.id,
+      fieldPath: `zones.${z.id}.collisionType`,
+      message: `Zone "${z.id}" collision channel preserved.`,
+      reason: 'Mapped to CollisionChannel 1:1.',
+    });
+  } else if (z.hazards.length > 0) {
+    asset.CollisionChannel = 'hazard';
+    fidelity.push({
+      level: 'approximated',
+      domain: 'collision',
+      severity: 'info',
+      entityId: z.id,
+      fieldPath: `zones.${z.id}.collisionType`,
+      message: `Zone "${z.id}" has hazards but no collisionType — inferred CollisionChannel="hazard".`,
+      reason: `${z.hazards.length} hazard(s) present; no explicit collisionType authored.`,
+    });
+  }
+
+  // ── Gravity + physicsMode passthrough (SCH-FT-006) ───────────
+  const hasPhysicsData =
+    z.gravityOverride !== undefined ||
+    z.gravityDirection !== undefined ||
+    z.physicsMode !== undefined;
+
+  if (z.gravityOverride !== undefined) {
+    // gravityOverride is m/s²; UE uses cm/s² for gravity scale. Convert so
+    // loaders get a value in their native unit.
+    asset.GravityCmPerSec2 = z.gravityOverride * 100;
+  }
+  if (z.gravityDirection !== undefined) asset.GravityDirection = z.gravityDirection;
+  if (z.physicsMode !== undefined) asset.PhysicsMode = z.physicsMode;
+
+  if (hasPhysicsData) {
+    fidelity.push({
+      level: 'lossless',
+      domain: 'physics',
+      severity: 'info',
+      entityId: z.id,
+      fieldPath: `zones.${z.id}.physics`,
+      message: `Zone "${z.id}" physics overrides preserved.`,
+      reason: 'Mapped gravityOverride (m/s² → cm/s²), gravityDirection, physicsMode.',
     });
   }
 

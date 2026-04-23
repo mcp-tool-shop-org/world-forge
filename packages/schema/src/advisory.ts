@@ -126,6 +126,17 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!project.zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
         items.push({ path: 'zones', message: 'Space tip: set elevation on at least one zone — 2.5D engines like UE5 need a Z-plane to stack sectors or docking arms.', severity: 'suggestion' });
       }
+      // Any zone tagged 'station' should declare a physicsMode so exporters
+      // know whether to run station-interior (normal), EVA (zero-g), etc.
+      for (const z of project.zones) {
+        if (z.tags?.includes('station') && z.physicsMode === undefined) {
+          items.push({
+            path: `zones.${z.id}.physicsMode`,
+            message: `Space tip: station zone "${z.id}" has no physicsMode — set one (normal, platformer, zero-g, aquatic) so the exporter knows which physics runtime to apply.`,
+            severity: 'info',
+          });
+        }
+      }
       break;
 
     case 'interior':

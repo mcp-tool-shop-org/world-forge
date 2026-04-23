@@ -5,11 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [4.3.0] - 2026-04-22
+
+### Added — Feature Pass (2.5D-focused wave)
+
+Dogfood-swarm release. The 2.5D surface shipped end-to-end: schema foundations → editor authoring UI → renderer visualization → UE5 export. Approved scope: 15 features across all 5 packages. Deferred: Quest system, full UE5 loader plugin, Godot exporter.
+
+**Schema (@world-forge/schema):**
+- **LootTable** schema — weighted drop pools with `rolls`, per-entry `weight`, optional `quantity` range, `condition`, `rarity`. `ItemPlacement.lootTableId` references a table instead of / in addition to the single-item placement. (SCH-FT-001)
+- **SpawnCondition grammar** — `parseSpawnCondition` + `validateSpawnCondition` support `always`, `never`, `random:<p>`, `time:<period>`, `quest:<id>:<stage>`, `faction:<id>:<op><value>`, `level:<op><value>`. Every `EntityPlacement.spawnCondition` now structurally validated. (SCH-FT-003)
+- **TransitionEntity** — first-class type for elevators, warps, transporters, cargo lifts, stairwells. `WorldProject.transitions` array. Validated for id uniqueness, valid zone refs, finite duration. (SCH-FT-004)
+- **Zone physics overrides** — optional `gravityOverride`, `gravityDirection`, `physicsMode` for platformer / zero-g / aquatic zones. Advisory flags space-mode station zones missing `physicsMode`. (SCH-FT-006)
+- **Zone sky + lighting metadata** — optional `skyAtmosphereRef`, `directionalLightYaw`/`Pitch`, `skyLightIntensity`, `timeOfDay` for UE5 Sky Atmosphere / DirectionalLight hints. (UE-FT-002 schema half)
+- **Zone collision channel** — optional `collisionType: 'walkable' | 'water' | 'hazard' | 'void' | 'custom'`. (UE-FT-003 schema half)
+- +38 new schema tests (235 → 273).
+
+**Editor (@world-forge/editor):**
+- **Zone 2.5D editor UI** — the promised full edit form replaces the Stage C read-only preview. Elevation slider + input, elevation range floor/ceiling pair with live validation, parallax layer list editor with asset picker and compact visual preview stack, skyline asset picker. (ED-FT-001)
+- **Canvas elevation badge + layer toggle** — zones with elevation data show an inline `+Xm` / `floor→ceiling` badge. New "Show Elevation" layer toggle, persisted to localStorage. (ED-FT-003)
+- **Parallax layer preview** — compact stacked tiles below the layer list, depth-sorted, click-to-focus on a row. (ED-FT-004)
+- **Multi-zone elevation batch** — "Set elevation for N zone(s)" toolbar action + `set-elevation` Speed Panel action. One atomic undo entry per batch. (ED-FT-005)
+- +31 new editor tests.
+
+**Renderer (@world-forge/renderer-2d):**
+- **2.5D visualization** on `ZoneOverlayRenderer` — drop shadow (clamped at 8px for +10m) for elevated zones, dark tint overlay for negative elevation, dashed outline when `elevationRange.floor !== ceiling`. New `setShowElevation(enabled)` API. (INF-FT-002)
+- **DiagnosticsOverlay** — PixiJS overlay consuming the `getDiagnostics()` API shipped in Stage C. Renders `className`, `childCount`, `destroyed` per renderer. Editor exposes a "Show renderer diagnostics" toggle next to Perf Stats. (INF-FT-003)
+- +13 new renderer tests.
+
+**Unreal export (@world-forge/export-unreal):**
+- **Sky / lighting metadata output** — `SkyAtmosphereAssetId`, `DirectionalLightYaw`/`Pitch`, `SkyLightIntensity`, `TimeOfDayKey` on `UnrealZoneDataAsset`. Per-zone `lossless`/`lighting` fidelity entries. (UE-FT-002)
+- **Collision channel output** — `CollisionChannel` on `UnrealZoneDataAsset` from `zone.collisionType`, with `approximated` inference (`'hazard'`) when hazards are present but no channel is authored. (UE-FT-003)
+- **Parallax actor spawn manifest** — new `actors/parallax-manifest.json` output; one `UnrealParallaxActor` per layer per zone with `SuggestedScale`, `ParentZoneOriginCm`. (UE-FT-004)
+- **Gravity + physicsMode passthrough** — `GravityCmPerSec2`, `GravityDirection`, `PhysicsMode` on `UnrealZoneDataAsset`.
+- **TransitionEntity passthrough** — `UnrealContentPack.Transitions` array; CLI writes `actors/transitions.json`.
+- New `FidelityDomain` values: `lighting`, `collision`, `physics`, `transitions`.
+- +11 new tests.
+
+**AI RPG Engine export (@world-forge/export-ai-rpg):**
+- **Export profiles** — `exportToEngine(project, { profile: 'debug' | 'release' })` + CLI `--profile`. Release = today's minimal output. Debug = adds a top-level `_debug` block (timestamp, schemaVersion, sourceProjectId, fidelityVerbose). Both profiles deterministic. (AIR-FT-001)
+- **Dry-run + schema-version CLI** — `--dry-run` validates and reports sizes without writing files (mutually exclusive with `--out`); `ContentPack.schemaVersion` now emitted by default (opt out via `--no-emit-schema-version`). (AIR-FT-005)
+- +18 new tests.
+
+### Deferred to v4.4+
+
+- **UE5 reference loader plugin (UE-FT-001)** — will ship with the Star Freight UE5 project (`F:/AI/star-freight-ue5/`), not inside world-forge. The export-unreal README documents the expected contract; Star Freight devs build the loader alongside the game.
+- **Godot 4 exporter (INF-FT-001)** — stub package stays inert. Ships when Fractured Road needs it.
+- **Quest system (SCH-FT-002)**, **Canon adapter v1 (SCH-FT-007)**, **Faction relationships (SCH-FT-005)** — content-authoring primitives deferred until dogfooding a real game surfaces the concrete requirements.
+
+### Health Pass summary (closed before this release)
+
+- Stage A: 56 findings (2 CRITICAL + 11 HIGH in Wave 1 `5137710`, 42 MED+LOW in Wave 2 `2baaa5d`).
+- Stage B (proactive) + Stage C (humanization): 54 findings in a single amend pass (`be679c6`).
+- 110 health-pass items closed before features shipped.
+
+### Verification
+
+- Tests: 1692 (v4.2.0) → 1959 (v4.3.0), +267 new tests.
+- Shipcheck: 100% pass, all hard gates green.
 
 ### Notes
 
-- **Translations (pending):** README drift 43 days (2026-03-10 → 2026-04-22). User regenerates via polyglot-mcp; will ship with v4.3.0.
+- **Translations (pending):** translated READMEs drift from 2026-03-10; user regenerates via polyglot-mcp. Will land with v4.3.0 publish.
 
 ## [4.2.0] - 2026-04-22
 

@@ -16,11 +16,12 @@ const tools: { id: EditorTool; label: string; key: string }[] = [
 export function ToolPalette() {
   const {
     activeTool, setTool, selection,
-    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient, showMinimap,
+    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showAmbient, showMinimap, showElevation,
     snapToObjects, toggleSnapToObjects,
-    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient, toggleMinimap,
+    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleAmbient, toggleMinimap, toggleElevation,
     viewport, setViewport, resetViewport,
     showPerfStats, togglePerfStats,
+    showRendererDiagnostics, toggleRendererDiagnostics,
   } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const { project } = useProjectStore();
@@ -148,12 +149,19 @@ export function ToolPalette() {
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showMinimap} onChange={toggleMinimap} /> Minimap
       </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showElevation} onChange={toggleElevation} /> Show Elevation
+      </label>
       <hr style={{ margin: '6px 0 4px', borderColor: '#30363d', borderStyle: 'solid', borderWidth: '1px 0 0' }} />
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={snapToObjects} onChange={toggleSnapToObjects} /> Snap to Objects
       </label>
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showPerfStats} onChange={togglePerfStats} /> Perf Stats
+      </label>
+      {/* INF-FT-003: toggle for the DiagnosticsOverlay (PixiJS renderer health HUD). */}
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showRendererDiagnostics} onChange={toggleRendererDiagnostics} /> Show renderer diagnostics
       </label>
     </div>
   );

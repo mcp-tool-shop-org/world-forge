@@ -27,6 +27,7 @@ const ALL_WORLD_PROJECT_FIELDS: ReadonlyArray<string> = [
   'spawnPoints', 'craftingStations', 'marketNodes',
   'tilesets', 'tileLayers', 'props', 'propPlacements',
   'ambientLayers', 'assets', 'assetPacks',
+  'lootTables', 'transitions',
 ];
 
 // Fields covered losslessly by the Unreal pipeline.
@@ -34,7 +35,7 @@ const COVERED_FIELDS = new Set<string>([
   'id', 'name', 'description', 'version',
   'mode', 'author', 'license', 'category', 'projectTags',
   'map', 'zones', 'connections', 'districts',
-  'entityPlacements',
+  'entityPlacements', 'transitions',
 ]);
 
 // Fields that are intentionally not carried by the Unreal pack.
@@ -48,6 +49,7 @@ const KNOWN_DROPPED: Record<string, string> = {
   spawnPoints: 'Player spawn handled separately by UE5 PlayerStart actors.',
   craftingStations: 'Gameplay-only data; driven by UE5 subsystem.',
   marketNodes: 'Gameplay-only data; driven by UE5 subsystem.',
+  lootTables: 'Drop tables are resolved server-side in the UE5 gameplay layer.',
   landmarks: 'Landmarks collapse into zone actor metadata — not a first-class pack field.',
   factionPresences: 'Runtime faction state; derived from district.controllingFaction at load.',
   pressureHotspots: 'Runtime behavior; not part of the static pack.',
@@ -90,6 +92,7 @@ describe('WorldProject → UnrealContentPack parity', () => {
       'zones', 'districts', 'entities', 'items',
       'connections', 'world-partition', 'assets', 'parallax',
       'elevation', 'skyline', 'dialogues', 'world',
+      'lighting', 'collision', 'physics', 'transitions',
     ];
     const domainSet = new Set<string>(validDomains);
     for (const entry of result.fidelity.entries) {

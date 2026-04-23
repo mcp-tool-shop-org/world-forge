@@ -3,6 +3,7 @@
 import type { WorldProject } from './project.js';
 import type { ConnectionKind } from './spatial.js';
 import type { AssetKind } from './assets.js';
+import { validateSpawnCondition } from './spawn-condition.js';
 
 export type ValidationError = {
   path: string;
@@ -784,6 +785,180 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // (SCH-A-004) Mirrors the zone backgroundId/tilesetId pattern above.
   for (const zone of project.zones) {
     checkAssetRef(zone.skylineRef, 'background', `zones.${zone.id}.skylineRef`, `Zone "${zone.id}"`);
+  }
+
+  // --- LootTable validation (SCH-FT-001) ---
+
+  const lootTables = project.lootTables ?? [];
+  const lootTableIds = new Set<string>();
+
+  // 56. LootTable ID uniqueness
+  for (const lt of lootTables) {
+    if (lootTableIds.has(lt.id)) {
+      errors.push({ path: `lootTables.${lt.id}`, message: `Duplicate loot table ID: ${lt.id}` });
+    }
+    lootTableIds.add(lt.id);
+
+    if (!lt.entries || lt.entries.length === 0) {
+      errors.push({
+        path: `lootTables.${lt.id}.entries`,
+        message: `Loot table "${lt.id}" must contain at least one entry`,
+      });
+    }
+
+    // 58 (rolls half): rolls >= 1 when provided.
+    if (lt.rolls !== undefined) {
+      if (!Number.isFinite(lt.rolls) || lt.rolls < 1) {
+        errors.push({
+          path: `lootTables.${lt.id}.rolls`,
+          message: `Loot table "${lt.id}" rolls (${lt.rolls}) must be a finite number >= 1`,
+        });
+      }
+    }
+
+    for (let i = 0; i < (lt.entries ?? []).length; i++) {
+      const entry = lt.entries[i];
+      // 57. Each entry's weight must be > 0 and finite.
+      if (!Number.isFinite(entry.weight) || entry.weight <= 0) {
+        errors.push({
+          path: `lootTables.${lt.id}.entries[${i}]`,
+          message: `Loot table "${lt.id}" entry "${entry.itemId}" weight (${entry.weight}) must be a finite number > 0`,
+        });
+      }
+
+      // 58 (quantity half): quantity.min <= quantity.max, both >= 0 and finite.
+      if (entry.quantity) {
+        const { min, max } = entry.quantity;
+        if (!Number.isFinite(min) || !Number.isFinite(max) || min < 0 || max < 0) {
+          errors.push({
+            path: `lootTables.${lt.id}.entries[${i}].quantity`,
+            message: `Loot table "${lt.id}" entry "${entry.itemId}" quantity min (${min}) and max (${max}) must be finite numbers >= 0`,
+          });
+        } else if (min > max) {
+          errors.push({
+            path: `lootTables.${lt.id}.entries[${i}].quantity`,
+            message: `Loot table "${lt.id}" entry "${entry.itemId}" quantity.min (${min}) must be <= quantity.max (${max})`,
+          });
+        }
+      }
+
+      // Entry condition reuses SpawnCondition grammar.
+      if (entry.condition) {
+        const condErr = validateSpawnCondition(entry.condition);
+        if (condErr) {
+          errors.push({
+            path: `lootTables.${lt.id}.entries[${i}].condition`,
+            message: `Loot table "${lt.id}" entry "${entry.itemId}": ${condErr}`,
+          });
+        }
+      }
+    }
+  }
+
+  // ItemPlacement.lootTableId must reference an existing loot table when set.
+  for (const ip of project.itemPlacements) {
+    if (ip.lootTableId && !lootTableIds.has(ip.lootTableId)) {
+      errors.push({
+        path: `itemPlacements.${ip.itemId}.lootTableId`,
+        message: `Item "${ip.itemId}" references nonexistent loot table "${ip.lootTableId}"`,
+      });
+    }
+  }
+
+  // 59. EntityPlacement.spawnCondition grammar (SCH-FT-003).
+  for (const ep of project.entityPlacements) {
+    const condErr = validateSpawnCondition(ep.spawnCondition);
+    if (condErr) {
+      errors.push({
+        path: `entityPlacements.${ep.entityId}.spawnCondition`,
+        message: `Entity "${ep.entityId}": ${condErr}`,
+      });
+    }
+  }
+
+  // --- TransitionEntity validation (SCH-FT-004) ---
+
+  const transitions = project.transitions ?? [];
+  const transitionIds = new Set<string>();
+  for (const t of transitions) {
+    // 60. TransitionEntity id uniqueness.
+    if (transitionIds.has(t.id)) {
+      errors.push({ path: `transitions.${t.id}`, message: `Duplicate transition ID: ${t.id}` });
+    }
+    transitionIds.add(t.id);
+
+    // 61. zoneId + targetZoneId must reference existing zones.
+    if (!zoneIds.has(t.zoneId)) {
+      errors.push({
+        path: `transitions.${t.id}.zoneId`,
+        message: `Transition "${t.id}" in nonexistent zone "${t.zoneId}"`,
+      });
+    }
+    if (!zoneIds.has(t.targetZoneId)) {
+      errors.push({
+        path: `transitions.${t.id}.targetZoneId`,
+        message: `Transition "${t.id}" targets nonexistent zone "${t.targetZoneId}"`,
+      });
+    }
+
+    // 62. durationSeconds must be finite and >= 0 when present.
+    if (t.durationSeconds !== undefined) {
+      if (!Number.isFinite(t.durationSeconds) || t.durationSeconds < 0) {
+        errors.push({
+          path: `transitions.${t.id}.durationSeconds`,
+          message: `Transition "${t.id}" durationSeconds (${t.durationSeconds}) must be a finite number >= 0`,
+        });
+      }
+    }
+  }
+
+  // --- Zone physics + sky + collision validation (SCH-FT-006, UE-FT-002, UE-FT-003) ---
+
+  const VALID_COLLISION_TYPES = new Set(['walkable', 'water', 'hazard', 'void', 'custom']);
+
+  for (const zone of project.zones) {
+    // 63. gravityOverride must be finite when set (can be 0 for zero-g).
+    if (zone.gravityOverride !== undefined && !Number.isFinite(zone.gravityOverride)) {
+      errors.push({
+        path: `zones.${zone.id}.gravityOverride`,
+        message: `Zone "${zone.id}" gravityOverride (${zone.gravityOverride}) must be a finite number`,
+      });
+    }
+
+    // 64. Sky + lighting metadata sanity (only when set).
+    if (zone.directionalLightYaw !== undefined) {
+      if (!Number.isFinite(zone.directionalLightYaw) || zone.directionalLightYaw < -360 || zone.directionalLightYaw > 360) {
+        errors.push({
+          path: `zones.${zone.id}.directionalLightYaw`,
+          message: `Zone "${zone.id}" directionalLightYaw (${zone.directionalLightYaw}) must be finite and within [-360, 360]`,
+        });
+      }
+    }
+    if (zone.directionalLightPitch !== undefined) {
+      if (!Number.isFinite(zone.directionalLightPitch) || zone.directionalLightPitch < -90 || zone.directionalLightPitch > 90) {
+        errors.push({
+          path: `zones.${zone.id}.directionalLightPitch`,
+          message: `Zone "${zone.id}" directionalLightPitch (${zone.directionalLightPitch}) must be finite and within [-90, 90]`,
+        });
+      }
+    }
+    if (zone.skyLightIntensity !== undefined) {
+      if (!Number.isFinite(zone.skyLightIntensity) || zone.skyLightIntensity < 0) {
+        errors.push({
+          path: `zones.${zone.id}.skyLightIntensity`,
+          message: `Zone "${zone.id}" skyLightIntensity (${zone.skyLightIntensity}) must be finite and >= 0`,
+        });
+      }
+    }
+
+    // 65. collisionType runtime guard (TS enforces at compile time for authored code,
+    // but imported JSON can still smuggle in stray strings).
+    if (zone.collisionType !== undefined && !VALID_COLLISION_TYPES.has(zone.collisionType)) {
+      errors.push({
+        path: `zones.${zone.id}.collisionType`,
+        message: `Zone "${zone.id}" has unsupported collisionType "${zone.collisionType}" (expected one of: walkable, water, hazard, void, custom)`,
+      });
+    }
   }
 
   // Structured warning counts for callers that want a quick health check

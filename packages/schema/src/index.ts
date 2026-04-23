@@ -21,6 +21,7 @@
 export type {
   WorldMap, Zone, ZoneExit, ZoneElevationRange, Interactable,
   ZoneConnection, ConnectionKind, Landmark,
+  TransitionEntity, TransitionEntityType,
 } from './spatial.js';
 
 export type {
@@ -32,7 +33,13 @@ export type {
   EntityRole, EntityStats, EntityResources, EntityAI,
   EntityPlacement, ItemSlot, ItemRarity, ItemPlacement,
   EncounterAnchor, SpawnPoint, CraftingStation, MarketNode,
+  LootTable, LootTableEntry,
 } from './entities.js';
+
+export type {
+  SpawnConditionType, SpawnConditionNode,
+} from './spawn-condition.js';
+export { parseSpawnCondition, validateSpawnCondition } from './spawn-condition.js';
 
 export type {
   ScalarValue, DialogueCondition, DialogueEffect,

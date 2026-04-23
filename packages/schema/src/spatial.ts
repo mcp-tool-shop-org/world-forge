@@ -39,6 +39,58 @@ export interface Zone {
   parallaxLayers?: ParallaxLayer[];
   /** Asset id of a sky / skyline backdrop for 2.5D vertical framing. */
   skylineRef?: string;
+
+  // ── Physics overrides (SCH-FT-006) ──────────────────────────
+  /** Gravity magnitude override (m/s²). Leave undefined to inherit project/engine default. */
+  gravityOverride?: number;
+  /** Gravity direction. Default is 'down' (negative Z). */
+  gravityDirection?: 'down' | 'up' | 'none';
+  /** Physics mode that the engine should apply in this zone. */
+  physicsMode?: 'normal' | 'platformer' | 'zero-g' | 'aquatic';
+
+  // ── Sky + lighting (UE-FT-002 schema half) ──────────────────
+  // Hints for exporters (UE5 Sky Atmosphere / Godot WorldEnvironment). The
+  // 2D editor may not have UI for these yet — they flow through the schema
+  // so downstream exporters in Wave 2 can consume them.
+  /** Asset id for UE5 Sky Atmosphere preset / Godot equivalent. */
+  skyAtmosphereRef?: string;
+  /** Directional light yaw in degrees (sun direction). */
+  directionalLightYaw?: number;
+  /** Directional light pitch in degrees. */
+  directionalLightPitch?: number;
+  /** Sky light intensity multiplier. */
+  skyLightIntensity?: number;
+  /** Time-of-day key for engine presets ('dawn' | 'day' | 'dusk' | 'night' | ...). */
+  timeOfDay?: string;
+
+  // ── Collision hint (UE-FT-003 schema half) ──────────────────
+  /** Collision channel hint for engine runtime. */
+  collisionType?: 'walkable' | 'water' | 'hazard' | 'void' | 'custom';
+}
+
+/** Kind of vertical/spatial transition a TransitionEntity represents. */
+export type TransitionEntityType = 'elevator' | 'warp' | 'transporter' | 'cargo-lift' | 'stairwell';
+
+/**
+ * A placed transition — elevator, warp gate, transporter pad, cargo lift, or stairwell —
+ * that moves the player between two zones. Richer than a ZoneConnection because it
+ * carries presentation metadata (animation key, travel duration, grid anchor).
+ */
+export interface TransitionEntity {
+  id: string;
+  zoneId: string;
+  targetZoneId: string;
+  type: TransitionEntityType;
+  gridX?: number;
+  gridY?: number;
+  /** Display label (e.g. "Deck 3 → Deck 5 Lift"). */
+  label?: string;
+  /** Optional animation key for UE5 Sequencer / Godot AnimationPlayer. */
+  animation?: string;
+  /** Travel duration hint, in seconds. Must be finite and >= 0 when present. */
+  durationSeconds?: number;
+  /** Free-form tags. */
+  tags?: string[];
 }
 
 /**

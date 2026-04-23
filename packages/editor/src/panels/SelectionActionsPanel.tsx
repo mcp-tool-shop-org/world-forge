@@ -51,6 +51,33 @@ export function SelectionActionsPanel() {
     setTagInput('');
   };
 
+  /**
+   * ED-FT-005: atomic batch elevation set across all selected zones. Single
+   * undoable mutation — if the user hits undo once, the whole batch reverts.
+   */
+  const handleSetElevation = () => {
+    const raw = prompt(`Set elevation (meters) for ${zoneCount} selected zone${zoneCount > 1 ? 's' : ''}. Leave blank to clear.`);
+    if (raw == null) return;
+    const trimmed = raw.trim();
+    let elevation: number | undefined;
+    if (trimmed === '') {
+      elevation = undefined;
+    } else {
+      const n = Number(trimmed);
+      if (!Number.isFinite(n)) {
+        alert('Invalid elevation. Enter a finite number or leave blank to clear.');
+        return;
+      }
+      elevation = n;
+    }
+    updateProject((p) => ({
+      ...p,
+      zones: p.zones.map((z) =>
+        selection.zones.includes(z.id) ? { ...z, elevation } : z,
+      ),
+    }), `Set elevation on ${zoneCount} zone${zoneCount > 1 ? 's' : ''}`);
+  };
+
   const handleDeleteAll = () => {
     if (!confirm(`Delete ${zoneCount} zones? This cannot be undone.`)) return;
     updateProject((p) => {
@@ -154,6 +181,18 @@ export function SelectionActionsPanel() {
               />
               <button onClick={handleAddTag} style={smallBtn}>Add</button>
             </div>
+          </div>
+
+          {/* ED-FT-005: batch elevation */}
+          <div style={{ marginBottom: 8 }}>
+            <button
+              data-testid="batch-set-elevation"
+              onClick={handleSetElevation}
+              style={{ ...smallBtn, width: '100%' }}
+              title="Set elevation for all selected zones (single undo)"
+            >
+              Set elevation for {zoneCount} zone{zoneCount > 1 ? 's' : ''}
+            </button>
           </div>
 
           {/* Delete all selected zones */}

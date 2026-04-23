@@ -1,10 +1,10 @@
 // project.ts — WorldProject container type
 
-import type { WorldMap, Zone, ZoneConnection, Landmark } from './spatial.js';
+import type { WorldMap, Zone, ZoneConnection, Landmark, TransitionEntity } from './spatial.js';
 import type { District, FactionPresence, PressureHotspot } from './districts.js';
 import type {
   EntityPlacement, ItemPlacement, EncounterAnchor,
-  SpawnPoint, CraftingStation, MarketNode,
+  SpawnPoint, CraftingStation, MarketNode, LootTable,
 } from './entities.js';
 import type { DialogueDefinition } from './dialogue.js';
 import type { PlayerTemplate } from './player-template.js';
@@ -68,4 +68,15 @@ export interface WorldProject {
   ambientLayers: AmbientLayer[];
   assets: AssetEntry[];
   assetPacks: AssetPack[];
+
+  /**
+   * Weighted loot pools for containers, kills, and chests. Additive since v4.3 —
+   * existing projects without this field validate normally.
+   */
+  lootTables?: LootTable[];
+  /**
+   * Placed elevator / warp / transporter / cargo-lift / stairwell transitions.
+   * Additive since v4.3 — existing projects without this field validate normally.
+   */
+  transitions?: TransitionEntity[];
 }

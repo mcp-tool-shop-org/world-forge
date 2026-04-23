@@ -2,7 +2,7 @@
 
 import type { HitResult } from './hit-testing.js';
 import type { SpeedPanelMacro, MacroExecutionResult } from './speed-panel-actions.js';
-import type { WorldProject, ZoneConnection } from '@world-forge/schema';
+import type { WorldProject, ZoneConnection, Zone } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
 import type { RightTab, EditorTool } from './store/editor-store.js';
 import { frameBounds } from './viewport.js';
@@ -29,6 +29,10 @@ export interface ExecuteStores {
   duplicateSelected: (sel: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => unknown;
   removeConnection: (fromId: string, toId: string) => void;
   addConnection: (conn: ZoneConnection) => void;
+  /** ED-FT-005: update a single zone (used by the set-elevation speed action). */
+  updateZone?: (zoneId: string, updates: Partial<Zone>) => void;
+  /** ED-FT-005: optional prompt shim so tests can inject a deterministic value. */
+  promptFn?: (message: string) => string | null;
 
   // Project data (read-only)
   project: WorldProject;
@@ -151,6 +155,25 @@ export function executeAction(
         }
       }
       return { executed: true };
+
+    case 'set-elevation': {
+      if (context?.type !== 'zone') return { executed: false };
+      if (!stores.updateZone) return { executed: false };
+      const ask = stores.promptFn ?? ((msg) => (typeof globalThis.prompt === 'function' ? globalThis.prompt(msg) : null));
+      const raw = ask(`Set elevation (meters) for zone ${context.id}. Leave blank to clear.`);
+      if (raw == null) return { executed: false };
+      const trimmed = raw.trim();
+      let elevation: number | undefined;
+      if (trimmed === '') {
+        elevation = undefined;
+      } else {
+        const n = Number(trimmed);
+        if (!Number.isFinite(n)) return { executed: false };
+        elevation = n;
+      }
+      stores.updateZone(context.id, { elevation });
+      return { executed: true };
+    }
 
     default:
       return { executed: false };

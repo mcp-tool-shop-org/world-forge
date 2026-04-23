@@ -14,7 +14,7 @@ export function SpeedPanel() {
   const { speedPanelPosition, speedPanelContext, closeSpeedPanel, speedPanelEditMode, toggleSpeedPanelEditMode,
     selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     setRightTab, setTool, setConnectionStart, setViewport, clearSelection } = useEditorStore();
-  const { project, removeSelected, duplicateSelected, removeConnection, addConnection } = useProjectStore();
+  const { project, removeSelected, duplicateSelected, removeConnection, addConnection, updateZone } = useProjectStore();
   const { pinnedIds, togglePin, reorderPin, addRecent, recentIds,
     groups, addGroup, updateGroup, removeGroup, addActionToGroup, removeActionFromGroup,
     macros, addMacro, updateMacro, removeMacro, addStepToMacro, removeStepFromMacro, reorderMacroStep,
@@ -76,10 +76,10 @@ export function SpeedPanel() {
   const stores: ExecuteStores = useMemo(() => ({
     selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     clearSelection, setRightTab, setTool, setConnectionStart, setViewport,
-    removeSelected, duplicateSelected, removeConnection, addConnection, project,
+    removeSelected, duplicateSelected, removeConnection, addConnection, project, updateZone,
   }), [selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     clearSelection, setRightTab, setTool, setConnectionStart, setViewport,
-    removeSelected, duplicateSelected, removeConnection, addConnection, project]);
+    removeSelected, duplicateSelected, removeConnection, addConnection, project, updateZone]);
 
   const execute = useCallback((actionId: string) => {
     closeSpeedPanel();

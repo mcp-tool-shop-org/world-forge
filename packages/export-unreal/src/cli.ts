@@ -17,13 +17,15 @@ Options:
   --help             Show this help
 
 Produces (under --out):
-  pack.json                  — manifest (id, name, version, source project, tile size, format version)
-  zones/<id>.json            — one Primary Data Asset JSON per zone
-  districts/<id>.json        — one per district
-  actors/manifest.json       — entity placements grouped by zone, BP-class tag per role
-  connections.json           — ZoneConnection → LevelStreamingHint
-  world-partition.json       — grid cell hints (gridWidth/gridHeight → UE cells)
-  fidelity.json              — what was lossless / approximated / dropped`;
+  pack.json                      — manifest (id, name, version, source project, tile size, format version)
+  zones/<id>.json                — one Primary Data Asset JSON per zone
+  districts/<id>.json            — one per district
+  actors/manifest.json           — entity placements grouped by zone, BP-class tag per role
+  actors/parallax-manifest.json  — one parallax actor per ParallaxLayer across all zones
+  actors/transitions.json        — placed transition entities (elevators, warps, lifts)
+  connections.json               — ZoneConnection → LevelStreamingHint
+  world-partition.json           — grid cell hints (gridWidth/gridHeight → UE cells)
+  fidelity.json                  — what was lossless / approximated / dropped`;
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -104,6 +106,14 @@ async function main(): Promise<void> {
   await writeFile(join(resolvedOut, 'connections.json'), JSON.stringify(result.contentPack.Connections, null, 2));
   await writeFile(join(resolvedOut, 'fidelity.json'), JSON.stringify(result.fidelity, null, 2));
   await writeFile(join(resolvedOut, 'actors', 'manifest.json'), JSON.stringify(result.contentPack.Actors, null, 2));
+  await writeFile(
+    join(resolvedOut, 'actors', 'parallax-manifest.json'),
+    JSON.stringify(result.contentPack.Parallax, null, 2),
+  );
+  await writeFile(
+    join(resolvedOut, 'actors', 'transitions.json'),
+    JSON.stringify(result.contentPack.Transitions, null, 2),
+  );
 
   // UE-B-006: zone + district writes are independent — parallelize them so I/O
   // overlap rather than serializing on each fs.write.

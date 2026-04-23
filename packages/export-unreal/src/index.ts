@@ -28,6 +28,16 @@ export type {
   UnrealWorldPartitionHint, ConvertWorldPartitionResult,
 } from './convert-world-partition.js';
 
+export { convertParallax } from './convert-parallax.js';
+export type {
+  UnrealParallaxActor, UnrealParallaxManifest, ConvertParallaxResult,
+} from './convert-parallax.js';
+
+export { convertTransitions } from './convert-transitions.js';
+export type {
+  UnrealTransitionEntity, ConvertTransitionsResult,
+} from './convert-transitions.js';
+
 export {
   pixelsToUnrealCm, elevationToZ, worldForgeToUnrealAxis, gridToUnrealAxis,
   DEFAULT_TILE_SIZE_CM,

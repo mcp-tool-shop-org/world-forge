@@ -13,6 +13,8 @@ import { convertDistricts, type UnrealDistrictDataAsset } from './convert-distri
 import { convertEntities, type UnrealActorManifest } from './convert-entities.js';
 import { convertConnections, type UnrealLevelStreamingHint } from './convert-connections.js';
 import { convertWorldPartition, type UnrealWorldPartitionHint } from './convert-world-partition.js';
+import { convertParallax, type UnrealParallaxManifest } from './convert-parallax.js';
+import { convertTransitions, type UnrealTransitionEntity } from './convert-transitions.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_CM } from './coordinate-transform.js';
 
@@ -53,6 +55,10 @@ export interface UnrealContentPack {
   Actors: UnrealActorManifest;
   Connections: UnrealLevelStreamingHint[];
   WorldPartition: UnrealWorldPartitionHint;
+  /** UE-FT-004: one actor entry per parallax layer across all zones. */
+  Parallax: UnrealParallaxManifest;
+  /** SCH-FT-004 passthrough: placed transition entities with presentation metadata. */
+  Transitions: UnrealTransitionEntity[];
 }
 
 export interface UnrealExportOptions {
@@ -108,12 +114,16 @@ export function exportToUnreal(
   let entitiesResult: ReturnType<typeof convertEntities>;
   let connectionsResult: ReturnType<typeof convertConnections>;
   let worldPartitionResult: ReturnType<typeof convertWorldPartition>;
+  let parallaxResult: ReturnType<typeof convertParallax>;
+  let transitionsResult: ReturnType<typeof convertTransitions>;
   try {
     zonesResult = convertZones(project, tileSizeCm);
     districtsResult = convertDistricts(project);
     entitiesResult = convertEntities(project, tileSizeCm);
     connectionsResult = convertConnections(project);
     worldPartitionResult = convertWorldPartition(project, tileSizeCm);
+    parallaxResult = convertParallax(project, tileSizeCm);
+    transitionsResult = convertTransitions(project, tileSizeCm);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -132,6 +142,8 @@ export function exportToUnreal(
   fidelityEntries.push(...entitiesResult.fidelity);
   fidelityEntries.push(...connectionsResult.fidelity);
   fidelityEntries.push(...worldPartitionResult.fidelity);
+  fidelityEntries.push(...parallaxResult.fidelity);
+  fidelityEntries.push(...transitionsResult.fidelity);
   const worldPartition = worldPartitionResult.hint;
 
   // Advisory warnings (non-fatal).
@@ -155,6 +167,8 @@ export function exportToUnreal(
     Actors: entitiesResult.manifest,
     Connections: connectionsResult.connections,
     WorldPartition: worldPartition,
+    Parallax: parallaxResult.manifest,
+    Transitions: transitionsResult.transitions,
   };
 
   return {

@@ -95,6 +95,10 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   // -- Multi-zone --
   { id: 'merge-zones',      label: 'Merge Zones',           icon: 'M',  category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },
 
+  // ED-FT-005: single-zone elevation action. Uses native prompt() for speed; the
+  // full editor is in ZoneProperties.
+  { id: 'set-elevation',    label: 'Set Elevation',         icon: '^',  category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false },
+
   // -- Review --
   { id: 'open-review',      label: 'Open Review',           icon: '\uD83D\uDCCB', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
   { id: 'export-summary',   label: 'Export Summary',        icon: '\uD83D\uDCC4', category: 'global', contextFilter: (h) => h === null, macroSafe: true },

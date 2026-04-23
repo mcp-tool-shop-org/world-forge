@@ -68,6 +68,48 @@ export interface ItemPlacement {
   grantedTags?: string[];
   grantedVerbs?: string[];
   iconId?: string;
+  /**
+   * Optional reference to a LootTable. When set, the engine rolls the table
+   * to populate the container/item drop instead of (or in addition to) the
+   * single-item placement fields above.
+   */
+  lootTableId?: string;
+}
+
+/**
+ * Entry in a loot table — a single pool member with a drop weight.
+ *
+ * LootTables power weighted item drops from containers, kills, or chests.
+ * Each entry contributes its `weight` to a weighted pick; higher weight =
+ * more likely to be rolled. Optional `quantity` randomizes stack size, and
+ * `condition` gates eligibility at roll time (same grammar as
+ * EntityPlacement.spawnCondition — see spawn-condition.ts).
+ */
+export interface LootTableEntry {
+  /** Reference to an ItemPlacement.itemId OR a free-form item id the engine resolves. */
+  itemId: string;
+  /** Relative weight for weighted pick. Must be > 0 and finite. */
+  weight: number;
+  /** Optional quantity range [min, max]. If min===max, drops exactly that count. */
+  quantity?: { min: number; max: number };
+  /** Optional condition under which this entry is eligible (reuses SpawnCondition grammar — see spawn-condition.ts). */
+  condition?: string;
+  /** Optional rarity tier for UI display. */
+  rarity?: ItemRarity;
+}
+
+/**
+ * A weighted pool of item entries. Engines roll `rolls` times (default 1)
+ * and pick one entry per roll based on weights.
+ */
+export interface LootTable {
+  id: string;
+  /** Total rolls per open / kill / chest. Default 1. Must be >= 1 when provided. */
+  rolls?: number;
+  /** Weighted entries. Must contain at least one entry. */
+  entries: LootTableEntry[];
+  /** Tags for filtering / discovery. */
+  tags?: string[];
 }
 
 /** A point where encounters can trigger. */

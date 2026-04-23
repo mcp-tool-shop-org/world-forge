@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/export-unreal",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "Export pipeline between WorldProject and an Unreal Engine 5 ContentPack (2.5D aware).",
   "type": "module",
   "main": "dist/index.js",

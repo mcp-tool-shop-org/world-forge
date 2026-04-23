@@ -15,7 +15,8 @@ export type FidelitySeverity = 'info' | 'warning' | 'error';
 export type FidelityDomain =
   | 'zones' | 'districts' | 'entities' | 'items'
   | 'connections' | 'world-partition' | 'assets' | 'parallax'
-  | 'elevation' | 'skyline' | 'dialogues' | 'world';
+  | 'elevation' | 'skyline' | 'dialogues' | 'world'
+  | 'lighting' | 'collision' | 'physics' | 'transitions';
 
 export interface FidelityEntry {
   level: FidelityLevel;

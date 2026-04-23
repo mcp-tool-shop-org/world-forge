@@ -10,3 +10,5 @@ export { TileLayerRenderer } from './tile-renderer.js';
 export { MinimapRenderer } from './minimap.js';
 export type { MinimapOptions } from './minimap.js';
 export type { DiagnosticInfo } from './diagnostics.js';
+export { DiagnosticsOverlay } from './diagnostics-overlay.js';
+export type { DiagnosticsOverlayOptions } from './diagnostics-overlay.js';
