@@ -45,6 +45,11 @@ export function ConnectionProperties() {
   // EUB-005: warn when a connected zone is missing (deleted)
   if (!fromZone) console.warn(`[ConnectionProperties] fromZone missing: ${conn.fromZoneId}`);
   if (!toZone) console.warn(`[ConnectionProperties] toZone missing: ${conn.toZoneId}`);
+  // ED-B-005: if either endpoint has been deleted, editing the connection's
+  // other fields (kind, condition, direction) does more harm than good — the
+  // connection is orphaned and should either be deleted or repaired by
+  // restoring a zone. Freeze the editor and surface a clear message.
+  const endpointMissing = !fromZone || !toZone;
 
   const handleSwapDirection = () => {
     // Atomic: remove old + add reversed in single updateProject
@@ -64,6 +69,19 @@ export function ConnectionProperties() {
   return (
     <div>
       <PanelHeader title="Connection Properties" />
+      {endpointMissing && (
+        <div
+          data-testid="connection-orphaned-banner"
+          style={{
+            fontSize: 11, color: '#f85149', background: '#3d1214',
+            border: '1px solid #f85149', borderRadius: 4,
+            padding: '6px 8px', marginBottom: 8, lineHeight: 1.4,
+          }}
+        >
+          One or both zones referenced by this connection have been deleted.
+          Delete this connection or restore the zones to continue editing.
+        </div>
+      )}
       <label style={labelStyle}>From
         <input style={inputStyle} value={fromZone?.name ?? conn.fromZoneId} readOnly />
         {!fromZone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
@@ -73,11 +91,11 @@ export function ConnectionProperties() {
         {!toZone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>Label
-        <input style={inputStyle} value={conn.label ?? ''}
+        <input style={inputStyle} value={conn.label ?? ''} disabled={endpointMissing}
           onChange={(e) => updateConnection(conn.fromZoneId, conn.toZoneId, { label: e.target.value || undefined })} />
       </label>
       <label style={labelStyle}>Kind
-        <select style={inputStyle} value={conn.kind ?? 'passage'}
+        <select style={inputStyle} value={conn.kind ?? 'passage'} disabled={endpointMissing}
           onChange={(e) => {
             const v = e.target.value as ConnectionKind;
             updateConnection(conn.fromZoneId, conn.toZoneId, { kind: v === 'passage' ? undefined : v });
@@ -88,15 +106,15 @@ export function ConnectionProperties() {
         </select>
       </label>
       <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <input type="checkbox" checked={conn.bidirectional}
+        <input type="checkbox" checked={conn.bidirectional} disabled={endpointMissing}
           onChange={(e) => updateConnection(conn.fromZoneId, conn.toZoneId, { bidirectional: e.target.checked })} />
         Bidirectional
       </label>
       <label style={labelStyle}>Condition
-        <input style={inputStyle} value={conn.condition ?? ''} placeholder="e.g. has-tag:chapel-key"
+        <input style={inputStyle} value={conn.condition ?? ''} placeholder="e.g. has-tag:chapel-key" disabled={endpointMissing}
           onChange={(e) => updateConnection(conn.fromZoneId, conn.toZoneId, { condition: e.target.value || undefined })} />
       </label>
-      {!conn.bidirectional && (
+      {!conn.bidirectional && !endpointMissing && (
         <button style={{ ...btnStyle, background: '#30363d', marginBottom: 4 }} onClick={handleSwapDirection}>
           Swap Direction
         </button>

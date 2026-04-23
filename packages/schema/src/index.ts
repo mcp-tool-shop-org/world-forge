@@ -1,4 +1,22 @@
-// @world-forge/schema — spatial data types for world authoring
+/**
+ * @world-forge/schema — spatial data types for world authoring
+ *
+ * ── Schema stability contract ──────────────────────────────
+ * The WorldProject schema is semver-stable within major versions. Breaking
+ * changes (removed fields, renamed required fields, changed enum tightening)
+ * bump the major version. Additive changes (new optional fields, new union
+ * variants) ship as minor or patch releases.
+ *
+ *   - v4.x is backward-compatible with all v4.0+ projects.
+ *   - Runtime will accept a v4.0 JSON under v4.2 without modification; new
+ *     optional fields (e.g. 2.5D parallax layers, skylineRef) simply default
+ *     to undefined.
+ *   - v5.0+ will ship with a migration tool that reads earlier major projects
+ *     and writes a v5 JSON. Do not rely on hand-editing to cross a major.
+ *
+ * When evolving the schema, prefer additive, optional-field changes so that
+ * authored worlds keep opening without a migration pass.
+ */
 
 export type {
   WorldMap, Zone, ZoneExit, ZoneElevationRange, Interactable,

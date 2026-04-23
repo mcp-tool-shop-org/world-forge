@@ -5,27 +5,33 @@ sidebar:
   order: 3
 ---
 
-World Forge is a monorepo with npm workspaces and TypeScript project references. Four packages form a clean dependency graph.
+World Forge is a monorepo with npm workspaces and TypeScript project references. Six packages form a clean dependency graph — five shipping today plus one reserved stub for the planned Godot 4 lane.
 
 ## Package Map
 
 ```
 packages/
-  schema/          @world-forge/schema        — types + validation
-  export-ai-rpg/   @world-forge/export-ai-rpg — engine export + CLI
-  renderer-2d/     @world-forge/renderer-2d   — PixiJS canvas
-  editor/          @world-forge/editor         — React web app
+  schema/          @world-forge/schema         — spatial types, validation, 2.5D fields
+  export-ai-rpg/   @world-forge/export-ai-rpg  — AI RPG Engine export pipeline + CLI
+  export-unreal/   @world-forge/export-unreal  — Unreal Engine 5 export pipeline + CLI (2.5D aware)
+  export-godot/    @world-forge/export-godot   — (planned) Godot 4 export lane, stub only
+  renderer-2d/     @world-forge/renderer-2d    — PixiJS 2D canvas renderer
+  editor/          @world-forge/editor         — React web authoring app
 ```
+
+The **2.5D fields** on `Zone` — `elevation`, `elevationRange`, `parallaxLayers`, `skylineRef` — are what the Unreal lane consumes to place actors on a Z-up axis with depth-ordered parallax backdrops. The AI RPG Engine lane ignores them; the Godot lane (planned) will reuse them.
 
 ## Dependency Graph
 
 ```
 schema ← renderer-2d
 schema ← export-ai-rpg
-schema + renderer-2d + export-ai-rpg ← editor
+schema ← export-unreal
+schema ← export-godot (stub)
+schema + renderer-2d + export-ai-rpg + export-unreal ← editor
 ```
 
-Schema is the foundation. The renderer and export packages depend only on schema. The editor depends on all three.
+Schema is the foundation. Each export lane depends only on schema — they are peers, not layered. The renderer depends only on schema. The editor depends on schema, the renderer, and every shipping export lane.
 
 ## @world-forge/schema
 
@@ -40,6 +46,20 @@ The type authority. Defines every structure in a `WorldProject`:
 - **Visual types** — `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
 - **Container** — `WorldProject` interface that holds everything
 - **Validation** — `validateProject()` with 54 structural checks (Map-based O(n) lookups, `warningCount`); `advisoryValidation()` for mode-specific suggestions plus metadata completeness and asset naming checks
+
+## @world-forge/export-unreal
+
+Peer export lane that converts a `WorldProject` into an Unreal Engine 5 content pack tuned for 2.5D games. Emits `pack.json`, per-zone and per-district Primary Data Asset JSON, a grouped actor spawn manifest, level-streaming hints per connection, World Partition cell hints, and a structured fidelity report. The `world-forge-export-unreal` CLI wraps the pipeline with `--out`, `--tile-size-cm`, `--validate-only`, and `--verbose` flags.
+
+**2.5D fields** — `Zone.elevation`, `elevationRange`, `parallaxLayers`, and `skylineRef` are preserved and converted into UE cm / Z-up coordinates.
+
+**Coordinate transform** — pure functions `pixelsToUnrealCm`, `elevationToZ`, `worldForgeToUnrealAxis`, `gridToUnrealAxis`. Default world scale is 1 tile = 100 cm. Y-down (World Forge) becomes Z-up (Unreal) with Y flipped.
+
+**Round-trip import** — `importFromUnreal` reconstructs a WorldProject from an Unreal pack; gameplay-only data (dialogues, progression, builds) is flagged as dropped in the fidelity report.
+
+## @world-forge/export-godot
+
+Reserved workspace slot for the planned Godot 4 export lane (Fractured Road). Not yet implemented — the package ships today only as a stub so tooling and the editor can reference it without workspace churn when the lane lands.
 
 ## @world-forge/export-ai-rpg
 

@@ -347,13 +347,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (pt.defaultArchetypeId && !project.buildCatalog) {
       errors.push({
         path: 'playerTemplate.defaultArchetypeId',
-        message: `Player template references defaultArchetypeId "${pt.defaultArchetypeId}" but no buildCatalog exists`,
+        message: `Player template references archetype "${pt.defaultArchetypeId}" but no buildCatalog is defined. Add a buildCatalog with archetypes[], or clear playerTemplate.defaultArchetypeId.`,
       });
     }
     if (pt.defaultBackgroundId && !project.buildCatalog) {
       errors.push({
         path: 'playerTemplate.defaultBackgroundId',
-        message: `Player template references defaultBackgroundId "${pt.defaultBackgroundId}" but no buildCatalog exists`,
+        message: `Player template references background "${pt.defaultBackgroundId}" but no buildCatalog is defined. Add a buildCatalog with backgrounds[], or clear playerTemplate.defaultBackgroundId.`,
       });
     }
 
@@ -362,7 +362,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       if (!project.buildCatalog.archetypes.some((a) => a.id === pt.defaultArchetypeId)) {
         errors.push({
           path: 'playerTemplate.defaultArchetypeId',
-          message: `Player template default archetype "${pt.defaultArchetypeId}" not found in build catalog`,
+          message: `Player template references archetype "${pt.defaultArchetypeId}" which is not in buildCatalog.archetypes[]. Add it to the catalog, or pick an existing archetype id.`,
         });
       }
     }
@@ -372,7 +372,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       if (!project.buildCatalog.backgrounds.some((b) => b.id === pt.defaultBackgroundId)) {
         errors.push({
           path: 'playerTemplate.defaultBackgroundId',
-          message: `Player template default background "${pt.defaultBackgroundId}" not found in build catalog`,
+          message: `Player template references background "${pt.defaultBackgroundId}" which is not in buildCatalog.backgrounds[]. Add it to the catalog, or pick an existing background id.`,
         });
       }
     }
@@ -551,6 +551,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // Helper: check asset ref exists and has correct kind.
   // Provides full source context (who references what, which field, expected kind)
   // so the user can locate and fix the issue quickly.
+  //
+  // Null/undefined refs are INTENTIONALLY SKIPPED — they express "field present
+  // in schema but intentionally unset" (optional-field semantics). Typical
+  // callers: zone.backgroundId, zone.tilesetId, entity.portraitId, entity.spriteId,
+  // item.iconId, landmark.iconId. These become user-facing "missing asset"
+  // warnings only at export time, not at schema-validation time.
   function checkAssetRef(refId: string | undefined, expectedKind: string, path: string, label: string) {
     // Null/undefined refId means the field is optional and unset — not an error.
     // (e.g. zone.backgroundId, entity.portraitId are optional asset bindings)

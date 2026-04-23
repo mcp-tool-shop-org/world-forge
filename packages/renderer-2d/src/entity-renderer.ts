@@ -2,6 +2,7 @@
 
 import { Container, Graphics, Text } from 'pixi.js';
 import type { EntityPlacement, EntityRole } from '@world-forge/schema';
+import type { DiagnosticInfo } from './diagnostics.js';
 
 const ROLE_COLORS: Record<EntityRole, number> = {
   'npc': 0x4a9eff,
@@ -41,6 +42,18 @@ export class EntityRenderer {
     if (this.destroyed) return;
     this.destroyed = true;
     this.container.destroy({ children: true });
+  }
+
+  /**
+   * INF-B-008: Lifecycle observability. Safe to call at any time, including
+   * after destroy(). Never mutates state.
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return {
+      className: 'EntityRenderer',
+      destroyed: this.destroyed,
+      childCount: this.container.children.length,
+    };
   }
 
   update(entities: EntityPlacement[], zonePositions: Map<string, { x: number; y: number }>): void {

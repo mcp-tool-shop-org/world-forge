@@ -131,4 +131,88 @@ describe('WorldViewport', () => {
     vp.showGrid = false;
     expect(vp.showGrid).toBe(false);
   });
+
+  describe('double-init guard (INF-B-002)', () => {
+    it('throws a clear error when init() is called twice', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      const el = makeContainer();
+      await vp.init(el);
+      await expect(vp.init(el)).rejects.toThrow(
+        /WorldViewport already initialized/,
+      );
+    });
+
+    it('isMounted() returns false before init and true after', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      expect(vp.isMounted()).toBe(false);
+      await vp.init(makeContainer());
+      expect(vp.isMounted()).toBe(true);
+    });
+
+    it('isMounted() returns false after destroy', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      await vp.init(makeContainer());
+      vp.destroy();
+      expect(vp.isMounted()).toBe(false);
+    });
+
+    it('does NOT set initialized flag if init fails', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      (vp.app as unknown as { _initFn: () => Promise<void> })._initFn = () =>
+        Promise.reject(new Error('boom'));
+      await expect(vp.init(makeContainer())).rejects.toThrow();
+      expect(vp.isMounted()).toBe(false);
+    });
+  });
+
+  describe('post-destroy guard (INF-B-003)', () => {
+    it('pan is a no-op after destroy and warns once', () => {
+      const vp = new WorldViewport(defaultOpts);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vp.destroy();
+      vp.pan(10, 20);
+      vp.pan(5, 5);
+      vp.pan(-3, -3);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+      warnSpy.mockRestore();
+    });
+
+    it('zoom is a no-op after destroy', () => {
+      const vp = new WorldViewport(defaultOpts);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vp.destroy();
+      const before = vp.zoomLevel;
+      vp.zoom(2);
+      expect(vp.zoomLevel).toBe(before);
+      warnSpy.mockRestore();
+    });
+
+    it('centerOnTile is a no-op after destroy', () => {
+      const vp = new WorldViewport(defaultOpts);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vp.destroy();
+      expect(() => vp.centerOnTile(5, 5)).not.toThrow();
+      warnSpy.mockRestore();
+    });
+
+    it('showGrid setter is a no-op after destroy', () => {
+      const vp = new WorldViewport(defaultOpts);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vp.destroy();
+      const before = vp.showGrid;
+      vp.showGrid = !before;
+      expect(vp.showGrid).toBe(before);
+      warnSpy.mockRestore();
+    });
+
+    it('destroy is idempotent', () => {
+      const vp = new WorldViewport(defaultOpts);
+      const spy = vi.spyOn(vp.app, 'destroy');
+      vp.destroy();
+      vp.destroy();
+      vp.destroy();
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

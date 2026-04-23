@@ -1,8 +1,12 @@
 // App.tsx — editor layout shell
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useProjectStore } from './store/project-store.js';
+import {
+  useProjectStore,
+  getLastAutoSaveError, clearLastAutoSaveError, getAutoSaveHealth,
+} from './store/project-store.js';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
+import { ToastHost, pushToast } from './ui/Toast.js';
 import { useModalStore } from './store/modal-store.js';
 import { ToolPalette } from './panels/ToolPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
@@ -106,6 +110,20 @@ export function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  // ED-B-001 + ED-B-008: poll the auto-save health + error getters each tick so the
+  // non-intrusive banner below can surface silent quota failures and oversize
+  // auto-save suspensions. A 3-second poll keeps the banner responsive without
+  // adding a zustand subscription for what is a rarely-changing diagnostic.
+  const [autoSaveErr, setAutoSaveErr] = useState<string | null>(getLastAutoSaveError());
+  const [autoSaveHealth, setAutoSaveHealth] = useState(() => getAutoSaveHealth());
+  useEffect(() => {
+    const id = setInterval(() => {
+      setAutoSaveErr(getLastAutoSaveError());
+      setAutoSaveHealth(getAutoSaveHealth());
+    }, 3000);
+    return () => clearInterval(id);
+  }, []);
+
   const losslessPct = importFidelity?.summary.losslessPercent;
 
   const tabs: { id: RightTab; label: string; badge?: string; badgeColor?: string }[] = [
@@ -165,13 +183,18 @@ export function App() {
   }, [loadProject]);
 
   const handleSave = useCallback(() => {
+    const filename = `${project.id}.json`;
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${project.id}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    // ED-B-013: confirm the save actually triggered. The download itself is
+    // opaque (browser may drop it into a downloads tray), so a short toast
+    // closes the loop.
+    pushToast(`Saved as ${filename}`, 'success', 2000);
   }, [project]);
 
   return (
@@ -245,6 +268,52 @@ export function App() {
         <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
       </div>
 
+      {/* ED-B-008: oversize auto-save warning. Persistent (no dismiss) since the
+          suspension is structural — it ends when the project shrinks. */}
+      {autoSaveHealth.oversize && (
+        <div
+          data-testid="wf-autosave-oversize-banner"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
+            background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-warning, #d29922)',
+            color: 'var(--wf-warning, #d29922)', fontSize: 12,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            Project too large for auto-save — use File {'\u2192'} Save manually. Auto-save will resume if the project shrinks.
+            {autoSaveHealth.lastBytes > 0 && (
+              <span style={{ color: 'var(--wf-text-hint)', marginLeft: 6 }}>
+                ({Math.round(autoSaveHealth.lastBytes / 1024 / 1024 * 10) / 10} MB /
+                {' '}{Math.round(autoSaveHealth.limitBytes / 1024 / 1024 * 10) / 10} MB)
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+
+      {/* ED-B-001: surface auto-save errors (typically quota) as a dismissable
+          banner. Only shown when we have a non-oversize error — oversize has its
+          own persistent banner above. */}
+      {autoSaveErr && !autoSaveHealth.oversize && (
+        <div
+          data-testid="wf-autosave-error-banner"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
+            background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-danger, #f85149)',
+            color: 'var(--wf-danger, #f85149)', fontSize: 12,
+          }}
+        >
+          <span style={{ flex: 1 }}>{autoSaveErr}</span>
+          <button
+            onClick={() => { clearLastAutoSaveError(); setAutoSaveErr(null); }}
+            aria-label="Dismiss auto-save error"
+            style={{ background: 'none', border: 'none', color: 'var(--wf-danger, #f85149)', cursor: 'pointer', fontSize: 14 }}
+          >
+            {'\u2715'}
+          </button>
+        </div>
+      )}
+
       {/* EU-004: File error banner */}
       {fileError && (
         <div style={{
@@ -255,6 +324,7 @@ export function App() {
           <span style={{ flex: 1 }}>{fileError}</span>
           <button
             onClick={() => setFileError(null)}
+            aria-label="Dismiss file error"
             style={{ background: 'none', border: 'none', color: 'var(--wf-danger, #f85149)', cursor: 'pointer', fontSize: 14 }}
           >
             {'\u2715'}
@@ -316,8 +386,13 @@ export function App() {
           </button>
           {!rightCollapsed && (
             <>
-              {/* Tab bar — scrollable to handle many tabs */}
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)', background: 'var(--wf-bg-panel)', overflowX: 'auto' }}>
+              {/* Tab bar — scrollable to handle many tabs.
+                  ED-B-007: subtle right-edge gradient hints that tabs overflow. */}
+              <div style={{ position: 'relative' }}>
+              <div
+                data-testid="wf-tab-bar"
+                style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)', background: 'var(--wf-bg-panel)', overflowX: 'auto' }}
+              >
                 {tabs.map((t) => (
                   <button
                     key={t.id}
@@ -349,6 +424,18 @@ export function App() {
                     )}
                   </button>
                 ))}
+              </div>
+              {/* ED-B-007: right-edge overflow indicator. `pointer-events:none`
+                  keeps it from swallowing clicks on the rightmost tab. */}
+              <div
+                aria-hidden="true"
+                data-testid="wf-tab-overflow-fade"
+                style={{
+                  position: 'absolute', top: 0, right: 0, bottom: 0, width: 18,
+                  pointerEvents: 'none',
+                  background: 'linear-gradient(to right, transparent, var(--wf-bg-panel))',
+                }}
+              />
               </div>
 
               {/* Tab content */}
@@ -426,6 +513,9 @@ export function App() {
       )}
 
       <ModalLayer />
+
+      {/* ED-B-*: shared toast host for transient feedback (save, stale search, etc.) */}
+      <ToastHost />
     </div>
   );
 }

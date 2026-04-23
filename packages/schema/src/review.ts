@@ -150,6 +150,41 @@ export function classifyHealth(validation: ValidationResult, depSummary: Depende
 
 // ── Validation domain classifier (schema-side, no editor import) ──
 
+/**
+ * Dedupe set for unknown-prefix warnings. Module-level so a noisy fixture or
+ * a mis-typed path only warns ONCE per unique prefix per process — health
+ * dashboards and log aggregators still see the signal without being flooded.
+ */
+const WARNED_UNKNOWN_PREFIXES = new Set<string>();
+
+/**
+ * Map a ValidationError.path to a coarse domain bucket used by the review UI.
+ *
+ * ── Path-prefix contract ───────────────────────────────────
+ * Known prefixes (order-sensitive, longest-first for overlapping roots):
+ *   - `assetPacks`          → `'packs'`
+ *   - `assets`              → `'assets'`
+ *   - `entityPlacements`    → `'entities'`
+ *   - `itemPlacements`      → `'items'`
+ *   - `dialogues`           → `'dialogue'`
+ *   - `playerTemplate`      → `'player'`
+ *   - `buildCatalog`        → `'builds'`
+ *   - `progressionTrees`    → `'progression'`
+ *
+ * Any other prefix (including `zones`, `map`, `districts`, `connections`,
+ * `encounterAnchors`, top-level metadata fields, and truly unknown paths)
+ * falls through to the `'world'` bucket — the documented catch-all.
+ *
+ * Unknown/unrecognized prefixes also emit a ONE-TIME `console.warn` per
+ * process so health dashboards notice that a new error path was introduced
+ * without a corresponding classifier update. Tests or callers that want to
+ * silence the warn should swap out `console.warn` or preload
+ * {@link WARNED_UNKNOWN_PREFIXES} with the prefix.
+ *
+ * When adding a new top-level project section, add its prefix here AND update
+ * the regression test in `__tests__/review.test.ts` so every known domain has
+ * a non-default classification.
+ */
 function classifyValidationDomain(path: string): string {
   if (path.startsWith('assetPacks')) return 'packs';
   if (path.startsWith('assets')) return 'assets';
@@ -159,7 +194,44 @@ function classifyValidationDomain(path: string): string {
   if (path.startsWith('playerTemplate')) return 'player';
   if (path.startsWith('buildCatalog')) return 'builds';
   if (path.startsWith('progressionTrees')) return 'progression';
+
+  // Fell through to the catch-all. Emit an observable signal so dashboards
+  // can catch new path shapes that were introduced without a classifier update.
+  // Dedupe on the top-level segment (everything before the first '.') so
+  // `zones.z1.field` and `zones.z2.other` only warn once for `zones`.
+  const firstDot = path.indexOf('.');
+  const prefix = firstDot === -1 ? path : path.slice(0, firstDot);
+  if (prefix && !WARNED_UNKNOWN_PREFIXES.has(prefix)) {
+    WARNED_UNKNOWN_PREFIXES.add(prefix);
+    // Known-world prefixes that we intentionally route through the catch-all
+    // (zones, map, etc.) are silenced from the warn to keep the channel clean.
+    const KNOWN_WORLD_PREFIXES = new Set([
+      'zones', 'map', 'districts', 'connections', 'encounterAnchors',
+      'spawnPoints', 'landmarks', 'factionPresences', 'pressureHotspots',
+      'craftingStations', 'marketNodes', 'tilesets', 'tileLayers',
+      'props', 'propPlacements', 'ambientLayers',
+      // Top-level metadata fields
+      'id', 'name', 'description', 'version', 'genre', 'tones', 'difficulty',
+      'narratorTone', 'mode', 'author', 'license', 'category',
+    ]);
+    if (!KNOWN_WORLD_PREFIXES.has(prefix)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[world-forge/schema] classifyValidationDomain: unknown path prefix "${prefix}" — routed to 'world'. ` +
+          `Add it to the classifier in review.ts if it deserves its own domain bucket.`,
+      );
+    }
+  }
   return 'world';
+}
+
+/**
+ * Test-only: reset the unknown-prefix warn dedupe set. Exported for regression
+ * tests that need a clean warn channel per run; not part of the public API.
+ * @internal
+ */
+export function __resetClassifyDomainWarnings(): void {
+  WARNED_UNKNOWN_PREFIXES.clear();
 }
 
 // ── Build snapshot ─────────────────────────────────────────

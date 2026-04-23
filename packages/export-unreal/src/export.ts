@@ -31,7 +31,20 @@ export interface UnrealPackMeta {
   TileSizeCm: number;
   /** Original pixel tile size from WorldProject.map.tileSize — preserved for lossless round-trip. */
   SourceTileSizePx: number;
+  /**
+   * Pack format version (semver). Distinct from `Version` (the project's iteration version).
+   * Loaders should check this to detect pack-format breakage independently of project
+   * content changes. Bumped only when the UnrealContentPack *structure* changes.
+   */
+  FormatVersion: string;
 }
+
+/**
+ * Current Unreal content-pack format version. Bumped when the structure of
+ * UnrealContentPack changes in a way that a loader must know about. This is
+ * NOT the project version.
+ */
+export const UNREAL_PACK_FORMAT_VERSION = '1.0.0';
 
 export interface UnrealContentPack {
   Meta: UnrealPackMeta;
@@ -63,28 +76,61 @@ export function exportToUnreal(
   project: WorldProject,
   options?: UnrealExportOptions,
 ): UnrealExportResult | UnrealExportError {
+  // UE-B-001: guard bad `tileSizeCm` up front with the same contract the CLI uses.
+  // This keeps API callers from ever entering a converter with a broken scale.
+  const rawTileSizeCm = options?.tileSizeCm;
+  if (rawTileSizeCm !== undefined && (!Number.isFinite(rawTileSizeCm) || rawTileSizeCm <= 0)) {
+    return {
+      success: false,
+      errors: [
+        {
+          path: 'options.tileSizeCm',
+          message: `tileSizeCm must be a positive finite number (got "${String(rawTileSizeCm)}").`,
+        },
+      ],
+    };
+  }
+
   const validation = validateProject(project);
   if (!validation.valid) {
     return { success: false, errors: validation.errors };
   }
 
-  const tileSizeCm = options?.tileSizeCm ?? DEFAULT_TILE_SIZE_CM;
+  const tileSizeCm = rawTileSizeCm ?? DEFAULT_TILE_SIZE_CM;
   const warnings: string[] = [];
   const fidelityEntries: FidelityEntry[] = [];
 
-  const zonesResult = convertZones(project, tileSizeCm);
+  // UE-B-005: wrap converter calls in a single try/catch so a converter bug
+  // surfaces as a structured ValidationError rather than a raw exception on
+  // the public API. CLI already has an outer catch; this keeps API callers safe.
+  let zonesResult: ReturnType<typeof convertZones>;
+  let districtsResult: ReturnType<typeof convertDistricts>;
+  let entitiesResult: ReturnType<typeof convertEntities>;
+  let connectionsResult: ReturnType<typeof convertConnections>;
+  let worldPartitionResult: ReturnType<typeof convertWorldPartition>;
+  try {
+    zonesResult = convertZones(project, tileSizeCm);
+    districtsResult = convertDistricts(project);
+    entitiesResult = convertEntities(project, tileSizeCm);
+    connectionsResult = convertConnections(project);
+    worldPartitionResult = convertWorldPartition(project, tileSizeCm);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      errors: [
+        {
+          path: 'converter',
+          message: `Converter failed: ${message}. Report this as a bug.`,
+        },
+      ],
+    };
+  }
+
   fidelityEntries.push(...zonesResult.fidelity);
-
-  const districtsResult = convertDistricts(project);
   fidelityEntries.push(...districtsResult.fidelity);
-
-  const entitiesResult = convertEntities(project, tileSizeCm);
   fidelityEntries.push(...entitiesResult.fidelity);
-
-  const connectionsResult = convertConnections(project);
   fidelityEntries.push(...connectionsResult.fidelity);
-
-  const worldPartitionResult = convertWorldPartition(project, tileSizeCm);
   fidelityEntries.push(...worldPartitionResult.fidelity);
   const worldPartition = worldPartitionResult.hint;
 
@@ -132,5 +178,6 @@ function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
     SourceProjectId: project.id,
     TileSizeCm: tileSizeCm,
     SourceTileSizePx: project.map.tileSize,
+    FormatVersion: UNREAL_PACK_FORMAT_VERSION,
   };
 }

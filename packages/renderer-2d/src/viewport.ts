@@ -20,6 +20,9 @@ export class WorldViewport {
   private _panX = 0;
   private _panY = 0;
   private opts: ViewportOptions;
+  private _initialized = false;
+  private _destroyed = false;
+  private _destroyedWarned = false;
 
   constructor(opts: ViewportOptions) {
     this.opts = opts;
@@ -27,7 +30,30 @@ export class WorldViewport {
     this.world = new Container();
   }
 
+  /**
+   * INF-B-003: Guard used by every public method. Returns true if the viewport
+   * has been destroyed, and emits a single console.warn the first time it fires
+   * so log floods don't drown out the signal.
+   */
+  private warnIfDestroyed(method: string): boolean {
+    if (!this._destroyed) return false;
+    if (!this._destroyedWarned) {
+      this._destroyedWarned = true;
+      console.warn(
+        `WorldViewport.${method}: viewport has been destroyed — subsequent calls will be ignored. Create a new WorldViewport instance to continue.`,
+      );
+    }
+    return true;
+  }
+
   async init(container: HTMLElement): Promise<void> {
+    // INF-B-002: init() is one-shot — double-init leaks the PixiJS Application
+    // and re-parents the world container, producing subtle, hard-to-debug bugs.
+    if (this._initialized) {
+      throw new Error(
+        'WorldViewport already initialized — call destroy() first or instantiate a new viewport.',
+      );
+    }
     try {
       await this.app.init({
         width: this.opts.width,
@@ -52,6 +78,15 @@ export class WorldViewport {
     }
     this.app.stage.addChild(this.world);
     this.drawGrid();
+    this._initialized = true;
+  }
+
+  /**
+   * INF-B-002: Returns true once init() has completed successfully. Consumers
+   * use this to decide whether it's safe to hand the viewport off to renderers.
+   */
+  isMounted(): boolean {
+    return this._initialized && !this._destroyed;
   }
 
   private drawGrid(): void {
@@ -79,17 +114,20 @@ export class WorldViewport {
   }
 
   pan(dx: number, dy: number): void {
+    if (this.warnIfDestroyed('pan')) return;
     this._panX += dx;
     this._panY += dy;
     this.world.position.set(this._panX, this._panY);
   }
 
   zoom(factor: number): void {
+    if (this.warnIfDestroyed('zoom')) return;
     this._zoom = Math.max(0.1, Math.min(5, this._zoom * factor));
     this.world.scale.set(this._zoom);
   }
 
   centerOnTile(gridX: number, gridY: number): void {
+    if (this.warnIfDestroyed('centerOnTile')) return;
     const { tileSize } = this.opts;
     const cx = this.app.screen.width / 2;
     const cy = this.app.screen.height / 2;
@@ -99,11 +137,13 @@ export class WorldViewport {
   }
 
   set showGrid(v: boolean) {
+    if (this.warnIfDestroyed('showGrid')) return;
     this._showGrid = v;
     this.drawGrid();
   }
 
   get showGrid(): boolean {
+    if (this.warnIfDestroyed('showGrid')) return this._showGrid;
     return this._showGrid;
   }
 
@@ -112,6 +152,8 @@ export class WorldViewport {
   }
 
   destroy(): void {
+    if (this._destroyed) return;
+    this._destroyed = true;
     this.app.destroy(true);
   }
 }

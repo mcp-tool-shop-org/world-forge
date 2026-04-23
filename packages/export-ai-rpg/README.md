@@ -36,6 +36,20 @@ npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
 ```
 
+## Which exporter?
+
+World Forge ships multiple engine exporters. Pick the one that matches your
+target runtime:
+
+| Exporter | Target | Use when… |
+|----------|--------|-----------|
+| `@world-forge/export-ai-rpg` (this package) | [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine) `ContentPack` | You want a text-first, systems-driven AI RPG — NPCs, districts, factions, dialogue graphs, progression trees. |
+| `@world-forge/export-unreal` | Unreal Engine 5 2.5D projects | You're building a 2.5D Unreal game and need a level/actor/data-table handoff. |
+| `@world-forge/export-godot` | Godot 4 projects | You're building a Godot 4 RPG and want scenes + resources. |
+
+If in doubt, start here (`export-ai-rpg`) — it's the reference exporter and
+produces the richest systems layer.
+
 ## What it converts
 
 | World Forge | Engine |

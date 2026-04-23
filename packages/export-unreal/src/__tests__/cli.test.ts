@@ -118,6 +118,36 @@ describe('CLI: world-forge-export-unreal', () => {
     expect(exists).toBe(false);
   });
 
+  it('--help lists the Produces: block (UE-B-007)', async () => {
+    const { code, stdout } = await runCli(['--help']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Produces');
+    expect(stdout).toContain('pack.json');
+    expect(stdout).toContain('zones/<id>.json');
+    expect(stdout).toContain('districts/<id>.json');
+    expect(stdout).toContain('actors/manifest.json');
+    expect(stdout).toContain('connections.json');
+    expect(stdout).toContain('world-partition.json');
+    expect(stdout).toContain('fidelity.json');
+  });
+
+  it('--verbose --warnings-only filters out lossless/info entries (UE-B-008)', async () => {
+    const outDir = join(tmpDir, 'warnings-only-out');
+    const { code, stdout } = await runCli([
+      validJsonPath, '--out', outDir, '--verbose', '--warnings-only',
+    ]);
+    expect(code).toBe(0);
+    // Header indicates the filter is active.
+    expect(stdout).toContain('warnings only');
+    // No lossless/info line should appear in the warnings-only block.
+    const lines = stdout.split(/\r?\n/);
+    const fidelityStart = lines.findIndex((l) => l.includes('Fidelity entries'));
+    expect(fidelityStart).toBeGreaterThan(-1);
+    for (const l of lines.slice(fidelityStart + 1)) {
+      expect(l.includes('[lossless/info]')).toBe(false);
+    }
+  });
+
   it('happy-path export writes the full Unreal pack layout under --out', async () => {
     const outDir = join(tmpDir, 'export-out');
     const { code, stdout } = await runCli([validJsonPath, '--out', outDir]);

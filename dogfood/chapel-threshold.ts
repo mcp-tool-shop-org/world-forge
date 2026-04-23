@@ -1,5 +1,21 @@
 // dogfood/chapel-threshold.ts — export the chapel fixture and write output files
 // Run: npx tsx dogfood/chapel-threshold.ts
+//
+// INF-B-007 [SKIP]: committed output snapshots for regression detection
+// ---------------------------------------------------------------------
+// As of v4.2.0 the generated files under dogfood/output/ are .gitignored, so
+// they are intentionally NOT tracked for snapshot-based regression diffs. The
+// decision to NOT add snapshot files here is deliberate — adding them would
+// require a real snapshot-diff CI step (normalization rules, reviewer UX,
+// per-domain tolerance) that is out of scope for a humanization pass.
+//
+// If a future release wants snapshot regression, the work is:
+//   1. Un-gitignore a whitelisted subset of dogfood/output/.
+//   2. Add a CI step that runs this dogfood script, then `git diff --exit-code`
+//      against the committed snapshots.
+//   3. Add a documented refresh path (`npm run dogfood:refresh` or similar) so
+//      intentional changes are a one-command regeneration, not a manual diff.
+// Revisit when the export surface stabilizes across all three engine lanes.
 
 import { chapelProject } from '../packages/schema/src/__tests__/fixtures/chapel-authored.js';
 import { exportToEngine } from '../packages/export-ai-rpg/src/export.js';

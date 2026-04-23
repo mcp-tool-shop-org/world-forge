@@ -2,6 +2,7 @@
 
 import { Container, Graphics } from 'pixi.js';
 import type { Zone, District } from '@world-forge/schema';
+import type { DiagnosticInfo } from './diagnostics.js';
 
 const DISTRICT_COLORS = [
   0x4a9eff, 0xff6b6b, 0x51cf66, 0xffd43b,
@@ -34,6 +35,18 @@ export class MinimapRenderer {
     if (this.destroyed) return;
     this.destroyed = true;
     this.container.destroy({ children: true });
+  }
+
+  /**
+   * INF-B-008: Lifecycle observability. Safe to call at any time, including
+   * after destroy(). Never mutates state.
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return {
+      className: 'MinimapRenderer',
+      destroyed: this.destroyed,
+      childCount: this.container.children.length,
+    };
   }
 
   update(zones: Zone[], districts: District[], viewportRect?: { x: number; y: number; w: number; h: number }): void {

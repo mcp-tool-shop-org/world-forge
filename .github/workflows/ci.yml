@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - 'packages/**'
+      - 'site/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/**'
   pull_request:
     paths:
       - 'packages/**'
+      - 'site/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/**'
@@ -34,16 +36,48 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # INF-B-004: Coverage runs every matrix leg so artifacts are uploaded
+      # unconditionally, not gated to a single Node version. Codecov upload is
+      # still Node-22-only to avoid double-reporting the same coverage.
       - name: Coverage
-        if: matrix.node-version == 22
         run: npx vitest run --coverage
+      # INF-B-004: Upload coverage artifacts every run (not just the Codecov leg)
+      # so failing runs on older Node versions still yield debuggable artifacts.
+      # Vitest does not produce a separate "test output" directory by default —
+      # only the coverage/ directory is authoritative, so that's what we upload.
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-node-${{ matrix.node-version }}
+          path: coverage/
+          if-no-files-found: ignore
       # Coverage upload uses continue-on-error because Codecov availability
       # should never block CI — the token may be missing in forks or the
       # Codecov service may be temporarily unreachable.
-      - name: Upload coverage
+      - name: Upload coverage to Codecov
         if: matrix.node-version == 22
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  # INF-B-010: Type-check and build the Starlight handbook on site/** changes.
+  # Keeps handbook drift (e.g. stale Package Map) from landing silently.
+  # Kept intentionally minimal — only Node 22, single job, ~30s runtime target.
+  site-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install site deps
+        working-directory: site
+        run: npm ci
+      - name: Build handbook
+        working-directory: site
+        run: npm run build

@@ -9,3 +9,4 @@ export { EntityRenderer } from './entity-renderer.js';
 export { TileLayerRenderer } from './tile-renderer.js';
 export { MinimapRenderer } from './minimap.js';
 export type { MinimapOptions } from './minimap.js';
+export type { DiagnosticInfo } from './diagnostics.js';

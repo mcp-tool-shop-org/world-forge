@@ -16,6 +16,14 @@ export type ExportedPlayerTemplate = {
   custom: Record<string, string | number | boolean>;
 };
 
+/**
+ * Convert project player template → engine player template (or `undefined`
+ * if none authored).
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ */
 export function convertPlayerTemplate(project: WorldProject): ExportedPlayerTemplate | undefined {
   if (!project.playerTemplate) return undefined;
 

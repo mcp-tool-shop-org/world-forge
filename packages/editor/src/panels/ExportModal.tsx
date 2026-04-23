@@ -1,6 +1,6 @@
 // ExportModal.tsx — export dialog with readiness summary and content overview
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { runEngineExport, runUnrealExport } from './export-handlers.js';
@@ -25,6 +25,19 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<'idle' | 'valid' | 'invalid' | 'exported'>('idle');
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
+  // ED-B-002: manual-download fallback anchor — populated after a successful
+  // export so the user can click it if the synthetic download was blocked.
+  const [fallback, setFallback] = useState<{ href: string; filename: string } | null>(null);
+
+  // Revoke the fallback URL when it's cleared or the modal unmounts so we
+  // don't leak object URLs across sessions.
+  useEffect(() => {
+    return () => {
+      if (fallback?.href) {
+        try { URL.revokeObjectURL(fallback.href); } catch { /* ignore */ }
+      }
+    };
+  }, [fallback]);
 
   const precheck = useMemo(() => validateProject(project), [project]);
 
@@ -39,11 +52,13 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleExport = () => {
-    runEngineExport(project, { setErrors, setWarnings, setStatus, markExported });
+    setFallback(null);
+    runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
   };
 
   const handleExportUnreal = () => {
-    runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported });
+    setFallback(null);
+    runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
   };
 
   const handleGoToFirstIssue = () => {
@@ -168,6 +183,13 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* ED-B-012: short help row so users can tell the two export buttons apart
+            without hovering for tooltips. */}
+        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6, lineHeight: 1.4 }}>
+          <div><strong style={{ color: '#c9d1d9' }}>Export JSON:</strong> generic AI-RPG-Engine pack.</div>
+          <div><strong style={{ color: '#c9d1d9' }}>Export UE5:</strong> 2.5D-aware pack for Unreal Engine 5.</div>
+        </div>
+
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button onClick={handleValidate} style={buttonBase}>Validate</button>
@@ -199,7 +221,27 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {status === 'valid' && <div style={{ color: '#3fb950', fontSize: 13 }}>Validation passed!</div>}
-        {status === 'exported' && <div style={{ color: '#3fb950', fontSize: 13 }}>Exported successfully!</div>}
+        {status === 'exported' && (
+          <div style={{ color: '#3fb950', fontSize: 13 }}>
+            Download triggered {'\u2014'} check your browser's downloads.
+            {/* ED-B-002: manual-download fallback. If the browser blocked the
+                synthetic click, the user can click the link below. */}
+            {fallback && (
+              <>
+                {' '}If nothing appears,{' '}
+                <a
+                  href={fallback.href}
+                  download={fallback.filename}
+                  data-testid="wf-export-fallback-link"
+                  style={{ color: '#58a6ff', textDecoration: 'underline' }}
+                >
+                  click here to save {fallback.filename}
+                </a>
+                .
+              </>
+            )}
+          </div>
+        )}
 
         {errors.length > 0 && (
           <div style={{ marginTop: 8 }}>
@@ -241,6 +283,16 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           })()}
           <button onClick={() => {
             const activeKit = activeKitId ? kits.find((k) => k.id === activeKitId) : undefined;
+            // ED-B-010: if the project references a kit that has since been
+            // deleted, make the provenance loss explicit rather than silently
+            // dropping it. confirm() is blocking + built-in; good enough for
+            // this edge case until we have a proper in-app dialog primitive.
+            if (activeKitId && !activeKit) {
+              const proceed = typeof window !== 'undefined' && typeof window.confirm === 'function'
+                ? window.confirm('The active kit was deleted. Continue without kit provenance?')
+                : true;
+              if (!proceed) return;
+            }
             const bundle = serializeProject(
               project,
               activeKit ? { name: activeKit.name, source: activeKit.builtIn ? 'built-in' : activeKit.source } : null,

@@ -24,7 +24,15 @@ export function ModalFrame({ title, width = 520, onClose, children, cardStyle }:
       <div style={{ ...modalCard(width), ...cardStyle }}>
         <div style={modalTitleRow}>
           <h2 style={modalTitle}>{title}</h2>
-          <button onClick={onClose} style={closeButton}>&times;</button>
+          {/* ED-B-004: icon-only close button needs an accessible label. */}
+          <button
+            onClick={onClose}
+            style={closeButton}
+            aria-label={`Close ${title} dialog`}
+            tabIndex={0}
+          >
+            &times;
+          </button>
         </div>
         {children}
       </div>

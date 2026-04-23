@@ -47,6 +47,14 @@ export type ExportedBuildCatalog = {
   }>;
 };
 
+/**
+ * Convert project build catalog → engine build catalog (or `undefined` if
+ * none authored).
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ */
 export function convertBuildCatalog(project: WorldProject): ExportedBuildCatalog | undefined {
   if (!project.buildCatalog) return undefined;
 

@@ -53,6 +53,9 @@ function makeEnv(): ExportEnv & { last: { filename: string; data: unknown } | nu
     downloadJson: (filename: string, data: unknown) => {
       env.last = { filename, data };
       env.count += 1;
+      // ED-B-002: ExportEnv.downloadJson now returns the object URL (or null)
+      // so the handler can surface a manual-download fallback in the modal.
+      return null;
     },
   };
   return env;

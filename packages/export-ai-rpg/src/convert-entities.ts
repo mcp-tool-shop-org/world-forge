@@ -2,6 +2,7 @@
 
 import type { WorldProject, EntityRole } from '@world-forge/schema';
 import type { EntityBlueprint } from '@ai-rpg-engine/content-schema';
+import type { FidelityEntry } from './fidelity.js';
 
 const ROLE_TO_TYPE: Record<EntityRole, string> = {
   'npc': 'npc',
@@ -30,7 +31,20 @@ const ROLE_AI_PROFILE: Record<EntityRole, string> = {
   'boss': 'territorial',
 };
 
-export function convertEntities(project: WorldProject): EntityBlueprint[] {
+/**
+ * Convert project entity placements → engine `EntityBlueprint[]`.
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ *
+ * **AIR-B-004:** Pass a `fidelity` array to collect structured entries when a
+ * `custom` field value cannot be JSON-serialized (e.g. circular reference).
+ * The console.warn is still emitted for legacy consumers; the fidelity entry
+ * is the programmatic signal that mirrors the pattern used by the import-side
+ * converters.
+ */
+export function convertEntities(project: WorldProject, fidelity?: FidelityEntry[]): EntityBlueprint[] {
   return project.entityPlacements.map((ep) => {
     // Merge role-based tags with author-provided tags
     const tags = [...ROLE_TAGS[ep.role]];
@@ -67,7 +81,17 @@ export function convertEntities(project: WorldProject): EntityBlueprint[] {
           JSON.stringify(v);
           sanitized[k] = v;
         } catch {
-          console.warn(`[convert-entities] Entity '${ep.name || ep.entityId}': custom field '${k}' has a non-JSON-serializable value (${typeof v}) — skipping this field.`);
+          const entityLabel = ep.name || ep.entityId;
+          console.warn(`[convert-entities] Entity '${entityLabel}': custom field '${k}' has a non-JSON-serializable value (${typeof v}) — skipping this field.`);
+          fidelity?.push({
+            domain: 'entities',
+            level: 'approximated',
+            severity: 'warning',
+            entityId: ep.entityId,
+            fieldPath: `custom.${k}`,
+            message: `Entity '${entityLabel}' custom field '${k}' could not be JSON-serialized (likely circular reference) and was dropped from the export.`,
+            reason: 'custom-field-not-json-serializable',
+          });
         }
       }
       if (Object.keys(sanitized).length > 0) {

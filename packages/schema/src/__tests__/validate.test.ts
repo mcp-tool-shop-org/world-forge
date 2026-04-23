@@ -592,7 +592,7 @@ describe('validateProject', () => {
     const result = validateProject(bad);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) =>
-      e.path === 'playerTemplate.defaultArchetypeId' && e.message.includes('no buildCatalog exists'),
+      e.path === 'playerTemplate.defaultArchetypeId' && e.message.includes('no buildCatalog is defined'),
     )).toBe(true);
   });
 
@@ -605,7 +605,7 @@ describe('validateProject', () => {
     const result = validateProject(bad);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) =>
-      e.path === 'playerTemplate.defaultBackgroundId' && e.message.includes('no buildCatalog exists'),
+      e.path === 'playerTemplate.defaultBackgroundId' && e.message.includes('no buildCatalog is defined'),
     )).toBe(true);
   });
 

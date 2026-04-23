@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Notes
+
+- **Translations (pending):** README drift 43 days (2026-03-10 → 2026-04-22). User regenerates via polyglot-mcp; will ship with v4.3.0.
+
 ## [4.2.0] - 2026-04-22
 
 ### Added — Unreal Engine 5 alignment wave

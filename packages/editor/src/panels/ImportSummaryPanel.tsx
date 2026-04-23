@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
+import { useModalStore } from '../store/modal-store.js';
 import type { FidelityDomain, FidelityEntry } from '@world-forge/export-ai-rpg';
 
 const DOMAIN_LABELS: Record<FidelityDomain, string> = {
@@ -48,6 +49,7 @@ function repairHint(entry: FidelityEntry): string | null {
 export function ImportSummaryPanel() {
   const report = useEditorStore((s) => s.importFidelity);
   const format = useEditorStore((s) => s.importSourceFormat);
+  const openModal = useModalStore((s) => s.openModal);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!report) {
@@ -55,8 +57,22 @@ export function ImportSummaryPanel() {
     console.warn('[ImportSummaryPanel] No fidelity report available. This tab is only populated after importing a project via the Import modal.');
     return (
       <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>No import data</div>
-        <div>Import a project via the Import button to see a fidelity breakdown showing what was preserved, approximated, or dropped during conversion.</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>No import summary yet.</div>
+        <div>
+          {/* ED-B-014: clickable link jumps straight to the Import dialog. */}
+          <a
+            href="#"
+            data-testid="import-summary-open-import"
+            onClick={(e) => { e.preventDefault(); openModal('import'); }}
+            style={{ color: '#58a6ff', textDecoration: 'underline', cursor: 'pointer' }}
+          >
+            Click here
+          </a>
+          {' '}to open the Import dialog and load a file.
+        </div>
+        <div style={{ marginTop: 6, color: '#484f58' }}>
+          You'll see a fidelity breakdown showing what was preserved, approximated, or dropped during conversion.
+        </div>
       </div>
     );
   }

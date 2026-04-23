@@ -71,6 +71,15 @@ function collectReferencedAssetIds(project: WorldProject): Set<string> {
   for (const z of project.zones) {
     if (z.backgroundId) ids.add(z.backgroundId);
     if (z.tilesetId) ids.add(z.tilesetId);
+    // 2.5D (v4.2.0): skyline + parallax assetRefs also count as valid references.
+    // Mirrors the orphan check in validate.ts — without this, authored 2.5D assets
+    // get false-flagged as orphans even though parallax/skyline layers use them.
+    if (z.skylineRef) ids.add(z.skylineRef);
+    if (z.parallaxLayers) {
+      for (const layer of z.parallaxLayers) {
+        if (layer.assetRef) ids.add(layer.assetRef);
+      }
+    }
   }
   for (const ep of project.entityPlacements) {
     if (ep.portraitId) ids.add(ep.portraitId);

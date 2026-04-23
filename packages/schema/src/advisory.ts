@@ -2,7 +2,8 @@
 
 import type { WorldProject } from './project.js';
 import type { AuthoringMode } from './authoring-mode.js';
-import { DEFAULT_MODE } from './authoring-mode.js';
+import type { PressureHotspot } from './districts.js';
+import { AUTHORING_MODES, DEFAULT_MODE } from './authoring-mode.js';
 
 export interface AdvisoryItem {
   path: string;
@@ -14,16 +15,34 @@ export interface AdvisoryResult {
   items: AdvisoryItem[];
 }
 
+/**
+ * Returns true if the hotspot represents a trap, either via an explicit 'trap' tag
+ * or via a pressureType string that contains 'trap'. Extracted for readability so
+ * the dungeon advisory check stays a one-liner.
+ */
+function isTrapHotspot(h: PressureHotspot): boolean {
+  if (h.tags?.includes('trap')) return true;
+  if (typeof h.pressureType === 'string' && h.pressureType.length > 0 && h.pressureType.includes('trap')) {
+    return true;
+  }
+  return false;
+}
+
 /** Mode-specific advisory rules that return suggestions — never hard errors, never block export. */
 export function advisoryValidation(project: WorldProject): AdvisoryResult {
   const mode: AuthoringMode = project.mode ?? DEFAULT_MODE;
   const items: AdvisoryItem[] = [];
 
   // ── Project metadata advisories ────────────────────────────
-  if (!project.author || project.author.trim().length === 0) {
+  // Type guards: defensively handle callers that hand us `{ author: null }` or
+  // `{ license: 123 }` without crashing on .trim(). We treat non-string values
+  // the same as missing (suggest specifying), but never throw.
+  const authorStr = typeof project.author === 'string' ? project.author : '';
+  if (authorStr.trim().length === 0) {
     items.push({ path: 'author', message: 'Consider specifying an author for attribution and discoverability.', severity: 'suggestion' });
   }
-  if (!project.license || project.license.trim().length === 0) {
+  const licenseStr = typeof project.license === 'string' ? project.license : '';
+  if (licenseStr.trim().length === 0) {
     items.push({ path: 'license', message: 'Consider specifying a license (e.g. CC-BY-4.0, MIT, custom) so consumers know usage rights.', severity: 'suggestion' });
   }
   if (project.category !== undefined && (typeof project.category !== 'string' || project.category.trim().length === 0)) {
@@ -62,14 +81,19 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   // MAINTENANCE: When adding a new AuthoringMode in authoring-mode.ts,
   // add a corresponding case below. Otherwise the new mode will silently
   // produce no mode-specific suggestions.
+  //
+  // The switch is typed against `string` (not AuthoringMode) so the default
+  // case can surface runtime values that slip past the type guard — e.g.
+  // `'custom'` from a user-authored JSON, or a future-but-unimplemented mode.
   const kinds = project.connections.map((c) => c.kind);
+  const modeKey: string = mode;
 
-  switch (mode) {
+  switch (modeKey) {
     case 'dungeon':
       if (!kinds.includes('secret')) {
         items.push({ path: 'connections', message: 'Dungeon tip: add a secret passage for hidden exploration.', severity: 'suggestion' });
       }
-      if (!project.pressureHotspots.some((h) => h.tags?.includes('trap') || (typeof h.pressureType === 'string' && h.pressureType.length > 0 && h.pressureType.includes('trap')))) {
+      if (!project.pressureHotspots.some(isTrapHotspot)) {
         items.push({ path: 'pressureHotspots', message: 'Dungeon tip: consider adding hazard zones with traps.', severity: 'suggestion' });
       }
       break;
@@ -133,6 +157,19 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
         items.push({ path: 'zones', message: 'Wilderness tip: set elevation on zones for hills, cliffs, and valleys — 2.5D engines use this for terrain.', severity: 'suggestion' });
       }
       break;
+
+    default: {
+      // Unknown mode — emit a single observable advisory so unknown/future modes
+      // don't silently skip mode-specific tips. Lists the supported set so the
+      // user can see what to pick from.
+      const supported = AUTHORING_MODES.join(', ');
+      items.push({
+        path: 'mode',
+        message: `Mode '${String(mode)}' is not recognized — no mode-specific tips available. Supported modes: ${supported}.`,
+        severity: 'info',
+      });
+      break;
+    }
   }
 
   return { items };

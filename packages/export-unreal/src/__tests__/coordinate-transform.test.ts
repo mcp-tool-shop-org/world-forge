@@ -29,6 +29,13 @@ describe('pixelsToUnrealCm', () => {
     expect(() => pixelsToUnrealCm(10, 0)).toThrow(RangeError);
     expect(() => pixelsToUnrealCm(10, -1)).toThrow(RangeError);
   });
+
+  it('throws on non-finite or non-positive tileSizeCm (UE-B-002)', () => {
+    expect(() => pixelsToUnrealCm(10, 32, 0)).toThrow(RangeError);
+    expect(() => pixelsToUnrealCm(10, 32, -1)).toThrow(RangeError);
+    expect(() => pixelsToUnrealCm(10, 32, Number.NaN)).toThrow(RangeError);
+    expect(() => pixelsToUnrealCm(10, 32, Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
 });
 
 describe('elevationToZ', () => {
@@ -69,6 +76,13 @@ describe('gridToUnrealAxis', () => {
   it('respects elevation in metres', () => {
     const result = gridToUnrealAxis(1, 1, 100, 3);
     expect(result.Z).toBe(300);
+  });
+
+  it('throws on non-finite or non-positive tileSizeCm (UE-B-002)', () => {
+    expect(() => gridToUnrealAxis(1, 1, 0)).toThrow(RangeError);
+    expect(() => gridToUnrealAxis(1, 1, -5)).toThrow(RangeError);
+    expect(() => gridToUnrealAxis(1, 1, Number.NaN)).toThrow(RangeError);
+    expect(() => gridToUnrealAxis(1, 1, Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 });
 

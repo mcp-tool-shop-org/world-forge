@@ -8,7 +8,11 @@ vi.mock('pixi.js', () => {
   class MockContainer {
     children: unknown[] = [];
     addChild(child: unknown) { this.children.push(child); }
-    removeChildren() { this.children = []; }
+    removeChildren(): unknown[] {
+      const removed = this.children;
+      this.children = [];
+      return removed;
+    }
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
@@ -92,6 +96,44 @@ describe('TileLayerRenderer', () => {
     const renderer = new TileLayerRenderer(32);
     expect(() => renderer.update([], [])).not.toThrow();
     expect(renderer.container.children.length).toBe(0);
+  });
+
+  it('destroys removed children on re-update so Graphics + Container objects do not leak (INF-B-001)', () => {
+    destroyCalls.length = 0;
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'floor-1', tags: [] }])];
+    const layers: TileLayer[] = [{
+      id: 'layer-1', name: 'Ground', zIndex: 0,
+      tiles: [
+        { tileId: 'floor-1', gridX: 0, gridY: 0 },
+        { tileId: 'floor-1', gridX: 1, gridY: 0 },
+      ],
+    }];
+    renderer.update(layers, tilesets);
+    // First update: root container has 1 layerContainer, nothing destroyed yet.
+    expect(destroyCalls.length).toBe(0);
+    expect(renderer.container.children.length).toBe(1);
+
+    renderer.update(layers, tilesets);
+    // Second update: the previous layerContainer should be destroyed recursively.
+    const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
+    expect(containerDestroyed.length).toBe(1);
+    expect(containerDestroyed[0].opts).toEqual({ children: true });
+    // And the root container still holds exactly one layerContainer after re-update.
+    expect(renderer.container.children.length).toBe(1);
+  });
+
+  it('keeps container child count bounded across many updates (INF-B-001)', () => {
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'floor-1', tags: [] }])];
+    const layers: TileLayer[] = [{
+      id: 'layer-1', name: 'Ground', zIndex: 0,
+      tiles: [{ tileId: 'floor-1', gridX: 0, gridY: 0 }],
+    }];
+    for (let i = 0; i < 10; i++) {
+      renderer.update(layers, tilesets);
+    }
+    expect(renderer.container.children.length).toBe(1);
   });
 
   it('destroy() clears the container and prevents subsequent render leaks (INF-A-012)', () => {

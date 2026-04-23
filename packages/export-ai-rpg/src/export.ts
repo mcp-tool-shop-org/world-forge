@@ -131,7 +131,8 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
 
   // 8. Build manifest and pack metadata
   const manifest = convertManifest(project);
-  const packMeta = convertPackMeta(project);
+  // AIR-B-008: Pass warnings so invalid/fallback tone messages reach the CLI.
+  const packMeta = convertPackMeta(project, warnings);
 
   // 9. Warn on missing features
   if (!playerTemplate) {
@@ -155,40 +156,62 @@ export function exportToEngine(project: WorldProject): ExportResult | ExportErro
     warnings.push('No faction presences defined — faction system will be inactive');
   }
 
-  // 11. Collect asset manifest and bindings for round-trip preservation
+  // 11. Collect asset manifest and bindings for round-trip preservation.
+  //
+  // AIR-B-001: Binding maps are keyed by entity/zone/item/landmark IDs. Object
+  // key iteration in JS follows insertion order, so the output would otherwise
+  // depend on the order of project.zones, project.entityPlacements, etc. To
+  // guarantee byte-identical JSON across runs (and across engines with subtly
+  // different insertion semantics for integer-like keys), we sort keys
+  // alphabetically when assembling each sub-map, and we also assemble the
+  // top-level assetBindings in a fixed alphabetical order.
   const assets = project.assets.length > 0 ? project.assets : undefined;
   let assetBindings: AssetBindingMap | undefined;
   if (assets) {
-    const zoneBindings: Record<string, { backgroundId?: string; tilesetId?: string }> = {};
+    const sortedObject = <V>(source: Record<string, V>): Record<string, V> => {
+      const sorted: Record<string, V> = {};
+      for (const k of Object.keys(source).sort()) sorted[k] = source[k];
+      return sorted;
+    };
+
+    const zoneBindingsRaw: Record<string, { backgroundId?: string; tilesetId?: string }> = {};
     for (const z of project.zones) {
       if (z.backgroundId || z.tilesetId) {
-        zoneBindings[z.id] = { backgroundId: z.backgroundId, tilesetId: z.tilesetId };
+        zoneBindingsRaw[z.id] = { backgroundId: z.backgroundId, tilesetId: z.tilesetId };
       }
     }
-    const entityBindings: Record<string, { portraitId?: string; spriteId?: string }> = {};
+    const entityBindingsRaw: Record<string, { portraitId?: string; spriteId?: string }> = {};
     for (const e of project.entityPlacements) {
       if (e.portraitId || e.spriteId) {
-        entityBindings[e.entityId] = { portraitId: e.portraitId, spriteId: e.spriteId };
+        entityBindingsRaw[e.entityId] = { portraitId: e.portraitId, spriteId: e.spriteId };
       }
     }
-    const itemBindings: Record<string, { iconId?: string }> = {};
+    const itemBindingsRaw: Record<string, { iconId?: string }> = {};
     for (const i of project.itemPlacements) {
       if (i.iconId) {
-        itemBindings[i.itemId] = { iconId: i.iconId };
+        itemBindingsRaw[i.itemId] = { iconId: i.iconId };
       }
     }
-    const landmarkBindings: Record<string, { iconId?: string }> = {};
+    const landmarkBindingsRaw: Record<string, { iconId?: string }> = {};
     for (const l of project.landmarks) {
       if (l.iconId) {
-        landmarkBindings[l.id] = { iconId: l.iconId };
+        landmarkBindingsRaw[l.id] = { iconId: l.iconId };
       }
     }
-    assetBindings = {};
-    if (Object.keys(zoneBindings).length > 0) assetBindings.zones = zoneBindings;
-    if (Object.keys(entityBindings).length > 0) assetBindings.entities = entityBindings;
-    if (Object.keys(itemBindings).length > 0) assetBindings.items = itemBindings;
-    if (Object.keys(landmarkBindings).length > 0) assetBindings.landmarks = landmarkBindings;
-    if (Object.keys(assetBindings).length === 0) assetBindings = undefined;
+
+    const zoneBindings = sortedObject(zoneBindingsRaw);
+    const entityBindings = sortedObject(entityBindingsRaw);
+    const itemBindings = sortedObject(itemBindingsRaw);
+    const landmarkBindings = sortedObject(landmarkBindingsRaw);
+
+    // Top-level keys are also assembled in alphabetical order: entities, items,
+    // landmarks, zones. Any future binding category should slot into this order.
+    const assembled: AssetBindingMap = {};
+    if (Object.keys(entityBindings).length > 0) assembled.entities = entityBindings;
+    if (Object.keys(itemBindings).length > 0) assembled.items = itemBindings;
+    if (Object.keys(landmarkBindings).length > 0) assembled.landmarks = landmarkBindings;
+    if (Object.keys(zoneBindings).length > 0) assembled.zones = zoneBindings;
+    assetBindings = Object.keys(assembled).length > 0 ? assembled : undefined;
   }
 
   // 12. Collect asset packs for round-trip preservation

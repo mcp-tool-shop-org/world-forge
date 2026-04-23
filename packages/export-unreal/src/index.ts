@@ -1,6 +1,6 @@
 // @world-forge/export-unreal — Unreal Engine 5 export pipeline
 
-export { exportToUnreal } from './export.js';
+export { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from './export.js';
 export type {
   UnrealContentPack, UnrealPackMeta,
   UnrealExportOptions, UnrealExportResult, UnrealExportError,

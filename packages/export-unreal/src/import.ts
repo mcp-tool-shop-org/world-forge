@@ -34,7 +34,20 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
   const fidelity: FidelityEntry[] = [];
 
   // Reconstruct a sensible tile size. Default is 100 cm/tile.
-  const tileSizeCm = pack.Meta.TileSizeCm > 0 ? pack.Meta.TileSizeCm : 100;
+  // UE-B-003: if the pack claims a bad TileSizeCm, don't silently downshift —
+  // emit a `dropped` fidelity entry so the loader/user knows we fell back.
+  const rawTileSizeCm = pack.Meta.TileSizeCm;
+  const tileSizeCm = Number.isFinite(rawTileSizeCm) && rawTileSizeCm > 0 ? rawTileSizeCm : 100;
+  if (!(Number.isFinite(rawTileSizeCm) && rawTileSizeCm > 0)) {
+    fidelity.push({
+      level: 'dropped',
+      domain: 'world',
+      severity: 'warning',
+      fieldPath: 'Meta.TileSizeCm',
+      message: `Pack TileSizeCm is invalid (${String(rawTileSizeCm)}) — falling back to 100 cm/tile.`,
+      reason: 'TileSizeCm must be a positive finite number; using default scale for import.',
+    });
+  }
 
   // Reconstruct the original pixel tile size. Older packs (pre UE-A-001 fix) did
   // not serialize SourceTileSizePx — in that case we fall back to 32 and flag
@@ -114,17 +127,55 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
     assetPacks: [],
   };
 
-  // Flag fields that an UE5 pack never carries.
+  // UE-B-004: single consolidated fidelity entry covering every WorldProject
+  // field an Unreal pack cannot round-trip. Previously only `dialogues` was
+  // flagged, hiding 17+ other dropped fields. One source of truth — when the
+  // parity contract changes, update both this list and the parity test.
   fidelity.push({
     level: 'dropped',
-    domain: 'dialogues',
+    domain: 'world',
     severity: 'warning',
-    message: 'Dialogues not recoverable from Unreal pack — gameplay-only data.',
-    reason: 'Unreal exporter does not serialize dialogue trees.',
+    message:
+      'Several WorldProject fields are not recoverable from an Unreal pack: ' +
+      UNREAL_UNRECOVERABLE_FIELDS.join(', ') + '.',
+    reason:
+      'The Unreal exporter is a lossy projection tuned for UE5 runtime — gameplay, ' +
+      'authoring, and flavor fields are owned by the UE5 project, not this pack.',
   });
 
   return { success: true, project, fidelity: buildFidelityReport(fidelity) };
 }
+
+/**
+ * Every WorldProject field an Unreal content pack cannot round-trip on import.
+ * Kept in sync with `KNOWN_DROPPED` in the parity test — any schema change that
+ * adds a gameplay/flavor field should land here too.
+ */
+const UNREAL_UNRECOVERABLE_FIELDS: ReadonlyArray<string> = [
+  'dialogues',
+  'progressionTrees',
+  'playerTemplate',
+  'buildCatalog',
+  'itemPlacements',
+  'encounterAnchors',
+  'spawnPoints',
+  'craftingStations',
+  'marketNodes',
+  'landmarks',
+  'factionPresences',
+  'pressureHotspots',
+  'tilesets',
+  'tileLayers',
+  'props',
+  'propPlacements',
+  'ambientLayers',
+  'assets',
+  'assetPacks',
+  'genre',
+  'tones',
+  'difficulty',
+  'narratorTone',
+];
 
 function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: FidelityEntry[]): Zone {
   const gridX = Math.round(u.OriginCm.X / tileSizeCm);
@@ -208,7 +259,18 @@ function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity
   // Flag sub-grid placements: any actor whose cm location doesn't fall exactly
   // on a tile boundary will be snapped by the Math.round() above. The original
   // authored placement may have been fractional in UE and is lost on import.
-  if (u.LocationCm.X % tileSizeCm !== 0 || u.LocationCm.Y % tileSizeCm !== 0) {
+  //
+  // UE-B-012: use epsilon comparison on the modulo. Strict inequality fired on
+  // floating-point drift (e.g. a tile-aligned value that round-tripped through
+  // cm conversions and came back as 100.0000000001). The `((m % s) + s) % s`
+  // form normalizes negative locations so the distance-to-boundary is always
+  // non-negative.
+  const SUBGRID_EPSILON_CM = 0.001;
+  const xOffset = Math.abs(((u.LocationCm.X % tileSizeCm) + tileSizeCm) % tileSizeCm);
+  const yOffset = Math.abs(((u.LocationCm.Y % tileSizeCm) + tileSizeCm) % tileSizeCm);
+  const xOffAligned = xOffset > SUBGRID_EPSILON_CM && (tileSizeCm - xOffset) > SUBGRID_EPSILON_CM;
+  const yOffAligned = yOffset > SUBGRID_EPSILON_CM && (tileSizeCm - yOffset) > SUBGRID_EPSILON_CM;
+  if (xOffAligned || yOffAligned) {
     fidelity.push({
       level: 'approximated',
       domain: 'entities',

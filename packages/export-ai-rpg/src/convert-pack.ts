@@ -66,6 +66,13 @@ export const DEFAULT_MODULES = [
   'endgame-core',
 ];
 
+/**
+ * Convert project metadata → engine `GameManifest`.
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ */
 export function convertManifest(project: WorldProject): GameManifest {
   return {
     id: project.id,
@@ -78,7 +85,20 @@ export function convertManifest(project: WorldProject): GameManifest {
   };
 }
 
-export function convertPackMeta(project: WorldProject): PackMetadata {
+/**
+ * Convert project metadata → engine `PackMetadata`.
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ *
+ * **AIR-B-008:** Pass a `warnings` array to surface invalid-tone and
+ * tone-fallback messages in the top-level {@link ExportResult.warnings} list
+ * (the CLI prints those in its `Warnings:` block). Without it, warnings are
+ * still written to `console.warn` but will be invisible to programmatic
+ * consumers.
+ */
+export function convertPackMeta(project: WorldProject, warnings?: string[]): PackMetadata {
   const genre = GENRE_MAP[project.genre] ?? 'fantasy';
   const invalidTones: string[] = [];
   const tones = project.tones
@@ -89,10 +109,14 @@ export function convertPackMeta(project: WorldProject): PackMetadata {
     })
     .filter((t): t is PackTone => t !== undefined);
   if (invalidTones.length > 0) {
-    console.warn(`[convert-pack] Unrecognized tone values skipped: ${invalidTones.map((t) => `'${t}'`).join(', ')}. Valid tones: ${Object.keys(TONE_MAP).join(', ')}`);
+    const msg = `Unrecognized tone values skipped: ${invalidTones.map((t) => `'${t}'`).join(', ')}. Valid tones: ${Object.keys(TONE_MAP).join(', ')}`;
+    console.warn(`[convert-pack] ${msg}`);
+    warnings?.push(msg);
   }
   if (tones.length === 0) {
-    console.warn(`[convert-pack] No valid tones mapped from project tones [${project.tones.join(', ')}] — falling back to 'atmospheric'`);
+    const msg = `No valid tones mapped from project tones [${project.tones.join(', ')}] — falling back to 'atmospheric'`;
+    console.warn(`[convert-pack] ${msg}`);
+    warnings?.push(msg);
   }
   const difficulty = DIFFICULTY_MAP[project.difficulty] ?? 'intermediate';
 

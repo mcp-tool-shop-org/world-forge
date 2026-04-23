@@ -66,6 +66,12 @@ export function pixelsToUnrealCm(pixels: number, tileSize: number, tileSizeCm: n
   if (tileSize <= 0) {
     throw new RangeError(`pixelsToUnrealCm: tileSize must be > 0 (got ${tileSize})`);
   }
+  // UE-B-002: guard tileSizeCm the same way. Non-finite or non-positive scale
+  // would silently produce NaN / flipped coords and contaminate every transform
+  // downstream. Fail loud here so the stack trace points at the source.
+  if (!Number.isFinite(tileSizeCm) || tileSizeCm <= 0) {
+    throw new RangeError(`pixelsToUnrealCm: tileSizeCm must be a positive finite number (got ${tileSizeCm})`);
+  }
   return (pixels * tileSizeCm) / tileSize;
 }
 
@@ -107,6 +113,11 @@ export function gridToUnrealAxis(
   tileSizeCm: number = DEFAULT_TILE_SIZE_CM,
   elevationMeters: number = 0,
 ): UnrealVec3 {
+  // UE-B-002: guard tileSizeCm. Same reasoning as pixelsToUnrealCm — a bad
+  // scale here quietly corrupts every grid-placed actor in the output pack.
+  if (!Number.isFinite(tileSizeCm) || tileSizeCm <= 0) {
+    throw new RangeError(`gridToUnrealAxis: tileSizeCm must be a positive finite number (got ${tileSizeCm})`);
+  }
   return {
     X: gridX * tileSizeCm,
     Y: -gridY * tileSizeCm,

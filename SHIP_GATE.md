@@ -25,7 +25,7 @@
 
 ## B. Error Handling
 
-- [ ] `[all]` SKIP: monorepo with library packages — errors are typed validation results, not thrown exceptions
+- [ ] `[all]` SKIP: monorepo mixes library packages (typed validation results, no thrown exceptions) with the `world-forge-export` and `world-forge-export-unreal` CLIs — CLI error handling is covered explicitly below (exit codes, no raw stacks without `--debug`), while the library packages return structured results so consumers can surface errors however their host app prefers.
 - [x] `[cli]` Exit codes: 0 ok · 1 user error (2026-04-22)
 - [x] `[cli]` No raw stack traces without `--debug` (2026-04-22)
 - [ ] `[mcp]` SKIP: not an MCP server

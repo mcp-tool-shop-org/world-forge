@@ -93,6 +93,12 @@ export function VisibilityToggle({ id }: { id: string }) {
       data-testid={`visibility-toggle-${id}`}
       onClick={(e) => { e.stopPropagation(); toggleHidden(id); }}
       title={hidden ? 'Show on canvas' : 'Hide on canvas'}
+      // ED-B-004: icon-only button — screen readers need both an aria-label
+      // and the pressed-state for this toggle. tabIndex is already default 0
+      // for buttons, but we pin it so the a11y intent is visible in source.
+      aria-label={hidden ? 'Show on canvas' : 'Hide on canvas'}
+      aria-pressed={hidden}
+      tabIndex={0}
       style={{
         background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px',
         fontSize: 12, color: hidden ? '#484f58' : '#8b949e', lineHeight: 1,

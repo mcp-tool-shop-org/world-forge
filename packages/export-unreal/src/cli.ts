@@ -13,7 +13,17 @@ Options:
   --tile-size-cm N   Override world scale (default: 100 cm per tile)
   --validate-only    Validate without writing files
   --verbose          Show detailed export diagnostics
-  --help             Show this help`;
+  --warnings-only    With --verbose, hide lossless/info fidelity entries
+  --help             Show this help
+
+Produces (under --out):
+  pack.json                  — manifest (id, name, version, source project, tile size, format version)
+  zones/<id>.json            — one Primary Data Asset JSON per zone
+  districts/<id>.json        — one per district
+  actors/manifest.json       — entity placements grouped by zone, BP-class tag per role
+  connections.json           — ZoneConnection → LevelStreamingHint
+  world-partition.json       — grid cell hints (gridWidth/gridHeight → UE cells)
+  fidelity.json              — what was lossless / approximated / dropped`;
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -26,6 +36,7 @@ async function main(): Promise<void> {
   const projectPath = args[0];
   const validateOnly = args.includes('--validate-only');
   const verbose = args.includes('--verbose');
+  const warningsOnly = args.includes('--warnings-only');
 
   const outIdx = args.indexOf('--out');
   if (outIdx !== -1 && !args[outIdx + 1]) {
@@ -83,6 +94,8 @@ async function main(): Promise<void> {
   await mkdir(join(resolvedOut, 'districts'), { recursive: true });
   await mkdir(join(resolvedOut, 'actors'), { recursive: true });
 
+  // Single-file writes stay sequential for determinism (stable stdout ordering
+  // on failure, and consistent timestamps when consumers diff the output dir).
   await writeFile(join(resolvedOut, 'pack.json'), JSON.stringify(result.contentPack.Meta, null, 2));
   await writeFile(
     join(resolvedOut, 'world-partition.json'),
@@ -90,17 +103,23 @@ async function main(): Promise<void> {
   );
   await writeFile(join(resolvedOut, 'connections.json'), JSON.stringify(result.contentPack.Connections, null, 2));
   await writeFile(join(resolvedOut, 'fidelity.json'), JSON.stringify(result.fidelity, null, 2));
-
-  for (const zone of result.contentPack.Zones) {
-    await writeFile(join(resolvedOut, 'zones', `${safeFile(zone.Id)}.json`), JSON.stringify(zone, null, 2));
-  }
-  for (const district of result.contentPack.Districts) {
-    await writeFile(
-      join(resolvedOut, 'districts', `${safeFile(district.Id)}.json`),
-      JSON.stringify(district, null, 2),
-    );
-  }
   await writeFile(join(resolvedOut, 'actors', 'manifest.json'), JSON.stringify(result.contentPack.Actors, null, 2));
+
+  // UE-B-006: zone + district writes are independent — parallelize them so I/O
+  // overlap rather than serializing on each fs.write.
+  await Promise.all(
+    result.contentPack.Zones.map((zone) =>
+      writeFile(join(resolvedOut, 'zones', `${safeFile(zone.Id)}.json`), JSON.stringify(zone, null, 2)),
+    ),
+  );
+  await Promise.all(
+    result.contentPack.Districts.map((district) =>
+      writeFile(
+        join(resolvedOut, 'districts', `${safeFile(district.Id)}.json`),
+        JSON.stringify(district, null, 2),
+      ),
+    ),
+  );
 
   console.log(`Exported to ${resolvedOut}/`);
   console.log(
@@ -114,8 +133,17 @@ async function main(): Promise<void> {
   for (const w of result.warnings) console.log(`  - ${w}`);
 
   if (verbose) {
-    console.log('\n--- Fidelity entries ---');
-    for (const e of result.fidelity.entries) {
+    // UE-B-008: `--warnings-only` filters to meaningful entries. Default stays
+    // the current wall-of-text so existing dashboards that parse stdout keep
+    // working (back-compat).
+    const entries = warningsOnly
+      ? result.fidelity.entries.filter((e) => e.level !== 'lossless' || e.severity !== 'info')
+      : result.fidelity.entries;
+    const header = warningsOnly
+      ? `\n--- Fidelity entries (warnings only: ${entries.length}/${result.fidelity.entries.length}) ---`
+      : '\n--- Fidelity entries ---';
+    console.log(header);
+    for (const e of entries) {
       console.log(`  [${e.level}/${e.severity}] ${e.domain}: ${e.message}`);
     }
   }

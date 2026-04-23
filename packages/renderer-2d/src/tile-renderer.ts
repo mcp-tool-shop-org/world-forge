@@ -2,6 +2,7 @@
 
 import { Container, Graphics } from 'pixi.js';
 import type { TileLayer, TileDefinition, Tileset } from '@world-forge/schema';
+import type { DiagnosticInfo } from './diagnostics.js';
 
 export class TileLayerRenderer {
   container: Container;
@@ -25,12 +26,27 @@ export class TileLayerRenderer {
     this.container.destroy({ children: true });
   }
 
+  /**
+   * INF-B-008: Lifecycle observability. Safe to call at any time, including
+   * after destroy(). Never mutates state.
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return {
+      className: 'TileLayerRenderer',
+      destroyed: this.destroyed,
+      childCount: this.container.children.length,
+    };
+  }
+
   update(layers: TileLayer[], tilesets: Tileset[]): void {
     if (this.destroyed) {
       console.warn('TileLayerRenderer.update: renderer has been destroyed — skipping. Create a new TileLayerRenderer instance to continue rendering.');
       return;
     }
-    this.container.removeChildren();
+    // INF-B-001: destroy removed children so Graphics + Container objects don't leak.
+    // removeChildren() detaches but does not destroy — we must destroy each child recursively.
+    const removed = this.container.removeChildren();
+    for (const child of removed) (child as { destroy: (opts: { children: boolean }) => void }).destroy({ children: true });
 
     // Build tile lookup
     const tileDefs = new Map<string, TileDefinition>();

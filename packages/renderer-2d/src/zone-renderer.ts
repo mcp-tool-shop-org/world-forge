@@ -2,6 +2,7 @@
 
 import { Container, Graphics, Text } from 'pixi.js';
 import type { Zone, District } from '@world-forge/schema';
+import type { DiagnosticInfo } from './diagnostics.js';
 
 export interface ZoneRenderOptions {
   tileSize: number;
@@ -47,6 +48,18 @@ export class ZoneOverlayRenderer {
     if (this.destroyed) return;
     this.destroyed = true;
     this.container.destroy({ children: true });
+  }
+
+  /**
+   * INF-B-008: Lifecycle observability. Safe to call at any time, including
+   * after destroy(). Never mutates state.
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return {
+      className: 'ZoneOverlayRenderer',
+      destroyed: this.destroyed,
+      childCount: this.container.children.length,
+    };
   }
 
   private getDistrictColor(zone: Zone): number {

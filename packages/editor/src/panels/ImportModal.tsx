@@ -1,6 +1,6 @@
 // ImportModal.tsx — import WorldProject / ContentPack / ExportResult / ProjectBundle JSON
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { importProject, detectImportFormat, type ImportResult, type ImportFormat } from '@world-forge/export-ai-rpg';
@@ -40,9 +40,24 @@ export function ImportModal({ onClose }: Props) {
   const [importError, setImportError] = useState<string | null>(null);
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
+  // ED-B-011: abort the previous in-flight FileReader so back-to-back file
+  // picks can't resolve out of order (e.g. first file is 50 MB and resolves
+  // AFTER a second, smaller file, clobbering the correct result).
+  const activeReaderRef = useRef<FileReader | null>(null);
+  useEffect(() => () => {
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
+  }, []);
+
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // ED-B-011: abort any previous read + fully reset file-read state before
+    // starting a new one.
+    if (activeReaderRef.current) {
+      try { activeReaderRef.current.abort(); } catch { /* ignore */ }
+      activeReaderRef.current = null;
+    }
     setFileName(file.name);
     setParseError(null);
     setResult(null);
@@ -51,7 +66,12 @@ export function ImportModal({ onClose }: Props) {
     setConfirmOverwrite(false);
 
     const reader = new FileReader();
+    activeReaderRef.current = reader;
+    const clearActive = () => {
+      if (activeReaderRef.current === reader) activeReaderRef.current = null;
+    };
     reader.onload = () => {
+      clearActive();
       try {
         if (reader.result == null || typeof reader.result !== 'string') {
           setParseError('Could not read file \u2014 please try a different file.');
@@ -82,10 +102,16 @@ export function ImportModal({ onClose }: Props) {
     };
     // EU-003: Handle FileReader error and abort events
     reader.onerror = () => {
+      clearActive();
       setParseError(`Failed to read file: ${reader.error?.message ?? 'unknown error'}`);
     };
     reader.onabort = () => {
-      setParseError('File reading was aborted.');
+      // ED-B-011: if we were intentionally replaced (new file picked) the
+      // activeReaderRef already points elsewhere — stay silent. Only surface
+      // "aborted" if this was the reader the UI was waiting on.
+      const supplanted = activeReaderRef.current !== reader;
+      clearActive();
+      if (!supplanted) setParseError('File reading was aborted.');
     };
     reader.readAsText(file);
   }, []);

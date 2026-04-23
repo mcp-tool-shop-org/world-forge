@@ -84,11 +84,68 @@ export function ZoneProperties() {
           <span style={{ color: '#f85149', fontSize: 11 }}>Missing asset: {zone.tilesetId}</span>
         )}
       </label>
+      {/* ED-B-003: 2.5D fields are read-only for now — full editor UI is a
+          Phase 5 feature. Surface them so authors can see what's set without
+          opening the project JSON. */}
+      <Advanced25DSection
+        elevation={zone.elevation}
+        elevationRange={zone.elevationRange}
+        parallaxLayers={zone.parallaxLayers}
+        skylineRef={zone.skylineRef}
+      />
       <button onClick={() => { removeZone(zone.id); setSelectedZone(null); }}
         style={deleteBtnStyle}>
         Delete Zone
       </button>
     </div>
+  );
+}
+
+/**
+ * ED-B-003: Read-only preview of the 2.5D zone fields. Editing is deferred to
+ * Phase 5 — users can still hand-edit the JSON. Rendered even when all fields
+ * are empty so the user can see the section exists and what it covers.
+ */
+function Advanced25DSection(props: {
+  elevation?: number;
+  elevationRange?: { floor: number; ceiling: number };
+  parallaxLayers?: unknown[];
+  skylineRef?: string;
+}) {
+  const anySet = props.elevation != null || props.elevationRange != null
+    || (props.parallaxLayers && props.parallaxLayers.length > 0)
+    || (props.skylineRef != null && props.skylineRef.length > 0);
+
+  return (
+    <details
+      data-testid="zone-advanced-25d"
+      style={{ margin: '8px 0', fontSize: 11, color: 'var(--wf-text-muted)' }}
+    >
+      <summary style={{ cursor: 'pointer', color: 'var(--wf-text-hint)' }}>
+        Advanced: 2.5D (preview)
+      </summary>
+      <div style={{ padding: '4px 8px', borderLeft: '2px solid var(--wf-border-default)', marginTop: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', rowGap: 2, columnGap: 8 }}>
+          <span>Elevation (m):</span>
+          <span style={{ color: 'var(--wf-text-primary)' }}>{props.elevation ?? '\u2014'}</span>
+          <span>Elevation range:</span>
+          <span style={{ color: 'var(--wf-text-primary)' }}>
+            {props.elevationRange ? `${props.elevationRange.floor} \u2192 ${props.elevationRange.ceiling}` : '\u2014'}
+          </span>
+          <span>Parallax layers:</span>
+          <span style={{ color: 'var(--wf-text-primary)' }}>
+            {props.parallaxLayers && props.parallaxLayers.length > 0 ? `${props.parallaxLayers.length} layer(s)` : '\u2014'}
+          </span>
+          <span>Skyline ref:</span>
+          <span style={{ color: 'var(--wf-text-primary)' }}>{props.skylineRef ?? '\u2014'}</span>
+        </div>
+        <div style={{ fontSize: 10, fontStyle: 'italic', marginTop: 6, color: 'var(--wf-text-hint)' }}>
+          {anySet
+            ? 'Edit these fields in your project JSON or a future release \u2014 editor UI coming in Phase 5.'
+            : 'No 2.5D fields set. Edit these in your project JSON or a future release \u2014 editor UI coming in Phase 5.'}
+        </div>
+      </div>
+    </details>
   );
 }
 

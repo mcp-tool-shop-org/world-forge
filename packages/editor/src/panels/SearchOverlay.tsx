@@ -10,6 +10,7 @@ import { type WorldProject, scanDependencies } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { useKitStore } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 
 export interface SearchResult {
   type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
@@ -138,6 +139,19 @@ function saveRecentSearch(query: string): void {
   localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 }
 
+/**
+ * ED-B-006: remove any recent-search term whose query would now find nothing
+ * in the live search index (e.g. the referenced zone/entity was deleted).
+ * Returns the new list; persists to localStorage when anything changed.
+ */
+export function pruneRecentSearches(index: SearchResult[], recent: string[]): string[] {
+  const pruned = recent.filter((term) => filterResults(index, term).length > 0);
+  if (pruned.length !== recent.length) {
+    try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(pruned)); } catch { /* ignore */ }
+  }
+  return pruned;
+}
+
 export { loadRecentSearches, saveRecentSearch, RECENT_SEARCHES_KEY };
 
 export function SearchOverlay() {
@@ -155,6 +169,14 @@ export function SearchOverlay() {
 
   const { regionPresets, encounterPresets } = usePresetStore();
   const { kits } = useKitStore();
+
+  // ED-B-006: on project change, drop recent searches that no longer match
+  // anything. We also re-derive recent on every overlay open (the effect below
+  // runs whenever `project` is replaced).
+  useEffect(() => {
+    const idx = buildSearchIndex(project);
+    setRecentSearches((prev) => pruneRecentSearches(idx, prev));
+  }, [project]);
 
   const searchIndex = useMemo(() => {
     const base = buildSearchIndex(project);
@@ -325,7 +347,21 @@ export function SearchOverlay() {
               {recentSearches.map((term) => (
                 <div
                   key={term}
-                  onClick={() => setQuery(term)}
+                  onClick={() => {
+                    // ED-B-006: if the stored term no longer matches anything
+                    // (target was deleted since the search was saved), warn
+                    // the user with a toast rather than silently showing an
+                    // empty result list.
+                    const hits = filterResults(searchIndex, term);
+                    if (hits.length === 0) {
+                      pushToast(`'${term}' no longer matches any object.`, 'warning', 3000);
+                      const pruned = recentSearches.filter((s) => s !== term);
+                      try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(pruned)); } catch { /* ignore */ }
+                      setRecentSearches(pruned);
+                      return;
+                    }
+                    setQuery(term);
+                  }}
                   style={{
                     padding: '5px 12px', cursor: 'pointer', fontSize: 12,
                     color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,

@@ -10,6 +10,8 @@ npm install @world-forge/export-unreal
 
 ## API
 
+Choose this exporter for Unreal Engine 5 2.5D projects. For the AI RPG Engine, use `@world-forge/export-ai-rpg`. For Godot (planned), see `@world-forge/export-godot`.
+
 ```typescript
 import { exportToUnreal } from '@world-forge/export-unreal';
 
@@ -63,6 +65,21 @@ When a zone has `elevation`, `elevationRange`, `parallaxLayers`, or `skylineRef`
 - bind the skybox / skyline mesh to `skylineRef`.
 
 Projects without 2.5D fields still export cleanly — elevation defaults to 0 and parallax layers are simply omitted.
+
+## UE5 integration
+
+**This package ships the pack, not the loader.** You bring (or build) a small UE5 plugin — Blueprint or C++ — that reads the JSON tree and spawns the world. A concrete loader plugin is not shipped with this npm package; it lives on the UE5 side of the wall where the engine is.
+
+Expected loader contract:
+
+1. Read `pack.json` once to pin the source project id, `TileSizeCm`, and `FormatVersion`. Bail early if `FormatVersion` is past the loader's supported major.
+2. Iterate `zones/<id>.json` — each file is a UE5 Primary Data Asset payload with zone extent in UE cm (Z-up, Y-flipped), elevation in cm, parallax layers, and the tileset/background/skyline asset ids.
+3. Consult `world-partition.json` to size the streaming grid (`CellsX`, `CellsY`, `CellSizeCm`) and pick a loader strategy (always-loaded for small maps, streaming cells for open worlds).
+4. Read `connections.json` to wire LevelStreaming edges and set up teleport/load volumes per `StreamMode`.
+5. Iterate `actors/manifest.json` — entities are grouped by zone, each with a role tag (`npc`, `enemy`, `merchant`, `quest-giver`, `companion`, `boss`) the loader maps to a Blueprint class. `LocationCm` is already in UE space.
+6. Surface `fidelity.json` to content authors — the `dropped` / `approximated` entries tell them what didn't round-trip and why.
+
+A reference UE5 loader will be published alongside the Star Freight UE5 project when it lands.
 
 ## Peer packages
 

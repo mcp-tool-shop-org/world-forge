@@ -3,6 +3,13 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 
+/**
+ * Convert project districts → engine `DistrictDefinition[]`.
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ */
 export function convertDistricts(project: WorldProject): DistrictDefinition[] {
   return project.districts.map((d) => ({
     id: d.id,

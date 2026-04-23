@@ -3,6 +3,13 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { ZoneDefinition } from '@ai-rpg-engine/content-schema';
 
+/**
+ * Convert project zones → engine `ZoneDefinition[]`.
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ */
 export function convertZones(project: WorldProject): ZoneDefinition[] {
   return project.zones.map((z) => ({
     id: z.id,

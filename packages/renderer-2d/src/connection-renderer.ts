@@ -2,6 +2,7 @@
 
 import { Container, Graphics } from 'pixi.js';
 import type { Zone, ZoneConnection } from '@world-forge/schema';
+import type { DiagnosticInfo } from './diagnostics.js';
 
 export class ConnectionRenderer {
   container: Container;
@@ -23,6 +24,18 @@ export class ConnectionRenderer {
     if (this.destroyed) return;
     this.destroyed = true;
     this.container.destroy({ children: true });
+  }
+
+  /**
+   * INF-B-008: Lifecycle observability. Safe to call at any time, including
+   * after destroy(). Never mutates state.
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return {
+      className: 'ConnectionRenderer',
+      destroyed: this.destroyed,
+      childCount: this.container.children.length,
+    };
   }
 
   update(zones: Zone[], connections: ZoneConnection[]): void {

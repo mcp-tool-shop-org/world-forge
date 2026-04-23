@@ -245,6 +245,40 @@ export function clearLastAutoSaveError(): void {
   _lastAutoSaveError = null;
 }
 
+/**
+ * ED-B-008: tracks whether the most recent auto-save attempt was rejected by
+ * the oversize guard. `true` means the project is too large for localStorage
+ * and auto-save is currently suspended.
+ */
+let _oversize = false;
+/**
+ * ED-B-008: size (bytes) of the last successful serialization attempt. Useful
+ * for surfacing "2.1 MB of 4.5 MB" or "4.8 MB — over limit" hints.
+ */
+let _lastSerializedBytes = 0;
+
+/** ED-B-008: Auto-save health snapshot for the UI banner. */
+export interface AutoSaveHealth {
+  /** Last non-null error message, or null if the latest attempt was fine. */
+  lastError: string | null;
+  /** True when the oversize guard is actively suppressing auto-save. */
+  oversize: boolean;
+  /** Size of the last serialized payload (bytes). 0 if no attempt has run. */
+  lastBytes: number;
+  /** Fixed upper bound — the oversize threshold. */
+  limitBytes: number;
+}
+
+/** ED-B-008: Snapshot auto-save health. Safe to call every render. */
+export function getAutoSaveHealth(): AutoSaveHealth {
+  return {
+    lastError: _lastAutoSaveError,
+    oversize: _oversize,
+    lastBytes: _lastSerializedBytes,
+    limitBytes: AUTOSAVE_MAX_BYTES,
+  };
+}
+
 // ED-A-007 + ED-A-014: track single-emission console warnings so the log isn't
 // flooded across 30s tick cycles.
 let _warnedQuota = false;
@@ -304,6 +338,8 @@ function writeAutoSave(project: WorldProject): void {
     return;
   }
 
+  _lastSerializedBytes = serialized.length;
+
   // ED-A-014: oversize guard — don't even attempt the write. localStorage would
   // reject it with QuotaExceededError and we'd lose the history entry anyway.
   if (serialized.length > AUTOSAVE_MAX_BYTES) {
@@ -316,6 +352,7 @@ function writeAutoSave(project: WorldProject): void {
       _warnedOversize = true;
     }
     _lastAutoSaveError = 'Auto-save skipped: project is too large for local storage.';
+    _oversize = true;
     return;
   }
 
@@ -338,6 +375,7 @@ function writeAutoSave(project: WorldProject): void {
     _lastAutoSaveError = null;
     _warnedQuota = false;
     _warnedOversize = false;
+    _oversize = false;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const isQuota =

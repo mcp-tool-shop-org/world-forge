@@ -11,8 +11,14 @@ const USAGE = `Usage: world-forge-export <project.json> [options]
 Options:
   --out <dir>        Output directory (default: ./export) (created if missing)
   --validate-only    Validate without writing files
-  --verbose          Show detailed export diagnostics
-  --help             Show this help`;
+  --verbose          Show detailed export diagnostics (includes err.stack on failure)
+  --help             Show this help
+
+Exit codes:
+  0  success (or --validate-only passed)
+  1  any error (bad args, unreadable input, invalid JSON, validation failure, write failure)
+
+See also: world-forge-export-unreal (for Unreal Engine 5 2.5D games).`;
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -123,5 +129,10 @@ async function main(): Promise<void> {
 
 main().catch((err: Error) => {
   console.error(`Fatal: ${err.message}`);
+  // AIR-B-005: When --verbose is set, also print the stack trace to aid
+  // debugging of unexpected top-level failures (e.g. write/permission errors).
+  if (process.argv.includes('--verbose') && err.stack) {
+    console.error(err.stack);
+  }
   process.exit(1);
 });

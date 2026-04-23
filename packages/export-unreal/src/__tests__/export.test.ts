@@ -92,6 +92,30 @@ describe('exportToUnreal', () => {
     expect(result.contentPack.Meta.SourceTileSizePx).toBe(minimalProject.map.tileSize);
   });
 
+  it('stamps FormatVersion on pack meta distinct from project Version (UE-B-010)', () => {
+    // FormatVersion describes pack STRUCTURE; Version tracks the project's iteration.
+    // Loaders should check FormatVersion, not Version, for compatibility breaks.
+    const result = exportToUnreal(minimalProject);
+    if (!result.success) throw new Error('export failed');
+    expect(result.contentPack.Meta.FormatVersion).toBe('1.0.0');
+    expect(result.contentPack.Meta.Version).toBe(minimalProject.version);
+  });
+
+  it('rejects a non-finite tileSizeCm with a structured validation error (UE-B-001)', () => {
+    const result = exportToUnreal(minimalProject, { tileSizeCm: Number.NaN });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors[0].path).toBe('options.tileSizeCm');
+    expect(result.errors[0].message).toContain('positive finite number');
+  });
+
+  it('rejects a non-positive tileSizeCm with a structured validation error (UE-B-001)', () => {
+    const result = exportToUnreal(minimalProject, { tileSizeCm: -50 });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors[0].path).toBe('options.tileSizeCm');
+  });
+
   it('returns a validation error for an empty project (0 zones)', () => {
     // UE-A-006: empty project — should fail cleanly via validateProject rather
     // than crashing the pipeline.
@@ -250,12 +274,47 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     expect(lossEntry?.reason).toContain('SourceTileSizePx');
   });
 
-  it('flags dialogues as dropped during the round-trip', () => {
+  it('emits a single consolidated "world" fidelity entry listing every unrecoverable field', () => {
+    // UE-B-004: previously only `dialogues` was flagged, hiding 17+ other
+    // dropped fields. One consolidated entry now names every field the
+    // Unreal pack cannot round-trip.
     const exported = exportToUnreal(minimalProject);
     if (!exported.success) throw new Error('export failed');
     const imported = importFromUnreal(exported.contentPack);
     if (!imported.success) throw new Error('import failed');
-    const droppedDialogues = imported.fidelity.entries.find((e) => e.domain === 'dialogues' && e.level === 'dropped');
-    expect(droppedDialogues).toBeDefined();
+
+    const consolidated = imported.fidelity.entries.filter(
+      (e) => e.domain === 'world' && e.level === 'dropped' && e.severity === 'warning'
+        && e.message.includes('not recoverable'),
+    );
+    expect(consolidated.length).toBe(1);
+    // Must name each unrecoverable field in the message.
+    const msg = consolidated[0].message;
+    for (const field of [
+      'dialogues', 'progressionTrees', 'playerTemplate', 'buildCatalog',
+      'itemPlacements', 'encounterAnchors', 'spawnPoints', 'craftingStations',
+      'marketNodes', 'landmarks', 'factionPresences', 'pressureHotspots',
+      'tilesets', 'tileLayers', 'props', 'propPlacements', 'ambientLayers',
+      'assets', 'assetPacks', 'genre', 'tones', 'difficulty', 'narratorTone',
+    ]) {
+      expect(msg).toContain(field);
+    }
+  });
+
+  it('emits a dropped "world" fidelity entry when pack TileSizeCm is invalid', () => {
+    // UE-B-003: importer must not silently downshift a bad TileSizeCm.
+    const exported = exportToUnreal(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+    const brokenPack = {
+      ...exported.contentPack,
+      Meta: { ...exported.contentPack.Meta, TileSizeCm: 0 },
+    };
+    const imported = importFromUnreal(brokenPack);
+    if (!imported.success) throw new Error('import failed');
+    const entry = imported.fidelity.entries.find(
+      (e) => e.domain === 'world' && e.fieldPath === 'Meta.TileSizeCm' && e.level === 'dropped',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.severity).toBe('warning');
   });
 });
