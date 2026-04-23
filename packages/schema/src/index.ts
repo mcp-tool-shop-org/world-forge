@@ -1,7 +1,7 @@
 // @world-forge/schema — spatial data types for world authoring
 
 export type {
-  WorldMap, Zone, ZoneExit, Interactable,
+  WorldMap, Zone, ZoneExit, ZoneElevationRange, Interactable,
   ZoneConnection, ConnectionKind, Landmark,
 } from './spatial.js';
 
@@ -37,8 +37,10 @@ export type {
 
 export type {
   Tileset, TileDefinition, TileLayer, TilePlacement,
-  PropDefinition, PropPlacement, AmbientLayer,
+  PropDefinition, PropPlacement, AmbientLayer, ParallaxLayer,
 } from './visual.js';
+
+export type { CanonAdapter, CanonStarterKit, CanonMotifSceneRef } from './canon-adapter.js';
 
 export type { AssetKind, AssetProvenance, AssetEntry, PackCompatibility, AssetPack } from './assets.js';
 

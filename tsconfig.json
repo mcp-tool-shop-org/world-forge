@@ -3,6 +3,8 @@
   "references": [
     { "path": "packages/schema" },
     { "path": "packages/export-ai-rpg" },
+    { "path": "packages/export-unreal" },
+    { "path": "packages/export-godot" },
     { "path": "packages/renderer-2d" },
     { "path": "packages/editor" }
   ]

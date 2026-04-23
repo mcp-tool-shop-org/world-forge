@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { exportToEngine } from '@world-forge/export-ai-rpg';
+import { exportToUnreal } from '@world-forge/export-unreal';
 import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
@@ -64,6 +65,31 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     markExported();
   };
 
+  const handleExportUnreal = () => {
+    const result = exportToUnreal(project);
+    if (!result.success) {
+      setStatus('invalid');
+      setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
+      return;
+    }
+
+    setWarnings(result.warnings);
+
+    const bundle = {
+      contentPack: result.contentPack,
+      fidelity: result.fidelity,
+    };
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.id}-unreal-pack.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus('exported');
+    markExported();
+  };
+
   const handleGoToFirstIssue = () => {
     if (precheck.errors.length === 0) return;
     const err = precheck.errors[0];
@@ -103,7 +129,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   if (project.spawnPoints.length === 0) missing.push('No spawn points');
 
   return (
-    <ModalFrame title="Export to AI RPG Engine" width={450} onClose={onClose}>
+    <ModalFrame title="Export" width={450} onClose={onClose}>
 
         {/* Readiness banner */}
         {precheck.valid ? (
@@ -192,6 +218,20 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             cursor: precheck.valid ? 'pointer' : 'not-allowed',
             opacity: precheck.valid ? 1 : 0.6,
           }} disabled={!precheck.valid}>Export JSON</button>
+          <button
+            onClick={handleExportUnreal}
+            title="Export a 2.5D-aware Unreal Engine 5 content pack"
+            style={{
+              ...buttonBase,
+              background: precheck.valid ? 'var(--wf-accent)' : 'var(--wf-bg-control)',
+              color: precheck.valid ? '#fff' : 'var(--wf-text-hint)',
+              cursor: precheck.valid ? 'pointer' : 'not-allowed',
+              opacity: precheck.valid ? 1 : 0.6,
+            }}
+            disabled={!precheck.valid}
+          >
+            Export Unreal Engine 5
+          </button>
           {!precheck.valid && precheck.errors.length > 0 && (
             <button onClick={handleGoToFirstIssue} style={buttonAccent}>Fix first issue</button>
           )}

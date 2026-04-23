@@ -8,7 +8,7 @@ const ROOT = join(__dirname, "..", "..", "..", "..");
 
 const rootPkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 const changelog = readFileSync(join(ROOT, "CHANGELOG.md"), "utf-8");
-const workspaces = ["editor", "export-ai-rpg", "renderer-2d", "schema"];
+const workspaces = ["editor", "export-ai-rpg", "export-unreal", "renderer-2d", "schema"];
 
 describe("version consistency", () => {
   it("root version is valid semver", () => {

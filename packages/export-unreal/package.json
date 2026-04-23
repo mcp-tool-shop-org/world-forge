@@ -1,18 +1,21 @@
 {
-  "name": "@world-forge/schema",
+  "name": "@world-forge/export-unreal",
   "version": "4.2.0",
-  "description": "Spatial data types for world authoring",
+  "description": "Export pipeline between WorldProject and an Unreal Engine 5 ContentPack (2.5D aware).",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "bin": {
+    "world-forge-export-unreal": "dist/cli.js"
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE",
-    "logo.png"
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
@@ -25,7 +28,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/mcp-tool-shop-org/world-forge.git",
-    "directory": "packages/schema"
+    "directory": "packages/export-unreal"
   },
   "homepage": "https://mcp-tool-shop-org.github.io/world-forge/",
   "bugs": {
@@ -33,10 +36,14 @@
   },
   "keywords": [
     "world-forge",
-    "spatial",
-    "schema",
+    "export",
+    "unreal-engine",
+    "ue5",
+    "2.5d",
     "rpg",
-    "game-dev",
     "typescript"
-  ]
+  ],
+  "dependencies": {
+    "@world-forge/schema": "*"
+  }
 }

@@ -11,6 +11,7 @@
   "references": [
     { "path": "../schema" },
     { "path": "../renderer-2d" },
-    { "path": "../export-ai-rpg" }
+    { "path": "../export-ai-rpg" },
+    { "path": "../export-unreal" }
   ]
 }

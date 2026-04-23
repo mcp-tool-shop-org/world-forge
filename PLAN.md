@@ -16,9 +16,11 @@
 
 ---
 
-## Shipped (v1.0 → v4.0.4)
+## Shipped (v1.0 → v4.2.0)
 
-All 40 releases shipped. See CHANGELOG.md for full history.
+**v4.2.0 — UE5 alignment wave (2026-04-22).** Added `@world-forge/export-unreal` as a peer lane to `export-ai-rpg`. Schema gained 2.5D fields on `Zone` (`elevation`, `elevationRange`, `parallaxLayers`, `skylineRef`) with matching validation + advisories. Reserved `@world-forge/export-godot` stub for the planned Fractured Road lane. Introduced `CanonAdapter` interface stub (no implementation). Editor Export modal exposes a new "Export Unreal Engine 5" button. 1692 tests total (1660 → 1692).
+
+All prior releases shipped. See CHANGELOG.md for full history.
 
 Highlights:
 - Schema + validation (54 checks) + advisory validation (mode-specific)

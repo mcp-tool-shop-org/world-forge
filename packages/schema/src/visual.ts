@@ -67,3 +67,18 @@ export interface AmbientLayer {
   intensity: number;
   color?: string;
 }
+
+/**
+ * A depth layer for 2.5D rendering. Distinct from AmbientLayer (which is mood/atmosphere).
+ * Higher `depth` = further behind the gameplay plane. `scrollFactor` controls parallax speed
+ * relative to the camera (1.0 = locked to gameplay plane, 0.5 = half-speed, 0.0 = static).
+ */
+export interface ParallaxLayer {
+  id: string;
+  /** Depth ordering: higher = further back. Must be unique within a zone. */
+  depth: number;
+  /** Reference to an AssetEntry id (kind = background or sprite). */
+  assetRef: string;
+  /** Parallax scroll factor (0.0 static, 1.0 locked to camera). */
+  scrollFactor: number;
+}

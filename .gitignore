@@ -7,3 +7,6 @@ site/node_modules/
 .polyglot-cache.json
 *.tsbuildinfo
 .DS_Store
+
+# Dogfood run artifacts (regenerated; not source)
+dogfood/output/

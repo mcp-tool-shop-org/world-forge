@@ -13,17 +13,19 @@
   <a href="https://mcp-tool-shop-org.github.io/world-forge/"><img src="https://img.shields.io/badge/Landing_Page-live-blue" alt="Landing Page"></a>
 </p>
 
-<p align="center">2D world authoring studio for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete ContentPack ready to play.</p>
+<p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and (planned) Godot 4.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
-<p align="center"><strong>v4.1.0</strong> — 80 test files, 1660 tests, 4 packages, 7 authoring modes</p>
+<p align="center"><strong>v4.2.0</strong> — 1692 tests, 6 packages (4 shipping, 1 new UE5 lane, 1 Godot stub), 7 authoring modes</p>
 
 ## Architecture
 
 ```
 packages/
-  schema/          @world-forge/schema        — spatial types, validation
-  export-ai-rpg/   @world-forge/export-ai-rpg — engine export pipeline + CLI
-  renderer-2d/     @world-forge/renderer-2d   — PixiJS 2D canvas renderer
+  schema/          @world-forge/schema         — spatial types, validation, 2.5D fields
+  export-ai-rpg/   @world-forge/export-ai-rpg  — AI RPG Engine export pipeline + CLI
+  export-unreal/   @world-forge/export-unreal  — Unreal Engine 5 export pipeline + CLI (2.5D aware)
+  export-godot/    @world-forge/export-godot   — (planned) Godot 4 export lane, stub only
+  renderer-2d/     @world-forge/renderer-2d    — PixiJS 2D canvas renderer
   editor/          @world-forge/editor         — React web authoring app
 ```
 
@@ -65,6 +67,20 @@ Core TypeScript types and validation for world authoring.
 - **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
 - **Validation** — `validateProject()` (54 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
 - **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
+
+### @world-forge/export-unreal
+
+Converts a `WorldProject` into an Unreal Engine 5 content pack tuned for 2.5D games.
+
+- **Output** — `pack.json`, per-zone and per-district Primary Data Asset JSON, grouped actor spawn manifest, level-streaming hints per connection, World Partition cell hints, and a structured fidelity report.
+- **2.5D fields** — `Zone.elevation`, `elevationRange`, `parallaxLayers`, `skylineRef` are preserved and converted into UE cm / Z-up coordinates.
+- **Coordinate transform** — pure functions (`pixelsToUnrealCm`, `elevationToZ`, `worldForgeToUnrealAxis`, `gridToUnrealAxis`). Default world scale is 1 tile = 100 cm.
+- **Round-trip import** — `importFromUnreal` reconstructs a WorldProject from an Unreal pack; gameplay-only data (dialogues, progression, builds) is flagged as dropped in the fidelity report.
+- **CLI** — `world-forge-export-unreal` with `--out`, `--tile-size-cm`, `--validate-only`, `--verbose`.
+
+### @world-forge/export-godot
+
+Reserved workspace slot for the planned Godot 4 export lane (Fractured Road). Not yet implemented.
 
 ### @world-forge/export-ai-rpg
 

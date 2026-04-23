@@ -99,6 +99,9 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!project.zones.some((z) => z.tags?.includes('station'))) {
         items.push({ path: 'zones', message: 'Space tip: add a station zone as a home base.', severity: 'suggestion' });
       }
+      if (!project.zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
+        items.push({ path: 'zones', message: 'Space tip: set elevation on at least one zone — 2.5D engines like UE5 need a Z-plane to stack sectors or docking arms.', severity: 'suggestion' });
+      }
       break;
 
     case 'interior':
@@ -125,6 +128,9 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       }
       if (project.encounterAnchors.length === 0) {
         items.push({ path: 'encounterAnchors', message: 'Wilderness tip: encounters with wildlife or hazards add realism.', severity: 'suggestion' });
+      }
+      if (!project.zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
+        items.push({ path: 'zones', message: 'Wilderness tip: set elevation on zones for hills, cliffs, and valleys — 2.5D engines use this for terrain.', severity: 'suggestion' });
       }
       break;
   }

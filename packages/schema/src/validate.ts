@@ -666,6 +666,45 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
+  // 53. 2.5D elevation range sanity — floor < ceiling
+  for (const zone of project.zones) {
+    if (zone.elevationRange) {
+      const { floor, ceiling } = zone.elevationRange;
+      if (!(floor < ceiling)) {
+        errors.push({
+          path: `zones.${zone.id}.elevationRange`,
+          message: `Zone "${zone.id}" elevationRange requires floor (${floor}) < ceiling (${ceiling}).`,
+        });
+      }
+    }
+  }
+
+  // 54. 2.5D parallax layer depth must be unique per zone
+  for (const zone of project.zones) {
+    if (!zone.parallaxLayers || zone.parallaxLayers.length === 0) continue;
+    const seenDepths = new Map<number, string>();
+    const seenIds = new Set<string>();
+    for (const layer of zone.parallaxLayers) {
+      if (seenIds.has(layer.id)) {
+        errors.push({
+          path: `zones.${zone.id}.parallaxLayers.${layer.id}`,
+          message: `Zone "${zone.id}" has duplicate parallax layer id "${layer.id}".`,
+        });
+      } else {
+        seenIds.add(layer.id);
+      }
+      const prior = seenDepths.get(layer.depth);
+      if (prior !== undefined) {
+        errors.push({
+          path: `zones.${zone.id}.parallaxLayers.${layer.id}.depth`,
+          message: `Zone "${zone.id}" parallax layers "${prior}" and "${layer.id}" share depth ${layer.depth}. Depth must be unique within a zone.`,
+        });
+      } else {
+        seenDepths.set(layer.depth, layer.id);
+      }
+    }
+  }
+
   // Structured warning counts for callers that want a quick health check
   warningCount = errors.length;
   if (verbose && errors.length > 0) {

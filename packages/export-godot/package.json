@@ -1,0 +1,29 @@
+{
+  "name": "@world-forge/export-godot",
+  "version": "0.0.0-stub",
+  "private": true,
+  "description": "Placeholder for the Godot 4 export lane. Implementation deferred — see world-forge roadmap.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "mcp-tool-shop",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-tool-shop-org/world-forge.git",
+    "directory": "packages/export-godot"
+  },
+  "dependencies": {
+    "@world-forge/schema": "*"
+  }
+}

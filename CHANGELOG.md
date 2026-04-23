@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.2.0] - 2026-04-22
+
+### Added — Unreal Engine 5 alignment wave
+
+- **`@world-forge/export-unreal` (new)** — peer export lane targeting UE5 2.5D games. Emits an `UnrealContentPack` (pack manifest, per-zone / per-district Primary Data Asset JSON, actor spawn manifest grouped by zone, level-streaming hints, World Partition cell hints, fidelity report). Ships a `world-forge-export-unreal` CLI with `--out`, `--tile-size-cm`, `--validate-only`, `--verbose` flags.
+- **2.5D schema additions on `Zone`** — optional `elevation` (metres), `elevationRange` (multi-level), `parallaxLayers` (depth-ordered backdrop layers), and `skylineRef`. Backward-compatible with v4.1.x projects.
+- **Two new validation checks** — `elevationRange.floor < ceiling` and unique parallax-layer `depth` + `id` per zone.
+- **Two new advisories** — suggest authoring elevation when mode is `space` or `wilderness`.
+- **`CanonAdapter` interface stub** — reserved contract for future read-only binding to canon trees (style-dataset-lab, game design directories, Motif scene lists). No implementation in this release.
+- **`@world-forge/export-godot` (stub)** — reserved workspace slot for the planned Godot 4 export lane. Not yet implemented.
+- **Editor — Export modal** — new **Export Unreal Engine 5** button next to the existing **Export JSON** button.
+- **Coordinate transform** — pure functions `pixelsToUnrealCm`, `elevationToZ`, `worldForgeToUnrealAxis`, `gridToUnrealAxis`. Default world scale: 1 tile = 100 cm (1 m). Y-down (World Forge) → Z-up (Unreal) with Y flipped.
+
+### Changed
+
+- Root `package.json` description now names all three engine targets (ai-rpg-engine, UE5, Godot).
+- `ExportModal` title changed from "Export to AI RPG Engine" to "Export" — the modal now hosts multiple engine targets.
+- Workspace version consistency test now covers `@world-forge/export-unreal`.
+
+### Test coverage
+
+- 22 new tests across `export-unreal` (coordinate-transform numeric anchors, export + round-trip import, parity contract against the WorldProject canonical field list).
+- 10 new schema tests covering `elevationRange`, parallax uniqueness, and mode-specific elevation advisories.
+
 ## [4.1.0] - 2026-03-31
 
 ### Added

@@ -1,8 +1,8 @@
 {
   "name": "world-forge",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "private": true,
-  "description": "2D world authoring studio for AI RPG Engine",
+  "description": "2D/2.5D world authoring studio with peer export lanes for AI RPG Engine, Unreal Engine 5, and (planned) Godot 4.",
   "engines": {
     "node": ">=20"
   },

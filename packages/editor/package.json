@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/editor",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Web-based world authoring editor",
   "type": "module",
   "scripts": {
@@ -42,6 +42,7 @@
     "@world-forge/schema": "*",
     "@world-forge/renderer-2d": "*",
     "@world-forge/export-ai-rpg": "*",
+    "@world-forge/export-unreal": "*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.0"
