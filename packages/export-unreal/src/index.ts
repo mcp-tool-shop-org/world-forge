@@ -17,7 +17,7 @@ export type { UnrealDistrictDataAsset, ConvertDistrictsResult } from './convert-
 
 export { convertEntities } from './convert-entities.js';
 export type {
-  UnrealActorSpawnEntry, UnrealActorManifest, UnrealBlueprintTag, ConvertEntitiesResult,
+  UnrealActorSpawnEntry, UnrealActorManifest, UnrealBlueprintTag, UnrealDroppedEntity, ConvertEntitiesResult,
 } from './convert-entities.js';
 
 export { convertConnections } from './convert-connections.js';

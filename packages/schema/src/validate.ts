@@ -15,7 +15,27 @@ export type ValidationResult = {
   errors: ValidationError[];
   /** Number of validation errors found. Present when using validateProject(). */
   warningCount?: number;
+  /**
+   * Schema version that produced this result. Populated by validateProject().
+   *
+   * SCH-B-001 (v4.4): downstream tooling (export-ai-rpg, export-unreal, editor
+   * migration helpers) needs to know which schema generation validated a given
+   * project so that cross-version imports can fall back to migration paths.
+   * Missing this field would force callers to guess, so it is always emitted.
+   */
+  schemaVersion?: string;
 };
+
+/**
+ * The stable schema major+minor+patch this package ships. Update in lockstep
+ * with the workspace root package.json when cutting a release.
+ *
+ * SCH-B-001: Exposed as a public export so downstream tools (editor, exporters,
+ * future migration CLI) can read it programmatically instead of parsing the
+ * package.json. `validateProject()` also stamps this value into every
+ * ValidationResult so error logs carry the producing schema version.
+ */
+export const SCHEMA_VERSION = '4.4.0';
 
 /** Options for validateProject. */
 export interface ValidateOptions {
@@ -297,6 +317,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
 
     // 19. Unreachable nodes (not reachable from entry)
+    //
+    // SCH-B-002 (v4.4): Previously this entire check was silently skipped when
+    // `dlg.entryNodeId` was missing or pointed at a nonexistent node. That hid
+    // orphaned nodes until the export step crashed. Now:
+    //   (a) when the entry is broken, we still report every node as unreachable
+    //       so the user sees exactly what is orphaned — with dialogue id context;
+    //   (b) we also emit an explicit guidance error naming the broken entry.
     if (dlg.nodes[dlg.entryNodeId]) {
       const reachable = new Set<string>();
       const queue = [dlg.entryNodeId];
@@ -317,9 +344,22 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         if (!reachable.has(nid)) {
           errors.push({
             path: `dialogues.${dlg.id}.nodes.${nid}`,
-            message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable from entry node`,
+            message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable from entry node "${dlg.entryNodeId}". Add a nextNodeId or choice that reaches it, or remove the node.`,
           });
         }
+      }
+    } else if (nodeIds.size > 0) {
+      // Entry is broken AND the dialogue has nodes. Step 17 already flagged the
+      // broken entry; surface the reachability gap too so orphans don't hide.
+      errors.push({
+        path: `dialogues.${dlg.id}`,
+        message: `Unreachable dialogue detected: dialogue "${dlg.id}" has ${nodeIds.size} node(s) but the entry "${dlg.entryNodeId}" does not resolve, so reachability cannot be checked. Fix entryNodeId to point at a real node so orphaned nodes can be validated.`,
+      });
+      for (const nid of nodeIds) {
+        errors.push({
+          path: `dialogues.${dlg.id}.nodes.${nid}`,
+          message: `Node "${nid}" in dialogue "${dlg.id}" is unreachable because entry node "${dlg.entryNodeId}" does not exist. Fix the entryNodeId first, then re-validate.`,
+        });
       }
     }
   }
@@ -994,5 +1034,5 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // This is useful for editor integrations that want to show inline diagnostics.
   }
 
-  return { valid: errors.length === 0, errors, warningCount };
+  return { valid: errors.length === 0, errors, warningCount, schemaVersion: SCHEMA_VERSION };
 }

@@ -185,8 +185,8 @@ export function exportToEngine(
 
   const warnings: string[] = [];
 
-  // 2. Convert zones
-  const zones = convertZones(project);
+  // 2. Convert zones (AIR-B-002: forward warnings for broken exit refs)
+  const zones = convertZones(project, warnings);
 
   // 3. Convert districts
   const districts = convertDistricts(project);
@@ -195,7 +195,34 @@ export function exportToEngine(
   if (project.entityPlacements.length === 0) {
     warnings.push('No entities found — exported world will have no NPCs or encounters. Add entity placements in the editor to populate your world.');
   }
-  const entities = convertEntities(project);
+
+  // AIR-B-007: Track entities whose zoneId doesn't resolve to a real zone in
+  // the export. convertEntities currently emits a blueprint regardless, but
+  // entities-in-deleted-zones used to vanish silently once the engine
+  // positioned them. We surface the orphans BEFORE conversion so the user
+  // sees entity + zone ids together and can fix the authoring issue.
+  const exportedZoneIds = new Set(zones.map((z) => z.id));
+  const orphanedEntities: { entityId: string; zoneId: string; name: string }[] = [];
+  for (const ep of project.entityPlacements) {
+    if (!exportedZoneIds.has(ep.zoneId)) {
+      orphanedEntities.push({
+        entityId: ep.entityId,
+        zoneId: ep.zoneId,
+        name: ep.name || ep.entityId,
+      });
+    }
+  }
+  if (orphanedEntities.length > 0) {
+    const lines = orphanedEntities
+      .map((o) => `  - entity "${o.entityId}" (${o.name}) → zone "${o.zoneId}"`)
+      .join('\n');
+    warnings.push(
+      `${orphanedEntities.length} entity placement(s) reference zones that do not exist and will be unreachable at runtime:\n${lines}\nRestore the missing zones or move these entities to a surviving zone.`,
+    );
+  }
+
+  // AIR-B-003: forward warnings for dangling faction refs.
+  const entities = convertEntities(project, undefined, warnings);
   // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
   // entities will exist. The earlier "no placements" warning above is sufficient.
 
@@ -205,8 +232,8 @@ export function exportToEngine(
   // 6. Convert dialogues
   const dialogues = convertDialogues(project);
 
-  // 7. Convert player template, build catalog, progression trees
-  const playerTemplate = convertPlayerTemplate(project);
+  // 7. Convert player template, build catalog, progression trees (AIR-B-009)
+  const playerTemplate = convertPlayerTemplate(project, warnings);
   const buildCatalog = convertBuildCatalog(project);
   const progressionTrees = convertProgressionTrees(project);
 

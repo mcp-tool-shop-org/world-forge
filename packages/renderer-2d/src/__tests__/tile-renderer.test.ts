@@ -92,6 +92,32 @@ describe('TileLayerRenderer', () => {
     warnSpy.mockRestore();
   });
 
+  it('deduplicates repeated missing-tile warnings into a single aggregated message (R2D-B-003)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'wall-1', tags: ['wall'] }])];
+    // 20 placements of ghost-a, 5 of ghost-b, 3 of ghost-c, sprinkled with 4 valid.
+    const tiles: TileLayer['tiles'] = [];
+    for (let i = 0; i < 20; i++) tiles.push({ tileId: 'ghost-a', gridX: i, gridY: 0 });
+    for (let i = 0; i < 5; i++) tiles.push({ tileId: 'ghost-b', gridX: i, gridY: 1 });
+    for (let i = 0; i < 3; i++) tiles.push({ tileId: 'ghost-c', gridX: i, gridY: 2 });
+    for (let i = 0; i < 4; i++) tiles.push({ tileId: 'wall-1', gridX: i, gridY: 3 });
+    const layers: TileLayer[] = [{ id: 'layer-flood', name: 'Flood', zIndex: 0, tiles }];
+    renderer.update(layers, tilesets);
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const msg = String(warnSpy.mock.calls[0][0]);
+    // Each distinct tileId shows up once (deduped), with its count.
+    expect(msg).toMatch(/ghost-a.*20 placement/);
+    expect(msg).toMatch(/ghost-b.*5 placement/);
+    expect(msg).toMatch(/ghost-c.*3 placement/);
+    // Layer id should be attributed in the summary.
+    expect(msg).toMatch(/layer-flood/);
+    // Total = 28 missing.
+    expect(msg).toMatch(/28 tile placement/);
+    warnSpy.mockRestore();
+  });
+
   it('handles empty layers without errors', () => {
     const renderer = new TileLayerRenderer(32);
     expect(() => renderer.update([], [])).not.toThrow();

@@ -10,9 +10,11 @@
     "packages/*"
   ],
   "scripts": {
+    "prebuild": "node scripts/sync-version.mjs",
     "build": "tsc --build",
     "clean": "tsc --build --clean",
     "test": "vitest run",
+    "sync-version": "node scripts/sync-version.mjs",
     "verify": "npm run build && npm run test"
   },
   "repository": {

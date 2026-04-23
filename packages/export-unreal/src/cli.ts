@@ -104,6 +104,15 @@ async function main(): Promise<void> {
   await mkdir(join(resolvedOut, 'districts'), { recursive: true });
   await mkdir(join(resolvedOut, 'actors'), { recursive: true });
 
+  // UE-B-002: progress signal for long exports. Emit a single-line status to
+  // stderr before multi-second batches so users don't see a silent pause. Not
+  // spammy — one status per logical batch.
+  const zoneCount = result.contentPack.Zones.length;
+  const districtCount = result.contentPack.Districts.length;
+  process.stderr.write(
+    `Converting Unreal pack: ${zoneCount} zones, ${districtCount} districts — writing to disk...\n`,
+  );
+
   // Single-file writes stay sequential for determinism (stable stdout ordering
   // on failure, and consistent timestamps when consumers diff the output dir).
   await writeFile(join(resolvedOut, 'pack.json'), JSON.stringify(result.contentPack.Meta, null, 2));
@@ -123,21 +132,49 @@ async function main(): Promise<void> {
     JSON.stringify(result.contentPack.Transitions, null, 2),
   );
 
-  // UE-B-006: zone + district writes are independent — parallelize them so I/O
-  // overlap rather than serializing on each fs.write.
-  await Promise.all(
-    result.contentPack.Zones.map((zone) =>
-      writeFile(join(resolvedOut, 'zones', `${safeFile(zone.Id)}.json`), JSON.stringify(zone, null, 2)),
-    ),
+  // UE-B-001: zone + district writes are concurrent but must not silently drop
+  // a failure. `Promise.allSettled` lets us aggregate per-file failures so the
+  // user sees every broken path at once, not just the first one. Partial
+  // success still exits non-zero because the pack on disk is incomplete.
+  const zoneWrites = await Promise.allSettled(
+    result.contentPack.Zones.map((zone) => {
+      const path = join(resolvedOut, 'zones', `${safeFile(zone.Id)}.json`);
+      return writeFile(path, JSON.stringify(zone, null, 2)).then(() => ({ path, id: zone.Id }));
+    }),
   );
-  await Promise.all(
-    result.contentPack.Districts.map((district) =>
-      writeFile(
-        join(resolvedOut, 'districts', `${safeFile(district.Id)}.json`),
-        JSON.stringify(district, null, 2),
-      ),
-    ),
+  const districtWrites = await Promise.allSettled(
+    result.contentPack.Districts.map((district) => {
+      const path = join(resolvedOut, 'districts', `${safeFile(district.Id)}.json`);
+      return writeFile(path, JSON.stringify(district, null, 2)).then(() => ({ path, id: district.Id }));
+    }),
   );
+
+  const writeFailures: Array<{ kind: 'zone' | 'district'; index: number; message: string }> = [];
+  zoneWrites.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      const zoneId = result.contentPack.Zones[i]?.Id ?? `#${i}`;
+      const msg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      writeFailures.push({ kind: 'zone', index: i, message: `zones/${zoneId}.json: ${msg}` });
+    }
+  });
+  districtWrites.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      const dId = result.contentPack.Districts[i]?.Id ?? `#${i}`;
+      const msg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      writeFailures.push({ kind: 'district', index: i, message: `districts/${dId}.json: ${msg}` });
+    }
+  });
+
+  if (writeFailures.length > 0) {
+    console.error(
+      `Pack incomplete: ${writeFailures.length} file write(s) failed. The pack at ${resolvedOut} is corrupted and must not be loaded by UE5:`,
+    );
+    for (const f of writeFailures) console.error(`  - ${f.message}`);
+    console.error(
+      `Hint: check disk space, directory permissions on ${resolvedOut}, and retry with --out pointing at a writable path.`,
+    );
+    process.exit(1);
+  }
 
   console.log(`Exported to ${resolvedOut}/`);
   console.log(
@@ -147,6 +184,24 @@ async function main(): Promise<void> {
     `  WorldPartition cells: ${result.contentPack.WorldPartition.CellsX} × ${result.contentPack.WorldPartition.CellsY} @ ${result.contentPack.WorldPartition.CellSizeCm} cm`,
   );
   console.log(`  Fidelity: ${result.fidelity.summary.losslessPercent}% lossless (${result.fidelity.summary.total} entries)`);
+
+  // UE-B-003: surface dropped entities to stderr so users (and CI) see exactly
+  // which actors the pack is missing and why. The manifest/fidelity already
+  // flag this, but stderr is where a user actually looks when something is
+  // off. Also emit as a non-zero-worthy warning — we exit 0 (pack is usable
+  // with gaps), but the Incomplete signal propagates through manifest + stderr.
+  const droppedActors = result.contentPack.Actors.Dropped;
+  if (droppedActors.length > 0) {
+    console.error(
+      `Warning: pack is INCOMPLETE — ${droppedActors.length} entity placement(s) dropped:`,
+    );
+    for (const d of droppedActors) {
+      console.error(`  - Entity "${d.ActorId}" in missing zone "${d.ZoneId}": ${d.Reason}`);
+    }
+    console.error(
+      `Hint: fix the missing zones in the source project, or remove the stale entity placements. UE5 loader should check Actors.Incomplete on this pack.`,
+    );
+  }
 
   for (const w of result.warnings) console.log(`  - ${w}`);
 

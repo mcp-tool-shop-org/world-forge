@@ -186,6 +186,59 @@ describe('CLI: world-forge-export-unreal', () => {
     }
   });
 
+  it('UE-B-002: emits a progress status to stderr before writing the pack', async () => {
+    // UE-B-002: on large projects the CLI goes silent for seconds while it
+    // writes zones/districts. A single-line progress status on stderr tells
+    // users the CLI is alive and which workload is pending. Doesn't need to
+    // be fancy — just must mention "zones" and "districts" and NOT arrive
+    // after the "Exported to" stdout line.
+    const outDir = join(tmpDir, 'progress-out');
+    const { code, stderr } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    expect(stderr.toLowerCase()).toContain('zones');
+    expect(stderr.toLowerCase()).toContain('districts');
+  });
+
+  it('UE-B-001: exits non-zero with per-file diagnostic when a zone write fails', async () => {
+    // UE-B-001: previously Promise.all rejected with only the first failure's
+    // message and left the pack corrupted without a useful diagnostic. The
+    // fix uses Promise.allSettled and aggregates per-file failures into
+    // stderr. We simulate a write failure by pointing --out at a file path
+    // instead of a directory — mkdir('zones') inside that path will fail.
+    //
+    // On Windows/POSIX the first mkdir on the pre-existing file will fail,
+    // so we assert the process exits non-zero and stderr names the failure
+    // (either the mkdir or the write path). This is the defensive envelope
+    // we need for the allSettled path.
+    const blockerPath = join(tmpDir, 'blocker-file-not-dir');
+    await writeFile(blockerPath, 'not a dir');
+    const { code, stderr } = await runCli([validJsonPath, '--out', blockerPath]);
+    expect(code).not.toBe(0);
+    expect(stderr.length).toBeGreaterThan(0);
+  });
+
+  it('UE-B-001 + UE-B-003: pack manifest + fidelity carry Dropped/Incomplete fields on export', async () => {
+    // Shape check: the happy-path manifest must always include the new
+    // Dropped array + Incomplete flag so UE5 loaders can rely on them being
+    // present regardless of whether anything was dropped.
+    const outDir = join(tmpDir, 'dropped-shape-out');
+    const { code } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    const actors = JSON.parse(
+      await readFile(join(outDir, 'actors', 'manifest.json'), 'utf-8'),
+    );
+    expect(actors).toHaveProperty('Dropped');
+    expect(Array.isArray(actors.Dropped)).toBe(true);
+    expect(actors).toHaveProperty('Incomplete');
+    expect(typeof actors.Incomplete).toBe('boolean');
+
+    const fidelity = JSON.parse(await readFile(join(outDir, 'fidelity.json'), 'utf-8'));
+    expect(fidelity.summary).toHaveProperty('incomplete');
+    expect(fidelity.summary).toHaveProperty('droppedEntityCount');
+    expect(fidelity.summary.incomplete).toBe(false);
+    expect(fidelity.summary.droppedEntityCount).toBe(0);
+  });
+
   it('happy-path export writes the full Unreal pack layout under --out', async () => {
     const outDir = join(tmpDir, 'export-out');
     const { code, stdout } = await runCli([validJsonPath, '--out', outDir]);

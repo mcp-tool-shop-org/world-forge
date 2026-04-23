@@ -171,15 +171,36 @@ export function exportToUnreal(
     Transitions: transitionsResult.transitions,
   };
 
+  // UE-B-003: surface dropped-entity count on the fidelity summary so callers
+  // (CLI stderr, UE5 loader) can detect an incomplete pack without walking
+  // manifest.Actors.Dropped themselves.
+  const droppedEntityCount = entitiesResult.manifest.Dropped.length;
+
   return {
     success: true,
     contentPack,
     warnings,
-    fidelity: buildFidelityReport(fidelityEntries),
+    fidelity: buildFidelityReport(fidelityEntries, { droppedEntityCount }),
   };
 }
 
-function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
+/**
+ * UE-B-005 / UE-FT-007 / UE-FT-008 seam: the pack meta is built as a
+ * composition chain so later passes (pack signing, schema migration) can slot
+ * in without rewriting this file. Each step takes the previous meta and
+ * returns an extended meta.
+ *
+ * Current pipeline: base → (future: signed → versioned). UE-FT-007 will add
+ * `composeSignedMeta`, UE-FT-008 will add `composeVersionedMeta`. Both will
+ * live here and be invoked from `buildMeta()`.
+ */
+export type MetaStep<TIn extends UnrealPackMeta, TOut extends UnrealPackMeta> = (meta: TIn) => TOut;
+
+/**
+ * UE-B-005: base meta builder. Starts the composition chain with fields that
+ * don't require signing keys or schema migration context.
+ */
+export function composeBaseMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
   return {
     Id: project.id,
     Name: project.name,
@@ -194,4 +215,17 @@ function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
     SourceTileSizePx: project.map.tileSize,
     FormatVersion: UNREAL_PACK_FORMAT_VERSION,
   };
+}
+
+/**
+ * UE-B-005: final meta builder — currently just the base. UE-FT-007 will
+ * thread `composeSignedMeta` through here when a signing key is provided;
+ * UE-FT-008 will insert `composeVersionedMeta` for schema migration hints.
+ */
+function buildMeta(project: WorldProject, tileSizeCm: number): UnrealPackMeta {
+  let meta: UnrealPackMeta = composeBaseMeta(project, tileSizeCm);
+  // Future composition steps slot in here — e.g.:
+  //   if (options?.signingKey) meta = composeSignedMeta(meta, options.signingKey);
+  //   meta = composeVersionedMeta(meta);
+  return meta;
 }

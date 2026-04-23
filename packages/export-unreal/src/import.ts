@@ -30,7 +30,56 @@ export interface UnrealImportError {
   errors: string[];
 }
 
+/**
+ * UE-B-006 / UE-FT-008 seam: version-aware import dispatcher. Routes a pack to
+ * the correct deserializer based on `pack.Meta.FormatVersion`. Today there is
+ * only one deserializer (`deserializeV1`), but adding a V2 import path means
+ * registering it here — no changes to call sites, no refactor of the body of
+ * this file.
+ *
+ * Dispatch is by semver major. Unknown majors fall through to V1 with a
+ * fidelity warning; UE-FT-008 will swap the fallback to an explicit error.
+ */
+type PackDeserializer = (pack: UnrealContentPack) => UnrealImportResult | UnrealImportError;
+
+const V1_DESERIALIZER: PackDeserializer = (pack) => deserializeV1(pack);
+
+/**
+ * UE-B-006: registered version dispatchers. Keys are semver majors (`'1'`,
+ * `'2'`, ...). UE-FT-008 will register a `'2'` entry pointing at a new
+ * deserializer that handles the v2 pack structure.
+ */
+const VERSION_DISPATCHERS: Record<string, PackDeserializer> = {
+  '1': V1_DESERIALIZER,
+};
+
+function majorOfFormatVersion(formatVersion: unknown): string | undefined {
+  if (typeof formatVersion !== 'string') return undefined;
+  const match = /^(\d+)\./.exec(formatVersion);
+  return match ? match[1] : undefined;
+}
+
 export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
+  // UE-B-006: version-aware dispatch. Must run *before* deserialization so a
+  // v2 pack isn't parsed with v1 rules. For unknown versions we fall through
+  // to V1 with a warning — UE-FT-008 will upgrade this to a hard error.
+  const metaUnknown: unknown = pack?.Meta;
+  const formatVersion = typeof metaUnknown === 'object' && metaUnknown !== null
+    ? (metaUnknown as { FormatVersion?: unknown }).FormatVersion
+    : undefined;
+  const major = majorOfFormatVersion(formatVersion);
+  if (major !== undefined) {
+    const deserializer = VERSION_DISPATCHERS[major];
+    if (deserializer) {
+      return deserializer(pack);
+    }
+  }
+  // Fallback: unknown / missing FormatVersion — use V1 and let deserializeV1
+  // push a `dropped` fidelity entry so the loader knows we guessed.
+  return V1_DESERIALIZER(pack);
+}
+
+function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
   const fidelity: FidelityEntry[] = [];
 
   // Reconstruct a sensible tile size. Default is 100 cm/tile.

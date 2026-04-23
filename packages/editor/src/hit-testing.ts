@@ -27,6 +27,18 @@ export interface VisibilityFlags {
 /** Screen-space pixel radius for point-object hit detection (entities, landmarks, spawns). */
 export const HIT_RADIUS = 8;
 
+/**
+ * ED-B-002: one-time console notice so a developer or power-user notices the
+ * orphan state the first time hit-testing encounters it. The Object List panel
+ * is the primary UX surface for repair; this log just leaves a breadcrumb.
+ */
+let _warnedOrphanedEncounter = false;
+
+/** Reset the orphaned-encounter warning latch. Exported for tests only. */
+export function _resetOrphanedEncounterWarning(): void {
+  _warnedOrphanedEncounter = false;
+}
+
 // ── Coordinate helpers ──────────────────────────────────────────
 
 function screenToWorld(screenX: number, screenY: number, viewport: ViewportState) {
@@ -85,7 +97,19 @@ export function findHitAt(
   // gate this block the same way spawns/landmarks/entities are gated.
   for (const enc of project.encounterAnchors) {
     const zone = project.zones.find((z) => z.id === enc.zoneId);
-    if (!zone) continue;
+    if (!zone) {
+      // ED-B-002: orphaned encounter — zone was deleted. We can't hit-test
+      // against a zone that doesn't exist, but we warn once so the user has a
+      // breadcrumb pointing at the Object List "Orphaned" group for repair.
+      if (!_warnedOrphanedEncounter) {
+        console.warn(
+          `[hit-testing] Encounter "${enc.id}" references missing zone "${enc.zoneId}". ` +
+          'Open the Object List panel — orphaned encounters are grouped there for reassignment or deletion.',
+        );
+        _warnedOrphanedEncounter = true;
+      }
+      continue;
+    }
     const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
     const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
     const { screenX: sx, screenY: sy } = worldToScreen(cx, cy, viewport);

@@ -59,15 +59,21 @@ export class TileLayerRenderer {
     // Sort layers by zIndex
     const sorted = [...layers].sort((a, b) => a.zIndex - b.zIndex);
 
+    // R2D-B-003: Aggregate missing-tile references. A 100-tile layer with 20
+    // missing types would flood the console with duplicate warnings; instead
+    // we dedupe by tileId and emit a single summary at the end.
+    // Key is `${layerId}::${tileId}` so we can attribute each missing id back
+    // to its layer in the summary.
+    const missingCounts = new Map<string, number>();
+
     for (const layer of sorted) {
       const layerContainer = new Container();
 
       for (const placement of layer.tiles) {
         const def = tileDefs.get(placement.tileId);
         if (!def) {
-          console.warn(
-            `TileLayerRenderer.update: tile placement references tileId "${placement.tileId}" which is not defined in any loaded tileset — skipping. Ensure the tileset containing this tile is included.`,
-          );
+          const key = `${layer.id}::${placement.tileId}`;
+          missingCounts.set(key, (missingCounts.get(key) ?? 0) + 1);
           continue;
         }
 
@@ -86,6 +92,22 @@ export class TileLayerRenderer {
       }
 
       this.container.addChild(layerContainer);
+    }
+
+    // R2D-B-003: emit a single consolidated warning covering every missing
+    // tileId × layer pairing, so heavy layers don't flood the console.
+    if (missingCounts.size > 0) {
+      const totalSkipped = Array.from(missingCounts.values()).reduce((n, v) => n + v, 0);
+      const entries = Array.from(missingCounts.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([key, count]) => {
+          const [layerId, tileId] = key.split('::');
+          return `  - layer "${layerId}" tileId "${tileId}" (${count} placement${count === 1 ? '' : 's'})`;
+        })
+        .join('\n');
+      console.warn(
+        `TileLayerRenderer.update: ${totalSkipped} tile placement${totalSkipped === 1 ? '' : 's'} across ${missingCounts.size} missing tile id${missingCounts.size === 1 ? '' : 's'} — not defined in any loaded tileset, skipping:\n${entries}\nEnsure the tilesets containing these tiles are included.`,
+      );
     }
   }
 }
