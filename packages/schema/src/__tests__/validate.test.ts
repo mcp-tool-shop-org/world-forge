@@ -766,3 +766,90 @@ describe('validateProject', () => {
     expect(result.errors.some((e) => e.message.includes('not valid semver'))).toBe(true);
   });
 });
+
+// --- SCH-A-001 / SCH-A-002: enum drift guards ---
+// The VALID_* sets are derived from a Record<Kind, true> lookup via Object.keys,
+// so they cannot silently drift from the union type. These runtime tests confirm
+// every expected kind is present — if a new kind is added to the union but the
+// lookup is not updated, TypeScript errors first; if that slips past somehow,
+// these tests also fail loudly.
+
+describe('SCH-A-001: AssetKind VALID_ASSET_KINDS coverage', () => {
+  it('contains every currently-known AssetKind value', () => {
+    // If AssetKind gains a new variant, add it here AND to VALID_ASSET_KINDS_LOOKUP.
+    const expected = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
+    for (const kind of expected) {
+      expect(VALID_ASSET_KINDS.has(kind)).toBe(true);
+    }
+    expect(VALID_ASSET_KINDS.size).toBe(expected.length);
+  });
+
+  it('rejects an obviously-invalid asset kind at runtime', () => {
+    expect(VALID_ASSET_KINDS.has('not-a-real-kind')).toBe(false);
+    expect(VALID_ASSET_KINDS.has('')).toBe(false);
+  });
+});
+
+describe('SCH-A-002: ConnectionKind VALID_CONNECTION_KINDS coverage', () => {
+  it('contains every currently-known ConnectionKind value', () => {
+    // If ConnectionKind gains a new variant, add it here AND to VALID_CONNECTION_KINDS_LOOKUP.
+    const expected = [
+      'passage', 'door', 'stairs', 'road', 'portal', 'secret', 'hazard',
+      'channel', 'route', 'docking', 'warp', 'trail',
+    ];
+    for (const kind of expected) {
+      expect(VALID_CONNECTION_KINDS.has(kind)).toBe(true);
+    }
+    expect(VALID_CONNECTION_KINDS.size).toBe(expected.length);
+  });
+
+  it('rejects an obviously-invalid connection kind at runtime', () => {
+    expect(VALID_CONNECTION_KINDS.has('teleport-beam')).toBe(false);
+    expect(VALID_CONNECTION_KINDS.has('')).toBe(false);
+  });
+});
+
+// --- SCH-A-004: non-string author/license/category surface as validation errors ---
+
+describe('SCH-A-004: project metadata type guards (author/license/category)', () => {
+  it('rejects non-string author (null)', () => {
+    const bad = { ...minimalProject, author: null } as unknown as WorldProject;
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path === 'author' && e.message.includes('must be a string'))).toBe(true);
+  });
+
+  it('rejects non-string license (number)', () => {
+    const bad = { ...minimalProject, license: 42 } as unknown as WorldProject;
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path === 'license' && e.message.includes('must be a string'))).toBe(true);
+  });
+
+  it('rejects non-string category (object)', () => {
+    const bad = { ...minimalProject, category: { kind: 'fantasy' } } as unknown as WorldProject;
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path === 'category' && e.message.includes('must be a string'))).toBe(true);
+  });
+
+  it('accepts undefined author/license/category (optional fields)', () => {
+    const result = validateProject(minimalProject);
+    expect(result.errors.some((e) => e.path === 'author')).toBe(false);
+    expect(result.errors.some((e) => e.path === 'license')).toBe(false);
+    expect(result.errors.some((e) => e.path === 'category')).toBe(false);
+  });
+
+  it('accepts string author/license/category', () => {
+    const good: WorldProject = {
+      ...minimalProject,
+      author: 'Mike',
+      license: 'MIT',
+      category: 'fantasy',
+    };
+    const result = validateProject(good);
+    expect(result.errors.some((e) => e.path === 'author')).toBe(false);
+    expect(result.errors.some((e) => e.path === 'license')).toBe(false);
+    expect(result.errors.some((e) => e.path === 'category')).toBe(false);
+  });
+});

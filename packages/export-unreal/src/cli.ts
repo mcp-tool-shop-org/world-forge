@@ -3,9 +3,13 @@
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { exportToUnreal } from './export.js';
+import { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from './export.js';
 import type { WorldProject } from '@world-forge/schema';
 
+// UE-A-003: help text is parametrized by UNREAL_PACK_FORMAT_VERSION so the
+// "pack format" line stays in sync with the exporter. New Meta fields may land
+// in minor versions (e.g. UE-FT-007 signing, UE-FT-008 version migration) —
+// callers are told to rely on the format version, not a frozen field list.
 const USAGE = `Usage: world-forge-export-unreal <project.json> [options]
 
 Options:
@@ -16,8 +20,12 @@ Options:
   --warnings-only    With --verbose, hide lossless/info fidelity entries
   --help             Show this help
 
+Pack format version: ${UNREAL_PACK_FORMAT_VERSION}
+  Additional Meta fields may be added in minor versions (e.g. integrity hash,
+  schema version). Loaders should gate on pack format version, not field list.
+
 Produces (under --out):
-  pack.json                      — manifest (id, name, version, source project, tile size, format version)
+  pack.json                      — manifest (includes pack format version; Meta fields may grow in minor versions)
   zones/<id>.json                — one Primary Data Asset JSON per zone
   districts/<id>.json            — one per district
   actors/manifest.json           — entity placements grouped by zone, BP-class tag per role

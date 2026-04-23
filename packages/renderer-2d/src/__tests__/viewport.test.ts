@@ -206,6 +206,23 @@ describe('WorldViewport', () => {
       warnSpy.mockRestore();
     });
 
+    it('zoomLevel getter warns once after destroy (R2D-A-001)', () => {
+      const vp = new WorldViewport(defaultOpts);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vp.destroy();
+      // Reading zoomLevel must emit the destroyed warning (asymmetry fix).
+      const z1 = vp.zoomLevel;
+      const z2 = vp.zoomLevel;
+      const z3 = vp.zoomLevel;
+      expect(z1).toBe(1);
+      expect(z2).toBe(1);
+      expect(z3).toBe(1);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/zoomLevel/);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/destroyed/);
+      warnSpy.mockRestore();
+    });
+
     it('destroy is idempotent', () => {
       const vp = new WorldViewport(defaultOpts);
       const spy = vi.spyOn(vp.app, 'destroy');

@@ -191,8 +191,9 @@ export function findAllInRect(
     for (const ep of project.entityPlacements) {
       const zone = project.zones.find((z) => z.id === ep.zoneId);
       if (!zone) continue;
-      const wx = (ep.gridX ?? zone.gridX + 2) * tileSize;
-      const wy = (ep.gridY ?? zone.gridY + 2) * tileSize;
+      // ED-A-001: see findHitAt for rationale on the explicit parens.
+      const wx = ((ep.gridX ?? zone.gridX) + 2) * tileSize;
+      const wy = ((ep.gridY ?? zone.gridY) + 2) * tileSize;
       const { screenX, screenY } = worldToScreen(wx, wy, viewport);
       if (inRect(screenX, screenY)) {
         entities.push(ep.entityId);

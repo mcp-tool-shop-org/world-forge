@@ -52,9 +52,14 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
   // Reconstruct the original pixel tile size. Older packs (pre UE-A-001 fix) did
   // not serialize SourceTileSizePx — in that case we fall back to 32 and flag
   // the loss so the importer is honest about it.
+  //
+  // UE-A-001: Meta may have been hand-edited or come from an older pack format,
+  // so we cannot trust its shape. Use a runtime type guard instead of a cast.
+  // This prepares for UE-FT-008 (schema versioning) where pack.Meta structure
+  // evolves and version-aware deserialization needs a safe extraction point.
   let tileSizePx = 32;
-  const rawTileSizePx = (pack.Meta as { SourceTileSizePx?: number }).SourceTileSizePx;
-  if (typeof rawTileSizePx === 'number' && Number.isFinite(rawTileSizePx) && rawTileSizePx > 0) {
+  const rawTileSizePx = readOptionalPositiveNumber(pack.Meta, 'SourceTileSizePx');
+  if (rawTileSizePx !== undefined) {
     tileSizePx = rawTileSizePx;
   } else {
     fidelity.push({
@@ -327,4 +332,25 @@ function connectionFromUnreal(u: UnrealLevelStreamingHint): ZoneConnection {
 function isEntityRole(value: string): value is EntityRole {
   return value === 'npc' || value === 'enemy' || value === 'merchant'
     || value === 'quest-giver' || value === 'companion' || value === 'boss';
+}
+
+/**
+ * UE-A-001: safely extract a positive finite number from an unknown-shaped meta
+ * object without an unsafe cast. Returns undefined if the field is missing,
+ * the wrong type, non-finite, or non-positive.
+ *
+ * Prefer this over `(meta as { X?: number }).X` for any field whose presence
+ * may vary across pack-format versions.
+ */
+function readOptionalPositiveNumber(
+  meta: unknown,
+  field: string,
+): number | undefined {
+  if (typeof meta !== 'object' || meta === null) return undefined;
+  const record = meta as Record<string, unknown>;
+  const value = record[field];
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  return undefined;
 }

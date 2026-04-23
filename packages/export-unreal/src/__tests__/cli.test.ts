@@ -131,6 +131,44 @@ describe('CLI: world-forge-export-unreal', () => {
     expect(stdout).toContain('fidelity.json');
   });
 
+  it('--help advertises the pack format version and that Meta fields may grow (UE-A-003)', async () => {
+    // UE-A-003: help text must tell users the pack format is versioned and that
+    // Meta may gain fields in minor versions (e.g. UE-FT-007 integrity hash,
+    // UE-FT-008 schema version). Asserts the guidance exists without pinning
+    // exact wording so UE-FT-007/008 can edit it without breaking this test.
+    const { code, stdout } = await runCli(['--help']);
+    expect(code).toBe(0);
+    expect(stdout.toLowerCase()).toContain('pack format version');
+    expect(stdout.toLowerCase()).toMatch(/minor version/);
+  });
+
+  it('pack.json is a shape-checked manifest, not a frozen field list (UE-A-003)', async () => {
+    // UE-A-003: previously tests asserted a frozen set of pack.json fields.
+    // UE-FT-007 (signing) and UE-FT-008 (versioning) will ADD fields — this
+    // test validates only the contract-stable shape so those additions don't
+    // break this assertion when they land.
+    const outDir = join(tmpDir, 'shape-out');
+    const { code } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    const pack = JSON.parse(await readFile(join(outDir, 'pack.json'), 'utf-8'));
+
+    // Required stable fields — these are part of the v1.x contract.
+    const REQUIRED_FIELDS = [
+      'Id', 'Name', 'Description', 'Version',
+      'SourceProjectId', 'TileSizeCm', 'SourceTileSizePx', 'FormatVersion',
+    ];
+    for (const field of REQUIRED_FIELDS) {
+      expect(pack).toHaveProperty(field);
+    }
+
+    // FormatVersion is a semver string — loaders range-match against it.
+    expect(typeof pack.FormatVersion).toBe('string');
+    expect(pack.FormatVersion).toMatch(/^\d+\.\d+\.\d+$/);
+
+    // Additional fields are allowed (UE-FT-007/008 will add them). We do NOT
+    // assert the field list is exactly REQUIRED_FIELDS.
+  });
+
   it('--verbose --warnings-only filters out lossless/info entries (UE-B-008)', async () => {
     const outDir = join(tmpDir, 'warnings-only-out');
     const { code, stdout } = await runCli([

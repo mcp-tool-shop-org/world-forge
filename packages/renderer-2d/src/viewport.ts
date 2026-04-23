@@ -148,6 +148,7 @@ export class WorldViewport {
   }
 
   get zoomLevel(): number {
+    if (this.warnIfDestroyed('zoomLevel')) return this._zoom;
     return this._zoom;
   }
 
