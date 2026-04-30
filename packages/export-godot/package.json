@@ -24,6 +24,6 @@
     "directory": "packages/export-godot"
   },
   "dependencies": {
-    "@world-forge/schema": "workspace:^"
+    "@world-forge/schema": "*"
   }
 }

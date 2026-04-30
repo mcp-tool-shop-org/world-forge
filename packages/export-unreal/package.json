@@ -44,6 +44,6 @@
     "typescript"
   ],
   "dependencies": {
-    "@world-forge/schema": "workspace:^"
+    "@world-forge/schema": "*"
   }
 }

@@ -11,5 +11,9 @@ site/node_modules/
 # Dogfood run artifacts (regenerated; not source)
 dogfood/output/
 
+# Playwright
+test-results/
+playwright-report/
+
 # taste-engine artifacts (separate tool, not source)
 taste/
