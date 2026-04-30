@@ -128,10 +128,31 @@ func _init() -> void:
 	_assert(nav_link_count == EXPECTED_NAV_LINKS, "nav_link_count_matches",
 		"expected %d, got %d" % [EXPECTED_NAV_LINKS, nav_link_count])
 
-	# 10. Verify no missing resources (check entity instances resolved)
-	# In headless mode without actual scene files, instances won't resolve.
-	# We check that the scene tree parsed without error (if we got this far, it did).
-	_assert(true, "scene_tree_parsed_cleanly")
+	# 10. Verify ext_resource references resolved (no missing packed scenes)
+	# Entity nodes that are instances should be Node2D (from our fixtures).
+	# If an ext_resource fails to resolve, the instance node will be null/missing.
+	var resolved_instances := 0
+	var missing_instances: Array[String] = []
+	for zone in zones:
+		var entities_container := zone.get_node_or_null("Entities")
+		if entities_container:
+			for ent in entities_container.get_children():
+				# A resolved instance will have children or metadata from the fixture
+				if ent.get_meta("entity_id", "") != "":
+					resolved_instances += 1
+				else:
+					missing_instances.append(zone.name + "/Entities/" + ent.name)
+		var trans_container := zone.get_node_or_null("Transitions")
+		if trans_container:
+			for trans in trans_container.get_children():
+				if trans.get_meta("transition_id", "") != "":
+					resolved_instances += 1
+				else:
+					missing_instances.append(zone.name + "/Transitions/" + trans.name)
+	print("resolved_instances=" + str(resolved_instances))
+	print("missing_instances=" + str(missing_instances.size()))
+	_assert(missing_instances.size() == 0, "no_missing_ext_resources",
+		"Unresolved: " + ", ".join(missing_instances) if missing_instances.size() > 0 else "")
 
 	# 11. Check entity metadata preservation
 	var entities_with_id := 0

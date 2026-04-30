@@ -167,11 +167,26 @@ if (kvPairs.item_count) console.log(`  Item count: ${kvPairs.item_count}`);
 if (kvPairs.nav_link_count) console.log(`  Nav links: ${kvPairs.nav_link_count}`);
 if (kvPairs.zone_ids) console.log(`  Zone IDs: ${kvPairs.zone_ids}`);
 
+// Check for missing resource / script errors in Godot output
+const resourceWarnings = lines.filter(l =>
+  l.includes('Failed loading resource') ||
+  l.includes('Cannot load source code') ||
+  l.includes('res://') && l.includes('not found') ||
+  l.includes('SCRIPT ERROR') ||
+  l.includes('Cannot open file') ||
+  l.match(/ERROR.*load/i)
+);
+if (resourceWarnings.length > 0) {
+  console.log(`\n  ✗ Missing resource/script warnings detected (${resourceWarnings.length}):`);
+  for (const w of resourceWarnings) console.log(`    ${w}`);
+  fails.push(`missing_resources: ${resourceWarnings.length} resource warnings`);
+}
+
 // Step 5: Determine verdict
 const smokeVerdict = kvPairs.smoke_verdict ?? (godotExitCode === 0 ? 'PASS' : 'FAIL');
-const overallPass = smokeVerdict === 'PASS' && godotExitCode === 0;
+const overallPass = smokeVerdict === 'PASS' && godotExitCode === 0 && resourceWarnings.length === 0;
 
-console.log(`\n═══ VERDICT: ${smokeVerdict} ═══`);
+console.log(`\n═══ VERDICT: ${overallPass ? 'PASS' : 'FAIL'} ═══`);
 if (!overallPass) {
   console.log('  Engine could not consume generated scene.');
   if (godotOutput) {
