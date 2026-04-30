@@ -104,6 +104,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     [project.spawnPoints, 'spawnPoints'],
     [project.landmarks, 'landmarks'],
     [project.dialogues, 'dialogues'],
+    [project.progressionTrees, 'progressionTrees'],
     [project.encounterAnchors, 'encounterAnchors'],
     [project.factionPresences, 'factionPresences'],
     [project.pressureHotspots, 'pressureHotspots'],
