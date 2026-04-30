@@ -4,10 +4,11 @@
 **Repo:** mcp-tool-shop-org/world-forge  
 **Version:** 4.4.0  
 **Tests:** 2067/2067 passing  
+**Final commit:** 9f71fda  
 
 ## Positioning
 
-World Forge exports one authored world to **AI RPG Engine**, **Godot 4**, and **Unreal Engine 5**, with proof that each target can consume the result.
+World Forge can author/load a world in the browser editor, validate it, surface advisories, and export to AI RPG Engine, Godot 4, and Unreal Engine 5, with target-consumability proofs for each export lane.
 
 ## Evidence Chain
 
@@ -74,4 +75,50 @@ npx tsx dogfood/run-ai-rpg-smoke.ts        # AI RPG runtime smoke
 npx tsx dogfood/run-unreal-smoke.ts        # Unreal importer smoke
 # Godot smoke requires Godot 4.6 on PATH:
 godot_console --headless --path dogfood/godot-smoke --script smoke_load_world.gd
+```
+
+## Editor Authoring Track
+
+| Domain | Verdict |
+|--------|---------|
+| Editor browser boot | PASS |
+| Editor authoring loop | PASS |
+| Editor export UI parity | PASS |
+| Friction burn-down | COMPLETE |
+
+### Editor Proof
+
+**Chapel Threshold** loaded in the browser editor (localhost:5200), validated clean, exported to all three targets via the Export modal UI without crashes or error boundaries.
+
+| Export Target | UI Button | Artifact | Status |
+|--------------|-----------|----------|--------|
+| AI RPG Engine | Export JSON | `chapel-threshold-engine-pack.json` | ✓ Downloaded |
+| Unreal Engine 5 | Export Unreal Engine 5 | `chapel-threshold-unreal-pack.json` | ✓ Downloaded |
+| Godot 4 | Export Godot 4 | `chapel-threshold-godot-pack.json` | ✓ Downloaded |
+
+### Editor Phase History
+
+| Phase | Verdict | What happened |
+|-------|---------|---------------|
+| 5A | BLOCKED | `node:module` + `node:crypto` crash the browser |
+| 5B | PASS | Removed node:* boundary violations (657e234) |
+| 5C | PASS_WITH_FRICTION | Sidebar click interception, missing Godot UI |
+| 5D | COMPLETE | z-index fix, Godot button, pre-export advisories, a11y (9f71fda) |
+| 5E | PASS | Full re-run: load → validate → export ×3 → no crashes |
+
+### Key Editor Fixes
+
+1. `node:module` → replaced `createRequire` with `SCHEMA_VERSION` constant
+2. `node:crypto` → Vite alias to browser stub + lazy import
+3. Canvas/sidebar z-index → sidebars get `position:relative; z-index:1; flex-shrink:0`
+4. Godot 4 export → full UI button + handler pipeline + Vite alias
+5. Pre-export advisories → elevation/parallax/entity/connection warnings shown before export
+6. Suggestions toggle → `<div onClick>` → `<button data-testid="wf-suggestions-toggle">`
+
+### Commit Trail
+
+```
+9f71fda feat(editor): Phase 5D friction burn-down — z-index, Godot export, advisories, a11y
+08ee24d fix(editor): normalize optional arrays on project load + UE5 export browser compat
+657e234 fix: remove node:* runtime-boundary violations that crash the editor
 ```
