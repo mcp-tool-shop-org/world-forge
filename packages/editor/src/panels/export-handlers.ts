@@ -6,8 +6,6 @@
 // wire into its local React state + `markExported` store action.
 
 import type { WorldProject } from '@world-forge/schema';
-import { exportToEngine } from '@world-forge/export-ai-rpg';
-import { exportToUnreal } from '@world-forge/export-unreal';
 
 export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported';
 
@@ -66,16 +64,17 @@ export function defaultDownloadJson(filename: string, data: unknown): string | n
  *
  * Covers: ED-A-001 (clear stale state), ED-A-011 (wrap serialization).
  */
-export function runEngineExport(
+export async function runEngineExport(
   project: WorldProject,
   cb: ExportCallbacks,
   env: ExportEnv = { downloadJson: defaultDownloadJson },
-): void {
+): Promise<void> {
   // ED-A-001: clear stale errors/warnings/status before a new attempt
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
 
+  const { exportToEngine } = await import('@world-forge/export-ai-rpg');
   const result = exportToEngine(project);
   if (!result.success) {
     cb.setStatus('invalid');
@@ -111,16 +110,17 @@ export function runEngineExport(
  * Covers: ED-A-002 (clear stale state), ED-A-006 (fidelity type contract),
  * ED-A-011 (wrap serialization).
  */
-export function runUnrealExport(
+export async function runUnrealExport(
   project: WorldProject,
   cb: ExportCallbacks,
   env: ExportEnv = { downloadJson: defaultDownloadJson },
-): void {
+): Promise<void> {
   // ED-A-002: clear stale errors/warnings/status before a new attempt
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
 
+  const { exportToUnreal } = await import('@world-forge/export-unreal');
   const result = exportToUnreal(project);
   if (!result.success) {
     cb.setStatus('invalid');

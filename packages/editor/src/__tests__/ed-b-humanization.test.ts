@@ -74,9 +74,9 @@ function makeCb() {
 }
 
 describe('ED-B-002: export manual-download fallback', () => {
-  it('runEngineExport populates setFallback with filename + href', () => {
+  it('runEngineExport populates setFallback with filename + href', async () => {
     const cb = makeCb();
-    runEngineExport(validProject, cb, makeStubEnv('blob:fake-engine-url'));
+    await runEngineExport(validProject, cb, makeStubEnv('blob:fake-engine-url'));
     expect(cb.status).toBe('exported');
     expect(cb.exported).toBe(1);
     expect(cb.fallback).toEqual({
@@ -85,9 +85,9 @@ describe('ED-B-002: export manual-download fallback', () => {
     });
   });
 
-  it('runUnrealExport populates setFallback with filename + href', () => {
+  it('runUnrealExport populates setFallback with filename + href', async () => {
     const cb = makeCb();
-    runUnrealExport(validProject, cb, makeStubEnv('blob:fake-unreal-url'));
+    await runUnrealExport(validProject, cb, makeStubEnv('blob:fake-unreal-url'));
     expect(cb.status).toBe('exported');
     expect(cb.fallback).toEqual({
       href: 'blob:fake-unreal-url',
@@ -95,9 +95,9 @@ describe('ED-B-002: export manual-download fallback', () => {
     });
   });
 
-  it('skips fallback when env returns null (caller-suppressed)', () => {
+  it('skips fallback when env returns null (caller-suppressed)', async () => {
     const cb = makeCb();
-    runEngineExport(validProject, cb, makeStubEnv(null));
+    await runEngineExport(validProject, cb, makeStubEnv(null));
     expect(cb.status).toBe('exported');
     expect(cb.fallback).toBeNull();
   });

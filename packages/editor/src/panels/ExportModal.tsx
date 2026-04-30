@@ -53,12 +53,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const handleExport = () => {
     setFallback(null);
-    runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
+    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
   };
 
   const handleExportUnreal = () => {
     setFallback(null);
-    runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
+    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
   };
 
   const handleGoToFirstIssue = () => {

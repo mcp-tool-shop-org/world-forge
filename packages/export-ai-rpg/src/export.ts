@@ -40,14 +40,12 @@
  */
 
 import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot } from '@world-forge/schema';
-import { validateProject } from '@world-forge/schema';
+import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
 import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { ItemDefinition } from '@ai-rpg-engine/equipment';
-
-import { createRequire } from 'node:module';
 
 import { convertZones } from './convert-zones.js';
 import { convertDistricts } from './convert-districts.js';
@@ -59,21 +57,11 @@ import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-
 import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 
-// AIR-FT-005: Resolve @world-forge/schema's package.json at runtime so the
-// schemaVersion we emit always matches the schema this build was linked
-// against. Using createRequire avoids the ESM JSON import assertion churn.
-// Cached at module load — the schema package version does not change mid-process.
-const schemaPkgRequire = createRequire(import.meta.url);
-let cachedSchemaVersion: string | undefined;
+// AIR-FT-005: Schema version is imported directly from @world-forge/schema
+// as SCHEMA_VERSION. This is browser-safe (no node:module dependency) and
+// guaranteed to match the schema this build was linked against.
 function resolveSchemaVersion(): string {
-  if (cachedSchemaVersion !== undefined) return cachedSchemaVersion;
-  try {
-    const pkg = schemaPkgRequire('@world-forge/schema/package.json') as { version?: string };
-    cachedSchemaVersion = typeof pkg.version === 'string' ? pkg.version : 'unknown';
-  } catch {
-    cachedSchemaVersion = 'unknown';
-  }
-  return cachedSchemaVersion;
+  return SCHEMA_VERSION;
 }
 
 /**

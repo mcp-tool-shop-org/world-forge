@@ -98,8 +98,8 @@ describe('ED-A-008/009: runEngineExport', () => {
     env = makeEnv();
   });
 
-  it('succeeds on a valid project and sets status=exported', () => {
-    runEngineExport(validProject, harness.cb, env);
+  it('succeeds on a valid project and sets status=exported', async () => {
+    await runEngineExport(validProject, harness.cb, env);
     expect(harness.getStatus()).toBe('exported');
     expect(harness.exportedCount()).toBe(1);
     expect(env.count).toBe(1);
@@ -108,30 +108,30 @@ describe('ED-A-008/009: runEngineExport', () => {
     expect(harness.getErrors()).toEqual([]);
   });
 
-  it('sets status=invalid and populates errors[] on validation failure', () => {
-    runEngineExport(invalidProject, harness.cb, env);
+  it('sets status=invalid and populates errors[] on validation failure', async () => {
+    await runEngineExport(invalidProject, harness.cb, env);
     expect(harness.getStatus()).toBe('invalid');
     expect(harness.getErrors().length).toBeGreaterThan(0);
     expect(env.count).toBe(0); // never attempted the download
     expect(harness.exportedCount()).toBe(0);
   });
 
-  it('clears stale errors between attempts (ED-A-001)', () => {
+  it('clears stale errors between attempts (ED-A-001)', async () => {
     // First attempt: invalid → errors populated
-    runEngineExport(invalidProject, harness.cb, env);
+    await runEngineExport(invalidProject, harness.cb, env);
     expect(harness.getErrors().length).toBeGreaterThan(0);
 
     // Second attempt: valid → stale errors must be wiped before new attempt
-    runEngineExport(validProject, harness.cb, env);
+    await runEngineExport(validProject, harness.cb, env);
     expect(harness.getErrors()).toEqual([]);
     expect(harness.getStatus()).toBe('exported');
     // Status history should include an 'idle' reset between runs.
     expect(harness.statusHistory()).toContain('idle');
   });
 
-  it('catches serialization failure and surfaces it as errors[] + invalid status (ED-A-011)', () => {
+  it('catches serialization failure and surfaces it as errors[] + invalid status (ED-A-011)', async () => {
     const throwingEnv = makeThrowingEnv('Converting circular structure to JSON');
-    runEngineExport(validProject, harness.cb, throwingEnv);
+    await runEngineExport(validProject, harness.cb, throwingEnv);
     expect(harness.getStatus()).toBe('invalid');
     expect(harness.getErrors().length).toBe(1);
     expect(harness.getErrors()[0]).toContain('Failed to serialize export bundle');
@@ -149,8 +149,8 @@ describe('ED-A-008/009: runUnrealExport', () => {
     env = makeEnv();
   });
 
-  it('succeeds on a valid project (mock-friendly env) and includes fidelity', () => {
-    runUnrealExport(validProject, harness.cb, env);
+  it('succeeds on a valid project (mock-friendly env) and includes fidelity', async () => {
+    await runUnrealExport(validProject, harness.cb, env);
     expect(harness.getStatus()).toBe('exported');
     expect(harness.exportedCount()).toBe(1);
     expect(env.last?.filename).toBe(`${validProject.id}-unreal-pack.json`);
@@ -161,28 +161,28 @@ describe('ED-A-008/009: runUnrealExport', () => {
     });
   });
 
-  it('clears stale errors between attempts (ED-A-002)', () => {
-    runUnrealExport(invalidProject, harness.cb, env);
+  it('clears stale errors between attempts (ED-A-002)', async () => {
+    await runUnrealExport(invalidProject, harness.cb, env);
     expect(harness.getErrors().length).toBeGreaterThan(0);
     const firstCount = harness.getErrors().length;
     expect(firstCount).toBeGreaterThan(0);
 
-    runUnrealExport(validProject, harness.cb, env);
+    await runUnrealExport(validProject, harness.cb, env);
     expect(harness.getErrors()).toEqual([]);
     expect(harness.getStatus()).toBe('exported');
   });
 
-  it('sets status=invalid with errors[] when project fails validation', () => {
-    runUnrealExport(invalidProject, harness.cb, env);
+  it('sets status=invalid with errors[] when project fails validation', async () => {
+    await runUnrealExport(invalidProject, harness.cb, env);
     expect(harness.getStatus()).toBe('invalid');
     expect(harness.getErrors().length).toBeGreaterThan(0);
     expect(env.count).toBe(0);
     expect(harness.exportedCount()).toBe(0);
   });
 
-  it('catches Unreal serialization failure (ED-A-011)', () => {
+  it('catches Unreal serialization failure (ED-A-011)', async () => {
     const throwingEnv = makeThrowingEnv('boom');
-    runUnrealExport(validProject, harness.cb, throwingEnv);
+    await runUnrealExport(validProject, harness.cb, throwingEnv);
     expect(harness.getStatus()).toBe('invalid');
     expect(harness.getErrors()[0]).toContain('Failed to serialize Unreal export bundle');
     expect(harness.getErrors()[0]).toContain('boom');
