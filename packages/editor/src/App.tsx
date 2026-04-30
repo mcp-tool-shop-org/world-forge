@@ -134,7 +134,7 @@ export function App() {
     { id: 'dialogue', label: 'Dialogue' },
     { id: 'objects', label: 'Objects' },
     { id: 'presets', label: 'Presets' },
-    { id: 'assets', label: 'Assets', badge: project.assets.length > 0 ? `${project.assets.length}` : undefined },
+    { id: 'assets', label: 'Assets', badge: (project.assets?.length ?? 0) > 0 ? `${project.assets!.length}` : undefined },
     { id: 'issues', label: 'Issues' },
     { id: 'deps', label: 'Deps', badge: depsCount > 0 ? `${depsCount}` : undefined, badgeColor: '#d29922' },
     { id: 'review', label: 'Review' },

@@ -143,9 +143,9 @@ export function scanDependencies(
   // rebuilding four maps per validator pass.
   const assetMap: Map<string, { kind: string; label: string }> =
     prebuilt?.assetMap ??
-    new Map(project.assets.map((a) => [a.id, { kind: a.kind, label: a.label }]));
+    new Map((project.assets ?? []).map((a) => [a.id, { kind: a.kind, label: a.label }]));
 
-  const packIds = prebuilt?.packIds ?? new Set(project.assetPacks.map((p) => p.id));
+  const packIds = prebuilt?.packIds ?? new Set((project.assetPacks ?? []).map((p) => p.id));
   const zoneIds = prebuilt?.zoneIds ?? new Set(project.zones.map((z) => z.id));
   const dialogueIds = prebuilt?.dialogueIds ?? new Set(project.dialogues.map((d) => d.id));
 
@@ -210,7 +210,7 @@ export function scanDependencies(
   }
 
   // --- Asset → pack refs ---
-  for (const a of project.assets) {
+  for (const a of project.assets ?? []) {
     if (!a.packId) continue;
     if (!packIds.has(a.packId)) {
       edges.push({
@@ -306,7 +306,7 @@ export function scanDependencies(
   // get a spriteId), add it to collectReferencedAssetIds() below. Otherwise those
   // refs won't prevent orphan false-positives.
   const referencedAssetIds = collectReferencedAssetIds(project);
-  for (const a of project.assets) {
+  for (const a of project.assets ?? []) {
     if (!referencedAssetIds.has(a.id)) {
       edges.push({
         domain: 'orphan-asset', status: 'orphaned',
@@ -318,10 +318,10 @@ export function scanDependencies(
 
   // --- Orphan pack detection ---
   const usedPackIds = new Set<string>();
-  for (const a of project.assets) {
+  for (const a of project.assets ?? []) {
     if (a.packId) usedPackIds.add(a.packId);
   }
-  for (const pack of project.assetPacks) {
+  for (const pack of project.assetPacks ?? []) {
     if (!usedPackIds.has(pack.id)) {
       edges.push({
         domain: 'orphan-pack', status: 'orphaned',
