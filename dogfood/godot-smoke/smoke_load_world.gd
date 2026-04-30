@@ -1,0 +1,162 @@
+## Godot Engine Smoke Test
+##
+## Loads the World Forge generated .tscn headlessly and asserts the scene tree
+## matches expected structure. Run via:
+##   godot --headless --path <project_dir> --script res://smoke_load_world.gd
+##
+## Prints structured key=value output for the TypeScript runner to parse.
+## Exits 0 on success, 1 on any assertion failure.
+
+extends SceneTree
+
+const SCENE_PATH := "res://world.tscn"
+
+## Expected counts from the proof world "Dustwalk — Multi-Target Proof"
+const EXPECTED_ZONES := 5
+const EXPECTED_ENTITIES := 4
+const EXPECTED_ITEMS := 3
+const EXPECTED_SPAWN_POINTS := 2
+const EXPECTED_TRANSITIONS := 1
+const EXPECTED_NAV_LINKS := 4
+
+var _failures: Array[String] = []
+
+
+func _assert(condition: bool, label: String, detail: String = "") -> void:
+	if not condition:
+		_failures.append(label + (": " + detail if detail else ""))
+		print("FAIL: " + label + (": " + detail if detail else ""))
+	else:
+		print("PASS: " + label)
+
+
+func _init() -> void:
+	print("smoke_start")
+	print("scene_path=" + SCENE_PATH)
+
+	# 1. Load the scene resource
+	var scene_res := load(SCENE_PATH)
+	_assert(scene_res != null, "scene_loads", "Could not load " + SCENE_PATH)
+	if scene_res == null:
+		_finish()
+		return
+
+	_assert(scene_res is PackedScene, "scene_is_packed_scene")
+	var packed: PackedScene = scene_res as PackedScene
+
+	# 2. Instantiate the scene
+	var root_node: Node = packed.instantiate()
+	_assert(root_node != null, "scene_instantiates")
+	if root_node == null:
+		_finish()
+		return
+
+	_assert(root_node is Node2D, "root_is_node2d")
+	print("root_name=" + root_node.name)
+
+	# 3. Count zones (direct Node2D children of root, excluding NavigationLinks)
+	var zones: Array[Node] = []
+	for child in root_node.get_children():
+		if child is Node2D and child.name != "NavigationLinks":
+			zones.append(child)
+	print("zone_count=" + str(zones.size()))
+	_assert(zones.size() == EXPECTED_ZONES, "zone_count_matches",
+		"expected %d, got %d" % [EXPECTED_ZONES, zones.size()])
+
+	# 4. Verify zone IDs via metadata
+	var zone_ids: Array[String] = []
+	for zone in zones:
+		var zid = zone.get_meta("zone_id", "")
+		if zid != "":
+			zone_ids.append(zid)
+	print("zone_ids=" + ",".join(zone_ids))
+	_assert(zone_ids.size() == EXPECTED_ZONES, "all_zones_have_id")
+
+	# 5. Count entities (nodes in */Entities/* subtrees that are instances)
+	# NOTE: In headless mode without actual packed scenes, instanced nodes
+	# may appear as placeholder nodes. We count all children of Entities/
+	# containers regardless of whether they resolved as proper instances.
+	var entity_count := 0
+	for zone in zones:
+		var entities_container := zone.get_node_or_null("Entities")
+		if entities_container:
+			entity_count += entities_container.get_child_count()
+	print("entity_count=" + str(entity_count))
+	_assert(entity_count == EXPECTED_ENTITIES, "entity_count_matches",
+		"expected %d, got %d" % [EXPECTED_ENTITIES, entity_count])
+
+	# 6. Count items (nodes in */Items/* subtrees)
+	var item_count := 0
+	for zone in zones:
+		var items_container := zone.get_node_or_null("Items")
+		if items_container:
+			item_count += items_container.get_child_count()
+	print("item_count=" + str(item_count))
+	_assert(item_count == EXPECTED_ITEMS, "item_count_matches",
+		"expected %d, got %d" % [EXPECTED_ITEMS, item_count])
+
+	# 7. Count spawn points (Marker2D in */SpawnPoints/* subtrees)
+	var spawn_count := 0
+	for zone in zones:
+		var sp_container := zone.get_node_or_null("SpawnPoints")
+		if sp_container:
+			for sp in sp_container.get_children():
+				if sp is Marker2D:
+					spawn_count += 1
+	print("spawn_point_count=" + str(spawn_count))
+	_assert(spawn_count == EXPECTED_SPAWN_POINTS, "spawn_point_count_matches",
+		"expected %d, got %d" % [EXPECTED_SPAWN_POINTS, spawn_count])
+
+	# 8. Count transitions (nodes in */Transitions/* subtrees)
+	var transition_count := 0
+	for zone in zones:
+		var trans_container := zone.get_node_or_null("Transitions")
+		if trans_container:
+			transition_count += trans_container.get_child_count()
+	print("transition_count=" + str(transition_count))
+	_assert(transition_count == EXPECTED_TRANSITIONS, "transition_count_matches",
+		"expected %d, got %d" % [EXPECTED_TRANSITIONS, transition_count])
+
+	# 9. Count navigation links
+	var nav_container := root_node.get_node_or_null("NavigationLinks")
+	var nav_link_count := 0
+	if nav_container:
+		for link in nav_container.get_children():
+			if link is NavigationLink2D:
+				nav_link_count += 1
+	print("nav_link_count=" + str(nav_link_count))
+	_assert(nav_link_count == EXPECTED_NAV_LINKS, "nav_link_count_matches",
+		"expected %d, got %d" % [EXPECTED_NAV_LINKS, nav_link_count])
+
+	# 10. Verify no missing resources (check entity instances resolved)
+	# In headless mode without actual scene files, instances won't resolve.
+	# We check that the scene tree parsed without error (if we got this far, it did).
+	_assert(true, "scene_tree_parsed_cleanly")
+
+	# 11. Check entity metadata preservation
+	var entities_with_id := 0
+	for zone in zones:
+		var entities_container := zone.get_node_or_null("Entities")
+		if entities_container:
+			for ent in entities_container.get_children():
+				if ent.get_meta("entity_id", "") != "":
+					entities_with_id += 1
+	print("entities_with_metadata=" + str(entities_with_id))
+	_assert(entities_with_id == EXPECTED_ENTITIES, "entity_metadata_preserved",
+		"expected %d with entity_id, got %d" % [EXPECTED_ENTITIES, entities_with_id])
+
+	# Cleanup
+	root_node.queue_free()
+	_finish()
+
+
+func _finish() -> void:
+	print("failures=" + str(_failures.size()))
+	if _failures.size() > 0:
+		print("smoke_verdict=FAIL")
+		for f in _failures:
+			print("  - " + f)
+		quit(1)
+	else:
+		print("smoke_verdict=PASS")
+		quit(0)

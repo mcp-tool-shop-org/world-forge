@@ -1,0 +1,15 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but this minimal file allows headless scene loading.
+
+config_version=5
+
+[application]
+
+config/name="WorldForge Smoke"
+config/features=PackedStringArray("4.4")
+run/main_scene=""
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
