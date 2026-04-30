@@ -193,7 +193,7 @@ export const proofProject: WorldProject = {
   dialogues: [
     {
       id: 'dlg-mara',
-      speakers: ['Mara Greystone'],
+      speakers: ['npc-mara'],
       entryNodeId: 'greeting',
       nodes: {
         greeting: {
