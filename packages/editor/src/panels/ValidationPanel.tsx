@@ -202,15 +202,17 @@ function AdvisorySuggestions({ items, collapsed, toggle }: {
   const isCollapsed = collapsed['advisory'] ?? true; // default collapsed
   return (
     <div style={{ marginTop: 8 }}>
-      <div
+      <button
+        data-testid="wf-suggestions-toggle"
         onClick={() => toggle('advisory')}
         style={{
           fontSize: 12, fontWeight: 600, color: '#58a6ff',
-          cursor: 'pointer', padding: '4px 0', userSelect: 'none',
+          cursor: 'pointer', padding: '4px 8px', userSelect: 'none',
+          background: 'none', border: 'none', width: '100%', textAlign: 'left',
         }}
       >
         {isCollapsed ? '\u25b6' : '\u25bc'} Suggestions ({items.length})
-      </div>
+      </button>
       {!isCollapsed && items.map((item, i) => (
         <div
           key={i}

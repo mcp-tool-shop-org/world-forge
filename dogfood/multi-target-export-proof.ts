@@ -28,26 +28,26 @@ import { validateProject, advisoryValidation, SCHEMA_VERSION } from '../packages
 
 // ── AI RPG Engine export ──────────────────────────────────────
 import {
-  exportToEngine,
-  importFromExportResult,
-  type ExportResult,
+    exportToEngine,
+    importFromExportResult,
+    type ExportResult,
 } from '../packages/export-ai-rpg/src/index.js';
 
 // ── Godot 4 export ────────────────────────────────────────────
 import {
-  exportToGodot,
-  type GodotExportResult,
+    exportToGodot,
+    type GodotExportResult,
 } from '../packages/export-godot/src/index.js';
 
 // ── Unreal Engine 5 export ────────────────────────────────────
 import {
-  exportToUnreal,
-  type UnrealExportResult,
+    exportToUnreal,
+    type UnrealExportResult,
 } from '../packages/export-unreal/src/index.js';
 
 const __dirname = typeof import.meta.dirname === 'string'
-  ? import.meta.dirname
-  : dirname(fileURLToPath(import.meta.url));
+    ? import.meta.dirname
+    : dirname(fileURLToPath(import.meta.url));
 const outBase = resolve(__dirname, 'output');
 const outAiRpg = resolve(outBase, 'ai-rpg');
 const outGodot = resolve(outBase, 'godot');
@@ -73,27 +73,27 @@ console.log(`  ${(proofProject.transitions ?? []).length} transitions, ${(proofP
 console.log('── 1. Structural Validation ──');
 const validation = validateProject(proofProject);
 if (!validation.valid) {
-  console.log(`  ✗ FAILED (${validation.errors.length} errors):`);
-  for (const e of validation.errors) console.log(`    [${e.path}] ${e.message}`);
-  process.exit(1);
+    console.log(`  ✗ FAILED (${validation.errors.length} errors):`);
+    for (const e of validation.errors) console.log(`    [${e.path}] ${e.message}`);
+    process.exit(1);
 }
 console.log(`  ✓ Valid (${validation.warningCount} warnings)\n`);
 
 // Intentional breakage test
 console.log('── 2. Break/Fix Cycle ──');
 const brokenProject = {
-  ...proofProject,
-  entityPlacements: [
-    ...proofProject.entityPlacements,
-    { entityId: 'ghost', zoneId: 'zone-NONEXISTENT', role: 'npc' as const, hidden: false },
-  ],
+    ...proofProject,
+    entityPlacements: [
+        ...proofProject.entityPlacements,
+        { entityId: 'ghost', zoneId: 'zone-NONEXISTENT', role: 'npc' as const, hidden: false },
+    ],
 };
 const brokenResult = validateProject(brokenProject as any);
 console.log(`  Introduced: entity in nonexistent zone`);
 console.log(`  Caught: ${!brokenResult.valid} (${brokenResult.errors.length} errors)`);
 const fixedProject = {
-  ...brokenProject,
-  entityPlacements: brokenProject.entityPlacements.filter((e) => e.zoneId !== 'zone-NONEXISTENT'),
+    ...brokenProject,
+    entityPlacements: brokenProject.entityPlacements.filter((e) => e.zoneId !== 'zone-NONEXISTENT'),
 };
 const fixedResult = validateProject(fixedProject as any);
 console.log(`  Fixed: removed ghost entity → valid: ${fixedResult.valid}`);
@@ -105,8 +105,8 @@ console.log(`  Advisory suggestions: ${advisory.items.length}\n`);
 
 // Write source world JSON
 writeFileSync(
-  resolve(worldsDir, 'multi-target-proof.worldforge.json'),
-  JSON.stringify(proofProject, null, 2),
+    resolve(worldsDir, 'multi-target-proof.worldforge.json'),
+    JSON.stringify(proofProject, null, 2),
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -119,9 +119,9 @@ console.log('══════════════════════�
 
 const aiRpgResult = exportToEngine(proofProject, { profile: 'release', emitSchemaVersion: true });
 if (!aiRpgResult.success) {
-  console.log('  ✗ Export failed:');
-  for (const e of (aiRpgResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
-  process.exit(1);
+    console.log('  ✗ Export failed:');
+    for (const e of (aiRpgResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
+    process.exit(1);
 }
 const aiRpg = aiRpgResult as ExportResult;
 console.log(`  ✓ Export succeeded`);
@@ -160,9 +160,9 @@ console.log('══════════════════════�
 
 const godotResult = exportToGodot(proofProject);
 if (!godotResult.success) {
-  console.log('  ✗ Export failed:');
-  for (const e of (godotResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
-  process.exit(1);
+    console.log('  ✗ Export failed:');
+    for (const e of (godotResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
+    process.exit(1);
 }
 const godot = godotResult as GodotExportResult;
 console.log(`  ✓ Export succeeded`);
@@ -201,11 +201,11 @@ console.log(`    Has NavigationLink2D: ${hasNavLinks}`);
 
 // Validate resource paths
 const allResPaths = [
-  ...godot.contentPack.zones.map((z) => z.resourcePath),
-  ...godot.contentPack.districts.map((d) => d.resourcePath),
-  ...godot.contentPack.dialogues.map((d) => d.resourcePath),
-  ...godot.contentPack.lootTables.map((l) => l.resourcePath),
-  ...godot.contentPack.items.map((i) => i.resourcePath),
+    ...godot.contentPack.zones.map((z) => z.resourcePath),
+    ...godot.contentPack.districts.map((d) => d.resourcePath),
+    ...godot.contentPack.dialogues.map((d) => d.resourcePath),
+    ...godot.contentPack.lootTables.map((l) => l.resourcePath),
+    ...godot.contentPack.items.map((i) => i.resourcePath),
 ];
 const allResValid = allResPaths.every((p) => p.startsWith('res://'));
 console.log(`    All resource paths valid (res://): ${allResValid}`);
@@ -237,9 +237,9 @@ console.log('══════════════════════�
 
 const unrealResult = exportToUnreal(proofProject);
 if (!unrealResult.success) {
-  console.log('  ✗ Export failed:');
-  for (const e of (unrealResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
-  process.exit(1);
+    console.log('  ✗ Export failed:');
+    for (const e of (unrealResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
+    process.exit(1);
 }
 const unreal = unrealResult as UnrealExportResult;
 console.log(`  ✓ Export succeeded`);
@@ -312,40 +312,40 @@ interface Assertion { name: string; pass: boolean; detail: string }
 const assertions: Assertion[] = [];
 
 function assert(name: string, pass: boolean, detail: string) {
-  assertions.push({ name, pass, detail });
-  console.log(`  ${pass ? '✓' : '✗'} ${name}: ${detail}`);
+    assertions.push({ name, pass, detail });
+    console.log(`  ${pass ? '✓' : '✗'} ${name}: ${detail}`);
 }
 
 // Zone counts
 assert('Zone count (AI RPG)', aiRpg.contentPack.zones.length === proofProject.zones.length,
-  `${aiRpg.contentPack.zones.length}/${proofProject.zones.length}`);
+    `${aiRpg.contentPack.zones.length}/${proofProject.zones.length}`);
 assert('Zone count (Godot)', godot.contentPack.zones.length === proofProject.zones.length,
-  `${godot.contentPack.zones.length}/${proofProject.zones.length}`);
+    `${godot.contentPack.zones.length}/${proofProject.zones.length}`);
 assert('Zone count (Unreal)', unreal.contentPack.Zones.length === proofProject.zones.length,
-  `${unreal.contentPack.Zones.length}/${proofProject.zones.length}`);
+    `${unreal.contentPack.Zones.length}/${proofProject.zones.length}`);
 
 // Entity counts
 assert('Entity count (AI RPG)', aiRpg.contentPack.entities.length === proofProject.entityPlacements.length,
-  `${aiRpg.contentPack.entities.length}/${proofProject.entityPlacements.length}`);
+    `${aiRpg.contentPack.entities.length}/${proofProject.entityPlacements.length}`);
 assert('Entity count (Godot)', godot.contentPack.entities.all.length === proofProject.entityPlacements.length,
-  `${godot.contentPack.entities.all.length}/${proofProject.entityPlacements.length}`);
+    `${godot.contentPack.entities.all.length}/${proofProject.entityPlacements.length}`);
 assert('Entity count (Unreal)', unreal.contentPack.Actors.All.length === proofProject.entityPlacements.length,
-  `${unreal.contentPack.Actors.All.length}/${proofProject.entityPlacements.length}`);
+    `${unreal.contentPack.Actors.All.length}/${proofProject.entityPlacements.length}`);
 
 // Item counts
 assert('Item count (AI RPG)', aiRpg.contentPack.items.length === proofProject.itemPlacements.length,
-  `${aiRpg.contentPack.items.length}/${proofProject.itemPlacements.length}`);
+    `${aiRpg.contentPack.items.length}/${proofProject.itemPlacements.length}`);
 assert('Item count (Godot)', godot.contentPack.items.length === proofProject.itemPlacements.length,
-  `${godot.contentPack.items.length}/${proofProject.itemPlacements.length}`);
+    `${godot.contentPack.items.length}/${proofProject.itemPlacements.length}`);
 
 // Connection counts
 assert('Connection count (AI RPG)', (aiRpg.contentPack as any).connections?.length === proofProject.connections.length ||
-  true, // AI RPG may not export connections as a separate array — check manifest
-  `connections preserved in zone neighbors`);
+    true, // AI RPG may not export connections as a separate array — check manifest
+    `connections preserved in zone neighbors`);
 assert('Connection count (Godot)', godot.contentPack.navigationLinks.length === proofProject.connections.length,
-  `${godot.contentPack.navigationLinks.length}/${proofProject.connections.length}`);
+    `${godot.contentPack.navigationLinks.length}/${proofProject.connections.length}`);
 assert('Connection count (Unreal)', unreal.contentPack.Connections.length === proofProject.connections.length,
-  `${unreal.contentPack.Connections.length}/${proofProject.connections.length}`);
+    `${unreal.contentPack.Connections.length}/${proofProject.connections.length}`);
 
 // District IDs
 const sourceDistrictIds = proofProject.districts.map((d) => d.id).sort();
@@ -353,42 +353,42 @@ const aiRpgDistrictIds = aiRpg.contentPack.districts.map((d: any) => d.id).sort(
 const godotDistrictIds = godot.contentPack.districts.map((d) => d.id).sort();
 const unrealDistrictIds = unreal.contentPack.Districts.map((d) => d.Id).sort();
 assert('District IDs (AI RPG)', JSON.stringify(aiRpgDistrictIds) === JSON.stringify(sourceDistrictIds),
-  aiRpgDistrictIds.join(', '));
+    aiRpgDistrictIds.join(', '));
 assert('District IDs (Godot)', JSON.stringify(godotDistrictIds) === JSON.stringify(sourceDistrictIds),
-  godotDistrictIds.join(', '));
+    godotDistrictIds.join(', '));
 assert('District IDs (Unreal)', JSON.stringify(unrealDistrictIds) === JSON.stringify(sourceDistrictIds),
-  unrealDistrictIds.join(', '));
+    unrealDistrictIds.join(', '));
 
 // Asset reference count
 assert('Asset count (Godot)', godot.contentPack.assets.length === proofProject.assets.length,
-  `${godot.contentPack.assets.length}/${proofProject.assets.length}`);
+    `${godot.contentPack.assets.length}/${proofProject.assets.length}`);
 
 // Transition count
 assert('Transition count (Godot)', godot.contentPack.transitions.length === (proofProject.transitions ?? []).length,
-  `${godot.contentPack.transitions.length}/${(proofProject.transitions ?? []).length}`);
+    `${godot.contentPack.transitions.length}/${(proofProject.transitions ?? []).length}`);
 assert('Transition count (Unreal)', unreal.contentPack.Transitions.length === (proofProject.transitions ?? []).length,
-  `${unreal.contentPack.Transitions.length}/${(proofProject.transitions ?? []).length}`);
+    `${unreal.contentPack.Transitions.length}/${(proofProject.transitions ?? []).length}`);
 
 // Unreal coordinate correctness
 assert('Unreal Y-flip correct', unrealCellar.OriginCm.Y === expectedY,
-  `gridY=${sourceCellar.gridY} → Y=${unrealCellar.OriginCm.Y}cm`);
+    `gridY=${sourceCellar.gridY} → Y=${unrealCellar.OriginCm.Y}cm`);
 assert('Unreal elevation→Z', unrealCellar.ElevationCm === expectedZ,
-  `${sourceCellar.elevation}m → ${unrealCellar.ElevationCm}cm`);
+    `${sourceCellar.elevation}m → ${unrealCellar.ElevationCm}cm`);
 
 // Godot coordinate correctness (Y-down preserved, pixel scale)
 const godotCellar = godot.contentPack.zones.find((z) => z.id === 'zone-cellar')!;
 const expectedGodotX = sourceCellar.gridX * tileSize;
 const expectedGodotY = sourceCellar.gridY * tileSize;
 assert('Godot Y-down preserved', godotCellar.position.y === expectedGodotY,
-  `gridY=${sourceCellar.gridY} → y=${godotCellar.position.y}px (expected ${expectedGodotY})`);
+    `gridY=${sourceCellar.gridY} → y=${godotCellar.position.y}px (expected ${expectedGodotY})`);
 assert('Godot pixel scale correct', godotCellar.position.x === expectedGodotX,
-  `gridX=${sourceCellar.gridX} → x=${godotCellar.position.x}px (expected ${expectedGodotX})`);
+    `gridX=${sourceCellar.gridX} → x=${godotCellar.position.x}px (expected ${expectedGodotX})`);
 
 // No silent drops
 assert('No dropped entities (Godot)', !godot.contentPack.entities.incomplete,
-  `dropped: ${godot.contentPack.entities.dropped.length}`);
+    `dropped: ${godot.contentPack.entities.dropped.length}`);
 assert('No dropped entities (Unreal)', !unreal.contentPack.Actors.Incomplete,
-  `dropped: ${unreal.contentPack.Actors.Dropped.length}`);
+    `dropped: ${unreal.contentPack.Actors.Dropped.length}`);
 
 console.log('');
 
@@ -402,13 +402,13 @@ const allPass = failCount === 0;
 
 let verdict: string;
 if (allPass && aiRpgDropped === 0 && godotDropped === 0 && unrealDropped === 0) {
-  verdict = 'PASSES — All three export lanes produce valid, identity-preserving output with honest fidelity reporting.';
+    verdict = 'PASSES — All three export lanes produce valid, identity-preserving output with honest fidelity reporting.';
 } else if (failCount > 3) {
-  verdict = `BLOCKED — ${failCount} cross-lane invariant failures. Core world identity is not preserved.`;
+    verdict = `BLOCKED — ${failCount} cross-lane invariant failures. Core world identity is not preserved.`;
 } else if (!allPass) {
-  verdict = `NEEDS FOLLOW-UP — ${failCount} assertion(s) failed. Review specific lanes.`;
+    verdict = `NEEDS FOLLOW-UP — ${failCount} assertion(s) failed. Review specific lanes.`;
 } else {
-  verdict = 'PASSES WITH NOTES — All invariants hold but some fidelity entries show drops.';
+    verdict = 'PASSES WITH NOTES — All invariants hold but some fidelity entries show drops.';
 }
 
 console.log('═══ VERDICT ═══');
@@ -426,7 +426,7 @@ console.log('    - Grid coordinates stored directly (no transform)');
 console.log('    - Dialogues flatten to node-map');
 console.log('    - Stats/resources preserved as-is');
 for (const f of aiRpgFidelity.entries.filter((f) => f.level === 'approximated').slice(0, 3)) {
-  console.log(`    ~ ${f.field ?? f.domain}: ${f.message}`);
+    console.log(`    ~ ${f.field ?? f.domain}: ${f.message}`);
 }
 
 console.log('  Godot:');
@@ -434,7 +434,7 @@ console.log('    - Y-down preserved (no axis flip)');
 console.log(`    - Scale: grid × ${tileSize}px/tile → pixel coordinates`);
 console.log('    - Elevation preserved as metadata (2D has no Z-axis in scene tree)');
 for (const f of godotFidelity.entries.filter((f) => f.level === 'approximated').slice(0, 3)) {
-  console.log(`    ~ ${f.fieldPath ?? f.domain}: ${f.message}`);
+    console.log(`    ~ ${f.fieldPath ?? f.domain}: ${f.message}`);
 }
 
 console.log('  Unreal:');
@@ -442,7 +442,7 @@ console.log('    - Y-axis FLIPPED (Y-down → Y-right, sign negated)');
 console.log(`    - Scale: grid × ${tileSizeCm}cm/tile → Unreal centimetres`);
 console.log('    - Elevation: metres × 100 → Z in cm');
 for (const f of unrealFidelity.entries.filter((f) => f.level === 'approximated').slice(0, 3)) {
-  console.log(`    ~ ${f.fieldPath ?? f.domain}: ${f.message}`);
+    console.log(`    ~ ${f.fieldPath ?? f.domain}: ${f.message}`);
 }
 console.log('');
 

@@ -2,8 +2,8 @@
 
 export { exportToGodot, GODOT_PACK_FORMAT_VERSION } from './export.js';
 export type {
-  GodotContentPack, GodotPackMeta,
-  GodotExportOptions, GodotExportResult, GodotExportError,
+    GodotContentPack, GodotPackMeta,
+    GodotExportOptions, GodotExportResult, GodotExportError,
 } from './export.js';
 
 export { convertZones } from './convert-zones.js';
@@ -14,7 +14,7 @@ export type { GodotDistrictResource, ConvertDistrictsResult } from './convert-di
 
 export { convertEntities } from './convert-entities.js';
 export type {
-  GodotEntityInstance, GodotEntityManifest, GodotDroppedEntity, GodotSceneTemplate, ConvertEntitiesResult,
+    GodotEntityInstance, GodotEntityManifest, GodotDroppedEntity, GodotSceneTemplate, ConvertEntitiesResult,
 } from './convert-entities.js';
 
 export { convertItems } from './convert-items.js';
@@ -45,13 +45,13 @@ export { serializeTres, objectToTresFields } from './tres-serializer.js';
 export type { TresField, TresValue } from './tres-serializer.js';
 
 export {
-  gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX,
+    gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX,
 } from './coordinate-transform.js';
 export type { GodotVec2, GodotVec3 } from './coordinate-transform.js';
 
 export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
 export type {
-  FidelityLevel, FidelitySeverity, FidelityDomain,
-  FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,
+    FidelityLevel, FidelitySeverity, FidelityDomain,
+    FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,
 } from './fidelity.js';
 

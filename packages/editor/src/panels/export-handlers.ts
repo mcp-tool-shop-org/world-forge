@@ -150,3 +150,41 @@ export async function runUnrealExport(
     cb.setErrors([`Failed to serialize Unreal export bundle: ${msg}`]);
   }
 }
+
+/**
+ * Run the Godot 4 export flow.
+ */
+export async function runGodotExport(
+  project: WorldProject,
+  cb: ExportCallbacks,
+  env: ExportEnv = { downloadJson: defaultDownloadJson },
+): Promise<void> {
+  cb.setErrors([]);
+  cb.setWarnings([]);
+  cb.setStatus('idle');
+
+  const { exportToGodot } = await import('@world-forge/export-godot');
+  const result = exportToGodot(project);
+  if (!result.success) {
+    cb.setStatus('invalid');
+    cb.setErrors(result.errors.map((e: { path: string; message: string }) => `[${e.path}] ${e.message}`));
+    return;
+  }
+
+  cb.setWarnings(result.warnings);
+
+  try {
+    const filename = `${project.id}-godot-pack.json`;
+    const url = env.downloadJson(filename, {
+      contentPack: result.contentPack,
+      fidelity: result.fidelity,
+    });
+    cb.setStatus('exported');
+    cb.markExported();
+    if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+  } catch (err) {
+    cb.setStatus('invalid');
+    const msg = err instanceof Error ? err.message : String(err);
+    cb.setErrors([`Failed to serialize Godot export bundle: ${msg}`]);
+  }
+}

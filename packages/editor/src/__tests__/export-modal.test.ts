@@ -80,9 +80,11 @@ const invalidProject: WorldProject = {
   ...validProject,
   zones: [
     // Missing required fields (e.g. gridWidth) to fail validation.
-    { id: 'bad', name: '', tags: [], description: '', gridX: -1, gridY: -1,
+    {
+      id: 'bad', name: '', tags: [], description: '', gridX: -1, gridY: -1,
       gridWidth: 0, gridHeight: 0, neighbors: [], exits: [], light: 0, noise: 0,
-      hazards: [], interactables: [] } as WorldProject['zones'][number],
+      hazards: [], interactables: []
+    } as WorldProject['zones'][number],
   ],
   spawnPoints: [], // no default spawn → validation failure
 };

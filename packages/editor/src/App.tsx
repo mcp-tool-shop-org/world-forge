@@ -340,6 +340,7 @@ export function App() {
           background: 'var(--wf-bg-app)', borderRight: '1px solid var(--wf-border-default)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column',
           transition: 'width 0.15s ease',
+          position: 'relative', zIndex: 1, flexShrink: 0,
         }}>
           <button
             onClick={() => setLeftCollapsed((c) => !c)}
@@ -361,7 +362,7 @@ export function App() {
         </div>
 
         {/* Canvas */}
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ flex: 1, position: 'relative', minWidth: 0, overflow: 'hidden' }}>
           <Canvas />
           {showSpeedPanel && <SpeedPanel />}
         </div>
@@ -372,6 +373,7 @@ export function App() {
           background: 'var(--wf-bg-app)', borderLeft: '1px solid var(--wf-border-default)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transition: 'width 0.15s ease',
+          position: 'relative', zIndex: 1, flexShrink: 0,
         }}>
           <button
             onClick={() => setRightCollapsed((c) => !c)}

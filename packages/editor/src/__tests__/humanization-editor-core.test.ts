@@ -60,7 +60,7 @@ describe('ECB-004: duplicateSelected skipped items', () => {
 
   it('reports skipped IDs for missing zones', () => {
     const sel: SelectionSet = { ...empty, zones: ['nonexistent-zone-1', 'nonexistent-zone-2'] };
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     const result = duplicateSelected(chapelProject, sel);
     expect(result.skipped).toContain('nonexistent-zone-1');
     expect(result.skipped).toContain('nonexistent-zone-2');
@@ -71,7 +71,7 @@ describe('ECB-004: duplicateSelected skipped items', () => {
 
   it('reports skipped IDs for missing entities', () => {
     const sel: SelectionSet = { ...empty, entities: ['ghost-entity'] };
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
     const result = duplicateSelected(chapelProject, sel);
     expect(result.skipped).toContain('ghost-entity');
     expect(warnSpy).toHaveBeenCalled();

@@ -650,40 +650,40 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
     const label = `Move ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
-    const zSet = new Set(sel.zones);
-    const eSet = new Set(sel.entities);
-    const lSet = new Set(sel.landmarks);
-    const sSet = new Set(sel.spawns);
-    return {
-      ...p,
-      zones: p.zones.map((z) => zSet.has(z.id) ? { ...z, gridX: z.gridX + dx, gridY: z.gridY + dy } : z),
-      entityPlacements: p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
-        ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
-      landmarks: p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
-      spawnPoints: p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
-    };
-  }, label);
+      const zSet = new Set(sel.zones);
+      const eSet = new Set(sel.entities);
+      const lSet = new Set(sel.landmarks);
+      const sSet = new Set(sel.spawns);
+      return {
+        ...p,
+        zones: p.zones.map((z) => zSet.has(z.id) ? { ...z, gridX: z.gridX + dx, gridY: z.gridY + dy } : z),
+        entityPlacements: p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
+          ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
+        landmarks: p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
+        spawnPoints: p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+      };
+    }, label);
   },
   removeSelected: (sel) => {
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
     const label = `Delete ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
-    const zSet = new Set(sel.zones);
-    const eSet = new Set(sel.entities);
-    const lSet = new Set(sel.landmarks);
-    const sSet = new Set(sel.spawns);
-    const encSet = new Set(sel.encounters);
-    return {
-      ...p,
-      zones: p.zones.filter((z) => !zSet.has(z.id)),
-      connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
-      districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
-      entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId) && !zSet.has(e.zoneId)),
-      landmarks: p.landmarks.filter((l) => !lSet.has(l.id) && !zSet.has(l.zoneId)),
-      spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
-      encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id) && !zSet.has(e.zoneId)),
-    };
-  }, label);
+      const zSet = new Set(sel.zones);
+      const eSet = new Set(sel.entities);
+      const lSet = new Set(sel.landmarks);
+      const sSet = new Set(sel.spawns);
+      const encSet = new Set(sel.encounters);
+      return {
+        ...p,
+        zones: p.zones.filter((z) => !zSet.has(z.id)),
+        connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
+        districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
+        entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId) && !zSet.has(e.zoneId)),
+        landmarks: p.landmarks.filter((l) => !lSet.has(l.id) && !zSet.has(l.zoneId)),
+        spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
+        encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id) && !zSet.has(e.zoneId)),
+      };
+    }, label);
   },
   duplicateSelected: (sel) => {
     const { project } = get();

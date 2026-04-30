@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { runEngineExport, runUnrealExport } from './export-handlers.js';
+import { runEngineExport, runUnrealExport, runGodotExport } from './export-handlers.js';
 import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
@@ -61,6 +61,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
   };
 
+  const handleExportGodot = () => {
+    setFallback(null);
+    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
+  };
+
   const handleGoToFirstIssue = () => {
     if (precheck.errors.length === 0) return;
     const err = precheck.errors[0];
@@ -98,6 +103,25 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   if (project.progressionTrees.length === 0) missing.push('No progression trees');
   if (project.dialogues.length === 0) missing.push('No dialogues');
   if (project.spawnPoints.length === 0) missing.push('No spawn points');
+
+  // Pre-export advisories — surface engine-specific warnings before the user
+  // clicks Export so they can fix issues proactively.
+  const advisories = useMemo(() => {
+    const items: string[] = [];
+    if (project.entityPlacements.length === 0) {
+      items.push('No entity placements — exported world will have no actors/NPCs.');
+    }
+    if (project.connections.length === 0 && project.zones.length > 1) {
+      items.push('Multiple zones but no connections — engines cannot stream between them.');
+    }
+    if (project.zones.every((z) => z.elevation === undefined && z.elevationRange === undefined)) {
+      items.push('No zone elevation authored — everything exports at Z=0 (flat).');
+    }
+    if (project.zones.every((z) => !z.parallaxLayers || z.parallaxLayers.length === 0)) {
+      items.push('No parallax layers — UE5 2.5D backdrops will be bare.');
+    }
+    return items;
+  }, [project]);
 
   return (
     <ModalFrame title="Export" width={450} onClose={onClose}>
@@ -183,12 +207,23 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* ED-B-012: short help row so users can tell the two export buttons apart
+        {/* ED-B-012: short help row so users can tell the export buttons apart
             without hovering for tooltips. */}
         <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6, lineHeight: 1.4 }}>
           <div><strong style={{ color: '#c9d1d9' }}>Export JSON:</strong> generic AI-RPG-Engine pack.</div>
           <div><strong style={{ color: '#c9d1d9' }}>Export UE5:</strong> 2.5D-aware pack for Unreal Engine 5.</div>
+          <div><strong style={{ color: '#c9d1d9' }}>Export Godot 4:</strong> .tscn scenes + resource pack for Godot.</div>
         </div>
+
+        {/* Pre-export advisories */}
+        {advisories.length > 0 && (
+          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#2a1c08', border: '1px solid #9e6a03', fontSize: 11, color: '#d29922' }}>
+            <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 12 }}>Advisories</div>
+            {advisories.map((a, i) => (
+              <div key={i} style={{ padding: '1px 0' }}>{'\u26A0'} {a}</div>
+            ))}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -213,6 +248,20 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
             disabled={!precheck.valid}
           >
             Export Unreal Engine 5
+          </button>
+          <button
+            onClick={handleExportGodot}
+            title="Export a Godot 4 content pack with .tscn scenes"
+            style={{
+              ...buttonBase,
+              background: precheck.valid ? '#478cbf' : 'var(--wf-bg-control)',
+              color: precheck.valid ? '#fff' : 'var(--wf-text-hint)',
+              cursor: precheck.valid ? 'pointer' : 'not-allowed',
+              opacity: precheck.valid ? 1 : 0.6,
+            }}
+            disabled={!precheck.valid}
+          >
+            Export Godot 4
           </button>
           {!precheck.valid && precheck.errors.length > 0 && (
             <button onClick={handleGoToFirstIssue} style={buttonAccent}>Fix first issue</button>

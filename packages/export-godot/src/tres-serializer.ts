@@ -13,8 +13,8 @@
  */
 
 export interface TresField {
-  key: string;
-  value: TresValue;
+    key: string;
+    value: TresValue;
 }
 
 export type TresPrimitive = string | number | boolean | null;
@@ -26,45 +26,45 @@ export type TresValue = TresPrimitive | TresPrimitive[] | TresValue[] | { [key: 
  * @param fields Key-value pairs to serialize.
  */
 export function serializeTres(className: string, fields: TresField[]): string {
-  const lines: string[] = [];
-  lines.push(`[gd_resource type="Resource" script_class="${className}" format=3]`);
-  lines.push('');
-  lines.push('[resource]');
+    const lines: string[] = [];
+    lines.push(`[gd_resource type="Resource" script_class="${className}" format=3]`);
+    lines.push('');
+    lines.push('[resource]');
 
-  for (const field of fields) {
-    lines.push(`${field.key} = ${formatValue(field.value)}`);
-  }
+    for (const field of fields) {
+        lines.push(`${field.key} = ${formatValue(field.value)}`);
+    }
 
-  return lines.join('\n') + '\n';
+    return lines.join('\n') + '\n';
 }
 
 function formatValue(value: TresValue): string {
-  if (value === null) return 'null';
-  if (typeof value === 'string') return `"${escapeString(value)}"`;
-  if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(6);
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (Array.isArray(value)) {
-    if (value.length === 0) return '[]';
-    const inner = value.map(formatValue).join(', ');
-    return `[${inner}]`;
-  }
-  // Dictionary
-  const entries = Object.entries(value).map(([k, v]) => `"${escapeString(k)}": ${formatValue(v)}`);
-  return `{${entries.join(', ')}}`;
+    if (value === null) return 'null';
+    if (typeof value === 'string') return `"${escapeString(value)}"`;
+    if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(6);
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    if (Array.isArray(value)) {
+        if (value.length === 0) return '[]';
+        const inner = value.map(formatValue).join(', ');
+        return `[${inner}]`;
+    }
+    // Dictionary
+    const entries = Object.entries(value).map(([k, v]) => `"${escapeString(k)}": ${formatValue(v)}`);
+    return `{${entries.join(', ')}}`;
 }
 
 function escapeString(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\t/g, '\\t');
+    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\t/g, '\\t');
 }
 
 /**
  * Convenience: convert any JSON-serializable object to TresField array.
  */
 export function objectToTresFields(obj: Record<string, unknown>): TresField[] {
-  const fields: TresField[] = [];
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === undefined) continue;
-    fields.push({ key, value: value as TresValue });
-  }
-  return fields;
+    const fields: TresField[] = [];
+    for (const [key, value] of Object.entries(obj)) {
+        if (value === undefined) continue;
+        fields.push({ key, value: value as TresValue });
+    }
+    return fields;
 }
