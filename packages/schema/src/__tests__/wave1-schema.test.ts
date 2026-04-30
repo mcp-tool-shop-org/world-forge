@@ -79,7 +79,7 @@ describe('Wave 1: LootTable', () => {
   it('rejects non-positive or non-finite weights (check #57)', () => {
     const p = withLootTables([
       {
-        id: 'lt-bad-weight',
+        id: 'lt-bad-wt',
         entries: [
           { itemId: 'a', weight: 0 },
           { itemId: 'b', weight: -2 },

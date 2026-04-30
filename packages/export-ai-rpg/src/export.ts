@@ -185,62 +185,88 @@ export function exportToEngine(
 
   const warnings: string[] = [];
 
-  // 2. Convert zones (AIR-B-002: forward warnings for broken exit refs)
-  const zones = convertZones(project, warnings);
+  // 2–8. Per-domain conversion (wrapped in try/catch to surface internal
+  // converter errors as structured ExportErrors rather than raw exceptions).
+  let zones: ReturnType<typeof convertZones>;
+  let districts: ReturnType<typeof convertDistricts>;
+  let entities: ReturnType<typeof convertEntities>;
+  let items: ReturnType<typeof convertItems>;
+  let dialogues: ReturnType<typeof convertDialogues>;
+  let playerTemplate: ReturnType<typeof convertPlayerTemplate>;
+  let buildCatalog: ReturnType<typeof convertBuildCatalog>;
+  let progressionTrees: ReturnType<typeof convertProgressionTrees>;
+  let manifest: ReturnType<typeof convertManifest>;
+  let packMeta: ReturnType<typeof convertPackMeta>;
 
-  // 3. Convert districts
-  const districts = convertDistricts(project);
+  try {
+    // 2. Convert zones (AIR-B-002: forward warnings for broken exit refs)
+    zones = convertZones(project, warnings);
 
-  // 4. Convert entities
-  if (project.entityPlacements.length === 0) {
-    warnings.push('No entities found — exported world will have no NPCs or encounters. Add entity placements in the editor to populate your world.');
-  }
+    // 3. Convert districts
+    districts = convertDistricts(project);
 
-  // AIR-B-007: Track entities whose zoneId doesn't resolve to a real zone in
-  // the export. convertEntities currently emits a blueprint regardless, but
-  // entities-in-deleted-zones used to vanish silently once the engine
-  // positioned them. We surface the orphans BEFORE conversion so the user
-  // sees entity + zone ids together and can fix the authoring issue.
-  const exportedZoneIds = new Set(zones.map((z) => z.id));
-  const orphanedEntities: { entityId: string; zoneId: string; name: string }[] = [];
-  for (const ep of project.entityPlacements) {
-    if (!exportedZoneIds.has(ep.zoneId)) {
-      orphanedEntities.push({
-        entityId: ep.entityId,
-        zoneId: ep.zoneId,
-        name: ep.name || ep.entityId,
-      });
+    // 4. Convert entities
+    if (project.entityPlacements.length === 0) {
+      warnings.push('No entities found — exported world will have no NPCs or encounters. Add entity placements in the editor to populate your world.');
     }
+
+    // AIR-B-007: Track entities whose zoneId doesn't resolve to a real zone in
+    // the export. convertEntities currently emits a blueprint regardless, but
+    // entities-in-deleted-zones used to vanish silently once the engine
+    // positioned them. We surface the orphans BEFORE conversion so the user
+    // sees entity + zone ids together and can fix the authoring issue.
+    const exportedZoneIds = new Set(zones.map((z) => z.id));
+    const orphanedEntities: { entityId: string; zoneId: string; name: string }[] = [];
+    for (const ep of project.entityPlacements) {
+      if (!exportedZoneIds.has(ep.zoneId)) {
+        orphanedEntities.push({
+          entityId: ep.entityId,
+          zoneId: ep.zoneId,
+          name: ep.name || ep.entityId,
+        });
+      }
+    }
+    if (orphanedEntities.length > 0) {
+      const lines = orphanedEntities
+        .map((o) => `  - entity "${o.entityId}" (${o.name}) → zone "${o.zoneId}"`)
+        .join('\n');
+      warnings.push(
+        `${orphanedEntities.length} entity placement(s) reference zones that do not exist and will be unreachable at runtime:\n${lines}\nRestore the missing zones or move these entities to a surviving zone.`,
+      );
+    }
+
+    // AIR-B-003: forward warnings for dangling faction refs.
+    entities = convertEntities(project, undefined, warnings);
+    // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
+    // entities will exist. The earlier "no placements" warning above is sufficient.
+
+    // 5. Convert items
+    items = convertItems(project);
+
+    // 6. Convert dialogues
+    dialogues = convertDialogues(project);
+
+    // 7. Convert player template, build catalog, progression trees (AIR-B-009)
+    playerTemplate = convertPlayerTemplate(project, warnings);
+    buildCatalog = convertBuildCatalog(project);
+    progressionTrees = convertProgressionTrees(project);
+
+    // 8. Build manifest and pack metadata
+    manifest = convertManifest(project);
+    // AIR-B-008: Pass warnings so invalid/fallback tone messages reach the CLI.
+    packMeta = convertPackMeta(project, warnings);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      errors: [
+        {
+          path: 'converter',
+          message: `Converter failed: ${message}. Report this as a bug.`,
+        },
+      ],
+    };
   }
-  if (orphanedEntities.length > 0) {
-    const lines = orphanedEntities
-      .map((o) => `  - entity "${o.entityId}" (${o.name}) → zone "${o.zoneId}"`)
-      .join('\n');
-    warnings.push(
-      `${orphanedEntities.length} entity placement(s) reference zones that do not exist and will be unreachable at runtime:\n${lines}\nRestore the missing zones or move these entities to a surviving zone.`,
-    );
-  }
-
-  // AIR-B-003: forward warnings for dangling faction refs.
-  const entities = convertEntities(project, undefined, warnings);
-  // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
-  // entities will exist. The earlier "no placements" warning above is sufficient.
-
-  // 5. Convert items
-  const items = convertItems(project);
-
-  // 6. Convert dialogues
-  const dialogues = convertDialogues(project);
-
-  // 7. Convert player template, build catalog, progression trees (AIR-B-009)
-  const playerTemplate = convertPlayerTemplate(project, warnings);
-  const buildCatalog = convertBuildCatalog(project);
-  const progressionTrees = convertProgressionTrees(project);
-
-  // 8. Build manifest and pack metadata
-  const manifest = convertManifest(project);
-  // AIR-B-008: Pass warnings so invalid/fallback tone messages reach the CLI.
-  const packMeta = convertPackMeta(project, warnings);
 
   // 9. Warn on missing features
   if (!playerTemplate) {

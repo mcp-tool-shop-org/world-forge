@@ -39,10 +39,10 @@
     "typescript"
   ],
   "dependencies": {
-    "@world-forge/schema": "*",
-    "@world-forge/renderer-2d": "*",
-    "@world-forge/export-ai-rpg": "*",
-    "@world-forge/export-unreal": "*",
+    "@world-forge/schema": "workspace:^",
+    "@world-forge/renderer-2d": "workspace:^",
+    "@world-forge/export-ai-rpg": "workspace:^",
+    "@world-forge/export-unreal": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.0"

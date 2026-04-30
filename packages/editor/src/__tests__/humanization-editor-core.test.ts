@@ -198,13 +198,13 @@ describe('ECB-015: reviewSnapshotToMarkdown maxItems', () => {
 
 describe('ECB-012: undo depth is bounded', () => {
   it('UNDO_DEPTH_LIMIT constant is used (structural check via project-store import)', async () => {
-    // We test this by doing > 9 updates and checking stack doesn't exceed 9
+    // We test this by doing > 100 updates and checking stack doesn't exceed 100
     const { useProjectStore } = await import('../store/project-store.js');
     const store = useProjectStore.getState();
     store.loadProject(chapelProject);
 
-    // Push 15 updates
-    for (let i = 0; i < 15; i++) {
+    // Push 115 updates
+    for (let i = 0; i < 115; i++) {
       useProjectStore.getState().updateProject((p) => ({
         ...p, name: `Update ${i}`,
       }));
@@ -212,8 +212,8 @@ describe('ECB-012: undo depth is bounded', () => {
 
     const state = useProjectStore.getState();
     // undoStack = [...stack.slice(-UNDO_DEPTH_LIMIT), currentProject]
-    // so max size is UNDO_DEPTH_LIMIT + 1 = 10
-    expect(state.undoStack.length).toBeLessThanOrEqual(10);
-    expect(state.undoStack.length).toBe(10);
+    // so max size is UNDO_DEPTH_LIMIT + 1 = 101
+    expect(state.undoStack.length).toBeLessThanOrEqual(101);
+    expect(state.undoStack.length).toBe(101);
   });
 });

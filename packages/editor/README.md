@@ -25,7 +25,7 @@ React 19 web app for [World Forge](https://github.com/mcp-tool-shop-org/world-fo
 - **Asset library** — manage portraits, sprites, backgrounds, icons, and tilesets with kind-specific bindings
 - **Undo/redo** — 10-deep history stack via Zustand
 - **Import/Export** — round-trip fidelity reporting, semantic diff tracking
-- **Validation** — 54 structural checks with click-to-focus issue navigation
+- **Validation** — 60+ structural checks with click-to-focus issue navigation
 - **Templates** — genre starters and sample worlds for quick onboarding
 
 ## Quick Start

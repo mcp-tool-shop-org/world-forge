@@ -200,7 +200,7 @@ interface ProjectState {
  * the front of the stack). Keeping this bounded prevents unbounded memory
  * growth in long editing sessions.
  */
-const UNDO_DEPTH_LIMIT = 9;
+const UNDO_DEPTH_LIMIT = 100;
 
 function ensureBuildCatalog(p: WorldProject): BuildCatalogDefinition {
   return p.buildCatalog ?? {
@@ -683,14 +683,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }, label);
   },
   duplicateSelected: (sel) => {
-    const { project, undoStack } = get();
+    const { project } = get();
     const { project: newProject, newSelection } = doDuplicate(project, sel);
     if (newProject === project) return { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
     const label = `Duplicate ${count} ${count === 1 ? 'object' : 'objects'}`;
-    const entry: UndoEntry = { project, label };
-    const newStack = [...undoStack.slice(-UNDO_DEPTH_LIMIT), entry];
-    set({ project: newProject, dirty: true, undoStack: newStack, redoStack: [] });
+    get().updateProject(() => newProject, label);
     return newSelection;
   },
   alignSelected: (sel, axis) => get().updateProject((p) => doAlign(p, sel, axis)),

@@ -93,6 +93,35 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   let warningCount = 0;
   const verbose = options?.verbose ?? false;
 
+  // Structural guards: ensure top-level array fields exist and are arrays.
+  // Corrupted/truncated JSON imports may have undefined or wrong types here.
+  const requiredArrays: [unknown, string][] = [
+    [project.zones, 'zones'],
+    [project.connections, 'connections'],
+    [project.districts, 'districts'],
+    [project.entityPlacements, 'entityPlacements'],
+    [project.itemPlacements, 'itemPlacements'],
+    [project.spawnPoints, 'spawnPoints'],
+    [project.landmarks, 'landmarks'],
+    [project.dialogues, 'dialogues'],
+    [project.encounterAnchors, 'encounterAnchors'],
+    [project.factionPresences, 'factionPresences'],
+    [project.pressureHotspots, 'pressureHotspots'],
+    [project.assets, 'assets'],
+    [project.assetPacks, 'assetPacks'],
+  ];
+  for (const [value, field] of requiredArrays) {
+    if (!Array.isArray(value)) {
+      errors.push({
+        path: field,
+        message: `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`,
+      });
+    }
+  }
+  if (errors.length > 0) {
+    return { valid: false, errors, warningCount: 0 };
+  }
+
   // SCH-A-004: Project metadata type guards — author/license/category are optional
   // strings in the schema, but external JSON imports can corrupt them to non-strings
   // (null, number, object). Advisory used to silently coerce these to empty strings,
@@ -928,6 +957,20 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         path: `itemPlacements.${ip.itemId}.lootTableId`,
         message: `Item "${ip.itemId}" references nonexistent loot table "${ip.lootTableId}"`,
       });
+    }
+  }
+
+  // LootTable entry.itemId must reference an existing item placement.
+  const allItemIds = new Set(project.itemPlacements.map((ip) => ip.itemId));
+  for (const lt of lootTables) {
+    for (let i = 0; i < (lt.entries ?? []).length; i++) {
+      const entry = lt.entries[i];
+      if (entry.itemId && !allItemIds.has(entry.itemId)) {
+        errors.push({
+          path: `lootTables.${lt.id}.entries[${i}].itemId`,
+          message: `Loot table "${lt.id}" entry references nonexistent item "${entry.itemId}"`,
+        });
+      }
     }
   }
 

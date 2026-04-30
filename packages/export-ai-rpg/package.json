@@ -44,7 +44,7 @@
   ],
   "//": "ai-rpg-engine/* deps: see src/ENGINE_CONTRACT.md for the 2.x API shape this exporter depends on and the checklist for a future 3.x bump.",
   "dependencies": {
-    "@world-forge/schema": "*",
+    "@world-forge/schema": "workspace:^",
     "@ai-rpg-engine/content-schema": "^2.0.1",
     "@ai-rpg-engine/core": "^2.0.1",
     "@ai-rpg-engine/modules": "^2.1.0",
