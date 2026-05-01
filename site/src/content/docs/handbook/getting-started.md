@@ -26,7 +26,7 @@ World Forge uses TypeScript project references across its monorepo. A single com
 npm run build
 ```
 
-This runs `tsc --build`, which resolves the dependency graph: schema first, then renderer-2d and export-ai-rpg (both depend on schema), then editor (depends on all three).
+This runs `tsc --build`, which resolves the dependency graph: schema first, then renderer-2d, export-ai-rpg, export-unreal, and export-godot (all depend on schema), then editor (depends on all five).
 
 ## Launch the Editor
 
@@ -42,7 +42,7 @@ Open `http://localhost:5173` in your browser. The editor loads the Template Mana
 npm test
 ```
 
-This runs Vitest across all packages. The test suite covers schema validation and the export pipeline.
+This runs Vitest across all packages. The test suite covers schema validation, the three export pipelines (AI RPG, UE5, Godot), and the editor UI.
 
 ## Verify Everything
 

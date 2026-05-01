@@ -617,18 +617,69 @@ Access batch placement from the Speed Panel or Selection Actions panel.
 
 ## 16. Export
 
-Click **Export** to validate your project and download the ContentPack. The export pipeline:
+Click **Export** in the top bar to open the Export modal. The modal provides a target-aware export surface with readiness checks, configurable options, and post-download receipts.
 
-1. Runs `validateProject()` — catches orphan references, missing spawn points, broken dialogue links
-2. Converts zones, districts, entities, items, and dialogues to engine format
-3. Generates a manifest and pack metadata
-4. Returns warnings for missing features (no landmarks, no faction presences, etc.)
+### Per-Target Readiness
 
-The output is a set of JSON files ready to load into ai-rpg-engine.
+At the top of the modal, each export target shows a readiness badge:
 
-If you imported the project, the export modal also shows a **Changes Since Import** section — a summary of what was modified, added, or removed since the original import, plus any fidelity caveats from the import process.
+- **✓ AI RPG: Ready** — project passes all structural checks
+- **✓ UE5: Ready with N advisories** — exportable, but some data (elevation, parallax) is missing
+- **✓ Godot: Ready** — project passes all structural checks
 
-Below the engine export section, a separate **Export Project Bundle** button lets you save the project as a portable `.wfproject.json` file (see §19).
+Advisories are not blockers — they warn about missing optional data that affects the downstream engine (e.g., "No zone elevation authored — everything exports at Z=0").
+
+### Export Contents
+
+A summary grid shows what's in the project: zones, districts, entities, items, dialogues, trees, spawns, assets, and packs.
+
+### Target Options
+
+Click **▸ Target Options** to expand per-engine configuration:
+
+| Target | Options |
+|--------|---------|
+| AI RPG | Include fidelity report, include build catalog, include dialogue/progression |
+| UE5 | Tile size (cm), blueprint path prefix, streaming hints, signing note |
+| Godot 4 | Entity scene prefix, transition scene prefix, include world .tscn, asset binding mode (manifest/manual) |
+
+Options wire through to the export handlers — AI RPG toggles filter bundle content (strip catalog, strip dialogue/progression), UE5/Godot settings embed in the downloaded bundle for downstream tooling.
+
+### Export Buttons
+
+Three target-specific buttons download the appropriate pack:
+
+- **Export JSON** — AI RPG Engine content pack
+- **Export Unreal Engine 5** — 2.5D-aware UE5 content pack
+- **Export Godot 4** — `.tscn` scenes + resource pack
+
+A **Validate** button runs the validation pipeline without downloading.
+
+### Receipts
+
+After each download, a receipt card appears in the modal showing:
+- Target name and timestamp
+- File size and filename
+- Zone, entity, and item counts
+- Fidelity report summary (if included)
+
+Receipts stack within the modal session so you can export to all three targets and compare results.
+
+### Advisories
+
+Pre-export advisories surface below the target options:
+- ⚠ No zone elevation authored — everything exports at Z=0 (flat)
+- ⚠ No parallax layers — UE5 2.5D backdrops will be bare
+- ⚠ No entity placements — content packs will be empty
+- ⚠ No connections — zones are disconnected
+
+### Changes Since Import
+
+If the project was imported, a **Changes Since Import** section shows what was modified, added, or removed since the original import, plus any fidelity caveats.
+
+### Project Bundle
+
+Below the engine export section, **Export Project Bundle** saves the project as a portable `.wfproject.json` file (see §19). Project bundles have no validation gate — you can export work-in-progress.
 
 ## 17. Import
 

@@ -11,12 +11,14 @@ This guide walks you through creating your first world in World Forge -- from in
 
 World Forge is a 2D world authoring studio that produces content packs for [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine). You design worlds visually -- painting zones on a canvas, connecting them, placing entities with stats and AI profiles, writing branching dialogues -- then export everything as validated JSON that [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg) can play directly.
 
-World Forge is a monorepo with four packages:
+World Forge is a monorepo with six packages:
 
 | Package | What it does |
 |---------|-------------|
-| `@world-forge/schema` | TypeScript types, validation (54 checks), and the `WorldProject` container |
+| `@world-forge/schema` | TypeScript types, validation (60+ checks), and the `WorldProject` container |
 | `@world-forge/export-ai-rpg` | Converts projects to ai-rpg-engine format; includes a CLI tool |
+| `@world-forge/export-unreal` | Converts projects to Unreal Engine 5 format with 2.5D support; includes CLI |
+| `@world-forge/export-godot` | Converts projects to Godot 4 format with `.tscn` scene generation |
 | `@world-forge/renderer-2d` | PixiJS 2D canvas with pan, zoom, overlays, and minimap |
 | `@world-forge/editor` | React 19 web app with Zustand state management and undo/redo |
 

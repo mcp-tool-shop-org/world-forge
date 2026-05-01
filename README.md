@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.4.0</strong> — 2067 tests + 6 e2e browser checks, 6 shipping packages, 7 authoring modes, 2.5D authoring, three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.4.0</strong> — 2082 tests + 6 e2e browser checks, 6 shipping packages, 7 authoring modes, 2.5D authoring, three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## Architecture
@@ -48,7 +48,7 @@ Open `http://localhost:5173` to launch the editor.
 3. **Paint zones** — drag on the canvas to create zones, connect them, assign districts
 4. **Place entities** — drop NPCs, enemies, merchants, encounters, and items onto zones
 5. **Review** — open the Review tab for health status, content overview, and summary export (Markdown/JSON)
-6. **Export** — download a ContentPack (AI RPG Engine), Unreal Engine 5 pack, Godot 4 pack, project bundle (.wfproject.json), or review summary
+6. **Export** — open the Export modal to see per-target readiness (✓ Ready / ⚠ advisories), configure target options, then download AI RPG Engine, UE5, or Godot 4 packs. Post-export receipts stack with size, counts, and fidelity details. Also: project bundles (.wfproject.json) and review summaries
 
 ### CLI Export
 
@@ -157,7 +157,7 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 
 #### Import & Export
 
-- **ContentPack** — one-click export to ai-rpg-engine, Unreal Engine 5, or Godot 4 format with full validation and pre-export advisories
+- **ContentPack** — target-aware export to AI RPG Engine, Unreal Engine 5, or Godot 4 with per-target readiness badges, configurable options (tile size, scene prefixes, bundle filtering), and post-download receipts
 - **Project bundles** — portable `.wfproject.json` files with provenance metadata and dependency info
 - **Kit bundles** — `.wfkit.json` export/import with validation, collision handling, and provenance tracking
 - **Import** — auto-detects 4 formats with structured fidelity reporting
