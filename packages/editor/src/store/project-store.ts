@@ -614,22 +614,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }), 'Delete encounter'),
 
   // Faction helpers
-  addFaction: (f) => get().updateProject((p) => ({ ...p, factionPresences: [...p.factionPresences, f] })),
+  addFaction: (f) => get().updateProject((p) => ({ ...p, factionPresences: [...p.factionPresences, f] }), 'Add faction'),
   updateFaction: (factionId, updates) => get().updateProject((p) => ({
     ...p, factionPresences: p.factionPresences.map((f) => f.factionId === factionId ? { ...f, ...updates } : f),
-  })),
+  }), 'Update faction'),
   removeFaction: (factionId) => get().updateProject((p) => ({
     ...p, factionPresences: p.factionPresences.filter((f) => f.factionId !== factionId),
-  })),
+  }), 'Delete faction'),
 
   // Pressure hotspot helpers
-  addPressureHotspot: (h) => get().updateProject((p) => ({ ...p, pressureHotspots: [...p.pressureHotspots, h] })),
+  addPressureHotspot: (h) => get().updateProject((p) => ({ ...p, pressureHotspots: [...p.pressureHotspots, h] }), 'Add hotspot'),
   updatePressureHotspot: (id, updates) => get().updateProject((p) => ({
     ...p, pressureHotspots: p.pressureHotspots.map((h) => h.id === id ? { ...h, ...updates } : h),
-  })),
+  }), 'Update hotspot'),
   removePressureHotspot: (id) => get().updateProject((p) => ({
     ...p, pressureHotspots: p.pressureHotspots.filter((h) => h.id !== id),
-  })),
+  }), 'Delete hotspot'),
 
   // Entity helpers
   addEntity: (e) => get().updateProject((p) => ({ ...p, entityPlacements: [...p.entityPlacements, e] }), 'Add entity'),
@@ -707,111 +707,111 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     get().updateProject(() => newProject, label);
     return newSelection;
   },
-  alignSelected: (sel, axis) => get().updateProject((p) => doAlign(p, sel, axis)),
-  distributeSelected: (sel, axis) => get().updateProject((p) => doDistribute(p, sel, axis)),
+  alignSelected: (sel, axis) => get().updateProject((p) => doAlign(p, sel, axis), `Align ${axis}`),
+  distributeSelected: (sel, axis) => get().updateProject((p) => doDistribute(p, sel, axis), `Distribute ${axis}`),
 
   // Player template helpers
-  setPlayerTemplate: (t) => get().updateProject((p) => ({ ...p, playerTemplate: t })),
+  setPlayerTemplate: (t) => get().updateProject((p) => ({ ...p, playerTemplate: t }), 'Set player template'),
   updatePlayerTemplate: (updates) => get().updateProject((p) => ({
     ...p, playerTemplate: p.playerTemplate ? { ...p.playerTemplate, ...updates } : undefined,
-  })),
+  }), 'Update player template'),
 
   // Build catalog helpers
-  setBuildCatalog: (c) => get().updateProject((p) => ({ ...p, buildCatalog: c })),
+  setBuildCatalog: (c) => get().updateProject((p) => ({ ...p, buildCatalog: c }), 'Set build catalog'),
   updateBuildCatalogConfig: (updates) => get().updateProject((p) => ({
     ...p, buildCatalog: { ...ensureBuildCatalog(p), ...updates },
-  })),
+  }), 'Update build catalog'),
   addArchetype: (a) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, archetypes: [...cat.archetypes, a] } };
-  }),
+  }, 'Add archetype'),
   updateArchetype: (id, updates) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, archetypes: cat.archetypes.map((a) => a.id === id ? { ...a, ...updates } : a) } };
-  }),
+  }, 'Update archetype'),
   removeArchetype: (id) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, archetypes: cat.archetypes.filter((a) => a.id !== id) } };
-  }),
+  }, 'Delete archetype'),
   addBackground: (b) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, backgrounds: [...cat.backgrounds, b] } };
-  }),
+  }, 'Add background'),
   updateBackground: (id, updates) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, backgrounds: cat.backgrounds.map((b) => b.id === id ? { ...b, ...updates } : b) } };
-  }),
+  }, 'Update background'),
   removeBackground: (id) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, backgrounds: cat.backgrounds.filter((b) => b.id !== id) } };
-  }),
+  }, 'Delete background'),
   addTrait: (t) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, traits: [...cat.traits, t] } };
-  }),
+  }, 'Add trait'),
   updateTrait: (id, updates) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, traits: cat.traits.map((t) => t.id === id ? { ...t, ...updates } : t) } };
-  }),
+  }, 'Update trait'),
   removeTrait: (id) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, traits: cat.traits.filter((t) => t.id !== id) } };
-  }),
+  }, 'Delete trait'),
   addDiscipline: (d) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, disciplines: [...cat.disciplines, d] } };
-  }),
+  }, 'Add discipline'),
   updateDiscipline: (id, updates) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, disciplines: cat.disciplines.map((d) => d.id === id ? { ...d, ...updates } : d) } };
-  }),
+  }, 'Update discipline'),
   removeDiscipline: (id) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, disciplines: cat.disciplines.filter((d) => d.id !== id) } };
-  }),
+  }, 'Delete discipline'),
   addCrossTitle: (ct) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, crossTitles: [...cat.crossTitles, ct] } };
-  }),
+  }, 'Add cross-title'),
   removeCrossTitle: (archetypeId, disciplineId) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, crossTitles: cat.crossTitles.filter((ct) => !(ct.archetypeId === archetypeId && ct.disciplineId === disciplineId)) } };
-  }),
+  }, 'Delete cross-title'),
   addEntanglement: (e) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, entanglements: [...cat.entanglements, e] } };
-  }),
+  }, 'Add entanglement'),
   removeEntanglement: (id) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, entanglements: cat.entanglements.filter((e) => e.id !== id) } };
-  }),
+  }, 'Delete entanglement'),
 
   // Progression tree helpers
-  addProgressionTree: (t) => get().updateProject((p) => ({ ...p, progressionTrees: [...p.progressionTrees, t] })),
+  addProgressionTree: (t) => get().updateProject((p) => ({ ...p, progressionTrees: [...p.progressionTrees, t] }), 'Add progression tree'),
   updateProgressionTree: (id, updates) => get().updateProject((p) => ({
     ...p, progressionTrees: p.progressionTrees.map((t) => t.id === id ? { ...t, ...updates } : t),
-  })),
+  }), 'Update progression tree'),
   removeProgressionTree: (id) => get().updateProject((p) => ({
     ...p, progressionTrees: p.progressionTrees.filter((t) => t.id !== id),
-  })),
+  }), 'Delete progression tree'),
   addProgressionNode: (treeId, node) => get().updateProject((p) => ({
     ...p, progressionTrees: p.progressionTrees.map((t) =>
       t.id === treeId ? { ...t, nodes: [...t.nodes, node] } : t),
-  })),
+  }), 'Add progression node'),
   updateProgressionNode: (treeId, nodeId, updates) => get().updateProject((p) => ({
     ...p, progressionTrees: p.progressionTrees.map((t) =>
       t.id === treeId ? { ...t, nodes: t.nodes.map((n) => n.id === nodeId ? { ...n, ...updates } : n) } : t),
-  })),
+  }), 'Update progression node'),
   removeProgressionNode: (treeId, nodeId) => get().updateProject((p) => ({
     ...p, progressionTrees: p.progressionTrees.map((t) =>
       t.id === treeId ? { ...t, nodes: t.nodes.filter((n) => n.id !== nodeId) } : t),
-  })),
+  }), 'Delete progression node'),
 
   // Asset helpers
-  addAsset: (a) => get().updateProject((p) => ({ ...p, assets: [...p.assets, a] })),
+  addAsset: (a) => get().updateProject((p) => ({ ...p, assets: [...p.assets, a] }), 'Add asset'),
   updateAsset: (id, updates) => get().updateProject((p) => ({
     ...p, assets: p.assets.map((a) => a.id === id ? { ...a, ...updates } : a),
-  })),
+  }), 'Update asset'),
   removeAsset: (id) => get().updateProject((p) => ({
     ...p,
     assets: p.assets.filter((a) => a.id !== id),
@@ -833,42 +833,42 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       ...l,
       iconId: l.iconId === id ? undefined : l.iconId,
     })),
-  })),
+  }), 'Delete asset'),
 
   // Asset pack helpers
-  addAssetPack: (pack) => get().updateProject((p) => ({ ...p, assetPacks: [...p.assetPacks, pack] })),
+  addAssetPack: (pack) => get().updateProject((p) => ({ ...p, assetPacks: [...p.assetPacks, pack] }), 'Add asset pack'),
   updateAssetPack: (id, updates) => get().updateProject((p) => ({
     ...p, assetPacks: p.assetPacks.map((pk) => pk.id === id ? { ...pk, ...updates } : pk),
-  })),
+  }), 'Update asset pack'),
   removeAssetPack: (id) => get().updateProject((p) => ({
     ...p,
     assetPacks: p.assetPacks.filter((pk) => pk.id !== id),
     assets: p.assets.map((a) => a.packId === id ? { ...a, packId: undefined } : a),
-  })),
+  }), 'Delete asset pack'),
 
   // Dialogue helpers
-  addDialogue: (d) => get().updateProject((p) => ({ ...p, dialogues: [...p.dialogues, d] })),
+  addDialogue: (d) => get().updateProject((p) => ({ ...p, dialogues: [...p.dialogues, d] }), 'Add dialogue'),
   updateDialogue: (id, updates) => get().updateProject((p) => ({
     ...p, dialogues: p.dialogues.map((d) => d.id === id ? { ...d, ...updates } : d),
-  })),
+  }), 'Update dialogue'),
   removeDialogue: (id) => get().updateProject((p) => ({
     ...p, dialogues: p.dialogues.filter((d) => d.id !== id),
-  })),
+  }), 'Delete dialogue'),
   addDialogueNode: (dialogueId, node) => get().updateProject((p) => ({
     ...p, dialogues: p.dialogues.map((d) =>
       d.id === dialogueId ? { ...d, nodes: { ...d.nodes, [node.id]: node } } : d),
-  })),
+  }), 'Add dialogue node'),
   updateDialogueNode: (dialogueId, nodeId, updates) => get().updateProject((p) => ({
     ...p, dialogues: p.dialogues.map((d) =>
       d.id === dialogueId ? { ...d, nodes: { ...d.nodes, [nodeId]: { ...d.nodes[nodeId], ...updates } } } : d),
-  })),
+  }), 'Update dialogue node'),
   removeDialogueNode: (dialogueId, nodeId) => get().updateProject((p) => ({
     ...p, dialogues: p.dialogues.map((d) => {
       if (d.id !== dialogueId) return d;
       const { [nodeId]: _, ...rest } = d.nodes;
       return { ...d, nodes: rest };
     }),
-  })),
+  }), 'Delete dialogue node'),
 
   // ── Preset apply helpers ──────────────────────────────────────
 
@@ -974,7 +974,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
 
     return { ...p, districts, factionPresences, pressureHotspots };
-  }),
+  }, 'Apply region preset'),
 
   createEncounterFromPreset: (zoneId, preset) => {
     const id = `enc-${Date.now()}`;
@@ -989,7 +989,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         cooldownTurns: preset.cooldownTurns,
         tags: [...preset.encounterTags],
       }],
-    }));
+    }), 'Add encounter from preset');
     return id;
   },
 
