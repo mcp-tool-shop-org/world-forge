@@ -11,6 +11,45 @@ export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported';
 
 export type ExportTarget = 'ai-rpg' | 'unreal' | 'godot';
 
+/** 10B: Per-target export options */
+export interface AiRpgExportOptions {
+  includeFidelityReport: boolean;
+  includeBuildCatalog: boolean;
+  includeDialogueProgression: boolean;
+}
+
+export interface UnrealExportOptions {
+  tileSizeCm: number;
+  blueprintPathPrefix: string;
+  includeStreamingHints: boolean;
+}
+
+export interface GodotExportUIOptions {
+  entityScenePrefix: string;
+  transitionScenePrefix: string;
+  includeWorldTscn: boolean;
+  assetBindingMode: 'manual' | 'manifest';
+}
+
+export const DEFAULT_AI_RPG_OPTIONS: AiRpgExportOptions = {
+  includeFidelityReport: true,
+  includeBuildCatalog: true,
+  includeDialogueProgression: true,
+};
+
+export const DEFAULT_UNREAL_OPTIONS: UnrealExportOptions = {
+  tileSizeCm: 100,
+  blueprintPathPrefix: '/Game/WorldForge/',
+  includeStreamingHints: true,
+};
+
+export const DEFAULT_GODOT_OPTIONS: GodotExportUIOptions = {
+  entityScenePrefix: 'res://entities/',
+  transitionScenePrefix: 'res://transitions/',
+  includeWorldTscn: true,
+  assetBindingMode: 'manifest',
+};
+
 export interface ExportReceipt {
   target: ExportTarget;
   filename: string;
@@ -86,6 +125,7 @@ export async function runEngineExport(
   project: WorldProject,
   cb: ExportCallbacks,
   env: ExportEnv = { downloadJson: defaultDownloadJson },
+  opts: AiRpgExportOptions = DEFAULT_AI_RPG_OPTIONS,
 ): Promise<void> {
   // ED-A-001: clear stale errors/warnings/status before a new attempt
   cb.setErrors([]);
@@ -104,11 +144,23 @@ export async function runEngineExport(
 
   try {
     const filename = `${project.id}-engine-pack.json`;
-    const bundle = {
-      contentPack: result.contentPack,
+    // 10B: Apply AI RPG options to the bundle
+    const contentPack = { ...result.contentPack };
+    if (!opts.includeBuildCatalog) {
+      delete (contentPack as Record<string, unknown>).buildCatalog;
+    }
+    if (!opts.includeDialogueProgression) {
+      delete (contentPack as Record<string, unknown>).dialogues;
+      delete (contentPack as Record<string, unknown>).progressionTrees;
+    }
+    const bundle: Record<string, unknown> = {
+      contentPack,
       manifest: result.manifest,
       packMeta: result.packMeta,
     };
+    if (opts.includeFidelityReport) {
+      bundle.fidelityReport = { level: 'preserved', warnings: result.warnings };
+    }
     const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');
     cb.markExported();
@@ -149,6 +201,7 @@ export async function runUnrealExport(
   project: WorldProject,
   cb: ExportCallbacks,
   env: ExportEnv = { downloadJson: defaultDownloadJson },
+  opts: UnrealExportOptions = DEFAULT_UNREAL_OPTIONS,
 ): Promise<void> {
   // ED-A-002: clear stale errors/warnings/status before a new attempt
   cb.setErrors([]);
@@ -156,7 +209,9 @@ export async function runUnrealExport(
   cb.setStatus('idle');
 
   const { exportToUnreal } = await import('@world-forge/export-unreal');
-  const result = exportToUnreal(project);
+  const result = exportToUnreal(project, {
+    tileSizeCm: opts.tileSizeCm,
+  });
   if (!result.success) {
     cb.setStatus('invalid');
     cb.setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
@@ -171,9 +226,15 @@ export async function runUnrealExport(
 
   try {
     const filename = `${project.id}-unreal-pack.json`;
-    const bundle = {
+    const bundle: Record<string, unknown> = {
       contentPack: result.contentPack,
       fidelity: result.fidelity,
+      exportSettings: {
+        tileSizeCm: opts.tileSizeCm,
+        blueprintPathPrefix: opts.blueprintPathPrefix,
+        streamingHints: opts.includeStreamingHints,
+        signing: 'disabled (CLI-only)',
+      },
     };
     const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');
@@ -212,6 +273,7 @@ export async function runGodotExport(
   project: WorldProject,
   cb: ExportCallbacks,
   env: ExportEnv = { downloadJson: defaultDownloadJson },
+  opts: GodotExportUIOptions = DEFAULT_GODOT_OPTIONS,
 ): Promise<void> {
   cb.setErrors([]);
   cb.setWarnings([]);
@@ -229,9 +291,15 @@ export async function runGodotExport(
 
   try {
     const filename = `${project.id}-godot-pack.json`;
-    const bundle = {
+    const bundle: Record<string, unknown> = {
       contentPack: result.contentPack,
       fidelity: result.fidelity,
+      exportSettings: {
+        entityScenePrefix: opts.entityScenePrefix,
+        transitionScenePrefix: opts.transitionScenePrefix,
+        includeWorldTscn: opts.includeWorldTscn,
+        assetBindingMode: opts.assetBindingMode,
+      },
     };
     const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');

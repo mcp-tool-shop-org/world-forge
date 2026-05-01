@@ -3,7 +3,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { runEngineExport, runUnrealExport, runGodotExport, type ExportReceipt } from './export-handlers.js';
+import {
+  runEngineExport, runUnrealExport, runGodotExport,
+  type ExportReceipt, type AiRpgExportOptions, type UnrealExportOptions, type GodotExportUIOptions,
+  DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
+} from './export-handlers.js';
 import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
@@ -32,6 +36,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [receipts, setReceipts] = useState<ExportReceipt[]>([]);
+  // 10B: Per-target export options
+  const [aiRpgOpts, setAiRpgOpts] = useState<AiRpgExportOptions>({ ...DEFAULT_AI_RPG_OPTIONS });
+  const [unrealOpts, setUnrealOpts] = useState<UnrealExportOptions>({ ...DEFAULT_UNREAL_OPTIONS });
+  const [godotOpts, setGodotOpts] = useState<GodotExportUIOptions>({ ...DEFAULT_GODOT_OPTIONS });
+  const [showOptions, setShowOptions] = useState(false);
   // ED-B-002: manual-download fallback anchor — populated after a successful
   // export so the user can click it if the synthetic download was blocked.
   const [fallback, setFallback] = useState<{ href: string; filename: string } | null>(null);
@@ -62,17 +71,17 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const handleExport = () => {
     setFallback(null);
-    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt });
+    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts);
   };
 
   const handleExportUnreal = () => {
     setFallback(null);
-    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt });
+    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, unrealOpts);
   };
 
   const handleExportGodot = () => {
     setFallback(null);
-    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt });
+    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, godotOpts);
   };
 
   const handleGoToFirstIssue = () => {
@@ -271,6 +280,100 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           <div><strong style={{ color: '#c9d1d9' }}>Export JSON:</strong> generic AI-RPG-Engine pack.</div>
           <div><strong style={{ color: '#c9d1d9' }}>Export UE5:</strong> 2.5D-aware pack for Unreal Engine 5.</div>
           <div><strong style={{ color: '#c9d1d9' }}>Export Godot 4:</strong> .tscn scenes + resource pack for Godot.</div>
+        </div>
+
+        {/* 10B: Per-target export options */}
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={() => setShowOptions(!showOptions)}
+            style={{ ...buttonBase, fontSize: 11, padding: '3px 8px' }}
+          >
+            {showOptions ? '▾' : '▸'} Target Options
+          </button>
+          {showOptions && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 4, background: '#0d1117', border: '1px solid #30363d', fontSize: 11 }}>
+              {/* AI RPG Options */}
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontWeight: 600, color: '#3fb950', marginBottom: 4 }}>AI RPG</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer', marginBottom: 2 }}>
+                  <input type="checkbox" checked={aiRpgOpts.includeFidelityReport} onChange={(e) => setAiRpgOpts({ ...aiRpgOpts, includeFidelityReport: e.target.checked })} />
+                  Include fidelity report
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer', marginBottom: 2 }}>
+                  <input type="checkbox" checked={aiRpgOpts.includeBuildCatalog} onChange={(e) => setAiRpgOpts({ ...aiRpgOpts, includeBuildCatalog: e.target.checked })} />
+                  Include build catalog
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={aiRpgOpts.includeDialogueProgression} onChange={(e) => setAiRpgOpts({ ...aiRpgOpts, includeDialogueProgression: e.target.checked })} />
+                  Include dialogue / progression
+                </label>
+              </div>
+              {/* UE5 Options */}
+              <div style={{ marginBottom: 8, borderTop: '1px solid #21262d', paddingTop: 8 }}>
+                <div style={{ fontWeight: 600, color: '#58a6ff', marginBottom: 4 }}>Unreal Engine 5</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', marginBottom: 2 }}>
+                  <span style={{ minWidth: 90 }}>Tile size (cm):</span>
+                  <input
+                    type="number" min={10} max={1000} step={10}
+                    value={unrealOpts.tileSizeCm}
+                    onChange={(e) => setUnrealOpts({ ...unrealOpts, tileSizeCm: Math.max(10, Number(e.target.value) || 100) })}
+                    style={{ width: 60, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 3, padding: '1px 4px' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', marginBottom: 2 }}>
+                  <span style={{ minWidth: 90 }}>Blueprint prefix:</span>
+                  <input
+                    type="text"
+                    value={unrealOpts.blueprintPathPrefix}
+                    onChange={(e) => setUnrealOpts({ ...unrealOpts, blueprintPathPrefix: e.target.value })}
+                    style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 3, padding: '1px 4px', fontFamily: 'monospace', fontSize: 10 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer', marginBottom: 2 }}>
+                  <input type="checkbox" checked={unrealOpts.includeStreamingHints} onChange={(e) => setUnrealOpts({ ...unrealOpts, includeStreamingHints: e.target.checked })} />
+                  Include streaming hints
+                </label>
+                <div style={{ fontSize: 10, color: '#484f58', fontStyle: 'italic' }}>Signing: disabled (CLI-only via --sign flag)</div>
+              </div>
+              {/* Godot Options */}
+              <div style={{ borderTop: '1px solid #21262d', paddingTop: 8 }}>
+                <div style={{ fontWeight: 600, color: '#478cbf', marginBottom: 4 }}>Godot 4</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', marginBottom: 2 }}>
+                  <span style={{ minWidth: 100 }}>Entity prefix:</span>
+                  <input
+                    type="text"
+                    value={godotOpts.entityScenePrefix}
+                    onChange={(e) => setGodotOpts({ ...godotOpts, entityScenePrefix: e.target.value })}
+                    style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 3, padding: '1px 4px', fontFamily: 'monospace', fontSize: 10 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', marginBottom: 2 }}>
+                  <span style={{ minWidth: 100 }}>Transition prefix:</span>
+                  <input
+                    type="text"
+                    value={godotOpts.transitionScenePrefix}
+                    onChange={(e) => setGodotOpts({ ...godotOpts, transitionScenePrefix: e.target.value })}
+                    style={{ flex: 1, background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 3, padding: '1px 4px', fontFamily: 'monospace', fontSize: 10 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer', marginBottom: 2 }}>
+                  <input type="checkbox" checked={godotOpts.includeWorldTscn} onChange={(e) => setGodotOpts({ ...godotOpts, includeWorldTscn: e.target.checked })} />
+                  Include world .tscn
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer' }}>
+                  <span style={{ minWidth: 100 }}>Asset binding:</span>
+                  <select
+                    value={godotOpts.assetBindingMode}
+                    onChange={(e) => setGodotOpts({ ...godotOpts, assetBindingMode: e.target.value as 'manual' | 'manifest' })}
+                    style={{ background: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', borderRadius: 3, padding: '1px 4px', fontSize: 10 }}
+                  >
+                    <option value="manifest">manifest</option>
+                    <option value="manual">manual</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pre-export advisories */}
