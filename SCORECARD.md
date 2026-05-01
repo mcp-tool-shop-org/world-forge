@@ -546,3 +546,82 @@ Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, 
 
 - 2147 tests passing (0 failures, +26 new)
 - TypeScript: 0 errors
+
+## Phase 23 — Review / Handoff Workflow Audit
+
+**Verdict: PASS**
+
+### Bug Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `ReviewPanel.tsx` | Region card `onClick` passed `r.id` (district ID) to `setSelectedZone()`, which expects a zone ID | Clicking a region card in the review panel selected a nonexistent zone on the map canvas — no highlight, no navigation, silent failure | Resolve district's first zone ID from `project.districts` and pass that to `setSelectedZone()`; cursor changes to `default` when district has no zones |
+
+### Health Classification (verified sound)
+
+| Health Status | Condition | Label |
+|---------------|-----------|-------|
+| `ready` | Valid + no broken/mismatched/orphaned deps | "Ready to export" |
+| `healthy` | Valid + only orphans | "Healthy (minor cleanup available)" |
+| `degraded` | Valid + broken or mismatched deps | "Degraded (fixable issues)" |
+| `blocked` | Validation errors | "Blocked (validation errors)" |
+
+### Review Snapshot (verified sound)
+
+| Section | Coverage |
+|---------|----------|
+| Project Info | name, mode, genre, version, description, schemaVersion |
+| Content Counts | 14 entity types (zones, districts, entities, items, dialogues, trees, spawns, connections, encounters, landmarks, assets, packs, factions, hotspots) |
+| System Completeness | 5 systems (player template, build catalog, progression, dialogues, spawns) + missingLabels |
+| Regions | Per-district: zone count/names, controlling faction, base metrics, entity roles, encounter count, item count |
+| Encounters | By type, avg probability, zones with encounters, boss encounters |
+| Connections | By kind, bidirectional/one-way/conditional counts |
+| Validation | Error count, errors by domain, first 5 errors |
+| Advisory | Suggestion count, first 5 suggestions |
+| Dependencies | Broken, mismatched, orphaned, total issues |
+
+### Metadata Editing (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Author / License / Category fields | Correct — editable, undo-labeled (Phase 22 fix) |
+| Project tags (add/remove/deduplicate) | Correct — Enter or +, × to remove, duplicate check |
+| Tags are undoable | Correct — labeled "Add project tag" / "Remove project tag" |
+
+### Cross-Panel Navigation (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Dependencies section → "Open Dependency Manager" | Correct — `setRightTab('deps')` |
+| Validation section → "Open Issues Panel" | Correct — `setRightTab('issues')` |
+| Region card → click navigates to first zone on map | **Fixed** — was passing district ID |
+| Search overlay has "Project Review" + "Export Summary" | Correct |
+| Speed panel has open-review + export-summary actions | Correct |
+
+### Export Summary (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Markdown export (reviewSnapshotToMarkdown) | Correct — all sections, maxItems cap, unassigned zones |
+| JSON export (reviewSnapshotToJSON) | Correct — stable field names, JSON.parse roundtrip |
+| Filename slug generation | Correct — handles empty/special chars |
+| Provenance section (kit, import format, fidelity) | Correct — conditionally shown |
+
+### Statistics (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Entity role distribution bars | Correct |
+| Connection kind breakdown bars | Correct |
+| Encounter type summary bars | Correct |
+| Zones per district bars (incl. unassigned) | Correct |
+| Empty state: "No data to display statistics for yet." | Correct |
+
+### Test Coverage
+
+| Suite | Tests |
+|-------|-------|
+| `review.test.ts` (schema) | 18 tests — health classification, snapshot building, region/encounter/connection summaries, validation domain classifier, chapel fixture |
+| `review-panel.test.ts` (editor) | 17 tests — health banners, content counts, system completeness, regions, encounters, connections, deps, validation, enrichment, search integration, speed panel |
+| `export-summary.test.ts` (editor) | 12 tests — markdown sections, JSON structure, roundtrip, filename slugs, provenance |
+| Full suite | 2147/2147 passing |
