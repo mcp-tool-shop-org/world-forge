@@ -459,6 +459,73 @@ Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, 
 | Batch "Clear all broken refs" / "Remove all orphans" | Correct |
 | "Open Deps" link on ref errors in ValidationPanel | Correct — cross-panel navigation |
 
+## Phase 22 — Dependency / Repair Workflow Audit
+
+**Verdict: PASS**
+
+### Bug Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `DependencyPanel.tsx` | 3 repair handlers (`handleRepair`, `handleBatchClearBroken`, `handleBatchRemoveOrphans`) call `updateProject()` without undo labels | Undo history shows generic "Edit" instead of descriptive label — user can't identify what Ctrl+Z will revert | Added labels: `Repair: {label}`, `Clear N broken ref(s)`, `Remove N orphan(s)` |
+| 2 | `BatchZoneActions.tsx` | 3 handlers (`handleAssignDistrict`, `handleAddTag`, `handleDeleteAll`) missing undo labels | Same — generic "Edit" in undo history | Added labels: `Assign zones to district`, `Add tag "X" to N zones`, `Delete N zones` |
+| 3 | `SelectionActionsPanel.tsx` | 3 handlers (`handleAssignDistrict`, `handleAddTag`, `handleDeleteAll`) missing undo labels | Same — duplicated from BatchZoneActions | Added matching labels |
+| 4 | `ConnectionProperties.tsx` | `handleSwapDirection` missing undo label | Same | Added label: `Swap connection direction` |
+| 5 | `ReviewPanel.tsx` | 3 metadata handlers (`setField`, `addTag`, `removeTag`) missing undo labels | Same | Added labels: `Set {field}`, `Add project tag`, `Remove project tag` |
+
+**Total:** 10 unlabeled `updateProject` calls fixed across 5 files. These were Phase 19 regressions (panel-level calls missed during the original undo-label sweep).
+
+### Dependency Scanner (verified sound)
+
+| Domain | Coverage |
+|--------|----------|
+| `zone-asset` | zone.backgroundId, zone.tilesetId |
+| `entity-asset` | entityPlacement.portraitId, entityPlacement.spriteId |
+| `item-asset` | itemPlacement.iconId |
+| `landmark-asset` | landmark.iconId |
+| `asset-pack` | asset.packId → assetPack |
+| `zone-ref` | connection from/to, district zoneIds, spawn zoneId, encounter zoneId |
+| `dialogue-ref` | entityPlacement.dialogueId |
+| `orphan-asset` | assets not referenced by any zone/entity/item/landmark (incl. 2.5D skyline/parallax) |
+| `orphan-pack` | packs with no assets assigned |
+| `kit-provenance` | informational — kit origin tracking |
+
+### Repair Actions (verified sound)
+
+| RepairKind | Action | Tested |
+|------------|--------|--------|
+| `clear-broken-ref` | Sets broken asset ref field to undefined | Yes — zone bg, entity portrait, item icon, landmark icon |
+| `relink-asset` | Points field to a different same-kind asset | Yes — offers only matching kind alternatives |
+| `remove-orphan-asset` | Removes asset from project.assets | Yes |
+| `remove-orphan-pack` | Removes pack + clears packId from all assets | Yes |
+| `clear-pack-ref` | Sets asset.packId to undefined | Yes |
+| `clear-broken-zone-ref` | Removes connection/district ref/spawn/encounter with broken zone | Yes — all 4 sourceTypes |
+| `clear-broken-dialogue-ref` | Clears entityPlacement.dialogueId | Yes |
+
+### Batch Repairs (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| `batchRepair()` composes repairs via reduce | Correct — identity on empty array |
+| "Clear all broken refs" collects clear-type repairs only | Correct — filters by kind |
+| "Remove all orphans" collects orphan repairs | Correct |
+| Repair + rescan produces fewer broken edges | Tested |
+| Repair preserves unrelated project data | Tested |
+
+### Validation Refresh After Repair
+
+| Feature | Status |
+|---------|--------|
+| `useMemo` on project auto-refreshes `scanDependencies` | Correct — no stale state |
+| Export `precheck` recalculates on project change | Correct — `useMemo` dependency |
+
+### Test Coverage
+
+| Suite | Tests |
+|-------|-------|
+| `repairs.test.ts` | 16 tests covering all 7 repair kinds + batch + rescan + data preservation |
+| Full suite | 2147/2147 passing |
+
 ### Suggestions Toggle (verified sound)
 
 | Feature | Status |
