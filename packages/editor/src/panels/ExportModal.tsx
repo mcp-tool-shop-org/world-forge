@@ -98,6 +98,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     if (p.startsWith('buildCatalog')) { setRightTab('builds'); setBuildsSubTab(buildsSubTabFor(p)); setFocusTarget(focus); onClose(); return; }
     if (p.startsWith('progressionTrees')) { setRightTab('trees'); setFocusTarget(focus); onClose(); return; }
     if (p.startsWith('dialogues')) { setRightTab('dialogue'); setFocusTarget(focus); onClose(); return; }
+    if (p.startsWith('assetPacks') || p.startsWith('assets')) { setRightTab('assets'); setFocusTarget(focus); onClose(); return; }
     setRightTab('map'); setFocusTarget(focus); onClose();
   };
 
