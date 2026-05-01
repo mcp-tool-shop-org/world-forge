@@ -227,3 +227,54 @@ AssetEntry/AssetPack (schema) → zone/entity/item/landmark refs → editor Asse
 
 - 2090 tests passing (0 failures, +2 new)
 - TypeScript: 0 errors
+
+---
+
+## Phase 18 — Unsaved Changes / Lifecycle UX Audit
+
+**Verdict: PASS**
+
+### Bugs Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `TemplateManager.tsx` | No dirty guard on any of 4 project-opening paths (genre create, kit open, sample open, template open) | User clicks New → Create/Start/Open and silently destroys unsaved work | Added `if (dirty && !confirmDiscard()) return;` to all 4 handlers |
+| 2 | `App.tsx` | Top-bar Load button has no dirty guard | `handleLoad` opens the file picker and loads the file directly via `loadProject` — unsaved work destroyed without warning | Added `if (dirty && !confirmDiscard()) return;` before `fileInput.current?.click()` |
+
+### Lifecycle Matrix (all 7 targets verified)
+
+| Target | Status | Detail |
+|--------|--------|--------|
+| Dirty indicator | OK | Yellow dot next to project name in top bar, `title="Unsaved changes"` |
+| beforeunload warning | OK | Fires when `dirty === true`, suppressed when clean. Phase 17 fixed save clearing dirty. |
+| New project (TemplateManager) | **Fixed** | All 4 paths (genre, kit, sample, template) now guard with `confirmDiscard()` |
+| Load with unsaved changes | **Fixed** | `handleLoad` now checks dirty before opening file picker |
+| Import with unsaved changes | OK | `ImportModal` already had `confirmOverwrite` state pattern since day one |
+| Recovery toast/action | OK | Auto-recovers on mount with `pushToast('Recovered unsaved project from last session', 'success', 4000)`. Auto-recovery is standard editor behavior (VS Code, Figma). |
+| Save/export distinction | OK | Save = downloads project JSON + `markClean()` + toast. Export = opens modal for engine export (AI RPG / Unreal / Godot), does NOT clear dirty (correct — export is not a save). |
+| Autosave status visibility | OK | Error banner for quota/write failure, oversize banner with MB count when >4.5 MB, no positive indicator when healthy (standard — matches VS Code, Figma, Google Docs behavior). |
+
+### Guard Coverage (complete)
+
+| Destructive action | Guard | Method |
+|--------------------|-------|--------|
+| Browser close/navigate | `beforeunload` event | `e.preventDefault()` when dirty |
+| File → Load | `confirmDiscard()` | `window.confirm` before file picker opens |
+| Import modal | `confirmOverwrite` state | Inline warning + confirm button |
+| New → Create (genre) | `confirmDiscard()` | `window.confirm` before `loadProject` |
+| New → Start Project (kit) | `confirmDiscard()` | `window.confirm` before `loadProject` |
+| New → Open as Copy (sample) | `confirmDiscard()` | `window.confirm` before `loadProject` |
+| New → Open (template) | `confirmDiscard()` | `window.confirm` before `loadProject` |
+
+### Regression Tests Added
+
+- Dirty guard blocks destructive action when user cancels confirm
+- Dirty guard allows action when user confirms
+- No confirm dialog shown when project is clean
+- `loadProject` resets dirty to false
+- `markClean` preserves undo stack
+
+### Test Results
+
+- 2095 tests passing (0 failures, +5 new)
+- TypeScript: 0 errors

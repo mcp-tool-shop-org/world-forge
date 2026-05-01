@@ -12,6 +12,7 @@ import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
+import { confirmDiscard } from '../modal-guards.js';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
@@ -40,6 +41,7 @@ export function createProjectFromKit(kit: StarterKit, projectName?: string): Wor
 
 export function TemplateManager({ onClose }: Props) {
   const { loadProject } = useProjectStore();
+  const dirty = useProjectStore((s) => s.dirty);
   const resetChecklist = useEditorStore((s) => s.resetChecklist);
   const setActiveKitId = useEditorStore((s) => s.setActiveKitId);
   const { templates, loadTemplates, duplicateTemplate, deleteTemplate } = useTemplateStore();
@@ -85,6 +87,7 @@ export function TemplateManager({ onClose }: Props) {
   };
 
   const handleCreate = useCallback(() => {
+    if (dirty && !confirmDiscard()) return;
     const project = createProjectFromWizard({
       name: name || 'Untitled World',
       genre,
@@ -98,32 +101,35 @@ export function TemplateManager({ onClose }: Props) {
     loadProject(project);
     resetChecklist();
     onClose();
-  }, [name, genre, mode, includePlayer, includeBuildCatalog, includeProgressionTree, includeDialogue, includeSampleNPCs, loadProject, resetChecklist, onClose]);
+  }, [dirty, name, genre, mode, includePlayer, includeBuildCatalog, includeProgressionTree, includeDialogue, includeSampleNPCs, loadProject, resetChecklist, onClose]);
 
   const handleOpenKit = useCallback((kit: StarterKit) => {
+    if (dirty && !confirmDiscard()) return;
     const project = createProjectFromKit(kit, name || undefined);
     loadProject(project);
     resetChecklist();
     setActiveKitId(kit.id);
     onClose();
-  }, [name, loadProject, resetChecklist, setActiveKitId, onClose]);
+  }, [dirty, name, loadProject, resetChecklist, setActiveKitId, onClose]);
 
   const handleOpenSample = useCallback((project: WorldProject) => {
+    if (dirty && !confirmDiscard()) return;
     const copy: WorldProject = structuredClone(project);
     copy.id = `sample-${Date.now()}`;
     loadProject(copy);
     resetChecklist();
     onClose();
-  }, [loadProject, resetChecklist, onClose]);
+  }, [dirty, loadProject, resetChecklist, onClose]);
 
   const handleOpenTemplate = useCallback((template: UserTemplate) => {
+    if (dirty && !confirmDiscard()) return;
     const copy: WorldProject = structuredClone(template.project);
     copy.id = `from-template-${Date.now()}`;
     copy.name = `${template.name} Project`;
     loadProject(copy);
     resetChecklist();
     onClose();
-  }, [loadProject, resetChecklist, onClose]);
+  }, [dirty, loadProject, resetChecklist, onClose]);
 
   const handleDuplicate = useCallback((id: string) => {
     duplicateTemplate(id);

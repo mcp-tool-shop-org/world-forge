@@ -34,6 +34,7 @@ import { ReviewPanel } from './panels/ReviewPanel.js';
 import { ModalLayer } from './panels/ModalLayer.js';
 import { Canvas } from './Canvas.js';
 import { getModeProfile } from './mode-profiles.js';
+import { confirmDiscard } from './modal-guards.js';
 import { buttonBase, buttonPrimary } from './ui/styles.js';
 
 // FT-030: Light mode CSS variables injected when theme === 'light'
@@ -161,8 +162,9 @@ export function App() {
   ];
 
   const handleLoad = useCallback(() => {
+    if (dirty && !confirmDiscard()) return;
     fileInput.current?.click();
-  }, []);
+  }, [dirty]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
