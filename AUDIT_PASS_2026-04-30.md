@@ -184,3 +184,49 @@ All 21 templates/kits/samples validate clean and export to all three targets wit
 
 **No broken, thin, or misleading templates found.**
 
+## Phase 10 — Editor Export Depth
+
+**Verdict: PASS**
+
+Turn three download buttons into a target-aware export control surface.
+
+### 10A — Export Receipts
+
+Post-download receipt stack in the Export modal showing target, size, filename, asset/entity counts, and fidelity-report summary. Receipts accumulate within the modal session.
+
+### 10C — Per-target Readiness
+
+Pre-export readiness badges (✓ Ready / ⚠ Ready with N advisories) for each target. Advisories surface missing elevation, parallax, entities, and connections before the user commits to an export.
+
+### 10B — Per-target Options
+
+Collapsible "Target Options" panel with engine-specific controls:
+
+| Target | Options |
+|--------|---------|
+| AI RPG | Include fidelity report, include build catalog, include dialogue/progression |
+| UE5 | Tile size (cm), blueprint path prefix, streaming hints toggle, signing note |
+| Godot 4 | Entity scene prefix, transition scene prefix, include world .tscn, asset binding mode (manifest/manual) |
+
+Options wire through to export handlers — AI RPG toggles filter bundle content, UE5/Godot settings embed in the downloaded bundle for downstream tooling.
+
+### 10E — Regression Tests
+
+15 new tests in `export-depth-regression.test.ts`:
+- Receipt generation for all 3 targets
+- Options wire-through to bundle content (catalog exclusion, dialogue exclusion, fidelity inclusion)
+- UE5/Godot exportSettings embedding verification
+- Default options produce identical output to no-options path
+- Pre-export advisory computation
+
+### Commits
+
+```
+08eb1fc feat(editor): Phase 10A+10C — export receipts + per-target readiness
+f3a929c feat(editor): Phase 10B+10E — per-target export options + regression tests
+```
+
+### Test Count
+
+**2082/2082 passing** (15 new regression tests)
+
