@@ -68,7 +68,7 @@ function addToSummary(summary: DependencySummary, status: DepStatus): void {
  */
 function collectReferencedAssetIds(project: WorldProject): Set<string> {
   const ids = new Set<string>();
-  for (const z of project.zones) {
+  for (const z of project.zones ?? []) {
     if (z.backgroundId) ids.add(z.backgroundId);
     if (z.tilesetId) ids.add(z.tilesetId);
     // 2.5D (v4.2.0): skyline + parallax assetRefs also count as valid references.
@@ -81,14 +81,14 @@ function collectReferencedAssetIds(project: WorldProject): Set<string> {
       }
     }
   }
-  for (const ep of project.entityPlacements) {
+  for (const ep of project.entityPlacements ?? []) {
     if (ep.portraitId) ids.add(ep.portraitId);
     if (ep.spriteId) ids.add(ep.spriteId);
   }
-  for (const ip of project.itemPlacements) {
+  for (const ip of project.itemPlacements ?? []) {
     if (ip.iconId) ids.add(ip.iconId);
   }
-  for (const lm of project.landmarks) {
+  for (const lm of project.landmarks ?? []) {
     if (lm.iconId) ids.add(lm.iconId);
   }
   return ids;
@@ -146,8 +146,8 @@ export function scanDependencies(
     new Map((project.assets ?? []).map((a) => [a.id, { kind: a.kind, label: a.label }]));
 
   const packIds = prebuilt?.packIds ?? new Set((project.assetPacks ?? []).map((p) => p.id));
-  const zoneIds = prebuilt?.zoneIds ?? new Set(project.zones.map((z) => z.id));
-  const dialogueIds = prebuilt?.dialogueIds ?? new Set(project.dialogues.map((d) => d.id));
+  const zoneIds = prebuilt?.zoneIds ?? new Set((project.zones ?? []).map((z) => z.id));
+  const dialogueIds = prebuilt?.dialogueIds ?? new Set((project.dialogues ?? []).map((d) => d.id));
 
   // Helper: check an asset ref field.
   // When refId is null/undefined, the ref is optional and unset — this is not an error.
@@ -188,24 +188,24 @@ export function scanDependencies(
   }
 
   // --- Zone asset refs ---
-  for (const z of project.zones) {
+  for (const z of project.zones ?? []) {
     checkAssetRef('zone-asset', 'zone', z.id, z.name, 'backgroundId', z.backgroundId, 'background');
     checkAssetRef('zone-asset', 'zone', z.id, z.name, 'tilesetId', z.tilesetId, 'tileset');
   }
 
   // --- Entity asset refs ---
-  for (const ep of project.entityPlacements) {
+  for (const ep of project.entityPlacements ?? []) {
     checkAssetRef('entity-asset', 'entityPlacement', ep.entityId, ep.name, 'portraitId', ep.portraitId, 'portrait');
     checkAssetRef('entity-asset', 'entityPlacement', ep.entityId, ep.name, 'spriteId', ep.spriteId, 'sprite');
   }
 
   // --- Item asset refs ---
-  for (const ip of project.itemPlacements) {
+  for (const ip of project.itemPlacements ?? []) {
     checkAssetRef('item-asset', 'itemPlacement', ip.itemId, ip.name, 'iconId', ip.iconId, 'icon');
   }
 
   // --- Landmark asset refs ---
-  for (const lm of project.landmarks) {
+  for (const lm of project.landmarks ?? []) {
     checkAssetRef('landmark-asset', 'landmark', lm.id, lm.name, 'iconId', lm.iconId, 'icon');
   }
 
@@ -230,7 +230,7 @@ export function scanDependencies(
   }
 
   // --- Connection zone refs ---
-  for (const c of project.connections) {
+  for (const c of project.connections ?? []) {
     const label = c.label || `${c.fromZoneId} → ${c.toZoneId}`;
     if (!zoneIds.has(c.fromZoneId)) {
       edges.push({
@@ -251,7 +251,7 @@ export function scanDependencies(
   }
 
   // --- District zone refs ---
-  for (const d of project.districts) {
+  for (const d of project.districts ?? []) {
     for (const zid of d.zoneIds) {
       if (!zoneIds.has(zid)) {
         edges.push({
@@ -265,7 +265,7 @@ export function scanDependencies(
   }
 
   // --- Spawn zone refs ---
-  for (const sp of project.spawnPoints) {
+  for (const sp of project.spawnPoints ?? []) {
     if (!zoneIds.has(sp.zoneId)) {
       edges.push({
         domain: 'zone-ref', status: 'broken',
@@ -277,7 +277,7 @@ export function scanDependencies(
   }
 
   // --- Encounter zone + dialogue refs ---
-  for (const ea of project.encounterAnchors) {
+  for (const ea of project.encounterAnchors ?? []) {
     if (!zoneIds.has(ea.zoneId)) {
       edges.push({
         domain: 'zone-ref', status: 'broken',
@@ -289,7 +289,7 @@ export function scanDependencies(
   }
 
   // --- Entity dialogue refs ---
-  for (const ep of project.entityPlacements) {
+  for (const ep of project.entityPlacements ?? []) {
     if (!ep.dialogueId) continue;
     if (!dialogueIds.has(ep.dialogueId)) {
       edges.push({
