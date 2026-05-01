@@ -419,7 +419,7 @@ function EffectListEditor({ effects, onChange }: {
             <input style={{ ...inputStyle, width: 40, marginTop: 0 }} type="number"
               value={eff.amount ?? 0} onChange={(e) => onChange(effects.map((ef, idx) => idx === i ? { ...ef, amount: Number(e.target.value) } : ef))} />
           )}
-          <button onClick={() => onChange(effects.filter((_, idx) => idx !== i))} style={xBtnStyle}>&times;</button>
+          <button onClick={() => onChange(effects.filter((_, idx) => idx !== i))} style={xBtnStyle} aria-label="Remove effect">&times;</button>
         </div>
       ))}
       <button onClick={() => onChange([...effects, { type: 'stat-modifier', stat: '', amount: 0 }])}

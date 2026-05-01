@@ -317,6 +317,9 @@ export function SearchOverlay() {
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 480, maxHeight: 420, background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',

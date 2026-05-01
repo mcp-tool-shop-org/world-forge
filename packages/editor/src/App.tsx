@@ -235,6 +235,8 @@ export function App() {
           {dirty && (
             <span
               title="Unsaved changes"
+              aria-label="Unsaved changes"
+              role="status"
               style={{
                 display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
                 background: 'var(--wf-warning, #d29922)', marginLeft: 6, verticalAlign: 'middle',
@@ -251,6 +253,7 @@ export function App() {
           onClick={() => setTheme((t) => t === 'dark' ? 'light' : 'dark')}
           style={{ ...buttonBase, fontSize: 16, lineHeight: 1 }}
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
           data-testid="theme-toggle"
         >
           {theme === 'dark' ? '\uD83C\uDF19' : '\u2600\uFE0F'}
@@ -259,6 +262,7 @@ export function App() {
           onClick={() => useEditorStore.getState().setShowSearch(true)}
           style={{ ...buttonBase, display: 'flex', alignItems: 'center', gap: 4 }}
           title="Search (Ctrl+K)"
+          aria-label="Search (Ctrl+K)"
         >
           <span style={{ fontSize: 13 }}>{'\uD83D\uDD0D'}</span>
           <span style={{ fontSize: 10, color: 'var(--wf-text-hint)' }}>Ctrl+K</span>
@@ -366,6 +370,7 @@ export function App() {
           <button
             onClick={() => setLeftCollapsed((c) => !c)}
             title={leftCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={leftCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar'}
             style={{
               background: 'none', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer',
               padding: '6px 8px', fontSize: 14, textAlign: leftCollapsed ? 'center' : 'right',
@@ -399,6 +404,7 @@ export function App() {
           <button
             onClick={() => setRightCollapsed((c) => !c)}
             title={rightCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={rightCollapsed ? 'Expand right sidebar' : 'Collapse right sidebar'}
             style={{
               background: 'none', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer',
               padding: '6px 8px', fontSize: 14, textAlign: rightCollapsed ? 'center' : 'left',

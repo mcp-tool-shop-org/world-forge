@@ -237,7 +237,7 @@ function ProgressionEffectEditor({ effects, onChange }: {
             <option value="target">target</option>
             <option value="zone">zone</option>
           </select>
-          <button onClick={() => onChange(effects.filter((_, idx) => idx !== i))} style={xBtnStyle}>&times;</button>
+          <button onClick={() => onChange(effects.filter((_, idx) => idx !== i))} style={xBtnStyle} aria-label="Remove effect">&times;</button>
         </div>
       ))}
       <button onClick={() => onChange([...effects, { type: 'grant-verb', params: {} }])}

@@ -1391,6 +1391,9 @@ export function Canvas() {
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <canvas
         ref={canvasRef}
+        role="img"
+        aria-label="World map canvas"
+        tabIndex={0}
         style={{ width: '100%', height: '100%', cursor }}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
