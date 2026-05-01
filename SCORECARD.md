@@ -342,3 +342,68 @@ AssetEntry/AssetPack (schema) → zone/entity/item/landmark refs → editor Asse
 
 - 2119 tests passing (0 failures, +24 new)
 - TypeScript: 0 errors
+
+## Phase 20 — Selection / Canvas Interaction Audit
+
+**Verdict: PASS**
+
+### Bug Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `project-store.ts` | `loadProject` / `newProject` did not clear editor selection | Stale IDs retained after load/new/template/crash-recovery — ghost selection indicators, stale right-panel showing "deleted" messages | `loadProject()` and `newProject()` now call `useEditorStore.getState().clearSelection()` after resetting project state |
+
+### Selection Model (verified sound)
+
+| Mechanism | Status |
+|-----------|--------|
+| `SelectionSet` typed arrays (zones, entities, landmarks, spawns, encounters) | Correct — typed, additive toggle via `toggleInArray` |
+| `selectConnection` clears object selection (mutual exclusion) | Correct |
+| `clearSelection` resets to `EMPTY_SELECTION` + clears `selectedConnection` | Correct |
+| Hidden objects excluded from hit-testing (`filterHidden` / `filterHitSingle`) | Correct — FT-009 |
+| Click-cycling for overlapping objects (`CYCLE_TOLERANCE = 4`) | Correct — cycles `allHits` array |
+| Box-select: screen-space rect → `findAllInRect` → hidden filter → `selectAll` | Correct — shift for additive |
+| Drag-move: `DRAG_THRESHOLD = 3` prevents accidental moves; snap-to-objects support | Correct |
+| Resize: single-zone only, handle priority before body hit-testing | Correct |
+
+### Canvas Interaction (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Single-click select (zone/entity/landmark/spawn/encounter/connection) | Correct — hit priority: spawns > encounters > landmarks > entities > connections > zones |
+| Shift-click additive select | Correct — toggles without starting drag |
+| Click on selected object starts drag tracking (no re-select) | Correct |
+| Click on empty clears selection (unless shift held) | Correct |
+| Box-select starts on empty-click, commits on mouse-up | Correct |
+| Double-click selects + centers + opens right panel | Correct |
+| Escape clears selection + cancels drag/resize state | Correct |
+| Pan: middle-click, right-click, space+left | Correct |
+| Wheel zoom: cursor-centered, min/max bounds | Correct |
+| Context menu (right-click) and speed panel (double-right-click) | Correct |
+
+### Hotkeys (verified sound)
+
+| Shortcut | Action | Status |
+|----------|--------|--------|
+| Del / Backspace | Delete selected (confirm > 3 items) | Correct |
+| Ctrl+D | Duplicate selected → auto-select duplicates | Correct |
+| Ctrl+A | Select all visible objects | Correct |
+| Ctrl+C / Ctrl+V | Copy / paste via clipboard store | Correct |
+| Arrow keys | Nudge selection (shift for 5x) | Correct |
+| Escape | Clear selection / close speed panel | Correct |
+| Enter | Open details (switch to map tab) | Correct |
+| P / Shift+P | Preset browser / save preset | Correct |
+| Input-safe guard: skips hotkeys when focus is in INPUT/TEXTAREA/SELECT | Correct |
+
+### Selection After Undo/Redo
+
+Selection is preserved across undo/redo (not cleared). If an undone action removes the selected object, the right-panel gracefully shows "This zone was deleted" and objects simply deselect visually. This is standard behavior (VS Code, Figma, Blender all preserve selection through undo).
+
+### Right-Panel Sync
+
+Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, `SelectionActionsPanel`, `BatchZoneActions`) all derive from the same `selection` store slice. When selection changes, panels re-render automatically via zustand subscription. Stale references (deleted objects) are handled with fallback UI.
+
+### Test Results
+
+- 2121 tests passing (0 failures, +2 new)
+- TypeScript: 0 errors
