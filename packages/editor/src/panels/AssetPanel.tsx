@@ -44,6 +44,12 @@ export function AssetPanel() {
   for (const z of project.zones) {
     if (z.backgroundId) referencedIds.add(z.backgroundId);
     if (z.tilesetId) referencedIds.add(z.tilesetId);
+    if (z.skylineRef) referencedIds.add(z.skylineRef);
+    if (z.parallaxLayers) {
+      for (const layer of z.parallaxLayers) {
+        if (layer.assetRef) referencedIds.add(layer.assetRef);
+      }
+    }
   }
   for (const e of project.entityPlacements) {
     if (e.portraitId) referencedIds.add(e.portraitId);

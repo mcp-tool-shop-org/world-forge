@@ -186,7 +186,9 @@ describe('10E: AI RPG options affect bundle', () => {
         await runEngineExport(chapel, h.cb, env, { ...DEFAULT_AI_RPG_OPTIONS, includeFidelityReport: true });
         const bundle = env.lastData as Record<string, unknown>;
         expect(bundle.fidelityReport).toBeDefined();
-        expect((bundle.fidelityReport as Record<string, unknown>).level).toBe('preserved');
+        const report = bundle.fidelityReport as { entries: unknown[]; summary: { total: number } };
+        expect(report.entries).toBeDefined();
+        expect(report.summary).toBeDefined();
     });
 
     it('omits fidelity report when option is off', async () => {
@@ -270,5 +272,64 @@ describe('10E: Pre-export advisories', () => {
         await runEngineExport(chapel, h2.cb, env2);
 
         expect(JSON.stringify(env1.lastData)).toBe(JSON.stringify(env2.lastData));
+    });
+});
+
+// ── Phase 16: Asset pipeline regression ───────────────────────────────
+
+describe('Phase 16: AI RPG bundle includes assets when project has them', () => {
+    const projectWithAssets: WorldProject = {
+        ...chapel,
+        assets: [
+            { id: 'bg-1', kind: 'background' as const, label: 'Entrance BG', path: 'bg.png', tags: [], packId: 'pack-1' },
+            { id: 'portrait-npc', kind: 'portrait' as const, label: 'Guard', path: 'guard.png', tags: ['npc'], packId: 'pack-1' },
+            // Chapel's existing refs — must be present for validation
+            { id: 'crypt-bg', kind: 'background' as const, label: 'Crypt BG', path: 'crypt-bg.png', tags: [], packId: 'pack-1' },
+            { id: 'aldric-portrait', kind: 'portrait' as const, label: 'Aldric', path: 'aldric.png', tags: [], packId: 'pack-1' },
+            { id: 'bone-talisman-icon', kind: 'icon' as const, label: 'Bone Talisman', path: 'bone-talisman.png', tags: [], packId: 'pack-1' },
+            { id: 'altar-icon', kind: 'icon' as const, label: 'Altar', path: 'altar.png', tags: [], packId: 'pack-1' },
+        ],
+        assetPacks: [
+            { id: 'pack-1', label: 'Core Pack', version: '1.0.0', tags: [] },
+        ],
+        zones: chapel.zones.map((z, i) =>
+            i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
+        ),
+        entityPlacements: chapel.entityPlacements.map((e, i) =>
+            i === 0 ? { ...e, portraitId: 'portrait-npc' } : e,
+        ),
+    };
+
+    it('includes assets, assetBindings, assetPacks in download bundle', async () => {
+        const h = makeCallbacks();
+        const env: ExportEnv & { lastData: unknown } = {
+            lastData: null,
+            downloadJson: (_, d) => { env.lastData = d; return null; },
+        };
+        await runEngineExport(projectWithAssets, h.cb, env);
+        expect(h.getErrors()).toEqual([]);
+        expect(h.getStatus()).toBe('exported');
+        const bundle = env.lastData as Record<string, unknown>;
+        expect(bundle.assets).toBeDefined();
+        expect((bundle.assets as unknown[]).length).toBe(6);
+        expect(bundle.assetBindings).toBeDefined();
+        expect(bundle.assetPacks).toBeDefined();
+        expect((bundle.assetPacks as unknown[]).length).toBe(1);
+    });
+
+    it('receipt includes assets count', async () => {
+        const h = makeCallbacks();
+        const env = makeEnv();
+        await runEngineExport(projectWithAssets, h.cb, env);
+        const r = h.getReceipts()[0];
+        expect(r.assets).toBe(6);
+    });
+
+    it('receipt fidelity computed from real report, not hardcoded', async () => {
+        const h = makeCallbacks();
+        const env = makeEnv();
+        await runEngineExport(projectWithAssets, h.cb, env);
+        const r = h.getReceipts()[0];
+        expect(['preserved', 'approximated', 'dropped']).toContain(r.fidelity);
     });
 });

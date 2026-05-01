@@ -470,6 +470,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                 <span>{r.items}i</span>
                 <span>{r.dialogues}d</span>
                 <span>{r.trees}t</span>
+                {r.assets > 0 && <span>{r.assets}a</span>}
                 {r.warnings > 0 && <span style={{ color: '#d29922' }}>{r.warnings} warning{r.warnings !== 1 ? 's' : ''}</span>}
                 <span style={{ color: r.fidelity === 'preserved' ? '#3fb950' : r.fidelity === 'approximated' ? '#d29922' : '#f85149' }}>
                   {r.fidelity}

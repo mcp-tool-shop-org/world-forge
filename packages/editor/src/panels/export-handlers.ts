@@ -59,6 +59,7 @@ export interface ExportReceipt {
   items: number;
   dialogues: number;
   trees: number;
+  assets: number;
   warnings: number;
   fidelity: 'preserved' | 'approximated' | 'dropped';
   sizeEstimate: number; // rough byte size of the exported JSON
@@ -158,8 +159,11 @@ export async function runEngineExport(
       manifest: result.manifest,
       packMeta: result.packMeta,
     };
+    if (result.assets) bundle.assets = result.assets;
+    if (result.assetBindings) bundle.assetBindings = result.assetBindings;
+    if (result.assetPacks) bundle.assetPacks = result.assetPacks;
     if (opts.includeFidelityReport) {
-      bundle.fidelityReport = { level: 'preserved', warnings: result.warnings };
+      bundle.fidelityReport = result.fidelity;
     }
     const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');
@@ -170,6 +174,8 @@ export async function runEngineExport(
     if (url && cb.setFallback) cb.setFallback({ href: url, filename });
     // 10A: emit structured receipt
     if (cb.addReceipt) {
+      const s = result.fidelity.summary;
+      const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
       cb.addReceipt({
         target: 'ai-rpg',
         filename,
@@ -179,8 +185,9 @@ export async function runEngineExport(
         items: project.itemPlacements.length,
         dialogues: project.dialogues.length,
         trees: project.progressionTrees.length,
+        assets: project.assets.length,
         warnings: result.warnings.length,
-        fidelity: 'preserved',
+        fidelity: level,
         sizeEstimate: JSON.stringify(bundle).length,
       });
     }
@@ -254,6 +261,7 @@ export async function runUnrealExport(
         items: project.itemPlacements.length,
         dialogues: project.dialogues.length,
         trees: project.progressionTrees.length,
+        assets: project.assets.length,
         warnings: result.warnings.length,
         fidelity: level,
         sizeEstimate: JSON.stringify(bundle).length,
@@ -318,6 +326,7 @@ export async function runGodotExport(
         items: project.itemPlacements.length,
         dialogues: project.dialogues.length,
         trees: project.progressionTrees.length,
+        assets: project.assets.length,
         warnings: result.warnings.length,
         fidelity: level,
         sizeEstimate: JSON.stringify(bundle).length,
