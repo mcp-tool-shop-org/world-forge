@@ -9,6 +9,22 @@ import type { WorldProject } from '@world-forge/schema';
 
 export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported';
 
+export type ExportTarget = 'ai-rpg' | 'unreal' | 'godot';
+
+export interface ExportReceipt {
+  target: ExportTarget;
+  filename: string;
+  timestamp: number;
+  zones: number;
+  entities: number;
+  items: number;
+  dialogues: number;
+  trees: number;
+  warnings: number;
+  fidelity: 'preserved' | 'approximated' | 'dropped';
+  sizeEstimate: number; // rough byte size of the exported JSON
+}
+
 /**
  * Ambient API the handlers depend on. Tests inject a stub so we don't need a
  * real `document`, `Blob`, or `URL.createObjectURL`.
@@ -38,6 +54,8 @@ export interface ExportCallbacks {
    * "click here to download" anchor. Revoked when the caller dismisses it.
    */
   setFallback?: (fallback: { href: string; filename: string } | null) => void;
+  /** 10A: Structured export receipt shown post-download. */
+  addReceipt?: (receipt: ExportReceipt) => void;
 }
 
 /**
@@ -86,17 +104,34 @@ export async function runEngineExport(
 
   try {
     const filename = `${project.id}-engine-pack.json`;
-    const url = env.downloadJson(filename, {
+    const bundle = {
       contentPack: result.contentPack,
       manifest: result.manifest,
       packMeta: result.packMeta,
-    });
+    };
+    const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');
     cb.markExported();
     // ED-B-002: stash a manual-download URL so the modal can render a visible
     // "If nothing appears, click here" anchor. The browser popup-blocker can
     // swallow synthetic clicks silently.
     if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+    // 10A: emit structured receipt
+    if (cb.addReceipt) {
+      cb.addReceipt({
+        target: 'ai-rpg',
+        filename,
+        timestamp: Date.now(),
+        zones: project.zones.length,
+        entities: project.entityPlacements.length,
+        items: project.itemPlacements.length,
+        dialogues: project.dialogues.length,
+        trees: project.progressionTrees.length,
+        warnings: result.warnings.length,
+        fidelity: 'preserved',
+        sizeEstimate: JSON.stringify(bundle).length,
+      });
+    }
   } catch (err) {
     cb.setStatus('invalid');
     const msg = err instanceof Error ? err.message : String(err);
@@ -136,14 +171,33 @@ export async function runUnrealExport(
 
   try {
     const filename = `${project.id}-unreal-pack.json`;
-    const url = env.downloadJson(filename, {
+    const bundle = {
       contentPack: result.contentPack,
       fidelity: result.fidelity,
-    });
+    };
+    const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');
     cb.markExported();
     // ED-B-002: manual-download fallback — see runEngineExport for rationale.
     if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+    // 10A: emit structured receipt with fidelity summary
+    if (cb.addReceipt) {
+      const s = result.fidelity.summary;
+      const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
+      cb.addReceipt({
+        target: 'unreal',
+        filename,
+        timestamp: Date.now(),
+        zones: project.zones.length,
+        entities: project.entityPlacements.length,
+        items: project.itemPlacements.length,
+        dialogues: project.dialogues.length,
+        trees: project.progressionTrees.length,
+        warnings: result.warnings.length,
+        fidelity: level,
+        sizeEstimate: JSON.stringify(bundle).length,
+      });
+    }
   } catch (err) {
     cb.setStatus('invalid');
     const msg = err instanceof Error ? err.message : String(err);
@@ -175,13 +229,32 @@ export async function runGodotExport(
 
   try {
     const filename = `${project.id}-godot-pack.json`;
-    const url = env.downloadJson(filename, {
+    const bundle = {
       contentPack: result.contentPack,
       fidelity: result.fidelity,
-    });
+    };
+    const url = env.downloadJson(filename, bundle);
     cb.setStatus('exported');
     cb.markExported();
     if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+    // 10A: emit structured receipt with fidelity summary
+    if (cb.addReceipt) {
+      const s = result.fidelity.summary;
+      const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
+      cb.addReceipt({
+        target: 'godot',
+        filename,
+        timestamp: Date.now(),
+        zones: project.zones.length,
+        entities: project.entityPlacements.length,
+        items: project.itemPlacements.length,
+        dialogues: project.dialogues.length,
+        trees: project.progressionTrees.length,
+        warnings: result.warnings.length,
+        fidelity: level,
+        sizeEstimate: JSON.stringify(bundle).length,
+      });
+    }
   } catch (err) {
     cb.setStatus('invalid');
     const msg = err instanceof Error ? err.message : String(err);

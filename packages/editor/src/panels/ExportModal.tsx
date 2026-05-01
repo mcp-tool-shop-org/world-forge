@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { runEngineExport, runUnrealExport, runGodotExport } from './export-handlers.js';
+import { runEngineExport, runUnrealExport, runGodotExport, type ExportReceipt } from './export-handlers.js';
 import { validateProject, scanDependencies } from '@world-forge/schema';
 import { classifyError, buildsSubTabFor } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
@@ -11,6 +11,12 @@ import { serializeProject, projectFilename } from '../projects/index.js';
 import { buttonBase, buttonAccent, activeTabBg } from '../ui/styles.js';
 import { useKitStore } from '../kits/index.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  return kb < 1024 ? `${kb.toFixed(1)} KB` : `${(kb / 1024).toFixed(1)} MB`;
+}
 
 export function ExportModal({ onClose }: { onClose: () => void }) {
   const { project } = useProjectStore();
@@ -25,6 +31,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState<'idle' | 'valid' | 'invalid' | 'exported'>('idle');
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [receipts, setReceipts] = useState<ExportReceipt[]>([]);
   // ED-B-002: manual-download fallback anchor — populated after a successful
   // export so the user can click it if the synthetic download was blocked.
   const [fallback, setFallback] = useState<{ href: string; filename: string } | null>(null);
@@ -51,19 +58,21 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const addReceipt = (r: ExportReceipt) => setReceipts((prev) => [r, ...prev.filter((p) => p.target !== r.target)]);
+
   const handleExport = () => {
     setFallback(null);
-    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
+    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt });
   };
 
   const handleExportUnreal = () => {
     setFallback(null);
-    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
+    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt });
   };
 
   const handleExportGodot = () => {
     setFallback(null);
-    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback });
+    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt });
   };
 
   const handleGoToFirstIssue = () => {
@@ -123,13 +132,62 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     return items;
   }, [project]);
 
+  // 10C: Per-target readiness with target-specific advisory counts
+  const targetReadiness = useMemo(() => {
+    const base = precheck.valid;
+    const aiRpgAdvisories: string[] = [];
+    const unrealAdvisories: string[] = [];
+    const godotAdvisories: string[] = [];
+
+    if (project.entityPlacements.length === 0) {
+      aiRpgAdvisories.push('No entity placements');
+      unrealAdvisories.push('No entity placements');
+      godotAdvisories.push('No entity placements');
+    }
+    if (project.connections.length === 0 && project.zones.length > 1) {
+      unrealAdvisories.push('No connections — cannot stream between zones');
+      godotAdvisories.push('No connections — cannot generate transitions');
+    }
+    if (project.zones.every((z) => z.elevation === undefined && z.elevationRange === undefined)) {
+      unrealAdvisories.push('No elevation — exports at Z=0 (flat)');
+    }
+    if (project.zones.every((z) => !z.parallaxLayers || z.parallaxLayers.length === 0)) {
+      unrealAdvisories.push('No parallax layers — backdrops will be bare');
+    }
+    if (!project.playerTemplate) {
+      aiRpgAdvisories.push('No player template — pack will lack player data');
+    }
+
+    return {
+      aiRpg: { ready: base, advisories: aiRpgAdvisories },
+      unreal: { ready: base, advisories: unrealAdvisories },
+      godot: { ready: base, advisories: godotAdvisories },
+    };
+  }, [project, precheck.valid]);
+
   return (
     <ModalFrame title="Export" width={450} onClose={onClose}>
 
-        {/* Readiness banner */}
+        {/* 10C: Per-target readiness */}
         {precheck.valid ? (
-          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#0d2818', border: '1px solid #238636', fontSize: 12, color: '#3fb950' }}>
-            Ready to export — no issues found.
+          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#0d2818', border: '1px solid #238636', fontSize: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {([
+                { label: 'AI RPG', info: targetReadiness.aiRpg },
+                { label: 'UE5', info: targetReadiness.unreal },
+                { label: 'Godot', info: targetReadiness.godot },
+              ] as const).map(({ label, info }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#3fb950' }}>{'\u2713'}</span>
+                  <span style={{ color: '#c9d1d9', fontWeight: 500, minWidth: 52 }}>{label}:</span>
+                  <span style={{ color: info.advisories.length > 0 ? '#d29922' : '#3fb950' }}>
+                    {info.advisories.length > 0
+                      ? `Ready with ${info.advisories.length} advisor${info.advisories.length !== 1 ? 'ies' : 'y'}`
+                      : 'Ready'}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#2a1c08', border: '1px solid #9e6a03', fontSize: 12, color: '#d29922' }}>
@@ -273,8 +331,6 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         {status === 'exported' && (
           <div style={{ color: '#3fb950', fontSize: 13 }}>
             Download triggered {'\u2014'} check your browser's downloads.
-            {/* ED-B-002: manual-download fallback. If the browser blocked the
-                synthetic click, the user can click the link below. */}
             {fallback && (
               <>
                 {' '}If nothing appears,{' '}
@@ -289,6 +345,35 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
                 .
               </>
             )}
+          </div>
+        )}
+
+        {/* 10A: Export receipts */}
+        {receipts.length > 0 && (
+          <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 4, background: '#0d1117', border: '1px solid #30363d' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#c9d1d9', marginBottom: 6 }}>Export History</div>
+            {receipts.map((r) => (
+              <div key={r.target} style={{ fontSize: 11, color: '#8b949e', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #21262d' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span style={{ color: '#3fb950', fontWeight: 500 }}>
+                    {'\u2713'} {r.target === 'ai-rpg' ? 'AI RPG' : r.target === 'unreal' ? 'UE5' : 'Godot 4'}
+                  </span>
+                  <span style={{ fontSize: 10 }}>{formatSize(r.sizeEstimate)}</span>
+                </div>
+                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#58a6ff', marginBottom: 2 }}>{r.filename}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span>{r.zones}z</span>
+                  <span>{r.entities}e</span>
+                  <span>{r.items}i</span>
+                  <span>{r.dialogues}d</span>
+                  <span>{r.trees}t</span>
+                  {r.warnings > 0 && <span style={{ color: '#d29922' }}>{r.warnings} warning{r.warnings !== 1 ? 's' : ''}</span>}
+                  <span style={{ color: r.fidelity === 'preserved' ? '#3fb950' : r.fidelity === 'approximated' ? '#d29922' : '#f85149' }}>
+                    {r.fidelity}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
