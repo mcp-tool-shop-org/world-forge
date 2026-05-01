@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed — Phase 12 Packaging Dry Run
+
+**@world-forge/schema:**
+- `advisoryValidation()` crashed with `TypeError: Cannot read properties of undefined` when consumers passed partial project objects missing optional arrays (`pressureHotspots`, `factionPresences`, `encounterAnchors`, etc.). Added defensive `?? []` normalization at function entry.
+
+**@world-forge/editor:**
+- npm tarball shipped `src/__tests__/` (500KB+ of test files). Added `!src/__tests__` to the `files` array in package.json.
+
+### Verified — Phase 12 Packaging Dry Run
+
+All 6 packages (`schema`, `export-ai-rpg`, `export-unreal`, `export-godot`, `renderer-2d`, `editor`) verified from tarball in an isolated project:
+
+- **API smoke (17/17):** `validateProject`, `advisoryValidation`, `buildReviewSnapshot`, `scanDependencies`, `exportToEngine`, `importProject`, `exportToUnreal`, `pixelsToUnrealCm`, `exportToGodot`, format constants — all pass from tarball install.
+- **CLI smoke:** `world-forge-export --dry-run` and `world-forge-export-unreal --validate-only` both exit 0 with correct output.
+- **No missing dist files, no broken exports map, no tarball-only failures.**
+
 ## [4.4.0] - 2026-04-23
 
 Star-Freight-driven release. Full 10-phase dogfood swarm: Stage A bug/security pass, Stage B proactive audit, Stage C humanization amend, then a focused feature pass on the Unreal export lane to get the UnrealContentPack contract ready for the `star-freight-ue5` project's future loader plugin.
