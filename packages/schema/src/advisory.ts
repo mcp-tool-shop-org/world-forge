@@ -33,6 +33,15 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   const mode: AuthoringMode = project.mode ?? DEFAULT_MODE;
   const items: AdvisoryItem[] = [];
 
+  // Defensive: normalize optional arrays that consumers may omit
+  const zones = project.zones ?? [];
+  const connections = project.connections ?? [];
+  const districts = project.districts ?? [];
+  const assets = project.assets ?? [];
+  const factionPresences = project.factionPresences ?? [];
+  const pressureHotspots = project.pressureHotspots ?? [];
+  const encounterAnchors = project.encounterAnchors ?? [];
+
   // ── Project metadata advisories ────────────────────────────
   // Type guards: defensively handle callers that hand us `{ author: null }` or
   // `{ license: 123 }` without crashing on .trim(). We treat non-string values
@@ -50,15 +59,15 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   }
 
   // ── Universal suggestions ──────────────────────────────────
-  if (project.zones.length < 2) {
+  if (zones.length < 2) {
     items.push({ path: 'zones', message: 'Consider adding at least 2 zones for a richer world.', severity: 'suggestion' });
   }
-  if (project.connections.length === 0 && project.zones.length > 1) {
+  if (connections.length === 0 && zones.length > 1) {
     items.push({ path: 'connections', message: 'Zones exist but none are connected. Consider linking them.', severity: 'suggestion' });
   }
 
   // ── Asset naming advisories ────────────────────────────────
-  for (const asset of project.assets) {
+  for (const asset of assets) {
     const label = asset.label;
     const lower = label.toLowerCase();
     const isGeneric =
@@ -85,7 +94,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   // The switch is typed against `string` (not AuthoringMode) so the default
   // case can surface runtime values that slip past the type guard — e.g.
   // `'custom'` from a user-authored JSON, or a future-but-unimplemented mode.
-  const kinds = project.connections.map((c) => c.kind);
+  const kinds = connections.map((c) => c.kind);
   const modeKey: string = mode;
 
   switch (modeKey) {
@@ -93,13 +102,13 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('secret')) {
         items.push({ path: 'connections', message: 'Dungeon tip: add a secret passage for hidden exploration.', severity: 'suggestion' });
       }
-      if (!project.pressureHotspots.some(isTrapHotspot)) {
+      if (!pressureHotspots.some(isTrapHotspot)) {
         items.push({ path: 'pressureHotspots', message: 'Dungeon tip: consider adding hazard zones with traps.', severity: 'suggestion' });
       }
       break;
 
     case 'world':
-      if (project.districts.length < 2) {
+      if (districts.length < 2) {
         items.push({ path: 'districts', message: 'World tip: add multiple districts to represent distinct regions.', severity: 'suggestion' });
       }
       if (!kinds.includes('road')) {
@@ -111,7 +120,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('channel') && !kinds.includes('route')) {
         items.push({ path: 'connections', message: 'Ocean tip: use channel or route connections for sea lanes.', severity: 'suggestion' });
       }
-      if (!project.districts.some((d) => d.tags?.includes('port') || d.tags?.includes('harbor'))) {
+      if (!districts.some((d) => d.tags?.includes('port') || d.tags?.includes('harbor'))) {
         items.push({ path: 'districts', message: 'Ocean tip: add a port or harbor district for docking.', severity: 'suggestion' });
       }
       break;
@@ -120,15 +129,15 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('warp') && !kinds.includes('docking')) {
         items.push({ path: 'connections', message: 'Space tip: use warp or docking connections between sectors.', severity: 'suggestion' });
       }
-      if (!project.zones.some((z) => z.tags?.includes('station'))) {
+      if (!zones.some((z) => z.tags?.includes('station'))) {
         items.push({ path: 'zones', message: 'Space tip: add a station zone as a home base.', severity: 'suggestion' });
       }
-      if (!project.zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
+      if (!zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
         items.push({ path: 'zones', message: 'Space tip: set elevation on at least one zone — 2.5D engines like UE5 need a Z-plane to stack sectors or docking arms.', severity: 'suggestion' });
       }
       // Any zone tagged 'station' should declare a physicsMode so exporters
       // know whether to run station-interior (normal), EVA (zero-g), etc.
-      for (const z of project.zones) {
+      for (const z of zones) {
         if (z.tags?.includes('station') && z.physicsMode === undefined) {
           items.push({
             path: `zones.${z.id}.physicsMode`,
@@ -149,10 +158,10 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       break;
 
     case 'district':
-      if (project.factionPresences.length === 0) {
+      if (factionPresences.length === 0) {
         items.push({ path: 'factionPresences', message: 'District tip: faction presences add political depth to wards.', severity: 'suggestion' });
       }
-      if (project.districts.length > 0 && project.districts.every((d) => (d.baseMetrics?.commerce ?? 0) === 0)) {
+      if (districts.length > 0 && districts.every((d) => (d.baseMetrics?.commerce ?? 0) === 0)) {
         items.push({ path: 'districts', message: 'District tip: set commerce metrics to enable market dynamics.', severity: 'suggestion' });
       }
       break;
@@ -161,10 +170,10 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('trail')) {
         items.push({ path: 'connections', message: 'Wilderness tip: trail connections suit rugged terrain.', severity: 'suggestion' });
       }
-      if (project.encounterAnchors.length === 0) {
+      if (encounterAnchors.length === 0) {
         items.push({ path: 'encounterAnchors', message: 'Wilderness tip: encounters with wildlife or hazards add realism.', severity: 'suggestion' });
       }
-      if (!project.zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
+      if (!zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
         items.push({ path: 'zones', message: 'Wilderness tip: set elevation on zones for hills, cliffs, and valleys — 2.5D engines use this for terrain.', severity: 'suggestion' });
       }
       break;

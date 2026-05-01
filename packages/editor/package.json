@@ -12,6 +12,7 @@
     "dist",
     "public",
     "src",
+    "!src/__tests__",
     "index.html",
     "README.md",
     "logo.png"
