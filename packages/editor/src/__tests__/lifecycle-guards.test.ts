@@ -1,6 +1,7 @@
 // lifecycle-guards.test.ts — verify dirty-state guards on destructive transitions
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useProjectStore, createEmptyProject } from '../store/project-store.js';
+import { useEditorStore } from '../store/editor-store.js';
 import { confirmDiscard } from '../modal-guards.js';
 
 // Provide window.confirm in Node test environment
@@ -84,5 +85,32 @@ describe('lifecycle dirty guards', () => {
     expect(useProjectStore.getState().dirty).toBe(false);
     // Undo stack preserved
     expect(useProjectStore.getState().undoStack.length).toBe(1);
+  });
+
+  it('loadProject clears editor selection', () => {
+    // Set up a non-empty selection
+    useEditorStore.getState().selectZone('z1', false);
+    useEditorStore.getState().selectEntity('e1', true);
+    expect(useEditorStore.getState().selection.zones).toContain('z1');
+    expect(useEditorStore.getState().selection.entities).toContain('e1');
+
+    // loadProject should clear it
+    useProjectStore.getState().loadProject(createEmptyProject());
+    const sel = useEditorStore.getState().selection;
+    expect(sel.zones).toHaveLength(0);
+    expect(sel.entities).toHaveLength(0);
+    expect(sel.landmarks).toHaveLength(0);
+    expect(sel.spawns).toHaveLength(0);
+    expect(sel.encounters).toHaveLength(0);
+  });
+
+  it('newProject clears editor selection', () => {
+    useEditorStore.getState().selectZone('z1', false);
+    expect(useEditorStore.getState().selection.zones).toContain('z1');
+
+    useProjectStore.getState().newProject();
+    const sel = useEditorStore.getState().selection;
+    expect(sel.zones).toHaveLength(0);
+    expect(sel.entities).toHaveLength(0);
   });
 });

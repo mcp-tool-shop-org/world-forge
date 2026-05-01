@@ -14,6 +14,7 @@ import type {
 import { DEFAULT_MODE } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
+import { useEditorStore } from './editor-store.js';
 import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
@@ -494,20 +495,26 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   undoStack: [],
   redoStack: [],
 
-  loadProject: (p) => set({
-    project: {
-      ...p,
-      assets: p.assets ?? [],
-      assetPacks: p.assetPacks ?? [],
-      dialogues: p.dialogues ?? [],
-      progressionTrees: p.progressionTrees ?? [],
-      landmarks: p.landmarks ?? [],
-      lootTables: p.lootTables ?? [],
-      transitions: p.transitions ?? [],
-    },
-    dirty: false, undoStack: [], redoStack: [],
-  }),
-  newProject: () => set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] }),
+  loadProject: (p) => {
+    set({
+      project: {
+        ...p,
+        assets: p.assets ?? [],
+        assetPacks: p.assetPacks ?? [],
+        dialogues: p.dialogues ?? [],
+        progressionTrees: p.progressionTrees ?? [],
+        landmarks: p.landmarks ?? [],
+        lootTables: p.lootTables ?? [],
+        transitions: p.transitions ?? [],
+      },
+      dirty: false, undoStack: [], redoStack: [],
+    });
+    useEditorStore.getState().clearSelection();
+  },
+  newProject: () => {
+    set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] });
+    useEditorStore.getState().clearSelection();
+  },
 
   markClean: () => set({ dirty: false }),
 
