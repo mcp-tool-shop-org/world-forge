@@ -172,3 +172,58 @@ AssetEntry/AssetPack (schema) → zone/entity/item/landmark refs → editor Asse
 
 - 2088 tests passing (0 failures, +3 new)
 - TypeScript: 0 errors
+
+---
+
+## Phase 17 — Persistence / Local Save Audit
+
+**Verdict: PASS**
+
+### Bugs Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `App.tsx` | `startAutoSave()` never called | Autosave system was fully implemented + tested in isolation but dead in production — users lose all work on crash/tab close | Added `useEffect` that calls `startAutoSave()` on mount with cleanup via `stopAutoSave()` |
+| 2 | `App.tsx` | No crash recovery prompt on mount | Even if autosave had been running, the recovered project was never offered to the user | Added `hasAutoSaveRecovery()` check on mount → `loadProject(recovered)` + toast |
+| 3 | `App.tsx` | `handleSave` never resets `dirty` flag | After saving, the unsaved-changes dot persists and `beforeunload` still warns the user | Added `markClean()` call after the download triggers |
+| 4 | `project-store.ts` | No `markClean` action existed | `dirty` could only be cleared by `loadProject` or `newProject`, both of which destroy undo history | Added `markClean()` that sets `dirty: false` without clearing undo/redo stacks |
+
+### Persistence Architecture (verified)
+
+| Mechanism | Storage | What persists | Status |
+|-----------|---------|---------------|--------|
+| Manual Save (File → Save) | Download `.json` file | Full `WorldProject` | **Fixed** (now clears dirty) |
+| Manual Load (File → Load) | Upload `.json` file | Full `WorldProject` | OK — `loadProject` with `?? []` guards |
+| Autosave (30s interval) | `localStorage` `wf-autosave` | Full `WorldProject` + timestamp | **Fixed** (now actually runs) |
+| Autosave History | `localStorage` `wf-autosave-history` | Last 3 snapshots | OK — transactional writes, rollback on failure |
+| Crash Recovery | `localStorage` → mount check | Most recent autosave | **Fixed** (now checks + restores) |
+| Oversize Guard | In-memory flag | Projects >4.5 MB skip autosave | OK — banner warns user, suggests Export Bundle |
+| Kits | `localStorage` `world-forge-kits` | User-created kits (not built-ins) | OK — `persist()` on every CRUD |
+| Presets | `localStorage` `world-forge-presets` | User region + encounter presets | OK — `persistUserPresets()` on every CRUD |
+| Templates | `localStorage` `world-forge-templates` | Saved-as-template projects | OK — `persist()` on every CRUD |
+| Theme | `localStorage` `wf-theme` | `'dark'` / `'light'` | OK |
+| Elevation toggle | `localStorage` `wf-show-elevation` | Boolean | OK |
+| Hidden IDs | `localStorage` `wf-hidden-ids` | Per-object visibility | OK — one-time warn flag on write failure |
+| Export Bundle | Download `.json` | ContentPack + manifest + fidelity | OK |
+| Import | Upload `.json` | WorldProject / ContentPack / ExportResult | OK |
+| beforeunload | Browser event | Prevents accidental close when dirty | OK — now correctly reflects save state |
+
+### Already Strong Areas
+
+| Area | Why |
+|------|-----|
+| Autosave implementation | Transactional dual-key writes, rollback on partial failure, quota-exceeded handling, oversize guard with banner, 30s interval, idempotent start/stop |
+| Undo/Redo | 100-deep stack, labeled entries, correctly marks dirty on both directions |
+| Corrupted data handling | All `loadFromStorage()` callers catch JSON parse errors and reset gracefully |
+| Large project guard | `AUTOSAVE_MAX_BYTES` (4.5 MB) prevents silent write failures from hitting browser quota |
+| Error boundary | Reads `wf-autosave` for project ID in crash report, warns when localStorage is unavailable |
+
+### Regression Tests Added
+
+- `markClean` sets dirty to false without clearing undo stack
+- Editing after `markClean` makes dirty again
+
+### Test Results
+
+- 2090 tests passing (0 failures, +2 new)
+- TypeScript: 0 errors
