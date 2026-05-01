@@ -37,3 +37,43 @@
 - **57 test files, 1,268 tests, 0 failures**
 - Build: clean (tsc --build, zero errors)
 - All 4 packages published to npm at 4.0.3
+
+---
+
+## Phase 14 — Error Envelope / Diagnostics Audit
+
+**Verdict: PASS**
+
+### Audit Findings & Fixes
+
+| Area | Before | After | Breaking? |
+|------|--------|-------|-----------|
+| Unreal import errors | `errors: string[]` (no path/location) | `errors: ValidationError[]` with `path: 'Meta.FormatVersion'` | Yes (minor — internal consumers only) |
+| AI RPG import errors | `message: string` only | Added `errors: ValidationError[]` alongside `message` | No (additive) |
+| Unreal CLI fatal handler | No stack trace on crash | Prints `err.stack` when `--verbose` is passed | No |
+| SHIP_GATE.md | Referenced `--debug` flag | Corrected to `--verbose` | N/A (docs) |
+
+### Consistency Assessment
+
+| Dimension | Status |
+|-----------|--------|
+| Export errors (all 3 targets) | Consistent: `{ success: false, errors: ValidationError[] }` |
+| Import errors | Now unified: both packages return `errors: ValidationError[]` |
+| CLI error formatting | Both CLIs use `[path] message` for validation, `Fatal:` for uncaught |
+| CLI exit codes | Both: 0=ok, 1=error |
+| CLI verbose mode | Both: `--verbose` prints stack trace on Fatal |
+| Editor ErrorBoundary | Excellent: structured JSON copy, DEV-only stacks, retry/reload |
+| Dependency scanner | Fully structured: `DependencyEdge` with domain/status/source/target/message |
+| Fidelity reports | Consistent across all exporters: `FidelityEntry[]` with level/domain/severity |
+| Advisory/Validation | Well-structured: `AdvisoryItem[]`, `ValidationError[]` |
+
+### Accepted Drift (not fixed)
+
+1. **Discriminant naming** — Schema uses `valid`, exporters use `success`, editor internals use `ok`. These are semantically distinct (`valid` = "is it correct?", `success` = "did the operation work?", `ok` = internal parse). Renaming would be churn with no user benefit.
+2. **Editor `ParseProjectError.error` (singular string)** — Internal to the editor, not published. The ImportModal correctly handles both `ok`/`success` shapes. No external consumer confusion.
+
+### Test Results
+
+- 2082 tests passing (0 failures)
+- TypeScript: 0 errors
+- All changes backward compatible except `UnrealImportError.errors` type upgrade (internal)
