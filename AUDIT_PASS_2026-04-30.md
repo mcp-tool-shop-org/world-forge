@@ -159,3 +159,28 @@ Round-trip test: Load Chapel Threshold → Export AI RPG JSON → Import exporte
 
 Artifact: `dogfood/DOGFOOD_IMPORT_ROUNDTRIP_UI_2026-05-01.md`
 
+## Phase 9 — Sample / Template Quality
+
+**Verdict: PASS**
+
+All 21 templates/kits/samples validate clean and export to all three targets without errors.
+
+| Category | Count | Content | Verdict |
+|----------|-------|---------|---------|
+| Genre templates | 5 (Fantasy, Cyberpunk, Detective, Pirate, Zombie) | 4z/2e/2i/1d/1t each | REAL |
+| Starter kits | 7 (one per mode) | 4z/2e/2i/1d/1t each | REAL |
+| Samples (minimal) | 1 (Hello World) | 1z only | INTENTIONAL |
+| Samples (intermediate) | 6 | 2-4z/2e/2i/1d/1t | REAL |
+| Samples (rich) | 2 (Chapel Threshold, Tavern) | 5z/4e/3i/1d/2t | REAL |
+
+**First-run UX verified in browser:**
+- New Project wizard → 4 tabs (Genres, Starter Kits, Samples, My Templates)
+- 7 scale modes with descriptions, 5 genre templates with icons
+- Step 2 includes system checkboxes (player, builds, trees, dialogue, NPCs)
+- Created Cyberpunk project → 4 zones, District mode, guide shows 6/8 steps done
+- Export modal → "Ready to export — no issues found" → all 3 targets available
+
+**Tone mapping note:** The exporter has a fixed valid-tone vocabulary (dark, gritty, heroic, noir, comedic, eerie, tense, atmospheric). Templates using mode-specific tones (e.g. 'neon', 'maritime', 'survival') fall back gracefully to 'atmospheric' during export. Not a bug — documented lossy transform.
+
+**No broken, thin, or misleading templates found.**
+
