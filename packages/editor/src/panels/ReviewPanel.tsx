@@ -163,11 +163,14 @@ export function ReviewPanel() {
       {/* Regions */}
       <Section title={`Regions (${enriched.regions.length})`} isOpen={isOpen('regions')} toggle={() => toggle('regions')}>
         {enriched.regions.length === 0 && <EmptyNote>No districts defined</EmptyNote>}
-        {enriched.regions.map((r) => (
+        {enriched.regions.map((r) => {
+          const district = project.districts.find((d) => d.id === r.id);
+          const firstZoneId = district?.zoneIds[0];
+          return (
           <div key={r.id} style={{ marginBottom: 8, padding: '6px 8px', background: '#161b22', borderRadius: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 4, cursor: 'pointer' }}
-              onClick={() => { if (r.zoneNames.length > 0) { setSelectedZone(r.id); setRightTab('map'); } }}
-              title="Click to navigate"
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 4, cursor: firstZoneId ? 'pointer' : 'default' }}
+              onClick={() => { if (firstZoneId) { setSelectedZone(firstZoneId); setRightTab('map'); } }}
+              title={firstZoneId ? 'Click to navigate to first zone' : undefined}
             >
               {r.name}
             </div>
@@ -183,7 +186,8 @@ export function ReviewPanel() {
             {r.encounterCount > 0 && <Row label="Encounters" value={`${r.encounterCount}`} />}
             {r.itemCount > 0 && <Row label="Items" value={`${r.itemCount}`} />}
           </div>
-        ))}
+          );
+        })}
         {unassignedZones.length > 0 && (
           <div style={{ marginBottom: 8, padding: '6px 8px', background: '#161b22', borderRadius: 4, borderLeft: '2px solid #d29922' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
