@@ -1,7 +1,7 @@
 // hotkeys.ts — centralized keyboard shortcut dispatch
 
 import type { WorldProject } from '@world-forge/schema';
-import type { SelectionSet, RightTab } from './store/editor-store.js';
+import type { SelectionSet, RightTab, EditorTool } from './store/editor-store.js';
 import { getSelectionCount } from './store/editor-store.js';
 
 export interface HotkeyBinding {
@@ -29,6 +29,13 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'Enter', action: 'open-details', label: 'Enter', description: 'Open details for selected object' },
   { key: 'KeyP', action: 'apply-preset', label: 'P', description: 'Open preset browser for selection' },
   { key: 'KeyP', shift: true, action: 'save-preset', label: 'Shift+P', description: 'Save current selection as preset' },
+  // Tool switching — matches labels shown in ToolPalette
+  { key: 'KeyV', action: 'tool-select', label: 'V', description: 'Switch to Select tool' },
+  { key: 'KeyZ', action: 'tool-zone', label: 'Z', description: 'Switch to Zone tool' },
+  { key: 'KeyC', action: 'tool-connection', label: 'C', description: 'Switch to Connection tool' },
+  { key: 'KeyE', action: 'tool-entity', label: 'E', description: 'Switch to Entity tool' },
+  { key: 'KeyL', action: 'tool-landmark', label: 'L', description: 'Switch to Landmark tool' },
+  { key: 'KeyS', action: 'tool-spawn', label: 'S', description: 'Switch to Spawn tool' },
 ];
 
 /** Return a flat list of all registered hotkeys for display in a guide panel. */
@@ -55,6 +62,7 @@ export interface HotkeyContext {
   pasteClipboard?: () => void;
   setShowSearch: (show: boolean) => void;
   setRightTab: (tab: RightTab) => void;
+  setTool: (tool: EditorTool) => void;
   showSpeedPanel: boolean;
   closeSpeedPanel: () => void;
 }
@@ -191,6 +199,13 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       ctx.setRightTab('presets');
       return { handled: true, action };
     }
+
+    case 'tool-select':    { ctx.setTool('select');       return { handled: true, action }; }
+    case 'tool-zone':      { ctx.setTool('zone-paint');   return { handled: true, action }; }
+    case 'tool-connection':{ ctx.setTool('connection');    return { handled: true, action }; }
+    case 'tool-entity':    { ctx.setTool('entity-place'); return { handled: true, action }; }
+    case 'tool-landmark':  { ctx.setTool('landmark');     return { handled: true, action }; }
+    case 'tool-spawn':     { ctx.setTool('spawn');        return { handled: true, action }; }
 
     default:
       return { handled: false };

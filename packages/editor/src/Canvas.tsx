@@ -47,7 +47,7 @@ export function Canvas() {
     connectionStart, setConnectionStart,
     viewport, setViewport, setShowSearch, setRightTab,
     openSpeedPanel, showSpeedPanel, closeSpeedPanel,
-    hiddenIds, showPerfStats, showElevation,
+    hiddenIds, showPerfStats, showElevation, setTool,
   } = useEditorStore();
 
   const tileSize = project.map.tileSize;
@@ -753,7 +753,7 @@ export function Canvas() {
     selection, selectedConnection, project,
     showEntities, showLandmarks, showSpawns,
     clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
-    duplicateSelected, setShowSearch, setRightTab,
+    duplicateSelected, setShowSearch, setRightTab, setTool,
     showSpeedPanel, closeSpeedPanel,
     copySelection: useEditorStore.getState().copySelection,
     pasteClipboard: () => { /* paste handled by project-store when available */ },

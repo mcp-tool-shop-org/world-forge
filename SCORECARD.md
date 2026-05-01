@@ -698,3 +698,45 @@ Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, 
 | Color-coded status bars | ReviewPanel stat bars use color to distinguish roles/kinds. Text labels are present alongside bars, so not strictly color-only |
 | No skip-to-content link | No keyboard shortcut to jump from toolbar to canvas or to right panel (Ctrl+K search is the workaround) |
 | PlayerTemplatePanel × buttons | Have `title` but not `aria-label` (acceptable — `title` is announced by most screen readers) |
+
+---
+
+## Phase 26 — Keyboard Canvas Operations Audit
+
+**Verdict: PASS_WITH_POINTER_DEPENDENCIES**
+
+### Bugs Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `hotkeys.ts` | ToolPalette displays shortcut keys `[V]`, `[Z]`, `[C]`, `[E]`, `[L]`, `[S]` but none were wired in `HOTKEY_BINDINGS` — pressing those keys did nothing | Misleading UI: keyboard users see shortcuts that don't work, eroding trust in the tool palette | Added 6 tool-switching bindings (bare keys, no modifier) and dispatch cases in `dispatchHotkey`. Input-safe guard already prevents firing in INPUT/TEXTAREA/SELECT. Added 8 tests (6 dispatch + 2 match) |
+| 2 | `ObjectListPanel.tsx` | All tree item rows (`<div onClick>`) had no `tabIndex`, no `role`, no keyboard handlers — entirely mouse-only | Keyboard users cannot navigate the object tree at all — the primary alternative to canvas clicking | Added `tabIndex={0}`, `role="button"`, and `onKeyDown` (Enter/Space) to all 8 clickable row types: district, zone, entity, landmark, spawn, encounter, connection, orphaned encounter. Added `onEnter` helper |
+
+### Verified Sound (keyboard-accessible)
+
+| Area | Finding |
+|------|---------|
+| Select via search (Ctrl+K) | Opens search overlay, auto-focus, arrow nav, Enter selects + centers on canvas |
+| Center/frame selected | Object list and search both call `computeFrameViewport` + `setViewport` on select. ToolPalette has Center button |
+| Arrow nudge | Up/Down/Left/Right move selected objects 1 unit (Shift = 5×) |
+| Duplicate / Delete | Ctrl+D duplicates, Del/Backspace deletes. Confirmation dialog for >3 items |
+| Tool switching | V=Select, Z=Zone, C=Connection, E=Entity, L=Landmark, S=Spawn. Bare keys, no conflict with Ctrl+V/Ctrl+C |
+| Edit selected in right panel | Enter hotkey switches right panel to map tab with details. All property fields are standard form controls (input/select/textarea) — keyboard navigable |
+| Validate/export | Export button in toolbar, DependencyPanel issues, ChecklistPanel steps — all use `<button>` elements accessible via Tab+Enter |
+| Checklist tool switching | ChecklistPanel steps that set tools call `setTool()` via button clicks — keyboard accessible |
+
+### Pointer-Dependent Operations (by design)
+
+| Operation | Why pointer-only | Workaround |
+|-----------|-----------------|------------|
+| Object placement on canvas | Zone painting, entity/landmark/spawn placement require mouse click for grid coordinates | Speed panel has "New Zone" but speed panel itself requires double-right-click |
+| Box-select on canvas | Drag rectangle to multi-select | Ctrl+A selects all; Ctrl+K search selects individual; Object list now keyboard-accessible |
+| Zone resizing | Drag resize handles | Arrow nudge moves but doesn't resize |
+| Connection drawing | Click source zone → click target zone | Speed panel "New Connection" action (requires pointer to open) |
+| Speed panel opening | Double-right-click to open | No keyboard shortcut — checklist and toolbar cover most creation actions |
+| Canvas panning | Mouse wheel scroll or Space+drag | No keyboard panning shortcut |
+
+### Test Results
+
+- 2155 tests passing (0 failures, 8 new)
+- TypeScript: 0 errors

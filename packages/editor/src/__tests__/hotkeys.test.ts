@@ -36,6 +36,7 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     pasteClipboard: vi.fn(),
     setShowSearch: vi.fn(),
     setRightTab: vi.fn(),
+    setTool: vi.fn(),
     showSpeedPanel: false,
     closeSpeedPanel: vi.fn(),
     ...overrides,
@@ -72,11 +73,21 @@ describe('matchHotkey', () => {
   });
 
   it('returns null for unbound key', () => {
-    expect(matchHotkey(makeEvent({ code: 'KeyZ' }))).toBeNull();
+    expect(matchHotkey(makeEvent({ code: 'KeyQ' }))).toBeNull();
   });
 
   it('does not match P with ctrl held (ctrl+P is not bound)', () => {
     expect(matchHotkey(makeEvent({ code: 'KeyP', ctrlKey: true }))).toBeNull();
+  });
+
+  it('matches bare V to tool-select (not Ctrl+V paste)', () => {
+    expect(matchHotkey(makeEvent({ code: 'KeyV' }))).toBe('tool-select');
+    expect(matchHotkey(makeEvent({ code: 'KeyV', ctrlKey: true }))).toBe('paste');
+  });
+
+  it('matches bare C to tool-connection (not Ctrl+C copy)', () => {
+    expect(matchHotkey(makeEvent({ code: 'KeyC' }))).toBe('tool-connection');
+    expect(matchHotkey(makeEvent({ code: 'KeyC', ctrlKey: true }))).toBe('copy');
   });
 });
 
@@ -167,5 +178,20 @@ describe('dispatchHotkey — actions', () => {
     dispatchHotkey(e, ctx);
     expect(ctx.removeConnection).toHaveBeenCalledWith('a', 'b');
     expect(ctx.clearSelection).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['KeyV', 'select'],
+    ['KeyZ', 'zone-paint'],
+    ['KeyC', 'connection'],
+    ['KeyE', 'entity-place'],
+    ['KeyL', 'landmark'],
+    ['KeyS', 'spawn'],
+  ] as const)('tool shortcut %s switches to %s', (code, tool) => {
+    const ctx = makeCtx();
+    const e = makeEvent({ code });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(true);
+    expect(ctx.setTool).toHaveBeenCalledWith(tool);
   });
 });

@@ -11,6 +11,11 @@ import { EmptyState, VisibilityToggle } from './shared.js';
 import { findOrphanedEncounters, reassignEncounterZone, deleteEncounter } from '../orphans.js';
 import { pushToast } from '../ui/Toast.js';
 
+/** Keyboard handler — fires callback on Enter or Space, matching button semantics. */
+const onEnter = (fn: () => void) => (e: React.KeyboardEvent) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+};
+
 /** Build the empty-state message for the object list. Pure, exported for testing. */
 export function emptyStateMessage(mode: import('@world-forge/schema').AuthoringMode | undefined): string {
   return `No objects yet. Use the Zone tool to add your first ${getModeProfile(mode).zoneNamePattern.toLowerCase()}.`;
@@ -222,7 +227,10 @@ export function ObjectListPanel() {
             <div key={key} style={{ marginBottom: 4 }}>
               {/* District header */}
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => group.districtId ? handleSelectDistrict(group.districtId) : toggleDistrict(key)}
+                onKeyDown={onEnter(() => group.districtId ? handleSelectDistrict(group.districtId) : toggleDistrict(key))}
                 onDoubleClick={() => toggleDistrict(key)}
                 style={{
                   padding: '3px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
@@ -262,7 +270,10 @@ export function ObjectListPanel() {
                     {/* Zone row */}
                     <div
                       data-selected={zoneSelected}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleSelectZone(zid)}
+                      onKeyDown={onEnter(() => handleSelectZone(zid))}
                       onDoubleClick={() => toggleZone(zid)}
                       style={{
                         padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
@@ -296,7 +307,10 @@ export function ObjectListPanel() {
                             <div
                               key={ep.entityId}
                               data-selected={sel}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSelectEntity(ep.entityId)}
+                              onKeyDown={onEnter(() => handleSelectEntity(ep.entityId))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #3fb950' : '2px solid transparent',
@@ -316,7 +330,10 @@ export function ObjectListPanel() {
                             <div
                               key={lm.id}
                               data-selected={sel}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSelectLandmark(lm.id)}
+                              onKeyDown={onEnter(() => handleSelectLandmark(lm.id))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #d2a8ff' : '2px solid transparent',
@@ -335,7 +352,10 @@ export function ObjectListPanel() {
                             <div
                               key={sp.id}
                               data-selected={sel}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSelectSpawn(sp.id)}
+                              onKeyDown={onEnter(() => handleSelectSpawn(sp.id))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #f0883e' : '2px solid transparent',
@@ -355,7 +375,10 @@ export function ObjectListPanel() {
                             <div
                               key={enc.id}
                               data-selected={sel}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSelectEncounter(enc.id, enc.zoneId)}
+                              onKeyDown={onEnter(() => handleSelectEncounter(enc.id, enc.zoneId))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                                 borderLeft: sel ? '2px solid #da3633' : '2px solid transparent',
@@ -399,7 +422,10 @@ export function ObjectListPanel() {
                 return (
                   <div
                     key={`${c.fromZoneId}::${c.toZoneId}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleSelectConnection(c.fromZoneId, c.toZoneId)}
+                    onKeyDown={onEnter(() => handleSelectConnection(c.fromZoneId, c.toZoneId))}
                     style={{
                       padding: '2px 4px', marginLeft: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                       borderLeft: isSel ? '2px solid #58a6ff' : '2px solid transparent',
@@ -442,7 +468,10 @@ export function ObjectListPanel() {
                   key={encounter.id}
                   data-selected={sel}
                   data-testid={`orphaned-encounter-${encounter.id}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleSelectOrphanEncounter(encounter.id)}
+                  onKeyDown={onEnter(() => handleSelectOrphanEncounter(encounter.id))}
                   style={{
                     padding: '3px 4px', marginLeft: 12, cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', gap: 3,
