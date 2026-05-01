@@ -77,3 +77,47 @@
 - 2082 tests passing (0 failures)
 - TypeScript: 0 errors
 - All changes backward compatible except `UnrealImportError.errors` type upgrade (internal)
+
+---
+
+## Phase 15 — Backward Compatibility / Migration Audit
+
+**Verdict: PASS**
+
+### Crash Risks Found & Fixed
+
+| # | Package | Crash scenario | Fix |
+|---|---------|----------------|-----|
+| 1 | export-ai-rpg | `importFromContentPack` crashes on old packs missing `dialogues` or `progressionTrees` (`undefined.map()`) | Added `?? []` guards at call sites |
+| 2 | export-unreal | `deserializeV1` crashes on pre-WorldPartition packs (`pack.WorldPartition.SourceMode` TypeError) | Extracted `wp` guard with fidelity warning + defaults |
+| 3 | export-unreal | `deserializeV1` crashes on packs missing `Zones`, `Districts`, `Actors`, or `Connections` | Added `?? []` and `?.` guards on all array accesses |
+| 4 | editor | `loadProject` only guards `assets`/`assetPacks` — old JSON missing `dialogues`, `progressionTrees`, `landmarks`, `lootTables`, `transitions` stays `undefined` in store | Expanded `?? []` guards to cover all additive arrays |
+
+### Already Safe Areas
+
+| Area | Why safe |
+|------|----------|
+| `advisory.ts` | All 7 array accesses use `?? []` |
+| `dependencies.ts` | 17 separate `?? []` guards on every iterated array |
+| `importFromExportResult` | Guards `packMeta`, `assets`, `assetBindings`, `assetPacks` with optional chaining |
+| Export pipelines (all 3) | Gated by `validateProject()` which rejects before access |
+| `lootTables` / `transitions` | `?` in type + `?? []` in validator |
+| Unreal migrations | `1.0.0 → 1.1.0` edge exists; missing `FormatVersion` falls through to V1 |
+| Pre-versioning Unreal packs | `parseSemVer` returns null → V1 deserializer (no crash) |
+
+### Accepted Gaps (not actionable)
+
+1. **Validator rejects projects missing required arrays** — `validateProject()` returns `valid: false` for projects without `dialogues`, `progressionTrees`, `assets`, `assetPacks` etc. This is correct behavior (the validator's job is to enforce the current schema). Old projects will fail validation with a clear error message, not crash.
+2. **No `@deprecated` annotations exist anywhere** — nothing to migrate away from.
+3. **Deep imports blocked by exports maps** — consumers using `@world-forge/export-ai-rpg/dist/import.js` will break. This is intentional (Phase 13) and documented.
+
+### Regression Tests Added
+
+- AI RPG: old ContentPack missing `dialogues`/`progressionTrees` imports cleanly
+- Unreal: pack missing `WorldPartition` imports with fidelity warning + 1×1 default grid
+- Unreal: pack missing `Actors` imports with empty `entityPlacements`
+
+### Test Results
+
+- 2085 tests passing (0 failures, +3 new)
+- TypeScript: 0 errors
