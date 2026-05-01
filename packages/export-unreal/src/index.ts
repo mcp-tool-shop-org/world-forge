@@ -50,11 +50,7 @@ export type {
   FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,
 } from './fidelity.js';
 
-// UE-FT-007: pack signing
-export { signMeta, composeSignedMeta, verifyPackSignature } from './signing.js';
-export type { PackSignature, SigningAlgorithm, VerifyResult } from './signing.js';
-
-// UE-FT-008: schema versioning + migration framework
+// UE-FT-008: schema versioning + migration framework (browser-safe)
 export {
   migratePack, parseSemVer, compareSemVer, isMigrationError, MIGRATIONS,
 } from './migrations.js';
@@ -62,7 +58,14 @@ export type {
   SemVer, Migration, MigrationResult, MigrationError, MigrationWarning,
 } from './migrations.js';
 
-// UE-FT-005: CLI summary + diff helpers
+// ── Node-only APIs (require node:crypto / node:fs) ────────────
+// These functions are NOT browser-safe. Import them only in Node.js contexts.
+
+// UE-FT-007: pack signing (node:crypto)
+export { signMeta, composeSignedMeta, verifyPackSignature } from './signing.js';
+export type { PackSignature, SigningAlgorithm, VerifyResult } from './signing.js';
+
+// UE-FT-005: CLI summary + diff helpers (node:fs)
 export { summarizePack, formatSummary } from './summary.js';
 export type { PackSummary, SummaryError } from './summary.js';
 export { diffPacks, formatDiff } from './diff.js';

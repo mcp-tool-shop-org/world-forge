@@ -56,6 +56,7 @@ import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-pl
 import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-catalog.js';
 import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
+import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
 // AIR-FT-005: Schema version is imported directly from @world-forge/schema
 // as SCHEMA_VERSION. This is browser-safe (no node:module dependency) and
@@ -141,6 +142,7 @@ export type ExportResult = {
   manifest: GameManifest;
   packMeta: PackMetadata;
   warnings: string[];
+  fidelity: FidelityReport;
   assets?: AssetEntry[];
   assetBindings?: AssetBindingMap;
   assetPacks?: AssetPack[];
@@ -172,6 +174,7 @@ export function exportToEngine(
   }
 
   const warnings: string[] = [];
+  const fidelityEntries: FidelityEntry[] = [];
 
   // 2–8. Per-domain conversion (wrapped in try/catch to surface internal
   // converter errors as structured ExportErrors rather than raw exceptions).
@@ -224,7 +227,7 @@ export function exportToEngine(
     }
 
     // AIR-B-003: forward warnings for dangling faction refs.
-    entities = convertEntities(project, undefined, warnings);
+    entities = convertEntities(project, fidelityEntries, warnings);
     // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
     // entities will exist. The earlier "no placements" warning above is sufficient.
 
@@ -407,6 +410,7 @@ export function exportToEngine(
       manifest,
       packMeta,
       warnings,
+      fidelity: buildFidelityReport(fidelityEntries),
       assets,
       assetBindings,
       assetPacks,
@@ -419,6 +423,7 @@ export function exportToEngine(
     manifest,
     packMeta,
     warnings,
+    fidelity: buildFidelityReport(fidelityEntries),
     assets,
     assetBindings,
     assetPacks,

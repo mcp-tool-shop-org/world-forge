@@ -4,6 +4,12 @@ export { convertZones } from './convert-zones.js';
 export { convertDistricts } from './convert-districts.js';
 export { convertEntities } from './convert-entities.js';
 export { convertItems } from './convert-items.js';
+export { convertDialogues } from './convert-dialogues.js';
+export { convertPlayerTemplate } from './convert-player-template.js';
+export type { ExportedPlayerTemplate } from './convert-player-template.js';
+export { convertBuildCatalog } from './convert-build-catalog.js';
+export type { ExportedBuildCatalog } from './convert-build-catalog.js';
+export { convertProgressionTrees } from './convert-progression-trees.js';
 export { convertManifest, convertPackMeta } from './convert-pack.js';
 export { exportToEngine } from './export.js';
 export type {
