@@ -71,6 +71,8 @@ interface ProjectState {
   loadProject: (p: WorldProject) => void;
   newProject: () => void;
   updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
+  /** Mark the project as clean (not dirty). Called after successful save. */
+  markClean: () => void;
   undo: () => void;
   redo: () => void;
 
@@ -506,6 +508,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     dirty: false, undoStack: [], redoStack: [],
   }),
   newProject: () => set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] }),
+
+  markClean: () => set({ dirty: false }),
 
   updateProject: (updater, label) => {
     const { project, undoStack } = get();

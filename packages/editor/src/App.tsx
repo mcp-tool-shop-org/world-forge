@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   useProjectStore,
   getLastAutoSaveError, clearLastAutoSaveError, getAutoSaveHealth,
+  hasAutoSaveRecovery, recoverAutoSave, clearAutoSave,
+  startAutoSave, stopAutoSave,
 } from './store/project-store.js';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
 import { ToastHost, pushToast } from './ui/Toast.js';
@@ -63,7 +65,7 @@ export function getInitialTheme(): 'dark' | 'light' {
 }
 
 export function App() {
-  const { project, dirty, loadProject, undo, redo, getUndoCount, getRedoCount, getUndoLabel, getRedoLabel } = useProjectStore();
+  const { project, dirty, loadProject, markClean, undo, redo, getUndoCount, getRedoCount, getUndoLabel, getRedoLabel } = useProjectStore();
   const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSearch, showSpeedPanel } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const selectionCount = getSelectionCount(selection);
@@ -97,6 +99,21 @@ export function App() {
     }
     prevIssueCount.current = issueCount;
   }, [issueCount]);
+
+  // FT-001: Start auto-save timer on mount; check for crash recovery.
+  useEffect(() => {
+    if (hasAutoSaveRecovery()) {
+      const recovered = recoverAutoSave();
+      if (recovered) {
+        loadProject(recovered);
+        pushToast('Recovered unsaved project from last session', 'success', 4000);
+      }
+      clearAutoSave();
+    }
+    startAutoSave();
+    return () => stopAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // FT-002: warn on unsaved changes before closing
   useEffect(() => {
@@ -191,11 +208,13 @@ export function App() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    // Mark project as clean after save — clears dirty dot and beforeunload warning.
+    markClean();
     // ED-B-013: confirm the save actually triggered. The download itself is
     // opaque (browser may drop it into a downloads tray), so a short toast
     // closes the loop.
     pushToast(`Saved as ${filename}`, 'success', 2000);
-  }, [project]);
+  }, [project, markClean]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>

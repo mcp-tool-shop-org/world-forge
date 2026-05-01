@@ -130,3 +130,32 @@ describe('Auto-save + Crash Recovery (FT-001)', () => {
     expect(hasAutoSaveRecovery()).toBe(false);
   });
 });
+
+// --- Phase 17: markClean + persistence regression ---
+
+describe('Phase 17: markClean resets dirty flag', () => {
+  it('markClean sets dirty to false without clearing undo stack', () => {
+    const project = createEmptyProject();
+    useProjectStore.getState().loadProject(project);
+    useProjectStore.getState().updateProject((p) => ({ ...p, name: 'Changed' }));
+    expect(useProjectStore.getState().dirty).toBe(true);
+    expect(useProjectStore.getState().getUndoCount()).toBe(1);
+
+    useProjectStore.getState().markClean();
+    expect(useProjectStore.getState().dirty).toBe(false);
+    // Undo stack should still be intact
+    expect(useProjectStore.getState().getUndoCount()).toBe(1);
+    expect(useProjectStore.getState().project.name).toBe('Changed');
+  });
+
+  it('editing after markClean makes dirty again', () => {
+    const project = createEmptyProject();
+    useProjectStore.getState().loadProject(project);
+    useProjectStore.getState().updateProject((p) => ({ ...p, name: 'First' }));
+    useProjectStore.getState().markClean();
+    expect(useProjectStore.getState().dirty).toBe(false);
+
+    useProjectStore.getState().updateProject((p) => ({ ...p, name: 'Second' }));
+    expect(useProjectStore.getState().dirty).toBe(true);
+  });
+});
