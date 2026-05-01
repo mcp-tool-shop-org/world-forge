@@ -716,7 +716,7 @@ describe('backward compat: old Unreal pack shapes', () => {
     const oldPack = { ...result.contentPack } as Record<string, unknown>;
     delete oldPack.WorldPartition;
 
-    const imported = importFromUnreal(oldPack as typeof result.contentPack);
+    const imported = importFromUnreal(oldPack as unknown as typeof result.contentPack);
     expect(imported.success).toBe(true);
     if (imported.success) {
       // Should default to 1×1 grid and emit a fidelity warning
@@ -736,7 +736,7 @@ describe('backward compat: old Unreal pack shapes', () => {
     const oldPack = { ...result.contentPack } as Record<string, unknown>;
     delete oldPack.Actors;
 
-    const imported = importFromUnreal(oldPack as typeof result.contentPack);
+    const imported = importFromUnreal(oldPack as unknown as typeof result.contentPack);
     expect(imported.success).toBe(true);
     if (imported.success) {
       expect(imported.project.entityPlacements).toEqual([]);

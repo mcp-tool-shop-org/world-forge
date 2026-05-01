@@ -37,6 +37,7 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     setRightTab: () => {},
     showSpeedPanel: false,
     closeSpeedPanel: () => {},
+    setTool: () => {},
     ...overrides,
   };
 }

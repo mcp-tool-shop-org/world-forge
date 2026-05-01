@@ -23,8 +23,8 @@ const zone: Zone = {
 };
 
 const entity: EntityPlacement = {
-  entityId: 'e1', zoneId: 'z1', role: 'npc', name: 'NPC', level: 1,
-  inventory: [], tags: [], gridX: 0, gridY: 0,
+  entityId: 'e1', zoneId: 'z1', role: 'npc', name: 'NPC',
+  tags: [], gridX: 0, gridY: 0,
 };
 
 const asset: AssetEntry = {
@@ -32,7 +32,7 @@ const asset: AssetEntry = {
 };
 
 const dialogue: DialogueDefinition = {
-  id: 'd1', label: 'Test', nodes: {}, startNodeId: 'n1',
+  id: 'd1', speakers: [], nodes: {}, entryNodeId: 'n1',
 };
 
 beforeEach(reset);
@@ -88,7 +88,7 @@ describe('undo labels — no generic "Edit" labels', () => {
 
   // District CRUD
   it('addDistrict has label', () => {
-    const d: District = { id: 'd1', name: 'D1', description: '', tags: [], zoneIds: [], controllingFaction: '', baseMetrics: { commerce: 0, morale: 0, safety: 0, stability: 0 }, economyProfile: { supplyCategories: [], scarcityDefaults: {} } };
+    const d: District = { id: 'd1', name: 'D1', tags: [], zoneIds: [], controllingFaction: '', baseMetrics: { commerce: 0, morale: 0, safety: 0, stability: 0 }, economyProfile: { supplyCategories: [], scarcityDefaults: {} } };
     useProjectStore.getState().addDistrict(d);
     expect(lastLabel()).toBe('Add district');
   });
@@ -101,13 +101,13 @@ describe('undo labels — no generic "Edit" labels', () => {
 
   // Build catalog
   it('addArchetype has label', () => {
-    useProjectStore.getState().addArchetype({ id: 'arch1', name: 'Warrior', description: '', stats: {}, tags: [] });
+    useProjectStore.getState().addArchetype({ id: 'arch1', name: 'Warrior', description: '', statPriorities: {}, startingTags: [], progressionTreeId: 'tree1' });
     expect(lastLabel()).toBe('Add archetype');
   });
 
   // Progression tree
   it('addProgressionTree has label', () => {
-    useProjectStore.getState().addProgressionTree({ id: 'tree1', label: 'Tree', archetypeId: 'arch1', nodes: [] });
+    useProjectStore.getState().addProgressionTree({ id: 'tree1', name: 'Tree', currency: 'xp', nodes: [] });
     expect(lastLabel()).toBe('Add progression tree');
   });
 
@@ -126,7 +126,7 @@ describe('undo labels — no generic "Edit" labels', () => {
 
   // Player template
   it('setPlayerTemplate has label', () => {
-    useProjectStore.getState().setPlayerTemplate({ name: 'Hero', startingZoneId: 'z1', stats: {}, inventory: [] });
+    useProjectStore.getState().setPlayerTemplate({ name: 'Hero', spawnPointId: 'z1', baseStats: {}, baseResources: {}, startingInventory: [], startingEquipment: {}, tags: [], custom: {} });
     expect(lastLabel()).toBe('Set player template');
   });
 
@@ -139,9 +139,9 @@ describe('undo labels — no generic "Edit" labels', () => {
       () => useProjectStore.getState().addDialogue(dialogue),
       () => useProjectStore.getState().addFaction({ factionId: 'f1', districtIds: [], influence: 50, alertLevel: 0, patrolRoutes: [] }),
       () => useProjectStore.getState().addPressureHotspot({ id: 'h1', zoneId: 'z1', pressureType: 'crime', baseProbability: 0.5, tags: [] }),
-      () => useProjectStore.getState().setPlayerTemplate({ name: 'Hero', startingZoneId: 'z1', stats: {}, inventory: [] }),
-      () => useProjectStore.getState().addArchetype({ id: 'arch1', name: 'W', description: '', stats: {}, tags: [] }),
-      () => useProjectStore.getState().addProgressionTree({ id: 'tree1', label: 'T', archetypeId: 'a1', nodes: [] }),
+      () => useProjectStore.getState().setPlayerTemplate({ name: 'Hero', spawnPointId: 'z1', baseStats: {}, baseResources: {}, startingInventory: [], startingEquipment: {}, tags: [], custom: {} }),
+      () => useProjectStore.getState().addArchetype({ id: 'arch1', name: 'W', description: '', statPriorities: {}, startingTags: [], progressionTreeId: 'tree1' }),
+      () => useProjectStore.getState().addProgressionTree({ id: 'tree1', name: 'T', currency: 'xp', nodes: [] }),
     ];
 
     for (const op of ops) {
