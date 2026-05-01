@@ -658,3 +658,43 @@ Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, 
 | `review-panel.test.ts` (editor) | 17 tests — health banners, content counts, system completeness, regions, encounters, connections, deps, validation, enrichment, search integration, speed panel |
 | `export-summary.test.ts` (editor) | 12 tests — markdown sections, JSON structure, roundtrip, filename slugs, provenance |
 | Full suite | 2147/2147 passing |
+
+## Phase 25 — Accessibility / Keyboard-Only Audit
+
+**Verdict: PASS_WITH_A11Y_FRICTION**
+
+### Bugs Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `ModalFrame.tsx` | No `role="dialog"`, no `aria-modal`, no focus trap, no Escape handler | Keyboard users could Tab into invisible background content behind modals; screen readers didn't announce modal boundaries; Escape didn't close modals (it cleared canvas selection instead) | Added `role="dialog"`, `aria-modal="true"`, `aria-label`, Tab focus trap cycling within card, Escape-to-close, backdrop click dismiss, auto-focus on mount, focus restore on unmount (ED-A-025) |
+| 2 | `SearchOverlay.tsx` | No `role="dialog"` or `aria-modal` on the search popup | Screen readers couldn't identify it as a dialog layer | Added `role="dialog"`, `aria-modal="true"`, `aria-label="Search"` |
+| 3 | `Canvas.tsx` | `<canvas>` had no ARIA attributes, no `tabIndex` | Screen readers couldn't announce the canvas; keyboard focus couldn't reach it | Added `role="img"`, `aria-label="World map canvas"`, `tabIndex={0}` |
+| 4 | `App.tsx` | 5 icon-only toolbar buttons (theme toggle, search, left/right sidebar collapse) had `title` but no `aria-label` | Screen readers may not announce `title` consistently | Added `aria-label` to all 5 icon-only buttons |
+| 5 | `App.tsx` | Dirty indicator was color-only (yellow dot) with no screen-reader text | Unsaved state invisible to screen readers and colorblind users | Added `aria-label="Unsaved changes"` and `role="status"` |
+| 6 | `BuildCatalogPanel.tsx` / `ProgressionPanel.tsx` | Effect remove buttons (`×`) had no `aria-label` or `title` | Screen readers announced button as empty or "times" | Added `aria-label="Remove effect"` |
+
+### Verified Sound
+
+| Area | Finding |
+|------|---------|
+| Hotkey system | 15 bindings (Ctrl+K, arrows, Del, Esc, P, Shift+P, etc.). Input-safe guard skips hotkeys when focus is in INPUT/TEXTAREA/SELECT |
+| Canvas keyboard navigation | Arrow keys nudge selection (Shift = 5×), Enter opens details, Space held = pan mode, Escape clears selection + closes context menu |
+| Search overlay (Ctrl+K) | Auto-focus on open, Escape dismiss, Arrow Up/Down navigation, Enter to select, scroll active item into view |
+| Speed panel | Escape to close, keyboard navigation for items |
+| Context menu | Escape closes (FT-005) |
+| Toast notifications | `role="status"` already present |
+| Visibility toggle buttons | `aria-label` already present (`shared.tsx` — "Show on canvas" / "Hide on canvas") |
+| Object list encounter reassign | `aria-label` already present |
+| Error dismiss buttons | `aria-label` already present (App.tsx) |
+| ModalFrame close button | `aria-label` already present (ED-B-004) |
+
+### Remaining A11Y Friction (not blocking)
+
+| Area | Note |
+|------|------|
+| Tab order across panels | No explicit `tabIndex` management on panel sections. Tab flows naturally through DOM order (left sidebar → canvas → right sidebar) but doesn't skip collapsed sidebars |
+| Canvas is pixel-rendered | Objects on canvas are not individually focusable/selectable via keyboard alone — requires mouse for placement, drag, box-select. Arrow nudge and Enter-to-open work for already-selected objects |
+| Color-coded status bars | ReviewPanel stat bars use color to distinguish roles/kinds. Text labels are present alongside bars, so not strictly color-only |
+| No skip-to-content link | No keyboard shortcut to jump from toolbar to canvas or to right panel (Ctrl+K search is the workaround) |
+| PlayerTemplatePanel × buttons | Have `title` but not `aria-label` (acceptable — `title` is announced by most screen readers) |
