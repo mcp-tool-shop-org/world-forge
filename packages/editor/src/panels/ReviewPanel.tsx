@@ -299,7 +299,7 @@ function ProjectMetadataFields() {
   const { project, updateProject } = useProjectStore();
 
   const setField = (field: 'author' | 'license' | 'category', value: string) => {
-    updateProject((p) => ({ ...p, [field]: value || undefined }));
+    updateProject((p) => ({ ...p, [field]: value || undefined }), `Set ${field}`);
   };
 
   const [tagInput, setTagInput] = useState('');
@@ -309,12 +309,12 @@ function ProjectMetadataFields() {
     if (!tag) return;
     const existing = project.projectTags ?? [];
     if (existing.includes(tag)) return;
-    updateProject((p) => ({ ...p, projectTags: [...(p.projectTags ?? []), tag] }));
+    updateProject((p) => ({ ...p, projectTags: [...(p.projectTags ?? []), tag] }), 'Add project tag');
     setTagInput('');
   };
 
   const removeTag = (tag: string) => {
-    updateProject((p) => ({ ...p, projectTags: (p.projectTags ?? []).filter((t) => t !== tag) }));
+    updateProject((p) => ({ ...p, projectTags: (p.projectTags ?? []).filter((t) => t !== tag) }), 'Remove project tag');
   };
 
   const metaInputStyle: React.CSSProperties = {

@@ -58,7 +58,7 @@ export function DependencyPanel() {
   }, [issueEdges]);
 
   const handleRepair = (repair: RepairAction) => {
-    updateProject(repair.apply);
+    updateProject(repair.apply, `Repair: ${repair.label}`);
     setRelinkEdge(null);
   };
 
@@ -68,13 +68,13 @@ export function DependencyPanel() {
       const r = repairsForEdge(e, project);
       return r.filter((a) => a.kind === 'clear-broken-ref' || a.kind === 'clear-pack-ref' || a.kind === 'clear-broken-zone-ref' || a.kind === 'clear-broken-dialogue-ref');
     });
-    if (repairs.length > 0) updateProject(batchRepair(repairs));
+    if (repairs.length > 0) updateProject(batchRepair(repairs), `Clear ${repairs.length} broken ref${repairs.length !== 1 ? 's' : ''}`);
   };
 
   const handleBatchRemoveOrphans = () => {
     const orphans = issueEdges.filter((e) => e.status === 'orphaned');
     const repairs = orphans.flatMap((e) => repairsForEdge(e, project));
-    if (repairs.length > 0) updateProject(batchRepair(repairs));
+    if (repairs.length > 0) updateProject(batchRepair(repairs), `Remove ${repairs.length} orphan${repairs.length !== 1 ? 's' : ''}`);
   };
 
   const handleNavigate = (edge: DependencyEdge) => {

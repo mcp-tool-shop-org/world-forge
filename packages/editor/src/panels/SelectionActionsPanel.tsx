@@ -34,7 +34,7 @@ export function SelectionActionsPanel() {
         return filtered.length !== d.zoneIds.length ? { ...d, zoneIds: filtered } : d;
       });
       return { ...p, zones, districts };
-    });
+    }, 'Assign zones to district');
   };
 
   const handleAddTag = () => {
@@ -47,7 +47,7 @@ export function SelectionActionsPanel() {
           ? { ...z, tags: [...z.tags, tag] }
           : z,
       ),
-    }));
+    }), `Add tag "${tag}" to ${zoneCount} zones`);
     setTagInput('');
   };
 
@@ -94,7 +94,7 @@ export function SelectionActionsPanel() {
         landmarks: p.landmarks.filter((l) => !ids.has(l.zoneId)),
         spawnPoints: p.spawnPoints.filter((s) => !ids.has(s.zoneId)),
       };
-    });
+    }, `Delete ${zoneCount} zones`);
     clearSelection();
   };
 

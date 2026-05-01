@@ -61,7 +61,7 @@ export function ConnectionProperties() {
           ? { ...c, fromZoneId: conn.toZoneId, toZoneId: conn.fromZoneId }
           : c,
       ),
-    }));
+    }), 'Swap connection direction');
     // Update selection to match new direction
     useEditorStore.getState().selectConnection(conn.toZoneId, conn.fromZoneId);
   };
