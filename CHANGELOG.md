@@ -7,13 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed — Phase 12 Packaging Dry Run
+### Fixed — Phase 13 Public API Contract Audit
+
+**All packages:**
+- Added `"exports"` map to all 5 public packages. Consumers can no longer deep-import `@world-forge/*/dist/internal-module.js`. Only the barrel `"."` entry point is public.
+
+**@world-forge/export-ai-rpg:**
+- Exported 4 missing converters: `convertDialogues`, `convertPlayerTemplate`, `convertBuildCatalog`, `convertProgressionTrees` (Godot/Unreal already exposed all theirs).
+- Exported 2 missing types: `ExportedPlayerTemplate`, `ExportedBuildCatalog` (referenced by `ContentPack` but previously un-nameable by consumers).
+- Added `fidelity: FidelityReport` to `ExportResult` — now aligned with Unreal and Godot result envelopes.
+- Wired `fidelityEntries` through `convertEntities` (previously passed `undefined`).
+
+**@world-forge/export-unreal:**
+- Documented Node-only APIs (`signMeta`, `summarizePack`, `diffPacks`) vs browser-safe APIs in barrel JSDoc.
 
 **@world-forge/schema:**
-- `advisoryValidation()` crashed with `TypeError: Cannot read properties of undefined` when consumers passed partial project objects missing optional arrays (`pressureHotspots`, `factionPresences`, `encounterAnchors`, etc.). Added defensive `?? []` normalization at function entry.
+- Exposed `./package.json` subpath export for version introspection consumers.
 
-**@world-forge/editor:**
-- npm tarball shipped `src/__tests__/` (500KB+ of test files). Added `!src/__tests__` to the `files` array in package.json.
+### Noted — Known API Drift (non-breaking, documented)
+
+| Surface | AI RPG | Unreal | Godot |
+|---------|--------|--------|-------|
+| ExportError.errors | `ValidationError[]` | `ValidationError[]` | `ValidationError[]` |
+| ImportError shape | `{ message: string }` | `{ errors: string[] }` | N/A (no import) |
+| ExportResult.fidelity | ✓ (added) | ✓ | ✓ |
+| Node-only exports | CLI only | signing + summary + diff | none |
+
+The `ImportError` shape divergence is pre-existing (AI RPG returns a single `message`, Unreal returns `errors: string[]`). Not fixing now — would be a breaking change. Both discriminate on `success: false`.
 
 ### Verified — Phase 12 Packaging Dry Run
 
