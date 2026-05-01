@@ -1,11 +1,15 @@
 ---
-title: Export & Import Pipeline
+title: AI RPG Export & Import Pipeline
 description: How WorldProject becomes an ai-rpg-engine ContentPack and back
 sidebar:
   order: 5
 ---
 
 The `@world-forge/export-ai-rpg` package converts a `WorldProject` into a set of JSON files that ai-rpg-engine can load directly.
+
+:::note[Other export targets]
+World Forge also exports to **[Unreal Engine 5](/docs/handbook/export-unreal/)** and **[Godot 4](/docs/handbook/export-godot/)**. This page covers the AI RPG Engine pipeline.
+:::
 
 ## Pipeline Steps
 
@@ -119,6 +123,7 @@ if (result.success) {
 - **WorldProject** — lossless round-trip, no conversion needed
 - **ExportResult** — `{ contentPack, manifest, packMeta, assets, assetBindings }` from `exportToEngine()`
 - **ContentPack** — engine content without manifest/metadata wrapper
+- **ProjectBundle** — portable `.wfproject.json` file exported from the editor (lossless)
 
 ## Fidelity Reporting
 
