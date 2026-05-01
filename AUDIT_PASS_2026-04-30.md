@@ -1,10 +1,10 @@
 # World Forge Audit — PASS
 
-**Date:** 2026-04-30  
+**Date:** 2026-05-01  
 **Repo:** mcp-tool-shop-org/world-forge  
 **Version:** 4.4.0  
-**Tests:** 2067/2067 passing  
-**Final commit:** 9f71fda  
+**Tests:** 2155/2155 passing  
+**Final commit:** 37f6430  
 
 ## Positioning
 
@@ -229,4 +229,64 @@ f3a929c feat(editor): Phase 10B+10E — per-target export options + regression t
 ### Test Count
 
 **2082/2082 passing** (15 new regression tests)
+
+## Phases 11–13 — Packaging, API Contract
+
+| Phase | Verdict | Summary |
+|-------|---------|---------|
+| 11 | PASS | Dependency tree audit — no circular deps, all peerDeps correct |
+| 12 | PASS | Packaging dry run — all 6 tarballs verified in isolated project |
+| 13 | PASS | Public API contract — exports maps added, missing converters/types exposed |
+
+## Phase 14 — Error Envelope / Diagnostics
+
+**Verdict: PASS**
+
+Unified `ValidationError[]` across all import/export paths. Unreal CLI prints stack trace with `--verbose`. Import error shapes documented as accepted drift.
+
+## Phase 15 — Backward Compatibility / Migration
+
+**Verdict: PASS**
+
+Fixed 4 crash risks in import pipelines: old ContentPacks missing `dialogues`/`progressionTrees`, pre-WorldPartition Unreal packs, partial project JSON in editor store.
+
+## Phases 16–19 — Editor Lifecycle
+
+| Phase | Verdict | Summary |
+|-------|---------|---------|
+| 16 | PASS | Multi-target export verification — all 3 targets from editor UI |
+| 17 | PASS | Persistence — fixed autosave, crash recovery, dirty flag |
+| 18 | PASS | Unsaved changes — dirty guards on all project-opening paths |
+| 19 | PASS | Undo/redo — 48 unlabeled operations now have descriptive labels |
+
+## Phases 20–23 — Content & Template Integrity
+
+| Phase | Verdict | Summary |
+|-------|---------|---------|
+| 20 | PASS | Dialogue tree integrity — broken refs detected, repair UX verified |
+| 21 | PASS | Encounter/faction data — orphan detection, reassign/delete repair |
+| 22 | PASS | Asset pipeline — kind validation, orphan scanning, pack integrity |
+| 23 | PASS | Starter kit / template quality — all 21 templates validate and export clean |
+
+## Phase 24 — Canvas Performance
+
+**Verdict: PASS**
+
+O(n²) → O(1) zone lookups in hit-testing, connection-lines, and Canvas draw via `Map<string, Zone>`.
+
+## Phase 25 — Accessibility / Keyboard-Only
+
+**Verdict: PASS_WITH_A11Y_FRICTION**
+
+Modal focus traps, ARIA labels on icon-only buttons, canvas accessibility, screen-reader dirty indicator. Tab order flows naturally but no skip-to-content link.
+
+## Phase 26 — Keyboard Canvas Operations
+
+**Verdict: PASS_WITH_POINTER_DEPENDENCIES**
+
+Wired 6 tool-switching hotkeys (V/Z/C/E/L/S) that were displayed but not connected. Added keyboard accessibility to all ObjectListPanel tree item rows. Spatial canvas operations (placement, box-select, resize, connection drawing, panning) remain pointer-dependent by design.
+
+### Final Test Count
+
+**2155/2155 passing** (107 test files, 0 failures)
 

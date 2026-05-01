@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed — Editor Audit (Phases 14–26)
+
+**@world-forge/editor:**
+- **Phase 14 — Error Envelope / Diagnostics:** Unified `ValidationError[]` across all import/export paths. Unreal CLI prints stack trace with `--verbose`.
+- **Phase 15 — Backward Compatibility:** Fixed 4 crash risks in import pipelines — old ContentPacks, pre-WorldPartition Unreal packs, and partial project JSON all load gracefully.
+- **Phase 17 — Persistence:** Fixed autosave never starting, missing crash recovery on mount, save button not clearing dirty flag. Added `markClean()` store action.
+- **Phase 18 — Unsaved Changes:** Added dirty guards to Template Manager (New) and top-bar Load button. All project-opening paths now confirm before discarding unsaved work.
+- **Phase 19 — Undo/Redo:** Added descriptive undo labels to all 48 previously-unlabeled `updateProject` calls (factions, pressure hotspots, build catalog, progression trees, assets, dialogues, presets).
+- **Phase 24 — Canvas Performance:** O(n²) → O(1) zone lookups in hit-testing, connection-lines, and Canvas draw via `Map<string, Zone>`.
+- **Phase 25 — Accessibility:** Modal focus traps (`role="dialog"`, `aria-modal`, Escape-to-close, Tab cycling). ARIA labels on all icon-only buttons. Canvas `role="img"` + `tabIndex`. Screen-reader dirty indicator.
+- **Phase 26 — Keyboard Canvas Operations:** Wired 6 tool-switching hotkeys (V/Z/C/E/L/S) that ToolPalette displayed but never connected. Added keyboard accessibility (`tabIndex`, `role="button"`, Enter/Space handlers) to all 8 clickable row types in ObjectListPanel.
+
+**@world-forge/export-unreal:**
+- **Phase 14:** Added `errors: ValidationError[]` to `UnrealImportError` (was `errors: string[]`).
+
+**@world-forge/schema:**
+- **Phase 14:** Exposed `SCHEMA_VERSION` on `ValidationResult` and `ReviewSnapshot`.
+
 ### Fixed — Phase 13 Public API Contract Audit
 
 **All packages:**

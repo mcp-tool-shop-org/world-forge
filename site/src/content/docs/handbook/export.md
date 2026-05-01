@@ -13,7 +13,7 @@ World Forge also exports to **[Unreal Engine 5](/docs/handbook/export-unreal/)**
 
 ## Pipeline Steps
 
-1. **Validate** — `validateProject()` runs all 54 structural checks. If any fail, export aborts with error details.
+1. **Validate** — `validateProject()` runs 60+ structural checks. If any fail, export aborts with error details.
 2. **Convert zones** — `Zone[]` becomes `ZoneDefinition[]` with description as TextBlock, exits, neighbors, hazards.
 3. **Convert districts** — `District[]` becomes `DistrictDefinition[]` with safety mapped to surveillance.
 4. **Convert entities** — `EntityPlacement[]` becomes `EntityBlueprint[]` with role-based defaults, authored stats/resources/AI.

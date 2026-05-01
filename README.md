@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.4.0</strong> — 2082 tests + 6 e2e browser checks, 6 shipping packages, 7 authoring modes, 2.5D authoring, three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.4.0</strong> — 2155 tests + 6 e2e browser checks, 6 shipping packages, 7 authoring modes, 2.5D authoring, three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## Architecture
@@ -111,7 +111,7 @@ PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district co
 
 ### @world-forge/editor
 
-React 19 + Vite web app with Zustand state management, undo/redo with action labels, auto-save (30s throttle, 3-version history), dark/light theme toggle, and unsaved changes guard.
+React 19 + Vite web app with Zustand state management, undo/redo with action labels, auto-save (30s throttle, 3-version history, crash recovery), dirty-state guards on all project-loading paths, dark/light theme toggle, modal focus traps, and keyboard-driven tool switching.
 
 #### Workspace Tabs
 
@@ -153,7 +153,8 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 - **Viewport** — pan/zoom camera, mousewheel zoom (cursor-anchored), spacebar/middle-mouse/right-click drag-pan, auto fit-to-content, double-click to center
 - **Search** — Ctrl+K opens overlay to find any object by name/ID with fuzzy matching, keyboard navigation, and recent search history (localStorage)
 - **Speed Panel** — double-right-click for a floating command palette with context-aware actions, pinnable favorites, macros, and mode-suggested quick actions
-- **Hotkeys** — 15 keyboard shortcuts including Enter (open details), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste)
+- **Hotkeys** — 21 keyboard shortcuts including tool switching (V/Z/C/E/L/S), Enter (open details), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste), arrow nudge (Shift = 5×)
+- **Accessibility** — modal focus traps with Escape-to-close, ARIA labels on all icon-only buttons, keyboard-navigable object tree, screen-reader-announced dirty indicator. Spatial canvas operations (placement, box-select, resize, connection drawing, panning) remain pointer-based
 
 #### Import & Export
 
@@ -218,7 +219,7 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 - Auto-save with 30-second throttle and 3-version recovery history
 - Ctrl+K search across all object types with fuzzy matching and recent history
 - Speed Panel command palette with pinnable favorites, macros, custom groups, and mode suggestions
-- 15 centralized keyboard shortcuts
+- 21 centralized keyboard shortcuts (including 6 tool-switching keys)
 - Project metadata editor (author, license, category, tags)
 - Review statistics (role distribution, connection kinds, encounter types, zones per district)
 - Export to ContentPack JSON, project bundles, and review summaries

@@ -1,9 +1,9 @@
 # Scorecard
 
-> **Release:** v4.0.3  
+> **Release:** v4.4.0  
 > **Repo:** world-forge  
-> **Date:** 2026-03-11  
-> **Type tags:** `[npm]` `[cli]`
+> **Date:** 2026-05-01  
+> **Type tags:** `[npm]` `[cli]` `[editor]`
 
 ## Assessment
 
@@ -11,10 +11,10 @@
 |----------|-------|-------|
 | A. Security | 10/10 | SECURITY.md, threat model, no secrets, no telemetry |
 | B. Error Handling | 9/10 | Typed validation results, CLI exit codes, no raw stacks. ErrorBoundary on Canvas. |
-| C. Operator Docs | 10/10 | README current, CHANGELOG up to date (4.0.3), LICENSE present, `--help` accurate, DESIGN-SYSTEM.md for editor contributors |
+| C. Operator Docs | 10/10 | README current, CHANGELOG up to date (4.4.0), LICENSE present, `--help` accurate, handbook site, DESIGN-SYSTEM.md for editor contributors |
 | D. Shipping Hygiene | 10/10 | verify script, version/tag match, npm audit in CI, engines.node set, lockfile committed |
-| E. Identity (soft) | 8/10 | Logo in README. No landing page or translations (internal tool — acceptable skip). |
-| **Overall** | **47/50** | |
+| E. Identity (soft) | 9/10 | Logo in README, landing page live, 7 translated READMEs |
+| **Overall** | **48/50** | |
 
 ## Remaining Edges
 
@@ -34,9 +34,9 @@
 
 ## Test Integrity
 
-- **57 test files, 1,268 tests, 0 failures**
+- **107 test files, 2,155 tests, 0 failures**
 - Build: clean (tsc --build, zero errors)
-- All 4 packages published to npm at 4.0.3
+- All 6 packages at 4.4.0
 
 ---
 

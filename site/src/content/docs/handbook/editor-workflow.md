@@ -335,12 +335,20 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Ctrl+K | Open search overlay |
 | Ctrl+Z | Undo |
 | Ctrl+Shift+Z | Redo |
-| Arrow keys | Nudge selected objects by 1 grid cell |
+| Arrow keys | Nudge selected objects by 1 grid cell (Shift = 5×) |
 | Enter | Open details panel for selected object |
 | P | Apply preset to selected district/zone |
 | Shift+P | Save current selection as preset |
+| V | Switch to Select tool |
+| Z | Switch to Zone tool |
+| C | Switch to Connection tool |
+| E | Switch to Entity tool |
+| L | Switch to Landmark tool |
+| S | Switch to Spawn tool |
 | Double-click | Select object and open its details panel |
 | Double-right-click | Open Speed Panel (floating command palette at cursor) |
+
+Tool-switching keys (V/Z/C/E/L/S) are bare single keys with no modifier. They are ignored when focus is in a text input, so typing in property fields or search never triggers a tool switch.
 
 ### Undo/Redo Labels
 
@@ -490,7 +498,7 @@ Unassigned
   └─ Zone: Hidden Passage
 ```
 
-Click any item to select it on the canvas and frame it in view. The tree highlights the current canvas selection, and auto-scrolls to keep selected items visible. A filter input at the top narrows the tree by name or ID — matching propagates up, so a zone stays visible if any of its children match.
+Click any item to select it on the canvas and frame it in view. Items are keyboard-accessible — Tab to reach a row, then press Enter or Space to select. The tree highlights the current canvas selection, and auto-scrolls to keep selected items visible. A filter input at the top narrows the tree by name or ID — matching propagates up, so a zone stays visible if any of its children match.
 
 Click a district header to select all its zones. Double-click to expand or collapse.
 
@@ -816,3 +824,40 @@ Both files include a generation timestamp and the project name in the filename (
 - **Search** — Ctrl+K indexes "Project Review" and "Export Summary"; selecting either navigates to the Review tab
 - **Speed Panel** — "Open Review" and "Export Summary" appear as global actions in the command palette
 - **Guide** — the checklist includes a "Review project" step near the end, linking to the Review tab
+
+## §22 Accessibility
+
+World Forge supports keyboard-driven navigation, tool switching, object-tree selection, validation, review, import, export, and modal workflows. Spatial canvas operations such as placement, box-select, resize, drawing connections, and panning remain pointer-based.
+
+### Keyboard-Accessible
+
+| Area | How |
+|------|-----|
+| Tool switching | V, Z, C, E, L, S (bare keys, input-safe) |
+| Object selection | Ctrl+K search → Enter; Object tree → Tab + Enter/Space |
+| Nudge/move | Arrow keys (Shift = 5×) |
+| Duplicate/delete | Ctrl+D, Del/Backspace |
+| Open details | Enter |
+| Presets | P / Shift+P |
+| Modals | Focus trap, Escape to close, Tab cycles within |
+| Export/import | Tab to buttons, Enter to execute |
+| Validation/issues | Tab through issue list |
+
+### Pointer-Dependent (by design)
+
+| Operation | Why |
+|-----------|-----|
+| Object placement | Zone painting, entity/landmark/spawn placement require click coordinates on the canvas grid |
+| Box-select | Drag rectangle to multi-select (workaround: Ctrl+A, Ctrl+K, or object tree) |
+| Zone resizing | Drag resize handles |
+| Connection drawing | Click source zone → click target zone |
+| Canvas panning | Mouse wheel, spacebar+drag, or right-click drag |
+| Speed Panel | Double-right-click to open |
+
+### Screen Reader Support
+
+- All modals use `role="dialog"`, `aria-modal="true"`, and `aria-label`
+- Icon-only buttons carry `aria-label`
+- Unsaved-changes indicator has `role="status"` and `aria-label="Unsaved changes"`
+- Toast notifications use `role="status"`
+- Canvas has `role="img"` with `aria-label="World map canvas"`

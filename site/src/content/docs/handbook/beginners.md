@@ -9,7 +9,7 @@ This guide walks you through creating your first world in World Forge -- from in
 
 ## 1. What is World Forge?
 
-World Forge is a 2D world authoring studio that produces content packs for [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine). You design worlds visually -- painting zones on a canvas, connecting them, placing entities with stats and AI profiles, writing branching dialogues -- then export everything as validated JSON that [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg) can play directly.
+World Forge is a 2D world authoring studio that produces content packs for [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine), [Unreal Engine 5](https://www.unrealengine.com/), and [Godot 4](https://godotengine.org/). You design worlds visually -- painting zones on a canvas, connecting them, placing entities with stats and AI profiles, writing branching dialogues -- then export everything as validated JSON that your engine can load directly.
 
 World Forge is a monorepo with six packages:
 
@@ -179,6 +179,10 @@ When the project is Ready or Healthy, click **Export** to open the Export modal.
 | **StarterKit** | A pre-built project template (one per mode) that includes zones, entities, dialogues, and a player template. Exportable as `.wfkit.json`. |
 | **WorldProject** | The top-level container holding an entire authored world. Everything in the editor is part of this structure. |
 | **Zone** | A rectangular area on the canvas representing a distinct location (room, territory, sector) with spatial coordinates and environmental properties. |
+
+:::tip[Accessibility]
+World Forge supports keyboard-driven navigation, tool switching (V/Z/C/E/L/S), object-tree selection, validation, review, import, export, and modal workflows. Spatial canvas operations such as placement, box-select, resize, drawing connections, and panning remain pointer-based.
+:::
 
 ## 8. Where to Go Next
 
