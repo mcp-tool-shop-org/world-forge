@@ -42,6 +42,7 @@
     "@world-forge/schema": "*",
     "@world-forge/renderer-2d": "*",
     "@world-forge/export-ai-rpg": "*",
+    "@world-forge/export-godot": "*",
     "@world-forge/export-unreal": "*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

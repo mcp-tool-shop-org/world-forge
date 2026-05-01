@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/export-godot",
-  "version": "1.0.0",
+  "version": "4.4.0",
   "private": true,
   "description": "Godot 4 export pipeline for World Forge — zones, entities, items, dialogues, navigation, and .tscn scene generation.",
   "type": "module",
@@ -11,7 +11,9 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "!dist/__tests__",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
@@ -23,6 +25,19 @@
     "url": "https://github.com/mcp-tool-shop-org/world-forge.git",
     "directory": "packages/export-godot"
   },
+  "homepage": "https://mcp-tool-shop-org.github.io/world-forge/",
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/world-forge/issues"
+  },
+  "keywords": [
+    "world-forge",
+    "export",
+    "godot",
+    "godot-4",
+    "tscn",
+    "rpg",
+    "typescript"
+  ],
   "dependencies": {
     "@world-forge/schema": "*"
   }

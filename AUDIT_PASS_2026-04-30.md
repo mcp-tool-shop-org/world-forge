@@ -122,3 +122,23 @@ godot_console --headless --path dogfood/godot-smoke --script smoke_load_world.gd
 08ee24d fix(editor): normalize optional arrays on project load + UE5 export browser compat
 657e234 fix: remove node:* runtime-boundary violations that crash the editor
 ```
+
+## Phase 6 — Release Readiness
+
+**Verdict: PASS**
+
+- README: removed all "(planned)" Godot language — now accurately describes 6 shipping packages + 3 export targets
+- Versions: all packages aligned at 4.4.0 (export-godot was 1.0.0)
+- Package contents: `!dist/__tests__` excludes test files from npm tarballs
+- Install path verified: `npm install && npm run build && npm test` all green
+- CLI truth: `world-forge-export` and `world-forge-export-unreal` both work as documented
+- export-godot README rewritten (was "stub — do not install")
+
+## Phase 7 — Automated Browser Regression
+
+**Verdict: PASS**
+
+6 Playwright e2e tests lock in Phase 5E verification:
+- Editor boots, project loads, Issues tab opens, suggestions toggle is `<button>`, Export modal shows 3 target buttons, advisories render.
+
+Run: `npm run test:e2e`

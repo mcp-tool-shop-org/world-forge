@@ -13,10 +13,10 @@
   <a href="https://mcp-tool-shop-org.github.io/world-forge/"><img src="https://img.shields.io/badge/Landing_Page-live-blue" alt="Landing Page"></a>
 </p>
 
-<p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and (planned) Godot 4.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
+<p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.4.0</strong> — 2067 tests, 5 shipping packages + 1 planned Godot stub (6 total), 7 authoring modes, 2.5D authoring, Unreal pack versioning + signing + diff</p>
+<p align="center"><strong>v4.4.0</strong> — 2067 tests + 6 e2e browser checks, 6 shipping packages, 7 authoring modes, 2.5D authoring, three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## Architecture
@@ -26,7 +26,7 @@ packages/
   schema/          @world-forge/schema         — spatial types, validation, 2.5D fields
   export-ai-rpg/   @world-forge/export-ai-rpg  — AI RPG Engine export pipeline + CLI
   export-unreal/   @world-forge/export-unreal  — Unreal Engine 5 export pipeline + CLI (2.5D aware)
-  export-godot/    @world-forge/export-godot   — (planned) Godot 4 export lane, stub only
+  export-godot/    @world-forge/export-godot   — Godot 4 export pipeline + .tscn scene generation
   renderer-2d/     @world-forge/renderer-2d    — PixiJS 2D canvas renderer
   editor/          @world-forge/editor         — React web authoring app
 ```
@@ -48,13 +48,18 @@ Open `http://localhost:5173` to launch the editor.
 3. **Paint zones** — drag on the canvas to create zones, connect them, assign districts
 4. **Place entities** — drop NPCs, enemies, merchants, encounters, and items onto zones
 5. **Review** — open the Review tab for health status, content overview, and summary export (Markdown/JSON)
-6. **Export** — download a ContentPack, project bundle (.wfproject.json), or review summary
+6. **Export** — download a ContentPack (AI RPG Engine), Unreal Engine 5 pack, Godot 4 pack, project bundle (.wfproject.json), or review summary
 
 ### CLI Export
 
 ```bash
+# AI RPG Engine
 npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
+
+# Unreal Engine 5
+npx world-forge-export-unreal project.json --out ./UnrealPack --sign
+npx world-forge-export-unreal --summary ./UnrealPack
 ```
 
 ## Packages
@@ -82,7 +87,13 @@ Converts a `WorldProject` into an Unreal Engine 5 content pack tuned for 2.5D ga
 
 ### @world-forge/export-godot
 
-Reserved workspace slot for the planned Godot 4 export lane (Fractured Road). Not yet implemented.
+Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
+
+- **Output** — `pack.json`, per-zone resources, entity manifest, navigation links, loot tables, spawn markers, transition nodes, dialogue resources, asset bindings, and a world `.tscn` scene
+- **Scene generation** — `buildWorldScene()` produces Godot scene text via the `.tres` serializer
+- **Coordinate transform** — World Forge grid → Godot 2D coordinates
+- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data
+- **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.0.0
 
 ### @world-forge/export-ai-rpg
 
@@ -146,7 +157,7 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 
 #### Import & Export
 
-- **ContentPack** — one-click export to ai-rpg-engine format with full validation
+- **ContentPack** — one-click export to ai-rpg-engine, Unreal Engine 5, or Godot 4 format with full validation and pre-export advisories
 - **Project bundles** — portable `.wfproject.json` files with provenance metadata and dependency info
 - **Kit bundles** — `.wfkit.json` export/import with validation, collision handling, and provenance tracking
 - **Import** — auto-detects 4 formats with structured fidelity reporting
@@ -221,7 +232,11 @@ The `dogfood/` directory contains an integration test harness that exercises the
 
 ## Engine Compatibility
 
-Exports target [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine) content types. The exported ContentPack can be loaded directly by [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg).
+Exports target three engines:
+
+- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** — ContentPack format, loadable by [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg)
+- **Unreal Engine 5** — 2.5D-aware content pack with Primary Data Assets, actor spawn manifests, and World Partition hints
+- **Godot 4** — `.tscn` scene generation with zone resources, navigation links, and entity manifests
 
 ## Security
 
