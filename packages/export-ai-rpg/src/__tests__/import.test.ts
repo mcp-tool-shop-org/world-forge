@@ -715,3 +715,22 @@ describe('mode inference and round-trip', () => {
     expect(validateProject(imported.project).valid).toBe(true);
   });
 });
+
+// --- Backward compatibility: old shapes without newer fields ---
+
+describe('backward compat: old ContentPack shapes', () => {
+  it('imports a ContentPack missing dialogues and progressionTrees', () => {
+    const exported = exportToEngine(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+
+    // Simulate an old ContentPack by stripping newer fields
+    const oldPack = { ...exported.contentPack } as Record<string, unknown>;
+    delete oldPack.dialogues;
+    delete oldPack.progressionTrees;
+
+    const result = importFromContentPack(oldPack as typeof exported.contentPack);
+    expect(result.success).toBe(true);
+    expect(result.project.dialogues).toEqual([]);
+    expect(result.project.progressionTrees).toEqual([]);
+  });
+});

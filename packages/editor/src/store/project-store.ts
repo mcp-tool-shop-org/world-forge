@@ -493,7 +493,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   redoStack: [],
 
   loadProject: (p) => set({
-    project: { ...p, assets: p.assets ?? [], assetPacks: p.assetPacks ?? [] },
+    project: {
+      ...p,
+      assets: p.assets ?? [],
+      assetPacks: p.assetPacks ?? [],
+      dialogues: p.dialogues ?? [],
+      progressionTrees: p.progressionTrees ?? [],
+      landmarks: p.landmarks ?? [],
+      lootTables: p.lootTables ?? [],
+      transitions: p.transitions ?? [],
+    },
     dirty: false, undoStack: [], redoStack: [],
   }),
   newProject: () => set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] }),

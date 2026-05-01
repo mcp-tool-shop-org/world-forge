@@ -704,3 +704,42 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     expect(entry?.severity).toBe('warning');
   });
 });
+
+// --- Backward compatibility: old pack shapes ---
+
+describe('backward compat: old Unreal pack shapes', () => {
+  it('imports a pack missing WorldPartition without crashing', () => {
+    const result = exportToUnreal(minimalProject);
+    if (!result.success) throw new Error('export failed');
+
+    // Simulate a pre-WorldPartition pack
+    const oldPack = { ...result.contentPack } as Record<string, unknown>;
+    delete oldPack.WorldPartition;
+
+    const imported = importFromUnreal(oldPack as typeof result.contentPack);
+    expect(imported.success).toBe(true);
+    if (imported.success) {
+      // Should default to 1×1 grid and emit a fidelity warning
+      expect(imported.project.map.gridWidth).toBe(1);
+      expect(imported.project.map.gridHeight).toBe(1);
+      const wpWarning = imported.fidelity.entries.find(
+        (e) => e.fieldPath === 'WorldPartition' && e.level === 'dropped',
+      );
+      expect(wpWarning).toBeDefined();
+    }
+  });
+
+  it('imports a pack missing Actors without crashing', () => {
+    const result = exportToUnreal(minimalProject);
+    if (!result.success) throw new Error('export failed');
+
+    const oldPack = { ...result.contentPack } as Record<string, unknown>;
+    delete oldPack.Actors;
+
+    const imported = importFromUnreal(oldPack as typeof result.contentPack);
+    expect(imported.success).toBe(true);
+    if (imported.success) {
+      expect(imported.project.entityPlacements).toEqual([]);
+    }
+  });
+});

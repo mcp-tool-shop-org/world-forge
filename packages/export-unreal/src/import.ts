@@ -185,12 +185,29 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
     });
   }
 
-  const zones: Zone[] = pack.Zones.map((z) => zoneFromUnreal(z, tileSizeCm, fidelity));
-  const districts: District[] = pack.Districts.map(districtFromUnreal);
-  const entityPlacements: EntityPlacement[] = pack.Actors.All.map((a) =>
+  const zones: Zone[] = (pack.Zones ?? []).map((z) => zoneFromUnreal(z, tileSizeCm, fidelity));
+  const districts: District[] = (pack.Districts ?? []).map(districtFromUnreal);
+  const entityPlacements: EntityPlacement[] = (pack.Actors?.All ?? []).map((a) =>
     entityFromUnreal(a, tileSizeCm, fidelity),
   );
-  const connections: ZoneConnection[] = pack.Connections.map(connectionFromUnreal);
+  const connections: ZoneConnection[] = (pack.Connections ?? []).map(connectionFromUnreal);
+
+  // Guard for pre-WorldPartition packs — fall back to sensible defaults so
+  // old exports don't crash the import pipeline.
+  const wp = pack.WorldPartition;
+  const wpMode = wp?.SourceMode ?? DEFAULT_MODE;
+  const wpWidthCm = wp?.ExtentCm?.WidthCm ?? tileSizeCm;
+  const wpDepthCm = wp?.ExtentCm?.DepthCm ?? tileSizeCm;
+  if (!wp) {
+    fidelity.push({
+      level: 'dropped',
+      domain: 'world',
+      severity: 'warning',
+      fieldPath: 'WorldPartition',
+      message: 'Pack is missing WorldPartition data — grid size defaults to 1×1.',
+      reason: 'Pre-WorldPartition pack format; SourceMode and ExtentCm unavailable.',
+    });
+  }
 
   const project: WorldProject = {
     id: pack.Meta.Id,
@@ -202,7 +219,7 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
     tones: [],
     difficulty: '',
     narratorTone: '',
-    mode: pack.WorldPartition.SourceMode ?? DEFAULT_MODE,
+    mode: wpMode,
 
     author: pack.Meta.Author,
     license: pack.Meta.License,
@@ -213,8 +230,8 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
       id: `${pack.Meta.Id}-map`,
       name: pack.Meta.Name,
       description: pack.Meta.Description,
-      gridWidth: Math.max(1, Math.round(pack.WorldPartition.ExtentCm.WidthCm / tileSizeCm)),
-      gridHeight: Math.max(1, Math.round(pack.WorldPartition.ExtentCm.DepthCm / tileSizeCm)),
+      gridWidth: Math.max(1, Math.round(wpWidthCm / tileSizeCm)),
+      gridHeight: Math.max(1, Math.round(wpDepthCm / tileSizeCm)),
       tileSize: tileSizePx,
     },
     zones,

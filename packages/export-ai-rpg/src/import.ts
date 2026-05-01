@@ -277,10 +277,10 @@ export function importFromContentPack(
   const { districts, fidelity: districtFidelity } = importDistricts(pack.districts);
   const { placements: entityPlacements, warnings: entityWarnings, fidelity: entityFidelity } = importEntities(pack.entities, zones.map((z) => z.id));
   const { placements: itemPlacements, warnings: itemWarnings, fidelity: itemFidelity } = importItems(pack.items, zones.map((z) => z.id));
-  const { dialogues, fidelity: dialogueFidelity } = importDialogues(pack.dialogues);
+  const { dialogues, fidelity: dialogueFidelity } = importDialogues(pack.dialogues ?? []);
   const { template: playerTemplate, fidelity: playerFidelity } = importPlayerTemplate(pack.playerTemplate);
   const { catalog: buildCatalog, fidelity: buildFidelity } = importBuildCatalog(pack.buildCatalog);
-  const { trees: progressionTrees, fidelity: treeFidelity } = importProgressionTrees(pack.progressionTrees);
+  const { trees: progressionTrees, fidelity: treeFidelity } = importProgressionTrees(pack.progressionTrees ?? []);
 
   // Collect all domain fidelity entries
   allFidelity.push(
