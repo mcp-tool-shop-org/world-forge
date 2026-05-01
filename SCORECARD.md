@@ -598,6 +598,39 @@ Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, 
 | Search overlay has "Project Review" + "Export Summary" | Correct |
 | Speed panel has open-review + export-summary actions | Correct |
 
+## Phase 24 — Performance / Large World Stress Audit
+
+**Verdict: PASS**
+
+### Bugs Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `hit-testing.ts` | `findHitAt`, `findAllHitsAt`, `findAllInRect` all called `project.zones.find(z => z.id === ...)` inside entity/encounter/landmark loops — O(zones × entities) per call | For 100 zones + 500 entities: ~50k array scans per mouse-move event. Mouseover lag on large worlds. | Build `Map<string, Zone>` once per function call via `buildZoneMap()`, replace `.find()` with `.get()` — O(1) per lookup |
+| 2 | `connection-lines.ts` | `getConnectionEndpoints` called `zones.find()` twice per connection; `findConnectionAt` called it per connection in loop | O(connections × zones) per frame for canvas rendering, O(connections × zones) per mouse-move for hit-testing | Added optional `zoneMap` parameter threaded from callers; `findConnectionAt` builds map once if not supplied |
+| 3 | `Canvas.tsx` draw callback | 8 separate `project.zones.find()` calls in the per-frame render loop (entities, landmarks, encounters, ambient layers, resize handles, connection preview, districts) | Redundant O(n) scans repeated every animation frame | Build `zoneMap` once at top of `draw()`, passed to `getConnectionEndpoints`; replaced all inner-loop `.find()` with `.get()` |
+
+### Verified Sound
+
+| Area | Finding |
+|------|---------|
+| Canvas viewport culling (FT-010) | `inViewport()` and `pointInViewport()` skip off-screen objects before drawing |
+| Simplified selection rendering (FT-021) | `LARGE_SELECTION_THRESHOLD = 50` — outline-only rect for selections > 50 items |
+| Dependency scan complexity | O(n) with pre-built `Map`/`Set` lookups (`ScanDependenciesLookups`) — no nested find calls |
+| Validation scan complexity | O(n) — `validateProject` single-pass, advisory validation single-pass |
+| Review snapshot | `buildReviewSnapshot` calls validate + scan once each, shared lookup maps (SCH-B-006) |
+| Undo stack memory | `UNDO_DEPTH_LIMIT = 100` with immutable shared subtrees — actual RAM << 101 × project size |
+| Autosave / localStorage quota | `AUTOSAVE_MAX_BYTES = 4.5MB` oversize guard, transactional two-phase write (ED-B-001), `AutoSaveHealth` API, `QuotaExceededError` handling |
+
+### Acceptable Scale Notes
+
+| Area | Note |
+|------|------|
+| Grid rendering | Draws all grid lines (no viewport culling for grid). Acceptable — grid is simple `strokeRect` calls, not a bottleneck |
+| `repairsForEdge` in DependencyPanel | Called 3× per edge in render (filter, check, picker). Acceptable — issue edges are typically few |
+| ReviewPanel metadata `onChange` | Fires `updateProject` per keystroke. Consistent with entire codebase pattern (no debounce anywhere) |
+| `encounterAnchors.filter` in Canvas draw | O(encounters²) to offset multiple encounters in same zone. Acceptable — encounter count is typically < 50 |
+
 ### Export Summary (verified sound)
 
 | Feature | Status |
