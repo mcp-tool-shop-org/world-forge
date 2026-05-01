@@ -407,3 +407,75 @@ Panel components (`ZoneProperties`, `EntityProperties`, `ConnectionProperties`, 
 
 - 2121 tests passing (0 failures, +2 new)
 - TypeScript: 0 errors
+
+## Phase 21 — Validation / Issue Navigation Audit
+
+**Verdict: PASS**
+
+### Bug Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | `ExportModal.tsx` | `handleGoToFirstIssue` missing routes for `assets.*` and `assetPacks.*` paths | "Fix first issue" button routed asset/pack validation errors to the Map tab instead of the Assets tab — user sees the wrong panel and can't find the issue | Added `assetPacks`/`assets` prefix checks before the map-tab fallback (mirrors ValidationPanel `handleClick`) |
+
+### Validation System (verified sound)
+
+| Layer | Status |
+|-------|--------|
+| `validateProject()` — 46+ structural validation rules | Correct — covers zones, connections, districts, entities, items, spawns, landmarks, dialogues, progression, builds, assets, packs, encounters, factions, metadata |
+| `advisoryValidation()` — mode-specific suggestions (never block export) | Correct — dungeon/district/world/ocean/space modes, asset naming, metadata suggestions |
+| `scanDependencies()` — reference graph scanner | Correct — checks asset refs (broken/mismatched), zone refs, dialogue refs, pack refs, orphan detection |
+| Severity model: errors (block export) vs advisories/suggestions (informational) | Correct — clear separation, no severity confusion |
+
+### Issue Navigation (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| ValidationPanel click-to-focus: routes all domains to correct tabs | Correct — zones/entities/items/spawns/connections→map, player→player, builds→builds (+sub-tab), trees→trees, dialogues→dialogue, assets/packs→assets |
+| ExportModal "Fix first issue" button | **Fixed** — was missing assets/assetPacks routes |
+| Bottom bar issue count → click opens Issues tab | Correct |
+| Issues tab badge shows count when > 0 | Correct |
+| FT-022: Toast notification when issues are resolved | Correct |
+| `focusTarget` + `useFocusHighlight` — scroll-to + pulse highlight | Correct — fires on domain match, auto-clears after 1.5s |
+| Search overlay (Ctrl+K) — surfaces dependency issues as searchable results | Correct |
+
+### Export Blocking (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Export buttons disabled when `precheck.valid` is false | Correct — `disabled={!precheck.valid}` + cursor/opacity styling |
+| Pre-export readiness banner: per-target (AI RPG / UE5 / Godot) | Correct — shows advisory counts per target |
+| Pre-export advisories: entities, connections, elevation, parallax | Correct — non-blocking, distinct from hard errors |
+| Validate button runs `validateProject` and shows errors inline | Correct |
+| Target-specific options (AI RPG, UE5, Godot) | Correct — collapsible panel with per-engine options |
+
+### Dependency Manager (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| `DependencyPanel` groups by domain with status colors | Correct — broken (red), mismatched (yellow), orphaned (gray) |
+| Click-to-navigate: routes to source object's correct tab | Correct |
+| Repair actions: clear-broken-ref, relink-asset, remove-orphan | Correct — per-edge and batch |
+| Batch "Clear all broken refs" / "Remove all orphans" | Correct |
+| "Open Deps" link on ref errors in ValidationPanel | Correct — cross-panel navigation |
+
+### Suggestions Toggle (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| AdvisorySuggestions component: default collapsed, click to expand | Correct |
+| Blue styling distinct from red errors | Correct |
+| `data-testid="wf-suggestions-toggle"` for test access | Correct |
+
+### Import Fidelity Warnings (verified sound)
+
+| Feature | Status |
+|---------|--------|
+| Import tab appears with fidelity % badge after import | Correct |
+| ExportModal shows "Changes Since Import" diff with caveats | Correct |
+| `ImportSummaryPanel` shows full fidelity report | Correct |
+
+### Test Results
+
+- 2147 tests passing (0 failures, +26 new)
+- TypeScript: 0 errors
