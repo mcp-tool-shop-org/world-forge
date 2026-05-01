@@ -283,5 +283,8 @@ function safeFile(id: string): string {
 
 main().catch((err: Error) => {
   console.error(`Fatal: ${err.message}`);
+  if (process.argv.includes('--verbose') && err.stack) {
+    console.error(err.stack);
+  }
   process.exit(1);
 });
