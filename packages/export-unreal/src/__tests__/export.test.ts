@@ -293,7 +293,7 @@ describe('exportToUnreal', () => {
     const futureBack = importFromUnreal(futurePack);
     expect(futureBack.success).toBe(false);
     if (!futureBack.success) {
-      expect(futureBack.errors.some((e) => e.includes('99.0.0'))).toBe(true);
+      expect(futureBack.errors.some((e) => e.message.includes('99.0.0'))).toBe(true);
     }
 
     // Malformed FormatVersion — dispatcher still doesn't crash (legacy path).

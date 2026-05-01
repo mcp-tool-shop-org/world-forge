@@ -10,6 +10,7 @@ import type {
   WorldProject, Zone, ZoneExit, Interactable,
   District, EntityPlacement, EntityRole,
   ZoneConnection, ParallaxLayer,
+  ValidationError,
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
 import type { UnrealContentPack, UnrealPackMeta } from './export.js';
@@ -29,7 +30,7 @@ export interface UnrealImportResult {
 
 export interface UnrealImportError {
   success: false;
-  errors: string[];
+  errors: ValidationError[];
 }
 
 /**
@@ -95,7 +96,7 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
     if ('code' in result) {
       return {
         success: false,
-        errors: [`Migration failed (${result.code}): ${result.message}`],
+        errors: [{ path: 'Meta.FormatVersion', message: `Migration failed (${result.code}): ${result.message}` }],
       };
     }
     migrated = result.meta;
@@ -107,11 +108,12 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
   if (!deserializer) {
     return {
       success: false,
-      errors: [
-        `Unsupported pack FormatVersion "${pack.Meta.FormatVersion}" (major ${major}). ` +
-        `This loader supports major ${current.major}.x. Re-export the pack with a compatible exporter ` +
-        `or update the loader.`,
-      ],
+      errors: [{
+        path: 'Meta.FormatVersion',
+        message: `Unsupported pack FormatVersion "${pack.Meta.FormatVersion}" (major ${major}). ` +
+          `This loader supports major ${current.major}.x. Re-export the pack with a compatible exporter ` +
+          `or update the loader.`,
+      }],
     };
   }
 

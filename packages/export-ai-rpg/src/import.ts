@@ -43,7 +43,7 @@
  * @module import
  */
 
-import type { WorldProject, ZoneConnection, AuthoringMode } from '@world-forge/schema';
+import type { WorldProject, ZoneConnection, AuthoringMode, ValidationError } from '@world-forge/schema';
 import { validateProject, isValidMode } from '@world-forge/schema';
 import type { ContentPack, ExportResult, AssetBindingMap } from './export.js';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
@@ -73,6 +73,7 @@ export interface ImportResult {
 export interface ImportError {
   success: false;
   message: string;
+  errors: ValidationError[];
 }
 
 // EB-012: Reverse maps must stay in sync with GENRE_MAP / DIFFICULTY_MAP in convert-pack.ts.
@@ -148,9 +149,11 @@ export function importProject(data: unknown): ImportResult | ImportError {
 
   // EB-010: Explicit error path for null/unrecognized format
   if (format === null) {
+    const message = 'Unrecognized file format. Expected a WorldProject (.map + .zones + .entityPlacements), ContentPack (.entities + .zones), ExportResult (.contentPack + .manifest), or ProjectBundle (.bundleVersion + .project). Check that your JSON structure matches one of these shapes.';
     return {
       success: false,
-      message: 'Unrecognized file format. Expected a WorldProject (.map + .zones + .entityPlacements), ContentPack (.entities + .zones), ExportResult (.contentPack + .manifest), or ProjectBundle (.bundleVersion + .project). Check that your JSON structure matches one of these shapes.',
+      message,
+      errors: [{ path: 'import', message }],
     };
   }
 
@@ -176,7 +179,8 @@ export function importProject(data: unknown): ImportResult | ImportError {
   }
 
   // Exhaustive: this should never be reached
-  return { success: false, message: `Internal error: unhandled import format '${format as string}'.` };
+  const message = `Internal error: unhandled import format '${format as string}'.`;
+  return { success: false, message, errors: [{ path: 'import', message }] };
 }
 
 /** Import from an ExportResult (has contentPack + manifest + packMeta). */

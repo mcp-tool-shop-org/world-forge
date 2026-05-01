@@ -160,7 +160,7 @@ describe('importFromUnreal + migration integration', () => {
     const back = importFromUnreal(futurePack);
     expect(back.success).toBe(false);
     if (!back.success) {
-      expect(back.errors.some((e) => e.includes('2.0.0'))).toBe(true);
+      expect(back.errors.some((e) => e.message.includes('2.0.0'))).toBe(true);
     }
   });
 
