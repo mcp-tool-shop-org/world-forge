@@ -121,3 +121,54 @@
 
 - 2085 tests passing (0 failures, +3 new)
 - TypeScript: 0 errors
+
+---
+
+## Phase 16 — Asset Pipeline / Binding Audit
+
+**Verdict: PASS**
+
+### Pipeline Traced
+
+```
+AssetEntry/AssetPack (schema) → zone/entity/item/landmark refs → editor AssetPanel
+  → export binding collection → AI RPG/Godot/Unreal output → import recovery → fidelity
+```
+
+### Bugs Found & Fixed
+
+| # | Component | Bug | Impact | Fix |
+|---|-----------|-----|--------|-----|
+| 1 | Editor `AssetPanel.tsx` | Orphan detection misses `skylineRef` and `parallaxLayers[].assetRef` | 2.5D assets falsely shown as "unused" | Added skyline/parallax to `referencedIds` collection |
+| 2 | Editor `export-handlers.ts` | `runEngineExport` drops `assets`, `assetBindings`, `assetPacks` from download bundle | Round-trip through editor download is lossy for assets even though exporter collects them | Forward all three fields to the bundle |
+| 3 | Editor `export-handlers.ts` | AI RPG fidelity report hardcoded as `{ level: 'preserved', warnings }` | Real `FidelityReport` (entries + summary) lost; receipt always says "preserved" | Use `result.fidelity` and compute receipt level from summary |
+| 4 | Editor `export-handlers.ts` | `ExportReceipt` has no `assets` count | All 3 receipts silently omit asset count | Added `assets: number` to type; populated in all handlers; rendered in `ExportModal` |
+
+### Already Strong Areas
+
+| Area | Status |
+|------|--------|
+| Schema validation (rules 41-55) | Thorough: asset ref kind checks, orphan detection (with skyline/parallax), pack validation, semver, parallax depth/scrollFactor |
+| `dependencies.ts` | Complete: `collectReferencedAssetIds` includes skyline + parallax. All 17 ref-extraction guards use `?? []` |
+| AI RPG export bindings | Deterministic: sorted keys (AIR-B-001), alphabetical top-level order, byte-identical across runs |
+| AI RPG import recovery | `importFromExportResult` recovers assets + bindings + packs with fidelity entries |
+| ContentPack import (lossy) | Correctly produces `assets-dropped` fidelity warning |
+| Godot `convert-assets.ts` | Kind-based directory mapping, per-asset fidelity entry, packId preserved |
+| Unreal export | Assets intentionally not in `UnrealContentPack` (UE5 manages its own asset pipeline). Entity `PortraitAssetId`/`SpriteAssetId` DO survive as actor metadata |
+
+### Accepted Design Decisions
+
+1. **AI RPG `AssetBindingMap` omits `skylineRef`/`parallaxLayers`** — AI RPG is a text engine; 2.5D visual refs are correctly dropped with existing fidelity warnings.
+2. **Godot export has no `assetPacks` metadata** — Pack membership survives via `GodotAssetBinding.packId`, but pack-level metadata (label, version, etc.) is lost. Godot is a one-way export; no import path exists. Not worth adding a format field for.
+3. **Unreal export has no asset manifest** — By design. UE5 manages assets through its own pipeline. Actor entries carry `PortraitAssetId`/`SpriteAssetId` for binding hints.
+
+### Regression Tests Added
+
+- AI RPG bundle includes `assets`/`assetBindings`/`assetPacks` when project has them
+- Export receipt includes `assets` count
+- Receipt fidelity computed from real report, not hardcoded
+
+### Test Results
+
+- 2088 tests passing (0 failures, +3 new)
+- TypeScript: 0 errors
