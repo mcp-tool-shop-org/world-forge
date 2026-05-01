@@ -92,7 +92,7 @@ Mode affects everything: grid defaults, connection vocabulary, zone naming patte
 
 ### ContentPack
 
-A **ContentPack** is the export format that ai-rpg-engine understands. It contains zones, districts, entities, items, dialogues, a player template, and metadata. The export pipeline validates your project (54 structural checks) before converting it.
+A **ContentPack** is the export format that ai-rpg-engine understands. It contains zones, districts, entities, items, dialogues, a player template, and metadata. The export pipeline validates your project (60+ structural checks) before converting it. World Forge also exports to Unreal Engine 5 (2.5D-aware content pack) and Godot 4 (.tscn scenes + resource pack).
 
 ## 5. Step-by-Step Tutorial
 
@@ -142,7 +142,7 @@ Select the **Spawn** tool. Click on a zone to place a spawn point. Mark one spaw
 
 Open the **Review** tab to check your project's health. The health banner shows one of four states: Ready (green), Healthy (green), Degraded (amber), or Blocked (red). Fix any blocking validation errors shown in the Issues tab.
 
-When the project is Ready or Healthy, click **Export** to download a ContentPack. The export pipeline validates, converts, and packages your world as JSON files that ai-rpg-engine can load.
+When the project is Ready or Healthy, click **Export** to open the Export modal. You'll see per-target readiness badges (✓ Ready / ⚠ advisories) for all three targets: AI RPG Engine, Unreal Engine 5, and Godot 4. Expand **Target Options** to configure engine-specific settings, then click the appropriate download button. Post-export receipts show file size, counts, and fidelity details.
 
 ## 6. Common Pitfalls
 
@@ -156,14 +156,14 @@ When the project is Ready or Healthy, click **Export** to download a ContentPack
 
 **Wrong asset kind.** Zone backgrounds must reference assets of kind `background`, entity portraits must be `portrait`, and so on. The Deps tab flags mismatched asset kinds and offers a relink button to pick the correct asset.
 
-**Export with validation errors.** The export pipeline requires `validateProject()` to pass all 54 structural checks. If export fails, check the Issues tab for the specific errors. Common blockers include missing spawn points, broken dialogue node references, and duplicate IDs.
+**Export with validation errors.** The export pipeline requires `validateProject()` to pass all 60+ structural checks. If export fails, check the Issues tab for the specific errors. Common blockers include missing spawn points, broken dialogue node references, and duplicate IDs.
 
 ## 7. Glossary
 
 | Term | Definition |
 |------|-----------|
 | **AuthoringMode** | The scale setting for a project (dungeon, district, world, ocean, space, interior, wilderness). Governs grid size, connection vocabulary, and smart defaults. |
-| **ContentPack** | The JSON export format that ai-rpg-engine loads. Contains zones, districts, entities, items, dialogues, and metadata. |
+| **ContentPack** | The JSON export format that ai-rpg-engine loads. Contains zones, districts, entities, items, dialogues, and metadata. World Forge also exports UE5 and Godot 4 content packs. |
 | **Connection** | A link between two zones. Has a kind (door, passage, trail, etc.), direction, and optional condition. |
 | **District** | A group of zones forming a logical region with faction control, economy profile, and base metrics. |
 | **EncounterAnchor** | A point in a zone where encounters can trigger during gameplay. Has a type (boss, patrol, ambush), probability, and cooldown. |
@@ -185,6 +185,8 @@ When the project is Ready or Healthy, click **Export** to download a ContentPack
 - **[Editor Workflow](/world-forge/handbook/editor-workflow/)** -- detailed walkthrough of every editor feature, including selection, alignment, snapping, presets, and the Speed Panel
 - **[Architecture](/world-forge/handbook/architecture/)** -- package structure, dependency graph, and design system details
 - **[Schema & Types](/world-forge/handbook/schema/)** -- full type reference for WorldProject, validation rules, and viewport math
-- **[Export & Import Pipeline](/world-forge/handbook/export/)** -- how ContentPacks are built, the CLI tool, import pipeline, and fidelity reporting
-- **[Security](/world-forge/handbook/security/)** -- threat model and data boundaries
+- **[AI RPG Export & Import](/world-forge/handbook/export/)** — how ContentPacks are built, the CLI tool, import pipeline, and fidelity reporting
+- **[Unreal Export](/world-forge/handbook/export-unreal/)** — UE5 pipeline, pack format, signing, CLI
+- **[Godot Export](/world-forge/handbook/export-godot/)** — Godot 4 pipeline, .tscn generation, editor options
+- **[Security](/world-forge/handbook/security/)** — threat model and data boundaries
 - **[GitHub repository](https://github.com/mcp-tool-shop-org/world-forge)** -- source code, issues, and the dogfood walkthrough
