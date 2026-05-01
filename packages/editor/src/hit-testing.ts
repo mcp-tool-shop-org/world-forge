@@ -41,6 +41,13 @@ export function _resetOrphanedEncounterWarning(): void {
 
 // ── Coordinate helpers ──────────────────────────────────────────
 
+/** Build a zone lookup map — O(n) once, O(1) per lookup. */
+function buildZoneMap(zones: WorldProject['zones']): Map<string, WorldProject['zones'][number]> {
+  const map = new Map<string, WorldProject['zones'][number]>();
+  for (const z of zones) map.set(z.id, z);
+  return map;
+}
+
 function screenToWorld(screenX: number, screenY: number, viewport: ViewportState) {
   return {
     worldX: screenX / viewport.zoom + viewport.panX,
@@ -77,6 +84,8 @@ export function findHitAt(
   tileSize: number,
   visibility: VisibilityFlags,
 ): HitResult | null {
+  const zoneMap = buildZoneMap(project.zones);
+
   // 1. Spawns
   if (visibility.showSpawns) {
     for (const sp of project.spawnPoints) {
@@ -96,7 +105,7 @@ export function findHitAt(
   // If a showEncounters toggle is added to VisibilityFlags in the future,
   // gate this block the same way spawns/landmarks/entities are gated.
   for (const enc of project.encounterAnchors) {
-    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    const zone = zoneMap.get(enc.zoneId);
     if (!zone) {
       // ED-B-002: orphaned encounter — zone was deleted. We can't hit-test
       // against a zone that doesn't exist, but we warn once so the user has a
@@ -121,7 +130,7 @@ export function findHitAt(
   // 3. Landmarks
   if (visibility.showLandmarks) {
     for (const lm of project.landmarks) {
-      const zone = project.zones.find((z) => z.id === lm.zoneId);
+      const zone = zoneMap.get(lm.zoneId);
       if (!zone) continue;
       const wx = lm.gridX * tileSize;
       const wy = lm.gridY * tileSize;
@@ -135,7 +144,7 @@ export function findHitAt(
   // 4. Entities
   if (visibility.showEntities) {
     for (const ep of project.entityPlacements) {
-      const zone = project.zones.find((z) => z.id === ep.zoneId);
+      const zone = zoneMap.get(ep.zoneId);
       if (!zone) continue;
       const wx = (ep.gridX ?? zone.gridX + 2) * tileSize;
       const wy = (ep.gridY ?? zone.gridY + 2) * tileSize;
@@ -148,7 +157,7 @@ export function findHitAt(
 
   // 5. Connections (line segment proximity)
   if (visibility.showConnections) {
-    const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport);
+    const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport, zoneMap);
     if (connKey) {
       return { type: 'connection', id: `${connKey.from}::${connKey.to}` };
     }
@@ -185,6 +194,8 @@ export function findAllInRect(
   tileSize: number,
   visibility: VisibilityFlags,
 ): SelectionSet {
+  const zoneMap = buildZoneMap(project.zones);
+
   // Normalize rect (handle inverted coords)
   const minX = Math.min(rect.x1, rect.x2);
   const minY = Math.min(rect.y1, rect.y2);
@@ -213,7 +224,7 @@ export function findAllInRect(
   // Entities
   if (visibility.showEntities) {
     for (const ep of project.entityPlacements) {
-      const zone = project.zones.find((z) => z.id === ep.zoneId);
+      const zone = zoneMap.get(ep.zoneId);
       if (!zone) continue;
       // ED-A-001: see findHitAt for rationale on the explicit parens.
       const wx = ((ep.gridX ?? zone.gridX) + 2) * tileSize;
@@ -228,7 +239,7 @@ export function findAllInRect(
   // Landmarks
   if (visibility.showLandmarks) {
     for (const lm of project.landmarks) {
-      const zone = project.zones.find((z) => z.id === lm.zoneId);
+      const zone = zoneMap.get(lm.zoneId);
       if (!zone) continue;
       const wx = lm.gridX * tileSize;
       const wy = lm.gridY * tileSize;
@@ -254,7 +265,7 @@ export function findAllInRect(
   // Encounters — zone-anchored at zone center (always visible; see findHitAt comment)
   const encounters: string[] = [];
   for (const enc of project.encounterAnchors) {
-    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    const zone = zoneMap.get(enc.zoneId);
     if (!zone) continue;
     const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
     const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
@@ -281,6 +292,7 @@ export function findAllHitsAt(
   tileSize: number,
   visibility: VisibilityFlags,
 ): HitResult[] {
+  const zoneMap = buildZoneMap(project.zones);
   const hits: HitResult[] = [];
 
   // Spawns
@@ -297,7 +309,7 @@ export function findAllHitsAt(
 
   // Encounters (always visible; see findHitAt comment)
   for (const enc of project.encounterAnchors) {
-    const zone = project.zones.find((z) => z.id === enc.zoneId);
+    const zone = zoneMap.get(enc.zoneId);
     if (!zone) continue;
     const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
     const cy = (zone.gridY + zone.gridHeight / 2) * tileSize;
@@ -310,7 +322,7 @@ export function findAllHitsAt(
   // Landmarks
   if (visibility.showLandmarks) {
     for (const lm of project.landmarks) {
-      const zone = project.zones.find((z) => z.id === lm.zoneId);
+      const zone = zoneMap.get(lm.zoneId);
       if (!zone) continue;
       const wx = lm.gridX * tileSize;
       const wy = lm.gridY * tileSize;
@@ -324,7 +336,7 @@ export function findAllHitsAt(
   // Entities
   if (visibility.showEntities) {
     for (const ep of project.entityPlacements) {
-      const zone = project.zones.find((z) => z.id === ep.zoneId);
+      const zone = zoneMap.get(ep.zoneId);
       if (!zone) continue;
       const wx = (ep.gridX ?? zone.gridX + 2) * tileSize;
       const wy = (ep.gridY ?? zone.gridY + 2) * tileSize;
@@ -337,7 +349,7 @@ export function findAllHitsAt(
 
   // Connections
   if (visibility.showConnections) {
-    const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport);
+    const connKey = findConnectionAt(screenX, screenY, project.connections, project.zones, tileSize, viewport, zoneMap);
     if (connKey) {
       hits.push({ type: 'connection', id: `${connKey.from}::${connKey.to}` });
     }

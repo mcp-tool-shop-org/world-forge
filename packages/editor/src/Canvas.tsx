@@ -168,6 +168,9 @@ export function Canvas() {
 
     const renderStart = performance.now();
 
+    // Perf: build zone lookup map once per frame — O(n) vs O(n²) per-entity/landmark/encounter
+    const zoneMap = new Map(project.zones.map((z) => [z.id, z]));
+
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -239,7 +242,7 @@ export function Canvas() {
       }
 
       for (const conn of project.connections) {
-        const endpoints = getConnectionEndpoints(conn, project.zones, tileSize, zoneOverrides);
+        const endpoints = getConnectionEndpoints(conn, project.zones, tileSize, zoneOverrides, zoneMap);
         if (!endpoints) continue;
 
         const isHovered = hoveredConnection.current?.from === conn.fromZoneId && hoveredConnection.current?.to === conn.toZoneId;
@@ -399,7 +402,7 @@ export function Canvas() {
     if (zoom > 0.25) {
       for (const d of project.districts) {
         if (d.zoneIds.length === 0) continue;
-        const dzones = d.zoneIds.map((zid) => project.zones.find((z) => z.id === zid)).filter(Boolean);
+        const dzones = d.zoneIds.map((zid) => zoneMap.get(zid)).filter(Boolean);
         if (dzones.length === 0) continue;
         let sumX = 0, sumY = 0;
         for (const z of dzones) {
@@ -422,7 +425,7 @@ export function Canvas() {
       for (const ep of project.entityPlacements) {
         totalCount++;
         if (hiddenIds.has(ep.entityId)) continue;
-        const zone = project.zones.find((z) => z.id === ep.zoneId);
+        const zone = zoneMap.get(ep.zoneId);
         if (!zone) continue;
         const selected = isSel(selection, 'entity', ep.entityId);
         const canDrag = selected && isDragging && ep.gridX != null && ep.gridY != null;
@@ -465,7 +468,7 @@ export function Canvas() {
       for (const lm of project.landmarks) {
         totalCount++;
         if (hiddenIds.has(lm.id)) continue;
-        const zone = project.zones.find((z) => z.id === lm.zoneId);
+        const zone = zoneMap.get(lm.zoneId);
         if (!zone) continue;
         const selected = isSel(selection, 'landmark', lm.id);
         const x = (lm.gridX + (selected && isDragging ? dragDX : 0)) * tileSize;
@@ -531,7 +534,7 @@ export function Canvas() {
     for (const enc of project.encounterAnchors) {
       totalCount++;
       if (hiddenIds.has(enc.id)) continue;
-      const zone = project.zones.find((z) => z.id === enc.zoneId);
+      const zone = zoneMap.get(enc.zoneId);
       if (!zone) continue;
       const selected = isSel(selection, 'encounter', enc.id);
       const cx = (zone.gridX + zone.gridWidth / 2) * tileSize;
@@ -576,7 +579,7 @@ export function Canvas() {
     if (showAmbient) {
       for (const al of project.ambientLayers) {
         for (const azId of al.zoneIds) {
-          const zone = project.zones.find((z) => z.id === azId);
+          const zone = zoneMap.get(azId);
           if (!zone) continue;
           const x = zone.gridX * tileSize;
           const y = zone.gridY * tileSize;
@@ -596,7 +599,7 @@ export function Canvas() {
     if (activeTool === 'select') {
       const singleZoneId = getSelectedZoneId(selection);
       if (singleZoneId) {
-        const szone = project.zones.find((z) => z.id === singleZoneId);
+        const szone = zoneMap.get(singleZoneId);
         if (szone) {
           const hZone = isResizing && singleZoneId === resizeZoneId && resizeResult
             ? resizeResult
@@ -639,7 +642,7 @@ export function Canvas() {
 
     // FT-007: Connection preview line while in connection tool
     if (activeTool === 'connection' && connectionStart && connectionCursor.current) {
-      const sourceZone = project.zones.find((z) => z.id === connectionStart);
+      const sourceZone = zoneMap.get(connectionStart);
       if (sourceZone) {
         const srcCx = (sourceZone.gridX + sourceZone.gridWidth / 2) * tileSize;
         const srcCy = (sourceZone.gridY + sourceZone.gridHeight / 2) * tileSize;

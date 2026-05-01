@@ -81,9 +81,12 @@ export function getConnectionEndpoints(
   zones: Zone[],
   tileSize: number,
   zoneOverrides?: Map<string, ZoneRect>,
+  /** Pre-built zone lookup map. When omitted the function builds one internally. */
+  zoneMap?: Map<string, Zone>,
 ): ConnectionEndpoints | null {
-  const fromZone = zones.find((z) => z.id === conn.fromZoneId);
-  const toZone = zones.find((z) => z.id === conn.toZoneId);
+  const lookup = zoneMap ?? new Map(zones.map((z) => [z.id, z]));
+  const fromZone = lookup.get(conn.fromZoneId);
+  const toZone = lookup.get(conn.toZoneId);
   if (!fromZone || !toZone) {
     // ED-B-003: surface the reason this connection will not render. The user
     // saw it in the Connections list but the line is missing on the canvas
@@ -150,8 +153,9 @@ export function hitTestConnection(
   zones: Zone[],
   tileSize: number,
   viewport: ViewportState,
+  zoneMap?: Map<string, Zone>,
 ): boolean {
-  const endpoints = getConnectionEndpoints(conn, zones, tileSize);
+  const endpoints = getConnectionEndpoints(conn, zones, tileSize, undefined, zoneMap);
   if (!endpoints) return false;
 
   const { sx: sfx, sy: sfy } = worldToScreen(endpoints.fx, endpoints.fy, viewport);
@@ -168,9 +172,11 @@ export function findConnectionAt(
   zones: Zone[],
   tileSize: number,
   viewport: ViewportState,
+  zoneMap?: Map<string, Zone>,
 ): ConnectionKey | null {
+  const lookup = zoneMap ?? new Map(zones.map((z) => [z.id, z]));
   for (const conn of connections) {
-    if (hitTestConnection(screenX, screenY, conn, zones, tileSize, viewport)) {
+    if (hitTestConnection(screenX, screenY, conn, zones, tileSize, viewport, lookup)) {
       return { from: conn.fromZoneId, to: conn.toZoneId };
     }
   }
