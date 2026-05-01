@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.4.2]
+
+### Fixed
+
+- Publish workflow: removed `--provenance` flag, fixed stale test fixtures.
+- Synced `SCHEMA_VERSION` with package version.
+
 ## [Unreleased]
 
 ### Fixed — Editor Audit (Phases 14–26)

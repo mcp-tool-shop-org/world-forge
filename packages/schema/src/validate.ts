@@ -35,7 +35,7 @@ export type ValidationResult = {
  * package.json. `validateProject()` also stamps this value into every
  * ValidationResult so error logs carry the producing schema version.
  */
-export const SCHEMA_VERSION = '4.4.0';
+export const SCHEMA_VERSION = '4.4.2';
 
 /** Options for validateProject. */
 export interface ValidateOptions {
