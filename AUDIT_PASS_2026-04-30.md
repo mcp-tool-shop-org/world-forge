@@ -142,3 +142,20 @@ godot_console --headless --path dogfood/godot-smoke --script smoke_load_world.gd
 - Editor boots, project loads, Issues tab opens, suggestions toggle is `<button>`, Export modal shows 3 target buttons, advisories render.
 
 Run: `npm run test:e2e`
+
+## Phase 8 — Import / Round-Trip UI
+
+**Verdict: PASS** (after fix)
+
+Round-trip test: Load Chapel Threshold → Export AI RPG JSON → Import exported file → Verify fidelity report + diff panel.
+
+**Bug found:** `scanDependencies` in `@world-forge/schema` crashed with `TypeError: Cannot read properties of undefined (reading 'map')` during import. Bare array accesses lacked `?? []` fallbacks. Fixed in c610be1.
+
+**After fix:**
+- All counts survive round-trip: 5 zones, 2 districts, 4 entities, 3 items, 1 dialogue, 2 trees
+- Import Summary panel displays 36 fidelity entries across 8 domains with repair hints
+- Diff panel shows "No changes since import" — no noisy JSON churn
+- No crash from missing optional arrays or asset fields
+
+Artifact: `dogfood/DOGFOOD_IMPORT_ROUNDTRIP_UI_2026-05-01.md`
+
