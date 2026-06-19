@@ -52,6 +52,9 @@ export type { GodotMarketNode, GodotCraftingStation, ConvertEconomyResult } from
 export { convertStructures } from './convert-structures.js';
 export type { GodotBuilding, GodotHub, GodotStronghold, ConvertStructuresResult } from './convert-structures.js';
 
+export { convertStrata, STRATUM_Z_BAND } from './convert-strata.js';
+export type { GodotStratum, GodotStratumLink, ConvertStrataResult } from './convert-strata.js';
+
 export { buildWorldScene } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 

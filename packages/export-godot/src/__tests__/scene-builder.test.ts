@@ -14,6 +14,7 @@ import type { GodotTileLayer } from '../convert-tile-layers.js';
 import type { GodotPropNode } from '../convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.js';
 import type { GodotBuilding, GodotHub, GodotStronghold } from '../convert-structures.js';
+import type { GodotStratum, GodotStratumLink } from '../convert-strata.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -363,5 +364,67 @@ describe('buildWorldScene — town structures (buildings/hubs/strongholds)', () 
         expect(tscn).not.toContain('name="Buildings"');
         expect(tscn).not.toContain('name="Hubs"');
         expect(tscn).not.toContain('name="Strongholds"');
+    });
+});
+
+describe('buildWorldScene — vertical strata (world modeling)', () => {
+    const surface: GodotStratum = {
+        nodeName: 'Stratum_surface', id: 'surface', name: 'Surface', order: 0, zBand: 0,
+        zRange: { floor: 0, ceiling: 10 }, visibleStrata: ['under'],
+    };
+    const under: GodotStratum = {
+        nodeName: 'Stratum_under', id: 'under', name: 'Cellar', order: -1, zBand: -100,
+        visibleStrata: [],
+    };
+    const slink: GodotStratumLink = {
+        nodeName: 'StratumLink_l1', id: 'l1', fromStratumId: 'surface', toStratumId: 'under',
+        fromZoneId: 'zone-a', bidirectional: true, linkType: 'stairs', position: { x: 80, y: 48 },
+    };
+
+    it('emits a Strata container with per-stratum metadata', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), strata: [surface, under] });
+        expect(tscn).toContain('[node name="Strata" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="Stratum_surface" type="Node2D" parent="Strata"]');
+        expect(tscn).toContain('metadata/order = 0');
+        expect(tscn).toContain('metadata/z_band = 0');
+        expect(tscn).toContain('metadata/z_floor = 0');
+        expect(tscn).toContain('metadata/z_ceiling = 10');
+        expect(tscn).toContain('metadata/visible_strata = "under"');
+        expect(tscn).toContain('metadata/order = -1');
+        expect(tscn).toContain('metadata/z_band = -100');
+    });
+
+    it('emits a StratumLinks container with metadata + position', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), stratumLinks: [slink] });
+        expect(tscn).toContain('[node name="StratumLinks" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="StratumLink_l1" type="Node2D" parent="StratumLinks"]');
+        expect(tscn).toContain('position = Vector2(80, 48)');
+        expect(tscn).toContain('metadata/from_stratum = "surface"');
+        expect(tscn).toContain('metadata/to_stratum = "under"');
+        expect(tscn).toContain('metadata/link_type = "stairs"');
+    });
+
+    it('bands a zone z_index by its stratum and tags it with stratum_id', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone({ elevation: 3 })]),
+            zoneStrata: { 'zone-a': { stratumId: 'under', zBand: -100 } },
+        });
+        // z = zBand (-100) + elevation (3) = -97, absolute.
+        expect(tscn).toContain('z_index = -97');
+        expect(tscn).toContain('z_as_relative = false');
+        expect(tscn).toContain('metadata/stratum_id = "under"');
+    });
+
+    it('leaves elevation-only z_index untouched when a zone has no stratum', () => {
+        const tscn = buildWorldScene(baseInput([makeZone({ elevation: 5 })]));
+        expect(tscn).toContain('z_index = 5');
+        expect(tscn).not.toContain('z_as_relative = false');
+        expect(tscn).not.toContain('metadata/stratum_id');
+    });
+
+    it('omits strata containers when there are none', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('name="Strata"');
+        expect(tscn).not.toContain('name="StratumLinks"');
     });
 });

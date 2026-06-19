@@ -36,6 +36,7 @@ import { encodeTileMapData, type GodotTileLayer } from './convert-tile-layers.js
 import type { GodotPropNode } from './convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from './convert-economy.js';
 import type { GodotBuilding, GodotHub, GodotStronghold } from './convert-structures.js';
+import type { GodotStratum, GodotStratumLink } from './convert-strata.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -59,6 +60,12 @@ export interface SceneBuildInput {
     hubs?: GodotHub[];
     /** Strongholds → Node2D under a "Strongholds" container (at zone centers). Optional. */
     strongholds?: GodotStronghold[];
+    /** Vertical strata → Node2D under a "Strata" container (metadata). Optional. */
+    strata?: GodotStratum[];
+    /** Inter-stratum connectors → Node2D under a "StratumLinks" container. Optional. */
+    stratumLinks?: GodotStratumLink[];
+    /** zoneId → its stratum (id + z band) for stratum_id metadata + z_index banding. Optional. */
+    zoneStrata?: Record<string, { stratumId: string; zBand: number }>;
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -135,10 +142,19 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="${zone.nodeName}" type="Node2D" parent="."]`);
         lines.push(`position = Vector2(${zone.position.x}, ${zone.position.y})`);
         lines.push('y_sort_enabled = true');
-        if (zone.elevation !== undefined) {
-            lines.push(`z_index = ${clampZ(Math.round(zone.elevation))}`);
+        // z_index: a stratum (if any) sets the coarse absolute band so cross-level
+        // draw order is correct; elevation refines within the band. Without a
+        // stratum we keep the legacy elevation-only behaviour untouched.
+        const zoneStratum = input.zoneStrata?.[zone.id];
+        const elevZ = zone.elevation !== undefined ? Math.round(zone.elevation) : 0;
+        if (zoneStratum) {
+            lines.push(`z_index = ${clampZ(zoneStratum.zBand + elevZ)}`);
+            lines.push('z_as_relative = false');
+        } else if (zone.elevation !== undefined) {
+            lines.push(`z_index = ${clampZ(elevZ)}`);
         }
         lines.push(`metadata/zone_id = "${zone.id}"`);
+        if (zoneStratum) lines.push(`metadata/stratum_id = "${zoneStratum.stratumId}"`);
         lines.push(`metadata/description = "${escapeGodot(zone.description)}"`);
         lines.push(`metadata/light = ${zone.light}`);
         lines.push(`metadata/noise = ${zone.noise}`);
@@ -356,6 +372,46 @@ export function buildWorldScene(input: SceneBuildInput): string {
             if (s.factionId) lines.push(`metadata/faction_id = "${s.factionId}"`);
             lines.push(`metadata/defense_level = ${s.defenseLevel}`);
             lines.push(`metadata/garrison = "${escapeGodot(s.garrisonEntityIds.join(','))}"`);
+            lines.push('');
+        }
+    }
+
+    // World modeling — vertical strata + their connectors as Node2D placeholders
+    // with metadata. Zones carry stratum_id + a z_index band (emitted above); the
+    // runtime drives per-level visibility/navigation from this metadata.
+    const strata = input.strata ?? [];
+    if (strata.length > 0) {
+        lines.push(`[node name="Strata" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const s of strata) {
+            lines.push(`[node name="${s.nodeName}" type="Node2D" parent="Strata"]`);
+            lines.push(`metadata/stratum_id = "${s.id}"`);
+            lines.push(`metadata/name = "${escapeGodot(s.name)}"`);
+            lines.push(`metadata/order = ${s.order}`);
+            lines.push(`metadata/z_band = ${s.zBand}`);
+            if (s.zRange) {
+                lines.push(`metadata/z_floor = ${s.zRange.floor}`);
+                lines.push(`metadata/z_ceiling = ${s.zRange.ceiling}`);
+            }
+            lines.push(`metadata/visible_strata = "${escapeGodot(s.visibleStrata.join(','))}"`);
+            lines.push('');
+        }
+    }
+
+    const stratumLinks = input.stratumLinks ?? [];
+    if (stratumLinks.length > 0) {
+        lines.push(`[node name="StratumLinks" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const l of stratumLinks) {
+            lines.push(`[node name="${l.nodeName}" type="Node2D" parent="StratumLinks"]`);
+            lines.push(`position = Vector2(${l.position.x}, ${l.position.y})`);
+            lines.push(`metadata/link_id = "${l.id}"`);
+            lines.push(`metadata/from_stratum = "${l.fromStratumId}"`);
+            lines.push(`metadata/to_stratum = "${l.toStratumId}"`);
+            if (l.fromZoneId) lines.push(`metadata/from_zone = "${l.fromZoneId}"`);
+            if (l.toZoneId) lines.push(`metadata/to_zone = "${l.toZoneId}"`);
+            lines.push(`metadata/bidirectional = ${l.bidirectional}`);
+            lines.push(`metadata/link_type = "${escapeGodot(l.linkType)}"`);
             lines.push('');
         }
     }

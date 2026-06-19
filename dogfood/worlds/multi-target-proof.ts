@@ -63,6 +63,7 @@ export const proofProject: WorldProject = {
             ],
             parentDistrictId: 'dist-town',
             backgroundId: 'asset-tavern-bg',
+            stratumId: 'surface',
         },
         {
             id: 'zone-market',
@@ -101,6 +102,7 @@ export const proofProject: WorldProject = {
             parentDistrictId: 'dist-under',
             elevation: -3,
             elevationRange: { floor: -5, ceiling: -1 },
+            stratumId: 'underground',
         },
         {
             id: 'zone-alley',
@@ -393,6 +395,16 @@ export const proofProject: WorldProject = {
     ],
     strongholds: [
         { id: 'hold-keep', name: 'Dustwall Keep', zoneId: 'zone-gate', factionId: 'faction-garrison', defenseLevel: 3, garrisonEntityIds: ['npc-merchant'], tags: [] },
+    ],
+    // World modeling: two vertical strata (surface town over its cellar) + a
+    // stairwell link. zone-tavern sits on 'surface' (order 0), zone-cellar on
+    // 'underground' (order -1) — so the cellar z-bands below the town.
+    strata: [
+        { id: 'surface', name: 'Surface', order: 0, zRange: { floor: 0, ceiling: 12 }, visibleStrata: ['underground'], tags: [] },
+        { id: 'underground', name: 'Underground', order: -1, zRange: { floor: -5, ceiling: 0 }, tags: [] },
+    ],
+    stratumLinks: [
+        { id: 'slink-trapdoor', fromStratumId: 'surface', toStratumId: 'underground', fromZoneId: 'zone-tavern', toZoneId: 'zone-cellar', bidirectional: true, linkType: 'stairs' },
     ],
     // Wave B-2: a color tileset (no imagePath) + a ground layer over the tavern.
     // Color-only so the Godot smoke loads with zero external texture deps.

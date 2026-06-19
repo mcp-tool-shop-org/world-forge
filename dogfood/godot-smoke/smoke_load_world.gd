@@ -27,6 +27,9 @@ const EXPECTED_CRAFTING := 1
 const EXPECTED_BUILDINGS := 1
 const EXPECTED_HUBS := 1
 const EXPECTED_STRONGHOLDS := 1
+const EXPECTED_STRATA := 2
+const EXPECTED_STRATUM_LINKS := 1
+const EXPECTED_ZONES_WITH_STRATUM := 2
 
 var _failures: Array[String] = []
 
@@ -318,6 +321,48 @@ func _init() -> void:
 	print("stronghold_count=" + str(stronghold_count))
 	_assert(stronghold_count == EXPECTED_STRONGHOLDS, "stronghold_count_matches",
 		"expected %d, got %d" % [EXPECTED_STRONGHOLDS, stronghold_count])
+
+	# 19. World modeling — vertical strata + links export as Node2D under "Strata"
+	#     / "StratumLinks" containers; zones in a stratum carry stratum_id metadata
+	#     and a banded (absolute) z_index so layers sort correctly.
+	var strata := root_node.get_node_or_null("Strata")
+	var stratum_count := 0
+	if strata:
+		for s in strata.get_children():
+			if s.get_meta("stratum_id", "") != "":
+				stratum_count += 1
+	print("stratum_count=" + str(stratum_count))
+	_assert(stratum_count == EXPECTED_STRATA, "stratum_count_matches",
+		"expected %d, got %d" % [EXPECTED_STRATA, stratum_count])
+
+	var slinks := root_node.get_node_or_null("StratumLinks")
+	var slink_count := 0
+	if slinks:
+		for l in slinks.get_children():
+			if l.get_meta("link_id", "") != "":
+				slink_count += 1
+	print("stratum_link_count=" + str(slink_count))
+	_assert(slink_count == EXPECTED_STRATUM_LINKS, "stratum_link_count_matches",
+		"expected %d, got %d" % [EXPECTED_STRATUM_LINKS, slink_count])
+
+	# Zones in a stratum carry stratum_id metadata; the cellar (underground,
+	# order -1) z-bands below 0 — elevation alone (-3) can't reach -50.
+	var zones_with_stratum := 0
+	var cellar_z := 0
+	var cellar_found := false
+	for child in root_node.get_children():
+		if child.get_meta("zone_id", "") != "":
+			if child.get_meta("stratum_id", "") != "":
+				zones_with_stratum += 1
+			if child.get_meta("zone_id", "") == "zone-cellar" and child is Node2D:
+				cellar_found = true
+				cellar_z = child.z_index
+	print("zones_with_stratum=" + str(zones_with_stratum))
+	_assert(zones_with_stratum == EXPECTED_ZONES_WITH_STRATUM, "zones_with_stratum_matches",
+		"expected %d, got %d" % [EXPECTED_ZONES_WITH_STRATUM, zones_with_stratum])
+	print("cellar_z=" + str(cellar_z))
+	_assert(cellar_found and cellar_z < -50, "cellar_zone_z_banded_underground",
+		"expected cellar z_index < -50, got %d" % cellar_z)
 
 	# Cleanup
 	root_node.queue_free()
