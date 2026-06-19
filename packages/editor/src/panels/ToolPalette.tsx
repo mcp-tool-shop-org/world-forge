@@ -11,6 +11,7 @@ const tools: { id: EditorTool; label: string; key: string }[] = [
   { id: 'entity-place', label: 'Entity', key: 'E' },
   { id: 'landmark', label: 'Landmark', key: 'L' },
   { id: 'spawn', label: 'Spawn', key: 'S' },
+  { id: 'tile-paint', label: 'Tiles', key: 'T' },
 ];
 
 export function ToolPalette() {
