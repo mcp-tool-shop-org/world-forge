@@ -78,6 +78,7 @@ interface EditorState {
   showLandmarks: boolean;
   showSpawns: boolean;
   showBackgrounds: boolean;
+  showTiles: boolean;
   showAmbient: boolean;
   showMinimap: boolean;
   /** ED-FT-003: toggle elevation visualization overlay on the canvas. */
@@ -122,6 +123,7 @@ interface EditorState {
   toggleLandmarks: () => void;
   toggleSpawns: () => void;
   toggleBackgrounds: () => void;
+  toggleTiles: () => void;
   toggleAmbient: () => void;
   toggleMinimap: () => void;
   toggleElevation: () => void;
@@ -187,6 +189,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showLandmarks: true,
   showSpawns: true,
   showBackgrounds: true,
+  showTiles: true,
   showAmbient: true,
   showMinimap: true,
   // ED-FT-003: Rehydrate from localStorage. If unset, default on — Wave 2 ships
@@ -274,6 +277,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   toggleLandmarks: () => set((s) => ({ showLandmarks: !s.showLandmarks })),
   toggleSpawns: () => set((s) => ({ showSpawns: !s.showSpawns })),
   toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
+  toggleTiles: () => set((s) => ({ showTiles: !s.showTiles })),
   toggleAmbient: () => set((s) => ({ showAmbient: !s.showAmbient })),
   toggleMinimap: () => set((s) => ({ showMinimap: !s.showMinimap })),
   toggleElevation: () => set((s) => {
