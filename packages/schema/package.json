@@ -27,7 +27,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "author": "mcp-tool-shop",
   "license": "MIT",

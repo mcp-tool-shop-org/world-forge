@@ -4,7 +4,7 @@
   "private": true,
   "description": "2D/2.5D world authoring studio with peer export lanes for AI RPG Engine, Unreal Engine 5, and Godot 4.",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "workspaces": [
     "packages/*"
