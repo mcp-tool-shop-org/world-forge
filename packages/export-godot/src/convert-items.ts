@@ -67,11 +67,11 @@ export function convertItems(project: WorldProject): ConvertItemsResult {
             fidelity.push({
                 level: 'approximated',
                 domain: 'items',
-                severity: 'info',
+                severity: 'warning',
                 entityId: item.itemId,
                 fieldPath: `itemPlacements.${item.itemId}.position`,
-                message: `Item "${item.itemId}" position defaulted to zone "${zone.id}" origin.`,
-                reason: 'No gridX/gridY authored; using zone origin as fallback.',
+                message: `Item "${item.itemId}" position defaulted to zone "${zone.id}" origin — set gridX/gridY to place it precisely.`,
+                reason: 'No gridX/gridY authored; zone origin is rarely the intended item position.',
             });
         }
 

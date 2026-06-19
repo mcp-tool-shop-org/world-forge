@@ -107,11 +107,11 @@ export function convertEntities(project: WorldProject): ConvertEntitiesResult {
             fidelity.push({
                 level: 'approximated',
                 domain: 'entities',
-                severity: 'info',
+                severity: 'warning',
                 entityId: placement.entityId,
                 fieldPath: `entityPlacements.${placement.entityId}.position`,
-                message: `Entity "${placement.entityId}" position defaulted to zone "${zone.id}" origin.`,
-                reason: 'No gridX/gridY authored; using zone origin as fallback.',
+                message: `Entity "${placement.entityId}" position defaulted to zone "${zone.id}" origin — set gridX/gridY to place it precisely.`,
+                reason: 'No gridX/gridY authored; zone origin is rarely the intended entity position.',
             });
         }
 
