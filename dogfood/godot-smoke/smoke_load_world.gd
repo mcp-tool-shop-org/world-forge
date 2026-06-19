@@ -24,6 +24,9 @@ const EXPECTED_PROPS := 2
 const EXPECTED_WALL_COLLISIONS := 2
 const EXPECTED_MARKETS := 1
 const EXPECTED_CRAFTING := 1
+const EXPECTED_BUILDINGS := 1
+const EXPECTED_HUBS := 1
+const EXPECTED_STRONGHOLDS := 1
 
 var _failures: Array[String] = []
 
@@ -276,6 +279,45 @@ func _init() -> void:
 	print("crafting_count=" + str(crafting_count))
 	_assert(crafting_count == EXPECTED_CRAFTING, "crafting_count_matches",
 		"expected %d, got %d" % [EXPECTED_CRAFTING, crafting_count])
+
+	# 18. Town structures — buildings export as StaticBody2D footprints under a
+	#     "Buildings" container (each with a CollisionShape2D footprint child);
+	#     hubs + strongholds as Node2D under their own containers. Each carries
+	#     its id metadata.
+	var buildings := root_node.get_node_or_null("Buildings")
+	var building_count := 0
+	var buildings_with_collision := 0
+	if buildings:
+		for b in buildings.get_children():
+			if b.get_meta("building_id", "") != "":
+				building_count += 1
+			if b is StaticBody2D and b.get_node_or_null("Footprint") != null:
+				buildings_with_collision += 1
+	print("building_count=" + str(building_count))
+	_assert(building_count == EXPECTED_BUILDINGS, "building_count_matches",
+		"expected %d, got %d" % [EXPECTED_BUILDINGS, building_count])
+	_assert(buildings_with_collision == EXPECTED_BUILDINGS, "buildings_have_footprint_collision",
+		"expected %d, got %d" % [EXPECTED_BUILDINGS, buildings_with_collision])
+
+	var hubs := root_node.get_node_or_null("Hubs")
+	var hub_count := 0
+	if hubs:
+		for h in hubs.get_children():
+			if h.get_meta("hub_id", "") != "":
+				hub_count += 1
+	print("hub_count=" + str(hub_count))
+	_assert(hub_count == EXPECTED_HUBS, "hub_count_matches",
+		"expected %d, got %d" % [EXPECTED_HUBS, hub_count])
+
+	var strongholds := root_node.get_node_or_null("Strongholds")
+	var stronghold_count := 0
+	if strongholds:
+		for s in strongholds.get_children():
+			if s.get_meta("stronghold_id", "") != "":
+				stronghold_count += 1
+	print("stronghold_count=" + str(stronghold_count))
+	_assert(stronghold_count == EXPECTED_STRONGHOLDS, "stronghold_count_matches",
+		"expected %d, got %d" % [EXPECTED_STRONGHOLDS, stronghold_count])
 
 	# Cleanup
 	root_node.queue_free()

@@ -35,6 +35,7 @@ import type { GodotTransitionNode } from './convert-transitions.js';
 import { encodeTileMapData, type GodotTileLayer } from './convert-tile-layers.js';
 import type { GodotPropNode } from './convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from './convert-economy.js';
+import type { GodotBuilding, GodotHub, GodotStronghold } from './convert-structures.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -52,6 +53,12 @@ export interface SceneBuildInput {
     markets?: GodotMarketNode[];
     /** Crafting stations → Node2D under a "CraftingStations" container. Optional. */
     craftingStations?: GodotCraftingStation[];
+    /** Buildings → StaticBody2D footprints under a "Buildings" container. Optional. */
+    buildings?: GodotBuilding[];
+    /** Hubs → Node2D under a "Hubs" container (at zone centers). Optional. */
+    hubs?: GodotHub[];
+    /** Strongholds → Node2D under a "Strongholds" container (at zone centers). Optional. */
+    strongholds?: GodotStronghold[];
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -71,10 +78,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
     const tileResources = collectTileResources(tileLayers);
     // Sub-resources (per-zone collision shapes + navigation polygons).
     const subResources = collectSubResources(input.zones);
+    // Building footprint collision shapes (one RectangleShape2D per building).
+    const buildingShapes = collectBuildingShapes(input.buildings ?? []);
 
     // Header — load_steps counts every ext + sub resource plus the implicit scene step.
     const loadSteps = extResources.length + tileResources.textures.length
-        + subResources.blocks.length + tileResources.subBlocks.length + 1;
+        + subResources.blocks.length + tileResources.subBlocks.length
+        + buildingShapes.blocks.length + 1;
     lines.push(`[gd_scene load_steps=${loadSteps} format=3 uid="uid://world_forge_export"]`);
     lines.push('');
 
@@ -93,6 +103,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push('');
     }
     for (const block of tileResources.subBlocks) {
+        lines.push(block);
+        lines.push('');
+    }
+    for (const block of buildingShapes.blocks) {
         lines.push(block);
         lines.push('');
     }
@@ -285,6 +299,67 @@ export function buildWorldScene(input: SceneBuildInput): string {
         }
     }
 
+    // Town structures — buildings export as StaticBody2D footprints (tile-sized
+    // collision rect) at their footprint origin; hubs + strongholds export as
+    // Node2D placeholders at their zone centers. All carry their data as metadata.
+    const buildings = input.buildings ?? [];
+    if (buildings.length > 0) {
+        lines.push(`[node name="Buildings" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const b of buildings) {
+            const rectId = buildingShapes.rectIdByBuilding.get(b.id);
+            lines.push(`[node name="${b.nodeName}" type="StaticBody2D" parent="Buildings"]`);
+            lines.push(`position = Vector2(${b.position.x}, ${b.position.y})`);
+            lines.push(`metadata/building_id = "${b.id}"`);
+            lines.push(`metadata/name = "${escapeGodot(b.name)}"`);
+            lines.push(`metadata/building_type = "${escapeGodot(b.buildingType)}"`);
+            lines.push(`metadata/footprint_tiles = "${b.widthTiles}x${b.heightTiles}"`);
+            if (b.zoneId) lines.push(`metadata/zone_id = "${b.zoneId}"`);
+            if (b.interiorZoneId) lines.push(`metadata/interior_zone_id = "${b.interiorZoneId}"`);
+            lines.push('');
+            if (rectId) {
+                lines.push(`[node name="Footprint" type="CollisionShape2D" parent="Buildings/${b.nodeName}"]`);
+                lines.push(`position = Vector2(${b.footprint.w / 2}, ${b.footprint.h / 2})`);
+                lines.push(`shape = SubResource("${rectId}")`);
+                lines.push('');
+            }
+        }
+    }
+
+    const hubs = input.hubs ?? [];
+    if (hubs.length > 0) {
+        lines.push(`[node name="Hubs" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const h of hubs) {
+            lines.push(`[node name="${h.nodeName}" type="Node2D" parent="Hubs"]`);
+            lines.push(`position = Vector2(${h.position.x}, ${h.position.y})`);
+            lines.push(`metadata/hub_id = "${h.id}"`);
+            lines.push(`metadata/name = "${escapeGodot(h.name)}"`);
+            lines.push(`metadata/zone_id = "${h.zoneId}"`);
+            lines.push(`metadata/hub_type = "${escapeGodot(h.hubType)}"`);
+            lines.push(`metadata/services = "${escapeGodot(h.serviceTypes.join(','))}"`);
+            lines.push(`metadata/connected_zones = "${escapeGodot(h.connectedZoneIds.join(','))}"`);
+            lines.push('');
+        }
+    }
+
+    const strongholds = input.strongholds ?? [];
+    if (strongholds.length > 0) {
+        lines.push(`[node name="Strongholds" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const s of strongholds) {
+            lines.push(`[node name="${s.nodeName}" type="Node2D" parent="Strongholds"]`);
+            lines.push(`position = Vector2(${s.position.x}, ${s.position.y})`);
+            lines.push(`metadata/stronghold_id = "${s.id}"`);
+            lines.push(`metadata/name = "${escapeGodot(s.name)}"`);
+            lines.push(`metadata/zone_id = "${s.zoneId}"`);
+            if (s.factionId) lines.push(`metadata/faction_id = "${s.factionId}"`);
+            lines.push(`metadata/defense_level = ${s.defenseLevel}`);
+            lines.push(`metadata/garrison = "${escapeGodot(s.garrisonEntityIds.join(','))}"`);
+            lines.push('');
+        }
+    }
+
     // Navigation links as metadata on root
     if (input.navigationLinks.length > 0) {
         lines.push(`[node name="NavigationLinks" type="Node2D" parent="."]`);
@@ -445,6 +520,33 @@ function emitTileMapLayers(
         }
     }
     return lines;
+}
+
+interface BuildingShapeSet {
+    /** RectangleShape2D sub-resource declaration blocks, in declaration order. */
+    blocks: string[];
+    /** Map of building id → its footprint RectangleShape2D sub-resource id. */
+    rectIdByBuilding: Map<string, string>;
+}
+
+/**
+ * Build one RectangleShape2D sub-resource per building, sized to its pixel
+ * footprint. Ids are index-based (BuildingShape_N) so they are always valid
+ * Godot SubResource ids regardless of building naming.
+ */
+function collectBuildingShapes(buildings: GodotBuilding[]): BuildingShapeSet {
+    const blocks: string[] = [];
+    const rectIdByBuilding = new Map<string, string>();
+    for (let i = 0; i < buildings.length; i++) {
+        const b = buildings[i];
+        const id = `BuildingShape_${i}`;
+        blocks.push(
+            `[sub_resource type="RectangleShape2D" id="${id}"]\n` +
+            `size = Vector2(${Math.round(b.footprint.w)}, ${Math.round(b.footprint.h)})`,
+        );
+        rectIdByBuilding.set(b.id, id);
+    }
+    return { blocks, rectIdByBuilding };
 }
 
 interface SubResourceSet {

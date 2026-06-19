@@ -383,6 +383,17 @@ export const proofProject: WorldProject = {
     marketNodes: [
         { id: 'market-bazaar', zoneId: 'zone-market', merchantEntityId: 'npc-merchant', supplyCategories: ['food', 'tools'], priceModifier: 1.2, contrabandAvailable: false },
     ],
+    // Town structures: an enterable inn (footprint → StaticBody2D + interior link),
+    // a market-square hub serving nearby zones, a fortified keep at the gate.
+    buildings: [
+        { id: 'bld-inn', name: 'The Roadside Inn', buildingType: 'tavern', gridX: 5, gridY: 5, width: 3, height: 2, zoneId: 'zone-market', interiorZoneId: 'zone-cellar', tags: ['lodging'] },
+    ],
+    hubs: [
+        { id: 'hub-square', name: 'Market Square', zoneId: 'zone-market', hubType: 'market-square', serviceTypes: ['market', 'inn'], connectedZoneIds: ['zone-tavern', 'zone-alley'], tags: [] },
+    ],
+    strongholds: [
+        { id: 'hold-keep', name: 'Dustwall Keep', zoneId: 'zone-gate', factionId: 'faction-garrison', defenseLevel: 3, garrisonEntityIds: ['npc-merchant'], tags: [] },
+    ],
     // Wave B-2: a color tileset (no imagePath) + a ground layer over the tavern.
     // Color-only so the Godot smoke loads with zero external texture deps.
     tilesets: [
