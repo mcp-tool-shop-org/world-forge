@@ -15,6 +15,7 @@ import type { GodotPropNode } from '../convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.js';
 import type { GodotBuilding, GodotHub, GodotStronghold } from '../convert-structures.js';
 import type { GodotStratum, GodotStratumLink } from '../convert-strata.js';
+import type { GodotHazardPlacement } from '../convert-hazards.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -426,5 +427,43 @@ describe('buildWorldScene — vertical strata (world modeling)', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         expect(tscn).not.toContain('name="Strata"');
         expect(tscn).not.toContain('name="StratumLinks"');
+    });
+});
+
+describe('buildWorldScene — typed hazards (world modeling)', () => {
+    const hazard: GodotHazardPlacement = {
+        nodeName: 'Hazard_z1_lava', hazardId: 'lava', zoneId: 'z1', position: { x: 64, y: 32 },
+        size: { w: 128, h: 64 }, trigger: 'per-turn', moveCostDelta: 2, passable: 'flying-only',
+        blocksVision: true, effects: 'damage:8@turn-end;ignite@0.3', effectCount: 2,
+    };
+
+    it('emits a hazard as an Area2D region with an inline collision rect + metadata', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), hazards: [hazard] });
+        expect(tscn).toContain('[node name="Hazards" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="Hazard_z1_lava" type="Area2D" parent="Hazards"]');
+        expect(tscn).toContain('position = Vector2(64, 32)');
+        expect(tscn).toContain('metadata/hazard_id = "lava"');
+        expect(tscn).toContain('metadata/trigger = "per-turn"');
+        expect(tscn).toContain('metadata/move_cost_delta = 2');
+        expect(tscn).toContain('metadata/passable = "flying-only"');
+        expect(tscn).toContain('metadata/blocks_vision = true');
+        expect(tscn).toContain('metadata/effect_count = 2');
+        expect(tscn).toContain('metadata/effects = "damage:8@turn-end;ignite@0.3"');
+        // Region: a RectangleShape2D sub-resource + a CollisionShape2D referencing it.
+        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="HazardShape_0"]');
+        expect(tscn).toContain('size = Vector2(128, 64)');
+        expect(tscn).toContain('[node name="Region" type="CollisionShape2D" parent="Hazards/Hazard_z1_lava"]');
+        expect(tscn).toContain('shape = SubResource("HazardShape_0")');
+    });
+
+    it('counts hazard collision shapes in load_steps', () => {
+        // 1 zone → 2 sub (rect+nav), 1 hazard → 1 sub. load_steps = 2 + 1 + 1 = 4
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), hazards: [hazard] });
+        expect(tscn).toContain('load_steps=4');
+    });
+
+    it('omits the Hazards container when there are none', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('name="Hazards"');
     });
 });

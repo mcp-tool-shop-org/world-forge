@@ -55,6 +55,9 @@ export type { GodotBuilding, GodotHub, GodotStronghold, ConvertStructuresResult 
 export { convertStrata, STRATUM_Z_BAND } from './convert-strata.js';
 export type { GodotStratum, GodotStratumLink, ConvertStrataResult } from './convert-strata.js';
 
+export { convertHazards } from './convert-hazards.js';
+export type { GodotHazardPlacement, ConvertHazardsResult } from './convert-hazards.js';
+
 export { buildWorldScene } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 
