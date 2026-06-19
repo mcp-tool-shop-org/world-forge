@@ -103,6 +103,7 @@ export const proofProject: WorldProject = {
             elevation: -3,
             elevationRange: { floor: -5, ceiling: -1 },
             stratumId: 'underground',
+            hazardRefs: ['haz-crumbling'],
         },
         {
             id: 'zone-alley',
@@ -405,6 +406,10 @@ export const proofProject: WorldProject = {
     ],
     stratumLinks: [
         { id: 'slink-trapdoor', fromStratumId: 'surface', toStratumId: 'underground', fromZoneId: 'zone-tavern', toZoneId: 'zone-cellar', bidirectional: true, linkType: 'stairs' },
+    ],
+    // A typed hazard: the cellar's crumbling floor (damage on enter + slows movement).
+    hazardDefinitions: [
+        { id: 'haz-crumbling', name: 'Crumbling Floor', effects: [{ kind: 'damage', amount: 4, tickOn: 'turn-end' }], trigger: 'on-enter', moveCostDelta: 1, passable: 'yes', blocksVision: false, tags: ['terrain'] },
     ],
     // Wave B-2: a color tileset (no imagePath) + a ground layer over the tavern.
     // Color-only so the Godot smoke loads with zero external texture deps.

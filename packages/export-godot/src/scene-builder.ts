@@ -37,6 +37,7 @@ import type { GodotPropNode } from './convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from './convert-economy.js';
 import type { GodotBuilding, GodotHub, GodotStronghold } from './convert-structures.js';
 import type { GodotStratum, GodotStratumLink } from './convert-strata.js';
+import type { GodotHazardPlacement } from './convert-hazards.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -66,6 +67,8 @@ export interface SceneBuildInput {
     stratumLinks?: GodotStratumLink[];
     /** zoneId → its stratum (id + z band) for stratum_id metadata + z_index banding. Optional. */
     zoneStrata?: Record<string, { stratumId: string; zBand: number }>;
+    /** Hazard placements → Area2D regions under a "Hazards" container. Optional. */
+    hazards?: GodotHazardPlacement[];
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -87,11 +90,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
     const subResources = collectSubResources(input.zones);
     // Building footprint collision shapes (one RectangleShape2D per building).
     const buildingShapes = collectBuildingShapes(input.buildings ?? []);
+    // Hazard region collision shapes (one RectangleShape2D per hazard placement).
+    const hazardShapes = collectHazardShapes(input.hazards ?? []);
 
     // Header — load_steps counts every ext + sub resource plus the implicit scene step.
     const loadSteps = extResources.length + tileResources.textures.length
         + subResources.blocks.length + tileResources.subBlocks.length
-        + buildingShapes.blocks.length + 1;
+        + buildingShapes.blocks.length + hazardShapes.length + 1;
     lines.push(`[gd_scene load_steps=${loadSteps} format=3 uid="uid://world_forge_export"]`);
     lines.push('');
 
@@ -114,6 +119,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push('');
     }
     for (const block of buildingShapes.blocks) {
+        lines.push(block);
+        lines.push('');
+    }
+    for (const block of hazardShapes) {
         lines.push(block);
         lines.push('');
     }
@@ -416,6 +425,32 @@ export function buildWorldScene(input: SceneBuildInput): string {
         }
     }
 
+    // Typed hazards — one Area2D per (zone, hazard) covering the zone, with an
+    // inline zone-sized CollisionShape2D and the hazard data as metadata. The
+    // runtime applies effects on body_entered from the metadata.
+    const hazards = input.hazards ?? [];
+    if (hazards.length > 0) {
+        lines.push(`[node name="Hazards" type="Node2D" parent="."]`);
+        lines.push('');
+        for (let i = 0; i < hazards.length; i++) {
+            const hz = hazards[i];
+            lines.push(`[node name="${hz.nodeName}" type="Area2D" parent="Hazards"]`);
+            lines.push(`position = Vector2(${hz.position.x}, ${hz.position.y})`);
+            lines.push(`metadata/hazard_id = "${hz.hazardId}"`);
+            lines.push(`metadata/zone_id = "${hz.zoneId}"`);
+            lines.push(`metadata/trigger = "${escapeGodot(hz.trigger)}"`);
+            lines.push(`metadata/move_cost_delta = ${hz.moveCostDelta}`);
+            lines.push(`metadata/passable = "${escapeGodot(hz.passable)}"`);
+            lines.push(`metadata/blocks_vision = ${hz.blocksVision}`);
+            lines.push(`metadata/effect_count = ${hz.effectCount}`);
+            lines.push(`metadata/effects = "${escapeGodot(hz.effects)}"`);
+            lines.push('');
+            lines.push(`[node name="Region" type="CollisionShape2D" parent="Hazards/${hz.nodeName}"]`);
+            lines.push(`shape = SubResource("HazardShape_${i}")`);
+            lines.push('');
+        }
+    }
+
     // Navigation links as metadata on root
     if (input.navigationLinks.length > 0) {
         lines.push(`[node name="NavigationLinks" type="Node2D" parent="."]`);
@@ -603,6 +638,23 @@ function collectBuildingShapes(buildings: GodotBuilding[]): BuildingShapeSet {
         rectIdByBuilding.set(b.id, id);
     }
     return { blocks, rectIdByBuilding };
+}
+
+/**
+ * Build one RectangleShape2D sub-resource per hazard placement, sized to the
+ * zone's extent. Ids are index-based (HazardShape_N), matching the index used
+ * when emitting the Area2D regions, so references always line up.
+ */
+function collectHazardShapes(hazards: GodotHazardPlacement[]): string[] {
+    const blocks: string[] = [];
+    for (let i = 0; i < hazards.length; i++) {
+        const hz = hazards[i];
+        blocks.push(
+            `[sub_resource type="RectangleShape2D" id="HazardShape_${i}"]\n` +
+            `size = Vector2(${Math.round(hz.size.w)}, ${Math.round(hz.size.h)})`,
+        );
+    }
+    return blocks;
 }
 
 interface SubResourceSet {

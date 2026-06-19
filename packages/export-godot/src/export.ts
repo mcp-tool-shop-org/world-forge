@@ -24,6 +24,7 @@ import { convertProps, type GodotPropNode } from './convert-props.js';
 import { convertEconomy, type GodotMarketNode, type GodotCraftingStation } from './convert-economy.js';
 import { convertStructures, type GodotBuilding, type GodotHub, type GodotStronghold } from './convert-structures.js';
 import { convertStrata, type GodotStratum, type GodotStratumLink } from './convert-strata.js';
+import { convertHazards, type GodotHazardPlacement } from './convert-hazards.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
@@ -64,6 +65,7 @@ export interface GodotContentPack {
     strongholds: GodotStronghold[];
     strata: GodotStratum[];
     stratumLinks: GodotStratumLink[];
+    hazards: GodotHazardPlacement[];
     /** The generated .tscn scene text (main world scene). */
     worldSceneTscn: string;
 }
@@ -113,6 +115,7 @@ export function exportToGodot(
     let economyResult: ReturnType<typeof convertEconomy>;
     let structuresResult: ReturnType<typeof convertStructures>;
     let strataResult: ReturnType<typeof convertStrata>;
+    let hazardsResult: ReturnType<typeof convertHazards>;
 
     try {
         zonesResult = convertZones(project);
@@ -130,6 +133,7 @@ export function exportToGodot(
         economyResult = convertEconomy(project);
         structuresResult = convertStructures(project);
         strataResult = convertStrata(project);
+        hazardsResult = convertHazards(project);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
@@ -154,6 +158,7 @@ export function exportToGodot(
     fidelityEntries.push(...economyResult.fidelity);
     fidelityEntries.push(...structuresResult.fidelity);
     fidelityEntries.push(...strataResult.fidelity);
+    fidelityEntries.push(...hazardsResult.fidelity);
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -191,6 +196,7 @@ export function exportToGodot(
         strata: strataResult.strata,
         stratumLinks: strataResult.links,
         zoneStrata: strataResult.zoneStrata,
+        hazards: hazardsResult.placements,
     });
 
     const proj = project as unknown as Record<string, unknown>;
@@ -229,6 +235,7 @@ export function exportToGodot(
         strongholds: structuresResult.strongholds,
         strata: strataResult.strata,
         stratumLinks: strataResult.links,
+        hazards: hazardsResult.placements,
         worldSceneTscn,
     };
 

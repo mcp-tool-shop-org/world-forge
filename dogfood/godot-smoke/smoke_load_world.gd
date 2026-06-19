@@ -30,6 +30,7 @@ const EXPECTED_STRONGHOLDS := 1
 const EXPECTED_STRATA := 2
 const EXPECTED_STRATUM_LINKS := 1
 const EXPECTED_ZONES_WITH_STRATUM := 2
+const EXPECTED_HAZARDS := 1
 
 var _failures: Array[String] = []
 
@@ -363,6 +364,23 @@ func _init() -> void:
 	print("cellar_z=" + str(cellar_z))
 	_assert(cellar_found and cellar_z < -50, "cellar_zone_z_banded_underground",
 		"expected cellar z_index < -50, got %d" % cellar_z)
+
+	# 20. Typed hazards — each zone hazard ref exports an Area2D under "Hazards"
+	#     with hazard_id metadata + an inline CollisionShape2D region.
+	var hazards := root_node.get_node_or_null("Hazards")
+	var hazard_count := 0
+	var hazards_are_areas := 0
+	if hazards:
+		for hz in hazards.get_children():
+			if hz.get_meta("hazard_id", "") != "":
+				hazard_count += 1
+			if hz is Area2D and hz.get_node_or_null("Region") != null:
+				hazards_are_areas += 1
+	print("hazard_count=" + str(hazard_count))
+	_assert(hazard_count == EXPECTED_HAZARDS, "hazard_count_matches",
+		"expected %d, got %d" % [EXPECTED_HAZARDS, hazard_count])
+	_assert(hazards_are_areas == EXPECTED_HAZARDS, "hazards_are_area2d_with_region",
+		"expected %d, got %d" % [EXPECTED_HAZARDS, hazards_are_areas])
 
 	# Cleanup
 	root_node.queue_free()
