@@ -1071,6 +1071,94 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
+  // --- World-modeling: strata + stratum links (SCH world-modeling slice 1) ---
+
+  const strata = project.strata ?? [];
+  const stratumIds = new Set<string>();
+
+  // 66. Stratum ID uniqueness.
+  for (const s of strata) {
+    if (stratumIds.has(s.id)) {
+      errors.push({ path: `strata.${s.id}`, message: `Duplicate stratum ID: ${s.id}` });
+    }
+    stratumIds.add(s.id);
+  }
+
+  // 67. Stratum zRange must be finite with floor < ceiling (mirrors elevationRange).
+  for (const s of strata) {
+    if (s.zRange) {
+      const { floor, ceiling } = s.zRange;
+      if (!Number.isFinite(floor) || !Number.isFinite(ceiling)) {
+        errors.push({
+          path: `strata.${s.id}.zRange`,
+          message: `Stratum "${s.id}" zRange floor and ceiling must be finite numbers (got floor=${floor}, ceiling=${ceiling}).`,
+        });
+      } else if (!(floor < ceiling)) {
+        errors.push({
+          path: `strata.${s.id}.zRange`,
+          message: `Stratum "${s.id}" zRange requires floor (${floor}) < ceiling (${ceiling}).`,
+        });
+      }
+    }
+  }
+
+  // 68. Stratum order must be a finite number.
+  for (const s of strata) {
+    if (!Number.isFinite(s.order)) {
+      errors.push({
+        path: `strata.${s.id}.order`,
+        message: `Stratum "${s.id}" order (${s.order}) must be a finite number.`,
+      });
+    }
+  }
+
+  // 69. Stratum.visibleStrata must reference existing strata.
+  for (const s of strata) {
+    for (const vid of s.visibleStrata ?? []) {
+      if (!stratumIds.has(vid)) {
+        errors.push({
+          path: `strata.${s.id}.visibleStrata`,
+          message: `Stratum "${s.id}" lists visible stratum "${vid}" that does not exist.`,
+        });
+      }
+    }
+  }
+
+  // 70. Zone.stratumId must reference an existing stratum when set.
+  for (const z of project.zones) {
+    if (z.stratumId !== undefined && !stratumIds.has(z.stratumId)) {
+      errors.push({
+        path: `zones.${z.id}.stratumId`,
+        message: `Zone "${z.id}" references nonexistent stratum "${z.stratumId}".`,
+      });
+    }
+  }
+
+  // 71. StratumLink ID uniqueness.
+  const stratumLinkIds = new Set<string>();
+  for (const l of project.stratumLinks ?? []) {
+    if (stratumLinkIds.has(l.id)) {
+      errors.push({ path: `stratumLinks.${l.id}`, message: `Duplicate stratum link ID: ${l.id}` });
+    }
+    stratumLinkIds.add(l.id);
+  }
+
+  // 72. StratumLink endpoints must reference existing strata; anchor zones (when set) existing zones.
+  for (const l of project.stratumLinks ?? []) {
+    if (!stratumIds.has(l.fromStratumId)) {
+      errors.push({ path: `stratumLinks.${l.id}.fromStratumId`, message: `Stratum link "${l.id}" references nonexistent stratum "${l.fromStratumId}".` });
+    }
+    if (!stratumIds.has(l.toStratumId)) {
+      errors.push({ path: `stratumLinks.${l.id}.toStratumId`, message: `Stratum link "${l.id}" references nonexistent stratum "${l.toStratumId}".` });
+    }
+    if (l.fromZoneId !== undefined && !zoneIds.has(l.fromZoneId)) {
+      errors.push({ path: `stratumLinks.${l.id}.fromZoneId`, message: `Stratum link "${l.id}" anchors to nonexistent zone "${l.fromZoneId}".` });
+    }
+    if (l.toZoneId !== undefined && !zoneIds.has(l.toZoneId)) {
+      errors.push({ path: `stratumLinks.${l.id}.toZoneId`, message: `Stratum link "${l.id}" anchors to nonexistent zone "${l.toZoneId}".` });
+    }
+  }
+
   // Structured warning counts for callers that want a quick health check
   warningCount = errors.length;
   if (verbose && errors.length > 0) {

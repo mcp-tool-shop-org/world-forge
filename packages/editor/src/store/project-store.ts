@@ -5,6 +5,7 @@ import type {
   WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
   EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
   Building, Hub, Stronghold,
+  Stratum, StratumLink,
   PlayerTemplate, BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition,
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
@@ -52,6 +53,8 @@ export function createEmptyProject(mode?: AuthoringMode): WorldProject {
     buildings: [],
     hubs: [],
     strongholds: [],
+    strata: [],
+    stratumLinks: [],
     tilesets: [],
     tileLayers: [],
     props: [],
@@ -174,6 +177,17 @@ interface ProjectState {
   addStronghold: (s: Stronghold) => void;
   updateStronghold: (id: string, updates: Partial<Stronghold>) => void;
   removeStronghold: (id: string) => void;
+
+  // World modeling — vertical strata + inter-stratum links.
+  addStratum: (s: Stratum) => void;
+  updateStratum: (id: string, updates: Partial<Stratum>) => void;
+  /** Remove a stratum + cascade: drop its links and clear stratumId on its zones. */
+  removeStratum: (id: string) => void;
+  addStratumLink: (l: StratumLink) => void;
+  updateStratumLink: (id: string, updates: Partial<StratumLink>) => void;
+  removeStratumLink: (id: string) => void;
+  /** Assign (or clear, with undefined) a zone's stratum. */
+  setZoneStratum: (zoneId: string, stratumId: string | undefined) => void;
   /**
    * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
    * Each edit paints (tileId set) or erases (tileId null) the cell at
@@ -826,6 +840,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeStronghold: (id) => get().updateProject((p) => ({
     ...p, strongholds: (p.strongholds ?? []).filter((s) => s.id !== id),
   }), 'Delete stronghold'),
+
+  // World modeling — vertical strata + inter-stratum links.
+  addStratum: (s) => get().updateProject((p) => ({ ...p, strata: [...(p.strata ?? []), s] }), 'Add stratum'),
+  updateStratum: (id, updates) => get().updateProject((p) => ({
+    ...p, strata: (p.strata ?? []).map((s) => s.id === id ? { ...s, ...updates } : s),
+  }), 'Update stratum'),
+  removeStratum: (id) => get().updateProject((p) => ({
+    ...p,
+    strata: (p.strata ?? []).filter((s) => s.id !== id),
+    // Cascade: drop links touching this stratum + clear stratumId on its zones.
+    stratumLinks: (p.stratumLinks ?? []).filter((l) => l.fromStratumId !== id && l.toStratumId !== id),
+    zones: p.zones.map((z) => z.stratumId === id ? { ...z, stratumId: undefined } : z),
+  }), 'Delete stratum'),
+  addStratumLink: (l) => get().updateProject((p) => ({ ...p, stratumLinks: [...(p.stratumLinks ?? []), l] }), 'Add stratum link'),
+  updateStratumLink: (id, updates) => get().updateProject((p) => ({
+    ...p, stratumLinks: (p.stratumLinks ?? []).map((l) => l.id === id ? { ...l, ...updates } : l),
+  }), 'Update stratum link'),
+  removeStratumLink: (id) => get().updateProject((p) => ({
+    ...p, stratumLinks: (p.stratumLinks ?? []).filter((l) => l.id !== id),
+  }), 'Delete stratum link'),
+  setZoneStratum: (zoneId, stratumId) => get().updateProject((p) => ({
+    ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, stratumId } : z),
+  }), stratumId ? 'Assign zone stratum' : 'Clear zone stratum'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
