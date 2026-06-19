@@ -13,6 +13,7 @@ import type { GodotEntityManifest } from '../convert-entities.js';
 import type { GodotTileLayer } from '../convert-tile-layers.js';
 import type { GodotPropNode } from '../convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.js';
+import type { GodotBuilding, GodotHub, GodotStronghold } from '../convert-structures.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -301,5 +302,66 @@ describe('buildWorldScene — town economy (Wave B-3)', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         expect(tscn).not.toContain('name="Markets"');
         expect(tscn).not.toContain('name="CraftingStations"');
+    });
+});
+
+describe('buildWorldScene — town structures (buildings/hubs/strongholds)', () => {
+    const buildingNode: GodotBuilding = {
+        nodeName: 'Building_b1', id: 'b1', name: 'Inn', buildingType: 'tavern',
+        position: { x: 96, y: 128 }, footprint: { w: 64, h: 96 }, widthTiles: 2, heightTiles: 3,
+        zoneId: 'z1', interiorZoneId: 'inn-interior', tags: [],
+    };
+    const hubNode: GodotHub = {
+        nodeName: 'Hub_h1', id: 'h1', name: 'Square', zoneId: 'z1', position: { x: 64, y: 32 },
+        hubType: 'market-square', serviceTypes: ['market', 'inn'], connectedZoneIds: ['z2'],
+    };
+    const strongholdNode: GodotStronghold = {
+        nodeName: 'Stronghold_s1', id: 's1', name: 'Keep', zoneId: 'z1', position: { x: 160, y: 64 },
+        factionId: 'iron-legion', defenseLevel: 5, garrisonEntityIds: ['npc-guard'],
+    };
+
+    it('emits a building as a StaticBody2D footprint with a tile-sized collision rect', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), buildings: [buildingNode] });
+        expect(tscn).toContain('[node name="Buildings" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="Building_b1" type="StaticBody2D" parent="Buildings"]');
+        expect(tscn).toContain('position = Vector2(96, 128)');
+        expect(tscn).toContain('metadata/building_id = "b1"');
+        expect(tscn).toContain('metadata/building_type = "tavern"');
+        expect(tscn).toContain('metadata/footprint_tiles = "2x3"');
+        expect(tscn).toContain('metadata/interior_zone_id = "inn-interior"');
+        // Footprint collision: a RectangleShape2D sub-resource + a centered CollisionShape2D.
+        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="BuildingShape_0"]');
+        expect(tscn).toContain('size = Vector2(64, 96)');
+        expect(tscn).toContain('[node name="Footprint" type="CollisionShape2D" parent="Buildings/Building_b1"]');
+        expect(tscn).toContain('position = Vector2(32, 48)');
+        expect(tscn).toContain('shape = SubResource("BuildingShape_0")');
+    });
+
+    it('counts building footprint shapes in load_steps', () => {
+        // 1 zone → 2 sub (rect+nav), 1 building → 1 sub. load_steps = 2 + 1 + 1 = 4
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), buildings: [buildingNode] });
+        expect(tscn).toContain('load_steps=4');
+    });
+
+    it('emits Hubs + Strongholds containers with metadata at zone centers', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), hubs: [hubNode], strongholds: [strongholdNode] });
+        expect(tscn).toContain('[node name="Hubs" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="Hub_h1" type="Node2D" parent="Hubs"]');
+        expect(tscn).toContain('metadata/hub_id = "h1"');
+        expect(tscn).toContain('metadata/hub_type = "market-square"');
+        expect(tscn).toContain('metadata/services = "market,inn"');
+        expect(tscn).toContain('metadata/connected_zones = "z2"');
+        expect(tscn).toContain('[node name="Strongholds" type="Node2D" parent="."]');
+        expect(tscn).toContain('metadata/stronghold_id = "s1"');
+        expect(tscn).toContain('metadata/faction_id = "iron-legion"');
+        expect(tscn).toContain('metadata/defense_level = 5');
+        expect(tscn).toContain('metadata/garrison = "npc-guard"');
+    });
+
+    it('omits structure containers when there are none', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('name="Buildings"');
+        expect(tscn).not.toContain('name="Hubs"');
+        expect(tscn).not.toContain('name="Strongholds"');
     });
 });

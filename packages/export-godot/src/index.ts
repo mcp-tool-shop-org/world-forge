@@ -49,6 +49,9 @@ export type { GodotPropNode, ConvertPropsResult } from './convert-props.js';
 export { convertEconomy } from './convert-economy.js';
 export type { GodotMarketNode, GodotCraftingStation, ConvertEconomyResult } from './convert-economy.js';
 
+export { convertStructures } from './convert-structures.js';
+export type { GodotBuilding, GodotHub, GodotStronghold, ConvertStructuresResult } from './convert-structures.js';
+
 export { buildWorldScene } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 

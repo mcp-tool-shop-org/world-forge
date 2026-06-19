@@ -22,6 +22,7 @@ import { convertTransitions, type GodotTransitionNode } from './convert-transiti
 import { convertTileLayers, type GodotTileLayer } from './convert-tile-layers.js';
 import { convertProps, type GodotPropNode } from './convert-props.js';
 import { convertEconomy, type GodotMarketNode, type GodotCraftingStation } from './convert-economy.js';
+import { convertStructures, type GodotBuilding, type GodotHub, type GodotStronghold } from './convert-structures.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
@@ -57,6 +58,9 @@ export interface GodotContentPack {
     props: GodotPropNode[];
     markets: GodotMarketNode[];
     craftingStations: GodotCraftingStation[];
+    buildings: GodotBuilding[];
+    hubs: GodotHub[];
+    strongholds: GodotStronghold[];
     /** The generated .tscn scene text (main world scene). */
     worldSceneTscn: string;
 }
@@ -104,6 +108,7 @@ export function exportToGodot(
     let tileLayersResult: ReturnType<typeof convertTileLayers>;
     let propsResult: ReturnType<typeof convertProps>;
     let economyResult: ReturnType<typeof convertEconomy>;
+    let structuresResult: ReturnType<typeof convertStructures>;
 
     try {
         zonesResult = convertZones(project);
@@ -119,6 +124,7 @@ export function exportToGodot(
         tileLayersResult = convertTileLayers(project);
         propsResult = convertProps(project);
         economyResult = convertEconomy(project);
+        structuresResult = convertStructures(project);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
@@ -141,6 +147,7 @@ export function exportToGodot(
     fidelityEntries.push(...tileLayersResult.fidelity);
     fidelityEntries.push(...propsResult.fidelity);
     fidelityEntries.push(...economyResult.fidelity);
+    fidelityEntries.push(...structuresResult.fidelity);
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -172,6 +179,9 @@ export function exportToGodot(
         props: propsResult.props,
         markets: economyResult.markets,
         craftingStations: economyResult.craftingStations,
+        buildings: structuresResult.buildings,
+        hubs: structuresResult.hubs,
+        strongholds: structuresResult.strongholds,
     });
 
     const proj = project as unknown as Record<string, unknown>;
@@ -205,6 +215,9 @@ export function exportToGodot(
         props: propsResult.props,
         markets: economyResult.markets,
         craftingStations: economyResult.craftingStations,
+        buildings: structuresResult.buildings,
+        hubs: structuresResult.hubs,
+        strongholds: structuresResult.strongholds,
         worldSceneTscn,
     };
 
