@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "prebuild": "node scripts/sync-version.mjs",
-    "build": "tsc --build",
+    "build": "tsc --build --force",
     "clean": "tsc --build --clean",
     "test": "vitest run",
     "test:e2e": "playwright test",
