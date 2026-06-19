@@ -6,6 +6,7 @@ import type {
   EntityPlacement, ItemPlacement, EncounterAnchor,
   SpawnPoint, CraftingStation, MarketNode, LootTable,
 } from './entities.js';
+import type { Building, Hub, Stronghold } from './town.js';
 import type { DialogueDefinition } from './dialogue.js';
 import type { PlayerTemplate } from './player-template.js';
 import type { BuildCatalogDefinition } from './build-catalog.js';
@@ -60,6 +61,15 @@ export interface WorldProject {
   spawnPoints: SpawnPoint[];
   craftingStations: CraftingStation[];
   marketNodes: MarketNode[];
+
+  /**
+   * Placed town structures — enterable buildings, service/connectivity hubs,
+   * and fortified faction strongholds. Additive since v4.5 — existing projects
+   * without these fields validate normally (they default to undefined / []).
+   */
+  buildings?: Building[];
+  hubs?: Hub[];
+  strongholds?: Stronghold[];
 
   tilesets: Tileset[];
   tileLayers: TileLayer[];

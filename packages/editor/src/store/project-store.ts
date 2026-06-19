@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type {
   WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
   EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
+  Building, Hub, Stronghold,
   PlayerTemplate, BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition,
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
@@ -48,6 +49,9 @@ export function createEmptyProject(mode?: AuthoringMode): WorldProject {
     spawnPoints: [],
     craftingStations: [],
     marketNodes: [],
+    buildings: [],
+    hubs: [],
+    strongholds: [],
     tilesets: [],
     tileLayers: [],
     props: [],
@@ -159,6 +163,17 @@ interface ProjectState {
   addCraftingStation: (c: CraftingStation) => void;
   updateCraftingStation: (id: string, updates: Partial<CraftingStation>) => void;
   removeCraftingStation: (id: string) => void;
+
+  // Town structures — buildings, hubs, strongholds (placed town content).
+  addBuilding: (b: Building) => void;
+  updateBuilding: (id: string, updates: Partial<Building>) => void;
+  removeBuilding: (id: string) => void;
+  addHub: (h: Hub) => void;
+  updateHub: (id: string, updates: Partial<Hub>) => void;
+  removeHub: (id: string) => void;
+  addStronghold: (s: Stronghold) => void;
+  updateStronghold: (id: string, updates: Partial<Stronghold>) => void;
+  removeStronghold: (id: string) => void;
   /**
    * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
    * Each edit paints (tileId set) or erases (tileId null) the cell at
@@ -788,6 +803,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeCraftingStation: (id) => get().updateProject((p) => ({
     ...p, craftingStations: (p.craftingStations ?? []).filter((c) => c.id !== id),
   }), 'Delete crafting station'),
+
+  // Town structures — buildings, hubs, strongholds.
+  addBuilding: (b) => get().updateProject((p) => ({ ...p, buildings: [...(p.buildings ?? []), b] }), 'Add building'),
+  updateBuilding: (id, updates) => get().updateProject((p) => ({
+    ...p, buildings: (p.buildings ?? []).map((b) => b.id === id ? { ...b, ...updates } : b),
+  }), 'Update building'),
+  removeBuilding: (id) => get().updateProject((p) => ({
+    ...p, buildings: (p.buildings ?? []).filter((b) => b.id !== id),
+  }), 'Delete building'),
+  addHub: (h) => get().updateProject((p) => ({ ...p, hubs: [...(p.hubs ?? []), h] }), 'Add hub'),
+  updateHub: (id, updates) => get().updateProject((p) => ({
+    ...p, hubs: (p.hubs ?? []).map((h) => h.id === id ? { ...h, ...updates } : h),
+  }), 'Update hub'),
+  removeHub: (id) => get().updateProject((p) => ({
+    ...p, hubs: (p.hubs ?? []).filter((h) => h.id !== id),
+  }), 'Delete hub'),
+  addStronghold: (s) => get().updateProject((p) => ({ ...p, strongholds: [...(p.strongholds ?? []), s] }), 'Add stronghold'),
+  updateStronghold: (id, updates) => get().updateProject((p) => ({
+    ...p, strongholds: (p.strongholds ?? []).map((s) => s.id === id ? { ...s, ...updates } : s),
+  }), 'Update stronghold'),
+  removeStronghold: (id) => get().updateProject((p) => ({
+    ...p, strongholds: (p.strongholds ?? []).filter((s) => s.id !== id),
+  }), 'Delete stronghold'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
