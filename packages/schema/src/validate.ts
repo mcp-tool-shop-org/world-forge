@@ -1221,6 +1221,26 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
+  // 78. Zone entry gates — valid mode + every condition is a legal SpawnCondition.
+  const VALID_GATE_MODES = new Set(['hard', 'soft']);
+  for (const z of project.zones) {
+    const gate = z.entryGate;
+    if (!gate) continue;
+    if (!VALID_GATE_MODES.has(gate.mode)) {
+      errors.push({ path: `zones.${z.id}.entryGate.mode`, message: `Zone "${z.id}" entry gate has unsupported mode "${gate.mode}" (expected hard or soft).` });
+    }
+    if (!Array.isArray(gate.conditions) || gate.conditions.length === 0) {
+      errors.push({ path: `zones.${z.id}.entryGate.conditions`, message: `Zone "${z.id}" entry gate must have at least one condition.` });
+    } else {
+      for (let i = 0; i < gate.conditions.length; i++) {
+        const condErr = validateSpawnCondition(gate.conditions[i]);
+        if (condErr) {
+          errors.push({ path: `zones.${z.id}.entryGate.conditions[${i}]`, message: `Zone "${z.id}" entry gate: ${condErr}` });
+        }
+      }
+    }
+  }
+
   // Structured warning counts for callers that want a quick health check
   warningCount = errors.length;
   if (verbose && errors.length > 0) {
