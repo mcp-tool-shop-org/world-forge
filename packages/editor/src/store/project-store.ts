@@ -9,6 +9,7 @@ import type {
   ProgressionTreeDefinition, ProgressionNode,
   DialogueDefinition, DialogueNode, DialogueChoice,
   AssetEntry, AssetPack,
+  Tileset, TileLayer, TilePlacement,
   AuthoringMode,
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
@@ -128,6 +129,18 @@ interface ProjectState {
   addSpawnPoint: (s: SpawnPoint) => void;
   updateSpawnPoint: (id: string, updates: Partial<SpawnPoint>) => void;
   removeSpawnPoint: (id: string) => void;
+
+  // Tile helpers
+  addTileset: (t: Tileset) => void;
+  updateTileset: (id: string, updates: Partial<Tileset>) => void;
+  removeTileset: (id: string) => void;
+  addTileLayer: (layer: TileLayer) => void;
+  updateTileLayer: (id: string, updates: Partial<TileLayer>) => void;
+  removeTileLayer: (id: string) => void;
+  /** Paint a tile at a grid cell — replaces any existing placement at that cell in the layer. */
+  addTilePlacement: (layerId: string, placement: TilePlacement) => void;
+  /** Erase the tile at a grid cell in the given layer (no-op if empty). */
+  removeTilePlacement: (layerId: string, gridX: number, gridY: number) => void;
 
   // Batch helpers (multi-select operations)
   moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, dx: number, dy: number) => void;
@@ -664,6 +677,41 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeSpawnPoint: (id) => get().updateProject((p) => ({
     ...p, spawnPoints: p.spawnPoints.filter((s) => s.id !== id),
   }), 'Delete spawn point'),
+
+  // Tile helpers — tilesets, layers, and placements. The `?? []` guards keep
+  // these robust against projects saved before these arrays existed (the type
+  // marks them required, but loadProject does not back-fill them).
+  addTileset: (t) => get().updateProject((p) => ({ ...p, tilesets: [...(p.tilesets ?? []), t] }), 'Add tileset'),
+  updateTileset: (id, updates) => get().updateProject((p) => ({
+    ...p, tilesets: (p.tilesets ?? []).map((t) => t.id === id ? { ...t, ...updates } : t),
+  }), 'Update tileset'),
+  removeTileset: (id) => get().updateProject((p) => ({
+    ...p, tilesets: (p.tilesets ?? []).filter((t) => t.id !== id),
+  }), 'Delete tileset'),
+
+  addTileLayer: (layer) => get().updateProject((p) => ({ ...p, tileLayers: [...(p.tileLayers ?? []), layer] }), 'Add tile layer'),
+  updateTileLayer: (id, updates) => get().updateProject((p) => ({
+    ...p, tileLayers: (p.tileLayers ?? []).map((l) => l.id === id ? { ...l, ...updates } : l),
+  }), 'Update tile layer'),
+  removeTileLayer: (id) => get().updateProject((p) => ({
+    ...p, tileLayers: (p.tileLayers ?? []).filter((l) => l.id !== id),
+  }), 'Delete tile layer'),
+
+  // A layer holds at most one tile per (gridX,gridY): painting replaces any
+  // existing placement at that cell, so dragging across a cell is idempotent
+  // and painting over an existing tile overwrites it.
+  addTilePlacement: (layerId, placement) => get().updateProject((p) => ({
+    ...p, tileLayers: (p.tileLayers ?? []).map((l) =>
+      l.id === layerId
+        ? { ...l, tiles: [...l.tiles.filter((t) => !(t.gridX === placement.gridX && t.gridY === placement.gridY)), placement] }
+        : l),
+  }), 'Paint tile'),
+  removeTilePlacement: (layerId, gridX, gridY) => get().updateProject((p) => ({
+    ...p, tileLayers: (p.tileLayers ?? []).map((l) =>
+      l.id === layerId
+        ? { ...l, tiles: l.tiles.filter((t) => !(t.gridX === gridX && t.gridY === gridY)) }
+        : l),
+  }), 'Erase tile'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
