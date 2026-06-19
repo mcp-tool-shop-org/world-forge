@@ -57,11 +57,11 @@ export function convertTransitions(project: WorldProject): ConvertTransitionsRes
             fidelity.push({
                 level: 'approximated',
                 domain: 'transitions',
-                severity: 'info',
+                severity: 'warning',
                 entityId: t.id,
                 fieldPath: `transitions.${t.id}.position`,
-                message: `Transition "${t.id}" position defaulted to zone origin.`,
-                reason: 'No gridX/gridY authored.',
+                message: `Transition "${t.id}" position defaulted to zone origin — likely not the intended doorway; set gridX/gridY.`,
+                reason: 'No gridX/gridY authored; zone origin is rarely the correct transition position.',
             });
         } else {
             fidelity.push({

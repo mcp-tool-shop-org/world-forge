@@ -76,16 +76,18 @@ function convertZone(z: Zone, tileSize: number, fidelity: FidelityEntry[]): Godo
         });
     }
 
-    // Parallax layers are handled by convert-scenes (separate pass).
+    // Parallax layers round-trip in the JSON pack but are NOT yet emitted as
+    // ParallaxBackground/ParallaxLayer scene nodes — report that honestly
+    // rather than claiming a lossless mapping that doesn't happen.
     if (z.parallaxLayers && z.parallaxLayers.length > 0) {
         fidelity.push({
-            level: 'lossless',
+            level: 'approximated',
             domain: 'zones',
             severity: 'info',
             entityId: z.id,
             fieldPath: `zones.${z.id}.parallaxLayers`,
-            message: `Zone "${z.id}" has ${z.parallaxLayers.length} parallax layer(s) — mapped to ParallaxBackground nodes.`,
-            reason: 'Native Godot ParallaxBackground / ParallaxLayer mapping.',
+            message: `Zone "${z.id}" has ${z.parallaxLayers.length} parallax layer(s) preserved as metadata; ParallaxBackground scene-node emission is not yet implemented.`,
+            reason: 'Parallax data round-trips in the pack; .tscn ParallaxBackground nodes are a planned enhancement.',
         });
     }
 
