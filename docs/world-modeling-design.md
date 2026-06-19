@@ -1,11 +1,14 @@
 # World-Modeling Layer — Research-Grounded Design
 
-> Status: in progress (dogfood swarm, 2026-06-19). Three additive world-modeling
-> features: **Strata** (vertical layers), **typed Hazards**, **zone entry gates**.
+> Status: **SHIPPED in v4.5.0** (dogfood swarm, 2026-06-19). Three additive
+> world-modeling features: **Strata** (vertical layers), **typed Hazards**, **zone
+> entry gates** — all end-to-end (schema → editor → Godot 4 export, engine-verified).
 > world-forge is a world-*authoring* tool: we author static data and export it to
 > the engine (Godot 4 is the verified target). Runtime simulation stays in the
 > engine. The design below is grounded in a 5-agent research pass; each decision
 > cites the evidence that drove it.
+>
+> Optional follow-ons (not required) → [`world-modeling-polish.md`](./world-modeling-polish.md).
 
 ## Why these three
 
