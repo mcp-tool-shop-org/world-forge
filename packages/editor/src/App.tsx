@@ -14,6 +14,7 @@ import { ToolPalette } from './panels/ToolPalette.js';
 import { TilePalette } from './panels/TilePalette.js';
 import { PropPalette } from './panels/PropPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
+import { EconomyPanel } from './panels/EconomyPanel.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
@@ -479,6 +480,7 @@ export function App() {
                     {selectedConnection && <ConnectionProperties />}
                     {selection.encounters.length === 1 && <EncounterProperties />}
                     {selectedZoneId && <ZoneProperties />}
+                    {selectedZoneId && <EconomyPanel />}
                     {activeTool === 'entity-place' && <EntityProperties />}
                     {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
                       <div style={{ fontSize: 12, color: 'var(--wf-text-muted)', padding: '8px 0' }}>
