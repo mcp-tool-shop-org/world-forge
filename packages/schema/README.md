@@ -12,12 +12,14 @@ Core TypeScript types for [World Forge](https://github.com/mcp-tool-shop-org/wor
 
 ## Types
 
-- **Spatial:** `WorldMap`, `Zone`, `ZoneExit`, `ZoneConnection`, `Landmark`, `Interactable`
+- **Spatial:** `WorldMap`, `Zone`, `ZoneExit`, `ZoneConnection`, `Landmark`, `Interactable`, `ZoneEntryGate`
 - **Districts:** `District`, `DistrictMetrics`, `EconomyProfile`, `FactionPresence`, `PressureHotspot`
 - **Entities:** `EntityPlacement` (with `EntityStats`, `EntityResources`, `EntityAI`), `ItemPlacement` (with `ItemSlot`, `ItemRarity`), `SpawnPoint`, `EncounterAnchor`, `CraftingStation`, `MarketNode`
+- **Town & structures:** `Building`, `Hub`, `Stronghold`
+- **World modeling:** `Stratum`, `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), plus party-state `SpawnCondition` operands powering `ZoneEntryGate`
 - **Visual:** `Tileset`, `TileDefinition`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
 - **Project:** `WorldProject` — the complete authored world container
-- **Validation:** `validateProject()` with 60+ structural checks
+- **Validation:** `validateProject()` with 78 structural checks
 
 ## Install
 

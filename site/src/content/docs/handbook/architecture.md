@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-World Forge is a monorepo with npm workspaces and TypeScript project references. Six packages form a clean dependency graph — five shipping today plus one reserved stub for the planned Godot 4 lane.
+World Forge is a monorepo with npm workspaces and TypeScript project references. Six packages form a clean dependency graph, each shipping today — including three real export lanes (AI RPG Engine, Unreal Engine 5, Godot 4).
 
 ## Package Map
 
@@ -14,12 +14,12 @@ packages/
   schema/          @world-forge/schema         — spatial types, validation, 2.5D fields
   export-ai-rpg/   @world-forge/export-ai-rpg  — AI RPG Engine export pipeline + CLI
   export-unreal/   @world-forge/export-unreal  — Unreal Engine 5 export pipeline + CLI (2.5D aware)
-  export-godot/    @world-forge/export-godot   — (planned) Godot 4 export lane, stub only
+  export-godot/    @world-forge/export-godot   — Godot 4 export pipeline + .tscn scene generation
   renderer-2d/     @world-forge/renderer-2d    — PixiJS 2D canvas renderer
   editor/          @world-forge/editor         — React web authoring app
 ```
 
-The **2.5D fields** on `Zone` — `elevation`, `elevationRange`, `parallaxLayers`, `skylineRef` — are what the Unreal lane consumes to place actors on a Z-up axis with depth-ordered parallax backdrops. The AI RPG Engine lane ignores them; the Godot lane (planned) will reuse them.
+The **2.5D fields** on `Zone` — `elevation`, `elevationRange`, `parallaxLayers`, `skylineRef` — are what the Unreal lane consumes to place actors on a Z-up axis with depth-ordered parallax backdrops. The AI RPG Engine lane ignores them; the Godot lane reuses `elevation` (it refines the per-zone `z_index` band that vertical strata drive).
 
 ## Dependency Graph
 
@@ -59,7 +59,13 @@ Peer export lane that converts a `WorldProject` into an Unreal Engine 5 content 
 
 ## @world-forge/export-godot
 
-Reserved workspace slot for the planned Godot 4 export lane (Fractured Road). Not yet implemented — the package ships today only as a stub so tooling and the editor can reference it without workspace churn when the lane lands.
+Converts a `WorldProject` into a Godot 4 content pack with a single playable
+`.tscn` scene — per-zone `StaticBody2D` collision + `NavigationRegion2D`, a framed
+`Camera2D`, `TileMapLayer` tiles with wall collision, props, town structures,
+vertical strata (z-index banding), hazards as `Area2D` regions, and zone
+entry-gate metadata. Every node is a textureless, self-contained engine primitive,
+verified against the real Godot 4.7 engine via a headless dogfood smoke. See the
+[Godot Export Pipeline](../export-godot/) page for the full scene structure.
 
 ## @world-forge/export-ai-rpg
 
