@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [4.5.0]
+
+Dogfood-swarm feature wave. Every addition is backward-compatible — projects
+authored on v4.x validate and open unchanged (new schema fields are optional).
+
+### Added
+
+- **Tile pipeline** — image-backed tilesets (slice by row/col) with a colored-rect
+  fallback, a paint brush (`T`) + Tile Palette with per-tile "Solid" toggle, and
+  Godot `TileMapLayer` + `TileSet` export (baked `tile_map_data` for image tiles).
+- **Interiors** — prop placement (`O` tool + Prop Palette + canvas render + Godot
+  `Node2D` "Props" container) and tile **wall collision** (non-walkable tiles →
+  per-cell `StaticBody2D` in the Godot export).
+- **Town economy** — market nodes + crafting stations: store CRUD, a zone-attached
+  Economy panel, and Godot export (`Node2D` containers at zone centers).
+- **Town structures** — `Building`, `Hub`, and `Stronghold` as three distinct
+  placed types: schema + store CRUD, a zone-attached Town Structures panel, and
+  Godot export (buildings as `StaticBody2D` footprints with collision; hubs +
+  strongholds as `Node2D` placeholders).
+- **World modeling** (research-grounded — see `docs/world-modeling-design.md`):
+  - **Vertical strata** — first-class `Stratum` + `StratumLink`, per-zone
+    assignment, and Godot export with a per-zone `z_index` band (`order × 100`,
+    `z_as_relative = false`) so surface layers sort over the cellar.
+  - **Typed hazards** — `HazardDefinition` with a discriminated effects union
+    (damage / status / instakill / ignite), trigger timing, terrain move-cost,
+    passability, weather gating; zones reference hazards by id; Godot export as
+    `Area2D` regions carrying the hazard data as metadata.
+  - **Zone entry party-gates** — `ZoneEntryGate` (AND-array of conditions, hard /
+    soft mode, authored reason) reusing an extended `SpawnCondition` grammar with
+    party operands (`party-level`, `party-size`, `item`, `flag`, `member`,
+    `class`); editor with live validity hints; Godot export as zone metadata.
+- **Godot playable-scene scaffold** — per-zone `StaticBody2D` collision +
+  `NavigationRegion2D`, a framed `Camera2D`, and y-sort / `z_index` from elevation,
+  plus honest fidelity reporting (parallax demoted to `approximated`).
+
+### Changed
+
+- Hermetic build (`tsc --build --force`), dual CJS/ESM package exports, CI matrix
+  Node `[22, 24]` with `engines >= 22`, and `npm audit` reduced 9 → 1.
+- `SCHEMA_VERSION` bumped to 4.5.0.
+
 ## [4.4.2]
 
 ### Fixed

@@ -16,6 +16,9 @@ React 19 web app for [World Forge](https://github.com/mcp-tool-shop-org/world-fo
 - **Multi-select** — click, shift-click, and box-select zones, entities, landmarks, spawns, and encounters; drag-move selected objects with atomic undo
 - **Encounter authoring** — place encounter anchors on zones with type-based canvas markers (boss, ambush, patrol), editable properties (enemy IDs, probability, cooldown, tags)
 - **District editing** — expanded district panel with metrics sliders, tags, controlling faction, economy profile, faction presence management, and pressure hotspot editing
+- **Tiles & interiors** — image-or-fallback tile painting (brush + Tile Palette, per-tile "Solid" walkability) and prop placement for interior detailing
+- **Town authoring** — per-zone market nodes + crafting stations, plus a Town Structures panel for buildings, hubs, and strongholds
+- **World modeling** — a project-level Strata panel (vertical layers + connectors, zone assignment), a Hazard Library with a typed effects-union editor, and a zone entry-gate editor with live condition validity hints
 - **Batch editing** — batch district assignment, batch tag add, and batch delete when multiple zones selected
 - **Preset system** — region and encounter presets with merge/overwrite application, 4 built-in region presets, 3 built-in encounter presets, custom preset CRUD with localStorage persistence
 - **Keyboard shortcuts** — centralized hotkey registry with 13 bindings: Escape, Ctrl+A, Ctrl+D, Ctrl+K, Delete, Arrow nudge, Enter (open details), P (apply preset), Shift+P (save preset)
@@ -25,7 +28,7 @@ React 19 web app for [World Forge](https://github.com/mcp-tool-shop-org/world-fo
 - **Asset library** — manage portraits, sprites, backgrounds, icons, and tilesets with kind-specific bindings
 - **Undo/redo** — 10-deep history stack via Zustand
 - **Import/Export** — round-trip fidelity reporting, semantic diff tracking
-- **Validation** — 60+ structural checks with click-to-focus issue navigation
+- **Validation** — 78 structural checks with click-to-focus issue navigation
 - **Templates** — genre starters and sample worlds for quick onboarding
 
 ## Quick Start

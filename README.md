@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.4.2</strong> — 2155 tests + 6 e2e browser checks, 6 shipping packages, 7 authoring modes, 2.5D authoring, three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.5.0</strong> — 2360 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## Architecture
@@ -70,9 +70,11 @@ Core TypeScript types and validation for world authoring.
 
 - **Spatial types** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
 - **Content types** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
-- **Visual layers** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
+- **Visual layers** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
+- **Town + structures** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
+- **World modeling** — `Stratum` + `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), `ZoneEntryGate` + party-state `SpawnCondition` operands (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
 - **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
-- **Validation** — `validateProject()` (60+ structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
+- **Validation** — `validateProject()` (78 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
 - **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
 
 ### @world-forge/export-unreal
@@ -90,9 +92,11 @@ Converts a `WorldProject` into an Unreal Engine 5 content pack tuned for 2.5D ga
 Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 
 - **Output** — `pack.json`, per-zone resources, entity manifest, navigation links, loot tables, spawn markers, transition nodes, dialogue resources, asset bindings, and a world `.tscn` scene
-- **Scene generation** — `buildWorldScene()` produces Godot scene text via the `.tres` serializer
-- **Coordinate transform** — World Forge grid → Godot 2D coordinates
-- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data
+- **Playable scene** — `buildWorldScene()` emits a navigable `.tscn`: per-zone `StaticBody2D` collision + `NavigationRegion2D`, a framed `Camera2D`, and y-sort / `z_index` depth
+- **Tiles + interiors** — `TileMapLayer` + `TileSet` (baked `tile_map_data` for image tilesets), per-cell wall `StaticBody2D` collision, and prop `Node2D` placements
+- **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
+- **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
+- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
 - **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.0.0
 
 ### @world-forge/export-ai-rpg
@@ -190,6 +194,9 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 - Districts with faction control, economy profiles, metrics sliders, tags, and district name labels at zone centroids
 - Landmarks (named points of interest within zones)
 - Spawn points, encounter anchors (type-based coloring), faction presences, and pressure hotspots
+- **Vertical strata** — discrete layers (surface / underground / sky, or building floors) with signed order, z-range, inter-layer visibility, and connectors (stairs / ladders / elevators); zones assign to a stratum
+- **Typed environmental hazards** — a shared hazard library (damage / status / instakill / ignite effects, trigger timing, terrain move-cost, passability, vision-blocking, weather gating) referenced per zone
+- **Zone entry party-gates** — gate entry on party state (level / size / items / flags / members / classes) as a hard or advisory gate with an authored "show the lock" reason
 
 ### Content
 
@@ -197,6 +204,13 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 - Item placements with slot, rarity, stat modifiers, and granted verbs
 - Dialogue trees with branching conversations, conditions, and effects
 - Encounter anchors on canvas — red diamond markers with boss/ambush/patrol types
+
+### Town & Interiors
+
+- Tile painting — image-backed tilesets (slice by row/col) with a colored-rect fallback, a drag brush, layers, and per-tile "Solid" walkability for wall collision
+- Prop placement for interiors (palette + canvas render), with a place tool
+- Town economy — market nodes (supply categories, price modifier, contraband) and crafting stations (station type, recipes), edited per zone
+- Town structures — buildings (enterable footprints with an interior-zone link), hubs (service + connectivity nodes), and strongholds (fortified faction seats)
 
 ### Character Systems
 

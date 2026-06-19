@@ -1,0 +1,123 @@
+# Release — publish the six @world-forge/* packages to npm via OIDC Trusted
+# Publishing.
+#
+# This file is named `release.yml` to match the npm Trusted Publisher binding
+# configured for these packages (npmjs.com -> @world-forge/<pkg> -> Settings ->
+# Trusted Publishers -> mcp-tool-shop-org/world-forge, workflow `release.yml`).
+# It supersedes the old token-based `.github/workflows/publish.yml`. Auth is OIDC
+# — there is intentionally NO NODE_AUTH_TOKEN / NPM_TOKEN.
+#
+# Triggers on `release: published` (org GitHub-Actions rule: publish workflows run
+# on release, never on push). Create the release with `gh release create vX.Y.Z`;
+# this workflow then builds, tests, and publishes all six packages in dependency
+# order with Sigstore provenance.
+#
+# Workflow standards compliance (see .claude/rules/workflow-standards.md):
+#   PIN_PER_STEP (2)        — actions SHA-pinned; node + npm versions fixed.
+#   ANDON_AUTHORITY (2)     — build/test/pack gates run BEFORE any publish; any
+#                             failure halts the job (no continue-on-error).
+#   NAMED_COMPENSATORS (3)  — see table below; npm publish has a named undo.
+#   DECOMPOSE_BY_SECRETS (2)— this file owns the release secret (irreversible
+#                             publish); ci.yml owns per-PR verification.
+#   UNCERTAINTY_GATED_HUMANS(2) — the human gate IS `gh release create` (a
+#                             person decides to cut the release; CI does not
+#                             auto-release on tag push).
+#   EXTERNAL_VERIFIER (1)   — n/a to a publish step; CI lint/test in ci.yml.
+#
+# Compensators (irreversible actions — NO skip allowed):
+#   | Action                       | Undo                                                        | Post-rollback state                              | Owner |
+#   |------------------------------|-------------------------------------------------------------|--------------------------------------------------|-------|
+#   | npm publish @world-forge/<p> | `npm deprecate @world-forge/<p>@<v> "broken — use <prev>"`   | version stays on registry, marked deprecated;    | Mike  |
+#   | (per package, x6)            | (npm forbids unpublish after 72h / for depended-on pkgs);   | consumers pin <prev>; ship a fixed <v+1>.        |       |
+#   |                              | then publish a fixed patch <v+1>.                           |                                                  |       |
+#   | GitHub Release create        | `gh release delete <tag> --cleanup-tag`                     | release + tag removed from remote.               | Mike  |
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish to npm (OIDC trusted publisher)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read       # npm publish only; the GitHub Release is created separately
+      id-token: write      # OIDC: npm trusted publishing + Sigstore provenance
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Install npm >= 11.5 in sandbox for OIDC trusted-publishing auth
+        run: |
+          # Node 22 bundles npm 10.x, which cannot do OIDC trusted publishing,
+          # and an in-place `npm i -g npm@latest` races its own arborist rebuild.
+          # Install npm@latest into an isolated sandbox and shadow it via PATH.
+          SANDBOX="$HOME/.npm-cli-sandbox"
+          mkdir -p "$SANDBOX"
+          pushd "$SANDBOX" >/dev/null
+          echo '{"name":"npm-cli-sandbox","version":"0.0.0","private":true}' > package.json
+          npm install --no-save --no-audit --no-fund --silent npm@latest
+          popd >/dev/null
+          echo "$SANDBOX/node_modules/.bin" >> "$GITHUB_PATH"
+          "$SANDBOX/node_modules/.bin/npm" --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify release tag matches package.json version
+        if: github.event_name == 'release'
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Tag: ${GITHUB_REF_NAME} -> ${TAG_VERSION} | Package: ${PKG_VERSION}"
+          if [ "${PKG_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "::error::Release tag ${TAG_VERSION} does not match package.json version ${PKG_VERSION}"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      # Publish in dependency order with Sigstore provenance (OIDC — NO token):
+      #   1. schema (no deps)
+      #   2. export-ai-rpg, export-unreal, export-godot, renderer-2d (depend on schema)
+      #   3. editor (depends on all above)
+      - name: Publish @world-forge/schema
+        working-directory: packages/schema
+        run: npm publish --provenance --access public
+
+      - name: Publish @world-forge/export-ai-rpg
+        working-directory: packages/export-ai-rpg
+        run: npm publish --provenance --access public
+
+      - name: Publish @world-forge/export-unreal
+        working-directory: packages/export-unreal
+        run: npm publish --provenance --access public
+
+      - name: Publish @world-forge/export-godot
+        working-directory: packages/export-godot
+        run: npm publish --provenance --access public
+
+      - name: Publish @world-forge/renderer-2d
+        working-directory: packages/renderer-2d
+        run: npm publish --provenance --access public
+
+      - name: Publish @world-forge/editor
+        working-directory: packages/editor
+        run: npm publish --provenance --access public
