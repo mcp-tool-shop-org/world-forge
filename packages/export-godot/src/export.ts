@@ -20,6 +20,7 @@ import { convertLootTables, type GodotLootTableResource } from './convert-loot-t
 import { convertSpawnPoints, type GodotSpawnMarker } from './convert-spawn-points.js';
 import { convertTransitions, type GodotTransitionNode } from './convert-transitions.js';
 import { convertTileLayers, type GodotTileLayer } from './convert-tile-layers.js';
+import { convertProps, type GodotPropNode } from './convert-props.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
@@ -52,6 +53,7 @@ export interface GodotContentPack {
     spawnMarkers: GodotSpawnMarker[];
     transitions: GodotTransitionNode[];
     tileLayers: GodotTileLayer[];
+    props: GodotPropNode[];
     /** The generated .tscn scene text (main world scene). */
     worldSceneTscn: string;
 }
@@ -97,6 +99,7 @@ export function exportToGodot(
     let spawnResult: ReturnType<typeof convertSpawnPoints>;
     let transitionsResult: ReturnType<typeof convertTransitions>;
     let tileLayersResult: ReturnType<typeof convertTileLayers>;
+    let propsResult: ReturnType<typeof convertProps>;
 
     try {
         zonesResult = convertZones(project);
@@ -110,6 +113,7 @@ export function exportToGodot(
         spawnResult = convertSpawnPoints(project);
         transitionsResult = convertTransitions(project);
         tileLayersResult = convertTileLayers(project);
+        propsResult = convertProps(project);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
@@ -130,6 +134,7 @@ export function exportToGodot(
     fidelityEntries.push(...spawnResult.fidelity);
     fidelityEntries.push(...transitionsResult.fidelity);
     fidelityEntries.push(...tileLayersResult.fidelity);
+    fidelityEntries.push(...propsResult.fidelity);
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -158,6 +163,7 @@ export function exportToGodot(
         spawnMarkers: spawnResult.spawnMarkers,
         transitions: transitionsResult.transitions,
         tileLayers: tileLayersResult.tileLayers,
+        props: propsResult.props,
     });
 
     const proj = project as unknown as Record<string, unknown>;
@@ -188,6 +194,7 @@ export function exportToGodot(
         spawnMarkers: spawnResult.spawnMarkers,
         transitions: transitionsResult.transitions,
         tileLayers: tileLayersResult.tileLayers,
+        props: propsResult.props,
         worldSceneTscn,
     };
 

@@ -43,6 +43,9 @@ export type {
     GodotTileLayer, GodotTileCell, GodotTileAtlasSource, ConvertTileLayersResult,
 } from './convert-tile-layers.js';
 
+export { convertProps } from './convert-props.js';
+export type { GodotPropNode, ConvertPropsResult } from './convert-props.js';
+
 export { buildWorldScene } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 

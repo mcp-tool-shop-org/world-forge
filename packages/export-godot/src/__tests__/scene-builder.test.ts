@@ -11,6 +11,7 @@ import { buildWorldScene, type SceneBuildInput } from '../scene-builder.js';
 import type { GodotZoneResource } from '../convert-zones.js';
 import type { GodotEntityManifest } from '../convert-entities.js';
 import type { GodotTileLayer } from '../convert-tile-layers.js';
+import type { GodotPropNode } from '../convert-props.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -210,5 +211,37 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
     it('omits tile nodes entirely when there are no tile layers', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         expect(tscn).not.toContain('TileMapLayer');
+    });
+});
+
+describe('buildWorldScene — props (Wave B-3 interiors)', () => {
+    const prop: GodotPropNode = {
+        nodeName: 'Barrel', id: 'pp1', propId: 'barrel', displayName: 'Barrel',
+        position: { x: 32, y: 64 }, width: 1, height: 1, walkable: false, interactable: true,
+        zoneId: 'zone-a',
+    };
+    const withProps = (props: GodotPropNode[]) => ({ ...baseInput([makeZone()]), props });
+
+    it('emits a Props container with a Node2D per placement + metadata', () => {
+        const tscn = buildWorldScene(withProps([prop]));
+        expect(tscn).toContain('[node name="Props" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="Barrel" type="Node2D" parent="Props"]');
+        expect(tscn).toContain('position = Vector2(32, 64)');
+        expect(tscn).toContain('metadata/prop_id = "pp1"');
+        expect(tscn).toContain('metadata/prop_def = "barrel"');
+        expect(tscn).toContain('metadata/walkable = false');
+        expect(tscn).toContain('metadata/interactable = true');
+    });
+
+    it('emits image_path metadata only when the prop has one', () => {
+        const noImg = buildWorldScene(withProps([prop]));
+        expect(noImg).not.toContain('metadata/image_path');
+        const withImg = buildWorldScene(withProps([{ ...prop, imagePath: 'props/barrel.png' }]));
+        expect(withImg).toContain('metadata/image_path = "props/barrel.png"');
+    });
+
+    it('omits the Props container entirely when there are no props', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('name="Props"');
     });
 });
