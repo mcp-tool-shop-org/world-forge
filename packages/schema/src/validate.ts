@@ -1159,6 +1159,68 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
+  // --- World-modeling: typed hazard definitions (SCH world-modeling slice 4) ---
+
+  const VALID_HAZARD_TRIGGERS = new Set(['on-enter', 'per-turn', 'on-exit', 'timed']);
+  const VALID_HAZARD_PASSABILITY = new Set(['yes', 'flying-only', 'never']);
+  const hazardDefs = project.hazardDefinitions ?? [];
+  const hazardIds = new Set<string>();
+
+  for (const h of hazardDefs) {
+    // 73. HazardDefinition ID uniqueness.
+    if (hazardIds.has(h.id)) {
+      errors.push({ path: `hazardDefinitions.${h.id}`, message: `Duplicate hazard ID: ${h.id}` });
+    }
+    hazardIds.add(h.id);
+
+    // 74. Trigger must be a valid kind (TS guards authored code; imported JSON may not).
+    if (!VALID_HAZARD_TRIGGERS.has(h.trigger)) {
+      errors.push({ path: `hazardDefinitions.${h.id}.trigger`, message: `Hazard "${h.id}" has unsupported trigger "${h.trigger}" (expected on-enter, per-turn, on-exit, or timed).` });
+    }
+
+    // 75. Passability + moveCostDelta sanity when set.
+    if (h.passable !== undefined && !VALID_HAZARD_PASSABILITY.has(h.passable)) {
+      errors.push({ path: `hazardDefinitions.${h.id}.passable`, message: `Hazard "${h.id}" has unsupported passable "${h.passable}" (expected yes, flying-only, or never).` });
+    }
+    if (h.moveCostDelta !== undefined && !Number.isFinite(h.moveCostDelta)) {
+      errors.push({ path: `hazardDefinitions.${h.id}.moveCostDelta`, message: `Hazard "${h.id}" moveCostDelta (${h.moveCostDelta}) must be a finite number.` });
+    }
+
+    // 76. Each effect must be well-formed for its kind.
+    for (let i = 0; i < h.effects.length; i++) {
+      const e = h.effects[i];
+      const base = `hazardDefinitions.${h.id}.effects[${i}]`;
+      if (e.kind === 'damage') {
+        if (!Number.isFinite(e.amount)) {
+          errors.push({ path: base, message: `Hazard "${h.id}" damage amount (${e.amount}) must be a finite number.` });
+        }
+        if (e.durationTicks !== undefined && (!Number.isFinite(e.durationTicks) || e.durationTicks < 0)) {
+          errors.push({ path: base, message: `Hazard "${h.id}" damage durationTicks (${e.durationTicks}) must be a finite number >= 0.` });
+        }
+      } else if (e.kind === 'status') {
+        if (!e.statusId || e.statusId.trim().length === 0) {
+          errors.push({ path: base, message: `Hazard "${h.id}" status effect has a missing statusId.` });
+        }
+        if (!Number.isFinite(e.chance) || e.chance < 0 || e.chance > 1) {
+          errors.push({ path: base, message: `Hazard "${h.id}" status chance (${e.chance}) must be a finite number in [0, 1].` });
+        }
+      } else if (e.kind === 'ignite') {
+        if (!Number.isFinite(e.igniteChance) || e.igniteChance < 0 || e.igniteChance > 1) {
+          errors.push({ path: base, message: `Hazard "${h.id}" igniteChance (${e.igniteChance}) must be a finite number in [0, 1].` });
+        }
+      }
+    }
+  }
+
+  // 77. Zone.hazardRefs must reference existing hazard definitions.
+  for (const z of project.zones) {
+    for (const ref of z.hazardRefs ?? []) {
+      if (!hazardIds.has(ref)) {
+        errors.push({ path: `zones.${z.id}.hazardRefs`, message: `Zone "${z.id}" references nonexistent hazard "${ref}".` });
+      }
+    }
+  }
+
   // Structured warning counts for callers that want a quick health check
   warningCount = errors.length;
   if (verbose && errors.length > 0) {

@@ -5,7 +5,7 @@ import type {
   WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
   EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
   Building, Hub, Stronghold,
-  Stratum, StratumLink,
+  Stratum, StratumLink, HazardDefinition,
   PlayerTemplate, BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition,
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
@@ -55,6 +55,7 @@ export function createEmptyProject(mode?: AuthoringMode): WorldProject {
     strongholds: [],
     strata: [],
     stratumLinks: [],
+    hazardDefinitions: [],
     tilesets: [],
     tileLayers: [],
     props: [],
@@ -188,6 +189,14 @@ interface ProjectState {
   removeStratumLink: (id: string) => void;
   /** Assign (or clear, with undefined) a zone's stratum. */
   setZoneStratum: (zoneId: string, stratumId: string | undefined) => void;
+
+  // World modeling — typed hazard definitions.
+  addHazardDefinition: (h: HazardDefinition) => void;
+  updateHazardDefinition: (id: string, updates: Partial<HazardDefinition>) => void;
+  /** Remove a hazard definition + cascade: drop its id from every zone's hazardRefs. */
+  removeHazardDefinition: (id: string) => void;
+  /** Set the typed hazard refs on a zone. */
+  setZoneHazardRefs: (zoneId: string, hazardRefs: string[]) => void;
   /**
    * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
    * Each edit paints (tileId set) or erases (tileId null) the cell at
@@ -863,6 +872,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setZoneStratum: (zoneId, stratumId) => get().updateProject((p) => ({
     ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, stratumId } : z),
   }), stratumId ? 'Assign zone stratum' : 'Clear zone stratum'),
+
+  // World modeling — typed hazard definitions.
+  addHazardDefinition: (h) => get().updateProject((p) => ({ ...p, hazardDefinitions: [...(p.hazardDefinitions ?? []), h] }), 'Add hazard'),
+  updateHazardDefinition: (id, updates) => get().updateProject((p) => ({
+    ...p, hazardDefinitions: (p.hazardDefinitions ?? []).map((h) => h.id === id ? { ...h, ...updates } : h),
+  }), 'Update hazard'),
+  removeHazardDefinition: (id) => get().updateProject((p) => ({
+    ...p,
+    hazardDefinitions: (p.hazardDefinitions ?? []).filter((h) => h.id !== id),
+    // Cascade: drop the removed hazard id from every zone's hazardRefs.
+    zones: p.zones.map((z) => z.hazardRefs?.includes(id) ? { ...z, hazardRefs: z.hazardRefs.filter((r) => r !== id) } : z),
+  }), 'Delete hazard'),
+  setZoneHazardRefs: (zoneId, hazardRefs) => get().updateProject((p) => ({
+    ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, hazardRefs } : z),
+  }), 'Update zone hazards'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
