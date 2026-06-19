@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import type {
   WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
-  EncounterAnchor, FactionPresence, PressureHotspot,
+  EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
   PlayerTemplate, BuildCatalogDefinition, ArchetypeDefinition, BackgroundDefinition,
   TraitDefinition, DisciplineDefinition, CrossDisciplineTitle, ClassEntanglement,
   ProgressionTreeDefinition, ProgressionNode,
@@ -151,6 +151,14 @@ interface ProjectState {
   addPropPlacement: (placement: PropPlacement) => void;
   updatePropPlacement: (id: string, updates: Partial<PropPlacement>) => void;
   removePropPlacement: (id: string) => void;
+
+  // Town economy helpers — market nodes + crafting stations (zone-attached).
+  addMarketNode: (m: MarketNode) => void;
+  updateMarketNode: (id: string, updates: Partial<MarketNode>) => void;
+  removeMarketNode: (id: string) => void;
+  addCraftingStation: (c: CraftingStation) => void;
+  updateCraftingStation: (id: string, updates: Partial<CraftingStation>) => void;
+  removeCraftingStation: (id: string) => void;
   /**
    * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
    * Each edit paints (tileId set) or erases (tileId null) the cell at
@@ -764,6 +772,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removePropPlacement: (id) => get().updateProject((pr) => ({
     ...pr, propPlacements: (pr.propPlacements ?? []).filter((pl) => pl.id !== id),
   }), 'Remove prop placement'),
+
+  // Town economy helpers — market nodes + crafting stations (id-keyed, zone-attached).
+  addMarketNode: (m) => get().updateProject((p) => ({ ...p, marketNodes: [...(p.marketNodes ?? []), m] }), 'Add market node'),
+  updateMarketNode: (id, updates) => get().updateProject((p) => ({
+    ...p, marketNodes: (p.marketNodes ?? []).map((m) => m.id === id ? { ...m, ...updates } : m),
+  }), 'Update market node'),
+  removeMarketNode: (id) => get().updateProject((p) => ({
+    ...p, marketNodes: (p.marketNodes ?? []).filter((m) => m.id !== id),
+  }), 'Delete market node'),
+  addCraftingStation: (c) => get().updateProject((p) => ({ ...p, craftingStations: [...(p.craftingStations ?? []), c] }), 'Add crafting station'),
+  updateCraftingStation: (id, updates) => get().updateProject((p) => ({
+    ...p, craftingStations: (p.craftingStations ?? []).map((c) => c.id === id ? { ...c, ...updates } : c),
+  }), 'Update crafting station'),
+  removeCraftingStation: (id) => get().updateProject((p) => ({
+    ...p, craftingStations: (p.craftingStations ?? []).filter((c) => c.id !== id),
+  }), 'Delete crafting station'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {

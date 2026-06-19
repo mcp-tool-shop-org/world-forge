@@ -21,6 +21,7 @@ import { convertSpawnPoints, type GodotSpawnMarker } from './convert-spawn-point
 import { convertTransitions, type GodotTransitionNode } from './convert-transitions.js';
 import { convertTileLayers, type GodotTileLayer } from './convert-tile-layers.js';
 import { convertProps, type GodotPropNode } from './convert-props.js';
+import { convertEconomy, type GodotMarketNode, type GodotCraftingStation } from './convert-economy.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
@@ -54,6 +55,8 @@ export interface GodotContentPack {
     transitions: GodotTransitionNode[];
     tileLayers: GodotTileLayer[];
     props: GodotPropNode[];
+    markets: GodotMarketNode[];
+    craftingStations: GodotCraftingStation[];
     /** The generated .tscn scene text (main world scene). */
     worldSceneTscn: string;
 }
@@ -100,6 +103,7 @@ export function exportToGodot(
     let transitionsResult: ReturnType<typeof convertTransitions>;
     let tileLayersResult: ReturnType<typeof convertTileLayers>;
     let propsResult: ReturnType<typeof convertProps>;
+    let economyResult: ReturnType<typeof convertEconomy>;
 
     try {
         zonesResult = convertZones(project);
@@ -114,6 +118,7 @@ export function exportToGodot(
         transitionsResult = convertTransitions(project);
         tileLayersResult = convertTileLayers(project);
         propsResult = convertProps(project);
+        economyResult = convertEconomy(project);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
@@ -135,6 +140,7 @@ export function exportToGodot(
     fidelityEntries.push(...transitionsResult.fidelity);
     fidelityEntries.push(...tileLayersResult.fidelity);
     fidelityEntries.push(...propsResult.fidelity);
+    fidelityEntries.push(...economyResult.fidelity);
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -164,6 +170,8 @@ export function exportToGodot(
         transitions: transitionsResult.transitions,
         tileLayers: tileLayersResult.tileLayers,
         props: propsResult.props,
+        markets: economyResult.markets,
+        craftingStations: economyResult.craftingStations,
     });
 
     const proj = project as unknown as Record<string, unknown>;
@@ -195,6 +203,8 @@ export function exportToGodot(
         transitions: transitionsResult.transitions,
         tileLayers: tileLayersResult.tileLayers,
         props: propsResult.props,
+        markets: economyResult.markets,
+        craftingStations: economyResult.craftingStations,
         worldSceneTscn,
     };
 

@@ -34,6 +34,7 @@ import type { GodotSpawnMarker } from './convert-spawn-points.js';
 import type { GodotTransitionNode } from './convert-transitions.js';
 import { encodeTileMapData, type GodotTileLayer } from './convert-tile-layers.js';
 import type { GodotPropNode } from './convert-props.js';
+import type { GodotMarketNode, GodotCraftingStation } from './convert-economy.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -47,6 +48,10 @@ export interface SceneBuildInput {
     tileLayers?: GodotTileLayer[];
     /** Prop placements → Node2D placeholders under a "Props" container. Optional. */
     props?: GodotPropNode[];
+    /** Market nodes → Node2D under a "Markets" container (at zone centers). Optional. */
+    markets?: GodotMarketNode[];
+    /** Crafting stations → Node2D under a "CraftingStations" container. Optional. */
+    craftingStations?: GodotCraftingStation[];
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -241,6 +246,41 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`metadata/height = ${p.height}`);
             if (p.imagePath) lines.push(`metadata/image_path = "${escapeGodot(p.imagePath)}"`);
             if (p.zoneId) lines.push(`metadata/zone_id = "${p.zoneId}"`);
+            lines.push('');
+        }
+    }
+
+    // Town economy — market nodes + crafting stations as Node2D placeholders at
+    // their zone centers, with economic data as metadata (the runtime drives
+    // shop/crafting behavior from these + the content pack).
+    const markets = input.markets ?? [];
+    if (markets.length > 0) {
+        lines.push(`[node name="Markets" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const m of markets) {
+            lines.push(`[node name="${m.nodeName}" type="Node2D" parent="Markets"]`);
+            lines.push(`position = Vector2(${m.position.x}, ${m.position.y})`);
+            lines.push(`metadata/market_id = "${m.id}"`);
+            lines.push(`metadata/zone_id = "${m.zoneId}"`);
+            lines.push(`metadata/supply_categories = "${escapeGodot(m.supplyCategories.join(','))}"`);
+            lines.push(`metadata/price_modifier = ${m.priceModifier}`);
+            lines.push(`metadata/contraband = ${m.contrabandAvailable}`);
+            if (m.merchantEntityId) lines.push(`metadata/merchant_entity_id = "${m.merchantEntityId}"`);
+            lines.push('');
+        }
+    }
+
+    const craftingStations = input.craftingStations ?? [];
+    if (craftingStations.length > 0) {
+        lines.push(`[node name="CraftingStations" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const c of craftingStations) {
+            lines.push(`[node name="${c.nodeName}" type="Node2D" parent="CraftingStations"]`);
+            lines.push(`position = Vector2(${c.position.x}, ${c.position.y})`);
+            lines.push(`metadata/station_id = "${c.id}"`);
+            lines.push(`metadata/zone_id = "${c.zoneId}"`);
+            lines.push(`metadata/station_type = "${escapeGodot(c.stationType)}"`);
+            lines.push(`metadata/recipes = "${escapeGodot(c.availableRecipes.join(','))}"`);
             lines.push('');
         }
     }

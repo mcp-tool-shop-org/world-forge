@@ -22,6 +22,8 @@ const EXPECTED_TILE_LAYERS := 1
 const EXPECTED_TILE_COUNT := 10
 const EXPECTED_PROPS := 2
 const EXPECTED_WALL_COLLISIONS := 2
+const EXPECTED_MARKETS := 1
+const EXPECTED_CRAFTING := 1
 
 var _failures: Array[String] = []
 
@@ -251,6 +253,29 @@ func _init() -> void:
 		"expected %d, got %d" % [EXPECTED_PROPS, prop_count])
 	_assert(props_with_id == EXPECTED_PROPS, "props_have_metadata",
 		"expected %d, got %d" % [EXPECTED_PROPS, props_with_id])
+
+	# 17. Wave B-3 (town economy) — market nodes + crafting stations export as
+	#     Node2D children of "Markets" / "CraftingStations" containers, each with
+	#     its economy id metadata.
+	var markets := root_node.get_node_or_null("Markets")
+	var market_count := 0
+	if markets:
+		for m in markets.get_children():
+			if m.get_meta("market_id", "") != "":
+				market_count += 1
+	print("market_count=" + str(market_count))
+	_assert(market_count == EXPECTED_MARKETS, "market_count_matches",
+		"expected %d, got %d" % [EXPECTED_MARKETS, market_count])
+
+	var crafting := root_node.get_node_or_null("CraftingStations")
+	var crafting_count := 0
+	if crafting:
+		for c in crafting.get_children():
+			if c.get_meta("station_id", "") != "":
+				crafting_count += 1
+	print("crafting_count=" + str(crafting_count))
+	_assert(crafting_count == EXPECTED_CRAFTING, "crafting_count_matches",
+		"expected %d, got %d" % [EXPECTED_CRAFTING, crafting_count])
 
 	# Cleanup
 	root_node.queue_free()
