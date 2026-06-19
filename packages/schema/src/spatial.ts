@@ -40,6 +40,11 @@ export interface Zone {
    * v4.5 — groups zones into surface/underground/sky levels. See stratum.ts.
    */
   stratumId?: string;
+  /**
+   * Ids of typed HazardDefinitions active in this zone (additive since v4.5).
+   * The legacy free-text `hazards: string[]` field above is untouched.
+   */
+  hazardRefs?: string[];
   /** Ordered parallax layers rendered behind/in-front-of gameplay for 2.5D depth. */
   parallaxLayers?: ParallaxLayer[];
   /** Asset id of a sky / skyline backdrop for 2.5D vertical framing. */

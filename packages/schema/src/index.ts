@@ -41,6 +41,10 @@ export type { Building, Hub, Stronghold } from './town.js';
 export type { Stratum, StratumLink } from './stratum.js';
 
 export type {
+  HazardEffect, HazardTrigger, HazardPassability, HazardDefinition,
+} from './hazard.js';
+
+export type {
   SpawnConditionType, SpawnConditionNode,
 } from './spawn-condition.js';
 export { parseSpawnCondition, validateSpawnCondition } from './spawn-condition.js';

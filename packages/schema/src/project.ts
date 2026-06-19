@@ -8,6 +8,7 @@ import type {
 } from './entities.js';
 import type { Building, Hub, Stronghold } from './town.js';
 import type { Stratum, StratumLink } from './stratum.js';
+import type { HazardDefinition } from './hazard.js';
 import type { DialogueDefinition } from './dialogue.js';
 import type { PlayerTemplate } from './player-template.js';
 import type { BuildCatalogDefinition } from './build-catalog.js';
@@ -79,6 +80,13 @@ export interface WorldProject {
    */
   strata?: Stratum[];
   stratumLinks?: StratumLink[];
+
+  /**
+   * Typed environmental hazard definitions, referenced by zones via
+   * Zone.hazardRefs. Additive since v4.5 — the legacy Zone.hazards string[]
+   * field is untouched. See docs/world-modeling-design.md.
+   */
+  hazardDefinitions?: HazardDefinition[];
 
   tilesets: Tileset[];
   tileLayers: TileLayer[];
