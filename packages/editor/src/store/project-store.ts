@@ -10,6 +10,7 @@ import type {
   DialogueDefinition, DialogueNode, DialogueChoice,
   AssetEntry, AssetPack,
   Tileset, TileLayer, TilePlacement,
+  PropDefinition, PropPlacement,
   AuthoringMode,
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
@@ -141,6 +142,15 @@ interface ProjectState {
   addTilePlacement: (layerId: string, placement: TilePlacement) => void;
   /** Erase the tile at a grid cell in the given layer (no-op if empty). */
   removeTilePlacement: (layerId: string, gridX: number, gridY: number) => void;
+
+  // Prop helpers — definitions (catalog) + placements (instances).
+  addProp: (p: PropDefinition) => void;
+  updateProp: (id: string, updates: Partial<PropDefinition>) => void;
+  /** Remove a prop definition AND its placements (cascade — a placement is meaningless without its definition). */
+  removeProp: (id: string) => void;
+  addPropPlacement: (placement: PropPlacement) => void;
+  updatePropPlacement: (id: string, updates: Partial<PropPlacement>) => void;
+  removePropPlacement: (id: string) => void;
   /**
    * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
    * Each edit paints (tileId set) or erases (tileId null) the cell at
@@ -731,6 +741,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { ...l, tiles: [...kept, ...painted] };
     }),
   }), edits.every((e) => e.tileId == null) ? 'Erase tiles' : 'Paint tiles'),
+
+  // Prop helpers — definitions + placements. `?? []` guards keep these robust
+  // against projects saved before these arrays existed.
+  addProp: (p) => get().updateProject((pr) => ({ ...pr, props: [...(pr.props ?? []), p] }), 'Add prop'),
+  updateProp: (id, updates) => get().updateProject((pr) => ({
+    ...pr, props: (pr.props ?? []).map((p) => p.id === id ? { ...p, ...updates } : p),
+  }), 'Update prop'),
+  // Cascade: removing a definition also drops its placements (matches removeZone/
+  // removeAsset referential cleanup — an orphan placement can't render at all).
+  removeProp: (id) => get().updateProject((pr) => ({
+    ...pr,
+    props: (pr.props ?? []).filter((p) => p.id !== id),
+    propPlacements: (pr.propPlacements ?? []).filter((pl) => pl.propId !== id),
+  }), 'Delete prop'),
+  addPropPlacement: (placement) => get().updateProject((pr) => ({
+    ...pr, propPlacements: [...(pr.propPlacements ?? []), placement],
+  }), 'Place prop'),
+  updatePropPlacement: (id, updates) => get().updateProject((pr) => ({
+    ...pr, propPlacements: (pr.propPlacements ?? []).map((pl) => pl.id === id ? { ...pl, ...updates } : pl),
+  }), 'Update prop placement'),
+  removePropPlacement: (id) => get().updateProject((pr) => ({
+    ...pr, propPlacements: (pr.propPlacements ?? []).filter((pl) => pl.id !== id),
+  }), 'Remove prop placement'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
