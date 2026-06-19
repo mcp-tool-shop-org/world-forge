@@ -52,6 +52,8 @@ export interface PropDefinition {
 
 /** A placed prop instance. */
 export interface PropPlacement {
+  /** Unique instance id (distinct from propId, which references the definition). */
+  id: string;
   propId: string;
   gridX: number;
   gridY: number;
