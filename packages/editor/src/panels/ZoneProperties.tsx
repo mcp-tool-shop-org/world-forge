@@ -18,7 +18,7 @@ import {
 } from './zone-2d5-helpers.js';
 
 export function ZoneProperties() {
-  const { project, updateZone, removeZone } = useProjectStore();
+  const { project, updateZone, removeZone, setZoneStratum } = useProjectStore();
   const { selection, setSelectedZone } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const zone = project.zones.find((z) => z.id === selectedZoneId);
@@ -38,6 +38,15 @@ export function ZoneProperties() {
         <input style={inputStyle} value={zone.name}
           onChange={(e) => updateZone(zone.id, { name: e.target.value })} />
       </label>
+      {(project.strata ?? []).length > 0 && (
+        <label style={labelStyle}>Stratum (vertical layer)
+          <select style={inputStyle} value={zone.stratumId ?? ''} data-testid="wf-zone-stratum-select"
+            onChange={(e) => setZoneStratum(zone.id, e.target.value || undefined)}>
+            <option value="">— none —</option>
+            {(project.strata ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+      )}
       <label style={labelStyle}>Tags (comma-separated)
         <input style={inputStyle} value={zone.tags.join(', ')}
           onChange={(e) => updateZone(zone.id, { tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />

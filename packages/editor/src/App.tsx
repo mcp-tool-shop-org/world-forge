@@ -16,6 +16,7 @@ import { PropPalette } from './panels/PropPalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
 import { EconomyPanel } from './panels/EconomyPanel.js';
 import { TownStructuresPanel } from './panels/TownStructuresPanel.js';
+import { StrataPanel } from './panels/StrataPanel.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
@@ -484,6 +485,7 @@ export function App() {
                     {selectedZoneId && <EconomyPanel />}
                     {selectedZoneId && <TownStructuresPanel />}
                     {activeTool === 'entity-place' && <EntityProperties />}
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && <StrataPanel />}
                     {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
                       <div style={{ fontSize: 12, color: 'var(--wf-text-muted)', padding: '8px 0' }}>
                         Select a zone or use a tool to see properties.
