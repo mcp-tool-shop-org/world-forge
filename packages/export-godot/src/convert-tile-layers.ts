@@ -54,6 +54,8 @@ export interface GodotTileLayer {
     atlasSources: GodotTileAtlasSource[];
     /** Cells baked into tile_map_data (image-backed placements only). */
     cells: GodotTileCell[];
+    /** Grid coords of non-walkable cells — exported as StaticBody2D collision. */
+    solidCells: Array<{ gridX: number; gridY: number }>;
     /** Total placements that resolved to a tile (incl. color-only, for metadata). */
     tileCount: number;
     /** True when the layer has at least one atlas source (image-backed). */
@@ -79,12 +81,12 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
     const fidelity: FidelityEntry[] = [];
 
     const tilesets = project.tilesets ?? [];
-    // tileId -> { tilesetId, atlasX(col), atlasY(row), imageBacked }
-    const tileIndex = new Map<string, { tilesetId: string; atlasX: number; atlasY: number; imageBacked: boolean }>();
+    // tileId -> { tilesetId, atlasX(col), atlasY(row), imageBacked, walkable }
+    const tileIndex = new Map<string, { tilesetId: string; atlasX: number; atlasY: number; imageBacked: boolean; walkable: boolean }>();
     for (const ts of tilesets) {
         const imageBacked = !!ts.imagePath;
         for (const t of ts.tiles) {
-            tileIndex.set(t.id, { tilesetId: ts.id, atlasX: t.col, atlasY: t.row, imageBacked });
+            tileIndex.set(t.id, { tilesetId: ts.id, atlasX: t.col, atlasY: t.row, imageBacked, walkable: t.walkable });
         }
     }
     const tilesetById = new Map(tilesets.map((ts) => [ts.id, ts]));
@@ -96,6 +98,7 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
         const sourceIndexByTileset = new Map<string, number>();
         const atlasSources: GodotTileAtlasSource[] = [];
         const cells: GodotTileCell[] = [];
+        const solidCells: Array<{ gridX: number; gridY: number }> = [];
         let tileCount = 0;
         let droppedCount = 0;
 
@@ -106,6 +109,9 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
                 continue;
             }
             tileCount++;
+            // Solidity is independent of art — a non-walkable tile blocks movement
+            // whether it renders as an image or a colored placeholder.
+            if (!def.walkable) solidCells.push({ gridX: placement.gridX, gridY: placement.gridY });
 
             if (!def.imageBacked) continue; // color-only: counted, no atlas cell
 
@@ -141,6 +147,7 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
             tileSize,
             atlasSources,
             cells,
+            solidCells,
             tileCount,
             imageBacked,
         });

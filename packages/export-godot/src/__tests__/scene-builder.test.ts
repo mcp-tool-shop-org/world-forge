@@ -140,7 +140,7 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
 describe('buildWorldScene — tile layers (Wave B-2)', () => {
     const colorLayer: GodotTileLayer = {
         nodeName: 'Ground', id: 'tl-ground', name: 'Ground', zIndex: 0, tileSize: 32,
-        atlasSources: [], cells: [], tileCount: 5, imageBacked: false,
+        atlasSources: [], cells: [], solidCells: [], tileCount: 5, imageBacked: false,
     };
     const imageLayer: GodotTileLayer = {
         nodeName: 'Walls', id: 'tl-walls', name: 'Walls', zIndex: 1, tileSize: 16,
@@ -153,7 +153,7 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
             { gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0 },
             { gridX: 1, gridY: 0, sourceId: 0, atlasX: 3, atlasY: 2 },
         ],
-        tileCount: 2, imageBacked: true,
+        solidCells: [], tileCount: 2, imageBacked: true,
     };
     const withTiles = (tileLayers: GodotTileLayer[]) => ({ ...baseInput([makeZone()]), tileLayers });
 
@@ -197,6 +197,31 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
         // load_steps = 0 ext + 1 tex + 2 zone-sub + 2 tile-sub + 1 = 6
         const tscn = buildWorldScene(withTiles([imageLayer]));
         expect(tscn).toContain('load_steps=6');
+    });
+
+    it('emits StaticBody2D wall collision for non-walkable cells', () => {
+        const wallLayer: GodotTileLayer = {
+            ...colorLayer, id: 'tl-walls2', nodeName: 'Walls',
+            solidCells: [{ gridX: 0, gridY: 0 }, { gridX: 2, gridY: 1 }],
+        };
+        const tscn = buildWorldScene(withTiles([wallLayer]));
+        // One shared tile-sized rect + a StaticBody2D with a CollisionShape2D per solid cell.
+        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="WallRect_0"]');
+        expect(tscn).toContain('size = Vector2(32, 32)');
+        expect(tscn).toContain('[node name="Collision" type="StaticBody2D" parent="Walls"]');
+        expect(tscn).toContain('[node name="WallShape_0" type="CollisionShape2D" parent="Walls/Collision"]');
+        expect(tscn).toContain('[node name="WallShape_1" type="CollisionShape2D" parent="Walls/Collision"]');
+        expect(tscn).toContain('shape = SubResource("WallRect_0")');
+        // Centered on the cell: (0,0) → (16,16); (2,1) → (80, 48) at tileSize 32.
+        expect(tscn).toContain('position = Vector2(16, 16)');
+        expect(tscn).toContain('position = Vector2(80, 48)');
+        expect(tscn).toContain('metadata/solid_count = 2');
+    });
+
+    it('emits no collision body when no cells are solid', () => {
+        const tscn = buildWorldScene(withTiles([colorLayer]));
+        expect(tscn).not.toContain('type="StaticBody2D" parent="Ground"');
+        expect(tscn).toContain('metadata/solid_count = 0');
     });
 
     it('dedupes colliding TileMapLayer sibling names', () => {

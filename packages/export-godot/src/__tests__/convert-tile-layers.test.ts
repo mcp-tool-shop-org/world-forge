@@ -92,6 +92,29 @@ describe('convertTileLayers — image-backed tilesets', () => {
   });
 });
 
+describe('convertTileLayers — solid (non-walkable) cells', () => {
+  it('collects non-walkable cells regardless of image backing', () => {
+    // colorTs: c-floor walkable, c-wall not. imgTs tiles are walkable.
+    const { tileLayers } = convertTileLayers(proj([colorTs], [layer([
+      { tileId: 'c-floor', gridX: 0, gridY: 0 },
+      { tileId: 'c-wall', gridX: 1, gridY: 0 },
+      { tileId: 'c-wall', gridX: 2, gridY: 0 },
+    ])]));
+    expect(tileLayers[0].solidCells).toEqual([
+      { gridX: 1, gridY: 0 },
+      { gridX: 2, gridY: 0 },
+    ]);
+  });
+
+  it('has no solid cells when every tile is walkable', () => {
+    const { tileLayers } = convertTileLayers(proj([imgTs], [layer([
+      { tileId: 'i-a', gridX: 0, gridY: 0 },
+      { tileId: 'i-b', gridX: 1, gridY: 0 },
+    ])]));
+    expect(tileLayers[0].solidCells).toEqual([]);
+  });
+});
+
 describe('convertTileLayers — dropped tiles', () => {
   it('drops placements whose tileId is in no tileset and reports it', () => {
     const { tileLayers, fidelity } = convertTileLayers(proj([colorTs], [layer([

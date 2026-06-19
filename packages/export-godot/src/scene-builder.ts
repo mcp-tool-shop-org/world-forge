@@ -106,7 +106,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
     // Tile layers — TileMapLayer nodes (ground art) parented to the root. Image-
     // backed layers carry baked tile_map_data cells; color-only layers carry a
     // TileSet scaffold + placement metadata (cells load data-driven).
-    lines.push(...emitTileMapLayers(tileLayers, tileResources.tileSetIdByLayer));
+    lines.push(...emitTileMapLayers(tileLayers, tileResources.tileSetIdByLayer, tileResources.wallRectIdByLayer));
 
     // Zone nodes
     for (const zone of input.zones) {
@@ -295,10 +295,12 @@ function collectExtResources(input: SceneBuildInput): ExtResourceRef[] {
 interface TileResourceSet {
     /** Tileset texture ext_resources (deduped by path). */
     textures: { path: string; id: string }[];
-    /** TileSetAtlasSource + TileSet sub-resource blocks, in declaration order. */
+    /** TileSetAtlasSource + TileSet (+ wall-collision Rect) sub-resource blocks, in declaration order. */
     subBlocks: string[];
     /** Map of tile layer id → its TileSet sub-resource id. */
     tileSetIdByLayer: Map<string, string>;
+    /** Map of tile layer id → its shared wall-collision RectangleShape2D id (layers with solid cells only). */
+    wallRectIdByLayer: Map<string, string>;
 }
 
 /**
@@ -311,11 +313,22 @@ function collectTileResources(tileLayers: GodotTileLayer[]): TileResourceSet {
     const textureIdByPath = new Map<string, string>();
     const subBlocks: string[] = [];
     const tileSetIdByLayer = new Map<string, string>();
+    const wallRectIdByLayer = new Map<string, string>();
 
     for (let li = 0; li < tileLayers.length; li++) {
         const layer = tileLayers[li];
         const tileSetId = `TileSet_${li}`;
         tileSetIdByLayer.set(layer.id, tileSetId);
+
+        // Shared tile-sized collision rect for this layer's non-walkable cells.
+        if (layer.solidCells.length > 0) {
+            const wallRectId = `WallRect_${li}`;
+            wallRectIdByLayer.set(layer.id, wallRectId);
+            subBlocks.push(
+                `[sub_resource type="RectangleShape2D" id="${wallRectId}"]\n` +
+                `size = Vector2(${layer.tileSize}, ${layer.tileSize})`,
+            );
+        }
 
         const sourceLines: string[] = [];
         for (const src of layer.atlasSources) {
@@ -343,11 +356,15 @@ function collectTileResources(tileLayers: GodotTileLayer[]): TileResourceSet {
         );
     }
 
-    return { textures, subBlocks, tileSetIdByLayer };
+    return { textures, subBlocks, tileSetIdByLayer, wallRectIdByLayer };
 }
 
 /** Emit TileMapLayer node blocks (parented to root). Sibling names are deduped. */
-function emitTileMapLayers(tileLayers: GodotTileLayer[], tileSetIdByLayer: Map<string, string>): string[] {
+function emitTileMapLayers(
+    tileLayers: GodotTileLayer[],
+    tileSetIdByLayer: Map<string, string>,
+    wallRectIdByLayer: Map<string, string>,
+): string[] {
     const lines: string[] = [];
     const seen = new Map<string, number>();
     for (const layer of tileLayers) {
@@ -366,7 +383,26 @@ function emitTileMapLayers(tileLayers: GodotTileLayer[], tileSetIdByLayer: Map<s
         lines.push(`metadata/layer_id = "${escapeGodot(layer.id)}"`);
         lines.push(`metadata/tile_count = ${layer.tileCount}`);
         lines.push(`metadata/image_backed = ${layer.imageBacked}`);
+        lines.push(`metadata/solid_count = ${layer.solidCells.length}`);
         lines.push('');
+
+        // Wall collision — a StaticBody2D with one tile-sized CollisionShape2D per
+        // non-walkable cell (TileSetAtlasSource physics layers need a texture, so
+        // this works for color-only tilesets too). Centered on each cell.
+        const wallRectId = wallRectIdByLayer.get(layer.id);
+        if (wallRectId && layer.solidCells.length > 0) {
+            lines.push(`[node name="Collision" type="StaticBody2D" parent="${nodeName}"]`);
+            lines.push('');
+            for (let i = 0; i < layer.solidCells.length; i++) {
+                const c = layer.solidCells[i];
+                const cx = c.gridX * layer.tileSize + layer.tileSize / 2;
+                const cy = c.gridY * layer.tileSize + layer.tileSize / 2;
+                lines.push(`[node name="WallShape_${i}" type="CollisionShape2D" parent="${nodeName}/Collision"]`);
+                lines.push(`position = Vector2(${cx}, ${cy})`);
+                lines.push(`shape = SubResource("${wallRectId}")`);
+                lines.push('');
+            }
+        }
     }
     return lines;
 }

@@ -21,6 +21,7 @@ const EXPECTED_NAV_LINKS := 4
 const EXPECTED_TILE_LAYERS := 1
 const EXPECTED_TILE_COUNT := 10
 const EXPECTED_PROPS := 2
+const EXPECTED_WALL_COLLISIONS := 2
 
 var _failures: Array[String] = []
 
@@ -220,6 +221,20 @@ func _init() -> void:
 	print("tile_count=" + str(total_tile_count))
 	_assert(total_tile_count == EXPECTED_TILE_COUNT, "tile_count_matches",
 		"expected %d, got %d" % [EXPECTED_TILE_COUNT, total_tile_count])
+
+	# 15b. Wave B-3 (interiors) — non-walkable tiles export StaticBody2D collision
+	#      (a "Collision" child of the TileMapLayer with one CollisionShape2D per
+	#      solid cell), so wall tiles are solid in-engine.
+	var wall_collisions := 0
+	for tl in tile_layers:
+		var body := tl.get_node_or_null("Collision") as StaticBody2D
+		if body != null:
+			for cs in body.get_children():
+				if cs is CollisionShape2D and cs.shape != null:
+					wall_collisions += 1
+	print("wall_collision_count=" + str(wall_collisions))
+	_assert(wall_collisions == EXPECTED_WALL_COLLISIONS, "tile_wall_collision_matches",
+		"expected %d, got %d" % [EXPECTED_WALL_COLLISIONS, wall_collisions])
 
 	# 16. Wave B-3 (interiors) — props export as Node2D children of a "Props"
 	#     container, each preserving its prop_id metadata.
