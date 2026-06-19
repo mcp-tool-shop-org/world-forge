@@ -19,7 +19,7 @@
  */
 
 export type {
-  WorldMap, Zone, ZoneExit, ZoneElevationRange, Interactable,
+  WorldMap, Zone, ZoneExit, ZoneElevationRange, ZoneEntryGate, Interactable,
   ZoneConnection, ConnectionKind, Landmark,
   TransitionEntity, TransitionEntityType,
 } from './spatial.js';

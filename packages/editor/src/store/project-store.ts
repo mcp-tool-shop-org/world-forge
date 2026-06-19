@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type {
-  WorldProject, Zone, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
+  WorldProject, Zone, ZoneEntryGate, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
   EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
   Building, Hub, Stronghold,
   Stratum, StratumLink, HazardDefinition,
@@ -197,6 +197,8 @@ interface ProjectState {
   removeHazardDefinition: (id: string) => void;
   /** Set the typed hazard refs on a zone. */
   setZoneHazardRefs: (zoneId: string, hazardRefs: string[]) => void;
+  /** Set (or clear, with undefined) a zone's entry gate. */
+  setZoneEntryGate: (zoneId: string, gate: ZoneEntryGate | undefined) => void;
   /**
    * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
    * Each edit paints (tileId set) or erases (tileId null) the cell at
@@ -887,6 +889,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setZoneHazardRefs: (zoneId, hazardRefs) => get().updateProject((p) => ({
     ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, hazardRefs } : z),
   }), 'Update zone hazards'),
+  setZoneEntryGate: (zoneId, gate) => get().updateProject((p) => ({
+    ...p, zones: p.zones.map((z) => z.id === zoneId ? { ...z, entryGate: gate } : z),
+  }), gate ? 'Set zone entry gate' : 'Clear zone entry gate'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {

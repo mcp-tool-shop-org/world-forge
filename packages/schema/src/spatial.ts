@@ -12,6 +12,22 @@ export interface WorldMap {
   tileSize: number;
 }
 
+/**
+ * A party-state gate on ENTERING a zone. Every condition must pass (AND); each
+ * condition is a SpawnCondition-grammar string (see spawn-condition.ts), reusing
+ * the party-* / item / flag / member / class operands. `mode` is 'hard' (block
+ * entry) or 'soft' (advisory only); `reason` is the authored "show the lock"
+ * message shown when the gate is unmet. Additive since v4.5.
+ */
+export interface ZoneEntryGate {
+  /** SpawnCondition-grammar strings; ALL must pass to enter (AND). */
+  conditions: string[];
+  /** 'hard' blocks entry; 'soft' warns but allows. */
+  mode: 'hard' | 'soft';
+  /** Authored message surfaced when the gate is unmet. */
+  reason?: string;
+}
+
 /** A named area on the map occupying a rectangular tile region. */
 export interface Zone {
   id: string;
@@ -45,6 +61,11 @@ export interface Zone {
    * The legacy free-text `hazards: string[]` field above is untouched.
    */
   hazardRefs?: string[];
+  /**
+   * Party-state gate on entering this zone (additive since v4.5). See
+   * ZoneEntryGate above.
+   */
+  entryGate?: ZoneEntryGate;
   /** Ordered parallax layers rendered behind/in-front-of gameplay for 2.5D depth. */
   parallaxLayers?: ParallaxLayer[];
   /** Asset id of a sky / skyline backdrop for 2.5D vertical framing. */
