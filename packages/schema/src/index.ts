@@ -36,6 +36,8 @@ export type {
   LootTable, LootTableEntry,
 } from './entities.js';
 
+export type { Building, Hub, Stronghold } from './town.js';
+
 export type {
   SpawnConditionType, SpawnConditionNode,
 } from './spawn-condition.js';
