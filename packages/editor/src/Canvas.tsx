@@ -41,7 +41,7 @@ export function Canvas() {
   const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
-    showConnections, showEntities, showLandmarks, showSpawns, showTiles, showAmbient, snapToObjects,
+    showConnections, showEntities, showLandmarks, showSpawns, showTiles, showProps, showAmbient, snapToObjects,
     selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
@@ -530,6 +530,38 @@ export function Canvas() {
       }
     }
 
+    // Props — placed furniture/objects. Image when the definition has an
+    // imagePath (reusing the path-keyed image cache), else a colored box (amber =
+    // interactable, slate = blocking, green = walkable). Sized by the definition's
+    // width/height in tiles. Drawn under entities (NPCs stand in front of props).
+    if (showProps && (project.propPlacements?.length ?? 0) > 0) {
+      const propDefs = new Map((project.props ?? []).map((p) => [p.id, p]));
+      const prevSmoothing = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false;
+      for (const pp of project.propPlacements) {
+        const def = propDefs.get(pp.propId);
+        if (!def) continue; // orphan placement (definition removed) — skip
+        totalCount++;
+        const px = pp.gridX * tileSize;
+        const py = pp.gridY * tileSize;
+        const pw = Math.max(1, def.width) * tileSize;
+        const ph = Math.max(1, def.height) * tileSize;
+        if (!inViewport(px, py, pw, ph)) continue;
+        visibleCount++;
+        const img = def.imagePath ? getTileImage(def.imagePath) : null;
+        if (img) {
+          ctx.drawImage(img, px, py, pw, ph);
+        } else {
+          ctx.fillStyle = def.interactable ? 'rgba(210,153,34,0.55)' : (!def.walkable ? 'rgba(110,118,129,0.55)' : 'rgba(63,185,80,0.4)');
+          ctx.fillRect(px, py, pw, ph);
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.lineWidth = 1 / zoom;
+          ctx.strokeRect(px, py, pw, ph);
+        }
+      }
+      ctx.imageSmoothingEnabled = prevSmoothing;
+    }
+
     // Entities
     if (showEntities) {
       for (const ep of project.entityPlacements) {
@@ -822,7 +854,7 @@ export function Canvas() {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
 
   useEffect(() => {
     draw();
@@ -1107,6 +1139,16 @@ export function Canvas() {
       }
       tilePaint.current = { erasing, layerId, tileId: erasing ? null : ed.activeTileId, cells: new Map() };
       addTilePaintCell(gx, gy);
+    } else if (activeTool === 'prop-place') {
+      const propId = useEditorStore.getState().activePropId;
+      if (!propId) return; // no prop selected to place
+      const zone = findZoneAt(gx, gy);
+      useProjectStore.getState().addPropPlacement({
+        id: `prop-${Date.now()}`,
+        propId,
+        gridX: gx, gridY: gy,
+        zoneId: zone?.id,
+      });
     }
   };
 

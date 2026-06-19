@@ -16,7 +16,7 @@ export interface ClipboardData {
   encounters: EncounterAnchor[];
 }
 
-export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint';
+export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint' | 'prop-place';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'deps' | 'review' | 'guide' | 'import-summary' | 'diff' | 'objects' | 'presets';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
@@ -79,6 +79,7 @@ interface EditorState {
   showSpawns: boolean;
   showBackgrounds: boolean;
   showTiles: boolean;
+  showProps: boolean;
   showAmbient: boolean;
   showMinimap: boolean;
   /** ED-FT-003: toggle elevation visualization overlay on the canvas. */
@@ -124,6 +125,7 @@ interface EditorState {
   toggleSpawns: () => void;
   toggleBackgrounds: () => void;
   toggleTiles: () => void;
+  toggleProps: () => void;
   toggleAmbient: () => void;
   toggleMinimap: () => void;
   toggleElevation: () => void;
@@ -169,6 +171,10 @@ interface EditorState {
   setActiveTileLayer: (id: string | null) => void;
   toggleTileEraseMode: () => void;
 
+  // Interiors: active prop definition for the prop-place tool.
+  activePropId: string | null;
+  setActiveProp: (id: string | null) => void;
+
   // Speed panel (double-right-click command palette)
   showSpeedPanel: boolean;
   speedPanelPosition: { x: number; y: number } | null;
@@ -200,6 +206,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showSpawns: true,
   showBackgrounds: true,
   showTiles: true,
+  showProps: true,
   showAmbient: true,
   showMinimap: true,
   // ED-FT-003: Rehydrate from localStorage. If unset, default on — Wave 2 ships
@@ -288,6 +295,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   toggleSpawns: () => set((s) => ({ showSpawns: !s.showSpawns })),
   toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
   toggleTiles: () => set((s) => ({ showTiles: !s.showTiles })),
+  toggleProps: () => set((s) => ({ showProps: !s.showProps })),
   toggleAmbient: () => set((s) => ({ showAmbient: !s.showAmbient })),
   toggleMinimap: () => set((s) => ({ showMinimap: !s.showMinimap })),
   toggleElevation: () => set((s) => {
@@ -377,6 +385,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setActiveTile: (id) => set({ activeTileId: id }),
   setActiveTileLayer: (id) => set({ activeTileLayerId: id }),
   toggleTileEraseMode: () => set((s) => ({ tileEraseMode: !s.tileEraseMode })),
+
+  activePropId: null,
+  setActiveProp: (id) => set({ activePropId: id }),
 
   showSpeedPanel: false,
   speedPanelPosition: null,

@@ -12,14 +12,15 @@ const tools: { id: EditorTool; label: string; key: string }[] = [
   { id: 'landmark', label: 'Landmark', key: 'L' },
   { id: 'spawn', label: 'Spawn', key: 'S' },
   { id: 'tile-paint', label: 'Tiles', key: 'T' },
+  { id: 'prop-place', label: 'Prop', key: 'O' },
 ];
 
 export function ToolPalette() {
   const {
     activeTool, setTool, selection,
-    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showTiles, showAmbient, showMinimap, showElevation,
+    showGrid, showConnections, showEntities, showLandmarks, showSpawns, showBackgrounds, showTiles, showProps, showAmbient, showMinimap, showElevation,
     snapToObjects, toggleSnapToObjects,
-    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleTiles, toggleAmbient, toggleMinimap, toggleElevation,
+    toggleGrid, toggleConnections, toggleEntities, toggleLandmarks, toggleSpawns, toggleBackgrounds, toggleTiles, toggleProps, toggleAmbient, toggleMinimap, toggleElevation,
     viewport, setViewport, resetViewport,
     showPerfStats, togglePerfStats,
     showRendererDiagnostics, toggleRendererDiagnostics,
@@ -146,6 +147,9 @@ export function ToolPalette() {
       </label>
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showTiles} onChange={toggleTiles} /> Tiles
+      </label>
+      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showProps} onChange={toggleProps} /> Props
       </label>
       <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={showAmbient} onChange={toggleAmbient} /> Ambient
