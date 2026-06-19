@@ -467,3 +467,29 @@ describe('buildWorldScene — typed hazards (world modeling)', () => {
         expect(tscn).not.toContain('name="Hazards"');
     });
 });
+
+describe('buildWorldScene — zone entry gates (world modeling)', () => {
+    it('emits entry gate metadata on a gated zone node', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            zoneGates: { 'zone-a': { zoneId: 'zone-a', conditions: ['party-level:>=10', 'item:iron-key'], mode: 'hard', reason: 'You need the Iron Key.' } },
+        });
+        expect(tscn).toContain('metadata/entry_gate = "party-level:>=10;item:iron-key"');
+        expect(tscn).toContain('metadata/entry_gate_mode = "hard"');
+        expect(tscn).toContain('metadata/entry_gate_reason = "You need the Iron Key."');
+    });
+
+    it('omits the reason line when no reason is authored', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            zoneGates: { 'zone-a': { zoneId: 'zone-a', conditions: ['always'], mode: 'soft' } },
+        });
+        expect(tscn).toContain('metadata/entry_gate_mode = "soft"');
+        expect(tscn).not.toContain('metadata/entry_gate_reason');
+    });
+
+    it('emits no gate metadata for an ungated zone', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('metadata/entry_gate');
+    });
+});

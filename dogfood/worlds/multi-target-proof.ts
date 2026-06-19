@@ -135,6 +135,8 @@ export const proofProject: WorldProject = {
                 { name: 'wanted-poster', type: 'inspect' },
             ],
             parentDistrictId: 'dist-town',
+            // The gate to the wilderness is party-gated: a seasoned party + a pass.
+            entryGate: { conditions: ['party-level:>=3', 'flag:gate-pass'], mode: 'hard', reason: 'The guards demand a gate pass and a party of at least level 3.' },
         },
     ],
 
