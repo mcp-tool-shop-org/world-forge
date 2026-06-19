@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { buildWorldScene, type SceneBuildInput } from '../scene-builder.js';
 import type { GodotZoneResource } from '../convert-zones.js';
 import type { GodotEntityManifest } from '../convert-entities.js';
+import type { GodotTileLayer } from '../convert-tile-layers.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -132,5 +133,82 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
         expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="."]');
         expect(tscn).toContain('position = Vector2(0, 0)');
         expect(tscn).toContain('load_steps=1');
+    });
+});
+
+describe('buildWorldScene — tile layers (Wave B-2)', () => {
+    const colorLayer: GodotTileLayer = {
+        nodeName: 'Ground', id: 'tl-ground', name: 'Ground', zIndex: 0, tileSize: 32,
+        atlasSources: [], cells: [], tileCount: 5, imageBacked: false,
+    };
+    const imageLayer: GodotTileLayer = {
+        nodeName: 'Walls', id: 'tl-walls', name: 'Walls', zIndex: 1, tileSize: 16,
+        atlasSources: [{
+            tilesetId: 'img', texturePath: 'res://assets/tilesets/img.png',
+            tileWidth: 16, tileHeight: 16, sourceId: 0,
+            atlasCoords: [{ atlasX: 0, atlasY: 0 }, { atlasX: 3, atlasY: 2 }],
+        }],
+        cells: [
+            { gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0 },
+            { gridX: 1, gridY: 0, sourceId: 0, atlasX: 3, atlasY: 2 },
+        ],
+        tileCount: 2, imageBacked: true,
+    };
+    const withTiles = (tileLayers: GodotTileLayer[]) => ({ ...baseInput([makeZone()]), tileLayers });
+
+    it('emits a TileMapLayer node referencing a TileSet sub-resource', () => {
+        const tscn = buildWorldScene(withTiles([colorLayer]));
+        expect(tscn).toContain('[node name="Ground" type="TileMapLayer" parent="."]');
+        expect(tscn).toContain('tile_set = SubResource("TileSet_0")');
+        expect(tscn).toContain('[sub_resource type="TileSet" id="TileSet_0"]');
+        expect(tscn).toContain('tile_size = Vector2i(32, 32)');
+    });
+
+    it('carries placement count + image-backed flag as metadata', () => {
+        const tscn = buildWorldScene(withTiles([colorLayer]));
+        expect(tscn).toContain('metadata/layer_id = "tl-ground"');
+        expect(tscn).toContain('metadata/tile_count = 5');
+        expect(tscn).toContain('metadata/image_backed = false');
+    });
+
+    it('color-only layers carry no atlas source and no baked cells', () => {
+        const tscn = buildWorldScene(withTiles([colorLayer]));
+        expect(tscn).not.toContain('TileSetAtlasSource');
+        expect(tscn).not.toContain('tile_map_data');
+    });
+
+    it('image-backed layers emit a texture ext_resource + atlas source + baked cells', () => {
+        const tscn = buildWorldScene(withTiles([imageLayer]));
+        expect(tscn).toContain('[ext_resource type="Texture2D" path="res://assets/tilesets/img.png" id="tiletex_0"]');
+        expect(tscn).toContain('[sub_resource type="TileSetAtlasSource" id="TileAtlas_0_0"]');
+        expect(tscn).toContain('texture = ExtResource("tiletex_0")');
+        expect(tscn).toContain('texture_region_size = Vector2i(16, 16)');
+        expect(tscn).toContain('0:0/0 = 0');
+        expect(tscn).toContain('3:2/0 = 0');
+        expect(tscn).toContain('sources/0 = SubResource("TileAtlas_0_0")');
+        // Baked cells: format header (0,0) then the two cells.
+        expect(tscn).toMatch(/tile_map_data = PackedByteArray\(0, 0,/);
+        expect(tscn).toContain('metadata/image_backed = true');
+    });
+
+    it('counts tile sub-resources + textures in load_steps', () => {
+        // 1 zone → 2 sub (rect+nav); image layer → 1 texture (ext) + 2 sub (atlas+tileset).
+        // load_steps = 0 ext + 1 tex + 2 zone-sub + 2 tile-sub + 1 = 6
+        const tscn = buildWorldScene(withTiles([imageLayer]));
+        expect(tscn).toContain('load_steps=6');
+    });
+
+    it('dedupes colliding TileMapLayer sibling names', () => {
+        const tscn = buildWorldScene(withTiles([
+            colorLayer,
+            { ...colorLayer, id: 'tl-ground-2' },
+        ]));
+        expect(tscn).toContain('[node name="Ground" type="TileMapLayer" parent="."]');
+        expect(tscn).toContain('[node name="Ground_2" type="TileMapLayer" parent="."]');
+    });
+
+    it('omits tile nodes entirely when there are no tile layers', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('TileMapLayer');
     });
 });
