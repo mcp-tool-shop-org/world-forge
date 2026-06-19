@@ -8,10 +8,11 @@ import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
 import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
-import type { Zone } from '@world-forge/schema';
+import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
 import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
+import { fallbackTileColor } from './tile-render.js';
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
@@ -40,7 +41,7 @@ export function Canvas() {
   const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
-    showConnections, showEntities, showLandmarks, showSpawns, showAmbient, snapToObjects,
+    showConnections, showEntities, showLandmarks, showSpawns, showTiles, showAmbient, snapToObjects,
     selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
@@ -160,6 +161,24 @@ export function Canvas() {
   }, [project.zones.length]); // eslint-disable-line react-hooks/exhaustive-deps -- fit-to-content only runs once on first render; re-running on every dep change would fight user panning
 
   // --- Drawing ---
+  // B-2: tileset image cache for the tile render pass. Keyed by imagePath; an
+  // entry stays loaded:false (→ colored-rect fallback) until the browser finishes
+  // decoding, at which point we bump a tick to force exactly one redraw.
+  const tileImages = useRef<Map<string, { img: HTMLImageElement; loaded: boolean }>>(new Map());
+  const [tileImageTick, setTileImageTick] = useState(0);
+  const getTileImage = useCallback((path: string): HTMLImageElement | null => {
+    let entry = tileImages.current.get(path);
+    if (!entry) {
+      const img = new Image();
+      entry = { img, loaded: false };
+      tileImages.current.set(path, entry);
+      img.onload = () => { entry!.loaded = true; setTileImageTick((t) => t + 1); };
+      img.onerror = () => { /* leave unloaded → colored-rect fallback */ };
+      img.src = path;
+    }
+    return entry.loaded ? entry.img : null;
+  }, []);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -227,6 +246,46 @@ export function Canvas() {
         ctx.lineTo(project.map.gridWidth * tileSize, y * tileSize);
         ctx.stroke();
       }
+    }
+
+    // Tile layers — ground art beneath the authoring overlays. Image-backed when
+    // a tileset declares an imagePath (sliced by row/col from its sprite sheet),
+    // colored-rect fallback otherwise (mirrors renderer-2d's TileLayerRenderer
+    // scheme). Unknown tile ids are skipped. Drawn over the grid, under zones.
+    if (showTiles && (project.tileLayers?.length ?? 0) > 0) {
+      const tileLookup = new Map<string, { def: TileDefinition; tileset: Tileset }>();
+      for (const ts of project.tilesets ?? []) {
+        for (const t of ts.tiles) tileLookup.set(t.id, { def: t, tileset: ts });
+      }
+      const sortedLayers = [...project.tileLayers].sort((a, b) => a.zIndex - b.zIndex);
+      const prevSmoothing = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false; // crisp pixel-art tile scaling
+      for (const layer of sortedLayers) {
+        for (const placement of layer.tiles) {
+          const entry = tileLookup.get(placement.tileId);
+          if (!entry) continue; // tile id not in any loaded tileset
+          totalCount++;
+          const dx = placement.gridX * tileSize;
+          const dy = placement.gridY * tileSize;
+          if (!inViewport(dx, dy, tileSize, tileSize)) continue;
+          visibleCount++;
+          const { def, tileset } = entry;
+          const img = tileset.imagePath ? getTileImage(tileset.imagePath) : null;
+          ctx.globalAlpha = def.opacity;
+          if (img) {
+            ctx.drawImage(
+              img,
+              def.col * tileset.tileWidth, def.row * tileset.tileHeight, tileset.tileWidth, tileset.tileHeight,
+              dx, dy, tileSize, tileSize,
+            );
+          } else {
+            ctx.fillStyle = fallbackTileColor(def.tags);
+            ctx.fillRect(dx, dy, tileSize, tileSize);
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      ctx.imageSmoothingEnabled = prevSmoothing;
     }
 
     // Connections (edge-anchored with visual states)
@@ -712,7 +771,7 @@ export function Canvas() {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick]);
 
   useEffect(() => {
     draw();
