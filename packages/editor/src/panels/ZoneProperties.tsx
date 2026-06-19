@@ -7,6 +7,7 @@ import { PanelHeader } from './shared.js';
 import { labelText, inputCompact, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
 import { VisibilityToggle } from './shared.js';
 import type { ParallaxLayer, Zone } from '@world-forge/schema';
+import { validateSpawnCondition } from '@world-forge/schema';
 import {
   validateElevationRange,
   parseElevation,
@@ -18,7 +19,7 @@ import {
 } from './zone-2d5-helpers.js';
 
 export function ZoneProperties() {
-  const { project, updateZone, removeZone, setZoneStratum, setZoneHazardRefs } = useProjectStore();
+  const { project, updateZone, removeZone, setZoneStratum, setZoneHazardRefs, setZoneEntryGate } = useProjectStore();
   const { selection, setSelectedZone } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const zone = project.zones.find((z) => z.id === selectedZoneId);
@@ -63,6 +64,56 @@ export function ZoneProperties() {
           })}
         </div>
       )}
+      <div style={{ marginBottom: 6 }} data-testid="wf-zone-entry-gate">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+          <span style={{ fontSize: 11, color: '#8b949e' }}>Entry gate</span>
+          {zone.entryGate && (
+            <button style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 12 }}
+              title="Remove entry gate" onClick={() => setZoneEntryGate(zone.id, undefined)}>×</button>
+          )}
+        </div>
+        {!zone.entryGate ? (
+          <button data-testid="wf-add-entry-gate"
+            style={{ fontSize: 11, padding: '3px 8px', borderRadius: 3, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', cursor: 'pointer' }}
+            onClick={() => setZoneEntryGate(zone.id, { conditions: ['party-level:>=5'], mode: 'hard' })}>
+            + Add entry gate
+          </button>
+        ) : (
+          <div style={{ border: '1px solid #30363d', borderRadius: 4, padding: 6, background: '#161b22' }}>
+            <label style={labelStyle}>Mode
+              <select style={inputStyle} value={zone.entryGate.mode}
+                onChange={(e) => setZoneEntryGate(zone.id, { ...zone.entryGate!, mode: e.target.value as 'hard' | 'soft' })}>
+                <option value="hard">hard (block entry)</option>
+                <option value="soft">soft (advisory)</option>
+              </select>
+            </label>
+            <label style={labelStyle}>Reason (shown when unmet)
+              <input style={inputStyle} value={zone.entryGate.reason ?? ''}
+                onChange={(e) => setZoneEntryGate(zone.id, { ...zone.entryGate!, reason: e.target.value || undefined })} />
+            </label>
+            <div style={{ fontSize: 11, color: '#8b949e', margin: '4px 0 2px' }}>Conditions — all must pass (AND)</div>
+            {zone.entryGate.conditions.map((cond, i) => {
+              const err = validateSpawnCondition(cond);
+              return (
+                <div key={i} style={{ marginBottom: 3 }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <input style={{ ...inputStyle, marginTop: 0, borderColor: err ? '#f85149' : undefined }} value={cond}
+                      onChange={(e) => setZoneEntryGate(zone.id, { ...zone.entryGate!, conditions: zone.entryGate!.conditions.map((c, ci) => ci === i ? e.target.value : c) })} />
+                    <button style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 12 }}
+                      title="Remove condition" onClick={() => setZoneEntryGate(zone.id, { ...zone.entryGate!, conditions: zone.entryGate!.conditions.filter((_, ci) => ci !== i) })}>×</button>
+                  </div>
+                  {err && <div style={{ fontSize: 10, color: '#f85149' }} title={err}>⚠ unrecognized condition</div>}
+                </div>
+              );
+            })}
+            <button data-testid="wf-add-gate-condition"
+              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 3, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', cursor: 'pointer' }}
+              onClick={() => setZoneEntryGate(zone.id, { ...zone.entryGate!, conditions: [...zone.entryGate!.conditions, 'party-level:>=5'] })}>
+              + Add condition
+            </button>
+          </div>
+        )}
+      </div>
       <label style={labelStyle}>Tags (comma-separated)
         <input style={inputStyle} value={zone.tags.join(', ')}
           onChange={(e) => updateZone(zone.id, { tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
