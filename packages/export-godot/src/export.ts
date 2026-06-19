@@ -19,6 +19,7 @@ import { convertAssets, type GodotAssetBinding } from './convert-assets.js';
 import { convertLootTables, type GodotLootTableResource } from './convert-loot-tables.js';
 import { convertSpawnPoints, type GodotSpawnMarker } from './convert-spawn-points.js';
 import { convertTransitions, type GodotTransitionNode } from './convert-transitions.js';
+import { convertTileLayers, type GodotTileLayer } from './convert-tile-layers.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
@@ -50,6 +51,7 @@ export interface GodotContentPack {
     lootTables: GodotLootTableResource[];
     spawnMarkers: GodotSpawnMarker[];
     transitions: GodotTransitionNode[];
+    tileLayers: GodotTileLayer[];
     /** The generated .tscn scene text (main world scene). */
     worldSceneTscn: string;
 }
@@ -94,6 +96,7 @@ export function exportToGodot(
     let lootResult: ReturnType<typeof convertLootTables>;
     let spawnResult: ReturnType<typeof convertSpawnPoints>;
     let transitionsResult: ReturnType<typeof convertTransitions>;
+    let tileLayersResult: ReturnType<typeof convertTileLayers>;
 
     try {
         zonesResult = convertZones(project);
@@ -106,6 +109,7 @@ export function exportToGodot(
         lootResult = convertLootTables(project);
         spawnResult = convertSpawnPoints(project);
         transitionsResult = convertTransitions(project);
+        tileLayersResult = convertTileLayers(project);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
@@ -125,6 +129,7 @@ export function exportToGodot(
     fidelityEntries.push(...lootResult.fidelity);
     fidelityEntries.push(...spawnResult.fidelity);
     fidelityEntries.push(...transitionsResult.fidelity);
+    fidelityEntries.push(...tileLayersResult.fidelity);
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -152,6 +157,7 @@ export function exportToGodot(
         navigationLinks: connectionsResult.links,
         spawnMarkers: spawnResult.spawnMarkers,
         transitions: transitionsResult.transitions,
+        tileLayers: tileLayersResult.tileLayers,
     });
 
     const proj = project as unknown as Record<string, unknown>;
@@ -181,6 +187,7 @@ export function exportToGodot(
         lootTables: lootResult.lootTables,
         spawnMarkers: spawnResult.spawnMarkers,
         transitions: transitionsResult.transitions,
+        tileLayers: tileLayersResult.tileLayers,
         worldSceneTscn,
     };
 

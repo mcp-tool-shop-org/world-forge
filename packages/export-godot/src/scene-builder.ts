@@ -32,6 +32,7 @@ import type { GodotItemResource } from './convert-items.js';
 import type { GodotNavigationLink } from './convert-connections.js';
 import type { GodotSpawnMarker } from './convert-spawn-points.js';
 import type { GodotTransitionNode } from './convert-transitions.js';
+import { encodeTileMapData, type GodotTileLayer } from './convert-tile-layers.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -41,6 +42,8 @@ export interface SceneBuildInput {
     navigationLinks: GodotNavigationLink[];
     spawnMarkers: GodotSpawnMarker[];
     transitions: GodotTransitionNode[];
+    /** Tile layers → TileMapLayer nodes. Optional for back-compat with older callers. */
+    tileLayers?: GodotTileLayer[];
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -53,23 +56,35 @@ const Z_INDEX_MAX = 4096;
  */
 export function buildWorldScene(input: SceneBuildInput): string {
     const lines: string[] = [];
+    const tileLayers = input.tileLayers ?? [];
     // External resources (scene templates referenced by entities/transitions).
     const extResources = collectExtResources(input);
+    // Tile resources — TileSet/TileSetAtlasSource sub-resources + tileset textures.
+    const tileResources = collectTileResources(tileLayers);
     // Sub-resources (per-zone collision shapes + navigation polygons).
     const subResources = collectSubResources(input.zones);
 
-    // Header — load_steps counts ext + sub resources plus the implicit scene step.
-    lines.push(`[gd_scene load_steps=${extResources.length + subResources.blocks.length + 1} format=3 uid="uid://world_forge_export"]`);
+    // Header — load_steps counts every ext + sub resource plus the implicit scene step.
+    const loadSteps = extResources.length + tileResources.textures.length
+        + subResources.blocks.length + tileResources.subBlocks.length + 1;
+    lines.push(`[gd_scene load_steps=${loadSteps} format=3 uid="uid://world_forge_export"]`);
     lines.push('');
 
-    // External resource declarations
+    // External resource declarations — PackedScene templates, then tileset textures.
     for (let i = 0; i < extResources.length; i++) {
         lines.push(`[ext_resource type="PackedScene" uid="uid://ext_${i}" path="${extResources[i].path}" id="${extResources[i].id}"]`);
     }
-    if (extResources.length > 0) lines.push('');
+    for (const tex of tileResources.textures) {
+        lines.push(`[ext_resource type="Texture2D" path="${tex.path}" id="${tex.id}"]`);
+    }
+    if (extResources.length > 0 || tileResources.textures.length > 0) lines.push('');
 
     // Sub-resource declarations (must precede the nodes that reference them).
     for (const block of subResources.blocks) {
+        lines.push(block);
+        lines.push('');
+    }
+    for (const block of tileResources.subBlocks) {
         lines.push(block);
         lines.push('');
     }
@@ -84,6 +99,11 @@ export function buildWorldScene(input: SceneBuildInput): string {
     lines.push(`[node name="Camera2D" type="Camera2D" parent="."]`);
     lines.push(`position = Vector2(${camera.x}, ${camera.y})`);
     lines.push('');
+
+    // Tile layers — TileMapLayer nodes (ground art) parented to the root. Image-
+    // backed layers carry baked tile_map_data cells; color-only layers carry a
+    // TileSet scaffold + placement metadata (cells load data-driven).
+    lines.push(...emitTileMapLayers(tileLayers, tileResources.tileSetIdByLayer));
 
     // Zone nodes
     for (const zone of input.zones) {
@@ -244,6 +264,85 @@ function collectExtResources(input: SceneBuildInput): ExtResourceRef[] {
     }
 
     return refs;
+}
+
+interface TileResourceSet {
+    /** Tileset texture ext_resources (deduped by path). */
+    textures: { path: string; id: string }[];
+    /** TileSetAtlasSource + TileSet sub-resource blocks, in declaration order. */
+    subBlocks: string[];
+    /** Map of tile layer id → its TileSet sub-resource id. */
+    tileSetIdByLayer: Map<string, string>;
+}
+
+/**
+ * Build the TileSet (and, for image-backed layers, TileSetAtlasSource)
+ * sub-resources plus the tileset-texture ext_resources. Atlas-source blocks are
+ * pushed before the TileSet that references them, satisfying .tscn ordering.
+ */
+function collectTileResources(tileLayers: GodotTileLayer[]): TileResourceSet {
+    const textures: { path: string; id: string }[] = [];
+    const textureIdByPath = new Map<string, string>();
+    const subBlocks: string[] = [];
+    const tileSetIdByLayer = new Map<string, string>();
+
+    for (let li = 0; li < tileLayers.length; li++) {
+        const layer = tileLayers[li];
+        const tileSetId = `TileSet_${li}`;
+        tileSetIdByLayer.set(layer.id, tileSetId);
+
+        const sourceLines: string[] = [];
+        for (const src of layer.atlasSources) {
+            let texId = textureIdByPath.get(src.texturePath);
+            if (!texId) {
+                texId = `tiletex_${textures.length}`;
+                textureIdByPath.set(src.texturePath, texId);
+                textures.push({ path: src.texturePath, id: texId });
+            }
+            const atlasId = `TileAtlas_${li}_${src.sourceId}`;
+            const tileDefs = src.atlasCoords.map((c) => `${c.atlasX}:${c.atlasY}/0 = 0`).join('\n');
+            subBlocks.push(
+                `[sub_resource type="TileSetAtlasSource" id="${atlasId}"]\n` +
+                `texture = ExtResource("${texId}")\n` +
+                `texture_region_size = Vector2i(${src.tileWidth}, ${src.tileHeight})` +
+                (tileDefs ? '\n' + tileDefs : ''),
+            );
+            sourceLines.push(`sources/${src.sourceId} = SubResource("${atlasId}")`);
+        }
+
+        subBlocks.push(
+            `[sub_resource type="TileSet" id="${tileSetId}"]\n` +
+            `tile_size = Vector2i(${layer.tileSize}, ${layer.tileSize})` +
+            (sourceLines.length > 0 ? '\n' + sourceLines.join('\n') : ''),
+        );
+    }
+
+    return { textures, subBlocks, tileSetIdByLayer };
+}
+
+/** Emit TileMapLayer node blocks (parented to root). Sibling names are deduped. */
+function emitTileMapLayers(tileLayers: GodotTileLayer[], tileSetIdByLayer: Map<string, string>): string[] {
+    const lines: string[] = [];
+    const seen = new Map<string, number>();
+    for (const layer of tileLayers) {
+        const base = sanitize(layer.nodeName) || 'TileLayer';
+        const n = seen.get(base) ?? 0;
+        seen.set(base, n + 1);
+        const nodeName = n === 0 ? base : `${base}_${n + 1}`;
+
+        lines.push(`[node name="${nodeName}" type="TileMapLayer" parent="."]`);
+        const tsId = tileSetIdByLayer.get(layer.id);
+        if (tsId) lines.push(`tile_set = SubResource("${tsId}")`);
+        lines.push(`z_index = ${clampZ(Math.round(layer.zIndex))}`);
+        if (layer.cells.length > 0) {
+            lines.push(`tile_map_data = PackedByteArray(${encodeTileMapData(layer.cells).join(', ')})`);
+        }
+        lines.push(`metadata/layer_id = "${escapeGodot(layer.id)}"`);
+        lines.push(`metadata/tile_count = ${layer.tileCount}`);
+        lines.push(`metadata/image_backed = ${layer.imageBacked}`);
+        lines.push('');
+    }
+    return lines;
 }
 
 interface SubResourceSet {

@@ -18,6 +18,8 @@ const EXPECTED_ITEMS := 3
 const EXPECTED_SPAWN_POINTS := 2
 const EXPECTED_TRANSITIONS := 1
 const EXPECTED_NAV_LINKS := 4
+const EXPECTED_TILE_LAYERS := 1
+const EXPECTED_TILE_COUNT := 10
 
 var _failures: Array[String] = []
 
@@ -195,6 +197,28 @@ func _init() -> void:
 	#     visible the moment it opens (no black screen).
 	var cam := root_node.get_node_or_null("Camera2D") as Camera2D
 	_assert(cam != null, "world_has_camera")
+
+	# 15. Wave B-2 — tile layers export as TileMapLayer nodes, each with a TileSet
+	#     resource, and preserve their placement count as metadata.
+	var tile_layers: Array[Node] = []
+	for child in root_node.get_children():
+		if child is TileMapLayer:
+			tile_layers.append(child)
+	print("tile_layer_count=" + str(tile_layers.size()))
+	_assert(tile_layers.size() == EXPECTED_TILE_LAYERS, "tile_layer_count_matches",
+		"expected %d, got %d" % [EXPECTED_TILE_LAYERS, tile_layers.size()])
+
+	var layers_with_tileset := 0
+	var total_tile_count := 0
+	for tl in tile_layers:
+		if tl.tile_set != null:
+			layers_with_tileset += 1
+		total_tile_count += int(tl.get_meta("tile_count", 0))
+	_assert(layers_with_tileset == EXPECTED_TILE_LAYERS, "tile_layers_have_tileset",
+		"expected %d, got %d" % [EXPECTED_TILE_LAYERS, layers_with_tileset])
+	print("tile_count=" + str(total_tile_count))
+	_assert(total_tile_count == EXPECTED_TILE_COUNT, "tile_count_matches",
+		"expected %d, got %d" % [EXPECTED_TILE_COUNT, total_tile_count])
 
 	# Cleanup
 	root_node.queue_free()

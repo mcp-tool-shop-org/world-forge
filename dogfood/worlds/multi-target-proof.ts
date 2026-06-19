@@ -378,8 +378,40 @@ export const proofProject: WorldProject = {
     progressionTrees: [],
     craftingStations: [],
     marketNodes: [],
-    tilesets: [],
-    tileLayers: [],
+    // Wave B-2: a color tileset (no imagePath) + a ground layer over the tavern.
+    // Color-only so the Godot smoke loads with zero external texture deps.
+    tilesets: [
+        {
+            id: 'ts-dustwalk',
+            name: 'Dustwalk Tiles',
+            tileWidth: 32,
+            tileHeight: 32,
+            tiles: [
+                { id: 'dw-floor', tilesetId: 'ts-dustwalk', row: 0, col: 0, tags: ['floor'], walkable: true, opacity: 1 },
+                { id: 'dw-wall', tilesetId: 'ts-dustwalk', row: 0, col: 1, tags: ['wall'], walkable: false, opacity: 1 },
+            ],
+        },
+    ],
+    tileLayers: [
+        {
+            id: 'tl-ground',
+            name: 'Ground',
+            zIndex: 0,
+            tiles: [
+                // Tavern floor (rows y=1,2 across x=0..3) + a north wall (y=0).
+                { tileId: 'dw-wall', gridX: 0, gridY: 0 },
+                { tileId: 'dw-wall', gridX: 1, gridY: 0 },
+                { tileId: 'dw-floor', gridX: 0, gridY: 1 },
+                { tileId: 'dw-floor', gridX: 1, gridY: 1 },
+                { tileId: 'dw-floor', gridX: 2, gridY: 1 },
+                { tileId: 'dw-floor', gridX: 3, gridY: 1 },
+                { tileId: 'dw-floor', gridX: 0, gridY: 2 },
+                { tileId: 'dw-floor', gridX: 1, gridY: 2 },
+                { tileId: 'dw-floor', gridX: 2, gridY: 2 },
+                { tileId: 'dw-floor', gridX: 3, gridY: 2 },
+            ],
+        },
+    ],
     props: [],
     propPlacements: [],
     ambientLayers: [
