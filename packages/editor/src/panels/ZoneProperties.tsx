@@ -18,7 +18,7 @@ import {
 } from './zone-2d5-helpers.js';
 
 export function ZoneProperties() {
-  const { project, updateZone, removeZone, setZoneStratum } = useProjectStore();
+  const { project, updateZone, removeZone, setZoneStratum, setZoneHazardRefs } = useProjectStore();
   const { selection, setSelectedZone } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const zone = project.zones.find((z) => z.id === selectedZoneId);
@@ -46,6 +46,22 @@ export function ZoneProperties() {
             {(project.strata ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
+      )}
+      {(project.hazardDefinitions ?? []).length > 0 && (
+        <div style={{ marginBottom: 6 }} data-testid="wf-zone-hazards">
+          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 2 }}>Hazards</div>
+          {(project.hazardDefinitions ?? []).map((h) => {
+            const refs = zone.hazardRefs ?? [];
+            const on = refs.includes(h.id);
+            return (
+              <label key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={on}
+                  onChange={(e) => setZoneHazardRefs(zone.id, e.target.checked ? [...refs, h.id] : refs.filter((r) => r !== h.id))} />
+                {h.name}
+              </label>
+            );
+          })}
+        </div>
       )}
       <label style={labelStyle}>Tags (comma-separated)
         <input style={inputStyle} value={zone.tags.join(', ')}
