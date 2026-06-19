@@ -7,6 +7,7 @@ import type {
   SpawnPoint, CraftingStation, MarketNode, LootTable,
 } from './entities.js';
 import type { Building, Hub, Stronghold } from './town.js';
+import type { Stratum, StratumLink } from './stratum.js';
 import type { DialogueDefinition } from './dialogue.js';
 import type { PlayerTemplate } from './player-template.js';
 import type { BuildCatalogDefinition } from './build-catalog.js';
@@ -70,6 +71,14 @@ export interface WorldProject {
   buildings?: Building[];
   hubs?: Hub[];
   strongholds?: Stronghold[];
+
+  /**
+   * World-modeling layer — discrete vertical strata and the connectors between
+   * them. Additive since v4.5 — existing projects without these fields validate
+   * normally. See docs/world-modeling-design.md.
+   */
+  strata?: Stratum[];
+  stratumLinks?: StratumLink[];
 
   tilesets: Tileset[];
   tileLayers: TileLayer[];

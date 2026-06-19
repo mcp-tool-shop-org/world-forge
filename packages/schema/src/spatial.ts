@@ -35,6 +35,11 @@ export interface Zone {
   elevation?: number;
   /** Vertical span for multi-level zones. `floor < ceiling`, both in meters. */
   elevationRange?: ZoneElevationRange;
+  /**
+   * The discrete vertical layer (Stratum) this zone belongs to. Additive since
+   * v4.5 — groups zones into surface/underground/sky levels. See stratum.ts.
+   */
+  stratumId?: string;
   /** Ordered parallax layers rendered behind/in-front-of gameplay for 2.5D depth. */
   parallaxLayers?: ParallaxLayer[];
   /** Asset id of a sky / skyline backdrop for 2.5D vertical framing. */

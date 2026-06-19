@@ -38,6 +38,8 @@ export type {
 
 export type { Building, Hub, Stronghold } from './town.js';
 
+export type { Stratum, StratumLink } from './stratum.js';
+
 export type {
   SpawnConditionType, SpawnConditionNode,
 } from './spawn-condition.js';
