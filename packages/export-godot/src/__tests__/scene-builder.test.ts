@@ -12,6 +12,7 @@ import type { GodotZoneResource } from '../convert-zones.js';
 import type { GodotEntityManifest } from '../convert-entities.js';
 import type { GodotTileLayer } from '../convert-tile-layers.js';
 import type { GodotPropNode } from '../convert-props.js';
+import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -268,5 +269,37 @@ describe('buildWorldScene — props (Wave B-3 interiors)', () => {
     it('omits the Props container entirely when there are no props', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         expect(tscn).not.toContain('name="Props"');
+    });
+});
+
+describe('buildWorldScene — town economy (Wave B-3)', () => {
+    const market: GodotMarketNode = {
+        nodeName: 'Market_m1', id: 'm1', zoneId: 'z1', position: { x: 64, y: 32 },
+        supplyCategories: ['food', 'tools'], priceModifier: 1.2, contrabandAvailable: false, merchantEntityId: 'npc1',
+    };
+    const station: GodotCraftingStation = {
+        nodeName: 'Crafting_c1', id: 'c1', zoneId: 'z1', position: { x: 96, y: 96 },
+        stationType: 'forge', availableRecipes: ['iron-blade', 'horseshoe'],
+    };
+
+    it('emits Markets + CraftingStations containers with economy metadata', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), markets: [market], craftingStations: [station] });
+        expect(tscn).toContain('[node name="Markets" type="Node2D" parent="."]');
+        expect(tscn).toContain('[node name="Market_m1" type="Node2D" parent="Markets"]');
+        expect(tscn).toContain('position = Vector2(64, 32)');
+        expect(tscn).toContain('metadata/market_id = "m1"');
+        expect(tscn).toContain('metadata/supply_categories = "food,tools"');
+        expect(tscn).toContain('metadata/price_modifier = 1.2');
+        expect(tscn).toContain('metadata/merchant_entity_id = "npc1"');
+        expect(tscn).toContain('[node name="CraftingStations" type="Node2D" parent="."]');
+        expect(tscn).toContain('metadata/station_id = "c1"');
+        expect(tscn).toContain('metadata/station_type = "forge"');
+        expect(tscn).toContain('metadata/recipes = "iron-blade,horseshoe"');
+    });
+
+    it('omits economy containers when there are none', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn).not.toContain('name="Markets"');
+        expect(tscn).not.toContain('name="CraftingStations"');
     });
 });

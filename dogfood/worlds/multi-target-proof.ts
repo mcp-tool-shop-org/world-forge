@@ -376,8 +376,13 @@ export const proofProject: WorldProject = {
     ],
 
     progressionTrees: [],
-    craftingStations: [],
-    marketNodes: [],
+    // Wave B-3 (town economy): a market in the bazaar + a smith in the tavern.
+    craftingStations: [
+        { id: 'craft-smith', zoneId: 'zone-tavern', stationType: 'forge', availableRecipes: ['iron-blade', 'horseshoe'] },
+    ],
+    marketNodes: [
+        { id: 'market-bazaar', zoneId: 'zone-market', merchantEntityId: 'npc-merchant', supplyCategories: ['food', 'tools'], priceModifier: 1.2, contrabandAvailable: false },
+    ],
     // Wave B-2: a color tileset (no imagePath) + a ground layer over the tavern.
     // Color-only so the Godot smoke loads with zero external texture deps.
     tilesets: [

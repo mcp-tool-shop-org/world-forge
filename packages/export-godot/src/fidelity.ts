@@ -10,7 +10,7 @@ export type FidelitySeverity = 'info' | 'warning' | 'error';
 export type FidelityDomain =
     | 'zones' | 'districts' | 'entities' | 'items'
     | 'connections' | 'navigation' | 'assets' | 'dialogues'
-    | 'loot' | 'spawn-points' | 'transitions' | 'tiles' | 'props' | 'world';
+    | 'loot' | 'spawn-points' | 'transitions' | 'tiles' | 'props' | 'economy' | 'world';
 
 export interface FidelityEntry {
     level: FidelityLevel;
