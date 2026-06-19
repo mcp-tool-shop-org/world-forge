@@ -20,6 +20,7 @@ const EXPECTED_TRANSITIONS := 1
 const EXPECTED_NAV_LINKS := 4
 const EXPECTED_TILE_LAYERS := 1
 const EXPECTED_TILE_COUNT := 10
+const EXPECTED_PROPS := 2
 
 var _failures: Array[String] = []
 
@@ -219,6 +220,22 @@ func _init() -> void:
 	print("tile_count=" + str(total_tile_count))
 	_assert(total_tile_count == EXPECTED_TILE_COUNT, "tile_count_matches",
 		"expected %d, got %d" % [EXPECTED_TILE_COUNT, total_tile_count])
+
+	# 16. Wave B-3 (interiors) — props export as Node2D children of a "Props"
+	#     container, each preserving its prop_id metadata.
+	var props_container := root_node.get_node_or_null("Props")
+	var prop_count := 0
+	var props_with_id := 0
+	if props_container:
+		prop_count = props_container.get_child_count()
+		for pr in props_container.get_children():
+			if pr.get_meta("prop_id", "") != "":
+				props_with_id += 1
+	print("prop_count=" + str(prop_count))
+	_assert(prop_count == EXPECTED_PROPS, "prop_count_matches",
+		"expected %d, got %d" % [EXPECTED_PROPS, prop_count])
+	_assert(props_with_id == EXPECTED_PROPS, "props_have_metadata",
+		"expected %d, got %d" % [EXPECTED_PROPS, props_with_id])
 
 	# Cleanup
 	root_node.queue_free()

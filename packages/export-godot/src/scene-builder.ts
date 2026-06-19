@@ -33,6 +33,7 @@ import type { GodotNavigationLink } from './convert-connections.js';
 import type { GodotSpawnMarker } from './convert-spawn-points.js';
 import type { GodotTransitionNode } from './convert-transitions.js';
 import { encodeTileMapData, type GodotTileLayer } from './convert-tile-layers.js';
+import type { GodotPropNode } from './convert-props.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -44,6 +45,8 @@ export interface SceneBuildInput {
     transitions: GodotTransitionNode[];
     /** Tile layers → TileMapLayer nodes. Optional for back-compat with older callers. */
     tileLayers?: GodotTileLayer[];
+    /** Prop placements → Node2D placeholders under a "Props" container. Optional. */
+    props?: GodotPropNode[];
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -216,6 +219,29 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 if (tr.durationSeconds !== undefined) lines.push(`metadata/duration = ${tr.durationSeconds}`);
                 lines.push('');
             }
+        }
+    }
+
+    // Props — placed furniture/objects as Node2D placeholders under a root
+    // "Props" container, carrying definition data as metadata (textureless, so
+    // the scene loads with no external deps — the runtime binds the sprite).
+    const props = input.props ?? [];
+    if (props.length > 0) {
+        lines.push(`[node name="Props" type="Node2D" parent="."]`);
+        lines.push('');
+        for (const p of props) {
+            lines.push(`[node name="${p.nodeName}" type="Node2D" parent="Props"]`);
+            lines.push(`position = Vector2(${p.position.x}, ${p.position.y})`);
+            lines.push(`metadata/prop_id = "${p.id}"`);
+            lines.push(`metadata/prop_def = "${p.propId}"`);
+            if (p.displayName) lines.push(`metadata/display_name = "${escapeGodot(p.displayName)}"`);
+            lines.push(`metadata/walkable = ${p.walkable}`);
+            lines.push(`metadata/interactable = ${p.interactable}`);
+            lines.push(`metadata/width = ${p.width}`);
+            lines.push(`metadata/height = ${p.height}`);
+            if (p.imagePath) lines.push(`metadata/image_path = "${escapeGodot(p.imagePath)}"`);
+            if (p.zoneId) lines.push(`metadata/zone_id = "${p.zoneId}"`);
+            lines.push('');
         }
     }
 

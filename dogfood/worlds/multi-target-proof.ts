@@ -412,8 +412,15 @@ export const proofProject: WorldProject = {
             ],
         },
     ],
-    props: [],
-    propPlacements: [],
+    // Wave B-3 (interiors): a couple of props placed in the tavern.
+    props: [
+        { id: 'prop-barrel', name: 'Barrel', width: 1, height: 1, tags: ['container'], walkable: false, interactable: true },
+        { id: 'prop-rug', name: 'Rug', width: 2, height: 1, tags: ['decor'], walkable: true, interactable: false },
+    ],
+    propPlacements: [
+        { id: 'pp-barrel-1', propId: 'prop-barrel', gridX: 1, gridY: 1, zoneId: 'zone-tavern' },
+        { id: 'pp-rug-1', propId: 'prop-rug', gridX: 2, gridY: 2, zoneId: 'zone-tavern' },
+    ],
     ambientLayers: [
         {
             id: 'amb-cellar-drip',
