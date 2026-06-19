@@ -28,7 +28,7 @@ function tileSwatchStyle(tileset: Tileset, def: TileDefinition, size: number): C
  * seeds floor/wall/water/door tiles so the user can paint immediately without art.
  */
 export function TilePalette() {
-  const { project, addTileset, addTileLayer, removeTileLayer } = useProjectStore();
+  const { project, addTileset, updateTileset, addTileLayer, removeTileLayer } = useProjectStore();
   const {
     activeTool, activeTilesetId, activeTileId, activeTileLayerId, tileEraseMode,
     setActiveTileset, setActiveTile, setActiveTileLayer, toggleTileEraseMode,
@@ -121,6 +121,21 @@ export function TilePalette() {
               );
             })}
           </div>
+          {(() => {
+            const activeTile = activeTileset.tiles.find((t) => t.id === activeTileId);
+            if (!activeTile) return null;
+            return (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!activeTile.walkable}
+                  onChange={() => updateTileset(activeTileset.id, {
+                    tiles: activeTileset.tiles.map((t) => t.id === activeTile.id ? { ...t, walkable: !t.walkable } : t),
+                  })}
+                /> Solid <span style={{ color: '#6e7681', fontSize: 10 }}>(blocks movement — exports collision)</span>
+              </label>
+            );
+          })()}
         </>
       )}
 
