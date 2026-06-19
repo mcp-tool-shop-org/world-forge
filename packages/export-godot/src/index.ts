@@ -58,6 +58,9 @@ export type { GodotStratum, GodotStratumLink, ConvertStrataResult } from './conv
 export { convertHazards } from './convert-hazards.js';
 export type { GodotHazardPlacement, ConvertHazardsResult } from './convert-hazards.js';
 
+export { convertGates } from './convert-gates.js';
+export type { GodotZoneGate, ConvertGatesResult } from './convert-gates.js';
+
 export { buildWorldScene } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 

@@ -25,6 +25,7 @@ import { convertEconomy, type GodotMarketNode, type GodotCraftingStation } from 
 import { convertStructures, type GodotBuilding, type GodotHub, type GodotStronghold } from './convert-structures.js';
 import { convertStrata, type GodotStratum, type GodotStratumLink } from './convert-strata.js';
 import { convertHazards, type GodotHazardPlacement } from './convert-hazards.js';
+import { convertGates } from './convert-gates.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
@@ -116,6 +117,7 @@ export function exportToGodot(
     let structuresResult: ReturnType<typeof convertStructures>;
     let strataResult: ReturnType<typeof convertStrata>;
     let hazardsResult: ReturnType<typeof convertHazards>;
+    let gatesResult: ReturnType<typeof convertGates>;
 
     try {
         zonesResult = convertZones(project);
@@ -134,6 +136,7 @@ export function exportToGodot(
         structuresResult = convertStructures(project);
         strataResult = convertStrata(project);
         hazardsResult = convertHazards(project);
+        gatesResult = convertGates(project);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
@@ -159,6 +162,7 @@ export function exportToGodot(
     fidelityEntries.push(...structuresResult.fidelity);
     fidelityEntries.push(...strataResult.fidelity);
     fidelityEntries.push(...hazardsResult.fidelity);
+    fidelityEntries.push(...gatesResult.fidelity);
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -197,6 +201,7 @@ export function exportToGodot(
         stratumLinks: strataResult.links,
         zoneStrata: strataResult.zoneStrata,
         hazards: hazardsResult.placements,
+        zoneGates: gatesResult.zoneGates,
     });
 
     const proj = project as unknown as Record<string, unknown>;

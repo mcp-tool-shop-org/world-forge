@@ -38,6 +38,7 @@ import type { GodotMarketNode, GodotCraftingStation } from './convert-economy.js
 import type { GodotBuilding, GodotHub, GodotStronghold } from './convert-structures.js';
 import type { GodotStratum, GodotStratumLink } from './convert-strata.js';
 import type { GodotHazardPlacement } from './convert-hazards.js';
+import type { GodotZoneGate } from './convert-gates.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -69,6 +70,8 @@ export interface SceneBuildInput {
     zoneStrata?: Record<string, { stratumId: string; zBand: number }>;
     /** Hazard placements → Area2D regions under a "Hazards" container. Optional. */
     hazards?: GodotHazardPlacement[];
+    /** zoneId → its entry gate, emitted as metadata on the zone node. Optional. */
+    zoneGates?: Record<string, GodotZoneGate>;
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -169,6 +172,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`metadata/noise = ${zone.noise}`);
         if (zone.elevation !== undefined) lines.push(`metadata/elevation = ${zone.elevation}`);
         if (zone.parentDistrictId) lines.push(`metadata/district_id = "${zone.parentDistrictId}"`);
+        // Entry gate — the runtime reads these to allow/deny party entry on contact.
+        const gate = input.zoneGates?.[zone.id];
+        if (gate) {
+            lines.push(`metadata/entry_gate = "${escapeGodot(gate.conditions.join(';'))}"`);
+            lines.push(`metadata/entry_gate_mode = "${escapeGodot(gate.mode)}"`);
+            if (gate.reason) lines.push(`metadata/entry_gate_reason = "${escapeGodot(gate.reason)}"`);
+        }
         lines.push('');
 
         // Collision — a static rectangular hull covering the zone bounds so

@@ -31,6 +31,7 @@ const EXPECTED_STRATA := 2
 const EXPECTED_STRATUM_LINKS := 1
 const EXPECTED_ZONES_WITH_STRATUM := 2
 const EXPECTED_HAZARDS := 1
+const EXPECTED_GATED_ZONES := 1
 
 var _failures: Array[String] = []
 
@@ -381,6 +382,23 @@ func _init() -> void:
 		"expected %d, got %d" % [EXPECTED_HAZARDS, hazard_count])
 	_assert(hazards_are_areas == EXPECTED_HAZARDS, "hazards_are_area2d_with_region",
 		"expected %d, got %d" % [EXPECTED_HAZARDS, hazards_are_areas])
+
+	# 21. Zone entry gates — a gated zone carries entry_gate (conditions) +
+	#     entry_gate_mode metadata on its zone node (the runtime evaluates it).
+	var gated_zones := 0
+	var gate_mode_ok := false
+	for child in root_node.get_children():
+		if child.get_meta("zone_id", "") == "" :
+			continue
+		if child.get_meta("entry_gate", "") != "":
+			gated_zones += 1
+			if child.get_meta("zone_id", "") == "zone-gate" and child.get_meta("entry_gate_mode", "") == "hard":
+				gate_mode_ok = true
+	print("gated_zones=" + str(gated_zones))
+	_assert(gated_zones == EXPECTED_GATED_ZONES, "gated_zone_count_matches",
+		"expected %d, got %d" % [EXPECTED_GATED_ZONES, gated_zones])
+	_assert(gate_mode_ok, "gated_zone_has_mode_metadata",
+		"zone-gate should carry entry_gate_mode=hard")
 
 	# Cleanup
 	root_node.queue_free()
