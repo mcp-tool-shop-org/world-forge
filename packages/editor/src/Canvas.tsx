@@ -179,6 +179,21 @@ export function Canvas() {
     return entry.loaded ? entry.img : null;
   }, []);
 
+  // B-2: tile brush stroke gesture. A drag accumulates cells, committed in ONE
+  // undo step on mouseup (applyTileEdits). The draw loop renders an in-progress
+  // preview from this ref; tilePaintTick forces a redraw as cells are added.
+  const tilePaint = useRef<{ erasing: boolean; layerId: string; tileId: string | null; cells: Map<string, { gridX: number; gridY: number }> } | null>(null);
+  const [tilePaintTick, setTilePaintTick] = useState(0);
+  const addTilePaintCell = useCallback((gx: number, gy: number) => {
+    const g = tilePaint.current;
+    if (!g) return;
+    const key = `${gx},${gy}`;
+    if (!g.cells.has(key)) {
+      g.cells.set(key, { gridX: gx, gridY: gy });
+      setTilePaintTick((t) => t + 1);
+    }
+  }, []);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -260,31 +275,67 @@ export function Canvas() {
       const sortedLayers = [...project.tileLayers].sort((a, b) => a.zIndex - b.zIndex);
       const prevSmoothing = ctx.imageSmoothingEnabled;
       ctx.imageSmoothingEnabled = false; // crisp pixel-art tile scaling
+
+      // Draw one tile cell — image-backed if available, colored-rect fallback otherwise.
+      const drawTileCell = (def: TileDefinition, tileset: Tileset, dx: number, dy: number) => {
+        const img = tileset.imagePath ? getTileImage(tileset.imagePath) : null;
+        ctx.globalAlpha = def.opacity;
+        if (img) {
+          ctx.drawImage(
+            img,
+            def.col * tileset.tileWidth, def.row * tileset.tileHeight, tileset.tileWidth, tileset.tileHeight,
+            dx, dy, tileSize, tileSize,
+          );
+        } else {
+          ctx.fillStyle = fallbackTileColor(def.tags);
+          ctx.fillRect(dx, dy, tileSize, tileSize);
+        }
+        ctx.globalAlpha = 1;
+      };
+
+      // Active brush stroke: hide committed cells being erased + preview painted ones.
+      const stroke = tilePaint.current;
+
       for (const layer of sortedLayers) {
         for (const placement of layer.tiles) {
           const entry = tileLookup.get(placement.tileId);
           if (!entry) continue; // tile id not in any loaded tileset
+          // Erase preview: skip cells in the active erase stroke for this layer.
+          if (stroke?.erasing && stroke.layerId === layer.id && stroke.cells.has(`${placement.gridX},${placement.gridY}`)) continue;
           totalCount++;
           const dx = placement.gridX * tileSize;
           const dy = placement.gridY * tileSize;
           if (!inViewport(dx, dy, tileSize, tileSize)) continue;
           visibleCount++;
-          const { def, tileset } = entry;
-          const img = tileset.imagePath ? getTileImage(tileset.imagePath) : null;
-          ctx.globalAlpha = def.opacity;
-          if (img) {
-            ctx.drawImage(
-              img,
-              def.col * tileset.tileWidth, def.row * tileset.tileHeight, tileset.tileWidth, tileset.tileHeight,
-              dx, dy, tileSize, tileSize,
-            );
-          } else {
-            ctx.fillStyle = fallbackTileColor(def.tags);
-            ctx.fillRect(dx, dy, tileSize, tileSize);
-          }
-          ctx.globalAlpha = 1;
+          drawTileCell(entry.def, entry.tileset, dx, dy);
         }
       }
+
+      // Paint preview: draw the in-progress stroke's cells on top of committed tiles.
+      if (stroke && !stroke.erasing && stroke.tileId) {
+        const entry = tileLookup.get(stroke.tileId);
+        if (entry) {
+          for (const c of stroke.cells.values()) {
+            const dx = c.gridX * tileSize;
+            const dy = c.gridY * tileSize;
+            if (!inViewport(dx, dy, tileSize, tileSize)) continue;
+            drawTileCell(entry.def, entry.tileset, dx, dy);
+          }
+        }
+      }
+
+      // Erase preview: outline the cells the stroke will clear.
+      if (stroke?.erasing) {
+        ctx.strokeStyle = 'rgba(255,80,80,0.9)';
+        ctx.lineWidth = 2 / zoom;
+        for (const c of stroke.cells.values()) {
+          const dx = c.gridX * tileSize;
+          const dy = c.gridY * tileSize;
+          if (!inViewport(dx, dy, tileSize, tileSize)) continue;
+          ctx.strokeRect(dx + 1 / zoom, dy + 1 / zoom, tileSize - 2 / zoom, tileSize - 2 / zoom);
+        }
+      }
+
       ctx.imageSmoothingEnabled = prevSmoothing;
     }
 
@@ -771,7 +822,7 @@ export function Canvas() {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
 
   useEffect(() => {
     draw();
@@ -1036,10 +1087,39 @@ export function Canvas() {
           tags: [],
         });
       }
+    } else if (activeTool === 'tile-paint') {
+      // Read fresh selection state — a drag must not use a stale closure.
+      const ed = useEditorStore.getState();
+      const erasing = ed.tileEraseMode || e.altKey;
+      if (!erasing && !ed.activeTileId) return; // no tile selected to paint
+      const proj = useProjectStore.getState();
+      // Resolve target layer: active, else first existing, else auto-create one.
+      let layerId = ed.activeTileLayerId;
+      if (!layerId || !(proj.project.tileLayers ?? []).some((l) => l.id === layerId)) {
+        const existing = proj.project.tileLayers?.[0];
+        if (existing) {
+          layerId = existing.id;
+        } else {
+          layerId = `tile-layer-${Date.now()}`;
+          proj.addTileLayer({ id: layerId, name: 'Tiles', zIndex: 0, tiles: [] });
+        }
+        ed.setActiveTileLayer(layerId);
+      }
+      tilePaint.current = { erasing, layerId, tileId: erasing ? null : ed.activeTileId, cells: new Map() };
+      addTilePaintCell(gx, gy);
     }
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
+    // Commit an in-progress tile brush stroke as a single undo step.
+    if (tilePaint.current) {
+      const stroke = tilePaint.current;
+      tilePaint.current = null;
+      const edits = [...stroke.cells.values()].map((c) => ({ gridX: c.gridX, gridY: c.gridY, tileId: stroke.erasing ? null : stroke.tileId }));
+      if (edits.length > 0) useProjectStore.getState().applyTileEdits(stroke.layerId, edits);
+      setTilePaintTick((t) => t + 1);
+      return;
+    }
     if (isPanning.current) {
       const wasRight = panButton.current === 2;
       isPanning.current = false;
@@ -1175,6 +1255,13 @@ export function Canvas() {
     }
 
     const { sx, sy } = getScreenXY(e);
+
+    // Tile brush drag: extend the active stroke with the cell under the cursor.
+    if (tilePaint.current) {
+      const { gx, gy } = screenToGrid(sx, sy);
+      addTilePaintCell(gx, gy);
+      return;
+    }
 
     // Resize tracking
     if (resizeMove.current) {

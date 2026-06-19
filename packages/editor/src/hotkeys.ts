@@ -36,6 +36,7 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyE', action: 'tool-entity', label: 'E', description: 'Switch to Entity tool' },
   { key: 'KeyL', action: 'tool-landmark', label: 'L', description: 'Switch to Landmark tool' },
   { key: 'KeyS', action: 'tool-spawn', label: 'S', description: 'Switch to Spawn tool' },
+  { key: 'KeyT', action: 'tool-tile', label: 'T', description: 'Switch to Tile Paint tool' },
 ];
 
 /** Return a flat list of all registered hotkeys for display in a guide panel. */
@@ -206,6 +207,7 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     case 'tool-entity':    { ctx.setTool('entity-place'); return { handled: true, action }; }
     case 'tool-landmark':  { ctx.setTool('landmark');     return { handled: true, action }; }
     case 'tool-spawn':     { ctx.setTool('spawn');        return { handled: true, action }; }
+    case 'tool-tile':      { ctx.setTool('tile-paint');   return { handled: true, action }; }
 
     default:
       return { handled: false };

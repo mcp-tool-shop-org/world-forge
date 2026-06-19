@@ -16,7 +16,7 @@ export interface ClipboardData {
   encounters: EncounterAnchor[];
 }
 
-export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place';
+export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'deps' | 'review' | 'guide' | 'import-summary' | 'diff' | 'objects' | 'presets';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
@@ -158,6 +158,16 @@ interface EditorState {
   // INF-FT-003: Renderer diagnostics overlay toggle.
   showRendererDiagnostics: boolean;
   toggleRendererDiagnostics: () => void;
+
+  // B-2: tile painting — active tileset/tile/layer selection + erase mode.
+  activeTilesetId: string | null;
+  activeTileId: string | null;
+  activeTileLayerId: string | null;
+  tileEraseMode: boolean;
+  setActiveTileset: (id: string | null) => void;
+  setActiveTile: (id: string | null) => void;
+  setActiveTileLayer: (id: string | null) => void;
+  toggleTileEraseMode: () => void;
 
   // Speed panel (double-right-click command palette)
   showSpeedPanel: boolean;
@@ -357,6 +367,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // INF-FT-003: Renderer diagnostics overlay — opt-in debug HUD.
   showRendererDiagnostics: false,
   toggleRendererDiagnostics: () => set((s) => ({ showRendererDiagnostics: !s.showRendererDiagnostics })),
+
+  // B-2: tile painting selection state.
+  activeTilesetId: null,
+  activeTileId: null,
+  activeTileLayerId: null,
+  tileEraseMode: false,
+  setActiveTileset: (id) => set({ activeTilesetId: id }),
+  setActiveTile: (id) => set({ activeTileId: id }),
+  setActiveTileLayer: (id) => set({ activeTileLayerId: id }),
+  toggleTileEraseMode: () => set((s) => ({ tileEraseMode: !s.tileEraseMode })),
 
   showSpeedPanel: false,
   speedPanelPosition: null,

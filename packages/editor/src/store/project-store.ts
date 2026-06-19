@@ -141,6 +141,12 @@ interface ProjectState {
   addTilePlacement: (layerId: string, placement: TilePlacement) => void;
   /** Erase the tile at a grid cell in the given layer (no-op if empty). */
   removeTilePlacement: (layerId: string, gridX: number, gridY: number) => void;
+  /**
+   * Apply a batch of tile edits to a layer in ONE undo step (a brush stroke).
+   * Each edit paints (tileId set) or erases (tileId null) the cell at
+   * (gridX,gridY). Used by the drag-paint brush so a stroke is a single undo.
+   */
+  applyTileEdits: (layerId: string, edits: { gridX: number; gridY: number; tileId: string | null }[]) => void;
 
   // Batch helpers (multi-select operations)
   moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, dx: number, dy: number) => void;
@@ -712,6 +718,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ? { ...l, tiles: l.tiles.filter((t) => !(t.gridX === gridX && t.gridY === gridY)) }
         : l),
   }), 'Erase tile'),
+  applyTileEdits: (layerId, edits) => get().updateProject((p) => ({
+    ...p, tileLayers: (p.tileLayers ?? []).map((l) => {
+      if (l.id !== layerId) return l;
+      // Drop every edited cell, then re-add only the painted ones. This makes a
+      // stroke idempotent and lets paint + erase share one batch (one undo).
+      const editedKeys = new Set(edits.map((e) => `${e.gridX},${e.gridY}`));
+      const kept = l.tiles.filter((t) => !editedKeys.has(`${t.gridX},${t.gridY}`));
+      const painted = edits
+        .filter((e) => e.tileId != null)
+        .map((e) => ({ tileId: e.tileId as string, gridX: e.gridX, gridY: e.gridY }));
+      return { ...l, tiles: [...kept, ...painted] };
+    }),
+  }), edits.every((e) => e.tileId == null) ? 'Erase tiles' : 'Paint tiles'),
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {

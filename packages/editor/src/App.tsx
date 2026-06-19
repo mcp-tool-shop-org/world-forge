@@ -11,6 +11,7 @@ import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } f
 import { ToastHost, pushToast } from './ui/Toast.js';
 import { useModalStore } from './store/modal-store.js';
 import { ToolPalette } from './panels/ToolPalette.js';
+import { TilePalette } from './panels/TilePalette.js';
 import { ZoneProperties } from './panels/ZoneProperties.js';
 import { DistrictPanel } from './panels/DistrictPanel.js';
 import { EntityProperties } from './panels/EntityProperties.js';
@@ -382,6 +383,7 @@ export function App() {
           {!leftCollapsed && (
             <div style={{ overflow: 'auto', padding: 8, flex: 1 }}>
               <ToolPalette />
+              <TilePalette />
               <DistrictPanel />
             </div>
           )}
