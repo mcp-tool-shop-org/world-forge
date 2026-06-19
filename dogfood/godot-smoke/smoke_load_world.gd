@@ -54,10 +54,11 @@ func _init() -> void:
 	_assert(root_node is Node2D, "root_is_node2d")
 	print("root_name=" + root_node.name)
 
-	# 3. Count zones (direct Node2D children of root, excluding NavigationLinks)
+	# 3. Identify zones by metadata (robust against Camera2D / NavigationLinks,
+	#    which are also Node2D children of the root).
 	var zones: Array[Node] = []
 	for child in root_node.get_children():
-		if child is Node2D and child.name != "NavigationLinks":
+		if child.has_meta("zone_id"):
 			zones.append(child)
 	print("zone_count=" + str(zones.size()))
 	_assert(zones.size() == EXPECTED_ZONES, "zone_count_matches",
@@ -165,6 +166,35 @@ func _init() -> void:
 	print("entities_with_metadata=" + str(entities_with_id))
 	_assert(entities_with_id == EXPECTED_ENTITIES, "entity_metadata_preserved",
 		"expected %d with entity_id, got %d" % [EXPECTED_ENTITIES, entities_with_id])
+
+	# 12. Playable scaffold — every zone has a StaticBody2D collision hull
+	#     with a shape, so characters collide instead of falling through.
+	var zones_with_collision := 0
+	for zone in zones:
+		var body := zone.get_node_or_null("Collision") as StaticBody2D
+		if body != null:
+			var cs := body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+			if cs != null and cs.shape != null:
+				zones_with_collision += 1
+	print("zones_with_collision=" + str(zones_with_collision))
+	_assert(zones_with_collision == EXPECTED_ZONES, "all_zones_have_collision",
+		"expected %d, got %d" % [EXPECTED_ZONES, zones_with_collision])
+
+	# 13. Playable scaffold — every zone has a NavigationRegion2D with a
+	#     navigation polygon, so NPCs/the player can path within the zone.
+	var zones_with_nav := 0
+	for zone in zones:
+		var nav_region := zone.get_node_or_null("Navigation") as NavigationRegion2D
+		if nav_region != null and nav_region.navigation_polygon != null:
+			zones_with_nav += 1
+	print("zones_with_nav=" + str(zones_with_nav))
+	_assert(zones_with_nav == EXPECTED_ZONES, "all_zones_have_navmesh",
+		"expected %d, got %d" % [EXPECTED_ZONES, zones_with_nav])
+
+	# 14. Playable scaffold — the world has a framed Camera2D so the scene is
+	#     visible the moment it opens (no black screen).
+	var cam := root_node.get_node_or_null("Camera2D") as Camera2D
+	_assert(cam != null, "world_has_camera")
 
 	# Cleanup
 	root_node.queue_free()
