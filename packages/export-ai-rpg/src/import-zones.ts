@@ -1,6 +1,7 @@
 // import-zones.ts — engine ZoneDefinition[] → schema Zone[] with auto-layout
 
 import type { Zone } from '@world-forge/schema';
+import { formatConditionSpec } from '@world-forge/schema';
 import type { ZoneDefinition } from '@ai-rpg-engine/content-schema';
 import type { FidelityEntry } from './fidelity.js';
 
@@ -64,12 +65,47 @@ export function importZones(
       return { name, type: 'inspect' as const };
     });
 
-    // Reconstruct exits
-    const exits = (ez.exits ?? []).map((e) => ({
-      targetZoneId: e.targetZoneId,
-      label: e.label ?? '',
-      condition: e.condition?.type,
-    }));
+    // Reconstruct exits.
+    //
+    // ⚠ C3/P1 — REPAIRS A REGRESSION C1 INTRODUCED. This line read
+    // `condition: e.condition?.type`, which discards `params`. Before C1 that
+    // accidentally worked, because the exporter stuffed the WHOLE grammar
+    // string into `type` — a garbled export and a lossy import cancelled out.
+    // C1 correctly fixed the export to COMPILE through parseSpawnCondition and
+    // thereby broke this side: `item:rope` exports as
+    // `{ type: 'has-item', params: { id: 'rope' } }` and came back as the bare
+    // string `"has-item"`, which parseSpawnCondition REJECTS. So an
+    // export→import round-trip produced a project whose exit conditions fail
+    // validateSpawnCondition, and nothing caught it because C1's proof was
+    // one-directional (it asserted the exported shape, correctly).
+    //
+    // `formatConditionSpec` is the codec's inverse and re-derives the authored
+    // string from the operands. A spec it cannot express yields `undefined` and
+    // a fidelity entry rather than an invalid grammar string: an unparseable
+    // condition that reaches a project is worse than an absent one, because
+    // validateProject rejects the whole project for it.
+    const exits = (ez.exits ?? []).map((e) => {
+      if (e.condition === undefined) {
+        return { targetZoneId: e.targetZoneId, label: e.label ?? '', condition: undefined };
+      }
+      const condition = formatConditionSpec(e.condition);
+      if (condition === null) {
+        fidelity.push({
+          level: 'approximated', domain: 'zones', severity: 'warning',
+          entityId: ez.id, fieldPath: `exits.${e.targetZoneId}.condition`,
+          message:
+            `Zone '${ez.name}' exit to '${e.targetZoneId}' carries a condition ` +
+            `(type '${String((e.condition as { type?: unknown }).type)}') that the SpawnCondition ` +
+            `grammar cannot express — the exit is imported without a condition.`,
+          reason: 'condition-not-expressible-in-grammar',
+        });
+      }
+      return {
+        targetZoneId: e.targetZoneId,
+        label: e.label ?? '',
+        condition: condition ?? undefined,
+      };
+    });
 
     return {
       id: ez.id,
