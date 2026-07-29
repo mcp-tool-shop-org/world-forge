@@ -52,12 +52,15 @@
   ],
   "//": "ai-rpg-engine/* deps: see src/ENGINE_CONTRACT.md for the 3.x API surface this exporter depends on and what a future 4.x bump has to re-verify.",
   "dependencies": {
-    "@world-forge/schema": "*",
+    "@ai-rpg-engine/character-creation": "^3.8.0",
     "@ai-rpg-engine/content-schema": "^3.8.0",
     "@ai-rpg-engine/core": "^3.8.0",
+    "@ai-rpg-engine/equipment": "^3.8.0",
     "@ai-rpg-engine/modules": "^3.8.0",
     "@ai-rpg-engine/pack-registry": "^3.8.0",
-    "@ai-rpg-engine/character-creation": "^3.8.0",
-    "@ai-rpg-engine/equipment": "^3.8.0"
+    "@world-forge/schema": "*"
+  },
+  "devDependencies": {
+    "@ai-rpg-engine/starter-fantasy": "^3.8.0"
   }
 }
