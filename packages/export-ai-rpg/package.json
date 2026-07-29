@@ -50,14 +50,14 @@
     "rpg",
     "typescript"
   ],
-  "//": "ai-rpg-engine/* deps: see src/ENGINE_CONTRACT.md for the 2.x API shape this exporter depends on and the checklist for a future 3.x bump.",
+  "//": "ai-rpg-engine/* deps: see src/ENGINE_CONTRACT.md for the 3.x API surface this exporter depends on and what a future 4.x bump has to re-verify.",
   "dependencies": {
     "@world-forge/schema": "*",
-    "@ai-rpg-engine/content-schema": "^2.0.1",
-    "@ai-rpg-engine/core": "^2.0.1",
-    "@ai-rpg-engine/modules": "^2.1.0",
-    "@ai-rpg-engine/pack-registry": "^2.0.2",
-    "@ai-rpg-engine/character-creation": "^2.0.2",
-    "@ai-rpg-engine/equipment": "^2.0.2"
+    "@ai-rpg-engine/content-schema": "^3.8.0",
+    "@ai-rpg-engine/core": "^3.8.0",
+    "@ai-rpg-engine/modules": "^3.8.0",
+    "@ai-rpg-engine/pack-registry": "^3.8.0",
+    "@ai-rpg-engine/character-creation": "^3.8.0",
+    "@ai-rpg-engine/equipment": "^3.8.0"
   }
 }
