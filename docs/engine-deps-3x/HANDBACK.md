@@ -40,7 +40,7 @@ said it existed because "2.x has no such export, so importing it is a dependency
 bump, not an import." The bump happened; the import is still impossible.
 `computeContentHash` lives in `content-schema/src/gate.ts`, which **C1 added to
 engine `main` and which has never been published**. npm `latest` is 3.8.0,
-published 2026-03-07 — months before C1. Installed all 26 published 3.8.0
+published 2026-07-28 — the night before C1. Installed all 26 published 3.8.0
 packages and grepped: zero hits for `computeContentHash`, `runLoadGate`,
 `applyContentPack`. **The blocker is a release, not a range.**
 

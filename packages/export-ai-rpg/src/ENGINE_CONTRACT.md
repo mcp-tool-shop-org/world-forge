@@ -164,7 +164,7 @@ The reasoning everyone had been carrying — "2.x has no such export, so
 importing it is a dependency bump" — was wrong. The bump happened and the
 import is still impossible: `computeContentHash` lives in
 `content-schema/src/gate.ts`, added to engine `main` by C1 (merge `00001de`)
-and **never released**. npm's `latest` is 3.8.0, published 2026-03-07, months
+and **never released**. npm's `latest` is 3.8.0, published 2026-07-28, the night
 before C1. Verified across all 26 published 3.8.0 packages: no
 `computeContentHash`, no `runLoadGate`, no `applyContentPack`.
 

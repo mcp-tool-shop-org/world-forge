@@ -20,7 +20,7 @@
 //      exist in any PUBLISHED @ai-rpg-engine package. It lives in
 //      `content-schema/src/gate.ts`, which C1 added to engine `main` (merge
 //      `00001de`, 2026-07-29) and which has never been released; npm's
-//      `latest` is 3.8.0, published 2026-03-07, months before C1. Grepped
+//      `latest` is 3.8.0, published 2026-07-28, the night before C1. Grepped
 //      across all 26 published 3.8.0 packages: zero hits for
 //      `computeContentHash`, `runLoadGate` or `applyContentPack`.
 //      So the blocker is a RELEASE, not a range. When the engine publishes the

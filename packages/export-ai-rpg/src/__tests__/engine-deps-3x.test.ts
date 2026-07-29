@@ -133,7 +133,7 @@ describe('⚠ ANDON — the content-hash de-duplication is BLOCKED', () => {
     // `computeContentHash` lives in `content-schema/src/gate.ts`, which C1
     // added to engine `main` (merge `00001de`) and which has never been
     // released. npm's `latest` for @ai-rpg-engine/content-schema is 3.8.0,
-    // published 2026-03-07 — months before C1 existed. Verified by grepping all
+    // published 2026-07-28 — the night before C1 existed. Verified by grepping all
     // 26 published 3.8.0 packages: zero hits for `computeContentHash`,
     // `runLoadGate` or `applyContentPack`.
     //
