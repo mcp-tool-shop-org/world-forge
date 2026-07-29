@@ -72,6 +72,10 @@ export const SIM_AFFECTING_KEYS = [
   // argument for NOT retiring that test while two implementations exist.
   'placements',
   'encounterAnchors',
+  // C3/P3. Third time this mirror has been the thing that caught a divergence —
+  // the engine's cross-repo equivalence test went red on each of P1 and P3 the
+  // moment the engine's list grew and this one had not. Mirror, then measure.
+  'hazardDefinitions',
 ] as const;
 
 /**

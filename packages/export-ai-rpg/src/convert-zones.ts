@@ -29,7 +29,11 @@ export type ExportedEntryGate = {
 };
 
 /** The engine's `ZoneDefinition` plus the unpublished C3 fields. See {@link ExportedEntryGate}. */
-export type ExportedZone = ZoneDefinition & { entryGate?: ExportedEntryGate };
+export type ExportedZone = ZoneDefinition & {
+  entryGate?: ExportedEntryGate;
+  /** C3/P3 — ids into the pack's `hazardDefinitions`. */
+  hazardRefs?: string[];
+};
 
 /**
  * Convert project zones → engine `ZoneDefinition[]`.
@@ -184,6 +188,11 @@ export function convertZones(project: WorldProject, warnings?: string[]): Export
       // C3/P2 — the v4.5 party-state entry gate, compiled. C0: "The Godot lane
       // consumes it; the engine lane has no field for it."
       entryGate: z.entryGate ? compileEntryGate(z.id, z.entryGate, warnings) : undefined,
+      // C3/P3 — the TYPED hazard refs. The legacy free-text `hazards` list above
+      // is carried UNCHANGED alongside them: both cross, and only the typed ones
+      // mean anything without pack code. C0 measured that difference across twelve
+      // worlds and the contrast is preserved deliberately.
+      hazardRefs: z.hazardRefs && z.hazardRefs.length > 0 ? [...z.hazardRefs] : undefined,
     };
   });
 }

@@ -39,7 +39,7 @@
  * @module export
  */
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition } from '@world-forge/schema';
 import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -139,6 +139,12 @@ export type ContentPack = {
   encounterAnchors: EncounterAnchor[];
   factionPresences: FactionPresence[];
   pressureHotspots: PressureHotspot[];
+  /**
+   * C3/P3 — TYPED hazard definitions, the vocabulary that lets hazard data MEAN
+   * something. C0 §9: "the highest-value single item, because it closes a
+   * structural hole rather than a wire hole." Zones bind by id via `hazardRefs`.
+   */
+  hazardDefinitions: HazardDefinition[];
 };
 
 export type AssetBindingMap = {
@@ -400,6 +406,10 @@ export function exportToEngine(
     encounterAnchors: project.encounterAnchors,
     factionPresences: project.factionPresences,
     pressureHotspots: project.pressureHotspots,
+    // C3/P3. `?? []` because `hazardDefinitions` is optional on WorldProject
+    // (additive since v4.5) — an empty array is a claim the hash covers, and it
+    // keeps the key's presence unconditional so the pack shape does not vary.
+    hazardDefinitions: project.hazardDefinitions ?? [],
   };
 
   if (profile === 'debug' || emitSchemaVersion) {
@@ -415,6 +425,7 @@ export function exportToEngine(
       encounterAnchors: [],
       factionPresences: [],
       pressureHotspots: [],
+      hazardDefinitions: [],
     };
     // Wipe the placeholder keys so we can re-insert them in the canonical order
     // *after* the metadata keys.
@@ -446,6 +457,7 @@ export function exportToEngine(
     prefixed.encounterAnchors = contentPack.encounterAnchors;
     prefixed.factionPresences = contentPack.factionPresences;
     prefixed.pressureHotspots = contentPack.pressureHotspots;
+    prefixed.hazardDefinitions = contentPack.hazardDefinitions;
 
     return {
       success: true,

@@ -114,7 +114,9 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   strongholds: 'Fortified faction seats have no pack field.',
   strata: 'The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo.',
   stratumLinks: 'Cross-stratum connectors have no pack field.',
-  hazardDefinitions: 'Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses.',
+  // hazardDefinitions moved OUT of DROPPED_CONTAINERS by C3/P3 — see
+  // HAZARD_DEFINITION_ROWS below. Kept as a comment rather than deleted so the
+  // diff shows a domain LEAVING this list, which is the shape of progress here.
   tilesets: 'Tilesets and their tiles have no pack field (visual layer; client-owned by the charter, but also unreachable by World Forge\'s own importer).',
   tileLayers: 'Tile layers have no pack field.',
   props: 'Prop definitions have no pack field.',
@@ -128,7 +130,55 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
  * Explicit rows for every field NOT covered by `DROPPED_CONTAINERS`. Order is
  * cosmetic; the differ sorts.
  */
+/**
+ * C3/P3 — the typed-hazard rows.
+ *
+ * ⚠ THIS DOMAIN LEFT `DROPPED_CONTAINERS`, which is the whole point. C0 filed it
+ * there with "Typed hazard definitions have no pack field. Only the LEGACY
+ * free-text `Zone.hazards: string[]` crosses", and C0 §9 called closing it "the
+ * highest-value single item, because it closes a structural hole rather than a
+ * wire hole: today hazard meaning lives in pack closures, so NO data format can
+ * express it."
+ *
+ * Every field is `carried-lossless` — the spec crosses byte-for-byte, deliberately
+ * mirroring world-forge's authored shape so the vocabulary is CO-EVOLVED rather
+ * than translated (charter §5 row C3). Three fields are carried and honestly
+ * INERT at the runtime (`moveCostDelta`, `blocksVision`, and the weather gate when
+ * no weather source exists); the export table cannot see that difference, and the
+ * engine-side interpreter reports each one by name instead. Two instruments, two
+ * claims — the same split as `encounterAnchors`.
+ */
+const HAZARD_DEFINITION_ROWS: ExportRow[] = (
+  [
+    ['id', 'The hazard identity `Zone.hazardRefs` binds to.'],
+    ['name', 'Player-facing name, used in the hazard.damage.applied payload.'],
+    ['trigger', 'on-enter / per-turn / on-exit / timed. The interpreter refuses an unknown trigger rather than defaulting.'],
+    ['effects[].kind', 'The CLOSED effect union — damage / status / instakill / ignite. An unknown kind is REFUSED at intake: content selects a kind, it never defines one (RG-C1 Lane 2, Bethesda CTDA).'],
+    ['effects[].amount', 'Flat damage, or a fraction of maxHp when amountIsPercentMaxHp.'],
+    ['effects[].amountIsPercentMaxHp', 'FFT poison’s fraction form.'],
+    ['effects[].tickOn', 'turn-start / turn-end.'],
+    ['effects[].durationTicks', 'Present ⇒ applied through status-core’s EXISTING periodic (DoT) machinery, not a bespoke timer.'],
+    ['effects[].statusId', 'Bound to the real status system via applyStatus — FFT’s tile-poison === spell-poison rule, which is the forge’s own docstring.'],
+    ['effects[].chance', 'Proc chance, compared against a PURE hash of (seed, tick, hazard, entity) — never Math.random, so byte-identical replay survives.'],
+    ['effects[].stacking', 'refresh / stack / ignore. `ignore` has no applyStatus counterpart and is mapped explicitly rather than silently aliased.'],
+    ['effects[].igniteChance', 'Ignite proc chance. The burn status id comes from a `burn:<id>` tag; absent that, ignite is REFUSED with what to declare.'],
+    ['moveCostDelta', 'Carried and REPORTED INERT: the engine has no movement-cost economy to spend into.'],
+    ['passable', 'yes / flying-only / never. Enforced in the move handler beside entry gates — one refusal mechanism, two reasons.'],
+    ['blocksVision', 'Carried and REPORTED INERT: no perception reader consumes a per-zone vision block yet.'],
+    ['weatherConditions[]', 'Gated on `globals.weather`. No weather source exists, so the hazard is treated ACTIVE and the gate is reported UNEVALUABLE — fail-OPEN here, unlike a gate’s fail-closed, because a hazard that silently stops existing is a floor the player crosses safely by accident.'],
+    ['immuneTags[]', 'Checked against EntityState.tags before any effect. `tags` is the richest carried entity field in the lane.'],
+    ['tags[]', 'Free tags; also carries the `burn:<statusId>` convention ignite reads.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `hazardDefinitions[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `hazardDefinitions[].${field}`,
+  note: `CLOSED BY C3/P3. ${note}`,
+}));
+
 export const EXPLICIT_ROWS: ExportRow[] = [
+  ...HAZARD_DEFINITION_ROWS,
   // ── Project identity ────────────────────────────────────────────────
   { path: 'id', class: 'carried-lossless', channel: 'manifest', packPath: 'id', note: 'Also lands on packMeta.id, buildCatalog.packId, and manifest.contentPacks[].' },
   { path: 'name', class: 'carried-lossless', channel: 'manifest', packPath: 'title', transform: 'renamed-key', note: 'manifest.title and packMeta.name both receive it verbatim.' },
@@ -192,7 +242,12 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].elevationRange.floor', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
   { path: 'zones[].elevationRange.ceiling', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
   { path: 'zones[].stratumId', class: 'no-channel', absence: { kind: 'key-absent', key: 'stratumId' }, note: 'The zone→stratum membership link, dropped along with the strata themselves.' },
-  { path: 'zones[].hazardRefs[]', class: 'no-channel', absence: { kind: 'key-absent', key: 'hazardRefs' }, note: 'The TYPED hazard references. The legacy free-text `hazards` list crosses instead, so a zone that authored only typed hazards exports as hazard-free.' },
+  // ⚠ FLIPPED BY C3/P3. C0: "The TYPED hazard references. The legacy free-text
+  // `hazards` list crosses instead, so a zone that authored only typed hazards
+  // exports as hazard-free." Both cross now, and only the typed ones mean anything
+  // without pack code — the contrast C0 measured across twelve worlds is preserved
+  // on purpose.
+  { path: 'zones[].hazardRefs[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].hazardRefs[]', note: 'CLOSED BY C3/P3. The zone→hazard binding the interpreter reads to know which typed hazards are active where. A ref matching no hazardDefinition is REPORTED at intake, not silently skipped.' },
   // ⚠ FLIPPED BY C3/P2. C0: "The v4.5 party-state entry gate. The Godot lane
   // consumes it; the engine lane has no field for it." It has one now, and the
   // engine EVALUATES it in traversal-core's move handler — a hard gate refuses
