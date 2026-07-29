@@ -282,6 +282,14 @@ describe('C0/P1 — the machine-readable artifact', () => {
     const outDir = path.resolve(import.meta.dirname, '../../../../docs/c0-alignment');
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(path.join(outDir, 'export-table.json'), `${JSON.stringify(artifact, null, 2)}\n`, 'utf-8');
+    // The pack itself, byte-for-byte as the lane produces it. The engine-side
+    // half of this audit loads THIS file through the real `loadContentFromFile`
+    // rather than re-deriving a pack shape from types.
+    fs.writeFileSync(
+      path.join(outDir, 'fixture-pack.json'),
+      `${JSON.stringify(result.contentPack, null, 2)}\n`,
+      'utf-8',
+    );
     fs.writeFileSync(
       path.join(outDir, 'export-table.md'),
       `# C0 — Export truth table (WorldProject → export artifacts)\n\n` +
