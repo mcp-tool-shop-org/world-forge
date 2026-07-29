@@ -60,7 +60,11 @@ export const vocabularyCoverageProject: WorldProject = {
 
   author: 'mcp-tool-shop',
   license: 'MIT',
-  category: 'fantasy',
+  // Deliberately NOT 'fantasy'. An audit fixture must give every dropped field
+  // a distinguishable value: while `category` held the same string as `genre`,
+  // no proof could separate "category is dropped" from "category is carried
+  // into packMeta.genres" — the differ correctly refused to certify it.
+  category: 'harbour-survey',
   projectTags: ['audit', 'coverage', 'c0'],
 
   // ── Map ───────────────────────────────────────────────────────
@@ -572,6 +576,28 @@ export const vocabularyCoverageProject: WorldProject = {
       grantedVerbs: [],
       iconId: 'asset-icon-lantern',
     },
+    {
+      // Deliberately exercises two lossy export branches the other two items
+      // do not reach:
+      //   * slot 'consumable' is a legal `ItemSlot` in the schema but is NOT in
+      //     convert-items' VALID_ITEM_SLOTS, so it is silently narrowed.
+      //   * `description` is omitted, which is the ONLY case where `container`
+      //     survives export (folded into the generated description string).
+      itemId: 'item-tide-ration',
+      name: 'Tide Ration',
+      zoneId: 'zone-sky-gantry',
+      gridX: 19,
+      gridY: 5,
+      container: 'gantry locker',
+      hidden: false,
+      slot: 'consumable',
+      rarity: 'common',
+      statModifiers: {},
+      resourceModifiers: { stamina: 2 },
+      grantedTags: [],
+      grantedVerbs: [],
+      iconId: 'asset-icon-ration',
+    },
   ],
 
   // ── Encounter anchors ─────────────────────────────────────────
@@ -872,6 +898,7 @@ export const vocabularyCoverageProject: WorldProject = {
 
     { id: 'asset-icon-rope', kind: 'icon', label: 'Rope icon', path: 'icons/rope.png', tags: ['item'], packId: 'pack-harbour' },
     { id: 'asset-icon-lantern', kind: 'icon', label: 'Lantern icon', path: 'icons/lantern.png', tags: ['item'], packId: 'pack-harbour' },
+    { id: 'asset-icon-ration', kind: 'icon', label: 'Ration icon', path: 'icons/ration.png', tags: ['item'], packId: 'pack-harbour' },
     { id: 'asset-icon-stone', kind: 'icon', label: 'Tide Stone icon', path: 'icons/stone.png', tags: ['landmark'], packId: 'pack-harbour' },
     { id: 'asset-icon-seal', kind: 'icon', label: 'Guild Seal icon', path: 'icons/seal.png', tags: ['landmark'], packId: 'pack-harbour' },
 
