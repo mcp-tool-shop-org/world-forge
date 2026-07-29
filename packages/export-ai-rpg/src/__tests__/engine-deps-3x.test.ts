@@ -15,7 +15,18 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { GameManifest } from '@ai-rpg-engine/core';
 import { ENGINE_VERSION_RANGE } from '../convert-pack.js';
+
+/**
+ * Resolves to `'absent-from-published-manifest'` while the installed
+ * `GameManifest` lacks `contentHash`, and to the other literal the moment a
+ * published engine adds it — which breaks the assignment in the test below at
+ * COMPILE time. See `export.ts`'s `ExportedManifest`.
+ */
+type PinnedContentHashState = 'contentHash' extends keyof GameManifest
+  ? 'PUBLISHED — drop the ExportedManifest intersection in export.ts'
+  : 'absent-from-published-manifest';
 
 /** This package's own manifest — the source of truth for what it declares. */
 const OWN_PACKAGE_JSON = path.resolve(import.meta.dirname, '../../package.json');
@@ -139,6 +150,20 @@ describe('⚠ ANDON — the content-hash de-duplication is BLOCKED', () => {
       cs.computeContentHash,
       'computeContentHash is now published — see the steps in this test comment, then delete it',
     ).toBeUndefined();
+  });
+
+  it('GameManifest still has no contentHash, so ExportedManifest must keep declaring it', () => {
+    // A TYPE-level pin, and it is the build that enforces it, not this
+    // assertion. `contentHash` was added to `GameManifest` by the same
+    // unpublished C1 work (engine `bf496e7`); the published 3.8.0 type does not
+    // have it, which is why `export.ts` still intersects the field in locally.
+    //
+    // If a published engine ever carries it, `PinnedContentHashState` resolves
+    // to the other literal, this assignment stops compiling, and `npm run build`
+    // fails with the fix in the type's own name. The runtime `expect` below is
+    // only here so the constant is used and the pin cannot be lint-swept away.
+    const pin: PinnedContentHashState = 'absent-from-published-manifest';
+    expect(pin).toBe('absent-from-published-manifest');
   });
 
   it('…and the whole C1 gate surface is absent, so this is a release gap, not a rename', async () => {
