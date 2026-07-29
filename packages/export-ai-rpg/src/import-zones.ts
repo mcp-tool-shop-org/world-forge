@@ -4,6 +4,7 @@ import type { Zone } from '@world-forge/schema';
 import { formatConditionSpec } from '@world-forge/schema';
 import type { ZoneDefinition } from '@ai-rpg-engine/content-schema';
 import type { FidelityEntry } from './fidelity.js';
+import type { ExportedZone } from './convert-zones.js';
 
 export interface ZoneLayoutOptions {
   defaultWidth?: number;
@@ -12,7 +13,9 @@ export interface ZoneLayoutOptions {
 }
 
 export function importZones(
-  engineZones: ZoneDefinition[],
+  // `ExportedZone`, not `ZoneDefinition`: the C3 `entryGate` field lives on
+  // engine `main` and is not in the published 3.8.0 type. See ExportedEntryGate.
+  engineZones: Array<ZoneDefinition | ExportedZone>,
   options?: ZoneLayoutOptions,
 ): { zones: Zone[]; fidelity: FidelityEntry[] } {
   const w = options?.defaultWidth ?? 6;
@@ -107,6 +110,48 @@ export function importZones(
       };
     });
 
+    // C3/P2 — decompile the entry gate back to authored grammar, using the same
+    // codec as the exits above. A condition the grammar cannot express is
+    // dropped WITH a fidelity entry; if that leaves the gate empty, the GATE is
+    // dropped rather than re-imported with no conditions — an empty AND-array is
+    // vacuously true, so an empty gate silently unlocks the zone.
+    let entryGate: Zone['entryGate'];
+    const sourceGate = (ez as ExportedZone).entryGate;
+    if (sourceGate) {
+      const conditions: string[] = [];
+      for (const spec of sourceGate.conditions ?? []) {
+        const authored = formatConditionSpec(spec);
+        if (authored === null) {
+          fidelity.push({
+            level: 'approximated', domain: 'zones', severity: 'warning',
+            entityId: ez.id, fieldPath: 'entryGate.conditions',
+            message:
+              `Zone '${ez.name}' entryGate carries a condition (type '${String((spec as { type?: unknown }).type)}') ` +
+              `that the SpawnCondition grammar cannot express — it was dropped from the imported gate.`,
+            reason: 'condition-not-expressible-in-grammar',
+          });
+          continue;
+        }
+        conditions.push(authored);
+      }
+      if (conditions.length > 0) {
+        entryGate = {
+          conditions,
+          mode: sourceGate.mode,
+          ...(sourceGate.reason !== undefined ? { reason: sourceGate.reason } : {}),
+        };
+      } else {
+        fidelity.push({
+          level: 'approximated', domain: 'zones', severity: 'warning',
+          entityId: ez.id, fieldPath: 'entryGate',
+          message:
+            `Zone '${ez.name}' entryGate had no expressible conditions, so the GATE was dropped rather than ` +
+            `imported empty — an empty condition list reads as "no requirements" and would unlock the zone.`,
+          reason: 'entry-gate-dropped-no-expressible-conditions',
+        });
+      }
+    }
+
     return {
       id: ez.id,
       name: ez.name,
@@ -122,6 +167,7 @@ export function importZones(
       noise: ez.noise ?? 3,
       hazards: [...(ez.hazards ?? [])],
       interactables,
+      ...(entryGate !== undefined ? { entryGate } : {}),
     };
   });
 

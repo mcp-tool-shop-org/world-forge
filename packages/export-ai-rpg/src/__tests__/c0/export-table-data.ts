@@ -193,9 +193,17 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].elevationRange.ceiling', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
   { path: 'zones[].stratumId', class: 'no-channel', absence: { kind: 'key-absent', key: 'stratumId' }, note: 'The zone→stratum membership link, dropped along with the strata themselves.' },
   { path: 'zones[].hazardRefs[]', class: 'no-channel', absence: { kind: 'key-absent', key: 'hazardRefs' }, note: 'The TYPED hazard references. The legacy free-text `hazards` list crosses instead, so a zone that authored only typed hazards exports as hazard-free.' },
-  { path: 'zones[].entryGate.conditions[]', class: 'no-channel', absence: { kind: 'key-absent', key: 'entryGate' }, note: 'The v4.5 party-state entry gate. The Godot lane consumes it; the engine lane has no field for it.' },
-  { path: 'zones[].entryGate.mode', class: 'no-channel', absence: { kind: 'key-absent', key: 'entryGate' }, note: 'hard-vs-soft gating: no channel.' },
-  { path: 'zones[].entryGate.reason', class: 'no-channel', absence: { kind: 'key-absent', key: 'entryGate' }, note: 'The authored "show the lock" message: no channel.' },
+  // ⚠ FLIPPED BY C3/P2. C0: "The v4.5 party-state entry gate. The Godot lane
+  // consumes it; the engine lane has no field for it." It has one now, and the
+  // engine EVALUATES it in traversal-core's move handler — a hard gate refuses
+  // the move and emits the authored reason, a soft gate warns and permits.
+  //
+  // `conditions[]` is `carried-approximated` for the same reason the placement
+  // and exit conditions are: the authored STRING compiles to a ConditionSpec.
+  // `mode` and `reason` cross verbatim.
+  { path: 'zones[].entryGate.conditions[]', class: 'carried-approximated', channel: 'contentPack', packPath: 'zones[].entryGate.conditions[].type', transform: 'compiled-through-parseSpawnCondition', note: 'CLOSED BY C3/P2. Each grammar string compiles to a ConditionSpec; the engine evaluates the AND-array at traversal time. An all-unparseable gate exports as NO GATE (an empty AND-array is vacuously TRUE and would silently unlock the zone).' },
+  { path: 'zones[].entryGate.mode', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].entryGate.mode', note: 'CLOSED BY C3/P2. hard REFUSES the move (world.zone.gate.refused); soft warns and permits (world.zone.gate.warned). Both render in the terminal.' },
+  { path: 'zones[].entryGate.reason', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].entryGate.reason', note: 'CLOSED BY C3/P2. The authored "show the lock" message, carried verbatim and rendered verbatim — charter Pillar 2: access stays rule-bound, and the client has to be TOLD why.' },
   { path: 'zones[].parallaxLayers[].id', class: 'no-channel', absence: { kind: 'key-absent', key: 'parallaxLayers' }, note: '2.5D parallax: no channel.' },
   { path: 'zones[].parallaxLayers[].depth', class: 'no-channel', absence: { kind: 'key-absent', key: 'parallaxLayers' }, note: '2.5D parallax: no channel.' },
   { path: 'zones[].parallaxLayers[].assetRef', class: 'no-channel', absence: { kind: 'key-absent', key: 'parallaxLayers' }, note: '2.5D parallax: no channel. (The referenced asset itself still appears in the `assets` manifest, which is why value-absence would not prove this.)' },

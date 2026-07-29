@@ -47,7 +47,7 @@ import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { ItemDefinition } from '@ai-rpg-engine/equipment';
 
-import { convertZones } from './convert-zones.js';
+import { convertZones, type ExportedZone } from './convert-zones.js';
 import { convertDistricts } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
 import { convertPlacements, type ExportedPlacement } from './convert-placements.js';
@@ -128,7 +128,8 @@ export type ContentPack = {
    * is a template and the engine's spawn system clones templates per instance.
    */
   placements: ExportedPlacement[];
-  zones: ZoneDefinition[];
+  /** `ExportedZone`, not `ZoneDefinition` — the C3/P2 `entryGate` field lives on engine `main` and is unpublished. */
+  zones: ExportedZone[];
   districts: DistrictDefinition[];
   dialogues: DialogueDefinition[];
   items: ItemDefinition[];

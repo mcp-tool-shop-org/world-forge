@@ -15,15 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 192,
-      "carried-lossless": 168,
-      "carried-approximated": 17
+      "no-channel": 189,
+      "carried-lossless": 170,
+      "carried-approximated": 18
     },
     "byChannel": {
-      "none": 192,
+      "none": 189,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 147,
+      "contentPack": 150,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -3807,36 +3807,36 @@
     },
     {
       "path": "zones[].entryGate.conditions[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "key-absent",
+      "class": "carried-approximated",
+      "channel": "contentPack",
+      "packPath": "zones[].entryGate.conditions[].type",
+      "transform": "compiled-through-parseSpawnCondition",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"entryGate\" absent from all six export artifacts",
-      "note": "The v4.5 party-state entry gate. The Godot lane consumes it; the engine lane has no field for it."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:zones[].entryGate.conditions[].type (7 values); semantics asserted separately",
+      "note": "CLOSED BY C3/P2. Each grammar string compiles to a ConditionSpec; the engine evaluates the AND-array at traversal time. An all-unparseable gate exports as NO GATE (an empty AND-array is vacuously TRUE and would silently unlock the zone)."
     },
     {
       "path": "zones[].entryGate.mode",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].entryGate.mode",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"entryGate\" absent from all six export artifacts",
-      "note": "hard-vs-soft gating: no channel."
+      "evidence": "3 authored values match contentPack:zones[].entryGate.mode exactly",
+      "note": "CLOSED BY C3/P2. hard REFUSES the move (world.zone.gate.refused); soft warns and permits (world.zone.gate.warned). Both render in the terminal."
     },
     {
       "path": "zones[].entryGate.reason",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].entryGate.reason",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"entryGate\" absent from all six export artifacts",
-      "note": "The authored \"show the lock\" message: no channel."
+      "evidence": "3 authored values match contentPack:zones[].entryGate.reason exactly",
+      "note": "CLOSED BY C3/P2. The authored \"show the lock\" message, carried verbatim and rendered verbatim — charter Pillar 2: access stays rule-bound, and the client has to be TOLD why."
     },
     {
       "path": "zones[].exits[].condition",
