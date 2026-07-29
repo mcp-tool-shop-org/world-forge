@@ -108,18 +108,27 @@ export function ImportSummaryPanel() {
         </span>
       </div>
 
-      {/* Overall bar */}
+      {/* Overall bar.
+          `pct` is null when nothing was observed. It used to be 100 in that
+          case, so this panel cheerfully rendered a full green bar reading
+          "100% lossless" for an export that measured nothing at all — the
+          user-facing face of the C0 finding. An unmeasured result now says so
+          and draws no bar, because a full green bar IS a claim. */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ color: '#c9d1d9' }}>Overall: {pct}% lossless</span>
+          <span style={{ color: '#c9d1d9' }}>
+            {pct === null ? 'Overall: unmeasured (no fidelity observations)' : `Overall: ${pct}% lossless`}
+          </span>
           <span style={{ color: '#8b949e' }}>{summary.total} entries</span>
         </div>
         <div style={{ height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', borderRadius: 3,
-            width: `${pct}%`,
-            background: pct === 100 ? '#3fb950' : pct >= 70 ? '#d29922' : '#f85149',
-          }} />
+          {pct !== null && (
+            <div style={{
+              height: '100%', borderRadius: 3,
+              width: `${pct}%`,
+              background: pct === 100 ? '#3fb950' : pct >= 70 ? '#d29922' : '#f85149',
+            }} />
+          )}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 4, color: '#8b949e', fontSize: 11 }}>
           <span style={{ color: LEVEL_COLORS.lossless }}>Lossless: {summary.lossless}</span>

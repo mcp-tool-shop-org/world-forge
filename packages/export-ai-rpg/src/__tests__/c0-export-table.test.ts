@@ -78,17 +78,37 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     expect(typeof Object.values(pack.dialogues[0].nodes)[0].text).toBe('string');
   });
 
-  it('zone exits: the whole SpawnCondition string is stuffed into ConditionSpec.type', () => {
+  it('CLOSED BY C1/P2: zone exits COMPILE through parseSpawnCondition', () => {
+    // ⚠ FLIPPED BY C1/P2 (the pinned-test rule). C0 asserted the garble: the
+    // whole grammar string went into `type` — a field meant to NAME a condition
+    // kind — with `params: {}`, so `"item:rope"` exported as
+    // `{ type: "item:rope", params: {} }`. Structurally valid, meaning nothing.
+    // The repo's own parser would have produced the right shape all along and
+    // was never called. It is called now.
     const authoredExit = project.zones[0].exits[0];
     const exportedExit = pack.zones[0].exits![0];
     expect(authoredExit.condition).toBe('item:rope');
-    // `type` is meant to NAME a condition kind; here it carries the operands too.
-    expect(exportedExit.condition).toEqual({ type: 'item:rope', params: {} });
-    // Proof this is garbled rather than merely renamed: the grammar HAS a parser
-    // in the same repo that would have produced { type: 'has-item', params: { id } },
-    // and the exporter never calls it.
-    expect(exportedExit.condition!.type).not.toBe('has-item');
-    expect(Object.keys(exportedExit.condition!.params ?? {})).toEqual([]);
+    expect(exportedExit.condition).toEqual({ type: 'has-item', params: { id: 'rope' } });
+    // The operands live in params, where a consumer can read them, and `type`
+    // names a kind from the closed grammar — the C0 row's exact complaint.
+    expect(exportedExit.condition!.type).toBe('has-item');
+    expect(Object.keys(exportedExit.condition!.params ?? {})).toEqual(['id']);
+  });
+
+  it('C1/P2: an operand-bearing condition round-trips its operands too', () => {
+    // `item:rope` alone would pass with a parser that only handled one form.
+    // The fixture's other exits carry a comparator condition and a bare one.
+    const conditions = pack.zones
+      .flatMap((z) => z.exits ?? [])
+      .map((e) => e.condition)
+      .filter((c): c is NonNullable<typeof c> => c !== undefined);
+
+    // Every exported condition names a grammar KIND, never a raw source string.
+    for (const c of conditions) {
+      expect(c.type, `"${c.type}" should be a condition kind, not a grammar string`).not.toContain(':');
+    }
+    // …and at least one carries real parsed operands.
+    expect(conditions.some((c) => Object.keys(c.params ?? {}).length > 0)).toBe(true);
   });
 
   it('zone interactables: objects collapse to a bare name string, losing type + description', () => {
@@ -235,14 +255,25 @@ describe('C0/P1 — the negative control (proven to fail once, in this commit)',
 });
 
 describe('C0/P1 — the exporter self-report, recorded', () => {
-  it('reports 100% lossless and zero warnings while dropping most of the vocabulary', () => {
-    // Not a bug report against fidelity.ts, whose docstring scopes it to the
-    // IMPORT direction — but `ExportResult.fidelity` is surfaced on the EXPORT
-    // result, where it reads as an export-fidelity claim. Recorded, not fixed.
-    expect(result.fidelity.summary.dropped).toBe(0);
-    expect(result.fidelity.summary.losslessPercent).toBe(100);
-    expect(result.warnings).toEqual([]);
+  it('CLOSED BY C1/P2: reports UNMEASURED rather than 100% on zero observations', () => {
+    // ⚠ FLIPPED BY C1/P2. C0 asserted `losslessPercent: 100` and `dropped: 0` on
+    // an export that drops 194 of 377 authored fields — a green number computed
+    // from zero observations. `summarizeFidelity` returned 100 for an EMPTY
+    // entry list, and only one converter is wired to the export-side collector,
+    // so on this path the list is essentially always empty.
+    //
+    // The honest value for "no observations" is not 100 and not 0 — it is null,
+    // with `observed: false` saying why. That is the SMALLEST fix that stops the
+    // lie. Wiring all eight converters to the collector is the real repair and is
+    // deliberately NOT done here (the brief's ANDON on this item): it is a C3-
+    // sized pass, and the remaining work is recorded rather than quietly widened.
+    expect(result.fidelity.summary.observed).toBe(false);
+    expect(result.fidelity.summary.losslessPercent).toBeNull();
+    expect(result.fidelity.summary.total).toBe(0);
 
+    // The finding underneath is UNCHANGED and still measured: the export really
+    // does drop most of the authored vocabulary. What changed is that the
+    // instrument no longer claims otherwise.
     const noChannel = expandTable(project).filter((r) => r.class === 'no-channel').length;
     expect(noChannel).toBeGreaterThan(100);
   });
@@ -288,6 +319,17 @@ describe('C0/P1 — the machine-readable artifact', () => {
     fs.writeFileSync(
       path.join(outDir, 'fixture-pack.json'),
       `${JSON.stringify(result.contentPack, null, 2)}\n`,
+      'utf-8',
+    );
+    // C1/P2: the MANIFEST too. The exporter has always written manifest.json
+    // beside content-pack.json, but only the pack crossed to the engine repo —
+    // so the engine-side audit could never see the version and module claims it
+    // was supposed to be checking. That is a large part of why nine phantom
+    // module ids rode along unnoticed. The engine's live resolution test
+    // (`packages/cli/src/c1-forge-manifest.test.ts`) reads THIS file.
+    fs.writeFileSync(
+      path.join(outDir, 'fixture-manifest.json'),
+      `${JSON.stringify(result.manifest, null, 2)}\n`,
       'utf-8',
     );
     fs.writeFileSync(
