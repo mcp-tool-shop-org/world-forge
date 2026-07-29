@@ -62,7 +62,29 @@ export interface FidelitySummary {
   lossless: number;
   approximated: number;
   dropped: number;
-  losslessPercent: number;
+  /**
+   * Percentage of observations that were lossless, or `null` when there are NO
+   * observations to compute it from.
+   *
+   * ⚠ THIS FIELD USED TO RETURN 100 ON AN EMPTY ENTRY LIST, and the C0 audit
+   * measured what that cost: on an export that dropped 194 of 377 authored
+   * fields, `ExportResult.fidelity` reported `losslessPercent: 100`,
+   * `dropped: 0` and zero warnings — a green number computed from zero
+   * observations (ai-rpg-engine/docs/c0-alignment/REPORT.md §1). Only one
+   * converter is wired to the export-side collector, so on the export path the
+   * list is almost always empty.
+   *
+   * `null` is the honest value: not 100%, not 0% — unmeasured. Consumers must
+   * print "unmeasured" rather than a number. See {@link FidelitySummary.observed}.
+   *
+   * WIRING EVERY CONVERTER to the collector is the real repair and is NOT done
+   * here — that is a full pass over eight converters and belongs with the C3
+   * vocabulary work. C1's job was to stop the instrument lying about what it
+   * knows, and to say plainly what remains.
+   */
+  losslessPercent: number | null;
+  /** False when there were no entries at all — nothing was measured. */
+  observed: boolean;
   byDomain: Partial<Record<FidelityDomain, DomainSummary>>;
 }
 
@@ -98,7 +120,9 @@ export function summarizeFidelity(entries: FidelityEntry[]): FidelitySummary {
     lossless,
     approximated,
     dropped,
-    losslessPercent: total === 0 ? 100 : Math.round((lossless / total) * 100),
+    // `total === 0 ? 100` was the lie. No observations means no percentage.
+    losslessPercent: total === 0 ? null : Math.round((lossless / total) * 100),
+    observed: total > 0,
     byDomain,
   };
 }

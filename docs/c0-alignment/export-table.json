@@ -36,7 +36,8 @@
       "lossless": 0,
       "approximated": 0,
       "dropped": 0,
-      "losslessPercent": 100,
+      "losslessPercent": null,
+      "observed": false,
       "byDomain": {}
     },
     "warnings": [],

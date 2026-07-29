@@ -9,13 +9,29 @@ import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-aut
 // --- FidelityReport model ---
 
 describe('FidelityReport', () => {
-  it('summarize empty → 100% lossless', () => {
+  it('summarize empty → UNMEASURED, not 100% (C1/P2)', () => {
+    // This test asserted `losslessPercent: 100` for an empty entry list — the
+    // codified version of the bug. C0 measured the consequence: an export
+    // dropping 194 of 377 authored fields reporting 100% lossless, dropped: 0,
+    // and zero warnings. A green number computed from zero observations.
     const summary = summarizeFidelity([]);
     expect(summary.total).toBe(0);
     expect(summary.lossless).toBe(0);
     expect(summary.approximated).toBe(0);
     expect(summary.dropped).toBe(0);
-    expect(summary.losslessPercent).toBe(100);
+    expect(summary.losslessPercent).toBeNull();
+    expect(summary.observed).toBe(false);
+  });
+
+  it('CONTROL: a real observation still produces a real percentage', () => {
+    // The other half. If `null` had leaked into the measured path too, the fix
+    // would have replaced a false number with no number, which is not a fix.
+    const summary = summarizeFidelity([
+      { level: 'lossless', domain: 'zones', severity: 'info', message: 'ok', reason: 'test' },
+      { level: 'dropped', domain: 'zones', severity: 'error', message: 'lost', reason: 'test' },
+    ]);
+    expect(summary.losslessPercent).toBe(50);
+    expect(summary.observed).toBe(true);
   });
 
   it('summarize mixed entries → correct arithmetic', () => {
@@ -265,11 +281,14 @@ describe('FidelityReport accuracy', () => {
     expect(gridDiffs).toBe(chapelProject.zones.length);
   });
 
-  it('WorldProject import produces empty fidelity report', () => {
+  it('WorldProject import produces an EMPTY, and therefore unmeasured, report', () => {
+    // Same flip: an empty report is not a perfect one. The name of this test was
+    // already honest ("empty fidelity report") — only its assertion disagreed.
     const result = importProject(chapelProject);
     if (!result.success) throw new Error('import failed');
     expect(result.fidelityReport.summary.total).toBe(0);
-    expect(result.fidelityReport.summary.losslessPercent).toBe(100);
+    expect(result.fidelityReport.summary.losslessPercent).toBeNull();
+    expect(result.fidelityReport.summary.observed).toBe(false);
   });
 
   it('connections-reconstructed entry present when zones have neighbors', () => {

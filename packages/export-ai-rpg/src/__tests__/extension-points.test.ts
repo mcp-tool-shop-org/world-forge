@@ -77,11 +77,14 @@ describe('Extension point exports', () => {
     expect(typeof buildFidelityReport).toBe('function');
   });
 
-  it('buildFidelityReport produces a valid report from empty entries', () => {
+  it('buildFidelityReport produces a valid — and unmeasured — report from empty entries', () => {
+    // C1/P2: "valid" no longer means "100%". Zero observations report as null
+    // with observed:false, so a consumer prints "unmeasured" instead of a score.
     const report = buildFidelityReport([]);
     expect(report.entries).toEqual([]);
     expect(report.summary.total).toBe(0);
-    expect(report.summary.losslessPercent).toBe(100);
+    expect(report.summary.losslessPercent).toBeNull();
+    expect(report.summary.observed).toBe(false);
   });
 
   it('summarizeFidelity counts levels correctly', () => {

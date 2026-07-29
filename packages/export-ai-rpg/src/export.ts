@@ -56,6 +56,7 @@ import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-pl
 import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-catalog.js';
 import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
+import { computeContentHash } from './content-hash.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 
 // AIR-FT-005: Schema version is imported directly from @world-forge/schema
@@ -136,10 +137,22 @@ export type AssetBindingMap = {
   landmarks?: Record<string, { iconId?: string }>;
 };
 
+/**
+ * The manifest this exporter emits.
+ *
+ * `contentHash` was added to the engine's `GameManifest` in engine 3.8.0+, but
+ * this repo's `@ai-rpg-engine/core` dependency is still installed at 2.0.1 (C0
+ * version-skew checklist item 1, open — bumping six dependency ranges is not
+ * something C1 does on the way past). The intersection declares the field
+ * locally until that bump happens, rather than pretending the installed type
+ * already has it.
+ */
+export type ExportedManifest = GameManifest & { contentHash?: string };
+
 export type ExportResult = {
   success: true;
   contentPack: ContentPack;
-  manifest: GameManifest;
+  manifest: ExportedManifest;
   packMeta: PackMetadata;
   warnings: string[];
   fidelity: FidelityReport;
@@ -407,7 +420,10 @@ export function exportToEngine(
     return {
       success: true,
       contentPack: prefixed,
-      manifest,
+      // C1/P2: stamp the content hash. It can only be computed once the pack is
+      // FINAL, which is why it is attached here rather than inside
+      // convertManifest — that function sees only the project.
+      manifest: { ...manifest, contentHash: computeContentHash(prefixed) },
       packMeta,
       warnings,
       fidelity: buildFidelityReport(fidelityEntries),
@@ -420,7 +436,7 @@ export function exportToEngine(
   return {
     success: true,
     contentPack,
-    manifest,
+    manifest: { ...manifest, contentHash: computeContentHash(contentPack) },
     packMeta,
     warnings,
     fidelity: buildFidelityReport(fidelityEntries),
