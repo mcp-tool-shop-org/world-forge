@@ -137,30 +137,55 @@ describe('C0/P0 — the controls (both directions, same commit)', () => {
     expect(exportedNames).toEqual(authoredNames);
   });
 
-  it('RED control: a known-dropped field (zone.entryGate) is absent from the pack', () => {
+  it('CLOSED BY C3/P2: zone.entryGate is CARRIED, and its authored reason survives verbatim', () => {
+    // ⚠ FLIPPED BY C3/P2 (the pinned-test rule). This was C0's RED control
+    // asserting the gate was absent from the pack under ANY key — reason string,
+    // gate-only condition strings, and the `entryGate` key itself. All three
+    // assertions are now correctly false: the gate is a real pack field the
+    // engine evaluates in traversal-core's move handler.
+    //
+    // The flip is stated as the POSITIVE claim rather than by deleting the old
+    // one, so the record shows what changed and the new behaviour is pinned just
+    // as tightly.
     const { contentPack } = exportOrThrow();
 
-    // Every fixture zone authors an entryGate…
     expect(vocabularyCoverageProject.zones.every((z) => z.entryGate !== undefined)).toBe(true);
 
-    // …and no exported zone carries it under ANY key. Checking `.entryGate` by
-    // name alone would miss a renamed image of the same data, which is exactly
-    // the case the differ has to distinguish from a genuine drop.
     const serialized = JSON.stringify(contentPack);
     for (const z of vocabularyCoverageProject.zones) {
+      // The authored "show the lock" message crosses VERBATIM — the client has
+      // to be told why, so a paraphrase or a truncation would defeat the point.
       expect((z.entryGate!.reason ?? '').length).toBeGreaterThan(0);
-      expect(serialized).not.toContain(z.entryGate!.reason!);
-      for (const c of z.entryGate!.conditions) {
-        // The exit-condition strings reuse the same grammar and DO survive, so
-        // only assert on gate strings that appear nowhere else in the fixture.
-        if (c === 'class:delver' || c === 'member:npc-quartermaster') {
-          expect(serialized).not.toContain(c);
-        }
+      expect(serialized).toContain(z.entryGate!.reason!);
+    }
+
+    // Every zone's gate is present, with `mode` intact and a non-empty
+    // AND-array. Empty conditions would be vacuously TRUE — the one shape that
+    // silently unlocks a zone — so it is asserted against explicitly.
+    for (const zone of contentPack.zones) {
+      const authored = vocabularyCoverageProject.zones.find((z) => z.id === zone.id)!;
+      expect(zone.entryGate, `zone ${zone.id} must carry its gate`).toBeDefined();
+      expect(zone.entryGate!.mode).toBe(authored.entryGate!.mode);
+      expect(zone.entryGate!.conditions.length).toBeGreaterThan(0);
+      expect(zone.entryGate!.conditions.length).toBe(authored.entryGate!.conditions.length);
+      // COMPILED, not copied: `type` names a grammar KIND, never a raw string.
+      for (const c of zone.entryGate!.conditions) {
+        expect(c.type).not.toContain(':');
       }
     }
-    for (const zone of contentPack.zones) {
-      expect(Object.keys(zone)).not.toContain('entryGate');
-    }
+
+    // The gate-only grammar strings no longer appear as RAW STRINGS — because
+    // they were compiled, not because they were dropped. That distinction is the
+    // whole substance of this flip, so it is asserted both ways.
+    expect(serialized).not.toContain('class:delver');
+    expect(serialized).not.toContain('member:npc-quartermaster');
+    const vaultGate = contentPack.zones.find((z) => z.id === 'zone-under-vault')!.entryGate!;
+    expect(vaultGate.conditions).toEqual(
+      expect.arrayContaining([
+        { type: 'party-class', params: { id: 'delver' } },
+        { type: 'party-member', params: { id: 'npc-quartermaster' } },
+      ]),
+    );
   });
 
   it('RED control is not vacuous: the same probe DETECTS a planted entryGate', () => {

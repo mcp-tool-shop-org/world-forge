@@ -47,7 +47,15 @@ export type {
 export type {
   SpawnConditionType, SpawnConditionNode,
 } from './spawn-condition.js';
-export { parseSpawnCondition, validateSpawnCondition } from './spawn-condition.js';
+export {
+  parseSpawnCondition,
+  validateSpawnCondition,
+  // C3/P1: the codec's INVERSE. Exported because every importer needs it —
+  // see formatSpawnCondition's docstring for the measured regression that
+  // proved a one-directional compiler is only half a codec.
+  formatSpawnCondition,
+  formatConditionSpec,
+} from './spawn-condition.js';
 
 export type {
   ScalarValue, DialogueCondition, DialogueEffect,

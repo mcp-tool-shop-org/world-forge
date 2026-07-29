@@ -114,7 +114,9 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   strongholds: 'Fortified faction seats have no pack field.',
   strata: 'The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo.',
   stratumLinks: 'Cross-stratum connectors have no pack field.',
-  hazardDefinitions: 'Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses.',
+  // hazardDefinitions moved OUT of DROPPED_CONTAINERS by C3/P3 — see
+  // HAZARD_DEFINITION_ROWS below. Kept as a comment rather than deleted so the
+  // diff shows a domain LEAVING this list, which is the shape of progress here.
   tilesets: 'Tilesets and their tiles have no pack field (visual layer; client-owned by the charter, but also unreachable by World Forge\'s own importer).',
   tileLayers: 'Tile layers have no pack field.',
   props: 'Prop definitions have no pack field.',
@@ -128,7 +130,55 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
  * Explicit rows for every field NOT covered by `DROPPED_CONTAINERS`. Order is
  * cosmetic; the differ sorts.
  */
+/**
+ * C3/P3 — the typed-hazard rows.
+ *
+ * ⚠ THIS DOMAIN LEFT `DROPPED_CONTAINERS`, which is the whole point. C0 filed it
+ * there with "Typed hazard definitions have no pack field. Only the LEGACY
+ * free-text `Zone.hazards: string[]` crosses", and C0 §9 called closing it "the
+ * highest-value single item, because it closes a structural hole rather than a
+ * wire hole: today hazard meaning lives in pack closures, so NO data format can
+ * express it."
+ *
+ * Every field is `carried-lossless` — the spec crosses byte-for-byte, deliberately
+ * mirroring world-forge's authored shape so the vocabulary is CO-EVOLVED rather
+ * than translated (charter §5 row C3). Three fields are carried and honestly
+ * INERT at the runtime (`moveCostDelta`, `blocksVision`, and the weather gate when
+ * no weather source exists); the export table cannot see that difference, and the
+ * engine-side interpreter reports each one by name instead. Two instruments, two
+ * claims — the same split as `encounterAnchors`.
+ */
+const HAZARD_DEFINITION_ROWS: ExportRow[] = (
+  [
+    ['id', 'The hazard identity `Zone.hazardRefs` binds to.'],
+    ['name', 'Player-facing name, used in the hazard.damage.applied payload.'],
+    ['trigger', 'on-enter / per-turn / on-exit / timed. The interpreter refuses an unknown trigger rather than defaulting.'],
+    ['effects[].kind', 'The CLOSED effect union — damage / status / instakill / ignite. An unknown kind is REFUSED at intake: content selects a kind, it never defines one (RG-C1 Lane 2, Bethesda CTDA).'],
+    ['effects[].amount', 'Flat damage, or a fraction of maxHp when amountIsPercentMaxHp.'],
+    ['effects[].amountIsPercentMaxHp', 'FFT poison’s fraction form.'],
+    ['effects[].tickOn', 'turn-start / turn-end.'],
+    ['effects[].durationTicks', 'Present ⇒ applied through status-core’s EXISTING periodic (DoT) machinery, not a bespoke timer.'],
+    ['effects[].statusId', 'Bound to the real status system via applyStatus — FFT’s tile-poison === spell-poison rule, which is the forge’s own docstring.'],
+    ['effects[].chance', 'Proc chance, compared against a PURE hash of (seed, tick, hazard, entity) — never Math.random, so byte-identical replay survives.'],
+    ['effects[].stacking', 'refresh / stack / ignore. `ignore` has no applyStatus counterpart and is mapped explicitly rather than silently aliased.'],
+    ['effects[].igniteChance', 'Ignite proc chance. The burn status id comes from a `burn:<id>` tag; absent that, ignite is REFUSED with what to declare.'],
+    ['moveCostDelta', 'Carried and REPORTED INERT: the engine has no movement-cost economy to spend into.'],
+    ['passable', 'yes / flying-only / never. Enforced in the move handler beside entry gates — one refusal mechanism, two reasons.'],
+    ['blocksVision', 'Carried and REPORTED INERT: no perception reader consumes a per-zone vision block yet.'],
+    ['weatherConditions[]', 'Gated on `globals.weather`. No weather source exists, so the hazard is treated ACTIVE and the gate is reported UNEVALUABLE — fail-OPEN here, unlike a gate’s fail-closed, because a hazard that silently stops existing is a floor the player crosses safely by accident.'],
+    ['immuneTags[]', 'Checked against EntityState.tags before any effect. `tags` is the richest carried entity field in the lane.'],
+    ['tags[]', 'Free tags; also carries the `burn:<statusId>` convention ignite reads.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `hazardDefinitions[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `hazardDefinitions[].${field}`,
+  note: `CLOSED BY C3/P3. ${note}`,
+}));
+
 export const EXPLICIT_ROWS: ExportRow[] = [
+  ...HAZARD_DEFINITION_ROWS,
   // ── Project identity ────────────────────────────────────────────────
   { path: 'id', class: 'carried-lossless', channel: 'manifest', packPath: 'id', note: 'Also lands on packMeta.id, buildCatalog.packId, and manifest.contentPacks[].' },
   { path: 'name', class: 'carried-lossless', channel: 'manifest', packPath: 'title', transform: 'renamed-key', note: 'manifest.title and packMeta.name both receive it verbatim.' },
@@ -158,7 +208,27 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].interactables[].description', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'Interactable descriptions are lost in the name-only projection.' },
   { path: 'zones[].exits[].targetZoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].exits[].targetZoneId', note: '' },
   { path: 'zones[].exits[].label', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].exits[].label', note: '' },
-  { path: 'zones[].exits[].condition', class: 'carried-garbled', channel: 'contentPack', packPath: 'zones[].exits[].condition.type', transform: 'whole-grammar-string-as-ConditionSpec.type', note: 'The SpawnCondition string (`item:rope`) is stuffed WHOLE into `ConditionSpec.type` with `params: {}` (convert-zones.ts:48). `parseSpawnCondition` is never called. `type` is meant to name a condition KIND, not carry its operands — so a valid ConditionSpec is produced that means nothing.' },
+  // ⚠ FLIPPED BY C3/P1 — A ROW C1 SHOULD HAVE FLIPPED AND DIDN'T.
+  //
+  // C0 classified this the audit's single `carried-garbled` row, with the note:
+  // "The SpawnCondition string (`item:rope`) is stuffed WHOLE into
+  // `ConditionSpec.type` with `params: {}` (convert-zones.ts:48).
+  // `parseSpawnCondition` is never called." C1 fixed exactly that — the exporter
+  // compiles through `parseSpawnCondition` now — and flipped its own bespoke
+  // assertion in `c0-export-table.test.ts` ("CLOSED BY C1/P2: zone exits COMPILE
+  // …"). It did NOT flip THIS row, so the committed artifact kept reporting
+  // `carried-garbled: 1` and kept publishing a note claiming the parser is never
+  // called, for a whole cycle after that stopped being true.
+  //
+  // ⚠ AND THE DIFFER CANNOT CATCH IT. A named-transform row is verified by
+  // confirming values exist at the packPath; both the garbled form
+  // (`type: 'item:rope'`) and the compiled form (`type: 'has-item'`) put a
+  // string there. The generated evidence line says so out loud — "semantics
+  // asserted separately" — which is the honest limit of a shallow check and the
+  // reason a row's PROSE is not self-verifying. Worth carrying: a table that
+  // mechanically verifies 377 of 377 rows can still be wrong about what a row
+  // MEANS, and `verified: true` is not `correct: true`.
+  { path: 'zones[].exits[].condition', class: 'carried-approximated', channel: 'contentPack', packPath: 'zones[].exits[].condition.type', transform: 'compiled-through-parseSpawnCondition', note: 'CLOSED BY C1/P2 (row flipped by C3/P1). The grammar string COMPILES into a ConditionSpec — `item:rope` → `{type:"has-item", params:{id:"rope"}}` — so `type` names a condition KIND and the operands live in `params`, which was C0\'s exact complaint. Decompiled back by formatConditionSpec on import (C3/P1); the round-trip is pinned over all thirteen operand families.' },
   { path: 'zones[].backgroundId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'zones{}.backgroundId', note: 'Survives only in the World-Forge-side asset binding map, which is NOT part of the ContentPack the engine loads.' },
   { path: 'zones[].tilesetId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'zones{}.tilesetId', note: 'Same channel caveat as backgroundId.' },
 
@@ -172,10 +242,23 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].elevationRange.floor', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
   { path: 'zones[].elevationRange.ceiling', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
   { path: 'zones[].stratumId', class: 'no-channel', absence: { kind: 'key-absent', key: 'stratumId' }, note: 'The zone→stratum membership link, dropped along with the strata themselves.' },
-  { path: 'zones[].hazardRefs[]', class: 'no-channel', absence: { kind: 'key-absent', key: 'hazardRefs' }, note: 'The TYPED hazard references. The legacy free-text `hazards` list crosses instead, so a zone that authored only typed hazards exports as hazard-free.' },
-  { path: 'zones[].entryGate.conditions[]', class: 'no-channel', absence: { kind: 'key-absent', key: 'entryGate' }, note: 'The v4.5 party-state entry gate. The Godot lane consumes it; the engine lane has no field for it.' },
-  { path: 'zones[].entryGate.mode', class: 'no-channel', absence: { kind: 'key-absent', key: 'entryGate' }, note: 'hard-vs-soft gating: no channel.' },
-  { path: 'zones[].entryGate.reason', class: 'no-channel', absence: { kind: 'key-absent', key: 'entryGate' }, note: 'The authored "show the lock" message: no channel.' },
+  // ⚠ FLIPPED BY C3/P3. C0: "The TYPED hazard references. The legacy free-text
+  // `hazards` list crosses instead, so a zone that authored only typed hazards
+  // exports as hazard-free." Both cross now, and only the typed ones mean anything
+  // without pack code — the contrast C0 measured across twelve worlds is preserved
+  // on purpose.
+  { path: 'zones[].hazardRefs[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].hazardRefs[]', note: 'CLOSED BY C3/P3. The zone→hazard binding the interpreter reads to know which typed hazards are active where. A ref matching no hazardDefinition is REPORTED at intake, not silently skipped.' },
+  // ⚠ FLIPPED BY C3/P2. C0: "The v4.5 party-state entry gate. The Godot lane
+  // consumes it; the engine lane has no field for it." It has one now, and the
+  // engine EVALUATES it in traversal-core's move handler — a hard gate refuses
+  // the move and emits the authored reason, a soft gate warns and permits.
+  //
+  // `conditions[]` is `carried-approximated` for the same reason the placement
+  // and exit conditions are: the authored STRING compiles to a ConditionSpec.
+  // `mode` and `reason` cross verbatim.
+  { path: 'zones[].entryGate.conditions[]', class: 'carried-approximated', channel: 'contentPack', packPath: 'zones[].entryGate.conditions[].type', transform: 'compiled-through-parseSpawnCondition', note: 'CLOSED BY C3/P2. Each grammar string compiles to a ConditionSpec; the engine evaluates the AND-array at traversal time. An all-unparseable gate exports as NO GATE (an empty AND-array is vacuously TRUE and would silently unlock the zone).' },
+  { path: 'zones[].entryGate.mode', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].entryGate.mode', note: 'CLOSED BY C3/P2. hard REFUSES the move (world.zone.gate.refused); soft warns and permits (world.zone.gate.warned). Both render in the terminal.' },
+  { path: 'zones[].entryGate.reason', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].entryGate.reason', note: 'CLOSED BY C3/P2. The authored "show the lock" message, carried verbatim and rendered verbatim — charter Pillar 2: access stays rule-bound, and the client has to be TOLD why.' },
   { path: 'zones[].parallaxLayers[].id', class: 'no-channel', absence: { kind: 'key-absent', key: 'parallaxLayers' }, note: '2.5D parallax: no channel.' },
   { path: 'zones[].parallaxLayers[].depth', class: 'no-channel', absence: { kind: 'key-absent', key: 'parallaxLayers' }, note: '2.5D parallax: no channel.' },
   { path: 'zones[].parallaxLayers[].assetRef', class: 'no-channel', absence: { kind: 'key-absent', key: 'parallaxLayers' }, note: '2.5D parallax: no channel. (The referenced asset itself still appears in the `assets` manifest, which is why value-absence would not prove this.)' },
@@ -188,7 +271,13 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].directionalLightYaw', class: 'no-channel', absence: { kind: 'key-absent', key: 'directionalLightYaw' }, note: 'Lighting hint: no channel.' },
   { path: 'zones[].directionalLightPitch', class: 'no-channel', absence: { kind: 'key-absent', key: 'directionalLightPitch' }, note: 'Lighting hint: no channel.' },
   { path: 'zones[].skyLightIntensity', class: 'no-channel', absence: { kind: 'key-absent', key: 'skyLightIntensity' }, note: 'Lighting hint: no channel.' },
-  { path: 'zones[].timeOfDay', class: 'no-channel', absence: { kind: 'key-absent', key: 'timeOfDay' }, note: 'Time-of-day key: no channel — even though the SpawnCondition grammar has a `time:` operand the engine could gate on.' },
+  // ⚠ FLIPPED BY C3/P4, and this row closed TWO gaps with one field. C0's note —
+  // "no channel — even though the SpawnCondition grammar has a `time:` operand the
+  // engine could gate on" — named the second one without knowing it: C3/P2
+  // measured `time-of-day` as an UNEVALUABLE gate operand precisely because
+  // nothing tracked time of day. The scene descriptor gives `timeOfDay` its
+  // channel, and that channel is the missing input the operand needed.
+  { path: 'zones[].timeOfDay', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].scene.timeOfDay', transform: 'moved-into-scene-descriptor', note: 'CLOSED BY C3/P4. Lands on the scene descriptor the client\'s diorama binds to — a STABLE KEY, not prose. Also supplies the input the `time-of-day` gate operand was measured missing.' },
   { path: 'zones[].collisionType', class: 'no-channel', absence: { kind: 'key-absent', key: 'collisionType' }, note: 'Collision channel hint: no channel.' },
 
   // ── Districts ───────────────────────────────────────────────────────
@@ -227,14 +316,28 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'pressureHotspots[].baseProbability', class: 'carried-lossless', channel: 'contentPack', packPath: 'pressureHotspots[].baseProbability', note: 'Raw pass-through.' },
   { path: 'pressureHotspots[].tags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'pressureHotspots[].tags[]', note: 'Raw pass-through.' },
 
-  // ── Encounter anchors (raw pass-through) ────────────────────────────
-  { path: 'encounterAnchors[].id', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].id', note: 'Raw pass-through.' },
-  { path: 'encounterAnchors[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].zoneId', note: 'Raw pass-through — and the ONLY entity-ish record whose zoneId survives export at all.' },
-  { path: 'encounterAnchors[].encounterType', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].encounterType', note: 'Raw pass-through.' },
-  { path: 'encounterAnchors[].enemyIds[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].enemyIds[]', note: 'Raw pass-through.' },
-  { path: 'encounterAnchors[].probability', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].probability', note: 'Raw pass-through.' },
-  { path: 'encounterAnchors[].cooldownTurns', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].cooldownTurns', note: 'Raw pass-through.' },
-  { path: 'encounterAnchors[].tags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].tags[]', note: 'Raw pass-through.' },
+  // ── Encounter anchors — REAL VOCABULARY as of C3/P1 ─────────────────
+  //
+  // The CLASS of these rows does not change: they were already carried lossless,
+  // as a raw pass-through. What changed is the thing the class could never
+  // express — whether the engine does anything with them. C0 measured
+  // `encounterAnchors` as an undeclared key with ZERO engine hits (REPORT §3.1);
+  // it is now a declared `ContentPack` key routed by an intake channel that
+  // REGISTERS into `encounter-spawn`'s existing content registry, so an anchor
+  // produces real spawns with real rolls.
+  //
+  // Worth stating plainly, because it is the C1 lesson: the export table cannot
+  // see this difference. A `carried-lossless` row said the same thing before and
+  // after, while the field went from inert to rule-bearing. Carriage is measured
+  // here; ALIVENESS is measured on the engine side, by a played session. Two
+  // instruments, two claims.
+  { path: 'encounterAnchors[].id', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].id', note: 'C3/P1: now a DECLARED key routed into encounter-spawn\'s registry (was an undeclared pass-through with zero engine hits).' },
+  { path: 'encounterAnchors[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].zoneId', note: 'Keys the per-zone spawn table. (No longer "the ONLY entity-ish record whose zoneId survives" — placements[] carries one now.)' },
+  { path: 'encounterAnchors[].encounterType', class: 'carried-approximated', channel: 'contentPack', packPath: 'encounterAnchors[].encounterType', transform: 'mapped-to-EncounterComposition-with-REFUSAL', note: 'C3/P1: mapped onto the engine\'s closed EncounterComposition set at intake. An unmapped value is REFUSED, not defaulted — deliberately unlike the four silent fallbacks C0 measured (slot, rarity, difficulty, genre).' },
+  { path: 'encounterAnchors[].enemyIds[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].enemyIds[]', note: 'C3/P1: resolved against the booted world\'s entities to clone spawn participants; an unresolvable id is refused by name.' },
+  { path: 'encounterAnchors[].probability', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].probability', note: 'C3/P1: a per-zone spawn chance the module had no expression for before — it substitutes for the pack-wide base chance, with district safety still modulating on top.' },
+  { path: 'encounterAnchors[].cooldownTurns', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].cooldownTurns', note: 'C3/P1: the second new axis — a per-zone cooldown ledger beside the existing one-live-encounter-per-zone ledger, in the same persisted namespace.' },
+  { path: 'encounterAnchors[].tags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'encounterAnchors[].tags[]', note: 'Carried; the first tag seeds the encounter\'s narrative tone at intake.' },
 
   // ── Dialogues (field-by-field conversion, effectively identity) ─────
   { path: 'dialogues[].id', class: 'carried-lossless', channel: 'contentPack', packPath: 'dialogues[].id', note: '' },
@@ -341,10 +444,32 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'entityPlacements[].stats{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'entities[].baseStats{}', transform: 'renamed-key', note: 'Omitted entirely when empty.' },
   { path: 'entityPlacements[].resources{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'entities[].baseResources{}', transform: 'renamed-key', note: 'Omitted entirely when empty.' },
   { path: 'entityPlacements[].custom{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'entities[].custom{}', note: 'Copied onto the blueprint under a key `EntityBlueprint` does not declare (cast through Record<string, unknown> at convert-entities.ts).' },
-  { path: 'entityPlacements[].zoneId', class: 'no-channel', absence: { kind: 'key-absent', key: 'zoneId', scope: [{ channel: 'contentPack', packPath: 'entities[]' }] }, note: 'THE placement itself is dropped. `EntityBlueprint` has no location field, so an exported pack cannot say where any NPC stands — the single most consequential drop in the lane. Scoped to entities[] because `zoneId` DOES survive on the two raw pass-through domains.' },
+  // ⚠ FLIPPED BY C3/P1 (the pinned-test rule). C0 classified this `no-channel`
+  // with the note "THE placement itself is dropped. `EntityBlueprint` has no
+  // location field, so an exported pack cannot say where any NPC stands — the
+  // single most consequential drop in the lane." That is now false: the pack
+  // carries a `placements[]` channel and the engine's intake seam writes
+  // `EntityState.zoneId` from it.
+  //
+  // The row moves to `carried-lossless` on a DIFFERENT packPath than the
+  // blueprint, which is the substance of the fix rather than a detail — a
+  // blueprint is a template, and the engine's spawn system clones templates
+  // per instance, so a location on the template would be a lie for every clone.
+  { path: 'entityPlacements[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'placements[].zoneId', note: 'CLOSED BY C3/P1. Its own channel, not a blueprint field: one template, N placements. The engine routes it into EntityState.zoneId at intake.' },
   { path: 'entityPlacements[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX' }, note: 'No coordinates cross.' },
   { path: 'entityPlacements[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY' }, note: 'No coordinates cross.' },
-  { path: 'entityPlacements[].spawnCondition', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'The SpawnCondition grammar\'s ORIGINAL home field is dropped on export, while zone-exit conditions (a later borrower of the same grammar) are carried garbled. The grammar has no intact channel anywhere.' },
+  // ⚠ FLIPPED BY C3/P1. C0's note read: "The SpawnCondition grammar's ORIGINAL
+  // home field is dropped on export, while zone-exit conditions (a later
+  // borrower of the same grammar) are carried garbled. The grammar has no intact
+  // channel anywhere." C1 fixed the borrower; this fixes the original. The
+  // grammar now has TWO intact channels and a proven codec in both directions.
+  //
+  // `carried-approximated`, not lossless, and deliberately so: the authored
+  // STRING becomes a compiled ConditionSpec. That is the ink pattern working as
+  // intended (a rich authoring grammar compiling to a closed engine-owned
+  // format), and the class records the transform honestly rather than claiming
+  // the value crossed unchanged.
+  { path: 'entityPlacements[].spawnCondition', class: 'carried-approximated', channel: 'contentPack', packPath: 'placements[].spawnCondition.type', transform: 'compiled-through-parseSpawnCondition', note: 'CLOSED BY C3/P1. The grammar string COMPILES into a ConditionSpec ({type, params}) — the engine never parses author syntax. Decompiled back by formatConditionSpec on import; the round-trip is pinned over all thirteen operand families.' },
   { path: 'entityPlacements[].dialogueId', class: 'no-channel', absence: { kind: 'key-absent', key: 'dialogueId' }, note: 'The entity→dialogue binding is dropped even though BOTH sides cross: entities are exported and dialogues are exported, but nothing links them.' },
   { path: 'entityPlacements[].ai.goals[]', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'entities[]' }] }, note: 'Authored AI goals do not cross.' },
   { path: 'entityPlacements[].ai.fears[]', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'entities[]' }] }, note: 'Authored AI fears do not cross. Scoped: an authored fear ("flooding") collides with an unrelated `pressureHotspots[].pressureType` value, which an unscoped proof reads as carriage.' },

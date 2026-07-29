@@ -39,7 +39,7 @@
  * @module export
  */
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition } from '@world-forge/schema';
 import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -47,9 +47,10 @@ import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { ItemDefinition } from '@ai-rpg-engine/equipment';
 
-import { convertZones } from './convert-zones.js';
+import { convertZones, type ExportedZone } from './convert-zones.js';
 import { convertDistricts } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
+import { convertPlacements, type ExportedPlacement } from './convert-placements.js';
 import { convertItems } from './convert-items.js';
 import { convertDialogues } from './convert-dialogues.js';
 import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-player-template.js';
@@ -118,7 +119,17 @@ export type ContentPack = {
   /** Schema version pulled from `@world-forge/schema`. Omitted when `emitSchemaVersion: false`. */
   schemaVersion?: string;
   entities: EntityBlueprint[];
-  zones: ZoneDefinition[];
+  /**
+   * WHERE the entities stand (C3/P1). Closes C0 §2's single most consequential
+   * drop: `EntityBlueprint` has no location field, so before this key an
+   * exported pack knew every NPC and where none of them stood.
+   *
+   * A separate channel rather than a field on the blueprint, because a blueprint
+   * is a template and the engine's spawn system clones templates per instance.
+   */
+  placements: ExportedPlacement[];
+  /** `ExportedZone`, not `ZoneDefinition` — the C3/P2 `entryGate` field lives on engine `main` and is unpublished. */
+  zones: ExportedZone[];
   districts: DistrictDefinition[];
   dialogues: DialogueDefinition[];
   items: ItemDefinition[];
@@ -128,6 +139,12 @@ export type ContentPack = {
   encounterAnchors: EncounterAnchor[];
   factionPresences: FactionPresence[];
   pressureHotspots: PressureHotspot[];
+  /**
+   * C3/P3 — TYPED hazard definitions, the vocabulary that lets hazard data MEAN
+   * something. C0 §9: "the highest-value single item, because it closes a
+   * structural hole rather than a wire hole." Zones bind by id via `hazardRefs`.
+   */
+  hazardDefinitions: HazardDefinition[];
 };
 
 export type AssetBindingMap = {
@@ -201,6 +218,7 @@ export function exportToEngine(
   let zones: ReturnType<typeof convertZones>;
   let districts: ReturnType<typeof convertDistricts>;
   let entities: ReturnType<typeof convertEntities>;
+  let placements: ReturnType<typeof convertPlacements>;
   let items: ReturnType<typeof convertItems>;
   let dialogues: ReturnType<typeof convertDialogues>;
   let playerTemplate: ReturnType<typeof convertPlayerTemplate>;
@@ -248,6 +266,12 @@ export function exportToEngine(
 
     // AIR-B-003: forward warnings for dangling faction refs.
     entities = convertEntities(project, fidelityEntries, warnings);
+    // C3/P1 — WHERE they stand. Emitted alongside the blueprints, from the same
+    // authored `entityPlacements`, so the two cannot disagree about which
+    // entities exist. The orphan check above already named any placement whose
+    // zone was deleted; the engine's intake now REFUSES it rather than
+    // narrating it.
+    placements = convertPlacements(project, fidelityEntries, warnings);
     // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
     // entities will exist. The earlier "no placements" warning above is sufficient.
 
@@ -369,6 +393,9 @@ export function exportToEngine(
   // pre-options signature.
   const contentPack: ContentPack = {
     entities,
+    // C3/P1: immediately after `entities`, because it is about them and the two
+    // are read together at intake.
+    placements,
     zones,
     districts,
     dialogues,
@@ -379,12 +406,17 @@ export function exportToEngine(
     encounterAnchors: project.encounterAnchors,
     factionPresences: project.factionPresences,
     pressureHotspots: project.pressureHotspots,
+    // C3/P3. `?? []` because `hazardDefinitions` is optional on WorldProject
+    // (additive since v4.5) — an empty array is a claim the hash covers, and it
+    // keeps the key's presence unconditional so the pack shape does not vary.
+    hazardDefinitions: project.hazardDefinitions ?? [],
   };
 
   if (profile === 'debug' || emitSchemaVersion) {
     // Rebuild with the metadata keys in front, preserving insertion order.
     const prefixed: ContentPack = {
       entities: [],
+      placements: [],
       zones: [],
       districts: [],
       dialogues: [],
@@ -393,6 +425,7 @@ export function exportToEngine(
       encounterAnchors: [],
       factionPresences: [],
       pressureHotspots: [],
+      hazardDefinitions: [],
     };
     // Wipe the placeholder keys so we can re-insert them in the canonical order
     // *after* the metadata keys.
@@ -413,6 +446,7 @@ export function exportToEngine(
     }
 
     prefixed.entities = contentPack.entities;
+    prefixed.placements = contentPack.placements;
     prefixed.zones = contentPack.zones;
     prefixed.districts = contentPack.districts;
     prefixed.dialogues = contentPack.dialogues;
@@ -423,6 +457,7 @@ export function exportToEngine(
     prefixed.encounterAnchors = contentPack.encounterAnchors;
     prefixed.factionPresences = contentPack.factionPresences;
     prefixed.pressureHotspots = contentPack.pressureHotspots;
+    prefixed.hazardDefinitions = contentPack.hazardDefinitions;
 
     return {
       success: true,

@@ -15,16 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 194,
-      "carried-lossless": 168,
-      "carried-approximated": 14,
-      "carried-garbled": 1
+      "no-channel": 169,
+      "carried-lossless": 190,
+      "carried-approximated": 18
     },
     "byChannel": {
-      "none": 194,
+      "none": 169,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 145,
+      "contentPack": 170,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -1472,18 +1471,18 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].cooldownTurns exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: the second new axis — a per-zone cooldown ledger beside the existing one-live-encounter-per-zone ledger, in the same persisted namespace."
     },
     {
       "path": "encounterAnchors[].encounterType",
-      "class": "carried-lossless",
+      "class": "carried-approximated",
       "channel": "contentPack",
       "packPath": "encounterAnchors[].encounterType",
-      "transform": null,
+      "transform": "mapped-to-EncounterComposition-with-REFUSAL",
       "absenceProof": null,
       "verified": true,
-      "evidence": "1 authored values match contentPack:encounterAnchors[].encounterType exactly",
-      "note": "Raw pass-through."
+      "evidence": "transform \"mapped-to-EncounterComposition-with-REFUSAL\" → contentPack:encounterAnchors[].encounterType (1 values); semantics asserted separately",
+      "note": "C3/P1: mapped onto the engine's closed EncounterComposition set at intake. An unmapped value is REFUSED, not defaulted — deliberately unlike the four silent fallbacks C0 measured (slot, rarity, difficulty, genre)."
     },
     {
       "path": "encounterAnchors[].enemyIds[]",
@@ -1494,7 +1493,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].enemyIds[] exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: resolved against the booted world's entities to clone spawn participants; an unresolvable id is refused by name."
     },
     {
       "path": "encounterAnchors[].id",
@@ -1505,7 +1504,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].id exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: now a DECLARED key routed into encounter-spawn's registry (was an undeclared pass-through with zero engine hits)."
     },
     {
       "path": "encounterAnchors[].probability",
@@ -1516,7 +1515,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].probability exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: a per-zone spawn chance the module had no expression for before — it substitutes for the pack-wide base chance, with district safety still modulating on top."
     },
     {
       "path": "encounterAnchors[].tags[]",
@@ -1527,7 +1526,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "2 authored values match contentPack:encounterAnchors[].tags[] exactly",
-      "note": "Raw pass-through."
+      "note": "Carried; the first tag seeds the encounter's narrative tone at intake."
     },
     {
       "path": "encounterAnchors[].zoneId",
@@ -1538,7 +1537,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].zoneId exactly",
-      "note": "Raw pass-through — and the ONLY entity-ish record whose zoneId survives export at all."
+      "note": "Keys the per-zone spawn table. (No longer \"the ONLY entity-ish record whose zoneId survives\" — placements[] carries one now.)"
     },
     {
       "path": "entityPlacements[].ai.fears[]",
@@ -1685,14 +1684,14 @@
     },
     {
       "path": "entityPlacements[].spawnCondition",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "value-absent",
+      "class": "carried-approximated",
+      "channel": "contentPack",
+      "packPath": "placements[].spawnCondition.type",
+      "transform": "compiled-through-parseSpawnCondition",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "all 3 authored string values absent from all six export artifacts",
-      "note": "The SpawnCondition grammar's ORIGINAL home field is dropped on export, while zone-exit conditions (a later borrower of the same grammar) are carried garbled. The grammar has no intact channel anywhere."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:placements[].spawnCondition.type (3 values); semantics asserted separately",
+      "note": "CLOSED BY C3/P1. The grammar string COMPILES into a ConditionSpec ({type, params}) — the engine never parses author syntax. Decompiled back by formatConditionSpec on import; the round-trip is pinned over all thirteen operand families."
     },
     {
       "path": "entityPlacements[].spriteId",
@@ -1729,14 +1728,14 @@
     },
     {
       "path": "entityPlacements[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "placements[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"zoneId\" absent from contentPack:entities[]",
-      "note": "THE placement itself is dropped. `EntityBlueprint` has no location field, so an exported pack cannot say where any NPC stands — the single most consequential drop in the lane. Scoped to entities[] because `zoneId` DOES survive on the two raw pass-through domains."
+      "evidence": "3 authored values match contentPack:placements[].zoneId exactly",
+      "note": "CLOSED BY C3/P1. Its own channel, not a blueprint field: one template, N placements. The engine routes it into EntityState.zoneId at intake."
     },
     {
       "path": "factionPresences[].alertLevel",
@@ -1806,201 +1805,201 @@
     },
     {
       "path": "hazardDefinitions[].blocksVision",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].blocksVision",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "3 authored values match contentPack:hazardDefinitions[].blocksVision exactly",
+      "note": "CLOSED BY C3/P3. Carried and REPORTED INERT: no perception reader consumes a per-zone vision block yet."
     },
     {
       "path": "hazardDefinitions[].effects[].amount",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].amount",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "2 authored values match contentPack:hazardDefinitions[].effects[].amount exactly",
+      "note": "CLOSED BY C3/P3. Flat damage, or a fraction of maxHp when amountIsPercentMaxHp."
     },
     {
       "path": "hazardDefinitions[].effects[].amountIsPercentMaxHp",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].amountIsPercentMaxHp",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "1 authored values match contentPack:hazardDefinitions[].effects[].amountIsPercentMaxHp exactly",
+      "note": "CLOSED BY C3/P3. FFT poison’s fraction form."
     },
     {
       "path": "hazardDefinitions[].effects[].chance",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].chance",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "1 authored values match contentPack:hazardDefinitions[].effects[].chance exactly",
+      "note": "CLOSED BY C3/P3. Proc chance, compared against a PURE hash of (seed, tick, hazard, entity) — never Math.random, so byte-identical replay survives."
     },
     {
       "path": "hazardDefinitions[].effects[].durationTicks",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].durationTicks",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "1 authored values match contentPack:hazardDefinitions[].effects[].durationTicks exactly",
+      "note": "CLOSED BY C3/P3. Present ⇒ applied through status-core’s EXISTING periodic (DoT) machinery, not a bespoke timer."
     },
     {
       "path": "hazardDefinitions[].effects[].igniteChance",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].igniteChance",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "1 authored values match contentPack:hazardDefinitions[].effects[].igniteChance exactly",
+      "note": "CLOSED BY C3/P3. Ignite proc chance. The burn status id comes from a `burn:<id>` tag; absent that, ignite is REFUSED with what to declare."
     },
     {
       "path": "hazardDefinitions[].effects[].kind",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].kind",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "5 authored values match contentPack:hazardDefinitions[].effects[].kind exactly",
+      "note": "CLOSED BY C3/P3. The CLOSED effect union — damage / status / instakill / ignite. An unknown kind is REFUSED at intake: content selects a kind, it never defines one (RG-C1 Lane 2, Bethesda CTDA)."
     },
     {
       "path": "hazardDefinitions[].effects[].stacking",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].stacking",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "1 authored values match contentPack:hazardDefinitions[].effects[].stacking exactly",
+      "note": "CLOSED BY C3/P3. refresh / stack / ignore. `ignore` has no applyStatus counterpart and is mapped explicitly rather than silently aliased."
     },
     {
       "path": "hazardDefinitions[].effects[].statusId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].statusId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "1 authored values match contentPack:hazardDefinitions[].effects[].statusId exactly",
+      "note": "CLOSED BY C3/P3. Bound to the real status system via applyStatus — FFT’s tile-poison === spell-poison rule, which is the forge’s own docstring."
     },
     {
       "path": "hazardDefinitions[].effects[].tickOn",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].effects[].tickOn",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "2 authored values match contentPack:hazardDefinitions[].effects[].tickOn exactly",
+      "note": "CLOSED BY C3/P3. turn-start / turn-end."
     },
     {
       "path": "hazardDefinitions[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "4 authored values match contentPack:hazardDefinitions[].id exactly",
+      "note": "CLOSED BY C3/P3. The hazard identity `Zone.hazardRefs` binds to."
     },
     {
       "path": "hazardDefinitions[].immuneTags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].immuneTags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "3 authored values match contentPack:hazardDefinitions[].immuneTags[] exactly",
+      "note": "CLOSED BY C3/P3. Checked against EntityState.tags before any effect. `tags` is the richest carried entity field in the lane."
     },
     {
       "path": "hazardDefinitions[].moveCostDelta",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].moveCostDelta",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "3 authored values match contentPack:hazardDefinitions[].moveCostDelta exactly",
+      "note": "CLOSED BY C3/P3. Carried and REPORTED INERT: the engine has no movement-cost economy to spend into."
     },
     {
       "path": "hazardDefinitions[].name",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].name",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "4 authored values match contentPack:hazardDefinitions[].name exactly",
+      "note": "CLOSED BY C3/P3. Player-facing name, used in the hazard.damage.applied payload."
     },
     {
       "path": "hazardDefinitions[].passable",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].passable",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "3 authored values match contentPack:hazardDefinitions[].passable exactly",
+      "note": "CLOSED BY C3/P3. yes / flying-only / never. Enforced in the move handler beside entry gates — one refusal mechanism, two reasons."
     },
     {
       "path": "hazardDefinitions[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "7 authored values match contentPack:hazardDefinitions[].tags[] exactly",
+      "note": "CLOSED BY C3/P3. Free tags; also carries the `burn:<statusId>` convention ignite reads."
     },
     {
       "path": "hazardDefinitions[].trigger",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].trigger",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "4 authored values match contentPack:hazardDefinitions[].trigger exactly",
+      "note": "CLOSED BY C3/P3. on-enter / per-turn / on-exit / timed. The interpreter refuses an unknown trigger rather than defaulting."
     },
     {
       "path": "hazardDefinitions[].weatherConditions[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hazardDefinitions[].weatherConditions[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardDefinitions\" absent from all six export artifacts",
-      "note": "Typed hazard definitions have no pack field. Only the LEGACY free-text `Zone.hazards: string[]` crosses."
+      "evidence": "2 authored values match contentPack:hazardDefinitions[].weatherConditions[] exactly",
+      "note": "CLOSED BY C3/P3. Gated on `globals.weather`. No weather source exists, so the hazard is treated ACTIVE and the gate is reported UNEVALUABLE — fail-OPEN here, unlike a gate’s fail-closed, because a hazard that silently stops existing is a floor the player crosses safely by accident."
     },
     {
       "path": "hubs[].connectedZoneIds[]",
@@ -3808,47 +3807,47 @@
     },
     {
       "path": "zones[].entryGate.conditions[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "key-absent",
+      "class": "carried-approximated",
+      "channel": "contentPack",
+      "packPath": "zones[].entryGate.conditions[].type",
+      "transform": "compiled-through-parseSpawnCondition",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"entryGate\" absent from all six export artifacts",
-      "note": "The v4.5 party-state entry gate. The Godot lane consumes it; the engine lane has no field for it."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:zones[].entryGate.conditions[].type (7 values); semantics asserted separately",
+      "note": "CLOSED BY C3/P2. Each grammar string compiles to a ConditionSpec; the engine evaluates the AND-array at traversal time. An all-unparseable gate exports as NO GATE (an empty AND-array is vacuously TRUE and would silently unlock the zone)."
     },
     {
       "path": "zones[].entryGate.mode",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].entryGate.mode",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"entryGate\" absent from all six export artifacts",
-      "note": "hard-vs-soft gating: no channel."
+      "evidence": "3 authored values match contentPack:zones[].entryGate.mode exactly",
+      "note": "CLOSED BY C3/P2. hard REFUSES the move (world.zone.gate.refused); soft warns and permits (world.zone.gate.warned). Both render in the terminal."
     },
     {
       "path": "zones[].entryGate.reason",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].entryGate.reason",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"entryGate\" absent from all six export artifacts",
-      "note": "The authored \"show the lock\" message: no channel."
+      "evidence": "3 authored values match contentPack:zones[].entryGate.reason exactly",
+      "note": "CLOSED BY C3/P2. The authored \"show the lock\" message, carried verbatim and rendered verbatim — charter Pillar 2: access stays rule-bound, and the client has to be TOLD why."
     },
     {
       "path": "zones[].exits[].condition",
-      "class": "carried-garbled",
+      "class": "carried-approximated",
       "channel": "contentPack",
       "packPath": "zones[].exits[].condition.type",
-      "transform": "whole-grammar-string-as-ConditionSpec.type",
+      "transform": "compiled-through-parseSpawnCondition",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"whole-grammar-string-as-ConditionSpec.type\" → contentPack:zones[].exits[].condition.type (4 values); semantics asserted separately",
-      "note": "The SpawnCondition string (`item:rope`) is stuffed WHOLE into `ConditionSpec.type` with `params: {}` (convert-zones.ts:48). `parseSpawnCondition` is never called. `type` is meant to name a condition KIND, not carry its operands — so a valid ConditionSpec is produced that means nothing."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:zones[].exits[].condition.type (4 values); semantics asserted separately",
+      "note": "CLOSED BY C1/P2 (row flipped by C3/P1). The grammar string COMPILES into a ConditionSpec — `item:rope` → `{type:\"has-item\", params:{id:\"rope\"}}` — so `type` names a condition KIND and the operands live in `params`, which was C0's exact complaint. Decompiled back by formatConditionSpec on import (C3/P1); the round-trip is pinned over all thirteen operand families."
     },
     {
       "path": "zones[].exits[].label",
@@ -3940,14 +3939,14 @@
     },
     {
       "path": "zones[].hazardRefs[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].hazardRefs[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hazardRefs\" absent from all six export artifacts",
-      "note": "The TYPED hazard references. The legacy free-text `hazards` list crosses instead, so a zone that authored only typed hazards exports as hazard-free."
+      "evidence": "4 authored values match contentPack:zones[].hazardRefs[] exactly",
+      "note": "CLOSED BY C3/P3. The zone→hazard binding the interpreter reads to know which typed hazards are active where. A ref matching no hazardDefinition is REPORTED at intake, not silently skipped."
     },
     {
       "path": "zones[].hazards[]",
@@ -4182,14 +4181,14 @@
     },
     {
       "path": "zones[].timeOfDay",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "key-absent",
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].scene.timeOfDay",
+      "transform": "moved-into-scene-descriptor",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"timeOfDay\" absent from all six export artifacts",
-      "note": "Time-of-day key: no channel — even though the SpawnCondition grammar has a `time:` operand the engine could gate on."
+      "evidence": "transform \"moved-into-scene-descriptor\" → contentPack:zones[].scene.timeOfDay (3 values); semantics asserted separately",
+      "note": "CLOSED BY C3/P4. Lands on the scene descriptor the client's diorama binds to — a STABLE KEY, not prose. Also supplies the input the `time-of-day` gate operand was measured missing."
     }
   ]
 }
