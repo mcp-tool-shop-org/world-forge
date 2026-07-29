@@ -15,16 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 194,
+      "no-channel": 192,
       "carried-lossless": 168,
-      "carried-approximated": 14,
-      "carried-garbled": 1
+      "carried-approximated": 17
     },
     "byChannel": {
-      "none": 194,
+      "none": 192,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 145,
+      "contentPack": 147,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -1472,18 +1471,18 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].cooldownTurns exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: the second new axis — a per-zone cooldown ledger beside the existing one-live-encounter-per-zone ledger, in the same persisted namespace."
     },
     {
       "path": "encounterAnchors[].encounterType",
-      "class": "carried-lossless",
+      "class": "carried-approximated",
       "channel": "contentPack",
       "packPath": "encounterAnchors[].encounterType",
-      "transform": null,
+      "transform": "mapped-to-EncounterComposition-with-REFUSAL",
       "absenceProof": null,
       "verified": true,
-      "evidence": "1 authored values match contentPack:encounterAnchors[].encounterType exactly",
-      "note": "Raw pass-through."
+      "evidence": "transform \"mapped-to-EncounterComposition-with-REFUSAL\" → contentPack:encounterAnchors[].encounterType (1 values); semantics asserted separately",
+      "note": "C3/P1: mapped onto the engine's closed EncounterComposition set at intake. An unmapped value is REFUSED, not defaulted — deliberately unlike the four silent fallbacks C0 measured (slot, rarity, difficulty, genre)."
     },
     {
       "path": "encounterAnchors[].enemyIds[]",
@@ -1494,7 +1493,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].enemyIds[] exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: resolved against the booted world's entities to clone spawn participants; an unresolvable id is refused by name."
     },
     {
       "path": "encounterAnchors[].id",
@@ -1505,7 +1504,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].id exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: now a DECLARED key routed into encounter-spawn's registry (was an undeclared pass-through with zero engine hits)."
     },
     {
       "path": "encounterAnchors[].probability",
@@ -1516,7 +1515,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].probability exactly",
-      "note": "Raw pass-through."
+      "note": "C3/P1: a per-zone spawn chance the module had no expression for before — it substitutes for the pack-wide base chance, with district safety still modulating on top."
     },
     {
       "path": "encounterAnchors[].tags[]",
@@ -1527,7 +1526,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "2 authored values match contentPack:encounterAnchors[].tags[] exactly",
-      "note": "Raw pass-through."
+      "note": "Carried; the first tag seeds the encounter's narrative tone at intake."
     },
     {
       "path": "encounterAnchors[].zoneId",
@@ -1538,7 +1537,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "1 authored values match contentPack:encounterAnchors[].zoneId exactly",
-      "note": "Raw pass-through — and the ONLY entity-ish record whose zoneId survives export at all."
+      "note": "Keys the per-zone spawn table. (No longer \"the ONLY entity-ish record whose zoneId survives\" — placements[] carries one now.)"
     },
     {
       "path": "entityPlacements[].ai.fears[]",
@@ -1685,14 +1684,14 @@
     },
     {
       "path": "entityPlacements[].spawnCondition",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "value-absent",
+      "class": "carried-approximated",
+      "channel": "contentPack",
+      "packPath": "placements[].spawnCondition.type",
+      "transform": "compiled-through-parseSpawnCondition",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "all 3 authored string values absent from all six export artifacts",
-      "note": "The SpawnCondition grammar's ORIGINAL home field is dropped on export, while zone-exit conditions (a later borrower of the same grammar) are carried garbled. The grammar has no intact channel anywhere."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:placements[].spawnCondition.type (3 values); semantics asserted separately",
+      "note": "CLOSED BY C3/P1. The grammar string COMPILES into a ConditionSpec ({type, params}) — the engine never parses author syntax. Decompiled back by formatConditionSpec on import; the round-trip is pinned over all thirteen operand families."
     },
     {
       "path": "entityPlacements[].spriteId",
@@ -1729,14 +1728,14 @@
     },
     {
       "path": "entityPlacements[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "placements[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"zoneId\" absent from contentPack:entities[]",
-      "note": "THE placement itself is dropped. `EntityBlueprint` has no location field, so an exported pack cannot say where any NPC stands — the single most consequential drop in the lane. Scoped to entities[] because `zoneId` DOES survive on the two raw pass-through domains."
+      "evidence": "3 authored values match contentPack:placements[].zoneId exactly",
+      "note": "CLOSED BY C3/P1. Its own channel, not a blueprint field: one template, N placements. The engine routes it into EntityState.zoneId at intake."
     },
     {
       "path": "factionPresences[].alertLevel",
@@ -3841,14 +3840,14 @@
     },
     {
       "path": "zones[].exits[].condition",
-      "class": "carried-garbled",
+      "class": "carried-approximated",
       "channel": "contentPack",
       "packPath": "zones[].exits[].condition.type",
-      "transform": "whole-grammar-string-as-ConditionSpec.type",
+      "transform": "compiled-through-parseSpawnCondition",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"whole-grammar-string-as-ConditionSpec.type\" → contentPack:zones[].exits[].condition.type (4 values); semantics asserted separately",
-      "note": "The SpawnCondition string (`item:rope`) is stuffed WHOLE into `ConditionSpec.type` with `params: {}` (convert-zones.ts:48). `parseSpawnCondition` is never called. `type` is meant to name a condition KIND, not carry its operands — so a valid ConditionSpec is produced that means nothing."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:zones[].exits[].condition.type (4 values); semantics asserted separately",
+      "note": "CLOSED BY C1/P2 (row flipped by C3/P1). The grammar string COMPILES into a ConditionSpec — `item:rope` → `{type:\"has-item\", params:{id:\"rope\"}}` — so `type` names a condition KIND and the operands live in `params`, which was C0's exact complaint. Decompiled back by formatConditionSpec on import (C3/P1); the round-trip is pinned over all thirteen operand families."
     },
     {
       "path": "zones[].exits[].label",

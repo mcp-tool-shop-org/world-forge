@@ -50,6 +50,7 @@ import type { ItemDefinition } from '@ai-rpg-engine/equipment';
 import { convertZones } from './convert-zones.js';
 import { convertDistricts } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
+import { convertPlacements, type ExportedPlacement } from './convert-placements.js';
 import { convertItems } from './convert-items.js';
 import { convertDialogues } from './convert-dialogues.js';
 import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-player-template.js';
@@ -118,6 +119,15 @@ export type ContentPack = {
   /** Schema version pulled from `@world-forge/schema`. Omitted when `emitSchemaVersion: false`. */
   schemaVersion?: string;
   entities: EntityBlueprint[];
+  /**
+   * WHERE the entities stand (C3/P1). Closes C0 §2's single most consequential
+   * drop: `EntityBlueprint` has no location field, so before this key an
+   * exported pack knew every NPC and where none of them stood.
+   *
+   * A separate channel rather than a field on the blueprint, because a blueprint
+   * is a template and the engine's spawn system clones templates per instance.
+   */
+  placements: ExportedPlacement[];
   zones: ZoneDefinition[];
   districts: DistrictDefinition[];
   dialogues: DialogueDefinition[];
@@ -201,6 +211,7 @@ export function exportToEngine(
   let zones: ReturnType<typeof convertZones>;
   let districts: ReturnType<typeof convertDistricts>;
   let entities: ReturnType<typeof convertEntities>;
+  let placements: ReturnType<typeof convertPlacements>;
   let items: ReturnType<typeof convertItems>;
   let dialogues: ReturnType<typeof convertDialogues>;
   let playerTemplate: ReturnType<typeof convertPlayerTemplate>;
@@ -248,6 +259,12 @@ export function exportToEngine(
 
     // AIR-B-003: forward warnings for dangling faction refs.
     entities = convertEntities(project, fidelityEntries, warnings);
+    // C3/P1 — WHERE they stand. Emitted alongside the blueprints, from the same
+    // authored `entityPlacements`, so the two cannot disagree about which
+    // entities exist. The orphan check above already named any placement whose
+    // zone was deleted; the engine's intake now REFUSES it rather than
+    // narrating it.
+    placements = convertPlacements(project, fidelityEntries, warnings);
     // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
     // entities will exist. The earlier "no placements" warning above is sufficient.
 
@@ -369,6 +386,9 @@ export function exportToEngine(
   // pre-options signature.
   const contentPack: ContentPack = {
     entities,
+    // C3/P1: immediately after `entities`, because it is about them and the two
+    // are read together at intake.
+    placements,
     zones,
     districts,
     dialogues,
@@ -385,6 +405,7 @@ export function exportToEngine(
     // Rebuild with the metadata keys in front, preserving insertion order.
     const prefixed: ContentPack = {
       entities: [],
+      placements: [],
       zones: [],
       districts: [],
       dialogues: [],
@@ -413,6 +434,7 @@ export function exportToEngine(
     }
 
     prefixed.entities = contentPack.entities;
+    prefixed.placements = contentPack.placements;
     prefixed.zones = contentPack.zones;
     prefixed.districts = contentPack.districts;
     prefixed.dialogues = contentPack.dialogues;

@@ -60,6 +60,18 @@ export const SIM_AFFECTING_KEYS = [
   'verbs',
   'itemUseEffects',
   'districts',
+  // C3/P1 — mirrored from the engine's gate.ts in the same cycle.
+  //
+  // ⚠ AND THE EQUIVALENCE TEST IS HOW I KNOW. Adding these two keys engine-side
+  // turned the engine's `c1-gate.test.ts` cross-repo assertion RED immediately:
+  // the engine hashed a pack subset that included `encounterAnchors` while this
+  // implementation still did not, so the stamped hash and the computed hash
+  // disagreed for byte-identical content. That is precisely the silent
+  // divergence the duplication was defended against, caught by the mechanism
+  // named in this file's header rather than by review — and it is the concrete
+  // argument for NOT retiring that test while two implementations exist.
+  'placements',
+  'encounterAnchors',
 ] as const;
 
 /**

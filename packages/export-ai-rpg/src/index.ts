@@ -3,6 +3,8 @@
 export { convertZones } from './convert-zones.js';
 export { convertDistricts } from './convert-districts.js';
 export { convertEntities } from './convert-entities.js';
+export { convertPlacements } from './convert-placements.js';
+export type { ExportedPlacement } from './convert-placements.js';
 export { convertItems } from './convert-items.js';
 export { convertDialogues } from './convert-dialogues.js';
 export { convertPlayerTemplate } from './convert-player-template.js';
