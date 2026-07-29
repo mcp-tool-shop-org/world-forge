@@ -140,12 +140,19 @@ export type AssetBindingMap = {
 /**
  * The manifest this exporter emits.
  *
- * `contentHash` was added to the engine's `GameManifest` in engine 3.8.0+, but
+ * ⚠ CORRECTED 2026-07-29 by the engine-deps errand. This comment used to read
+ * "`contentHash` was added to the engine's `GameManifest` in engine 3.8.0+, but
  * this repo's `@ai-rpg-engine/core` dependency is still installed at 2.0.1 (C0
- * version-skew checklist item 1, open — bumping six dependency ranges is not
- * something C1 does on the way past). The intersection declares the field
- * locally until that bump happens, rather than pretending the installed type
- * already has it.
+ * version-skew checklist item 1, open)". Item 1 is closed — `core` resolves
+ * 3.8.0 — and BOTH halves of that sentence were wrong. The published 3.8.0
+ * `GameManifest` (`core/dist/types.d.ts`) has no `contentHash`: the field was
+ * added by C1 on engine `main` (commit `bf496e7`) and has never been released,
+ * the same unpublished surface that blocks the content-hash de-duplication.
+ *
+ * So the intersection stays, for a different reason than the one it recorded:
+ * not a range behind, a release behind. Delete it when a published engine
+ * carries the field — the same release that unblocks
+ * `__tests__/engine-deps-3x.test.ts`.
  */
 export type ExportedManifest = GameManifest & { contentHash?: string };
 

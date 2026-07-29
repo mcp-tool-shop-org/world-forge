@@ -12,25 +12,35 @@
 // asking a human to remember is not a synchronisation mechanism. This file is
 // the mechanism.
 //
-// ⚠ WHERE THE REAL RESOLUTION HAPPENS, and why it is not here. This repo's
-// `@ai-rpg-engine/*` dependencies are installed at 2.0.1 / 2.1.0 / 2.0.2 while
-// the engine ships 3.8.0 — that is C0's version-skew checklist item 1, still
-// open, and bumping six dependency ranges is not something C1 does on the way
-// past (the same ANDON that kept the fidelity fix small). So this file CANNOT
-// boot a 3.8.0 engine to resolve ids against.
+// ⚠ WHERE THE REAL RESOLUTION HAPPENS — CHANGED 2026-07-29 by the engine-deps
+// errand. This header used to read: "this repo's `@ai-rpg-engine/*` dependencies
+// are installed at 2.0.1 / 2.1.0 / 2.0.2 while the engine ships 3.8.0 — that is
+// C0's version-skew checklist item 1, still open… So this file CANNOT boot a
+// 3.8.0 engine to resolve ids against." Item 1 is closed. It can.
 //
-// The split, therefore:
-//   - HERE: structural checks that need no engine — no phantom is back, the
-//     near-misses point at their real counterparts, the version claim is a range.
-//   - IN THE ENGINE REPO (`packages/cli/src/c1-forge-manifest.test.ts`): the
-//     LIVE resolution, where a real booted engine's ModuleManager is available
-//     and every id this exporter emits is resolved against it.
+// The split now:
+//   - HERE, structural: no phantom is back, the near-misses point at their real
+//     counterparts, the version claim is a range. These need no engine and hold
+//     even if a boot is impossible.
+//   - HERE, live (the last describe block): a real published starter is booted
+//     and every id this exporter emits is resolved against its ModuleManager.
+//   - IN THE ENGINE REPO (`packages/cli/src/c1-gate.test.ts`, the "C1/P2 — the
+//     forge export, gated live" block): the same resolution over the committed
+//     forge manifest, plus the full four-check load gate.
 //
-// That is the same two-repo shape C0's own audit used, and it puts the decisive
-// check in the only repo that can actually make it. Neither half is claimed to
-// be the other.
+// The engine-side half is NOT redundant and is NOT demoted. It resolves against
+// the engine's own unreleased `main`; this half resolves against what a consumer
+// installing from npm actually gets. Those are different engines, and an id that
+// resolves in one and not the other is a fact worth failing over. What this half
+// removes is the reason the check could only live over there.
+//
+// (The old header also pointed at `c1-forge-manifest.test.ts`, a file that does
+// not exist — the checks landed in `c1-gate.test.ts`. Corrected while rewriting,
+// and noted rather than silently fixed: a cross-repo pointer nobody follows is
+// how the DEFAULT_MODULES comment rotted in the first place.)
 
 import { describe, it, expect } from 'vitest';
+import { createGame } from '@ai-rpg-engine/starter-fantasy';
 import {
   DEFAULT_MODULES,
   ENGINE_VERSION_RANGE,
@@ -39,6 +49,11 @@ import {
   convertPackMeta,
 } from '../convert-pack.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+
+/** Module ids a real booted engine registered. The ground truth, not a list. */
+function registeredModuleIds(): string[] {
+  return createGame(71).moduleManager.getModules().map((m) => m.id);
+}
 
 describe('C1/P2 — DEFAULT_MODULES carries no phantoms', () => {
   it('the list shrank from 18 to 12, and every removal is accounted for', () => {
@@ -114,5 +129,51 @@ describe('C1/P2 — the manifest carries a checkable version claim', () => {
     // range that admits everything is the same non-claim as a comment.
     expect(ENGINE_VERSION_RANGE).toMatch(/>=\d+\.\d+\.\d+/);
     expect(ENGINE_VERSION_RANGE).toMatch(/<\d+\.\d+\.\d+/);
+  });
+});
+
+// --- Live resolution against a real booted engine -------------------------
+
+describe('engine deps 3.x — every emitted module id resolves against a real boot', () => {
+  it('boots a published starter and registers modules — the probe works at all', () => {
+    // The precondition for everything below, asserted rather than assumed. If
+    // the boot ever silently produced an empty registry, the resolution test
+    // would fail in a way that reads like phantom ids returning, and the next
+    // reader would go looking in convert-pack.ts for a bug that is not there.
+    const ids = registeredModuleIds();
+    expect(ids.length).toBeGreaterThan(10);
+    expect(new Set(ids).size, 'the registry returned duplicate ids').toBe(ids.length);
+  });
+
+  it('all twelve ids the manifest emits are real modules on a booted engine', () => {
+    // The check EB-011 asked a human to perform and C0 measured the cost of
+    // skipping: nine of eighteen ids named nothing, and rode along in every
+    // manifest this exporter ever wrote because manifest validation checked
+    // that `modules` was an array of strings and never resolved an id.
+    const registered = new Set(registeredModuleIds());
+    const unresolved = convertManifest(minimalProject).modules.filter((id) => !registered.has(id));
+    expect(unresolved, `unresolved module ids: ${unresolved.join(', ')}`).toEqual([]);
+    expect(DEFAULT_MODULES).toHaveLength(12);
+  });
+
+  it('and the nine retired phantoms resolve against nothing — the check discriminates', () => {
+    // The RED control. A resolution test that has only ever passed proves the
+    // ids are plausible, not that the resolver can say no. These nine are the
+    // exact strings that used to ship, so this is the real historical input.
+    const registered = new Set(registeredModuleIds());
+    const stillPhantom = Object.keys(RETIRED_PHANTOM_MODULES).filter((id) => !registered.has(id));
+    expect(stillPhantom).toHaveLength(9);
+  });
+
+  it('each near-miss resolves where the name it replaced does not', () => {
+    // movement-core → traversal-core and the other two, checked as PAIRS
+    // against the live registry rather than against the mapping table. The
+    // table asserting itself is what the structural block above already does.
+    const registered = new Set(registeredModuleIds());
+    for (const [phantom, replacement] of Object.entries(RETIRED_PHANTOM_MODULES)) {
+      if (replacement === null) continue;
+      expect(registered.has(replacement), `${replacement} should be real`).toBe(true);
+      expect(registered.has(phantom), `${phantom} should not be`).toBe(false);
+    }
   });
 });

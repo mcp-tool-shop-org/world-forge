@@ -10,15 +10,32 @@
 // because a COMMENT asked a human to keep two repos in sync. So the duplication
 // is defended two ways:
 //
-//   1. It cannot be avoided today. The engine exports `computeContentHash` from
-//      @ai-rpg-engine/content-schema, but this repo's engine dependencies are
-//      installed at 2.x (C0 checklist item 1, still open) and 2.x has no such
-//      export. Importing it is a dependency bump, not an import.
+//   1. It cannot be avoided today, but ⚠ NOT for the reason this comment gave
+//      until 2026-07-29. The old text read: "the engine exports
+//      `computeContentHash` from @ai-rpg-engine/content-schema, but this repo's
+//      engine dependencies are installed at 2.x and 2.x has no such export.
+//      Importing it is a dependency bump, not an import." The dependency bump
+//      has now happened — all six ranges resolve 3.8.0 — and the import is
+//      STILL impossible. The measured reason: `computeContentHash` does not
+//      exist in any PUBLISHED @ai-rpg-engine package. It lives in
+//      `content-schema/src/gate.ts`, which C1 added to engine `main` (merge
+//      `00001de`, 2026-07-29) and which has never been released; npm's
+//      `latest` is 3.8.0, published 2026-07-28, the night before C1. Grepped
+//      across all 26 published 3.8.0 packages: zero hits for
+//      `computeContentHash`, `runLoadGate` or `applyContentPack`.
+//      So the blocker is a RELEASE, not a range. When the engine publishes the
+//      C1 surface, delete this file and import the canonical implementation —
+//      `engine-deps-3x.test.ts` fails the moment that becomes possible, so
+//      nobody has to remember.
 //   2. It is CHECKED, not trusted. The engine repo's
 //      `packages/cli/src/c1-gate.test.ts` recomputes the hash of the committed
 //      fixture pack with the ENGINE's implementation and asserts it equals the
 //      value this implementation stamped into the committed fixture manifest.
 //      If the two ever disagree, that test fails — the difference cannot hide.
+//      That test was slated for retirement in this errand, on the reasoning
+//      that one shared function makes it a tautology. It is NOT retired: there
+//      is still no shared function, so it is still the only thing standing
+//      between two implementations and a silent divergence.
 //
 // Any change here must be mirrored in the engine's gate.ts, and the equivalence
 // test is what will say so.

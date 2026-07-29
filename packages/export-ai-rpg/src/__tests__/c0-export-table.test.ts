@@ -281,6 +281,16 @@ describe('C0/P1 — the exporter self-report, recorded', () => {
 
 describe('C0/P1 — the machine-readable artifact', () => {
   it('writes docs/c0-alignment/export-table.json deterministically', () => {
+    // ⚠ `engineDepVersions` below is a FROZEN C0 STAMP, not a live reading, and
+    // the 2026-07-29 dependency errand deliberately did NOT update it. It
+    // records what was installed when the C0 audit ran, next to the
+    // `forgeCommit` that ran it; bumping the versions while leaving the commit
+    // would make the artifact claim the C0 audit was performed against 3.8.0
+    // deps, which it was not. A dated record stays dated.
+    //
+    // Current dependency truth is asserted live in `engine-deps-3x.test.ts`
+    // (declared ranges AND resolved versions) and described in
+    // `src/ENGINE_CONTRACT.md`. Do not read this artifact for it.
     const artifact = buildArtifact(project, result, {
       schemaVersion: SCHEMA_VERSION,
       forgeCommit: 'feat/c0-alignment-audit',
@@ -325,8 +335,10 @@ describe('C0/P1 — the machine-readable artifact', () => {
     // beside content-pack.json, but only the pack crossed to the engine repo —
     // so the engine-side audit could never see the version and module claims it
     // was supposed to be checking. That is a large part of why nine phantom
-    // module ids rode along unnoticed. The engine's live resolution test
-    // (`packages/cli/src/c1-forge-manifest.test.ts`) reads THIS file.
+    // module ids rode along unnoticed. The engine's live resolution test reads
+    // THIS file — `packages/cli/src/c1-gate.test.ts`, the "C1/P2 — the forge
+    // export, gated live" block. (Pointer corrected 2026-07-29: it named
+    // `c1-forge-manifest.test.ts`, which does not exist.)
     fs.writeFileSync(
       path.join(outDir, 'fixture-manifest.json'),
       `${JSON.stringify(result.manifest, null, 2)}\n`,
