@@ -15,15 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 170,
-      "carried-lossless": 189,
+      "no-channel": 169,
+      "carried-lossless": 190,
       "carried-approximated": 18
     },
     "byChannel": {
-      "none": 170,
+      "none": 169,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 169,
+      "contentPack": 170,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -4181,14 +4181,14 @@
     },
     {
       "path": "zones[].timeOfDay",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "key-absent",
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].scene.timeOfDay",
+      "transform": "moved-into-scene-descriptor",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"timeOfDay\" absent from all six export artifacts",
-      "note": "Time-of-day key: no channel — even though the SpawnCondition grammar has a `time:` operand the engine could gate on."
+      "evidence": "transform \"moved-into-scene-descriptor\" → contentPack:zones[].scene.timeOfDay (3 values); semantics asserted separately",
+      "note": "CLOSED BY C3/P4. Lands on the scene descriptor the client's diorama binds to — a STABLE KEY, not prose. Also supplies the input the `time-of-day` gate operand was measured missing."
     }
   ]
 }

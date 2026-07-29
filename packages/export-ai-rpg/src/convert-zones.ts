@@ -28,12 +28,66 @@ export type ExportedEntryGate = {
   reason?: string;
 };
 
+/** The scene descriptor the client's diorama binds to (C3/P4). Stable keys only. */
+export type ExportedScene = {
+  biome?: string;
+  timeOfDay?: string;
+  dressingDensity?: 'sparse' | 'normal' | 'dense';
+  variantTags?: string[];
+};
+
 /** The engine's `ZoneDefinition` plus the unpublished C3 fields. See {@link ExportedEntryGate}. */
 export type ExportedZone = ZoneDefinition & {
   entryGate?: ExportedEntryGate;
   /** C3/P3 — ids into the pack's `hazardDefinitions`. */
   hazardRefs?: string[];
+  /** C3/P4 — the scene descriptor. */
+  scene?: ExportedScene;
 };
+
+/**
+ * Build a zone's scene descriptor from the keys the schema ALREADY authors
+ * (C3/P4).
+ *
+ * ⚠ NOTHING NEW IS INVENTED HERE, which is the point. The forge has carried
+ * `timeOfDay` and `tags` since before this cycle; C0 filed `zones[].timeOfDay` as
+ * `no-channel` with the note "no channel — even though the SpawnCondition grammar
+ * has a `time:` operand the engine could gate on." This closes both at once: the
+ * descriptor gives `timeOfDay` its channel, and that channel is the missing input
+ * the `time-of-day` gate operand needed (C3/P2 measured it unevaluable for exactly
+ * this reason).
+ *
+ * ⚠ AND WHAT IS DELIBERATELY EXCLUDED. `parallaxLayers`, `skylineRef`,
+ * `collisionType`, the physics fields and the sky/light hints are NOT here. They
+ * are client-owned per the charter and stay `no-channel` in the recount. A
+ * descriptor that carried them would be a renderer config crossing a simulation
+ * boundary — the exact thing Triangle Strategy's "swap dressing, never layout"
+ * rule forbids.
+ *
+ * `biome` is derived from the zone's authored tags rather than invented: the first
+ * `biome:`-prefixed tag, if any. Tag conventions are how this schema already
+ * expresses `mode:` and `faction:`, so this adds no new authoring surface.
+ */
+function buildScene(z: {
+  tags: string[];
+  timeOfDay?: string;
+  interactables: unknown[];
+  propPlacements?: unknown[];
+}): ExportedScene | undefined {
+  const biomeTag = z.tags.find((t) => t.startsWith('biome:'));
+  // Coarse and ORDINAL — three buckets, because the client decides what density
+  // means and a continuous number would imply a precision the author never had.
+  const propCount = z.interactables.length;
+  const dressingDensity: ExportedScene['dressingDensity'] =
+    propCount === 0 ? 'sparse' : propCount >= 3 ? 'dense' : 'normal';
+
+  const scene: ExportedScene = {
+    ...(biomeTag ? { biome: biomeTag.slice('biome:'.length) } : {}),
+    ...(z.timeOfDay !== undefined ? { timeOfDay: z.timeOfDay } : {}),
+    dressingDensity,
+  };
+  return Object.keys(scene).length > 0 ? scene : undefined;
+}
 
 /**
  * Convert project zones → engine `ZoneDefinition[]`.
@@ -193,6 +247,8 @@ export function convertZones(project: WorldProject, warnings?: string[]): Export
       // mean anything without pack code. C0 measured that difference across twelve
       // worlds and the contrast is preserved deliberately.
       hazardRefs: z.hazardRefs && z.hazardRefs.length > 0 ? [...z.hazardRefs] : undefined,
+      // C3/P4 — the scene descriptor, built from keys already authored.
+      scene: buildScene(z),
     };
   });
 }

@@ -271,7 +271,13 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].directionalLightYaw', class: 'no-channel', absence: { kind: 'key-absent', key: 'directionalLightYaw' }, note: 'Lighting hint: no channel.' },
   { path: 'zones[].directionalLightPitch', class: 'no-channel', absence: { kind: 'key-absent', key: 'directionalLightPitch' }, note: 'Lighting hint: no channel.' },
   { path: 'zones[].skyLightIntensity', class: 'no-channel', absence: { kind: 'key-absent', key: 'skyLightIntensity' }, note: 'Lighting hint: no channel.' },
-  { path: 'zones[].timeOfDay', class: 'no-channel', absence: { kind: 'key-absent', key: 'timeOfDay' }, note: 'Time-of-day key: no channel — even though the SpawnCondition grammar has a `time:` operand the engine could gate on.' },
+  // ⚠ FLIPPED BY C3/P4, and this row closed TWO gaps with one field. C0's note —
+  // "no channel — even though the SpawnCondition grammar has a `time:` operand the
+  // engine could gate on" — named the second one without knowing it: C3/P2
+  // measured `time-of-day` as an UNEVALUABLE gate operand precisely because
+  // nothing tracked time of day. The scene descriptor gives `timeOfDay` its
+  // channel, and that channel is the missing input the operand needed.
+  { path: 'zones[].timeOfDay', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].scene.timeOfDay', transform: 'moved-into-scene-descriptor', note: 'CLOSED BY C3/P4. Lands on the scene descriptor the client\'s diorama binds to — a STABLE KEY, not prose. Also supplies the input the `time-of-day` gate operand was measured missing.' },
   { path: 'zones[].collisionType', class: 'no-channel', absence: { kind: 'key-absent', key: 'collisionType' }, note: 'Collision channel hint: no channel.' },
 
   // ── Districts ───────────────────────────────────────────────────────
