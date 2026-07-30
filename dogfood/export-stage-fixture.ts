@@ -40,6 +40,7 @@ import { exportToEngine } from '../packages/export-ai-rpg/src/index.js';
 import { vocabularyCoverageProject } from '../packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.js';
 import { proofProject } from './worlds/multi-target-proof.js';
 import { saltRoadProject } from './worlds/salt-road.js';
+import { scaleForSandbox } from './worlds/sandbox-scale.js';
 
 // ── Arguments ────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -61,7 +62,10 @@ if (!outDir) {
 const WORLDS: Record<string, WorldProject> = {
     coverage: vocabularyCoverageProject,
     proof: proofProject,
-    'salt-road': saltRoadProject,
+    // Grown to a buildable size — 120×84 tiles at 48px rather than the authored
+    // 40×28 at 32. The composition and every frozen string are untouched; only
+    // geometry scales. See worlds/sandbox-scale.ts for the measured basis.
+    'salt-road': scaleForSandbox(saltRoadProject),
 };
 const project = WORLDS[worldName];
 if (!project) {
