@@ -41,6 +41,17 @@
  * The mechanics are unchanged by any of it. Salt is still weighed, the gate still
  * refuses, the stone is still slick. It just stops SOUNDING like the proof.
  *
+ * ── ⚖ VOICE FROZEN BY THE DIRECTOR (2026-07-29) ──────────────────────────────
+ *
+ * All 29 player-facing strings in this file were put in front of the Director at
+ * C4/P2's voice gate — the cycle's one designed human checkpoint — and ruled:
+ * "Freeze it — this is the voice."
+ *
+ * So this is CANON, not a draft. Later content for Salt Road matches this register:
+ * a ledger-keeper's voice, close and unhurried, with the drama left to the reader.
+ * Changing it is a Director decision, not an editorial one, and rewriting a line
+ * here on taste grounds without him is overwriting a ruling.
+ *
  * ── WHAT THE DIORAMA NEEDS FROM THIS WORLD ───────────────────────────────────
  *
  *   movement    six connected zones, walkable in both directions
