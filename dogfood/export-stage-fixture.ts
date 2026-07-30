@@ -33,6 +33,7 @@ import type { WorldProject } from '@world-forge/schema';
 import { exportToGodot, convertGates } from '../packages/export-godot/src/index.js';
 import { vocabularyCoverageProject } from '../packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.js';
 import { proofProject } from './worlds/multi-target-proof.js';
+import { saltRoadProject } from './worlds/salt-road.js';
 
 // ── Arguments ────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -53,6 +54,7 @@ if (!outDir) {
 const WORLDS: Record<string, WorldProject> = {
     coverage: vocabularyCoverageProject,
     proof: proofProject,
+    'salt-road': saltRoadProject,
 };
 const project = WORLDS[worldName];
 if (!project) {
@@ -98,7 +100,7 @@ const zoneIds = pack.zones.map((z) => z.id).sort();
 const wireSide = {
     generatedBy: 'world-forge/dogfood/export-stage-fixture.ts',
     world: { id: project.id, name: project.name, version: project.version },
-    packFormat: pack.meta.packFormatVersion ?? null,
+    packFormat: pack.meta.formatVersion ?? null,
     // Stated in the artefact so a reader of the fixture cannot mistake its purpose.
     // The charter's boundary (§3, §6.2): clients render and request; they never
     // decide. A gate is enforced by the SIM — C3 compiled the gate grammar into
@@ -109,7 +111,11 @@ const wireSide = {
     zones: pack.zones
         .map((z) => ({
             id: z.id,
-            name: z.name,
+            // `displayName`, not `name` — `GodotZoneResource` has no `name`, so every
+            // fixture emitted before this typecheck existed carried no zone names at
+            // all. JSON.stringify drops an undefined value, so the key simply was not
+            // there and nothing complained.
+            name: z.displayName,
             neighbors: [...(z.neighbors ?? [])].sort(),
             light: z.light,
             noise: z.noise,
@@ -133,7 +139,12 @@ const wireSide = {
         entities: pack.entities.all.length,
         props: pack.props.length,
         hazards: pack.hazards.length,
-        gatedZones: pack.zones.filter((z) => z.entryGate).length,
+        // ⚠ `zoneGates`, NOT `pack.zones.filter(z => z.entryGate)`. This line had the
+        // same nonexistent-field bug as the log line above and survived the first fix
+        // — one site repaired, its sibling missed, and the emitted count read 0 for a
+        // world with a gate. The self-check below now covers the EMITTED value, so
+        // fixing one site and not the other cannot pass again.
+        gatedZones: Object.keys(zoneGates).length,
         strata: pack.strata.length,
         tileLayers: pack.tileLayers.length,
     },
@@ -160,6 +171,22 @@ if (authoredGateCount !== Object.keys(zoneGates).length) {
         `gate count mismatch: the world authors ${authoredGateCount},`
         + ` the converter produced ${Object.keys(zoneGates).length}`,
     );
+}
+// The EMITTED count, checked against the authored truth. The check above compares two
+// values that were already right; this one covers the number that actually reaches the
+// artefact, which is where the surviving copy of the bug lived.
+if (wireSide.counts.gatedZones !== authoredGateCount) {
+    selfChecks.push(
+        `emitted gatedZones=${wireSide.counts.gatedZones} but the world authors ${authoredGateCount}`,
+    );
+}
+// Same class, one field over: a gate in the projection with no gate in the scene text
+// would let the client believe a door is guarded that the exporter never marked.
+for (const z of wireSide.zones) {
+    if (z.entryGate === null) continue;
+    if (!pack.worldSceneTscn.includes(`metadata/entry_gate_mode = "${z.entryGate.mode}"`)) {
+        selfChecks.push(`zone '${z.id}' has a gate in pack.json with no entry_gate metadata in the scene`);
+    }
 }
 // The pairing is the whole point: a zone in the pack whose node the scene does not
 // carry is an unjoinable zone, and finding that out in Godot is finding out late.

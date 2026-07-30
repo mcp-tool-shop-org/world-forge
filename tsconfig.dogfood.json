@@ -1,0 +1,41 @@
+{
+  "//": [
+    "Typecheck the dogfood files C4 owns.",
+    "",
+    "WHY THIS EXISTS. The root tsconfig references only `packages/*`, so nothing under",
+    "`dogfood/` was ever typechecked, and `npx tsx` does not typecheck either. In one",
+    "phase of C4 that gap produced FOUR separate defects that all looked like working",
+    "code: a read of `zone.entryGate` on a type with no such field (which printed",
+    "'gates 0' for a world authoring three), two illegal `EntityRole` values that",
+    "crashed a converter, a MarketNode built from invented field names that crashed",
+    "another, and a missing required `hidden` that made the emitted .tscn unparseable",
+    "by Godot.",
+    "",
+    "WHY IT IS SCOPED TO TWO FILES AND NOT ALL OF dogfood/. Pointing this at the whole",
+    "tree surfaces pre-existing errors in five files that have nothing to do with this",
+    "cycle: `import.meta` under a CommonJS module setting in three of them, a",
+    "`FidelityEntry.field` that no longer exists, and a ContentPack variance mismatch",
+    "in run-ai-rpg-smoke. Fixing those is real work and somebody's cycle, not a detour",
+    "inside this one. ANDON: named, not silently widened.",
+    "",
+    "It earned its keep on the first run, finding two more live bugs in the file it was",
+    "written for: `packFormatVersion` (the field is `formatVersion`) and `zone.name`",
+    "(it is `displayName`), both silently emitting nothing into every generated fixture.",
+    "",
+    "Run with: npm run typecheck:dogfood"
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "files": [
+    "dogfood/export-stage-fixture.ts",
+    "dogfood/worlds/salt-road.ts"
+  ]
+}
