@@ -24,13 +24,19 @@
  *   --doctor        additionally write world.doctored.tscn with ONE zone_id
  *                   altered — the RED control for the join proof. A join checker
  *                   that has only ever passed proves nothing.
+ *   --engine-out=<file>
+ *                   also write the ENGINE-lane pack (`export-ai-rpg`) the sidecar loads
+ *                   with `--content`. Both lanes from ONE invocation, on purpose: the
+ *                   client's scene and the sim's content have to describe the same world,
+ *                   and generating them from separate commands is how they drift.
  */
 
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
 
 import type { WorldProject } from '@world-forge/schema';
 import { exportToGodot, convertGates } from '../packages/export-godot/src/index.js';
+import { exportToEngine } from '../packages/export-ai-rpg/src/index.js';
 import { vocabularyCoverageProject } from '../packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.js';
 import { proofProject } from './worlds/multi-target-proof.js';
 import { saltRoadProject } from './worlds/salt-road.js';
@@ -44,6 +50,7 @@ function flag(name: string): string | undefined {
 const worldName = flag('world') ?? 'coverage';
 const outDir = flag('out');
 const writeDoctored = args.includes('--doctor');
+const engineOut = flag('engine-out');
 
 if (!outDir) {
     console.error('error: --out=<dir> is required');
@@ -85,6 +92,14 @@ const pack = result.contentPack;
 // below rather than trust a count.
 const zoneGates = convertGates(project).zoneGates;
 
+// `timeOfDay` is authored on the PROJECT's zones and is not a field on
+// `GodotZoneResource`, so it is read from the source rather than from the pack — the
+// same class of mistake as `entryGate` above, avoided by checking instead of assuming.
+const authoredTimeOfDay = new Map<string, string>();
+for (const z of project.zones) {
+    if (z.timeOfDay !== undefined) authoredTimeOfDay.set(z.id, z.timeOfDay);
+}
+
 console.log(
     `  ✓ zones ${pack.zones.length} · entities ${pack.entities.all.length}`
     + ` · gates ${Object.keys(zoneGates).length} · props ${pack.props.length}`,
@@ -121,6 +136,18 @@ const wireSide = {
             noise: z.noise,
             districtId: z.parentDistrictId ?? null,
             elevation: z.elevation ?? null,
+            // The AUTHORED half of the scene descriptor, which is what the client's
+            // light rig binds to. Derived exactly as `export-ai-rpg`'s `buildScene`
+            // derives it — `timeOfDay` from the field, `biome` from the first
+            // `biome:`-prefixed tag — so the stage and the sim read one vocabulary
+            // rather than two that agree today.
+            //
+            // The DERIVED half (`variantTags`: dressing:*, lighting:dim, props:*) is
+            // deliberately absent: the sim computes those from a zone's condition at
+            // runtime, and baking them into a fixture would let the stage render a
+            // state nothing had decided.
+            timeOfDay: authoredTimeOfDay.get(z.id) ?? null,
+            biome: z.tags.find((t) => t.startsWith('biome:'))?.slice('biome:'.length) ?? null,
             // Informational ONLY. The client must never enforce a gate from this;
             // it submits the move and renders the sim's refusal. See the note in
             // `wireSide.gatesAreInformational` below.
@@ -234,6 +261,36 @@ if (writeDoctored) {
     const doctoredPath = resolve(dir, 'world.doctored.tscn');
     writeFileSync(doctoredPath, doctored, 'utf-8');
     console.log(`  → ${doctoredPath}  (zone '${victim}' → '${victim}-DOCTORED')`);
+}
+
+// ── The engine lane ─────────────────────────────────────────
+// The same world through `export-ai-rpg`, which is what the sidecar's `--content` reads.
+// Emitted here rather than by a second command because the two halves must describe one
+// world; a CI step that generated them separately is exactly how a scene and a simulation
+// start disagreeing about which zones exist.
+if (engineOut !== undefined) {
+    const engineResult = exportToEngine(project);
+    if (!engineResult.success) {
+        console.error('  ✗ engine-lane export failed:');
+        for (const e of engineResult.errors) console.error(`    ${e.path ?? '(root)'}: ${e.message}`);
+        process.exit(1);
+    }
+    const enginePath = resolve(engineOut);
+    mkdirSync(dirname(enginePath), { recursive: true });
+    writeFileSync(enginePath, `${JSON.stringify(engineResult.contentPack, null, 2)}
+`, 'utf-8');
+
+    // The two lanes must agree on the zone set. Checked rather than trusted: the client
+    // joins events to nodes by zone id, so a disagreement here is a silent hole later.
+    const engineZoneIds = (engineResult.contentPack.zones ?? []).map((z) => z.id).sort();
+    const mismatch = JSON.stringify(engineZoneIds) !== JSON.stringify(zoneIds);
+    if (mismatch) {
+        console.error('  ✗ the two lanes disagree about which zones exist:');
+        console.error(`    godot : ${zoneIds.join(', ')}`);
+        console.error(`    engine: ${engineZoneIds.join(', ')}`);
+        process.exit(1);
+    }
+    console.log(`  → ${enginePath}  (engine lane, ${engineZoneIds.length} zones, agrees with the scene)`);
 }
 
 console.log('done.');
