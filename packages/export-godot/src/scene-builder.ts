@@ -480,7 +480,51 @@ export function buildWorldScene(input: SceneBuildInput): string {
         }
     }
 
-    return lines.join('\n');
+    return assertParseable(lines.join('\n'));
+}
+
+/**
+ * Refuse to return a scene Godot cannot parse.
+ *
+ * ⚠ MEASURED, not defensive programming. `metadata/hidden = ${item.hidden}` was
+ * emitted unguarded, and for a world that omitted that field the exporter produced
+ * a `.tscn` containing the literal token `undefined`. Godot's answer is
+ * `Parse Error ... [Resource file res://…world.tscn:85]` and a total refusal to load
+ * the scene — so an export that reported `success: true` produced a file no engine
+ * could open. The 36-assertion engine smoke never caught it because its proof world
+ * happens to author every field it touches.
+ *
+ * A JS template literal turns `undefined`, `null` and `NaN` into tokens that look
+ * like values, and there is no shape of authored input for which any of them is a
+ * correct thing to write. So rather than guard the sites one at a time and miss one
+ * — which is exactly what happened here, and again in the fixture generator's own
+ * count — the assembled text is checked once at the only place it can escape.
+ *
+ * Throwing is the right failure: `exportToGodot` catches converter throws and returns
+ * a structured `{ success: false, errors }`, so the caller gets a named refusal
+ * instead of a broken file.
+ */
+function assertParseable(scene: string): string {
+    const offenders: string[] = [];
+    const lines = scene.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        // Only the VALUE side: the words are legal inside a quoted string, and a zone
+        // legitimately named "The Undefined Berth" must not trip this.
+        if (/=\s*(undefined|null|NaN)\s*$/.test(lines[i])) {
+            offenders.push(`line ${i + 1}: ${lines[i]}`);
+        }
+    }
+    if (offenders.length > 0) {
+        throw new Error(
+            `refusing to emit an unparseable scene: ${offenders.length} propert`
+            + `${offenders.length === 1 ? 'y' : 'ies'} would be written as a bare `
+            + `undefined/null/NaN, which Godot rejects with a parse error and a total `
+            + `refusal to load the scene.\n  ${offenders.join('\n  ')}\n`
+            + '  Fix: author the missing field, or omit the metadata line entirely — '
+            + 'a scene missing a key loads fine, a scene containing `undefined` does not.',
+        );
+    }
+    return scene;
 }
 
 interface ExtResourceRef {
