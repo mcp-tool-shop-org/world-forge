@@ -45,15 +45,25 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # DOCS-B-003: scripts/sync-version.mjs --check has always been able to fail
+      # on a drifted version token, a stale "N tests" figure, or a packages/*
+      # version that no longer matches root — and nothing ever ran it. The gate
+      # existed and was not connected to any consequence, which is why four public
+      # surfaces drifted to four DIFFERENT wrong values for the same fact. It
+      # measures the real suite, so it runs as its own explicit step (never via
+      # prebuild) and only on the Active LTS leg, since the answer cannot differ
+      # by Node version.
+      - name: Version + documented-count drift gate
+        if: matrix.node-version == 24
+        run: npm run check-version
       # INF-B-004: Coverage runs every matrix leg so artifacts are uploaded
-      # unconditionally, not gated to a single Node version. Codecov upload is
-      # single-leg (Node 24, the Active LTS) to avoid double-reporting coverage.
+      # unconditionally, not gated to a single Node version.
       - name: Coverage
         run: npx vitest run --coverage
-      # INF-B-004: Upload coverage artifacts every run (not just the Codecov leg)
-      # so failing runs on older Node versions still yield debuggable artifacts.
-      # Vitest does not produce a separate "test output" directory by default —
-      # only the coverage/ directory is authoritative, so that's what we upload.
+      # INF-B-004: Upload coverage artifacts every run so failing runs on older
+      # Node versions still yield debuggable artifacts. Vitest does not produce a
+      # separate "test output" directory by default — only the coverage/ directory
+      # is authoritative, so that's what we upload.
       - name: Upload coverage artifacts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -61,16 +71,15 @@ jobs:
           name: coverage-node-${{ matrix.node-version }}
           path: coverage/
           if-no-files-found: ignore
-      # Coverage upload uses continue-on-error because Codecov availability
-      # should never block CI — the token may be missing in forks or the
-      # Codecov service may be temporarily unreachable.
-      - name: Upload coverage to Codecov
-        if: matrix.node-version == 24
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        continue-on-error: true
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+      # The Codecov upload step that used to follow was REMOVED in v4.6.0. It ran
+      # with `continue-on-error: true` and `fail_ci_if_error: false` against a
+      # `CODECOV_TOKEN` secret that does not exist on this repo, so it could never
+      # succeed and could never say so — the public badge rendered "unknown". A
+      # step that cannot work and cannot report that it isn't working is worse
+      # than no step: it reads as coverage reporting to anyone scanning the
+      # workflow. Coverage itself is unaffected and still runs on every leg; the
+      # artifacts above are the authoritative record. To restore external
+      # reporting, add the secret first, then re-add the step.
 
   # INF-B-010: Type-check and build the Starlight handbook on site/** changes.
   # Keeps handbook drift (e.g. stale Package Map) from landing silently.

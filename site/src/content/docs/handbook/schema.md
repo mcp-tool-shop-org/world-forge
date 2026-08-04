@@ -49,9 +49,33 @@ interface WorldProject {
   license?: string;
   category?: string;
   projectTags?: string[];
-  // ... crafting, market, visual layers
+
+  // Town economy + visual layers
+  craftingStations: CraftingStation[];
+  marketNodes: MarketNode[];
+  tilesets: Tileset[];
+  tileLayers: TileLayer[];
+  props: PropDefinition[];
+  propPlacements: PropPlacement[];
+  ambientLayers: AmbientLayer[];
+
+  // Town structures (v4.5) — optional, so pre-v4.5 projects open unchanged
+  buildings?: Building[];
+  hubs?: Hub[];
+  strongholds?: Stronghold[];
+
+  // World modeling (v4.5) — also optional
+  strata?: Stratum[];
+  stratumLinks?: StratumLink[];
+  hazardDefinitions?: HazardDefinition[];
+
+  // Earlier additive fields
+  lootTables?: LootTable[];        // v4.3
+  transitions?: TransitionEntity[]; // v4.3
 }
 ```
+
+Every field added since v4.1 is **optional**, and that is a deliberate contract rather than an accident: a project authored on any earlier v4.x opens, validates, and exports unchanged. See [Town Structures](#town-structures), [Vertical Strata](#vertical-strata), [Typed Hazards](#typed-hazards), and [Zone Entry Gates](#zone-entry-gates) below for the v4.5 additions.
 
 ## AuthoringMode
 
@@ -171,6 +195,76 @@ A named, versioned grouping of assets for portability:
 
 Assets reference their pack via `packId`. Deleting a pack cascades by clearing `packId` on all member assets.
 
+## Town Structures
+
+Three placed structure types sit a layer above the town economy (market nodes and crafting stations). All three are additive since v4.5 — the arrays are optional, so a project authored before they existed opens and validates unchanged.
+
+**`Building`** — an enterable footprint on the town map: a house, shop, temple, tavern, warehouse.
+
+- `id`, `name`, `buildingType` — identity and a free-form kind
+- `gridX`, `gridY`, `width`, `height` — footprint origin (top-left) and size in tiles
+- `zoneId` — the town zone this building sits in (optional)
+- `interiorZoneId` — **the zone you enter**, linking the town map to the interiors layer (optional)
+- `tags`
+
+**`Hub`** — a service and connectivity node anchored to a zone: a market square, crossroads, town center.
+
+- `id`, `name`, `hubType` — identity and a free-form kind
+- `zoneId` — the central zone this hub anchors to (**required**)
+- `serviceTypes` — what is offered here (`market`, `tavern`, `temple`, `inn`, …)
+- `connectedZoneIds` — the zones this hub serves
+- `tags`
+
+**`Stronghold`** — a fortified faction seat: a keep, fort, or citadel.
+
+- `id`, `name` — identity
+- `zoneId` — the zone it occupies (**required**)
+- `factionId` — the controlling faction (optional, and not cross-validated — see Validation)
+- `defenseLevel` — fortification strength, a finite number ≥ 0
+- `garrisonEntityIds` — entities garrisoned here as defenders
+- `tags`
+
+## Vertical Strata
+
+Discrete vertical layers — surface / underground / sky, or the floors of a building — and the connectors between them. Additive since v4.5.
+
+**`Stratum`** — `id`, `name`, a signed `order` (higher sits above lower), a `zRange` with `floor` < `ceiling`, and `visibleStrata` listing which other strata are visible from this one. A zone joins a stratum via `Zone.stratumId`.
+
+**`StratumLink`** — a connector between two strata (`fromStratumId`, `toStratumId`) with a `kind` (stairs, ladder, elevator, …) and optional anchor zones at each end.
+
+On Godot export, strata become per-zone `z_index` banding so layers render in the authored order rather than by accident of draw sequence.
+
+## Typed Hazards
+
+A shared hazard library referenced per zone, rather than the legacy free-text `Zone.hazards` string list (which is untouched and still works).
+
+**`HazardDefinition`** — `id`, `name`, `trigger` (when it fires), `effects[]`, plus optional `moveCostDelta`, `passable`, vision-blocking, and weather gating.
+
+**`HazardEffect`** is a discriminated union on `kind`, with four arms:
+
+| `kind` | Fields |
+|--------|--------|
+| `damage` | `amount`, `tickOn` (`turn-start` \| `turn-end`), optional `durationTicks` |
+| `status` | `statusId`, `chance` (0–1), `stacking` |
+| `instakill` | — no extra fields |
+| `ignite` | `igniteChance` (0–1) |
+
+Zones reference definitions by id via `Zone.hazardRefs`. Godot export emits each as an `Area2D` region.
+
+## Zone Entry Gates
+
+Gate entry to a zone on party state. A `ZoneEntryGate` carries an AND-array of `conditions`, a `mode` (`hard` blocks entry, `soft` advises), and an authored `reason` — the text shown to the player, so a locked door can explain itself instead of silently refusing.
+
+Conditions use the extended `SpawnCondition` grammar, which accepts party-state operands alongside the original set:
+
+```
+party-level:>=5      party-size:<4       item:brass-key
+flag:met-the-keeper  member:npc-aldric   class:cleric
+level:>=3            faction:keepers:>50 random:0.25
+```
+
+Comparator grammars (`level:`, `party-level:`, `party-size:`, `faction:<id>:<op>`, `random:`) reject an empty or whitespace-only operand rather than coercing it to `0`.
+
 ## Scene Data Assembly
 
 `assembleSceneData(zoneId, project)` is a pure function that extracts all visual data bound to a zone into a single `SceneData` structure:
@@ -212,7 +306,9 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 
 ## Validation
 
-`validateProject()` runs 54 structural checks using precomputed Map lookups for O(n) performance. Returns `{ valid, errors, warningCount }`. An optional `ValidateOptions` parameter supports `verbose` mode for detailed output.
+`validateProject()` runs 89 structural checks using precomputed Map lookups for O(n) performance. Returns `{ valid, errors, warningCount }`. An optional `ValidateOptions` parameter supports `verbose` mode for detailed output.
+
+Before any rule runs, a structural guard confirms every required top-level array is actually an array. A truncated or corrupted import used to sail past this and fail later in a converter; now it fails immediately, with the field named. The three optional town arrays are guarded the same way, but only when present — absent stays valid, which is what keeps projects authored before v4.5 opening unchanged.
 
 1. At least one spawn point exists
 2. At least one default spawn point
@@ -259,7 +355,28 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 46. Asset packId references existing pack
 47. Orphaned pack detection (no assets reference this pack)
 48. Pack version format (semver x.y.z)
-49-54. Encounter, faction, and pressure hotspot structural checks
+49-52. Pack version non-empty, `packId` resolves, orphaned-pack detection, semver format
+53-55. 2.5D: elevation range sanity (finite, floor < ceiling), unique parallax depth per zone, `skylineRef` resolves to a `background` asset
+56-58. LootTable ID uniqueness; every entry weight finite and > 0
+59. `EntityPlacement.spawnCondition` parses as a legal condition
+60-65. TransitionEntity: ID uniqueness, `zoneId`/`targetZoneId` resolve, finite non-negative duration, finite `gravityOverride` (0 is legal — zero-g), sky/lighting sanity, `collisionType` runtime guard
+66-72. Strata: ID uniqueness, finite `zRange` with floor < ceiling, finite `order`, `visibleStrata` resolve, `Zone.stratumId` resolves; StratumLink ID uniqueness and endpoint/anchor resolution
+73-77. Hazards: ID uniqueness, valid trigger, passability + `moveCostDelta` sanity, per-`kind` effect validation with an exhaustiveness guard, `Zone.hazardRefs` resolve
+78. Zone entry gates: valid mode, and every condition is a legal `SpawnCondition`
+79-80. Town economy: CraftingStation and MarketNode ID uniqueness, `zoneId` resolution, `merchantEntityId` resolution
+81-86. Visual layers: Tileset / TileDefinition / TileLayer / PropDefinition / PropPlacement / AmbientLayer ID uniqueness and cross-reference resolution
+87-89. Town structures: Building, Hub, and Stronghold ID uniqueness; `zoneId` resolution; `Building.interiorZoneId` resolution; `Hub.connectedZoneIds` resolution; `Stronghold.garrisonEntityIds` resolution and finite non-negative `defenseLevel`
+
+Rules 87-89 close a gap worth naming, because it is the kind that hides well.
+`Building.interiorZoneId` is the link from the town map to the interiors layer —
+functionally the same field as `TransitionEntity.targetZoneId`, which rule 61 has
+always checked. Until v4.6.0 nothing checked it, so a typo meant the player entered
+a building and arrived nowhere, with `validateProject()` reporting the project clean.
+
+`Stronghold.factionId` is deliberately **not** validated. There is no faction
+registry in the schema — factions exist only as `FactionPresence.factionId` scoped
+to districts — so a stronghold held by a faction with no district presence is
+legitimately authorable, and flagging it would manufacture false errors.
 
 ## Advisory Validation
 

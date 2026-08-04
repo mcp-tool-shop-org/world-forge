@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.5.0</strong> — 2682 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.6.0</strong> — 2742 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
 <!-- version:end -->
 
 ## Architecture
@@ -96,7 +96,7 @@ Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 - **Tiles + interiors** — `TileMapLayer` + `TileSet` (baked `tile_map_data` for image tilesets), per-cell wall `StaticBody2D` collision, and prop `Node2D` placements
 - **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
 - **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
-- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 38 assertions)
+- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
 - **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.0.0
 
 ### @world-forge/export-ai-rpg
@@ -254,6 +254,29 @@ Exports target three engines:
 - **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** — ContentPack format: the deterministic simulation runtime that loads an exported pack and runs the world
 - **Unreal Engine 5** — 2.5D-aware content pack with Primary Data Assets, actor spawn manifests, and World Partition hints
 - **Godot 4** — `.tscn` scene generation with zone resources, navigation links, and entity manifests
+
+### The Forge→Engine content contract
+
+An exporter that runs is not the same thing as a world that boots. v4.6.0 closes
+that gap for the AI RPG Engine lane, and — more usefully — makes the remaining gap
+a number instead of an assumption.
+
+- **A measured export table** (`docs/c0-alignment/`) — a leaf-path differ walks
+  every authored field and records which ones actually reach the runtime. It is
+  generated, checked in, and verified on every test run, so "what survives export"
+  is auditable rather than asserted.
+- **An honest manifest** — the emitted pack carries a real engine semver range,
+  real module ids, a content hash, and compiled exit conditions. Module ids are
+  gated on real content: a pack with no crafting stations no longer claims the
+  crafting module.
+- **The space vocabulary crosses** — per-entity placements with compiled spawn
+  conditions, typed hazards, entry gates, and scene descriptors reach the engine's
+  content pack, not just the schema.
+- **Fidelity reporting stays the contract.** Every lane reports what was lossless,
+  approximated, or dropped. Where a field cannot cross, the export says so — it
+  does not quietly succeed.
+
+Requires `ai-rpg-engine` `^3.8.0`.
 
 ## Security
 

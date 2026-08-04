@@ -92,7 +92,7 @@ Mode affects everything: grid defaults, connection vocabulary, zone naming patte
 
 ### ContentPack
 
-A **ContentPack** is the export format that ai-rpg-engine understands. It contains zones, districts, entities, items, dialogues, a player template, and metadata. The export pipeline validates your project (60+ structural checks) before converting it. World Forge also exports to Unreal Engine 5 (2.5D-aware content pack) and Godot 4 (.tscn scenes + resource pack).
+A **ContentPack** is the export format that ai-rpg-engine understands. It contains zones, districts, entities, items, dialogues, a player template, and metadata. The export pipeline validates your project (89 structural checks) before converting it. World Forge also exports to Unreal Engine 5 (2.5D-aware content pack) and Godot 4 (.tscn scenes + resource pack).
 
 ## 5. Step-by-Step Tutorial
 
@@ -156,7 +156,7 @@ When the project is Ready or Healthy, click **Export** to open the Export modal.
 
 **Wrong asset kind.** Zone backgrounds must reference assets of kind `background`, entity portraits must be `portrait`, and so on. The Deps tab flags mismatched asset kinds and offers a relink button to pick the correct asset.
 
-**Export with validation errors.** The export pipeline requires `validateProject()` to pass all 60+ structural checks. If export fails, check the Issues tab for the specific errors. Common blockers include missing spawn points, broken dialogue node references, and duplicate IDs.
+**Export with validation errors.** The export pipeline requires `validateProject()` to pass all 89 structural checks. If export fails, check the Issues tab for the specific errors. Common blockers include missing spawn points, broken dialogue node references, and duplicate IDs.
 
 ## 7. Glossary
 

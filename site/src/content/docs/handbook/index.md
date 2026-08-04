@@ -27,6 +27,11 @@ World Forge is the authoring end of a three-layer authoring-to-play pipeline:
 - **Author dialogues** — branching conversation trees with conditions and effects
 - **Place items** with slot, rarity, stat modifiers, and granted verbs
 - **Manage assets** — portraits, sprites, backgrounds, icons, and tilesets in a typed manifest with kind-specific bindings to zones, entities, and items
+- **Paint tiles and dress interiors** — image-backed tilesets (sliced by row/column) with a colored-rect fallback, a drag brush, layers, and a per-tile "Solid" toggle that becomes real wall collision on export; plus prop placement for interior detailing
+- **Author towns** — market nodes (supply categories, price modifier, contraband) and crafting stations per zone, plus buildings (enterable footprints that link to an interior zone), service hubs, and fortified strongholds
+- **Model the world vertically** — discrete strata (surface / underground / sky, or building floors) with signed order, z-range, and inter-layer visibility, connected by stairs, ladders, and elevators
+- **Author typed hazards** — a shared library of damage / status / instakill / ignite effects with trigger timing, terrain move-cost, passability, and weather gating, referenced per zone
+- **Gate zones on party state** — block or advise entry on party level, party size, items, flags, specific members, or classes, with an authored reason so a locked door explains itself
 - **Search & browse** — Ctrl+K fuzzy search across all object types with recent history, hierarchical Objects tree panel
 - **Select & edit** — multi-select, box-select, drag-move, Ctrl+D duplicate, Ctrl+C/V copy-paste with ID remapping
 - **Canvas tools** — minimap, viewport culling, connection preview, context menu, per-object visibility, performance stats overlay

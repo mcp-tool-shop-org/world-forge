@@ -45,7 +45,7 @@ The type authority. Defines every structure in a `WorldProject`:
 - **Asset types** — `AssetEntry`, `AssetKind`, `AssetProvenance`
 - **Visual types** — `Tileset`, `TileLayer`, `PropDefinition`, `AmbientLayer`
 - **Container** — `WorldProject` interface that holds everything
-- **Validation** — `validateProject()` with 54 structural checks (Map-based O(n) lookups, `warningCount`); `advisoryValidation()` for mode-specific suggestions plus metadata completeness and asset naming checks
+- **Validation** — `validateProject()` with 89 structural checks (Map-based O(n) lookups, `warningCount`); `advisoryValidation()` for mode-specific suggestions plus metadata completeness and asset naming checks
 
 ## @world-forge/export-unreal
 
