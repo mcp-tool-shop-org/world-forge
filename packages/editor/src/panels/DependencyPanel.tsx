@@ -7,6 +7,7 @@ import { scanDependencies, type DependencyEdge, type DepDomain } from '@world-fo
 import { repairsForEdge, batchRepair, type RepairAction } from '../repairs.js';
 import { PanelHeader } from './shared.js';
 import { buttonBase, buttonAccent } from '../ui/styles.js';
+import { edgeKey } from './dependency-panel-helpers.js';
 
 const domainLabels: Record<DepDomain, string> = {
   'zone-asset': 'Zone Assets',
@@ -40,6 +41,12 @@ export function DependencyPanel() {
   const [relinkEdge, setRelinkEdge] = useState<DependencyEdge | null>(null);
 
   const report = useMemo(() => scanDependencies(project), [project]);
+
+  // F-010: scanDependencies() is pure and returns brand-new edge objects on
+  // every call, so relinkEdge (captured object reference) can never `===`
+  // any edge from a later scan — comparing by this stable derived key
+  // instead survives unrelated project edits without the picker vanishing.
+  const relinkKey = relinkEdge ? edgeKey(relinkEdge) : null;
 
   // Group non-ok edges by domain
   const issueEdges = useMemo(
@@ -205,7 +212,7 @@ export function DependencyPanel() {
                   {/* Relink button — opens picker */}
                   {repairsForEdge(edge, project).some((r) => r.kind === 'relink-asset') && (
                     <button
-                      onClick={() => setRelinkEdge(relinkEdge === edge ? null : edge)}
+                      onClick={() => setRelinkEdge(relinkKey === edgeKey(edge) ? null : edge)}
                       style={repairBtnStyle}
                     >
                       Relink...
@@ -214,7 +221,7 @@ export function DependencyPanel() {
                 </div>
 
                 {/* Relink picker */}
-                {relinkEdge === edge && (
+                {relinkKey === edgeKey(edge) && (
                   <div style={{ marginTop: 4, padding: 4, background: '#161b22', borderRadius: 4, border: '1px solid #30363d' }}>
                     <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 4 }}>
                       Choose a {edge.expectedKind} asset:

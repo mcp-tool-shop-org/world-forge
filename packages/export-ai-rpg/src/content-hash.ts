@@ -76,6 +76,16 @@ export const SIM_AFFECTING_KEYS = [
   // the engine's cross-repo equivalence test went red on each of P1 and P3 the
   // moment the engine's list grew and this one had not. Mirror, then measure.
   'hazardDefinitions',
+  // F-ee46a52c (swarm wave-2). Weighted loot drops affect simulation outcomes
+  // (which item a kill/chest/container actually yields) exactly as much as
+  // `entities`/`items` do, so a content-hash that ignored `lootTables` would
+  // let two packs with different drop tables hash identically. NOT yet
+  // mirrored into the engine's gate.ts (that file lives in the unpublished
+  // `ai-rpg-engine` repo, out of this package's reach) — when the engine
+  // publishes loot-table support, add the key there too, or the cross-repo
+  // equivalence test this file's header describes will go red for the same
+  // reason C3/P1 and C3/P3 did.
+  'lootTables',
 ] as const;
 
 /**

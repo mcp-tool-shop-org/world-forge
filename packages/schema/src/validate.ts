@@ -4,6 +4,7 @@ import type { WorldProject } from './project.js';
 import type { ConnectionKind } from './spatial.js';
 import type { AssetKind } from './assets.js';
 import { validateSpawnCondition } from './spawn-condition.js';
+import { AUTHORING_MODES, isValidMode } from './authoring-mode.js';
 
 export type ValidationError = {
   path: string;
@@ -110,6 +111,19 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     [project.pressureHotspots, 'pressureHotspots'],
     [project.assets, 'assets'],
     [project.assetPacks, 'assetPacks'],
+    // F-001 (CRITICAL): these seven required array fields (project.ts) were
+    // entirely absent from this guard — a project with any of them corrupted
+    // to the wrong type entirely still validated as fully valid. Added here
+    // using the exact same Array.isArray + message pattern as every sibling
+    // above; see the id-uniqueness/cross-reference rules further down for the
+    // deeper checks these fields also lacked.
+    [project.craftingStations, 'craftingStations'],
+    [project.marketNodes, 'marketNodes'],
+    [project.tilesets, 'tilesets'],
+    [project.tileLayers, 'tileLayers'],
+    [project.props, 'props'],
+    [project.propPlacements, 'propPlacements'],
+    [project.ambientLayers, 'ambientLayers'],
   ];
   for (const [value, field] of requiredArrays) {
     if (!Array.isArray(value)) {
@@ -145,6 +159,16 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     errors.push({
       path: 'category',
       message: `Project category must be a string when present (got ${typeof projAny.category}).`,
+    });
+  }
+
+  // F-004: isValidMode() was exported specifically to guard this field but was
+  // never called from here, so a garbage `mode` value passed validateProject
+  // silently and only surfaced later as a soft, non-blocking advisory.
+  if (project.mode !== undefined && !isValidMode(project.mode)) {
+    errors.push({
+      path: 'mode',
+      message: `Project mode "${project.mode}" is not a supported authoring mode (expected one of: ${AUTHORING_MODES.join(', ')}).`,
     });
   }
 
@@ -204,6 +228,28 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
+  // 6b. Zone exits must reference existing zones, and each exit's condition
+  // (when set) must be a legal SpawnCondition (F-007). ZoneExit.targetZoneId
+  // is the same kind of zone-to-zone reference as neighbors[] (rule 5) and
+  // ZoneConnection.toZoneId (rule 11) — checked the same way for consistency.
+  for (const z of project.zones) {
+    for (const exit of z.exits) {
+      if (!zoneIds.has(exit.targetZoneId)) {
+        errors.push({
+          path: `zones.${z.id}.exits`,
+          message: `Zone "${z.id}" has an exit to nonexistent zone "${exit.targetZoneId}"`,
+        });
+      }
+      const exitCondErr = validateSpawnCondition(exit.condition);
+      if (exitCondErr) {
+        errors.push({
+          path: `zones.${z.id}.exits`,
+          message: `Zone "${z.id}" exit to "${exit.targetZoneId}": ${exitCondErr}`,
+        });
+      }
+    }
+  }
+
   // 7. District zoneIds must reference existing zones
   for (const d of project.districts) {
     for (const zid of d.zoneIds) {
@@ -245,6 +291,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // 11b. Connection kind must be valid
     if (c.kind && !VALID_CONNECTION_KINDS.has(c.kind)) {
       errors.push({ path: 'connections', message: `Connection has unsupported kind "${c.kind}"` });
+    }
+    // 11c. Connection condition must be a legal SpawnCondition (F-007) —
+    // mirrors rule 59/78's use of the shared validator.
+    const connCondErr = validateSpawnCondition(c.condition);
+    if (connCondErr) {
+      errors.push({ path: 'connections', message: `Connection: ${connCondErr}` });
     }
   }
 
@@ -606,13 +658,47 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       }
     }
 
-    // 36. Unreachable nodes (no requires = root, all others must be reachable)
+    // 36. Unreachable nodes — a node is reachable/unlockable only when it IS a
+    // root (no requires) or when EVERY node in its requires[] list is itself
+    // reachable (F-003). This is a Kahn's-algorithm-style fixpoint: seed with
+    // roots, then repeatedly unlock any node whose full requires[] is already
+    // satisfied, until nothing new unlocks. It mirrors rule 19's dialogue
+    // `reachable` Set + queue pattern, but is AND-gated (not OR) because
+    // ProgressionNode.requires is a real prerequisite list, not a branch.
+    //
+    // The OLD check only verified `roots.length > 0` — it never walked the
+    // graph, so a real root elsewhere in the tree masked a fully disconnected
+    // requires-cycle island (e.g. "x requires y" + "y requires x", neither
+    // ever reachable from any root). That island now correctly stays
+    // unreached: neither node's prerequisites are ever satisfied.
     const roots = tree.nodes.filter((n) => !n.requires || n.requires.length === 0);
     if (roots.length === 0 && tree.nodes.length > 0) {
       errors.push({
         path: `progressionTrees.${tree.id}`,
         message: `Progression tree "${tree.id}" has no root nodes (all nodes have requirements)`,
       });
+    } else {
+      const reachable = new Set<string>(roots.map((n) => n.id));
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const node of tree.nodes) {
+          if (reachable.has(node.id)) continue;
+          const reqs = node.requires ?? [];
+          if (reqs.length > 0 && reqs.every((r) => reachable.has(r))) {
+            reachable.add(node.id);
+            changed = true;
+          }
+        }
+      }
+      for (const node of tree.nodes) {
+        if (!reachable.has(node.id)) {
+          errors.push({
+            path: `progressionTrees.${tree.id}.nodes.${node.id}`,
+            message: `Node "${node.id}" in progression tree "${tree.id}" is unreachable — its requirement chain never resolves back to a root node (check for a requires cycle or a dependency on a node that is itself unreachable).`,
+          });
+        }
+      }
     }
   }
 
@@ -1186,27 +1272,56 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `hazardDefinitions.${h.id}.moveCostDelta`, message: `Hazard "${h.id}" moveCostDelta (${h.moveCostDelta}) must be a finite number.` });
     }
 
-    // 76. Each effect must be well-formed for its kind.
+    // 76. Each effect must be well-formed for its kind (F-006). A `switch`
+    // with a `default` arm gives compile-time exhaustiveness against future
+    // HazardEffect variants AND a runtime catch-all for a `kind` that matches
+    // none of the four known arms — the old if/else-if chain had no trailing
+    // branch, so a garbled/typo'd/future kind silently produced zero errors.
+    // 'instakill' is handled explicitly (no extra fields) so it is never
+    // misflagged by that catch-all.
     for (let i = 0; i < h.effects.length; i++) {
       const e = h.effects[i];
       const base = `hazardDefinitions.${h.id}.effects[${i}]`;
-      if (e.kind === 'damage') {
-        if (!Number.isFinite(e.amount)) {
-          errors.push({ path: base, message: `Hazard "${h.id}" damage amount (${e.amount}) must be a finite number.` });
+      switch (e.kind) {
+        case 'damage': {
+          if (!Number.isFinite(e.amount)) {
+            errors.push({ path: base, message: `Hazard "${h.id}" damage amount (${e.amount}) must be a finite number.` });
+          }
+          if (e.durationTicks !== undefined && (!Number.isFinite(e.durationTicks) || e.durationTicks < 0)) {
+            errors.push({ path: base, message: `Hazard "${h.id}" damage durationTicks (${e.durationTicks}) must be a finite number >= 0.` });
+          }
+          // F-006: tickOn is REQUIRED on a damage effect but was never checked.
+          if (e.tickOn !== 'turn-start' && e.tickOn !== 'turn-end') {
+            errors.push({ path: base, message: `Hazard "${h.id}" damage effect has unsupported tickOn "${e.tickOn}" (expected turn-start or turn-end).` });
+          }
+          break;
         }
-        if (e.durationTicks !== undefined && (!Number.isFinite(e.durationTicks) || e.durationTicks < 0)) {
-          errors.push({ path: base, message: `Hazard "${h.id}" damage durationTicks (${e.durationTicks}) must be a finite number >= 0.` });
+        case 'status': {
+          if (!e.statusId || e.statusId.trim().length === 0) {
+            errors.push({ path: base, message: `Hazard "${h.id}" status effect has a missing statusId.` });
+          }
+          if (!Number.isFinite(e.chance) || e.chance < 0 || e.chance > 1) {
+            errors.push({ path: base, message: `Hazard "${h.id}" status chance (${e.chance}) must be a finite number in [0, 1].` });
+          }
+          break;
         }
-      } else if (e.kind === 'status') {
-        if (!e.statusId || e.statusId.trim().length === 0) {
-          errors.push({ path: base, message: `Hazard "${h.id}" status effect has a missing statusId.` });
+        case 'ignite': {
+          if (!Number.isFinite(e.igniteChance) || e.igniteChance < 0 || e.igniteChance > 1) {
+            errors.push({ path: base, message: `Hazard "${h.id}" igniteChance (${e.igniteChance}) must be a finite number in [0, 1].` });
+          }
+          break;
         }
-        if (!Number.isFinite(e.chance) || e.chance < 0 || e.chance > 1) {
-          errors.push({ path: base, message: `Hazard "${h.id}" status chance (${e.chance}) must be a finite number in [0, 1].` });
-        }
-      } else if (e.kind === 'ignite') {
-        if (!Number.isFinite(e.igniteChance) || e.igniteChance < 0 || e.igniteChance > 1) {
-          errors.push({ path: base, message: `Hazard "${h.id}" igniteChance (${e.igniteChance}) must be a finite number in [0, 1].` });
+        case 'instakill':
+          // No extra fields to validate.
+          break;
+        default: {
+          // Compile-time exhaustiveness: fails to type-check if HazardEffect
+          // ever grows a fifth `kind` variant without a case above. `never` has
+          // no properties, so read `.kind` back off a widened cast — the
+          // runtime value is whatever garbage/future data actually arrived.
+          const _exhaustive: never = e;
+          const unknownKind = (_exhaustive as { kind?: unknown }).kind;
+          errors.push({ path: base, message: `Hazard "${h.id}" has an unsupported effect kind "${String(unknownKind)}".` });
         }
       }
     }
@@ -1237,6 +1352,123 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         if (condErr) {
           errors.push({ path: `zones.${z.id}.entryGate.conditions[${i}]`, message: `Zone "${z.id}" entry gate: ${condErr}` });
         }
+      }
+    }
+  }
+
+  // --- World visual + economy layer validation (F-001, CRITICAL) ---
+  //
+  // craftingStations, marketNodes, tilesets, tileLayers, props, propPlacements,
+  // and ambientLayers are required WorldProject fields (the structural guard
+  // at the top of this function now enforces their array-ness) but previously
+  // received NO further validation at all — no id-uniqueness, no
+  // cross-reference checks anywhere in this ~80-rule pipeline. This section
+  // brings them up to the same standard every other required-array field
+  // already gets.
+
+  // 79. CraftingStation ID uniqueness + zoneId existence.
+  const craftingStationIds = new Set<string>();
+  for (const cs of project.craftingStations) {
+    if (craftingStationIds.has(cs.id)) {
+      errors.push({ path: `craftingStations.${cs.id}`, message: `Duplicate crafting station ID: ${cs.id}` });
+    }
+    craftingStationIds.add(cs.id);
+    if (!zoneIds.has(cs.zoneId)) {
+      errors.push({ path: `craftingStations.${cs.id}.zoneId`, message: `Crafting station "${cs.id}" in nonexistent zone "${cs.zoneId}"` });
+    }
+  }
+
+  // 80. MarketNode ID uniqueness + zoneId + merchantEntityId existence.
+  const marketNodeIds = new Set<string>();
+  const entityPlacementIds = new Set(project.entityPlacements.map((ep) => ep.entityId));
+  for (const mn of project.marketNodes) {
+    if (marketNodeIds.has(mn.id)) {
+      errors.push({ path: `marketNodes.${mn.id}`, message: `Duplicate market node ID: ${mn.id}` });
+    }
+    marketNodeIds.add(mn.id);
+    if (!zoneIds.has(mn.zoneId)) {
+      errors.push({ path: `marketNodes.${mn.id}.zoneId`, message: `Market node "${mn.id}" in nonexistent zone "${mn.zoneId}"` });
+    }
+    if (mn.merchantEntityId && !entityPlacementIds.has(mn.merchantEntityId)) {
+      errors.push({ path: `marketNodes.${mn.id}.merchantEntityId`, message: `Market node "${mn.id}" references nonexistent merchant entity "${mn.merchantEntityId}"` });
+    }
+  }
+
+  // 81. Tileset ID uniqueness.
+  const tilesetIds = new Set<string>();
+  for (const ts of project.tilesets) {
+    if (tilesetIds.has(ts.id)) {
+      errors.push({ path: `tilesets.${ts.id}`, message: `Duplicate tileset ID: ${ts.id}` });
+    }
+    tilesetIds.add(ts.id);
+  }
+
+  // 82. TileDefinition ID uniqueness (global across all tilesets — TileLayer's
+  // TilePlacement.tileId references tile ids in a single flat namespace with
+  // no tileset scoping) and TileDefinition.tilesetId must reference an
+  // existing tileset.
+  const tileDefinitionIds = new Set<string>();
+  for (const ts of project.tilesets) {
+    for (const td of ts.tiles) {
+      if (tileDefinitionIds.has(td.id)) {
+        errors.push({ path: `tilesets.${ts.id}.tiles.${td.id}`, message: `Duplicate tile definition ID: ${td.id}` });
+      }
+      tileDefinitionIds.add(td.id);
+      if (!tilesetIds.has(td.tilesetId)) {
+        errors.push({ path: `tilesets.${ts.id}.tiles.${td.id}.tilesetId`, message: `Tile "${td.id}" references nonexistent tileset "${td.tilesetId}"` });
+      }
+    }
+  }
+
+  // 83. TileLayer ID uniqueness + TilePlacement.tileId existence (against the
+  // global tile-definition id set built above).
+  const tileLayerIds = new Set<string>();
+  for (const tl of project.tileLayers) {
+    if (tileLayerIds.has(tl.id)) {
+      errors.push({ path: `tileLayers.${tl.id}`, message: `Duplicate tile layer ID: ${tl.id}` });
+    }
+    tileLayerIds.add(tl.id);
+    for (const placement of tl.tiles) {
+      if (!tileDefinitionIds.has(placement.tileId)) {
+        errors.push({ path: `tileLayers.${tl.id}.tiles`, message: `Tile layer "${tl.id}" references nonexistent tile "${placement.tileId}"` });
+      }
+    }
+  }
+
+  // 84. PropDefinition ID uniqueness.
+  const propDefinitionIds = new Set<string>();
+  for (const pd of project.props) {
+    if (propDefinitionIds.has(pd.id)) {
+      errors.push({ path: `props.${pd.id}`, message: `Duplicate prop definition ID: ${pd.id}` });
+    }
+    propDefinitionIds.add(pd.id);
+  }
+
+  // 85. PropPlacement ID uniqueness + propId / zoneId (when set) existence.
+  const propPlacementIds = new Set<string>();
+  for (const pp of project.propPlacements) {
+    if (propPlacementIds.has(pp.id)) {
+      errors.push({ path: `propPlacements.${pp.id}`, message: `Duplicate prop placement ID: ${pp.id}` });
+    }
+    propPlacementIds.add(pp.id);
+    if (!propDefinitionIds.has(pp.propId)) {
+      errors.push({ path: `propPlacements.${pp.id}.propId`, message: `Prop placement "${pp.id}" references nonexistent prop definition "${pp.propId}"` });
+    }
+    if (pp.zoneId !== undefined && !zoneIds.has(pp.zoneId)) {
+      errors.push({ path: `propPlacements.${pp.id}.zoneId`, message: `Prop placement "${pp.id}" in nonexistent zone "${pp.zoneId}"` });
+    }
+  }
+
+  // 86. AmbientLayer ID uniqueness + zoneIds[] existence.
+  const ambientLayerIds = new Set<string>();
+  for (const al of project.ambientLayers) {
+    if (ambientLayerIds.has(al.id)) {
+      errors.push({ path: `ambientLayers.${al.id}`, message: `Duplicate ambient layer ID: ${al.id}` });
+    }
+    ambientLayerIds.add(al.id);
+    for (const zid of al.zoneIds) {
+      if (!zoneIds.has(zid)) {
+        errors.push({ path: `ambientLayers.${al.id}.zoneIds`, message: `Ambient layer "${al.id}" references nonexistent zone "${zid}"` });
       }
     }
   }

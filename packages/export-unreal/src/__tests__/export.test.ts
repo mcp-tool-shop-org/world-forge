@@ -563,6 +563,82 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     expect(zoneCellar?.elevationRange).toEqual({ floor: -1, ceiling: 5 });
   });
 
+  it('round-trips sky/lighting/collision/physics zone fields on import (previously dropped silently)', () => {
+    // Coordinator finding: convert-zones.ts exports SkyAtmosphereAssetId /
+    // DirectionalLightYaw / DirectionalLightPitch / SkyLightIntensity /
+    // TimeOfDayKey / CollisionChannel / GravityCmPerSec2 / GravityDirection /
+    // PhysicsMode onto UnrealZoneDataAsset and marks them `lossless` in the
+    // EXPORT-side fidelity report — but zoneFromUnreal never read any of them
+    // back on import. A round trip silently lost real, exported data with no
+    // fidelity entry saying so, directly contradicting the exporter's own
+    // "lossless" claim for these fields.
+    const project: WorldProject = {
+      ...minimalProject,
+      assets: [
+        ...minimalProject.assets,
+        { id: 'asset-sky-atmo', kind: 'background', label: 'SkyAtmo', path: 'bg/sa.png', tags: [] },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              backgroundId: 'asset-sky-atmo',
+              skyAtmosphereRef: 'asset-sky-atmo',
+              directionalLightYaw: 45,
+              directionalLightPitch: -30,
+              skyLightIntensity: 1.5,
+              timeOfDay: 'dusk',
+              collisionType: 'water' as const,
+              gravityOverride: 3.7,
+              gravityDirection: 'down' as const,
+              physicsMode: 'platformer' as const,
+            }
+          : z,
+      ),
+    };
+    const exported = exportToUnreal(project);
+    if (!exported.success) throw new Error('export failed');
+
+    const imported = importFromUnreal(exported.contentPack);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+
+    const zone = imported.project.zones.find((z) => z.id === 'zone-entrance');
+    expect(zone?.skyAtmosphereRef).toBe('asset-sky-atmo');
+    expect(zone?.directionalLightYaw).toBe(45);
+    expect(zone?.directionalLightPitch).toBe(-30);
+    expect(zone?.skyLightIntensity).toBe(1.5);
+    expect(zone?.timeOfDay).toBe('dusk');
+    expect(zone?.collisionType).toBe('water');
+    expect(zone?.gravityOverride).toBeCloseTo(3.7, 5);
+    expect(zone?.gravityDirection).toBe('down');
+    expect(zone?.physicsMode).toBe('platformer');
+  });
+
+  it('drops an unrecognized PhysicsMode on import with an approximated fidelity entry instead of guessing', () => {
+    const exported = exportToUnreal(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+
+    const tamperedPack = {
+      ...exported.contentPack,
+      Zones: exported.contentPack.Zones.map((z) =>
+        z.Id === 'zone-entrance' ? { ...z, PhysicsMode: 'bogus-mode' } : z,
+      ),
+    };
+    const imported = importFromUnreal(tamperedPack);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+
+    const zone = imported.project.zones.find((z) => z.id === 'zone-entrance');
+    expect(zone?.physicsMode).toBeUndefined();
+
+    const entry = imported.fidelity.entries.find(
+      (e) => e.domain === 'physics' && e.entityId === 'zone-entrance' && e.level === 'approximated',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.message).toContain('bogus-mode');
+  });
+
   it('round-trips a non-default pixel tileSize (48) through SourceTileSizePx', () => {
     const project: WorldProject = {
       ...minimalProject,

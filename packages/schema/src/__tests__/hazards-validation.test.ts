@@ -86,4 +86,30 @@ describe('hazard validation', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.path.includes('hazardRefs') && e.message.includes('ghost'))).toBe(true);
   });
+
+  // F-006: the effect-kind chain had no trailing branch to catch a `kind` that
+  // matches none of the four known arms, so a garbled/typo'd/future kind
+  // produced zero errors — the hazard was accepted as if it had no effects at all.
+  it('rejects an unknown hazard effect kind (exhaustiveness guard)', () => {
+    const result = validateProject(withHazards([hazard('lava', { effects: [{ kind: 'explode', amount: 999 } as never] })]));
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path.includes('effects[0]') && e.message.includes('explode'))).toBe(true);
+  });
+
+  it('accepts an instakill effect with no extra fields (control — the exhaustiveness guard must not misflag it)', () => {
+    const result = validateProject(withHazards([hazard('lava', { effects: [{ kind: 'instakill' }] })]));
+    expect(result.errors.filter((e) => e.path.includes('effects[0]'))).toEqual([]);
+  });
+
+  // F-006: the required `tickOn` field on a 'damage' effect was never checked.
+  it('rejects a damage effect with an invalid tickOn value', () => {
+    const result = validateProject(withHazards([hazard('lava', { effects: [{ kind: 'damage', amount: 5, tickOn: 'nonsense-value' as never }] })]));
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path.includes('effects[0]') && e.message.includes('tickOn'))).toBe(true);
+  });
+
+  it('accepts a damage effect with a valid tickOn value (control)', () => {
+    const result = validateProject(withHazards([hazard('lava', { effects: [{ kind: 'damage', amount: 5, tickOn: 'turn-start' }] })]));
+    expect(result.errors.filter((e) => e.path.includes('effects[0]'))).toEqual([]);
+  });
 });

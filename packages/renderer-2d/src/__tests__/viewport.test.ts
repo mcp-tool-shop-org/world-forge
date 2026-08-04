@@ -231,5 +231,36 @@ describe('WorldViewport', () => {
       vp.destroy();
       expect(spy).toHaveBeenCalledTimes(1);
     });
+
+    it('F-6e1b2c4d: destroy() recursively destroys stage children (this.world, gridOverlay), not just the renderer/canvas', () => {
+      // PixiJS v8's Application.destroy(rendererDestroyOptions, options) takes
+      // TWO independent params. `this.app.destroy(true)` alone leaves `options`
+      // at its default `false`, so `this.stage.destroy(false)` never recurses
+      // into children — this.world (where every sibling renderer's container
+      // is mounted, per WorldViewport's own field doc) and the gridOverlay
+      // Graphics leak their GPU-side resources on every destroy(). Every
+      // sibling renderer in this package (TileLayerRenderer, ZoneOverlayRenderer,
+      // EntityRenderer, ConnectionRenderer, MinimapRenderer, DiagnosticsOverlay)
+      // already calls `this.container.destroy({ children: true })` — this
+      // asserts WorldViewport does the equivalent through Application.destroy's
+      // second parameter, not just that app.destroy was called at all (a bare
+      // call-count spy, which is what this suite had before, cannot catch a
+      // wrong-arguments regression — MockApplication.destroy() ignores args).
+      const vp = new WorldViewport(defaultOpts);
+      const spy = vi.spyOn(vp.app, 'destroy');
+      vp.destroy();
+      expect(spy).toHaveBeenCalledTimes(1);
+      const [rendererDestroyOptions, stageDestroyOptions] = spy.mock.calls[0];
+      // First arg: renderer/canvas teardown — unchanged behavior, still true.
+      expect(rendererDestroyOptions).toBe(true);
+      // Second arg: MUST request recursive children destruction. Accept either
+      // `{ children: true, ... }` or a bare `true` (an even more aggressive
+      // fix), but reject the bug's `undefined`/`false`/omitted second arg.
+      if (typeof stageDestroyOptions === 'object' && stageDestroyOptions !== null) {
+        expect((stageDestroyOptions as { children?: boolean }).children).toBe(true);
+      } else {
+        expect(stageDestroyOptions).toBe(true);
+      }
+    });
   });
 });

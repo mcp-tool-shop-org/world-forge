@@ -86,11 +86,16 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   // -- Connection-only --
   { id: 'swap-direction',   label: 'Swap Direction',     icon: '<>', category: 'context', contextFilter: (h) => h?.type === 'connection', macroSafe: true },
 
-  // -- Mode-suggested (global, appear in MODE section for matching modes) --
-  { id: 'add-secret-conn',  label: 'Add Secret Connection', icon: '?',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['dungeon', 'interior'] },
-  { id: 'add-channel-conn', label: 'Add Channel',           icon: '~',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['ocean'] },
-  { id: 'add-warp-conn',    label: 'Add Warp Route',        icon: '*',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['space'] },
-  { id: 'add-trail-conn',   label: 'Add Trail',             icon: '^',  category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['wilderness'] },
+  // F-bdf856bf: the 4 mode-suggested add-*-conn shortcuts (add-secret-conn,
+  // add-channel-conn, add-warp-conn, add-trail-conn) were removed here.
+  // They had no case in speed-panel-execute.ts's executeAction switch, so
+  // every click on a prominently-surfaced "MODE SUGGESTIONS" button silently
+  // did nothing. Drawing a connection of a SPECIFIC kind (rather than the
+  // mode's plain default kind) needs a "pending connection kind" concept
+  // that doesn't exist yet — new editor-store state consumed by Canvas.tsx's
+  // connection-finalize step. Until that's built, a non-functional
+  // suggestion is worse than no suggestion (this finding's own framing), so
+  // they're gone from the registry rather than left as dead buttons.
 
   // -- Multi-zone --
   { id: 'merge-zones',      label: 'Merge Zones',           icon: 'M',  category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },

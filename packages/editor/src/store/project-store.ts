@@ -66,6 +66,106 @@ export function createEmptyProject(mode?: AuthoringMode): WorldProject {
   };
 }
 
+/**
+ * F-b7d3a887: exhaustive shape-normalizer for a project about to be loaded.
+ *
+ * loadProject() previously backfilled only 7 hand-picked array fields via
+ * `?? []` (assets, assetPacks, dialogues, progressionTrees, landmarks,
+ * lootTables, transitions) — it never guarded `zones`, `connections`,
+ * `districts`, `entityPlacements`, `spawnPoints`, `encounterAnchors`, or a
+ * dozen other fields the rest of the app assumes exist. Canvas.tsx reads
+ * `project.zones.length` unconditionally in its very first render effect, so
+ * loading ANY JSON missing (or with a wrong-typed) `zones` — a legacy
+ * export, a hand-edited file, a corrupted transfer — crashed the whole app
+ * on the next render. Because that crash happens during React's render
+ * phase (not inside loadProject's own synchronous call), the try/catch
+ * App.tsx wraps around loadProject never catches it.
+ *
+ * This backfills EVERY array field WorldProject declares (not a hand-picked
+ * subset) so nothing downstream can ever see something other than an array
+ * where it expects one — `?? []` alone isn't enough for this either, since
+ * `??` only replaces `null`/`undefined`, not a present-but-wrong-typed value
+ * like a string or object smuggled in by a corrupted file. `map` (an object)
+ * and scalar identity fields fall back to createEmptyProject()'s shape.
+ * Optional-in-schema fields (author, license, playerTemplate, buildCatalog,
+ * ...) are left untouched when absent — `undefined` is already their valid,
+ * expected state throughout the app — but are still guarded against a
+ * present-but-wrong-typed value for the array-shaped ones among them.
+ *
+ * Returns `null` when `raw` isn't even a plausible project object (`null`,
+ * an array, a primitive) — the caller MUST treat that as a hard failure and
+ * leave the current project untouched, never half-apply.
+ *
+ * This intentionally does NOT replace validateProject() and does NOT gate
+ * the load on full semantic validity (spawn points present, no dangling
+ * references, ...) — createEmptyProject() itself has zero spawn points, so
+ * gating loadProject on validateProject().valid would make "New Project"
+ * impossible and reject every legitimate in-progress or imported project
+ * with an open issue. validateProject() stays the job of the reactive
+ * Issues tab (already wired to run on every project change); this function
+ * only guards the narrower, crash-causing case: a field the renderer
+ * dereferences unconditionally not being an array at all.
+ */
+export function normalizeProjectShape(raw: unknown): WorldProject | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const empty = createEmptyProject(typeof r.mode === 'string' ? (r.mode as AuthoringMode) : undefined);
+
+  function arr<T>(v: unknown, fallback: T[]): T[] {
+    return Array.isArray(v) ? (v as T[]) : fallback;
+  }
+  function str(v: unknown, fallback: string): string {
+    return typeof v === 'string' ? v : fallback;
+  }
+
+  return {
+    ...empty,
+    ...(r as unknown as WorldProject),
+    id: str(r.id, empty.id),
+    name: str(r.name, empty.name),
+    description: str(r.description, empty.description),
+    version: str(r.version, empty.version),
+    genre: str(r.genre, empty.genre),
+    difficulty: str(r.difficulty, empty.difficulty),
+    narratorTone: str(r.narratorTone, empty.narratorTone),
+    map: r.map && typeof r.map === 'object' && !Array.isArray(r.map) ? (r.map as WorldProject['map']) : empty.map,
+    tones: arr(r.tones, empty.tones),
+    zones: arr(r.zones, empty.zones),
+    connections: arr(r.connections, empty.connections),
+    districts: arr(r.districts, empty.districts),
+    landmarks: arr(r.landmarks, empty.landmarks),
+    factionPresences: arr(r.factionPresences, empty.factionPresences),
+    pressureHotspots: arr(r.pressureHotspots, empty.pressureHotspots),
+    dialogues: arr(r.dialogues, empty.dialogues),
+    progressionTrees: arr(r.progressionTrees, empty.progressionTrees),
+    entityPlacements: arr(r.entityPlacements, empty.entityPlacements),
+    itemPlacements: arr(r.itemPlacements, empty.itemPlacements),
+    encounterAnchors: arr(r.encounterAnchors, empty.encounterAnchors),
+    spawnPoints: arr(r.spawnPoints, empty.spawnPoints),
+    craftingStations: arr(r.craftingStations, empty.craftingStations),
+    marketNodes: arr(r.marketNodes, empty.marketNodes),
+    tilesets: arr(r.tilesets, empty.tilesets),
+    tileLayers: arr(r.tileLayers, empty.tileLayers),
+    props: arr(r.props, empty.props),
+    propPlacements: arr(r.propPlacements, empty.propPlacements),
+    ambientLayers: arr(r.ambientLayers, empty.ambientLayers),
+    assets: arr(r.assets, empty.assets),
+    assetPacks: arr(r.assetPacks, empty.assetPacks),
+    // Optional-in-schema array fields: undefined is valid when the field was
+    // never present, but a present-and-wrong-typed value (e.g. a string)
+    // must still be coerced — `?? []` alone would let it through unguarded.
+    projectTags: r.projectTags === undefined ? undefined : arr<string>(r.projectTags, []),
+    buildings: r.buildings === undefined ? undefined : arr(r.buildings, []),
+    hubs: r.hubs === undefined ? undefined : arr(r.hubs, []),
+    strongholds: r.strongholds === undefined ? undefined : arr(r.strongholds, []),
+    strata: r.strata === undefined ? undefined : arr(r.strata, []),
+    stratumLinks: r.stratumLinks === undefined ? undefined : arr(r.stratumLinks, []),
+    hazardDefinitions: r.hazardDefinitions === undefined ? undefined : arr(r.hazardDefinitions, []),
+    lootTables: r.lootTables === undefined ? undefined : arr(r.lootTables, []),
+    transitions: r.transitions === undefined ? undefined : arr(r.transitions, []),
+  };
+}
+
 /** Entry in the undo/redo stack: snapshot + human-readable label. */
 export interface UndoEntry {
   project: WorldProject;
@@ -79,7 +179,14 @@ interface ProjectState {
   redoStack: UndoEntry[];
 
   // Actions
-  loadProject: (p: WorldProject) => void;
+  /**
+   * F-b7d3a887: normalizes `p` (see normalizeProjectShape) before committing
+   * it to the store. Returns `false` and leaves the CURRENT project
+   * untouched — never half-applies — when `p` isn't even a plausible
+   * project object; returns `true` once the (possibly repaired) project has
+   * replaced the store's project.
+   */
+  loadProject: (p: WorldProject) => boolean;
   newProject: () => void;
   updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
   /** Mark the project as clean (not dirty). Called after successful save. */
@@ -398,6 +505,54 @@ export function clearAutoSave(): void {
   }
 }
 
+/** Outcome of a boot-time crash-recovery attempt — see attemptCrashRecovery(). */
+export type CrashRecoveryOutcome =
+  /** No recoverable autosave was present — nothing to do. */
+  | { attempted: false }
+  /** An autosave was found and successfully loaded; the slot was cleared. */
+  | { attempted: true; loaded: true }
+  /**
+   * An autosave was found but failed to load (not a plausible project
+   * object). The slot was DELIBERATELY left in place — see the rule below.
+   */
+  | { attempted: true; loaded: false };
+
+/**
+ * F-b7d3a887: crash-recovery-at-boot, extracted out of App.tsx's mount
+ * effect so the ordering guarantee is testable without mounting React (this
+ * repo's vitest setup has no jsdom).
+ *
+ * Previously, App.tsx called `loadProject(recovered)` with NO try/catch and
+ * then unconditionally `clearAutoSave()`'d BOTH the autosave slot and its
+ * 3-entry history immediately after — before the render-time crash a bad
+ * snapshot could cause was even discoverable. A corrupted or legacy-schema
+ * autosave could crash the app AND destroy the only remaining copy of the
+ * recovered work in the same tick.
+ *
+ * The rule now: delete the autosave ONLY after loadProject reports the
+ * snapshot was actually loadable (loadProject's own boolean return, backed
+ * by normalizeProjectShape). A snapshot that fails to load is left in
+ * place — untouched, available for a future retry or manual inspection —
+ * instead of being destroyed alongside the failed attempt to use it.
+ */
+export function attemptCrashRecovery(): CrashRecoveryOutcome {
+  if (!hasAutoSaveRecovery()) return { attempted: false };
+  const recovered = recoverAutoSave();
+  if (!recovered) {
+    // Nothing usable was actually recoverable (e.g. the entry's `project`
+    // field itself was null) — matches hasAutoSaveRecovery's own check, so
+    // there's nothing left to preserve by keeping the slot around.
+    clearAutoSave();
+    return { attempted: false };
+  }
+  const loaded = useProjectStore.getState().loadProject(recovered);
+  if (loaded) {
+    clearAutoSave();
+    return { attempted: true, loaded: true };
+  }
+  return { attempted: true, loaded: false };
+}
+
 /**
  * Save the current project to localStorage auto-save slot.
  *
@@ -573,20 +728,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   redoStack: [],
 
   loadProject: (p) => {
+    // F-b7d3a887: normalize FIRST, commit ONCE. If normalization rejects the
+    // input (not even a plausible project object), bail out before touching
+    // `set()` at all — the current project is left completely untouched,
+    // never half-applied.
+    const normalized = normalizeProjectShape(p);
+    if (!normalized) {
+      console.error(
+        '[project-store] loadProject: input is not a loadable project (expected a JSON object) — load rejected, previous project kept.',
+      );
+      return false;
+    }
     set({
-      project: {
-        ...p,
-        assets: p.assets ?? [],
-        assetPacks: p.assetPacks ?? [],
-        dialogues: p.dialogues ?? [],
-        progressionTrees: p.progressionTrees ?? [],
-        landmarks: p.landmarks ?? [],
-        lootTables: p.lootTables ?? [],
-        transitions: p.transitions ?? [],
-      },
+      project: normalized,
       dirty: false, undoStack: [], redoStack: [],
     });
     useEditorStore.getState().clearSelection();
+    return true;
   },
   newProject: () => {
     set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] });
@@ -926,10 +1084,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         zones: p.zones.filter((z) => !zSet.has(z.id)),
         connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
         districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
-        entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId) && !zSet.has(e.zoneId)),
-        landmarks: p.landmarks.filter((l) => !lSet.has(l.id) && !zSet.has(l.zoneId)),
-        spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id) && !zSet.has(s.zoneId)),
-        encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id) && !zSet.has(e.zoneId)),
+        // F-df80d913: deleting a zone here must NOT cascade-delete its
+        // attached entities/landmarks/spawns/encounters. orphans.ts states
+        // this as a deliberate, documented design principle ("we do NOT
+        // silently clean up orphans on zone delete... surface them as
+        // first-class, selectable, repairable rows so the user decides"),
+        // and removeZone (below) already honors it — it only ever filters
+        // `zones` and `connections`. This used to violate that principle for
+        // the exact same conceptual operation (delete a zone) reached via a
+        // different UI path (multi-select + Delete), hard-deleting objects
+        // that were never part of the user's selection with no confirmation.
+        // Only remove what the user actually selected; zone-attached items
+        // not explicitly selected become orphans, same as removeZone.
+        entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId)),
+        landmarks: p.landmarks.filter((l) => !lSet.has(l.id)),
+        spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id)),
+        encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id)),
       };
     }, label);
   },

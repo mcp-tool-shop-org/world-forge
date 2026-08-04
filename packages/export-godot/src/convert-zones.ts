@@ -8,6 +8,7 @@
 import type { WorldProject, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { gridToGodot2D, extentToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotZoneResource {
     /** Resource path: res://world_data/zones/<id>.tres */
@@ -42,14 +43,6 @@ export interface GodotZoneResource {
 export interface ConvertZonesResult {
     zones: GodotZoneResource[];
     fidelity: FidelityEntry[];
-}
-
-/**
- * Sanitize a string for use as a Godot node name.
- * Godot allows most characters but @ and / are problematic in node paths.
- */
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 export function convertZones(project: WorldProject): ConvertZonesResult {

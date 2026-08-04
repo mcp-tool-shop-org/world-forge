@@ -4,9 +4,10 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   useProjectStore,
   getLastAutoSaveError, clearLastAutoSaveError, getAutoSaveHealth,
-  hasAutoSaveRecovery, recoverAutoSave, clearAutoSave,
+  attemptCrashRecovery,
   startAutoSave, stopAutoSave,
 } from './store/project-store.js';
+import { validateProject } from '@world-forge/schema';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
 import { ToastHost, pushToast } from './ui/Toast.js';
 import { useModalStore } from './store/modal-store.js';
@@ -108,14 +109,22 @@ export function App() {
   }, [issueCount]);
 
   // FT-001: Start auto-save timer on mount; check for crash recovery.
+  // F-b7d3a887: the recover-then-clear decision lives in attemptCrashRecovery
+  // (project-store.ts) — it only deletes the autosave AFTER the recovered
+  // snapshot is confirmed loadable, so a corrupted/legacy-schema snapshot
+  // that fails to load survives instead of being destroyed in the same tick
+  // the failed load is discovered.
   useEffect(() => {
-    if (hasAutoSaveRecovery()) {
-      const recovered = recoverAutoSave();
-      if (recovered) {
-        loadProject(recovered);
+    const outcome = attemptCrashRecovery();
+    if (outcome.attempted) {
+      if (outcome.loaded) {
         pushToast('Recovered unsaved project from last session', 'success', 4000);
+      } else {
+        pushToast(
+          'Could not recover the last session — the autosave looked corrupted and was left in place for troubleshooting.',
+          'error', 6000,
+        );
       }
-      clearAutoSave();
     }
     startAutoSave();
     return () => stopAutoSave();
@@ -181,9 +190,24 @@ export function App() {
       const raw = reader.result;
       try {
         const p = JSON.parse(raw as string);
-        // EU-010: wrap loadProject in try-catch for runtime validation errors
+        // EU-010 / F-b7d3a887: loadProject() now structurally normalizes the
+        // incoming project (backfilling every array/object field it expects)
+        // and reports failure via its boolean return instead of throwing —
+        // a rejected load leaves the current project untouched. The
+        // try/catch stays as a defensive backstop for anything unexpected.
         try {
-          loadProject(p);
+          const ok = loadProject(p);
+          if (!ok) {
+            setFileError('Failed to load project: the file does not look like a World Forge project (expected a JSON object with project fields).');
+          } else {
+            const validation = validateProject(useProjectStore.getState().project);
+            if (!validation.valid) {
+              pushToast(
+                `Loaded with ${validation.errors.length} validation issue${validation.errors.length === 1 ? '' : 's'} — see the Issues tab.`,
+                'warning', 5000,
+              );
+            }
+          }
         } catch (loadErr) {
           setFileError(`Failed to load project: ${loadErr instanceof Error ? loadErr.message : String(loadErr)}`);
         }

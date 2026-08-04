@@ -39,6 +39,7 @@ import type { GodotBuilding, GodotHub, GodotStronghold } from './convert-structu
 import type { GodotStratum, GodotStratumLink } from './convert-strata.js';
 import type { GodotHazardPlacement } from './convert-hazards.js';
 import type { GodotZoneGate } from './convert-gates.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -131,7 +132,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
     }
 
     // Root node — y-sort enabled so 2.5D depth ordering works out of the box.
-    lines.push(`[node name="${sanitize(input.projectName)}" type="Node2D"]`);
+    lines.push(`[node name="${sanitizeNodeName(input.projectName)}" type="Node2D"]`);
     lines.push('y_sort_enabled = true');
     lines.push('');
 
@@ -232,9 +233,14 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 lines.push(`metadata/item_id = "${item.itemId}"`);
                 if (item.displayName) lines.push(`metadata/display_name = "${escapeGodot(item.displayName)}"`);
                 lines.push(`metadata/hidden = ${item.hidden}`);
-                if (item.slot) lines.push(`metadata/slot = "${item.slot}"`);
-                if (item.rarity) lines.push(`metadata/rarity = "${item.rarity}"`);
-                if (item.container) lines.push(`metadata/container = "${item.container}"`);
+                // slot/rarity/container all route through escapeGodot(), matching
+                // display_name two lines above — item.container in particular is
+                // authored free text (packages/schema/src/entities.ts declares it
+                // `container?: string`, not a closed union like slot/rarity), and a
+                // literal '"' in it used to reach this line unescaped.
+                if (item.slot) lines.push(`metadata/slot = "${escapeGodot(item.slot)}"`);
+                if (item.rarity) lines.push(`metadata/rarity = "${escapeGodot(item.rarity)}"`);
+                if (item.container) lines.push(`metadata/container = "${escapeGodot(item.container)}"`);
                 lines.push('');
             }
         }
@@ -484,6 +490,22 @@ export function buildWorldScene(input: SceneBuildInput): string {
 }
 
 /**
+ * A `[node ...]` header must fully tokenize as `[node` + one-or-more
+ * space-separated `key="value"` / `key=Bareword(args)` attributes + `]`.
+ * Godot's tag-header parser shares the same string-literal grammar as an
+ * ordinary `key = value` property line, so a value cannot itself contain a
+ * raw, unescaped `"` — that would end the string early and desync the rest
+ * of the tag. This regex is deliberately a full-line, anchored tokenizer
+ * (not a substring search): `[node name="Big_"Boss"_Tony" type="Node2D"
+ * parent="."]` has six quotes, evenly balanced, and would pass any check
+ * that merely counts them — it does NOT pass this one, because after the
+ * `name=` value is forced to close at the first unescaped `"` (matching
+ * only `"Big_"`), the remaining `Boss"_Tony" type="Node2D" parent="."`
+ * cannot tokenize as further ` key="value"` attributes followed by `]`.
+ */
+const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[A-Za-z_][A-Za-z0-9_]*\([^()]*\)))+\]$/;
+
+/**
  * Refuse to return a scene Godot cannot parse.
  *
  * ⚠ MEASURED, not defensive programming. `metadata/hidden = ${item.hidden}` was
@@ -494,34 +516,62 @@ export function buildWorldScene(input: SceneBuildInput): string {
  * could open. The 36-assertion engine smoke never caught it because its proof world
  * happens to author every field it touches.
  *
- * A JS template literal turns `undefined`, `null` and `NaN` into tokens that look
- * like values, and there is no shape of authored input for which any of them is a
- * correct thing to write. So rather than guard the sites one at a time and miss one
- * — which is exactly what happened here, and again in the fixture generator's own
- * count — the assembled text is checked once at the only place it can escape.
+ * A JS template literal turns `undefined`, `null`, `NaN`, `Infinity` and
+ * `-Infinity` into tokens that look like values, and there is no shape of
+ * authored input for which any of them is a correct thing to write. So
+ * rather than guard the sites one at a time and miss one — which is exactly
+ * what happened here, and again in the fixture generator's own count — the
+ * assembled text is checked once at the only place it can escape.
+ *
+ * A SECOND, structurally different defect class lives one level up: an
+ * unescaped `"` inside a node NAME (as opposed to a bare token as a property
+ * VALUE) corrupts a `[node name="..."]` tag header without ever producing a
+ * bare undefined/null/NaN/Infinity token — the bare-token regex above cannot
+ * see it, by construction, no matter how it is extended. Every node name
+ * reaching this function is expected to have already gone through
+ * `sanitizeNodeName()` (node-naming.ts), which strips the character that
+ * causes this; the check here is the backstop for anything that reaches
+ * `buildWorldScene` without going through that sanitizer.
  *
  * Throwing is the right failure: `exportToGodot` catches converter throws and returns
  * a structured `{ success: false, errors }`, so the caller gets a named refusal
  * instead of a broken file.
  */
 function assertParseable(scene: string): string {
-    const offenders: string[] = [];
+    const bareTokenOffenders: string[] = [];
+    const malformedHeaderOffenders: string[] = [];
     const lines = scene.split('\n');
     for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         // Only the VALUE side: the words are legal inside a quoted string, and a zone
         // legitimately named "The Undefined Berth" must not trip this.
-        if (/=\s*(undefined|null|NaN)\s*$/.test(lines[i])) {
-            offenders.push(`line ${i + 1}: ${lines[i]}`);
+        if (/=\s*(undefined|null|NaN|-?Infinity)\s*$/.test(line)) {
+            bareTokenOffenders.push(`line ${i + 1}: ${line}`);
+            continue;
+        }
+        if (line.startsWith('[node ') && !NODE_HEADER_RE.test(line)) {
+            malformedHeaderOffenders.push(`line ${i + 1}: ${line}`);
         }
     }
-    if (offenders.length > 0) {
+    if (bareTokenOffenders.length > 0) {
         throw new Error(
-            `refusing to emit an unparseable scene: ${offenders.length} propert`
-            + `${offenders.length === 1 ? 'y' : 'ies'} would be written as a bare `
-            + `undefined/null/NaN, which Godot rejects with a parse error and a total `
-            + `refusal to load the scene.\n  ${offenders.join('\n  ')}\n`
+            `refusing to emit an unparseable scene: ${bareTokenOffenders.length} propert`
+            + `${bareTokenOffenders.length === 1 ? 'y' : 'ies'} would be written as a bare `
+            + `undefined/null/NaN/Infinity/-Infinity, which Godot rejects with a parse error and a total `
+            + `refusal to load the scene.\n  ${bareTokenOffenders.join('\n  ')}\n`
             + '  Fix: author the missing field, or omit the metadata line entirely — '
             + 'a scene missing a key loads fine, a scene containing `undefined` does not.',
+        );
+    }
+    if (malformedHeaderOffenders.length > 0) {
+        throw new Error(
+            `refusing to emit an unparseable scene: ${malformedHeaderOffenders.length} `
+            + `[node ...] header${malformedHeaderOffenders.length === 1 ? '' : 's'} would not parse as a `
+            + `well-formed tag — almost always an unescaped '"' inside a node name, which Godot's tag-header `
+            + `tokenizer reads as ending the name's value early, desyncing the rest of the tag. Godot rejects `
+            + `this with a parse error and a total refusal to load the scene.\n  ${malformedHeaderOffenders.join('\n  ')}\n`
+            + '  Fix: the offending name must be produced by sanitizeNodeName() (node-naming.ts) before it '
+            + 'reaches buildWorldScene.',
         );
     }
     return scene;
@@ -628,7 +678,7 @@ function emitTileMapLayers(
     const lines: string[] = [];
     const seen = new Map<string, number>();
     for (const layer of tileLayers) {
-        const base = sanitize(layer.nodeName) || 'TileLayer';
+        const base = sanitizeNodeName(layer.nodeName) || 'TileLayer';
         const n = seen.get(base) ?? 0;
         seen.set(base, n + 1);
         const nodeName = n === 0 ? base : `${base}_${n + 1}`;
@@ -774,10 +824,6 @@ function worldCenter(zones: GodotZoneResource[]): { x: number; y: number } {
 
 function clampZ(z: number): number {
     return Math.max(Z_INDEX_MIN, Math.min(Z_INDEX_MAX, z));
-}
-
-function sanitize(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 function escapeGodot(s: string): string {

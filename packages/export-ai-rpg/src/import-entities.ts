@@ -1,8 +1,10 @@
 // import-entities.ts — engine EntityBlueprint[] → schema EntityPlacement[]
 
 import type { EntityPlacement, EntityRole } from '@world-forge/schema';
+import { formatConditionSpec } from '@world-forge/schema';
 import type { EntityBlueprint } from '@ai-rpg-engine/content-schema';
 import type { FidelityEntry } from './fidelity.js';
+import type { ExportedPlacement } from './convert-placements.js';
 
 /** Tags injected by role during export — must be stripped on import to avoid accumulation. */
 const ROLE_INJECTED_TAGS: ReadonlySet<string> = new Set([
@@ -27,10 +29,20 @@ function reverseRole(type: string, tags: string[]): EntityRole {
 export function importEntities(
   engineEntities: EntityBlueprint[],
   zoneIds: string[],
+  // F-5a257bc8 (swarm wave-2, headline fix): the C3/P1 export channel
+  // `ContentPack.placements[]` carries the REAL authored zoneId (and compiled
+  // spawnCondition) for every entity — populated correctly on export
+  // (export.ts, convert-placements.ts) but never read here, so every import
+  // fell back to round-robin and then claimed "original zones unknown" even
+  // when they were sitting right there in the pack. `placements` is OPTIONAL
+  // so a legacy/hand-built pack lacking this channel still round-robins
+  // exactly as before — that is the only case round-robin is still correct.
+  placements?: ExportedPlacement[],
 ): { placements: EntityPlacement[]; warnings: string[]; fidelity: FidelityEntry[] } {
   const warnings: string[] = [];
   const fidelity: FidelityEntry[] = [];
-  const placements: EntityPlacement[] = [];
+  const placementResults: EntityPlacement[] = [];
+  const placementsById = new Map((placements ?? []).map((p) => [p.entityId, p]));
 
   // EB-008: Informational fidelity entry when no entities to import
   if (engineEntities.length === 0) {
@@ -56,19 +68,35 @@ export function importEntities(
       }
     }
 
-    // Round-robin zone assignment — only warn when zoneIds is empty (a real problem),
-    // not for every entity placement (EB-004: reduce warning noise)
-    const zoneId = zoneIds.length > 0 ? zoneIds[i % zoneIds.length] : 'unplaced';
-    if (zoneIds.length === 0) {
-      warnings.push(`Entity '${eb.name}' has no zones available for placement — assigned to 'unplaced'. Import zones first or create at least one zone.`);
+    // Per-entity: use the pack's own placement record when this SPECIFIC
+    // entity has one, falling back to round-robin only for entities the
+    // record does not cover (an empty/absent `placements` array falls back
+    // for every entity, which is the legacy-pack case).
+    const placementRecord = placementsById.get(eb.id);
+    let zoneId: string;
+    if (placementRecord) {
+      zoneId = placementRecord.zoneId;
+      fidelity.push({
+        level: 'lossless', domain: 'entities', severity: 'info',
+        entityId: eb.id, fieldPath: 'zoneId',
+        message: `Entity '${eb.name}' zone restored from pack placements[] data: '${zoneId}'`,
+        reason: 'zone-placement-from-pack',
+      });
+    } else {
+      // Round-robin zone assignment — only warn when zoneIds is empty (a real problem),
+      // not for every entity placement (EB-004: reduce warning noise)
+      zoneId = zoneIds.length > 0 ? zoneIds[i % zoneIds.length] : 'unplaced';
+      if (zoneIds.length === 0) {
+        warnings.push(`Entity '${eb.name}' has no zones available for placement — assigned to 'unplaced'. Import zones first or create at least one zone.`);
+      }
+      fidelity.push({
+        level: 'approximated', domain: 'entities', severity: 'warning',
+        entityId: eb.id, fieldPath: 'zoneId',
+        message: `Entity '${eb.name}' zone round-robin assigned to '${zoneId}' (no placement data available for this entity)`,
+        reason: 'zone-placement-round-robin',
+      });
     }
 
-    fidelity.push({
-      level: 'approximated', domain: 'entities', severity: 'warning',
-      entityId: eb.id, fieldPath: 'zoneId',
-      message: `Entity '${eb.name}' zone round-robin assigned to '${zoneId}'`,
-      reason: 'zone-placement-round-robin',
-    });
     fidelity.push({
       level: 'approximated', domain: 'entities', severity: 'info',
       entityId: eb.id, fieldPath: 'role',
@@ -84,6 +112,25 @@ export function importEntities(
       tags: authorTags.length > 0 ? authorTags : undefined,
       factionId,
     };
+
+    // Decompile the placement's compiled spawnCondition back into
+    // SpawnCondition-grammar, the same codec `import-zones.ts` uses for exits
+    // and entry gates. A spec the grammar cannot express is dropped with a
+    // fidelity entry rather than passed through malformed.
+    if (placementRecord?.spawnCondition) {
+      const decompiled = formatConditionSpec(placementRecord.spawnCondition);
+      if (decompiled !== null) {
+        placement.spawnCondition = decompiled;
+      } else {
+        const label = eb.name || eb.id;
+        fidelity.push({
+          level: 'approximated', domain: 'entities', severity: 'warning',
+          entityId: eb.id, fieldPath: 'spawnCondition',
+          message: `Entity '${label}' placements[] spawnCondition (type '${String(placementRecord.spawnCondition.type)}') could not be decompiled back into SpawnCondition grammar — dropped on import.`,
+          reason: 'spawn-condition-not-expressible-in-grammar',
+        });
+      }
+    }
 
     if (eb.baseStats && typeof eb.baseStats === 'object' && Object.keys(eb.baseStats).length > 0) {
       placement.stats = { ...(eb.baseStats as Record<string, number>) };
@@ -103,8 +150,8 @@ export function importEntities(
       placement.ai = { profileId: eb.aiProfile };
     }
 
-    placements.push(placement);
+    placementResults.push(placement);
   }
 
-  return { placements, warnings, fidelity };
+  return { placements: placementResults, warnings, fidelity };
 }

@@ -152,9 +152,22 @@ export class WorldViewport {
     return this._zoom;
   }
 
+  /**
+   * F-6e1b2c4d: PixiJS v8's `Application.destroy(rendererDestroyOptions, options)`
+   * takes two independent parameters — the first tears down the
+   * renderer/canvas, the second controls whether the stage's children are
+   * recursively destroyed. Passing only `true` left `options` at its default
+   * `false`, so `this.world` (where every sibling renderer's container is
+   * mounted — see the `world` field) and `gridOverlay` never had their
+   * GPU-side resources released. Every sibling renderer in this package
+   * (TileLayerRenderer, ZoneOverlayRenderer, EntityRenderer,
+   * ConnectionRenderer, MinimapRenderer, DiagnosticsOverlay) already calls
+   * `this.container.destroy({ children: true })` — this is the equivalent
+   * for the Application-level destroy.
+   */
   destroy(): void {
     if (this._destroyed) return;
     this._destroyed = true;
-    this.app.destroy(true);
+    this.app.destroy(true, { children: true, texture: true, textureSource: true });
   }
 }

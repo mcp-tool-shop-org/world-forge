@@ -113,11 +113,22 @@ describe('Round-trip fidelity: Minimal', () => {
     expect(gridEntries.every((e) => e.level === 'approximated')).toBe(true);
   });
 
-  it('entity zone assignments differ (round-robin)', () => {
+  it('entity zone assignments are restored from pack placements[] data, not round-robin (F-5a257bc8)', () => {
+    // ⚠ FLIPPED BY swarm wave-2 (F-5a257bc8, the headline fix). This used to
+    // assert round-robin as the EXPECTED outcome for every entity — the
+    // codified version of the bug: ContentPack.placements carried the real
+    // authored zoneId the whole time, and importEntities never read it, so
+    // every import "reconstructed" zones it could have known exactly. Fixing
+    // the code makes the round-robin count 0 for this project, because
+    // minimalProject's one entity placement now round-trips losslessly via
+    // the pack's placements[] channel instead.
     const imported = getMinimalImport();
     const report = imported.fidelityReport;
     const roundRobin = report.entries.filter((e) => e.reason === 'zone-placement-round-robin');
-    expect(roundRobin.length).toBe(minimalProject.entityPlacements.length);
+    expect(roundRobin).toHaveLength(0);
+    const restored = report.entries.filter((e) => e.reason === 'zone-placement-from-pack');
+    expect(restored.length).toBe(minimalProject.entityPlacements.length);
+    expect(restored.every((e) => e.level === 'lossless')).toBe(true);
   });
 
   it('dialogue nodes match', () => {
@@ -169,6 +180,11 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
       'role-reverse-mapped', 'zone-placement-first-zone',
       'hidden-from-contraband', 'textblock-to-string',
       'spawn-point-generated', 'mode-inferred',
+      // F-9f90a607 (swarm wave-2): buildScene always contributes a
+      // dressingDensity bucket, so every zone now produces one of these on
+      // import — a coarse 3-bucket value that cannot be un-derived back into
+      // an exact interactables count.
+      'dressing-density-not-derivable',
     ]);
     for (const entry of approx) {
       expect(validReasons.has(entry.reason)).toBe(true);

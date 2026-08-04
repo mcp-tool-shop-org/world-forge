@@ -18,6 +18,7 @@ import { convertParallax, type UnrealParallaxManifest } from './convert-parallax
 import { convertTransitions, type UnrealTransitionEntity } from './convert-transitions.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_CM } from './coordinate-transform.js';
+import { collectDroppedFieldFidelity } from './field-coverage.js';
 
 export interface UnrealPackMeta {
   Id: string;
@@ -165,6 +166,11 @@ export function exportToUnreal(
   fidelityEntries.push(...worldPartitionResult.fidelity);
   fidelityEntries.push(...parallaxResult.fidelity);
   fidelityEntries.push(...transitionsResult.fidelity);
+  // F-e2908aac: previously NO known-dropped field (24 of them before this v4.5
+  // wave, 30 after) ever produced a fidelity entry, so the summary could claim
+  // 100% lossless while dozens of authored fields silently vanished. This
+  // reports every KNOWN_DROPPED field the project actually populated.
+  fidelityEntries.push(...collectDroppedFieldFidelity(project));
   const worldPartition = worldPartitionResult.hint;
 
   // Advisory warnings (non-fatal).

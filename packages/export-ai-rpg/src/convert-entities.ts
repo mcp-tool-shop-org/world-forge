@@ -3,6 +3,7 @@
 import type { WorldProject, EntityRole } from '@world-forge/schema';
 import type { EntityBlueprint } from '@ai-rpg-engine/content-schema';
 import type { FidelityEntry } from './fidelity.js';
+import { safeLookup } from './safe-lookup.js';
 
 const ROLE_TO_TYPE: Record<EntityRole, string> = {
   'npc': 'npc',
@@ -54,8 +55,37 @@ export function convertEntities(
   const knownFactionIds = new Set(project.factionPresences.map((fp) => fp.factionId));
 
   return project.entityPlacements.map((ep) => {
+    // ep.role is typed as the closed EntityRole union, but at runtime it is
+    // UNVALIDATED authored input — zero validation rules for `role` in
+    // packages/schema/src/validate.ts, so a foreign or hand-edited project can
+    // carry any string. A raw `ROLE_TAGS[ep.role]` bracket-lookup on an
+    // unrecognized key returns `undefined`, and `[...undefined]` throws a
+    // TypeError — crashing the whole export on one bad entity. A
+    // prototype-name key ('__proto__', 'constructor', ...) is the same root
+    // cause as GENRE_MAP/TONE_MAP/DIFFICULTY_MAP in convert-pack.ts: it
+    // resolves to an INHERITED member instead of missing. `safeLookup` closes
+    // both failure modes at once (F-3dab95a4 / swarm wave-2).
+    const roleTags = safeLookup(ROLE_TAGS, ep.role);
+    const roleType = safeLookup(ROLE_TO_TYPE, ep.role);
+    const roleAiProfile = safeLookup(ROLE_AI_PROFILE, ep.role);
+    if (roleTags === undefined) {
+      const entityLabel = ep.name || ep.entityId;
+      const msg = `Entity "${ep.entityId}" (${entityLabel}) has an unrecognized role "${String(ep.role)}" — falling back to 'npc'-shaped defaults (type 'npc', no role-derived tags, aiProfile 'passive'). Valid roles: ${Object.keys(ROLE_TO_TYPE).join(', ')}.`;
+      console.warn(`[convert-entities] ${msg}`);
+      warnings?.push(msg);
+      fidelity?.push({
+        domain: 'entities',
+        level: 'approximated',
+        severity: 'warning',
+        entityId: ep.entityId,
+        fieldPath: 'role',
+        message: msg,
+        reason: 'unrecognized-role-fallback',
+      });
+    }
+
     // Merge role-based tags with author-provided tags
-    const tags = [...ROLE_TAGS[ep.role]];
+    const tags = [...(roleTags ?? [])];
     if (ep.tags) {
       for (const t of ep.tags) {
         if (!tags.includes(t)) tags.push(t);
@@ -75,10 +105,10 @@ export function convertEntities(
 
     const blueprint: EntityBlueprint = {
       id: ep.entityId,
-      type: ROLE_TO_TYPE[ep.role],
+      type: roleType ?? 'npc',
       name: ep.name || ep.entityId,
       tags,
-      aiProfile: ep.ai?.profileId || ROLE_AI_PROFILE[ep.role],
+      aiProfile: ep.ai?.profileId || (roleAiProfile ?? 'passive'),
     };
 
     // Pass through stats if authored

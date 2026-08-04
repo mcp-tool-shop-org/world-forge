@@ -13,6 +13,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotPropNode {
     /** Sanitized, unique node name. */
@@ -36,10 +37,6 @@ export interface GodotPropNode {
 export interface ConvertPropsResult {
     props: GodotPropNode[];
     fidelity: FidelityEntry[];
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 export function convertProps(project: WorldProject): ConvertPropsResult {

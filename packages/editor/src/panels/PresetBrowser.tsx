@@ -5,6 +5,7 @@ import { usePresetStore } from '../presets/preset-store.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import type { AuthoringMode } from '@world-forge/schema';
 import { buttonBase, buttonAccent } from '../ui/styles.js';
+import { ConfirmButton } from './shared.js';
 
 type SubTab = 'region' | 'encounter';
 
@@ -259,7 +260,20 @@ function PresetCard({ name, description, tags, builtIn, canApply, applyLabel, on
           {isConfirming ? 'Confirm' : applyLabel}
         </button>
         <button onClick={onDuplicate} style={smallBtn}>Dup</button>
-        {onDelete && <button onClick={onDelete} style={{ ...smallBtn, color: '#f85149' }}>Del</button>}
+        {/* F-92ae872e: preset-store.ts has no undo/redo at all, so an
+            unconfirmed delete here is genuinely, permanently irreversible —
+            unlike most deletes in the app, which sit on the project undo
+            stack. Reuses the same ConfirmButton this file's sibling modal
+            (TemplateManager.tsx) and DistrictPanel.tsx already rely on for
+            the same class of "library item" deletion, instead of a bare
+            single-click onClick={onDelete}. */}
+        {onDelete && (
+          <ConfirmButton
+            label="Del"
+            onConfirm={onDelete}
+            style={{ fontSize: 10, padding: '2px 8px', width: 'auto', marginTop: 0 }}
+          />
+        )}
       </div>
     </div>
   );

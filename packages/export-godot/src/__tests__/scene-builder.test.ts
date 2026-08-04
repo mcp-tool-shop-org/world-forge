@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { buildWorldScene, type SceneBuildInput } from '../scene-builder.js';
 import type { GodotZoneResource } from '../convert-zones.js';
 import type { GodotEntityManifest } from '../convert-entities.js';
+import type { GodotItemResource } from '../convert-items.js';
 import type { GodotTileLayer } from '../convert-tile-layers.js';
 import type { GodotPropNode } from '../convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.js';
@@ -240,6 +241,52 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
     it('omits tile nodes entirely when there are no tile layers', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         expect(tscn).not.toContain('TileMapLayer');
+    });
+});
+
+describe('buildWorldScene — item metadata escaping (F-003)', () => {
+    const item = (over: Partial<GodotItemResource> = {}): GodotItemResource => ({
+        resourcePath: 'res://world_data/items/i1.tres',
+        nodeName: 'Vault_Key',
+        itemId: 'i1',
+        displayName: 'Vault Key',
+        zoneId: 'zone-a',
+        localPosition: { x: 8, y: 8 },
+        hidden: false,
+        ...over,
+    });
+
+    it('escapes a quote in item.container the same way display_name is escaped', () => {
+        // F-003: item.container (packages/schema/src/entities.ts declares it
+        // free-text `container?: string`, unlike the closed-union slot/rarity)
+        // used to reach this line unescaped, two lines below a properly-escaped
+        // display_name sibling.
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), items: [item({ container: 'the "Old Vault" chest' })] });
+        const line = tscn.split('\n').find((l) => l.startsWith('metadata/container'));
+        expect(line).toBeDefined();
+        // Structural proof: the whole property line must be a well-formed
+        // `key = "value"` with the internal quote backslash-escaped, matching
+        // exactly how escapeGodot() already treats display_name.
+        expect(line).toMatch(/^metadata\/container = "(?:[^"\\]|\\.)*"$/);
+        expect(line).toContain('\\"Old Vault\\"');
+    });
+
+    it('escapes a quote in item.slot and item.rarity too', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            items: [item({ slot: 'weapon"', rarity: 'rare"' })],
+        });
+        const slotLine = tscn.split('\n').find((l) => l.startsWith('metadata/slot'));
+        const rarityLine = tscn.split('\n').find((l) => l.startsWith('metadata/rarity'));
+        expect(slotLine).toMatch(/^metadata\/slot = "(?:[^"\\]|\\.)*"$/);
+        expect(rarityLine).toMatch(/^metadata\/rarity = "(?:[^"\\]|\\.)*"$/);
+    });
+
+    it('still emits an ordinary container value unescaped-looking (round-trips to the same text)', () => {
+        // Escaping a value with nothing to escape must be a no-op — the fix
+        // must not visibly change ordinary, already-safe metadata.
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), items: [item({ container: 'chest-01' })] });
+        expect(tscn).toContain('metadata/container = "chest-01"');
     });
 });
 

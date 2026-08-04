@@ -9,7 +9,7 @@ import {
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
 import { validateProject, scanDependencies } from '@world-forge/schema';
-import { classifyError, buildsSubTabFor } from './validation-helpers.js';
+import { classifyError, navigationForError } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
 import { buttonBase, buttonAccent, activeTabBg } from '../ui/styles.js';
@@ -84,22 +84,23 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, godotOpts);
   };
 
+  // F-001: routing now goes through the single shared navigationForError
+  // helper (validation-helpers.ts) instead of a second, independently
+  // duplicated copy of ValidationPanel's prefix cascade — the old copy here
+  // was also missing strata/hazard handling, and (unlike ValidationPanel's
+  // copy) didn't include 'landmarks' in its entity/item/spawn/connection
+  // check either; both gaps are closed now that there's one implementation.
   const handleGoToFirstIssue = () => {
     if (precheck.errors.length === 0) return;
     const err = precheck.errors[0];
-    const p = err.path;
-    const domain = classifyError(err);
-    const focus = { domain, subPath: p, timestamp: Date.now() };
-
-    const zoneMatch = p.match(/^zones\.([^.]+)/);
-    if (zoneMatch) { setSelectedZone(zoneMatch[1]); setRightTab('map'); setFocusTarget(focus); onClose(); return; }
-    if (p.startsWith('entityPlacements') || p.startsWith('itemPlacements') || p.startsWith('spawnPoints') || p.startsWith('connections')) { setRightTab('map'); setFocusTarget(focus); onClose(); return; }
-    if (p.startsWith('playerTemplate')) { setRightTab('player'); setFocusTarget(focus); onClose(); return; }
-    if (p.startsWith('buildCatalog')) { setRightTab('builds'); setBuildsSubTab(buildsSubTabFor(p)); setFocusTarget(focus); onClose(); return; }
-    if (p.startsWith('progressionTrees')) { setRightTab('trees'); setFocusTarget(focus); onClose(); return; }
-    if (p.startsWith('dialogues')) { setRightTab('dialogue'); setFocusTarget(focus); onClose(); return; }
-    if (p.startsWith('assetPacks') || p.startsWith('assets')) { setRightTab('assets'); setFocusTarget(focus); onClose(); return; }
-    setRightTab('map'); setFocusTarget(focus); onClose();
+    const focus = { domain: classifyError(err), subPath: err.path, timestamp: Date.now() };
+    const nav = navigationForError(err);
+    if (nav.selectZoneId) setSelectedZone(nav.selectZoneId);
+    else if (nav.clearZone) setSelectedZone(null);
+    setRightTab(nav.tab);
+    if (nav.buildsSubTab) setBuildsSubTab(nav.buildsSubTab);
+    setFocusTarget(focus);
+    onClose();
   };
 
   // Content counts

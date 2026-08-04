@@ -9,13 +9,13 @@ World Forge is a 2D / 2.5D world authoring studio that produces complete content
 
 ## The Ecosystem
 
-World Forge is one of three projects that form the authoring-to-play pipeline:
+World Forge is the authoring end of a three-layer authoring-to-play pipeline:
 
-| Project | Role |
-|---------|------|
-| **ai-rpg-engine** | Simulation truth — stats, combat, economy, faction pressure |
-| **claude-rpg** | Flagship campaign product — plays the worlds |
-| **World Forge** | Authoring surface — creates and exports worlds for all three engines |
+| Layer | Project | Role |
+|-------|---------|------|
+| Authoring | **World Forge** | Creates worlds and exports them for all three engines |
+| Runtime | **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** | Simulation truth — stats, combat, economy, faction pressure. Loads an exported ContentPack and runs it. |
+| Client | **[ai-rpg-stage](https://github.com/mcp-tool-shop-org/ai-rpg-stage)** | Godot 4 client that renders the running simulation and submits player intents |
 
 ## What World Forge Does
 

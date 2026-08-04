@@ -115,6 +115,42 @@ describe('convertTileLayers — solid (non-walkable) cells', () => {
   });
 });
 
+describe('convertTileLayers — tile size / tileset size mismatch (F-004/F-551b1a9b)', () => {
+  it('warns with the concrete mismatch numbers when a tileset\'s own pixel size differs from the project tile size', () => {
+    // imgTs is 16x16; the project grid here is 32px — a very ordinary
+    // mixed-resolution pixel-art setup (a 16px tileset used inside a
+    // 32px-grid world). TileSet.tile_size (from project tileSize) and this
+    // atlas source's texture_region_size (from imgTs.tileWidth/tileHeight)
+    // will disagree in the emitted scene; nothing warned about that before.
+    const { fidelity } = convertTileLayers(proj([imgTs], [layer([{ tileId: 'i-a', gridX: 0, gridY: 0 }])], 32));
+    const mismatch = fidelity.find((f) => f.domain === 'tiles' && f.fieldPath === 'tileLayers.L.tileSize');
+    expect(mismatch).toBeDefined();
+    expect(mismatch!.level).toBe('approximated');
+    expect(mismatch!.severity).toBe('warning');
+    expect(mismatch!.message).toContain('16x16');
+    expect(mismatch!.message).toContain('32px');
+  });
+
+  it('emits exactly one mismatch warning per (layer, tileset) pair, not once per tile', () => {
+    const { fidelity } = convertTileLayers(proj([imgTs], [layer([
+      { tileId: 'i-a', gridX: 0, gridY: 0 },
+      { tileId: 'i-b', gridX: 1, gridY: 0 },
+    ])], 32));
+    const mismatches = fidelity.filter((f) => f.fieldPath === 'tileLayers.L.tileSize');
+    expect(mismatches).toHaveLength(1);
+  });
+
+  it('does not warn when the tileset\'s pixel size matches the project tile size', () => {
+    const { fidelity } = convertTileLayers(proj([colorTs], [layer([{ tileId: 'c-floor', gridX: 0, gridY: 0 }])], 32));
+    expect(fidelity.some((f) => f.fieldPath === 'tileLayers.L.tileSize')).toBe(false);
+  });
+
+  it('does not warn for an image tileset whose size matches an explicitly-set project tile size', () => {
+    const { fidelity } = convertTileLayers(proj([imgTs], [layer([{ tileId: 'i-a', gridX: 0, gridY: 0 }])], 16));
+    expect(fidelity.some((f) => f.fieldPath === 'tileLayers.L.tileSize')).toBe(false);
+  });
+});
+
 describe('convertTileLayers — dropped tiles', () => {
   it('drops placements whose tileId is in no tileset and reports it', () => {
     const { tileLayers, fidelity } = convertTileLayers(proj([colorTs], [layer([

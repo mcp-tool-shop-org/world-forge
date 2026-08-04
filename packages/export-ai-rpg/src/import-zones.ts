@@ -152,6 +152,44 @@ export function importZones(
       }
     }
 
+    // F-9f90a607 (swarm wave-2): `ez.hazardRefs` (C3/P3 typed-hazard zone
+    // bindings) and `ez.scene` (C3/P4 scene descriptor) are correctly
+    // POPULATED by convertZones on every export, and were never read here —
+    // the same "export got a new channel, import was never updated to match"
+    // pattern F-5a257bc8 closes for entity placements, at smaller scope.
+    //
+    // hazardRefs carries over as-is: it is already a list of ids, nothing to
+    // decompile. Cast needed for the same reason `entryGate` below is cast —
+    // `hazardRefs` lives on `ExportedZone`, not the plain engine `ZoneDefinition`.
+    const ezHazardRefs = (ez as ExportedZone).hazardRefs;
+    const hazardRefs = ezHazardRefs && ezHazardRefs.length > 0 ? [...ezHazardRefs] : undefined;
+
+    // scene.timeOfDay is the ONLY channel `Zone.timeOfDay` has on export
+    // (convert-zones.ts never puts it at the zone's top level, only inside
+    // `scene`) — so restoring it here is not redundant with anything else.
+    const timeOfDay = (ez as ExportedZone).scene?.timeOfDay;
+
+    // scene.biome is NOT restored as a separate field: Zone has no `biome`
+    // property. It is derived on export from a `biome:`-prefixed tag
+    // (buildScene in convert-zones.ts), and that same tag already survives
+    // unmodified via the `tags` pass-through above — restoring it a second
+    // time here would either duplicate the tag or invent a field the schema
+    // does not have.
+    //
+    // scene.dressingDensity IS lossy and genuinely cannot be un-derived: it
+    // is a coarse 3-bucket ('sparse'/'normal'/'dense') function of
+    // `interactables.length` at export time, and Zone has no field to receive
+    // it even if it could be inverted exactly. Reported via fidelity instead
+    // of silently dropped.
+    if ((ez as ExportedZone).scene?.dressingDensity !== undefined) {
+      fidelity.push({
+        level: 'approximated', domain: 'zones', severity: 'info',
+        entityId: ez.id, fieldPath: 'scene.dressingDensity',
+        message: `Zone '${ez.name}' scene.dressingDensity ('${(ez as ExportedZone).scene!.dressingDensity}') cannot be un-derived back into an exact interactables count — dropped on import.`,
+        reason: 'dressing-density-not-derivable',
+      });
+    }
+
     return {
       id: ez.id,
       name: ez.name,
@@ -168,6 +206,8 @@ export function importZones(
       hazards: [...(ez.hazards ?? [])],
       interactables,
       ...(entryGate !== undefined ? { entryGate } : {}),
+      ...(hazardRefs !== undefined ? { hazardRefs } : {}),
+      ...(timeOfDay !== undefined ? { timeOfDay } : {}),
     };
   });
 

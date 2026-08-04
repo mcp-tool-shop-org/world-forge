@@ -21,6 +21,7 @@ import type { UnrealDistrictDataAsset } from './convert-districts.js';
 import type { UnrealActorSpawnEntry } from './convert-entities.js';
 import type { UnrealLevelStreamingHint } from './convert-connections.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
+import { unrealAxisToGrid, zToElevationMeters } from './coordinate-transform.js';
 
 export interface UnrealImportResult {
   success: true;
@@ -313,8 +314,7 @@ const UNREAL_UNRECOVERABLE_FIELDS: ReadonlyArray<string> = [
 ];
 
 function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: FidelityEntry[]): Zone {
-  const gridX = Math.round(u.OriginCm.X / tileSizeCm);
-  const gridY = Math.round(-u.OriginCm.Y / tileSizeCm);
+  const { gridX, gridY } = unrealAxisToGrid(u.OriginCm.X, u.OriginCm.Y, tileSizeCm);
 
   const zone: Zone = {
     id: u.Id,
@@ -346,12 +346,12 @@ function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: Fi
   };
 
   if (u.ElevationCm !== 0 || u.ElevationRangeCm) {
-    zone.elevation = u.ElevationCm / 100;
+    zone.elevation = zToElevationMeters(u.ElevationCm);
   }
   if (u.ElevationRangeCm) {
     zone.elevationRange = {
-      floor: u.ElevationRangeCm.FloorCm / 100,
-      ceiling: u.ElevationRangeCm.CeilingCm / 100,
+      floor: zToElevationMeters(u.ElevationRangeCm.FloorCm),
+      ceiling: zToElevationMeters(u.ElevationRangeCm.CeilingCm),
     };
   }
   if (u.ParallaxLayers && u.ParallaxLayers.length > 0) {
@@ -363,8 +363,51 @@ function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: Fi
     }));
   }
 
-  void fidelity;
+  // ── Sky / lighting (UE-FT-002) — round-trip fix ─────────────────────────
+  // convert-zones.ts writes these onto UnrealZoneDataAsset AND marks them
+  // `lossless` in the export-side fidelity report; this importer used to
+  // just never read them back, silently contradicting its own exporter's
+  // "lossless" claim on any export → import round trip.
+  if (u.SkyAtmosphereAssetId !== undefined) zone.skyAtmosphereRef = u.SkyAtmosphereAssetId;
+  if (u.DirectionalLightYaw !== undefined) zone.directionalLightYaw = u.DirectionalLightYaw;
+  if (u.DirectionalLightPitch !== undefined) zone.directionalLightPitch = u.DirectionalLightPitch;
+  if (u.SkyLightIntensity !== undefined) zone.skyLightIntensity = u.SkyLightIntensity;
+  if (u.TimeOfDayKey !== undefined) zone.timeOfDay = u.TimeOfDayKey;
+
+  // ── Collision channel (UE-FT-003) — round-trip fix ──────────────────────
+  // UnrealZoneDataAsset.CollisionChannel is already the same union type as
+  // Zone.collisionType, so this is a direct, type-safe passthrough.
+  if (u.CollisionChannel !== undefined) zone.collisionType = u.CollisionChannel;
+
+  // ── Gravity + physicsMode (SCH-FT-006) — round-trip fix ─────────────────
+  if (u.GravityCmPerSec2 !== undefined) zone.gravityOverride = u.GravityCmPerSec2 / 100; // cm/s² → m/s²
+  if (u.GravityDirection !== undefined) zone.gravityDirection = u.GravityDirection;
+  if (u.PhysicsMode !== undefined) {
+    // Unlike CollisionChannel, UnrealZoneDataAsset.PhysicsMode is a bare
+    // `string` (not Zone.physicsMode's literal union) — convert-zones.ts can
+    // only ever have written one of the four valid modes, but a hand-edited
+    // or third-party-authored pack.json could carry anything. Guard rather
+    // than cast, same defensive posture as isEntityRole()/UE-A-001 below.
+    if (isPhysicsMode(u.PhysicsMode)) {
+      zone.physicsMode = u.PhysicsMode;
+    } else {
+      fidelity.push({
+        level: 'approximated',
+        domain: 'physics',
+        severity: 'warning',
+        entityId: u.Id,
+        fieldPath: `zones.${u.Id}.physicsMode`,
+        message: `Zone "${u.Id}" has unrecognized PhysicsMode "${u.PhysicsMode}" — dropped rather than guessed.`,
+        reason: 'PhysicsMode is not one of normal/platformer/zero-g/aquatic (Zone.physicsMode union).',
+      });
+    }
+  }
+
   return zone;
+}
+
+function isPhysicsMode(value: string): value is NonNullable<Zone['physicsMode']> {
+  return value === 'normal' || value === 'platformer' || value === 'zero-g' || value === 'aquatic';
 }
 
 function districtFromUnreal(u: UnrealDistrictDataAsset): District {
@@ -388,8 +431,7 @@ function districtFromUnreal(u: UnrealDistrictDataAsset): District {
 }
 
 function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity: FidelityEntry[]): EntityPlacement {
-  const gridX = Math.round(u.LocationCm.X / tileSizeCm);
-  const gridY = Math.round(-u.LocationCm.Y / tileSizeCm);
+  const { gridX, gridY } = unrealAxisToGrid(u.LocationCm.X, u.LocationCm.Y, tileSizeCm);
 
   // Flag sub-grid placements: any actor whose cm location doesn't fall exactly
   // on a tile boundary will be snapped by the Math.round() above. The original

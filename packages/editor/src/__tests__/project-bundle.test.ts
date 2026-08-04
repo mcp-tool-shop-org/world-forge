@@ -206,6 +206,45 @@ describe('prepareProjectImport', () => {
     expect(result.bundle.summary.zones).toBe(chapel.zones.length);
     expect(result.bundle.dependencies).toBeDefined();
   });
+
+  it('F-6ecd4138: populates validationErrors from real validateProject failures instead of hardcoding an empty array', () => {
+    // Strip spawnPoints so validateProject fails its "at least one spawn
+    // point is required" rule — a genuine, real validation failure that
+    // validateProject correctly detects and reports in `validation.errors`.
+    const invalidProject = { ...helloWorld, spawnPoints: [] };
+    const bundle = serializeProject(invalidProject);
+    const result = prepareProjectImport(bundle);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.isValid).toBe(false);
+    // The bug: validationErrors was hardcoded to `[]` no matter what
+    // validateProject found — real failures were silently downgraded into
+    // validationWarnings (a cosmetic, non-blocking list) with an
+    // always-empty validationErrors, so nothing in the return shape
+    // signaled a hard failure.
+    expect(result.validationErrors.length).toBeGreaterThan(0);
+    expect(result.validationErrors.some((e) => e.includes('spawn point'))).toBe(true);
+  });
+
+  it('F-6ecd4138: validationErrors mirrors validation.errors exactly (same content as validationWarnings currently carries)', () => {
+    const invalidProject = { ...helloWorld, spawnPoints: [] };
+    const bundle = serializeProject(invalidProject);
+    const result = prepareProjectImport(bundle);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.validationErrors).toEqual(result.validationWarnings);
+    expect(result.validationErrors.length).toBeGreaterThan(0);
+  });
+
+  it('a valid bundle still reports zero validationErrors (no false positives)', () => {
+    const bundle = serializeProject(chapel);
+    const result = prepareProjectImport(bundle);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.isValid).toBe(true);
+    expect(result.validationErrors).toHaveLength(0);
+  });
 });
 
 describe('extractDependencies', () => {

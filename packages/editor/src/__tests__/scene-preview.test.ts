@@ -171,7 +171,7 @@ describe('assembleSceneData — connection with condition', () => {
     const scene = assembleSceneData('chapel-alcove', chapel.project);
     const cryptConn = scene.connections.find((c) => c.zoneName === 'Crypt Chamber');
     expect(cryptConn).toBeDefined();
-    expect(cryptConn!.condition).toBe('has-tag:chapel-key');
+    expect(cryptConn!.condition).toBe('item:chapel-key');
   });
 });
 

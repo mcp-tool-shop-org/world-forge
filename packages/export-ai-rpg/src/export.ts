@@ -39,7 +39,7 @@
  * @module export
  */
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, LootTable } from '@world-forge/schema';
 import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -145,6 +145,33 @@ export type ContentPack = {
    * structural hole rather than a wire hole." Zones bind by id via `hazardRefs`.
    */
   hazardDefinitions: HazardDefinition[];
+  /**
+   * F-ee46a52c (swarm wave-2) — CLOSED. `WorldProject.lootTables` was read
+   * NOWHERE in this package: no key on `ContentPack`, no warning at export,
+   * a complete silent drop of an entire authored subsystem despite the
+   * schema validating loot tables extensively (duplicate-id checks,
+   * SpawnCondition-grammar entry conditions, two-way referential integrity
+   * with `itemPlacements[].lootTableId` — packages/schema/src/validate.ts
+   * lines 888-975).
+   *
+   * A RAW PASS-THROUGH, deliberately — the same class as `factionPresences`,
+   * `pressureHotspots`, and `encounterAnchors` above: the engine has no
+   * `LootTable`-shaped type of its own to convert INTO (confirmed: zero hits
+   * for `LootTable`/`loot` across every installed `@ai-rpg-engine/*` .d.ts),
+   * so there is nothing to mirror convert-progression-trees.ts's per-field
+   * reconstruction against. `entries[].itemId` needs no remapping either:
+   * convertItems already emits items keyed by the same `itemId` the author
+   * used, so a loot table's references resolve into `items[]` unchanged.
+   *
+   * `entries[].condition` crosses as the RAW authored SpawnCondition-grammar
+   * string, uncompiled — unlike zone exits / entryGate / entity placements,
+   * which compile through `parseSpawnCondition`. That is a deliberate
+   * narrower scope, not an oversight: the engine has no loot-table reader yet
+   * to define what shape it expects, so compiling now would guess at a
+   * contract that does not exist. Revisit when the engine actually consumes
+   * this channel.
+   */
+  lootTables: LootTable[];
 };
 
 export type AssetBindingMap = {
@@ -231,8 +258,8 @@ export function exportToEngine(
     // 2. Convert zones (AIR-B-002: forward warnings for broken exit refs)
     zones = convertZones(project, warnings);
 
-    // 3. Convert districts
-    districts = convertDistricts(project);
+    // 3. Convert districts (F-6cd32f2d: warnings report the safety->surveillance approximation)
+    districts = convertDistricts(project, warnings);
 
     // 4. Convert entities
     if (project.entityPlacements.length === 0) {
@@ -275,8 +302,8 @@ export function exportToEngine(
     // Note: convertEntities 1:1 maps project.entityPlacements, so if placements exist,
     // entities will exist. The earlier "no placements" warning above is sufficient.
 
-    // 5. Convert items
-    items = convertItems(project);
+    // 5. Convert items (F-1c1a6e56: warnings/fidelity report the slot/rarity fallback)
+    items = convertItems(project, warnings, fidelityEntries);
 
     // 6. Convert dialogues
     dialogues = convertDialogues(project);
@@ -410,6 +437,10 @@ export function exportToEngine(
     // (additive since v4.5) — an empty array is a claim the hash covers, and it
     // keeps the key's presence unconditional so the pack shape does not vary.
     hazardDefinitions: project.hazardDefinitions ?? [],
+    // F-ee46a52c. Same `?? []` discipline as hazardDefinitions above — raw
+    // pass-through, unconditional key presence, see the ContentPack.lootTables
+    // doc comment for why this is not routed through a dedicated converter.
+    lootTables: project.lootTables ?? [],
   };
 
   if (profile === 'debug' || emitSchemaVersion) {
@@ -426,6 +457,7 @@ export function exportToEngine(
       factionPresences: [],
       pressureHotspots: [],
       hazardDefinitions: [],
+      lootTables: [],
     };
     // Wipe the placeholder keys so we can re-insert them in the canonical order
     // *after* the metadata keys.
@@ -458,6 +490,7 @@ export function exportToEngine(
     prefixed.factionPresences = contentPack.factionPresences;
     prefixed.pressureHotspots = contentPack.pressureHotspots;
     prefixed.hazardDefinitions = contentPack.hazardDefinitions;
+    prefixed.lootTables = contentPack.lootTables;
 
     return {
       success: true,

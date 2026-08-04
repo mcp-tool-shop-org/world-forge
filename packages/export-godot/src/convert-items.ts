@@ -9,6 +9,7 @@
 import type { WorldProject, ItemPlacement, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotItemResource {
     /** Resource path: res://world_data/items/<itemId>.tres */
@@ -44,6 +45,25 @@ export function convertItems(project: WorldProject): ConvertItemsResult {
     const fidelity: FidelityEntry[] = [];
     const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));
     const items: GodotItemResource[] = [];
+
+    // Sibling node names are only unique within their own zone's "Items"
+    // container, so de-dup is scoped per zone (mirrors convert-props.ts /
+    // convert-hazards.ts / convert-economy.ts / convert-structures.ts /
+    // convert-strata.ts; items and entities were the two converters that did
+    // not de-dup, even though duplicate display names — two "Health Potion"
+    // placements in one zone — are ordinary content).
+    const seenNamesByZone = new Map<string, Map<string, number>>();
+    const uniqueNodeName = (zoneId: string, base: string): string => {
+        let seen = seenNamesByZone.get(zoneId);
+        if (!seen) {
+            seen = new Map<string, number>();
+            seenNamesByZone.set(zoneId, seen);
+        }
+        const safe = sanitizeNodeName(base) || 'Item';
+        const n = seen.get(safe) ?? 0;
+        seen.set(safe, n + 1);
+        return n === 0 ? safe : `${safe}_${n + 1}`;
+    };
 
     for (const item of project.itemPlacements) {
         const zone = zonesById.get(item.zoneId);
@@ -94,13 +114,9 @@ export function convertItems(project: WorldProject): ConvertItemsResult {
             grantedVerbs: item.grantedVerbs?.slice(),
             iconAssetId: item.iconId,
             lootTableId: item.lootTableId,
-            nodeName: sanitizeNodeName(item.name ?? item.itemId),
+            nodeName: uniqueNodeName(item.zoneId, item.name ?? item.itemId),
         });
     }
 
     return { items, fidelity };
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@\s]/g, '_').replace(/^(\d)/, '_$1');
 }

@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { exportToEngine } from '../export.js';
 import { convertEntities } from '../convert-entities.js';
+import { convertZones } from '../convert-zones.js';
 import { convertPackMeta } from '../convert-pack.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import type { WorldProject } from '@world-forge/schema';
@@ -253,7 +254,22 @@ describe('AIR-B-008: convertPackMeta surfaces tone warnings via ExportResult', (
 // --- AIR-B-002: broken exit targetZoneId warnings ---
 
 describe('AIR-B-002: exit targetZoneId validation', () => {
-  it('warns when a zone exit targets a zone that does not exist', () => {
+  // A dangling exit target is now caught at TWO layers, and both are asserted
+  // here because they protect different callers.
+  //
+  // This test used to drive the warning through `exportToEngine`. That stopped
+  // working when the schema gained real validation for `Zone.exits[].targetZoneId`
+  // (validate.ts rule 6b) — `exportToEngine` validates first, so it now REJECTS
+  // this project outright and the converter's warning path is unreachable from
+  // the public API. The warning is not dead code: `convertZones` is exported and
+  // a caller that reaches it directly bypasses `validateProject` entirely, so
+  // the defence-in-depth still matters.
+  //
+  // Splitting the assertions keeps both guarantees pinned. Deleting either half
+  // would silently drop a layer: assert only the rejection and the converter
+  // warning can rot unnoticed; assert only the warning and nothing proves the
+  // schema actually rejects the project.
+  it('rejects a zone exit targeting a zone that does not exist (schema layer)', () => {
     const project: WorldProject = {
       ...minimalProject,
       zones: minimalProject.zones.map((z, i) =>
@@ -263,8 +279,25 @@ describe('AIR-B-002: exit targetZoneId validation', () => {
       ),
     };
     const result = exportToEngine(project);
-    if (!result.success) throw new Error('export failed');
-    const msg = result.warnings.find((w) => w.includes('zone-ghost'));
+    expect(result.success).toBe(false);
+    // Narrow the ExportResult | ExportError union. `expect(...).toBe(false)` is
+    // an assertion, not a type guard, so TS still sees both arms.
+    if (result.success) throw new Error('expected the export to be rejected');
+    expect(JSON.stringify(result.errors)).toMatch(/zone-ghost/);
+  });
+
+  it('warns when a zone exit targets a zone that does not exist (converter layer)', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? { ...z, exits: [{ targetZoneId: 'zone-ghost', label: 'broken portal' }] }
+          : z,
+      ),
+    };
+    const warnings: string[] = [];
+    convertZones(project, warnings);
+    const msg = warnings.find((w) => w.includes('zone-ghost'));
     expect(msg).toBeDefined();
     expect(msg!).toMatch(/zone-entrance/);
     expect(msg!).toMatch(/broken portal/);

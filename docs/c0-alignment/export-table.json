@@ -15,15 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 169,
-      "carried-lossless": 190,
+      "no-channel": 160,
+      "carried-lossless": 199,
       "carried-approximated": 18
     },
     "byChannel": {
-      "none": 169,
+      "none": 160,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 170,
+      "contentPack": 179,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -31,15 +31,25 @@
   },
   "exporterSelfReport": {
     "fidelitySummary": {
-      "total": 0,
+      "total": 1,
       "lossless": 0,
-      "approximated": 0,
+      "approximated": 1,
       "dropped": 0,
-      "losslessPercent": null,
-      "observed": false,
-      "byDomain": {}
+      "losslessPercent": 0,
+      "observed": true,
+      "byDomain": {
+        "items": {
+          "total": 1,
+          "lossless": 0,
+          "approximated": 1,
+          "dropped": 0
+        }
+      }
     },
-    "warnings": [],
+    "warnings": [
+      "2 district(s) map authored 'safety' directly onto the engine's 'surveillance' metric (convert-districts.ts) — these are NOT synonyms: a heavily-surveilled district is not a safe one, and high surveillance drives heat/pursuit in the engine's own doctrine, which is the OPPOSITE of what a high 'safety' score is meant to convey. This mapping is unverified against the engine's actual district-metrics consumer; treat exported 'surveillance' values with caution until confirmed.",
+      "Item \"item-tide-ration\" (Tide Ration) has slot 'consumable', which is schema-legal but has NO equivalent in the engine's EquipmentSlot set (weapon/armor/accessory/tool/trinket) — narrowed to 'trinket'. The item will not function as a consumable at runtime."
+    ],
     "comment": "Recorded verbatim. The lane reports 100% lossless / 0 dropped and zero warnings on a fixture where the table below classifies the majority of authored fields as no-channel."
   },
   "rows": [
@@ -2196,8 +2206,8 @@
       "transform": null,
       "absenceProof": "value-absent",
       "verified": true,
-      "evidence": "all 1 authored string values absent from all six export artifacts",
-      "note": "The loot-table reference is dropped along with the loot tables themselves."
+      "evidence": "all 1 authored string values absent from contentPack:items[]",
+      "note": "The loot-table BACK-reference has no target field on ItemDefinition. The loot tables themselves now cross via ContentPack.lootTables (CLOSED BY swarm wave-2, F-ee46a52c) and reference items by the same itemId convertItems emits, so the FORWARD link (table → item) survives; only this reverse link (item → table) has no channel."
     },
     {
       "path": "itemPlacements[].name",
@@ -2215,11 +2225,11 @@
       "class": "carried-approximated",
       "channel": "contentPack",
       "packPath": "items[].rarity",
-      "transform": "narrowRarity-silent-fallback",
+      "transform": "narrowRarity-fallback-with-warning",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"narrowRarity-silent-fallback\" → contentPack:items[].rarity (3 values); semantics asserted separately",
-      "note": "Same silent-fallback shape as slot; the four schema rarities happen to match the engine set today, so nothing is lost YET."
+      "evidence": "transform \"narrowRarity-fallback-with-warning\" → contentPack:items[].rarity (3 values); semantics asserted separately",
+      "note": "Same reporting fix as slot (F-1c1a6e56): an unrecognized rarity now warns and gets a fidelity entry. The four schema rarities happen to match the engine set today, so this fixture never exercises the fallback — nothing is lost YET, but the channel to report it now exists."
     },
     {
       "path": "itemPlacements[].resourceModifiers{}",
@@ -2237,11 +2247,11 @@
       "class": "carried-approximated",
       "channel": "contentPack",
       "packPath": "items[].slot",
-      "transform": "narrowSlot-silent-fallback",
+      "transform": "narrowSlot-fallback-with-warning",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"narrowSlot-silent-fallback\" → contentPack:items[].slot (3 values); semantics asserted separately",
-      "note": "The schema declares SIX slots; convert-items accepts five. `consumable` — a legal authored slot — silently becomes `trinket`, with no warning and no fidelity entry. The fixture authors a consumable to prove it."
+      "evidence": "transform \"narrowSlot-fallback-with-warning\" → contentPack:items[].slot (3 values); semantics asserted separately",
+      "note": "CLOSED BY swarm wave-2 (F-1c1a6e56). The schema declares SIX slots; the engine's EquipmentSlot set has five, with no consumable-equivalent. `consumable` — a legal authored slot — narrows to `trinket`, now WITH a warning and a fidelity entry (reason `item-slot-no-engine-target`). The fixture authors a consumable to prove it."
     },
     {
       "path": "itemPlacements[].statModifiers{}",
@@ -2377,102 +2387,102 @@
     },
     {
       "path": "lootTables[].entries[].condition",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].entries[].condition",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "3 authored values match contentPack:lootTables[].entries[].condition exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Raw SpawnCondition-grammar string, DELIBERATELY UNCOMPILED — see the block comment above for why this raw pass-through does not run the string through parseSpawnCondition yet."
     },
     {
       "path": "lootTables[].entries[].itemId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].entries[].itemId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "3 authored values match contentPack:lootTables[].entries[].itemId exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). References an item in the pack's own `items[]` catalog — the same id convertItems emits, so the reference resolves with zero remapping."
     },
     {
       "path": "lootTables[].entries[].quantity.max",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].entries[].quantity.max",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "3 authored values match contentPack:lootTables[].entries[].quantity.max exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Quantity range ceiling."
     },
     {
       "path": "lootTables[].entries[].quantity.min",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].entries[].quantity.min",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "3 authored values match contentPack:lootTables[].entries[].quantity.min exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Quantity range floor."
     },
     {
       "path": "lootTables[].entries[].rarity",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].entries[].rarity",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "3 authored values match contentPack:lootTables[].entries[].rarity exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Optional per-entry rarity tier for UI display."
     },
     {
       "path": "lootTables[].entries[].weight",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].entries[].weight",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "3 authored values match contentPack:lootTables[].entries[].weight exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Relative weight for the weighted pick."
     },
     {
       "path": "lootTables[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "1 authored values match contentPack:lootTables[].id exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). The loot table identity `itemPlacements[].lootTableId` references."
     },
     {
       "path": "lootTables[].rolls",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].rolls",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "1 authored values match contentPack:lootTables[].rolls exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Total rolls per open/kill/chest. Optional on the schema; the engine has no default of its own to disagree with yet."
     },
     {
       "path": "lootTables[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "lootTables[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"lootTables\" absent from all six export artifacts",
-      "note": "Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one."
+      "evidence": "2 authored values match contentPack:lootTables[].tags[] exactly",
+      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Free tags for filtering/discovery."
     },
     {
       "path": "map.description",

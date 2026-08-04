@@ -122,7 +122,10 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   props: 'Prop definitions have no pack field.',
   propPlacements: 'Prop placements have no pack field.',
   ambientLayers: 'Ambient layers (fog / rain / dust) have no pack field.',
-  lootTables: 'Weighted loot tables have no pack field, although `itemPlacements[].lootTableId` can reference one.',
+  // lootTables moved OUT of DROPPED_CONTAINERS by swarm wave-2 (F-ee46a52c) —
+  // see LOOT_TABLE_ROWS below. Kept as a comment for the same reason
+  // hazardDefinitions' entry was: the diff should show a domain LEAVING this
+  // list, which is the shape of progress here.
   transitions: 'Elevator / warp / lift transitions have no pack field.',
 };
 
@@ -177,8 +180,56 @@ const HAZARD_DEFINITION_ROWS: ExportRow[] = (
   note: `CLOSED BY C3/P3. ${note}`,
 }));
 
+/**
+ * F-ee46a52c (swarm wave-2) — the loot-table rows.
+ *
+ * ⚠ THIS DOMAIN LEFT `DROPPED_CONTAINERS`, the same transition
+ * HAZARD_DEFINITION_ROWS made for C3/P3. The finding: `WorldProject.lootTables`
+ * was read NOWHERE in this package despite the schema validating it
+ * extensively (duplicate-id checks, SpawnCondition-grammar entry conditions,
+ * two-way referential integrity with `itemPlacements[].lootTableId`) — a
+ * complete silent drop of an entire authored subsystem, filed by the
+ * coordinator brief as exactly the highest-priority defect class for this
+ * audit.
+ *
+ * Every field is `carried-lossless` as a RAW PASS-THROUGH — the same
+ * un-converted shape as `factionPresences[]`/`pressureHotspots[]`/
+ * `encounterAnchors[]` above, because the engine has no `LootTable`-shaped
+ * type of its own to convert INTO (zero hits across every installed
+ * `@ai-rpg-engine/*` package). `entries[].itemId` needs no remapping: items
+ * are exported keyed by the same `itemId` the author used.
+ *
+ * `entries[].condition` is the one field worth flagging even though its class
+ * is still `carried-lossless`: it crosses as the RAW authored
+ * SpawnCondition-grammar STRING, uncompiled — unlike zone exits / entryGate /
+ * entity placements, which all compile through `parseSpawnCondition`. That is
+ * a deliberate, narrower scope: the engine has no loot-table reader yet to
+ * define what shape it expects, so compiling now would guess at a contract
+ * that does not exist.
+ */
+const LOOT_TABLE_ROWS: ExportRow[] = (
+  [
+    ['id', 'The loot table identity `itemPlacements[].lootTableId` references.'],
+    ['rolls', 'Total rolls per open/kill/chest. Optional on the schema; the engine has no default of its own to disagree with yet.'],
+    ['entries[].itemId', 'References an item in the pack\'s own `items[]` catalog — the same id convertItems emits, so the reference resolves with zero remapping.'],
+    ['entries[].weight', 'Relative weight for the weighted pick.'],
+    ['entries[].quantity.min', 'Quantity range floor.'],
+    ['entries[].quantity.max', 'Quantity range ceiling.'],
+    ['entries[].condition', 'Raw SpawnCondition-grammar string, DELIBERATELY UNCOMPILED — see the block comment above for why this raw pass-through does not run the string through parseSpawnCondition yet.'],
+    ['entries[].rarity', 'Optional per-entry rarity tier for UI display.'],
+    ['tags[]', 'Free tags for filtering/discovery.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `lootTables[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `lootTables[].${field}`,
+  note: `CLOSED BY swarm wave-2 (F-ee46a52c). ${note}`,
+}));
+
 export const EXPLICIT_ROWS: ExportRow[] = [
   ...HAZARD_DEFINITION_ROWS,
+  ...LOOT_TABLE_ROWS,
   // ── Project identity ────────────────────────────────────────────────
   { path: 'id', class: 'carried-lossless', channel: 'manifest', packPath: 'id', note: 'Also lands on packMeta.id, buildCatalog.packId, and manifest.contentPacks[].' },
   { path: 'name', class: 'carried-lossless', channel: 'manifest', packPath: 'title', transform: 'renamed-key', note: 'manifest.title and packMeta.name both receive it verbatim.' },
@@ -481,8 +532,19 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'itemPlacements[].name', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].name', note: 'Falls back to itemId when unset.' },
   { path: 'itemPlacements[].description', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].description', transform: 'synthesised-when-absent', note: 'When authored it crosses verbatim. When absent the exporter SYNTHESISES `Found in <container>` (or the literal `An item.`), so an unauthored description is indistinguishable from an authored one downstream.' },
   { path: 'itemPlacements[].container', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].description', transform: 'folded-into-synthesised-description', note: 'Container survives ONLY as prose inside a synthesised description, and ONLY when `description` is unset (convert-items.ts). Authoring both silently drops the container. The fixture exercises both branches.' },
-  { path: 'itemPlacements[].slot', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].slot', transform: 'narrowSlot-silent-fallback', note: 'The schema declares SIX slots; convert-items accepts five. `consumable` — a legal authored slot — silently becomes `trinket`, with no warning and no fidelity entry. The fixture authors a consumable to prove it.' },
-  { path: 'itemPlacements[].rarity', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].rarity', transform: 'narrowRarity-silent-fallback', note: 'Same silent-fallback shape as slot; the four schema rarities happen to match the engine set today, so nothing is lost YET.' },
+  // ⚠ FLIPPED BY swarm wave-2 (F-1c1a6e56, the pinned-test rule). C0 measured
+  // this fallback as SILENT — no warnings param, no fidelity param on
+  // convertItems at all, unlike every sibling converter. The VALUE still
+  // narrows to 'trinket' (the engine's EquipmentSlot set genuinely has no
+  // consumable-equivalent slot — confirmed against the published
+  // @ai-rpg-engine/equipment type, not assumed), so the class stays
+  // carried-approximated. What changed is the word "silently": the loss is
+  // now reported through both `warnings` and `fidelity` (reason
+  // 'item-slot-no-engine-target'), the same reporting discipline
+  // convertEntities/convertPlacements/convertZones/convertPlayerTemplate
+  // already had.
+  { path: 'itemPlacements[].slot', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].slot', transform: 'narrowSlot-fallback-with-warning', note: 'CLOSED BY swarm wave-2 (F-1c1a6e56). The schema declares SIX slots; the engine\'s EquipmentSlot set has five, with no consumable-equivalent. `consumable` — a legal authored slot — narrows to `trinket`, now WITH a warning and a fidelity entry (reason `item-slot-no-engine-target`). The fixture authors a consumable to prove it.' },
+  { path: 'itemPlacements[].rarity', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].rarity', transform: 'narrowRarity-fallback-with-warning', note: 'Same reporting fix as slot (F-1c1a6e56): an unrecognized rarity now warns and gets a fidelity entry. The four schema rarities happen to match the engine set today, so this fixture never exercises the fallback — nothing is lost YET, but the channel to report it now exists.' },
   { path: 'itemPlacements[].statModifiers{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].statModifiers{}', note: 'Omitted entirely when empty.' },
   { path: 'itemPlacements[].resourceModifiers{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].resourceModifiers{}', note: 'Omitted entirely when empty.' },
   { path: 'itemPlacements[].grantedTags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].grantedTags[]', note: 'Omitted entirely when empty.' },
@@ -492,7 +554,19 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'itemPlacements[].zoneId', class: 'no-channel', absence: { kind: 'key-absent', key: 'zoneId', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'Item PLACEMENT is dropped: `ItemDefinition` is a catalog record with no location. An exported pack knows every item and where none of them are.' },
   { path: 'itemPlacements[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX' }, note: 'No coordinates cross.' },
   { path: 'itemPlacements[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY' }, note: 'No coordinates cross.' },
-  { path: 'itemPlacements[].lootTableId', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'The loot-table reference is dropped along with the loot tables themselves.' },
+  // ⚠ NOTE UPDATED BY swarm wave-2 (F-ee46a52c) — the CLASS is unchanged
+  // (still no-channel) but the OLD REASON is now false, AND the proof needed
+  // a SCOPE it didn't need before. The loot tables themselves are no longer
+  // dropped (see LOOT_TABLE_ROWS below); what has no channel is specifically
+  // the REVERSE link — `ItemDefinition` has no field to say which loot table
+  // can drop a given catalog item. The forward link
+  // (`lootTables[].entries[].itemId`) does cross. Scoped to `items[]`
+  // because the fixture's own loot table is now id `loot-vault-silt`, and an
+  // UNSCOPED value-absent proof reads that id's appearance in
+  // `contentPack.lootTables[].id` as if it were the item's back-reference
+  // leaking — the same collision-shape `entityPlacements[].ai.fears[]` above
+  // already documents for a different pair of fields.
+  { path: 'itemPlacements[].lootTableId', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'The loot-table BACK-reference has no target field on ItemDefinition. The loot tables themselves now cross via ContentPack.lootTables (CLOSED BY swarm wave-2, F-ee46a52c) and reference items by the same itemId convertItems emits, so the FORWARD link (table → item) survives; only this reverse link (item → table) has no channel.' },
 
   // ── Assets / asset packs (World-Forge-side round-trip channels) ─────
   { path: 'assets[].id', class: 'carried-lossless', channel: 'assets', packPath: 'assets[].id', note: 'The whole `assets` array is passed through untouched into ExportResult.assets — a World Forge re-import channel with no engine reader.' },

@@ -14,6 +14,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotBuilding {
     nodeName: string;
@@ -59,10 +60,6 @@ export interface ConvertStructuresResult {
     hubs: GodotHub[];
     strongholds: GodotStronghold[];
     fidelity: FidelityEntry[];
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 export function convertStructures(project: WorldProject): ConvertStructuresResult {

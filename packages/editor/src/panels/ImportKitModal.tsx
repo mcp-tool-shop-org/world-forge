@@ -1,12 +1,13 @@
 // ImportKitModal.tsx — import a .wfkit.json kit bundle
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useKitStore } from '../kits/index.js';
 import { prepareKitImport } from '../kits/bundle.js';
 import type { ImportKitResult } from '../kits/bundle.js';
 import { countContent } from './TemplateManager.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, buttonPrimary, modalFooter } from '../ui/styles.js';
+import { readerOutcomeMessage } from './import-kit-modal-helpers.js';
 
 interface Props { onClose: () => void }
 
@@ -19,16 +20,35 @@ export function ImportKitModal({ onClose }: Props) {
   const [result, setResult] = useState<ImportKitResult | null>(null);
   const [collision, setCollision] = useState<{ existingId: string; isBuiltIn: boolean } | null>(null);
 
+  // F-005: mirrors ImportModal.tsx's ED-B-011 hardening — abort the previous
+  // in-flight FileReader so back-to-back file picks can't resolve out of
+  // order (a second, smaller kit resolving before a first, larger one would
+  // otherwise silently win and overwrite `result`).
+  const activeReaderRef = useRef<FileReader | null>(null);
+  useEffect(() => () => {
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
+  }, []);
+
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (activeReaderRef.current) {
+      try { activeReaderRef.current.abort(); } catch { /* ignore */ }
+      activeReaderRef.current = null;
+    }
     setFileName(file.name);
     setError(null);
     setResult(null);
     setCollision(null);
 
     const reader = new FileReader();
+    activeReaderRef.current = reader;
+    const clearActive = () => {
+      if (activeReaderRef.current === reader) activeReaderRef.current = null;
+    };
     reader.onload = () => {
+      clearActive();
       try {
         const data = JSON.parse(reader.result as string);
         const res = prepareKitImport(data);
@@ -45,6 +65,18 @@ export function ImportKitModal({ onClose }: Props) {
       } catch {
         setError('Invalid JSON file');
       }
+    };
+    // F-005: surface read errors/aborts instead of leaving the modal looking
+    // stuck (fileName updates but result/error never populate).
+    reader.onerror = () => {
+      clearActive();
+      setError(readerOutcomeMessage('error', false, reader.error?.message));
+    };
+    reader.onabort = () => {
+      const supplanted = activeReaderRef.current !== reader;
+      clearActive();
+      const message = readerOutcomeMessage('abort', supplanted);
+      if (message) setError(message);
     };
     reader.readAsText(file);
   }, [kits]);

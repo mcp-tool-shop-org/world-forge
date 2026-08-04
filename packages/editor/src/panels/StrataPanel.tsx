@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 
 const card: CSSProperties = { border: '1px solid #30363d', borderRadius: 4, padding: 6, marginBottom: 6, background: '#161b22' };
@@ -28,9 +28,13 @@ export function StrataPanel() {
   const strata = project.strata ?? [];
   const links = project.stratumLinks ?? [];
   const nextOrder = strata.length ? Math.max(...strata.map((s) => s.order)) + 1 : 0;
+  // F-001: lets Validation/Export "jump to error" scroll-to and pulse this
+  // panel for strata/stratumLinks errors instead of navigating with no
+  // visible effect.
+  const focusRef = useFocusHighlight('strata');
 
   return (
-    <div style={{ marginTop: 12 }} data-testid="wf-strata-panel">
+    <div ref={focusRef} style={{ marginTop: 12 }} data-testid="wf-strata-panel">
       <PanelHeader title="Strata" />
 
       <div style={{ ...section, marginTop: 0 }}>Vertical layers ({strata.length})</div>
