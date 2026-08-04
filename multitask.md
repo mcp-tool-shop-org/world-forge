@@ -7,9 +7,9 @@
 
 ## Repos
 
-- **World Forge:** `F:\AI\world-forge` (monorepo, `packages/*`)
-- **Engine (read-only reference):** `F:\AI\ai-rpg-engine` (target export format)
-- **Product (read-only reference):** `F:\AI\claude-rpg` (consumer of world packs)
+- **World Forge:** `E:\AI\world-forge` (monorepo, `packages/*`)
+- **Engine (read-only reference):** `E:\AI\ai-rpg-engine` (target export format — the deterministic runtime that loads an exported pack)
+- **Client (read-only reference):** `E:\AI\ai-rpg-stage` (Godot 4 client that renders a running engine session)
 
 ## Design Principles
 
@@ -591,4 +591,4 @@ The first version is done when you can:
 4. Group zones into districts with faction/economy metadata
 5. Place NPCs, enemies, landmarks, spawn points
 6. Export to a valid ai-rpg-engine ContentPack JSON
-7. Load that JSON in claude-rpg and play it
+7. Load that JSON in ai-rpg-engine and play the world it produces

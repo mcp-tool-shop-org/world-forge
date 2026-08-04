@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- संस्करण: प्रारंभ -->
-<p align="center"><strong>v4.5.0</strong> — 2360 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.5.0</strong> — 2682 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## आर्किटेक्चर
@@ -249,7 +249,7 @@ npx world-forge-export-unreal --summary ./UnrealPack
 
 निर्यात तीन इंजनों को लक्षित करता है:
 
-- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** - कंटेंटपैक प्रारूप, जिसे [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg) द्वारा लोड किया जा सकता है।
+- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** - कंटेंटपैक प्रारूप — नियतात्मक सिमुलेशन रनटाइम जो निर्यात किए गए पैक को लोड करता है और दुनिया को चलाता है।
 - **अनरियल इंजन 5** - प्राइमरी डेटा एसेट्स, एक्टर स्पॉन मैनिफेस्ट और वर्ल्ड पार्टिशन संकेतों के साथ 2.5D-जागरूक सामग्री पैक।
 - **गॉडोट 4** - `.tscn` दृश्य पीढ़ी जिसमें क्षेत्र संसाधन, नेविगेशन लिंक और इकाई मैनिफेस्ट हों।
 

@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- versão:início -->
-<p align="center"><strong>v4.5.0</strong> — 2360 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.5.0</strong> — 2682 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## Arquitetura
@@ -249,7 +249,7 @@ O diretório `dogfood/` contém um conjunto de testes de integração que exerci
 
 As exportações têm como alvo três mecanismos:
 
-- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** — Formato ContentPack, carregável por [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg)
+- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** — Formato ContentPack: o runtime de simulação determinístico que carrega um pacote exportado e executa o mundo
 - **Unreal Engine 5** — Pacote de conteúdo com reconhecimento de 2,5D com Ativos de Dados Primários, manifestos de geração de atores e dicas de Partição Mundial
 - **Godot 4** — Geração de cena `.tscn` com recursos de zona, links de navegação e manifestos de entidade
 
