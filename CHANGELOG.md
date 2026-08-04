@@ -7,9 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-The Forge↔Engine content contract. Where v4.5.0 closed the authoring→Godot loop,
-this arc closes the authoring→**runtime** loop: an exported pack now boots into a
-played session instead of merely passing `validate`.
+## [4.6.0] - 2026-08-04
+
+The Forge↔Engine content contract, plus a two-stage health pass. Where v4.5.0
+closed the authoring→Godot loop, this arc closes the authoring→**runtime** loop:
+an exported pack now boots into a played session instead of merely passing
+`validate`.
+
+### Fixed — health pass (dogfood swarm, Stages A + B)
+
+Two audit lenses across nine domains: 174 findings filed, 40 fixed, the rest
+carried as recorded backlog. Severity was re-rated by a blind cross-family jury
+(three non-Claude seats, never shown the authoring agent's own rating), which cut
+34 self-rated HIGH findings down to 17 — including two the coordinator had filed
+and over-rated. Every fix below was proven RED before GREEN: the failure was
+reproduced first, then fixed.
+
+The findings turned out to be one defect wearing many faces — a mechanism built
+and never connected to a consequence, with tests that covered the mechanism
+rather than the connection.
+
+- **Ctrl+V did nothing.** `paste.ts` was implemented and unit-tested and the
+  hotkey dispatched correctly, but the production handler was an empty function
+  body and `getClipboard()` had zero callers. Four public surfaces certified the
+  feature as working. Wiring it up also woke a dormant neighbour-remapping bug
+  that could not fire while paste was dead, and surfaced zone `exits` never being
+  remapped at all.
+- **A schema-valid project could crash Godot.** An empty-sanitizing zone name
+  produced a `parent=""` NodePath; real Godot 4.7 exits with signal 11. The
+  unparseable-scene guard could not see it — its pattern only matched bare
+  `undefined`/`null`/`NaN`, so an empty quoted string was invisible. Guarded,
+  plus a structural backstop. Zones sharing a display name also collapsed into
+  one addressable node; now de-duplicated.
+- **The town economy never reached the engine.** `craftingStations` and
+  `marketNodes` were dropped on export with no warning and no fidelity entry,
+  and returned as `[]` on import, while the manifest declared the crafting
+  module active. Both directions fixed; the manifest now gates on real content.
+- **The town layer had no validation at all.** `buildings`/`hubs`/`strongholds`
+  were declared on `WorldProject` and checked nowhere. Rules 87-89 added, with a
+  structural guard for the optional arrays. `Building.interiorZoneId` — the link
+  from the town map to the interiors layer — could point nowhere and validate
+  clean.
+- **Gates that could not fail.** Four in Stage A (an assertion with `|| true`
+  welded on, a completeness check drifted from the type it mirrors, tests
+  pinning the wrong behaviour, a corruption guard whose pattern could not match
+  the corruption), then in Stage B the flagship three-lane export proof, which
+  computed a `BLOCKED` verdict and exited 0 — and wrote a receipt whose success
+  prose was hardcoded, so a failing run produced an artifact contradicting its
+  own verdict.
+- **`getModeProfile()`** had no fallback for a mode outside the union and is
+  called twice per render, so a malformed `mode` crashed the editor on boot.
+- **The six-package publish had no idempotency.** A failure partway left a
+  release permanently half-shipped and a re-run failed on what had already
+  succeeded. Now guarded per package, deliberately via a composite action so the
+  OIDC trusted-publishing binding is unaffected.
+- **`tsx` was never a declared dependency**, despite being the documented way to
+  run every script in `dogfood/`. It worked only from developers' caches.
+- **The documented-count drift gate was never wired.** `sync-version --check`
+  could always fail on a stale version, test count, or package version, and
+  nothing ran it — which is how four public surfaces came to carry four
+  different wrong values for the same fact. It is now a CI step.
 
 ### Added
 

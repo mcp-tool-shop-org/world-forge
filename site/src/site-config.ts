@@ -62,7 +62,7 @@ export const config: SiteConfig = {
         },
         {
           title: 'Dependencies & Validation',
-          desc: 'Live validation with 78 structural checks including 2.5D parallax/skyline asset refs, strata + hazard + entry-gate integrity, finite-number guards, and the party-aware spawn-condition grammar. Dependency scanner with one-click repair and click-to-focus navigation.',
+          desc: 'Live validation with 89 structural checks including 2.5D parallax/skyline asset refs, strata + hazard + entry-gate integrity, town-structure zone links, finite-number guards, and the party-aware spawn-condition grammar. Dependency scanner with one-click repair and click-to-focus navigation.',
         },
         {
           title: 'Review & Export',
@@ -91,6 +91,10 @@ export const config: SiteConfig = {
         {
           title: 'World Modeling',
           desc: 'Vertical strata (surface / underground / sky) with order, z-range, visibility, and connectors; typed environmental hazards (damage / status / instakill / ignite); and zone entry party-gates on level, items, flags, members, and classes — research-grounded.',
+        },
+        {
+          title: 'A Measured Export Contract',
+          desc: 'An exporter that runs is not a world that boots. A leaf-path differ walks every authored field and records which ones actually reach the runtime, so "what survives export" is a checked-in number verified on every test run — not an assumption. The emitted manifest carries a real engine semver range, a content hash, and module ids gated on real content: a pack with no crafting stations no longer claims the crafting module.',
         },
       ],
     },
@@ -148,6 +152,9 @@ export const config: SiteConfig = {
         ['Interiors: prop placement + tile wall collision', 'Shipped (v4.5.0)'],
         ['Town economy (markets, crafting) + structures (buildings, hubs, strongholds)', 'Shipped (v4.5.0)'],
         ['World modeling: vertical strata + typed hazards + entry party-gates', 'Shipped (v4.5.0)'],
+        ['Forge→Engine alignment audit (measured export table + leaf-path differ)', 'Shipped (v4.6.0)'],
+        ['Content-pack manifest truth (real semver range, content hash, gated module ids)', 'Shipped (v4.6.0)'],
+        ['Space vocabulary crossing (compiled spawn conditions, hazards, entry gates, scene descriptors)', 'Shipped (v4.6.0)'],
         ['UE5 reference loader plugin', 'Ships with Star Freight'],
         ['Quest system + Canon adapter v1 + faction relationships', 'Planned'],
       ],

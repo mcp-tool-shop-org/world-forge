@@ -13,7 +13,7 @@ World Forge also exports to **[Unreal Engine 5](/docs/handbook/export-unreal/)**
 
 ## Pipeline Steps
 
-1. **Validate** — `validateProject()` runs 60+ structural checks. If any fail, export aborts with error details.
+1. **Validate** — `validateProject()` runs 89 structural checks. If any fail, export aborts with error details.
 2. **Convert zones** — `Zone[]` becomes `ZoneDefinition[]` with description as TextBlock, exits, neighbors, hazards.
 3. **Convert districts** — `District[]` becomes `DistrictDefinition[]` with safety mapped to surveillance.
 4. **Convert entities** — `EntityPlacement[]` becomes `EntityBlueprint[]` with role-based defaults, authored stats/resources/AI.
@@ -124,6 +124,48 @@ if (result.success) {
 - **ExportResult** — `{ contentPack, manifest, packMeta, assets, assetBindings }` from `exportToEngine()`
 - **ContentPack** — engine content without manifest/metadata wrapper
 - **ProjectBundle** — portable `.wfproject.json` file exported from the editor (lossless)
+
+## The Measured Export Contract (v4.6.0)
+
+An exporter that runs is not the same thing as a world that boots. v4.6.0 makes the
+difference measurable instead of assumed.
+
+### The alignment audit
+
+`docs/c0-alignment/` holds a generated, checked-in **export table**: a leaf-path
+differ walks every authored field in a fixture project, exports it, and records
+which fields actually arrive in the ContentPack — lossless, approximated, or
+dropped. It is regenerated and verified on every test run, so a converter that
+silently stops carrying a field fails a test rather than going unnoticed.
+
+This exists because the alternative had already happened. Two required fields —
+`craftingStations` and `marketNodes` — were dropped by the exporter with no warning
+and no fidelity entry, and returned as empty arrays on import, so a round trip
+erased authored town economy in both directions without a single failing test.
+
+### Manifest truth
+
+The emitted manifest carries a real engine semver range, real module ids, a content
+hash over the simulation-affecting content, and compiled exit conditions — values
+that were previously nominal.
+
+Module ids are **gated on real content**. A pack with no crafting stations no longer
+declares the crafting module active. Claiming a module that has nothing to act on is
+worse than dropping the content quietly, because it tells the runtime to expect
+something that is not there.
+
+### What crosses
+
+Per-entity placements with compiled spawn conditions, typed hazards, entry gates,
+and scene descriptors all reach the engine's content pack — not just the schema.
+
+:::note[The honest boundary]
+Not every authored field has an engine-side destination, and the export table says
+so per field. Where something cannot cross, the fidelity report records it as
+dropped or approximated with a reason. **A silent success is the failure mode this
+whole layer exists to prevent** — if the export does not tell you a field was lost,
+that is a bug in the export, not a detail of it.
+:::
 
 ## Fidelity Reporting
 
