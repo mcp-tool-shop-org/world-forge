@@ -63,6 +63,29 @@ beforeAll(async () => {
     });
 }, 20_000);
 
+/**
+ * Lines on stderr that belong to the toolchain, not to the script under test.
+ *
+ * `npx` under npm >= 11.5 announces itself ("npm notice run <pkg> npx ..."), and
+ * npm emits update/funding notices on the same channel. None of these are output
+ * from chapel-threshold.ts, so none of them should be able to fail a test about
+ * chapel-threshold.ts.
+ *
+ * Deliberately a NARROW allow-list of known-benign prefixes rather than a broad
+ * "ignore anything that looks like noise" filter: the point of the assertion is
+ * that the script itself stays silent on a clean run, and a filter loose enough to
+ * swallow a real diagnostic would turn this into a check that cannot fail.
+ */
+const BENIGN_STDERR = [/^npm notice\b/, /^npm warn\b/, /^npm WARN\b/];
+
+export function stderrDiagnostics(stderr: string): string[] {
+    return stderr
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+        .filter((l) => !BENIGN_STDERR.some((p) => p.test(l)));
+}
+
 function runScript(extraEnv: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolvePromise) => {
         execFile(
@@ -83,10 +106,45 @@ function runScript(extraEnv: Record<string, string> = {}): Promise<{ code: numbe
     });
 }
 
+describe('stderrDiagnostics — the noise filter must not become a gate that cannot fail', () => {
+    it('drops the npm notice that broke the v4.6.0 release', () => {
+        expect(stderrDiagnostics('npm notice run world-forge@4.6.0 npx tsx dogfood/x.ts')).toEqual([]);
+    });
+
+    it('drops npm warn/WARN lines', () => {
+        expect(stderrDiagnostics('npm warn deprecated foo@1.0.0\nnpm WARN old lockfile')).toEqual([]);
+    });
+
+    it('KEEPS a real diagnostic — this is the assertion that matters', () => {
+        expect(stderrDiagnostics('Error: something actually broke')).toEqual(['Error: something actually broke']);
+    });
+
+    it('KEEPS a real diagnostic even when npm noise surrounds it', () => {
+        const mixed = 'npm notice run world-forge@4.6.0 npx\nTypeError: cannot read x of undefined\nnpm warn whatever';
+        expect(stderrDiagnostics(mixed)).toEqual(['TypeError: cannot read x of undefined']);
+    });
+
+    it('does not treat a line merely CONTAINING "npm notice" as benign', () => {
+        // Anchored at start, so a script printing "... unexpected npm notice ..." still fails.
+        expect(stderrDiagnostics('assertion failed: saw npm notice where none expected')).toHaveLength(1);
+    });
+});
+
 describe('chapel-threshold.ts gap regression gate (F-239f17d3)', () => {
     it('exits 0 with zero gaps on a clean run', async () => {
         const { code, stdout, stderr } = await runScript();
-        expect(stderr).toBe('');
+        // Assert the script wrote no DIAGNOSTICS — not that stderr is byte-empty.
+        //
+        // `expect(stderr).toBe('')` was too strict and failed the v4.6.0 release for
+        // a reason that had nothing to do with this repo: release.yml installs
+        // npm >= 11.5 in a sandbox for OIDC trusted-publishing auth, and newer npm
+        // writes a benign `npm notice run <pkg> npx ...` line to stderr that the
+        // bundled npm in ci.yml does not. Same code, same tree — green in CI, red in
+        // release, on a line the script never wrote.
+        //
+        // A test that pins "no output at all" when it means "no error" is coupled to
+        // the toolchain's chattiness rather than to the behaviour under test.
+        expect(stderrDiagnostics(stderr)).toEqual([]);
         expect(stdout).toContain('No gaps found');
         expect(code).toBe(0);
     }, 60_000);
