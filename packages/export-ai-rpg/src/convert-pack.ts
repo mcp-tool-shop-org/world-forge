@@ -3,6 +3,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
 import type { PackMetadata, PackGenre, PackDifficulty, PackTone, VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES } from '@ai-rpg-engine/pack-registry';
+import { safeLookup } from './safe-lookup.js';
 
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
 export const GENRE_MAP: Record<string, PackGenre> = {
@@ -144,11 +145,16 @@ export function convertManifest(project: WorldProject): GameManifest {
  * consumers.
  */
 export function convertPackMeta(project: WorldProject, warnings?: string[]): PackMetadata {
-  const genre = GENRE_MAP[project.genre] ?? 'fantasy';
+  // F-3dab95a4 (swarm wave-2): safeLookup only resolves OWN keys, so a
+  // prototype-name value ('__proto__', 'constructor', 'toString', ...) misses
+  // exactly like any other unrecognized string, instead of silently resolving
+  // to an inherited Object.prototype member and defeating the `?? 'fantasy'`
+  // fallback below. See safe-lookup.ts for the full reproduction.
+  const genre = safeLookup(GENRE_MAP, project.genre) ?? 'fantasy';
   const invalidTones: string[] = [];
   const tones = project.tones
     .map((t) => {
-      const mapped = TONE_MAP[t];
+      const mapped = safeLookup(TONE_MAP, t);
       if (!mapped) invalidTones.push(t);
       return mapped;
     })
@@ -163,7 +169,7 @@ export function convertPackMeta(project: WorldProject, warnings?: string[]): Pac
     console.warn(`[convert-pack] ${msg}`);
     warnings?.push(msg);
   }
-  const difficulty = DIFFICULTY_MAP[project.difficulty] ?? 'intermediate';
+  const difficulty = safeLookup(DIFFICULTY_MAP, project.difficulty) ?? 'intermediate';
 
   const tags: string[] = [];
   if (project.mode) tags.push(`mode:${project.mode}`);

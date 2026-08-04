@@ -188,14 +188,29 @@ export function prepareProjectImport(data: unknown): ImportProjectResult | Parse
 
   const { bundle, warnings: parseWarnings } = parsed;
   const validation = validateProject(bundle.project);
+  // F-6ecd4138: validationErrors was previously hardcoded to `[]` regardless
+  // of what validateProject found — real schema-validation failures were
+  // silently downgraded into validationWarnings (a cosmetic, non-blocking
+  // list shown in ImportModal's preview) with nothing in the return shape
+  // signaling a hard failure. Populate it from the SAME validation.errors
+  // validationWarnings already derives from, so a caller that (correctly)
+  // branches on validationErrors/isValid instead of the warnings list sees
+  // the real result. NOTE (cross-domain, out of scope for this fix):
+  // ImportModal.tsx (panels/**) only branches on `!res.ok` — which this
+  // function always returns `true` for once the bundle envelope itself
+  // parses — and never checks `isValid`/`validationErrors` before calling
+  // loadProject. Making that a hard block (disable Import, or require an
+  // explicit override) requires editing ImportModal.tsx, which is owned by
+  // another domain in this wave.
+  const validationMessages = validation.valid ? [] : validation.errors.map((e) => `${e.path}: ${e.message}`);
 
   return {
     ok: true,
     project: bundle.project,
     bundle,
     parseWarnings,
-    validationWarnings: validation.valid ? [] : validation.errors.map((e) => `${e.path}: ${e.message}`),
-    validationErrors: [],
+    validationWarnings: validationMessages,
+    validationErrors: validationMessages,
     isValid: validation.valid,
   };
 }

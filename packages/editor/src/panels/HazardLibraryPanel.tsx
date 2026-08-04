@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 import type { HazardEffect } from '@world-forge/schema';
 
@@ -32,12 +32,16 @@ function defaultEffect(kind: HazardEffect['kind']): HazardEffect {
 export function HazardLibraryPanel() {
   const { project, addHazardDefinition, updateHazardDefinition, removeHazardDefinition } = useProjectStore();
   const hazards = project.hazardDefinitions ?? [];
+  // F-001: lets Validation/Export "jump to error" scroll-to and pulse this
+  // panel for hazardDefinitions errors instead of navigating with no
+  // visible effect.
+  const focusRef = useFocusHighlight('hazards');
 
   // Immutably replace effect i on a hazard, then persist.
   const setEffects = (hid: string, effects: HazardEffect[]) => updateHazardDefinition(hid, { effects });
 
   return (
-    <div style={{ marginTop: 12 }} data-testid="wf-hazard-library-panel">
+    <div ref={focusRef} style={{ marginTop: 12 }} data-testid="wf-hazard-library-panel">
       <PanelHeader title="Hazard Library" />
       <div style={{ ...section, marginTop: 0 }}>Hazards ({hazards.length})</div>
 

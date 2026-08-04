@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.5.0</strong> — 2360 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.5.0</strong> — 2659 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## Architecture
@@ -74,7 +74,7 @@ Core TypeScript types and validation for world authoring.
 - **Town + structures** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
 - **World modeling** — `Stratum` + `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), `ZoneEntryGate` + party-state `SpawnCondition` operands (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
 - **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
-- **Validation** — `validateProject()` (78 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
+- **Validation** — `validateProject()` (86 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
 - **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
 
 ### @world-forge/export-unreal
@@ -96,7 +96,7 @@ Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 - **Tiles + interiors** — `TileMapLayer` + `TileSet` (baked `tile_map_data` for image tilesets), per-cell wall `StaticBody2D` collision, and prop `Node2D` placements
 - **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
 - **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
-- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
+- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 38 assertions)
 - **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.0.0
 
 ### @world-forge/export-ai-rpg
@@ -112,6 +112,8 @@ Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format.
 ### @world-forge/renderer-2d
 
 PixiJS-based 2D renderer: viewport with pan/zoom, zone overlays with district coloring, connection arrows, entity icons by role, tile layers, and a minimap.
+
+A standalone renderer published for external consumers embedding World Forge data in their own PixiJS app. **The editor does not use it** — the editor's canvas is a direct Canvas2D implementation, so the minimap and viewport features listed under the editor below are its own, not this package's.
 
 ### @world-forge/editor
 
@@ -249,7 +251,7 @@ The `dogfood/` directory contains an integration test harness that exercises the
 
 Exports target three engines:
 
-- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** — ContentPack format, loadable by [claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg)
+- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** — ContentPack format: the deterministic simulation runtime that loads an exported pack and runs the world
 - **Unreal Engine 5** — 2.5D-aware content pack with Primary Data Assets, actor spawn manifests, and World Partition hints
 - **Godot 4** — `.tscn` scene generation with zone resources, navigation links, and entity manifests
 

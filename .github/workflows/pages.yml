@@ -5,23 +5,20 @@ on:
     branches: [main]
     paths:
       - 'site/**'
-      - '.github/workflows/pages.yml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     # INF-B-006: cap wall time so a hung build can't burn the 6-hour default.
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -48,6 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     # INF-B-006: deploy is normally <1 min; 20 minutes leaves generous headroom.
     timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

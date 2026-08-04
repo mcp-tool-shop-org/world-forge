@@ -25,6 +25,8 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     showEntities: true,
     showLandmarks: true,
     showSpawns: true,
+    activeModal: null,
+    showSearch: false,
     clearSelection: () => {},
     selectAll: () => {},
     moveSelected: () => {},
@@ -50,11 +52,11 @@ describe('SpeedPanel integration', () => {
     expect(pinned.length + contextual.length).toBe(8);
   });
 
-  it('empty context produces 8 global actions (2 core + 4 mode-suggested + 2 review)', () => {
+  it('empty context produces 4 global actions (2 core + 2 review) — F-bdf856bf removed the 4 non-functional mode-suggested add-*-conn actions', () => {
     const { pinned, contextual, modeSuggested } = filterActions(SPEED_PANEL_ACTIONS, null, '', []);
-    // No mode → modeSuggested empty, all 8 global actions in contextual
+    // No mode → modeSuggested empty, all 4 remaining global actions in contextual
     expect(modeSuggested.length).toBe(0);
-    expect(pinned.length + contextual.length).toBe(8);
+    expect(pinned.length + contextual.length).toBe(4);
   });
 
   it('search query narrows results', () => {
@@ -183,9 +185,11 @@ describe('macros in filterActions', () => {
   it('macroSafe filter prevents non-safe actions in step dropdown', () => {
     const safe = SPEED_PANEL_ACTIONS.filter((a) => a.macroSafe);
     const unsafe = SPEED_PANEL_ACTIONS.filter((a) => !a.macroSafe);
-    // Core non-safe actions: new-zone, place-entity, connect-from, set-elevation + 4 mode-suggested
+    // Core non-safe actions: new-zone, place-entity, connect-from, set-elevation.
+    // F-bdf856bf: the 4 add-*-conn mode-suggested actions were removed (they
+    // had no backing implementation — see the 'mode-aware speed panel'
+    // describe block below), so they no longer appear here either.
     expect(unsafe.map((a) => a.id).sort()).toEqual([
-      'add-channel-conn', 'add-secret-conn', 'add-trail-conn', 'add-warp-conn',
       'connect-from', 'new-zone', 'place-entity', 'set-elevation',
     ]);
     // The rest are safe (6 core + merge-zones + 2 review)
@@ -216,19 +220,37 @@ describe('full section order', () => {
 });
 
 describe('mode-aware speed panel', () => {
-  it('dungeon mode → modeSuggested includes add-secret-conn', () => {
-    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'dungeon');
-    expect(result.modeSuggested.map((a) => a.id)).toContain('add-secret-conn');
+  // F-bdf856bf: add-secret-conn / add-channel-conn / add-warp-conn /
+  // add-trail-conn were registered as mode-suggested actions with NO case in
+  // executeAction's switch — every one of the 15+ dungeon/ocean/space/
+  // wilderness quick-suggestions did nothing when clicked. Implementing them
+  // properly would mean drawing a connection of a SPECIFIC kind (secret/
+  // channel/warp/trail) rather than the mode's plain default kind, which
+  // needs a new "pending connection kind" concept threaded through
+  // editor-store + Canvas.tsx's connection-finalize step AND SpeedPanel.tsx
+  // (panels/** — out of this domain's scope). Per the finding's own
+  // sanctioned alternative ("either implement them or remove them... a
+  // suggested action that does nothing when clicked is worse than no
+  // suggestion"), they were removed from the registry instead — immediately
+  // effective with no cross-domain dependency, since SpeedPanel.tsx reads
+  // this same SPEED_PANEL_ACTIONS array rather than hardcoding action ids.
+  // No mode currently suggests anything; the mechanism itself (tested below
+  // with a synthetic action list) is unchanged and ready for real
+  // mode-suggested actions to be added back once they have real behavior.
+
+  it('no mode currently has any modeSuggested actions (the 4 non-functional add-*-conn actions were removed)', () => {
+    for (const mode of ['dungeon', 'interior', 'ocean', 'space', 'wilderness', 'district', 'world'] as const) {
+      const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], mode);
+      expect(result.modeSuggested).toHaveLength(0);
+    }
   });
 
-  it('ocean mode → modeSuggested includes add-channel-conn', () => {
-    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'ocean');
-    expect(result.modeSuggested.map((a) => a.id)).toContain('add-channel-conn');
-  });
-
-  it('space mode → modeSuggested includes add-warp-conn', () => {
-    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], 'space');
-    expect(result.modeSuggested.map((a) => a.id)).toContain('add-warp-conn');
+  it('the removed action ids are gone from the registry entirely (not just unsuggested)', () => {
+    const ids = SPEED_PANEL_ACTIONS.map((a) => a.id);
+    expect(ids).not.toContain('add-secret-conn');
+    expect(ids).not.toContain('add-channel-conn');
+    expect(ids).not.toContain('add-warp-conn');
+    expect(ids).not.toContain('add-trail-conn');
   });
 
   it('no mode → modeSuggested empty', () => {
@@ -260,11 +282,20 @@ describe('mode-aware speed panel', () => {
   });
 
   it('section order: PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL', () => {
-    // Verify via filtered result structure
-    const result = filterActions(SPEED_PANEL_ACTIONS, null, '', ['fit-content'], ['new-zone'], [], [], 'dungeon');
+    // The MODE section is exercised with a synthetic action list (rather
+    // than SPEED_PANEL_ACTIONS, which currently has no modeSuggested
+    // entries — see F-bdf856bf above) so this test proves the filterActions
+    // MODE-bucketing mechanism itself still works, independent of which
+    // production actions happen to be mode-suggested today.
+    const actions: SpeedPanelAction[] = [
+      ...SPEED_PANEL_ACTIONS,
+      { id: 'synthetic-mode-action', label: 'Synthetic', icon: '*', category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['dungeon'] },
+    ];
+    const result = filterActions(actions, null, '', ['fit-content'], ['new-zone'], [], [], 'dungeon');
     expect(result.pinned.length).toBeGreaterThan(0);
     expect(result.recents.length).toBeGreaterThan(0);
     expect(result.modeSuggested.length).toBeGreaterThan(0);
+    expect(result.modeSuggested.map((a) => a.id)).toContain('synthetic-mode-action');
     expect(result.contextual.length).toBeGreaterThan(0);
   });
 });

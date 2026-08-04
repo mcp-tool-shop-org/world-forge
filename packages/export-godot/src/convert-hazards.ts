@@ -13,6 +13,7 @@
 import type { WorldProject, HazardEffect } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotHazardPlacement {
     nodeName: string;
@@ -34,10 +35,6 @@ export interface GodotHazardPlacement {
 export interface ConvertHazardsResult {
     placements: GodotHazardPlacement[];
     fidelity: FidelityEntry[];
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 /** Compact, human-readable encoding of one effect for Godot metadata. */

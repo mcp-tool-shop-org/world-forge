@@ -18,6 +18,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildWorldScene, type SceneBuildInput } from '../scene-builder.js';
+import { convertZones } from '../convert-zones.js';
+import type { WorldProject } from '@world-forge/schema';
 
 /**
  * The smallest input `buildWorldScene` will accept: one zone, nothing else.
@@ -127,5 +129,124 @@ describe('the emitted scene is always parseable', () => {
         const scene = buildWorldScene(input);
         expect(scene).toContain('undefined on every chart');
         expect(scene).toContain('metadata/description = "The berth is undefined');
+    });
+
+    it('RED CONTROL: a non-finite numeric metadata value (Infinity) is REFUSED, not silently emitted', () => {
+        // F-007 (audit): the guard's original blocklist matched bare
+        // undefined/null/NaN but not Infinity/-Infinity, even though JS
+        // stringifies a non-finite number as exactly that bare token via the
+        // same unguarded template-literal path (e.g. `metadata/light =
+        // ${zone.light}`). Same defect class as the undefined/hidden bug
+        // above, left half-closed.
+        const input = minimalInput();
+        (input.zones[0] as unknown as { light: number }).light = Infinity;
+
+        expect(() => buildWorldScene(input)).toThrowError(/refusing to emit an unparseable scene/);
+        let message = '';
+        try {
+            buildWorldScene(input);
+        } catch (err) {
+            message = err instanceof Error ? err.message : String(err);
+        }
+        expect(message).toContain('metadata/light = Infinity');
+    });
+
+    it('RED CONTROL: a negative-infinite numeric metadata value (-Infinity) is REFUSED', () => {
+        const input = minimalInput();
+        (input.zones[0] as unknown as { light: number }).light = -Infinity;
+
+        let message = '';
+        try {
+            buildWorldScene(input);
+        } catch (err) {
+            message = err instanceof Error ? err.message : String(err);
+        }
+        expect(message).toContain('metadata/light = -Infinity');
+    });
+});
+
+describe('the emitted scene always has well-formed [node ...] headers (F-001/F-18d722e0)', () => {
+    // The trap this whole class of test has to avoid: a corrupted header like
+    //   [node name="Big_"Boss"_Tony" type="Node2D" parent="."]
+    // has SIX quote characters — evenly balanced. Any check that counts quotes
+    // (or checks the count is even) passes this line. Only a check that
+    // actually tokenizes the header the way Godot's tag-header parser does
+    // can tell it apart from a well-formed one. `NODE_HEADER_HAS_RE` below
+    // mirrors the same full-line, anchored tokenizer scene-builder.ts's
+    // internal `assertParseable` uses, so these tests exercise the real
+    // Godot grammar, not a proxy for it.
+    const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[A-Za-z_][A-Za-z0-9_]*\([^()]*\)))+\]$/;
+
+    it('RED CONTROL: a raw quote in a node name (bypassing sanitizeNodeName) is REFUSED by the structural backstop', () => {
+        // Every node name reaching buildWorldScene is expected to already have
+        // gone through sanitizeNodeName(). This constructs the input the way a
+        // caller that skipped that step would — proving assertParseable's own
+        // structural check is a real backstop, not a guard that structurally
+        // cannot fire (the trap the package fell into with the undefined/
+        // null/NaN-only regex the first time).
+        const input = minimalInput();
+        input.zones[0].nodeName = 'Big_"Boss"_Tony';
+
+        let message = '';
+        try {
+            buildWorldScene(input);
+        } catch (err) {
+            message = err instanceof Error ? err.message : String(err);
+        }
+        expect(message).toMatch(/refusing to emit an unparseable scene/);
+        expect(message).toMatch(/\[node \.\.\.\] header/);
+        expect(message).toContain('sanitizeNodeName');
+    });
+
+    it('a quote-count check would be fooled by the malformed header; the structural check is not', () => {
+        // Documents the trap directly: the malformed header has an EVEN quote
+        // count, same as a well-formed one, so a naive parity check gives no
+        // signal either way. The regex-tokenizer check below is what actually
+        // distinguishes them.
+        const malformed = '[node name="Big_"Boss"_Tony" type="Node2D" parent="."]';
+        const wellFormed = '[node name="Big_Boss_Tony" type="Node2D" parent="."]';
+        const quoteCount = (s: string) => (s.match(/"/g) ?? []).length;
+
+        expect(quoteCount(malformed) % 2).toBe(0); // even — a parity check sees nothing wrong
+        expect(quoteCount(wellFormed) % 2).toBe(0); // also even — indistinguishable by count alone
+
+        expect(NODE_HEADER_RE.test(malformed)).toBe(false);
+        expect(NODE_HEADER_RE.test(wellFormed)).toBe(true);
+    });
+
+    it('END TO END: a zone authored with a nickname-style quote in its name produces a well-formed header', () => {
+        // The real pipeline, not a hand-built fixture: convertZones() is the
+        // call site the audit named as the riskiest (a free-text authored
+        // display name flows straight into the sanitizer). Reproduces the
+        // coordinator's own engine-verified repro case, minus the engine call.
+        const project = {
+            map: { tileSize: 32, gridWidth: 10, gridHeight: 10 },
+            zones: [
+                {
+                    id: 'boss-den', name: 'Big "Boss" Tony', description: '', tags: [],
+                    gridX: 0, gridY: 0, gridWidth: 2, gridHeight: 2,
+                    light: 1, noise: 0, hazards: [], neighbors: [], exits: [], interactables: [],
+                },
+            ],
+        } as unknown as WorldProject;
+
+        const { zones } = convertZones(project);
+        expect(zones[0].nodeName).not.toContain('"');
+
+        const scene = buildWorldScene({
+            projectName: 'Quote Probe',
+            zones,
+            entities: { byZone: {}, all: [], dropped: [], incomplete: false },
+            items: [],
+            navigationLinks: [],
+            spawnMarkers: [],
+            transitions: [],
+        });
+
+        const zoneHeaderLine = scene.split('\n').find((l) => l.startsWith('[node ') && l.includes('type="Node2D" parent="."'));
+        expect(zoneHeaderLine).toBeDefined();
+        // Structural proof, not a quote count: the whole line must tokenize as
+        // a well-formed [node ...] header.
+        expect(zoneHeaderLine).toMatch(NODE_HEADER_RE);
     });
 });

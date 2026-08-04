@@ -842,5 +842,47 @@
         "structural"
       ]
     }
+  ],
+  "lootTables": [
+    {
+      "id": "loot-vault-silt",
+      "rolls": 2,
+      "entries": [
+        {
+          "itemId": "item-lantern",
+          "weight": 3,
+          "quantity": {
+            "min": 1,
+            "max": 1
+          },
+          "condition": "random:0.25",
+          "rarity": "uncommon"
+        },
+        {
+          "itemId": "item-rope",
+          "weight": 7,
+          "quantity": {
+            "min": 1,
+            "max": 2
+          },
+          "condition": "never",
+          "rarity": "common"
+        },
+        {
+          "itemId": "item-rope",
+          "weight": 1,
+          "quantity": {
+            "min": 1,
+            "max": 1
+          },
+          "condition": "faction:tidewardens:>50",
+          "rarity": "rare"
+        }
+      ],
+      "tags": [
+        "vault",
+        "silt"
+      ]
+    }
   ]
 }

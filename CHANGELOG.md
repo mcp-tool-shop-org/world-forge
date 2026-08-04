@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [4.5.0]
+## [Unreleased]
+
+The Forge↔Engine content contract. Where v4.5.0 closed the authoring→Godot loop,
+this arc closes the authoring→**runtime** loop: an exported pack now boots into a
+played session instead of merely passing `validate`.
+
+### Added
+
+- **Forge↔Engine alignment audit** (`docs/c0-alignment/`) — a measured export
+  table, fixture manifest, and leaf-path differ over every authored field, so
+  "what actually reaches the runtime" is a number rather than an assumption.
+- **Content-pack manifest truth** — the emitted manifest now carries a real
+  engine semver range, real module ids, a content hash, and compiled exit
+  conditions, replacing values that were previously nominal.
+- **The space vocabulary** — per-entity placements with compiled spawn
+  conditions, typed hazards, entry gates, and scene descriptors now cross into
+  the engine's content pack, plus a `SpawnCondition` codec repair.
+- **The stage lane** — the Salt Road authored world (`dogfood/worlds/salt-road.ts`),
+  fixture exporters, and an unparseable-scene guard.
+
+### Changed
+
+- Engine dependency range moved from `2.x` to `^3.8.0`.
+
+## [4.5.0] - 2026-06-19
 
 Dogfood-swarm feature wave. Every addition is backward-compatible — projects
 authored on v4.x validate and open unchanged (new schema fields are optional).
@@ -46,14 +70,12 @@ authored on v4.x validate and open unchanged (new schema fields are optional).
   Node `[22, 24]` with `engines >= 22`, and `npm audit` reduced 9 → 1.
 - `SCHEMA_VERSION` bumped to 4.5.0.
 
-## [4.4.2]
+## [4.4.2] - 2026-05-01
 
 ### Fixed
 
 - Publish workflow: removed `--provenance` flag, fixed stale test fixtures.
 - Synced `SCHEMA_VERSION` with package version.
-
-## [Unreleased]
 
 ### Fixed — Editor Audit (Phases 14–26)
 

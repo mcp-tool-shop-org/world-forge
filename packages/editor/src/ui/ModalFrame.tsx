@@ -28,7 +28,16 @@ export function ModalFrame({ title, width = 520, onClose, children, cardStyle }:
 
   // Focus trap: cycle Tab within the modal card
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { e.stopPropagation(); onClose(); return; }
+    // F-340b4aff: stop every key from bubbling past this modal — Canvas's
+    // global `window` hotkey listener must never see a keystroke intended
+    // for this modal, whether focus is on a form field, the Close button, or
+    // nothing in particular. Previously only Escape stopped propagation, so
+    // e.g. Delete/Ctrl+A/Ctrl+D/arrow keys/tool shortcuts pressed while a
+    // Close button was focused bubbled straight through to the canvas
+    // underneath. This is defense-in-depth alongside Canvas.tsx's own
+    // modal-aware keydown guard — either one alone closes the hole.
+    e.stopPropagation();
+    if (e.key === 'Escape') { onClose(); return; }
     if (e.key !== 'Tab') return;
     const card = cardRef.current;
     if (!card) return;

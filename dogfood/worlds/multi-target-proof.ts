@@ -386,7 +386,7 @@ export const proofProject: WorldProject = {
         { id: 'craft-smith', zoneId: 'zone-tavern', stationType: 'forge', availableRecipes: ['iron-blade', 'horseshoe'] },
     ],
     marketNodes: [
-        { id: 'market-bazaar', zoneId: 'zone-market', merchantEntityId: 'npc-merchant', supplyCategories: ['food', 'tools'], priceModifier: 1.2, contrabandAvailable: false },
+        { id: 'market-bazaar', zoneId: 'zone-market', merchantEntityId: 'npc-mara', supplyCategories: ['food', 'tools'], priceModifier: 1.2, contrabandAvailable: false },
     ],
     // Town structures: an enterable inn (footprint → StaticBody2D + interior link),
     // a market-square hub serving nearby zones, a fortified keep at the gate.
@@ -397,7 +397,7 @@ export const proofProject: WorldProject = {
         { id: 'hub-square', name: 'Market Square', zoneId: 'zone-market', hubType: 'market-square', serviceTypes: ['market', 'inn'], connectedZoneIds: ['zone-tavern', 'zone-alley'], tags: [] },
     ],
     strongholds: [
-        { id: 'hold-keep', name: 'Dustwall Keep', zoneId: 'zone-gate', factionId: 'faction-garrison', defenseLevel: 3, garrisonEntityIds: ['npc-merchant'], tags: [] },
+        { id: 'hold-keep', name: 'Dustwall Keep', zoneId: 'zone-gate', factionId: 'faction-garrison', defenseLevel: 3, garrisonEntityIds: ['npc-holt'], tags: [] },
     ],
     // World modeling: two vertical strata (surface town over its cellar) + a
     // stairwell link. zone-tavern sits on 'surface' (order 0), zone-cellar on

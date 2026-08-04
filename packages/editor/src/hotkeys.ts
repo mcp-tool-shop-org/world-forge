@@ -3,6 +3,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { SelectionSet, RightTab, EditorTool } from './store/editor-store.js';
 import { getSelectionCount } from './store/editor-store.js';
+import type { ModalId } from './store/modal-store.js';
 
 export interface HotkeyBinding {
   key: string;
@@ -53,6 +54,17 @@ export interface HotkeyContext {
   showEntities: boolean;
   showLandmarks: boolean;
   showSpawns: boolean;
+  /**
+   * F-340b4aff: id of the currently-open modal (Export/Import/Template
+   * Manager/Save Template/Save Kit), or `null` when none is open. Mirrors
+   * `useModalStore.getState().activeModal`.
+   */
+  activeModal: ModalId;
+  /**
+   * F-340b4aff: whether the Ctrl+K search overlay is currently open. Mirrors
+   * `useEditorStore.getState().showSearch`.
+   */
+  showSearch: boolean;
   // Actions
   clearSelection: () => void;
   selectAll: (sel: SelectionSet, append: boolean) => void;
@@ -97,6 +109,17 @@ export function matchHotkey(e: KeyboardEvent): string | null {
  * Space and key-up events are handled separately by Canvas (they depend on refs).
  */
 export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResult {
+  // F-340b4aff: never mutate the canvas while a modal or the search overlay
+  // is open — those surfaces sit visually on top of the canvas, so an
+  // "invisible" hotkey (Delete, Ctrl+A, tool switches, ...) would silently
+  // mutate content the user can't see. This is defense-in-depth: Canvas.tsx's
+  // keydown handler already checks live store state before calling
+  // dispatchHotkey at all; this second gate protects any future caller that
+  // forgets to (and keeps this behavior directly unit-testable here).
+  if (ctx.activeModal != null || ctx.showSearch) {
+    return { handled: false };
+  }
+
   // Input-safe guard
   const tag = (e.target as HTMLElement)?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {

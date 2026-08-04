@@ -275,7 +275,11 @@ export function importFromContentPack(
   // 1. Import each domain (destructure fidelity from each converter)
   const { zones, fidelity: zoneFidelity } = importZones(pack.zones);
   const { districts, fidelity: districtFidelity } = importDistricts(pack.districts);
-  const { placements: entityPlacements, warnings: entityWarnings, fidelity: entityFidelity } = importEntities(pack.entities, zones.map((z) => z.id));
+  // F-5a257bc8 (swarm wave-2, headline fix): pack.placements is threaded
+  // through so importEntities can restore each entity's REAL authored zoneId
+  // (and spawnCondition) instead of always falling back to round-robin. See
+  // importEntities's own doc comment for the per-entity fallback rule.
+  const { placements: entityPlacements, warnings: entityWarnings, fidelity: entityFidelity } = importEntities(pack.entities, zones.map((z) => z.id), pack.placements);
   const { placements: itemPlacements, warnings: itemWarnings, fidelity: itemFidelity } = importItems(pack.items, zones.map((z) => z.id));
   const { dialogues, fidelity: dialogueFidelity } = importDialogues(pack.dialogues ?? []);
   const { template: playerTemplate, fidelity: playerFidelity } = importPlayerTemplate(pack.playerTemplate);
@@ -431,7 +435,22 @@ export function importFromContentPack(
   // 10. Derive backwards-compatible warnings from fidelity + entity/item warnings
   const warnings: string[] = [...entityWarnings, ...itemWarnings];
   if (zones.length > 0) warnings.push('Zone grid positions auto-generated (original layout unknown)');
-  if (pack.entities.length > 0) warnings.push('Entity zone placements reconstructed (original zones unknown)');
+  // F-5a257bc8 (swarm wave-2): this warning used to fire unconditionally
+  // whenever the pack had entities, claiming "original zones unknown" even
+  // when pack.placements held the real answer for every one of them. Now it
+  // only fires for the entities that ACTUALLY fell back to round-robin —
+  // counted from entityFidelity rather than re-deriving the same per-entity
+  // logic importEntities already did.
+  const roundRobinFallbackCount = entityFidelity.filter(
+    (f) => f.domain === 'entities' && f.reason === 'zone-placement-round-robin',
+  ).length;
+  if (roundRobinFallbackCount > 0) {
+    warnings.push(
+      roundRobinFallbackCount === pack.entities.length
+        ? 'Entity zone placements reconstructed (original zones unknown) — this pack has no placements[] data.'
+        : `Entity zone placements reconstructed for ${roundRobinFallbackCount} of ${pack.entities.length} entities (original zone unknown for these; the rest were restored from the pack's placements[] data).`,
+    );
+  }
   if (pack.items.length > 0) warnings.push('Item zone placements reconstructed (original zones unknown)');
   warnings.push('Visual layers not imported (tilesets, props, ambient)');
 

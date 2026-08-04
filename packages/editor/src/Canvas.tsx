@@ -3,6 +3,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useProjectStore } from './store/project-store.js';
 import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel } from './store/editor-store.js';
+import { useModalStore } from './store/modal-store.js';
 import { getConnectionEndpoints, findConnectionAt, getKindStyle, connectionMidpoint } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
@@ -16,6 +17,14 @@ import { fallbackTileColor } from './tile-render.js';
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
+
+/**
+ * F-4ca2d7c3: shape shared by React.MouseEvent and the native MouseEvent a
+ * window-level listener receives — lets the mouse-coordinate helpers and
+ * handleMouseUp accept either, so a gesture release outside the canvas
+ * (caught by a window `mouseup` listener) can still be committed/cleared.
+ */
+type MouseLike = { clientX: number; clientY: number; shiftKey: boolean };
 
 /** FT-021: When selection exceeds this count, use simplified outline-only rendering */
 export const LARGE_SELECTION_THRESHOLD = 50;
@@ -894,6 +903,13 @@ export function Canvas() {
   hotkeyCtxRef.current = {
     selection, selectedConnection, project,
     showEntities, showLandmarks, showSpawns,
+    // F-340b4aff: defense-in-depth — dispatchHotkey itself refuses to act
+    // while a modal/search overlay is open. The primary guard (below, in
+    // onKeyDown) reads live store state at event time so it can never be
+    // stale; this ref-snapshotted copy only needs to protect a caller that
+    // skips that primary guard.
+    activeModal: useModalStore.getState().activeModal,
+    showSearch: useEditorStore.getState().showSearch,
     clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
     duplicateSelected, setShowSearch, setRightTab, setTool,
     showSpeedPanel, closeSpeedPanel,
@@ -916,6 +932,18 @@ export function Canvas() {
       // FT-005: Escape closes context menu
       if (e.key === 'Escape' && contextMenuRef.current) {
         setContextMenu(null);
+        return;
+      }
+
+      // F-340b4aff: modal/overlay-aware guard. While ANY modal (Export/
+      // Import/Template Manager/Save Template/Save Kit) or the search
+      // overlay is open, that surface sits visually on top of the canvas —
+      // return early WITHOUT calling dispatchHotkey so Delete/Backspace,
+      // Ctrl+A, Ctrl+D, arrow-key nudges, and the V/Z/C/E/L/S/T/O tool
+      // shortcuts can never mutate the canvas underneath it. Read live store
+      // state here (not the per-render ctx ref below) so this is correct
+      // even if Canvas hasn't re-rendered since the modal opened.
+      if (useModalStore.getState().activeModal != null || useEditorStore.getState().showSearch) {
         return;
       }
 
@@ -946,13 +974,13 @@ export function Canvas() {
   }, []);
 
   // --- Mouse coordinate helpers ---
-  const getScreenXY = (e: React.MouseEvent) => {
+  const getScreenXY = (e: MouseLike) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return { sx: 0, sy: 0 };
     return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
   };
 
-  const gridPos = (e: React.MouseEvent) => {
+  const gridPos = (e: MouseLike) => {
     const { sx, sy } = getScreenXY(e);
     return screenToGrid(sx, sy);
   };
@@ -1152,7 +1180,7 @@ export function Canvas() {
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = (e: MouseLike) => {
     // Commit an in-progress tile brush stroke as a single undo step.
     if (tilePaint.current) {
       const stroke = tilePaint.current;
@@ -1284,6 +1312,34 @@ export function Canvas() {
       zonePaintStart.current = null;
     }
   };
+
+  // F-4ca2d7c3: handleMouseUp is wired as React's onMouseUp on the <canvas>
+  // element, but a native mouseup fires on whatever element is under the
+  // cursor AT RELEASE TIME, not wherever the drag started. The canvas is
+  // flanked by the tool palette and properties panel, so starting a drag/
+  // resize/box-select/pan/tile-paint gesture on the canvas, moving off it,
+  // and releasing there means the canvas's own onMouseUp never runs — the
+  // gesture ref (dragMove.current, etc.) is left "stuck active" and the next
+  // mousemove over the canvas (even with no button held) is misread as a
+  // continuation of the stale gesture.
+  //
+  // A window-level `mouseup` listener closes that gap. It is safe for it to
+  // ALSO fire when the release happened ON the canvas (the common case): DOM
+  // bubble order guarantees React's synthetic onMouseUp (delegated at the
+  // React root, which sits between the canvas and `window`) runs FIRST, and
+  // every branch of handleMouseUp reads-then-nulls its own ref before
+  // acting — so this second call sees only already-cleared refs and is a
+  // pure no-op. Registered once (empty deps) via a ref, same pattern as the
+  // keydown effect above, so handleMouseUp's latest closure (current
+  // selection/viewport/project) is always used without re-binding the
+  // listener every render.
+  const handleMouseUpRef = useRef(handleMouseUp);
+  handleMouseUpRef.current = handleMouseUp;
+  useEffect(() => {
+    const onWindowMouseUp = (e: MouseEvent) => handleMouseUpRef.current(e);
+    window.addEventListener('mouseup', onWindowMouseUp);
+    return () => window.removeEventListener('mouseup', onWindowMouseUp);
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isPanning.current && panStart.current) {

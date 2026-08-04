@@ -124,3 +124,50 @@ export function gridToUnrealAxis(
     Z: elevationToZ(elevationMeters),
   };
 }
+
+/**
+ * Convert an Unreal Z coordinate (cm) back to elevation in metres. The exact
+ * inverse of `elevationToZ`, kept next to it so the pair can never drift
+ * independently — see the round-trip tests in coordinate-transform.test.ts.
+ */
+export function zToElevationMeters(z: number): number {
+  return z / 100;
+}
+
+/** Grid tile coordinates recovered from an Unreal X/Y pair. Always integers. */
+export interface UnrealToGridResult {
+  gridX: number;
+  gridY: number;
+}
+
+/**
+ * Convert an Unreal X/Y pair (cm) back to WorldForge grid tile coordinates.
+ * The exact inverse of `gridToUnrealAxis`'s X/Y half (elevation/Z inverts
+ * separately via `zToElevationMeters` — grid coordinates are always whole
+ * tiles, so this snaps to the nearest tile with `Math.round`; a location that
+ * didn't originate on a tile boundary will not round-trip exactly).
+ *
+ * F-0a3cfe3e: this used to be reimplemented inline, twice, inside import.ts
+ * (`zoneFromUnreal` and `entityFromUnreal`) — the same `Math.round(x / s)` /
+ * `Math.round(-y / s)` pair typed out by hand in two places with no shared
+ * test coverage tying them back to the forward transform. Promoting it to a
+ * named, exported, round-trip-tested function here is what "make the
+ * transform's invariants explicit" means in practice: one axis-flip
+ * implementation, not three (forward + two hand-copied inverses).
+ *
+ * @param tileSizeCm Must match the tileSizeCm used for the original forward
+ *   transform, or the round trip will not recover the original coordinates.
+ */
+export function unrealAxisToGrid(
+  xCm: number,
+  yCm: number,
+  tileSizeCm: number = DEFAULT_TILE_SIZE_CM,
+): UnrealToGridResult {
+  if (!Number.isFinite(tileSizeCm) || tileSizeCm <= 0) {
+    throw new RangeError(`unrealAxisToGrid: tileSizeCm must be a positive finite number (got ${tileSizeCm})`);
+  }
+  return {
+    gridX: Math.round(xCm / tileSizeCm),
+    gridY: Math.round(-yCm / tileSizeCm),
+  };
+}

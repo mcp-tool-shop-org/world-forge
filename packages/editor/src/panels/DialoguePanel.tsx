@@ -202,7 +202,11 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
       <div style={{ ...sectionTitle, marginTop: 10 }}>Choices</div>
       {(node.choices ?? []).length === 0 && <div style={hintStyle}>No choices. Add one, or set auto-advance above.</div>}
       {(node.choices ?? []).map((choice, i) => (
-        <div key={i} style={{ padding: 6, background: '#0d1117', borderRadius: 3, marginBottom: 4, border: '1px solid #21262d' }}>
+        // F-004: was key={i} — DialogueChoice.id is a stable identifier (set
+        // when a choice is added, see "+ choice" below) that avoids the same
+        // reorder-corruption risk fixed in ZoneProperties.tsx's parallax
+        // layer list, for a much more commonly multi-item list.
+        <div key={choice.id} style={{ padding: 6, background: '#0d1117', borderRadius: 3, marginBottom: 4, border: '1px solid #21262d' }}>
           <input style={{ ...inputStyle, marginTop: 0 }} value={choice.text} placeholder="Choice text"
             onChange={(e) => {
               const choices = (node.choices ?? []).map((c, idx) => idx === i ? { ...c, text: e.target.value } : c);

@@ -154,14 +154,23 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     expect(authored.has('elite')).toBe(false);
   });
 
-  it('item slot: a legal authored `consumable` is silently narrowed to `trinket`', () => {
+  it('item slot: a legal authored `consumable` narrows to `trinket` (no engine-side target) but is now REPORTED, not silent', () => {
+    // ⚠ FLIPPED BY swarm wave-2 (F-1c1a6e56, the pinned-test rule). C0 pinned
+    // the SILENCE as expected output: no warning, `result.fidelity.entries`
+    // required to be exactly empty. The value still narrows to 'trinket' —
+    // the engine's EquipmentSlot set genuinely has no consumable-equivalent
+    // slot (confirmed against @ai-rpg-engine/equipment's published type) — but
+    // convertItems now has the same warnings/fidelity reporting channel every
+    // sibling converter already had, so the loss is no longer invisible.
     const ration = project.itemPlacements.find((i) => i.itemId === 'item-tide-ration')!;
     expect(ration.slot).toBe('consumable');
     const exported = pack.items.find((i) => i.id === 'item-tide-ration')!;
     expect(exported.slot).toBe('trinket');
-    // Silently: no warning, and no fidelity entry.
-    expect(result.warnings.join('\n')).not.toContain('consumable');
-    expect(result.fidelity.entries).toEqual([]);
+    expect(result.warnings.join('\n')).toContain('consumable');
+    const entry = result.fidelity.entries.find((f) => f.reason === 'item-slot-no-engine-target');
+    expect(entry).toBeDefined();
+    expect(entry!.level).toBe('approximated');
+    expect(entry!.entityId).toBe('item-tide-ration');
   });
 
   it('item container survives ONLY when description is unset', () => {
@@ -255,25 +264,33 @@ describe('C0/P1 — the negative control (proven to fail once, in this commit)',
 });
 
 describe('C0/P1 — the exporter self-report, recorded', () => {
-  it('CLOSED BY C1/P2: reports UNMEASURED rather than 100% on zero observations', () => {
-    // ⚠ FLIPPED BY C1/P2. C0 asserted `losslessPercent: 100` and `dropped: 0` on
-    // an export that drops 194 of 377 authored fields — a green number computed
-    // from zero observations. `summarizeFidelity` returned 100 for an EMPTY
-    // entry list, and only one converter is wired to the export-side collector,
-    // so on this path the list is essentially always empty.
+  it('CLOSED BY C1/P2: the null-vs-100%-on-empty lie stays fixed (unit-tested directly in fidelity.test.ts)', () => {
+    // ⚠ FLIPPED BY C1/P2, then UPDATED by swarm wave-2. C0 asserted
+    // `losslessPercent: 100` and `dropped: 0` on an export that drops 194 of
+    // 377 authored fields — a green number computed from zero observations.
+    // C1/P2's fix: the honest value for "no observations" is null, with
+    // `observed: false` saying why — never a false 100%. That behavior is
+    // unconditionally true of `summarizeFidelity([])` and is unit-tested
+    // directly (fidelity.test.ts: 'summarize empty → UNMEASURED, not 100%').
     //
-    // The honest value for "no observations" is not 100 and not 0 — it is null,
-    // with `observed: false` saying why. That is the SMALLEST fix that stops the
-    // lie. Wiring all eight converters to the collector is the real repair and is
-    // deliberately NOT done here (the brief's ANDON on this item): it is a C3-
-    // sized pass, and the remaining work is recorded rather than quietly widened.
-    expect(result.fidelity.summary.observed).toBe(false);
-    expect(result.fidelity.summary.losslessPercent).toBeNull();
-    expect(result.fidelity.summary.total).toBe(0);
+    // This fixture specifically is no longer a zero-observation case: swarm
+    // wave-2 (F-1c1a6e56) wired convertItems into the export-side fidelity
+    // collector — a SECOND converter beside whichever one was "the one"
+    // C1/P2 described — and this fixture authors an item with slot:
+    // 'consumable', which convertItems now reports losing (see the item-slot
+    // test above). So the assertion here shifts from "this fixture measures
+    // zero" to "this fixture measures a REAL, non-lying, non-100% number".
+    expect(result.fidelity.summary.observed).toBe(true);
+    expect(result.fidelity.summary.total).toBeGreaterThan(0);
+    expect(result.fidelity.summary.losslessPercent).not.toBeNull();
+    expect(result.fidelity.summary.losslessPercent).toBeLessThan(100);
 
-    // The finding underneath is UNCHANGED and still measured: the export really
-    // does drop most of the authored vocabulary. What changed is that the
-    // instrument no longer claims otherwise.
+    // The finding underneath is UNCHANGED and still measured: the export
+    // still drops most of the authored vocabulary — wiring one more
+    // converter's SLOT/RARITY fallback into the collector does not touch the
+    // hundreds of still-no-channel fields. Wiring every remaining converter
+    // is still NOT done here (still a C3-sized pass); the remaining gap is
+    // recorded rather than quietly widened.
     const noChannel = expandTable(project).filter((r) => r.class === 'no-channel').length;
     expect(noChannel).toBeGreaterThan(100);
   });

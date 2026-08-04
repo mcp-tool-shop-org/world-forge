@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { executeAction, executeMacro, type ExecuteStores } from '../speed-panel-execute.js';
 import type { HitResult } from '../hit-testing.js';
 import type { WorldProject } from '@world-forge/schema';
+import { createEmptyProject } from '../store/project-store.js';
 
 function makeStores(overrides: Partial<ExecuteStores> = {}): ExecuteStores {
   return {
@@ -110,6 +111,82 @@ describe('executeAction', () => {
     const result = executeAction('swap-direction', ctx, stores);
     expect(result.executed).toBe(false);
     expect(stores.removeConnection).not.toHaveBeenCalled();
+  });
+});
+
+// F-bdf856bf: 3 of the 7 registered-but-unwired Speed Panel actions have
+// real backing implementations that just needed a case in executeAction's
+// switch. These tests assert the actions actually EXECUTE (call through to
+// their backing implementation) — not just that they're registered, which
+// is exactly the gap the finding calls out: the previous test coverage only
+// ever asserted registry presence / contextFilter matches, never execution,
+// so a case that silently fell through to `default: { executed: false }`
+// was indistinguishable from one that worked.
+describe('executeAction — previously-unwired actions (F-bdf856bf)', () => {
+  it('open-review switches to the review tab and executes', () => {
+    const stores = makeStores();
+    const result = executeAction('open-review', null, stores);
+    expect(result.executed).toBe(true);
+    expect(stores.setRightTab).toHaveBeenCalledWith('review');
+  });
+
+  it('merge-zones returns false (fails closed, not silently) when the caller has not wired mergeZones/selection yet', () => {
+    // ExecuteStores.mergeZones/selection are optional because the current
+    // SpeedPanel.tsx caller does not thread them through — see this wave's
+    // output notes. Until it does, this must be an honest { executed: false },
+    // never a silent success and never a throw.
+    const stores = makeStores();
+    const ctx: HitResult = { type: 'zone', id: 'z1' };
+    const result = executeAction('merge-zones', ctx, stores);
+    expect(result.executed).toBe(false);
+  });
+
+  it('merge-zones calls stores.mergeZones with the full multi-zone selection and executes', () => {
+    const mergeZones = vi.fn(() => 'zone-merged-1');
+    const stores = makeStores({
+      mergeZones,
+      selection: { zones: ['z1', 'z2', 'z3'], entities: [], landmarks: [], spawns: [], encounters: [] },
+    });
+    const ctx: HitResult = { type: 'zone', id: 'z1' };
+    const result = executeAction('merge-zones', ctx, stores);
+    expect(result.executed).toBe(true);
+    expect(mergeZones).toHaveBeenCalledWith(['z1', 'z2', 'z3']);
+  });
+
+  it('merge-zones returns false and does not call mergeZones when fewer than 2 zones are selected', () => {
+    const mergeZones = vi.fn(() => 'zone-merged-1');
+    const stores = makeStores({
+      mergeZones,
+      selection: { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] },
+    });
+    const ctx: HitResult = { type: 'zone', id: 'z1' };
+    const result = executeAction('merge-zones', ctx, stores);
+    expect(result.executed).toBe(false);
+    expect(mergeZones).not.toHaveBeenCalled();
+  });
+
+  it('merge-zones returns false when mergeZones itself reports failure (e.g. fewer than 2 real zones found)', () => {
+    const mergeZones = vi.fn(() => null);
+    const stores = makeStores({
+      mergeZones,
+      selection: { zones: ['z1', 'z2'], entities: [], landmarks: [], spawns: [], encounters: [] },
+    });
+    const result = executeAction('merge-zones', { type: 'zone', id: 'z1' }, stores);
+    expect(result.executed).toBe(false);
+  });
+
+  it('export-summary downloads a Markdown summary built from stores.project and executes', () => {
+    const downloadFile = vi.fn();
+    const project = { ...createEmptyProject(), name: 'My World' };
+    const stores = makeStores({ downloadFile, project });
+    const result = executeAction('export-summary', null, stores);
+    expect(result.executed).toBe(true);
+    expect(downloadFile).toHaveBeenCalledTimes(1);
+    const [filename, content, mimeType] = downloadFile.mock.calls[0];
+    expect(filename).toBe('my-world-review.md');
+    expect(typeof content).toBe('string');
+    expect(content).toContain('My World');
+    expect(mimeType).toBe('text/markdown');
   });
 });
 

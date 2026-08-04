@@ -81,17 +81,18 @@ test.describe('Editor browser smoke', () => {
 
     await page.locator('button', { hasText: 'Export' }).first().click();
 
-    // Chapel Threshold has zones with connections + entities → advisories should appear
-    // The advisories section header text
+    // Chapel Threshold's fixture (dogfood/output/chapel-project.json) has zero
+    // zones with `elevation`/`elevationRange` and zero zones with
+    // `parallaxLayers` — both trip an advisory in ExportModal's `advisories`
+    // useMemo (packages/editor/src/panels/ExportModal.tsx), so this fixture
+    // is guaranteed to render the Advisories section. Assert it unconditionally:
+    // a `.catch(() => false)` soft-check here (as this test previously had)
+    // means a fully broken advisory renderer would still pass, because the
+    // conditional body simply never runs. See F-002.
     const advisories = page.locator('text=Advisories');
-    // If the project triggers advisories they'll be visible; if not, at minimum
-    // the export buttons are still there (covered by previous test).
-    // Use a soft check — the advisory section is conditional on project content.
-    const hasAdvisories = await advisories.isVisible().catch(() => false);
-    if (hasAdvisories) {
-      await expect(advisories).toBeVisible();
-    }
-    // Either way, Export JSON should remain visible (modal didn't crash)
+    await expect(advisories).toBeVisible({ timeout: 3000 });
+
+    // Modal still renders correctly alongside the advisories section.
     await expect(page.locator('button', { hasText: 'Export JSON' })).toBeVisible();
   });
 });

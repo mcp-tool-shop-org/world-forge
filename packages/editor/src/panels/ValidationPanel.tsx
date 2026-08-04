@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
-import { classifyError, buildsSubTabFor, isRefError, type Domain } from './validation-helpers.js';
+import { classifyError, navigationForError, isRefError, type Domain } from './validation-helpers.js';
 import { scanDependencies } from '@world-forge/schema';
 import { PanelHeader } from './shared.js';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
@@ -20,11 +20,13 @@ const domainLabels: Record<Domain, string> = {
   assets: 'Assets',
   packs: 'Asset Packs',
   deps: 'Dependencies',
+  strata: 'Strata',
+  hazards: 'Hazards',
 };
 
 // EUB-006: domainOrder must stay exhaustive — when adding a new Domain variant to
 // validation-helpers.ts, add a corresponding entry here and in domainLabels above.
-const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'deps'];
+const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'strata', 'hazards', 'deps'];
 
 export function ValidationPanel() {
   const { project } = useProjectStore();
@@ -42,6 +44,7 @@ export function ValidationPanel() {
     const map: Record<Domain, ValidationError[]> = {
       world: [], entities: [], items: [], dialogue: [],
       player: [], builds: [], progression: [], assets: [], packs: [], deps: [],
+      strata: [], hazards: [],
     };
     for (const err of result.errors) {
       map[classifyError(err)].push(err);
@@ -49,72 +52,15 @@ export function ValidationPanel() {
     return map;
   }, [result]);
 
+  // F-001: routing decisions now live in the single shared navigationForError
+  // helper (validation-helpers.ts) instead of being duplicated here.
   const handleClick = (err: ValidationError) => {
-    const p = err.path;
-    const focus = { domain: classifyError(err), subPath: p, timestamp: Date.now() };
-
-    // Zone — select it and switch to map
-    const zoneMatch = p.match(/^zones\.([^.]+)/);
-    if (zoneMatch) {
-      setSelectedZone(zoneMatch[1]);
-      setRightTab('map');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Entity/item/spawn/connection — map tab
-    if (p.startsWith('entityPlacements') || p.startsWith('itemPlacements') ||
-        p.startsWith('spawnPoints') || p.startsWith('connections') || p.startsWith('landmarks')) {
-      setRightTab('map');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Player template
-    if (p.startsWith('playerTemplate')) {
-      setRightTab('player');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Build catalog — also set sub-tab
-    if (p.startsWith('buildCatalog')) {
-      setRightTab('builds');
-      setBuildsSubTab(buildsSubTabFor(p));
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Progression trees
-    if (p.startsWith('progressionTrees')) {
-      setRightTab('trees');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Dialogue
-    if (p.startsWith('dialogues')) {
-      setRightTab('dialogue');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Asset packs
-    if (p.startsWith('assetPacks')) {
-      setRightTab('assets');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Assets
-    if (p.startsWith('assets')) {
-      setRightTab('assets');
-      setFocusTarget(focus);
-      return;
-    }
-
-    // Fallback: world domain
-    setRightTab('map');
+    const focus = { domain: classifyError(err), subPath: err.path, timestamp: Date.now() };
+    const nav = navigationForError(err);
+    if (nav.selectZoneId) setSelectedZone(nav.selectZoneId);
+    else if (nav.clearZone) setSelectedZone(null);
+    setRightTab(nav.tab);
+    if (nav.buildsSubTab) setBuildsSubTab(nav.buildsSubTab);
     setFocusTarget(focus);
   };
 

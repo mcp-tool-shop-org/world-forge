@@ -404,6 +404,47 @@ describe('validateProject', () => {
     expect(result.errors.some((e) => e.message.includes('no root nodes'))).toBe(true);
   });
 
+  // F-003: the old check only verified `roots.length > 0` — it never actually
+  // walked the requires graph, so a real root elsewhere in the tree masked a
+  // fully disconnected requires-cycle island.
+  it('rejects a disconnected requires-cycle even when a real root exists elsewhere in the tree', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      progressionTrees: [{
+        id: 'tree-island', name: 'Island Tree', currency: 'xp',
+        nodes: [
+          { id: 'root', name: 'Root', cost: 5, effects: [] },
+          { id: 'x', name: 'X', cost: 5, requires: ['y'], effects: [] },
+          { id: 'y', name: 'Y', cost: 5, requires: ['x'], effects: [] },
+        ],
+      }],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) =>
+      e.path.includes('tree-island') && e.message.toLowerCase().includes('unreachable'),
+    )).toBe(true);
+    // A root DOES exist, so the older "no root nodes" message must not fire —
+    // this is a distinct failure mode from the zero-root case above.
+    expect(result.errors.some((e) => e.message.includes('no root nodes'))).toBe(false);
+  });
+
+  it('accepts a tree where every node transitively resolves back to a root (control)', () => {
+    const good: WorldProject = {
+      ...minimalProject,
+      progressionTrees: [{
+        id: 'tree-good', name: 'Good Tree', currency: 'xp',
+        nodes: [
+          { id: 'root', name: 'Root', cost: 5, effects: [] },
+          { id: 'child', name: 'Child', cost: 5, requires: ['root'], effects: [] },
+          { id: 'grandchild', name: 'Grandchild', cost: 5, requires: ['child'], effects: [] },
+        ],
+      }],
+    };
+    const result = validateProject(good);
+    expect(result.errors.filter((e) => e.path.includes('tree-good'))).toEqual([]);
+  });
+
   // --- Asset validation ---
 
   it('accepts project with valid assets', () => {

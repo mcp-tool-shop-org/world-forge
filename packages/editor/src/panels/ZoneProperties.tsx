@@ -368,7 +368,14 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
             const assetValid = layer.assetRef === '' || parallaxChoices.some((a) => a.id === layer.assetRef);
             return (
               <div
-                key={idx}
+                // F-004: was key={idx}, which reuses the wrong DOM/input
+                // identity across a reorder when a non-last layer is removed
+                // (handleRemoveLayer does a plain splice) — if the user has
+                // focus in a later layer's field when an earlier one is
+                // removed, focus silently swaps to a different layer's data.
+                // layer.id is the stable identifier already used one line
+                // below for rowRefs, so use it for React's key too.
+                key={layer.id}
                 ref={(el) => { rowRefs.current[layer.id] = el; }}
                 data-testid={`parallax-row-${idx}`}
                 style={{

@@ -235,6 +235,31 @@ describe('findAllInRect', () => {
     expect(result.landmarks).toContain('altar-of-passage');
     expect(result.spawns).toContain('chapel-spawn');
   });
+
+  it('rect matches an entity by its EXPLICIT position, not the zone+2 fallback offset applied on top of it (F-1af6c905)', () => {
+    // brother-aldric normally has no gridX/gridY (the fallback case, already
+    // covered above). Give it an EXPLICIT position so the two candidate
+    // parenthesizations of `ep.gridX ?? zone.gridX + 2` diverge:
+    //   correct: ep.gridX ?? (zone.gridX + 2)  -> explicit gridX=15 is used as-is -> world (480, 640)
+    //   buggy:  (ep.gridX ?? zone.gridX) + 2   -> (15) + 2 = 17                   -> world (544, 704)
+    // findHitAt / findAllHitsAt / Canvas.tsx's renderer all already use the
+    // correct form — this proves findAllInRect (box-select) matches them
+    // instead of checking 2 grid cells away from where the entity actually
+    // renders and click-hit-tests.
+    const withExplicit = structuredClone(SAMPLE_WORLDS[2].project);
+    const entity = withExplicit.entityPlacements.find((e: any) => e.entityId === 'brother-aldric');
+    if (!entity) throw new Error('Expected brother-aldric fixture entity');
+    entity.gridX = 15;
+    entity.gridY = 20;
+
+    const correctRect: ScreenRect = { x1: 470, y1: 630, x2: 490, y2: 650 }; // around the correct world (480, 640)
+    const correctResult = findAllInRect(correctRect, defaultVP, withExplicit, TILE, allVisible);
+    expect(correctResult.entities).toContain('brother-aldric');
+
+    const buggyRect: ScreenRect = { x1: 534, y1: 694, x2: 554, y2: 714 }; // around the old-buggy world (544, 704)
+    const buggyResult = findAllInRect(buggyRect, defaultVP, withExplicit, TILE, allVisible);
+    expect(buggyResult.entities).not.toContain('brother-aldric');
+  });
 });
 
 // ── Connection hit-testing ──────────────────────────────────────

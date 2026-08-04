@@ -226,9 +226,14 @@ export function findAllInRect(
     for (const ep of project.entityPlacements) {
       const zone = zoneMap.get(ep.zoneId);
       if (!zone) continue;
-      // ED-A-001: see findHitAt for rationale on the explicit parens.
-      const wx = ((ep.gridX ?? zone.gridX) + 2) * tileSize;
-      const wy = ((ep.gridY ?? zone.gridY) + 2) * tileSize;
+      // ED-A-001 / F-1af6c905: parenthesize the fallback so it matches
+      // findHitAt / findAllHitsAt / Canvas.tsx's renderer exactly — use the
+      // entity's explicit position as-is when it has one, and only add the
+      // +2 fallback offset when it doesn't. The previous `(ep.gridX ?? zone.gridX) + 2`
+      // added +2 even when gridX was explicitly set, checking 2 grid cells
+      // away from where the entity is actually rendered and click-hit-tested.
+      const wx = (ep.gridX ?? (zone.gridX + 2)) * tileSize;
+      const wy = (ep.gridY ?? (zone.gridY + 2)) * tileSize;
       const { screenX, screenY } = worldToScreen(wx, wy, viewport);
       if (inRect(screenX, screenY)) {
         entities.push(ep.entityId);

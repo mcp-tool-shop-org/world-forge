@@ -3,8 +3,11 @@
 import type { HitResult } from './hit-testing.js';
 import type { SpeedPanelMacro, MacroExecutionResult } from './speed-panel-actions.js';
 import type { WorldProject, ZoneConnection, Zone } from '@world-forge/schema';
+import { buildReviewSnapshot } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
-import type { RightTab, EditorTool } from './store/editor-store.js';
+import type { RightTab, EditorTool, SelectionSet } from './store/editor-store.js';
+import type { EnrichedReviewSnapshot } from './panels/ReviewPanel.js';
+import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
 import { frameBounds } from './viewport.js';
 
 /** Bag of store methods needed by execute — keeps the function testable */
@@ -33,9 +36,44 @@ export interface ExecuteStores {
   updateZone?: (zoneId: string, updates: Partial<Zone>) => void;
   /** ED-FT-005: optional prompt shim so tests can inject a deterministic value. */
   promptFn?: (message: string) => string | null;
+  /**
+   * F-bdf856bf: merge 2+ zones into one (mirrors project-store's mergeZones,
+   * FT-008). Optional because the current SpeedPanel.tsx caller does not
+   * thread it through yet — the merge-zones case below fails closed
+   * ({ executed: false }) rather than throwing or silently succeeding when
+   * it's absent. Wiring SpeedPanel.tsx to pass
+   * `useProjectStore.getState().mergeZones` here is a follow-up outside this
+   * wave's editor-core domain (SpeedPanel.tsx lives under panels/**).
+   */
+  mergeZones?: (zoneIds: string[]) => string | null;
+  /**
+   * F-bdf856bf: the app's current multi-select, needed by merge-zones to
+   * know WHICH zones to merge — a single right-click context is only ever
+   * one zone. Optional for the same reason as mergeZones above.
+   */
+  selection?: SelectionSet;
+  /**
+   * F-bdf856bf: file-download side effect for export-summary, overridable so
+   * tests can assert on it without a real DOM/Blob/URL. Defaults to a real
+   * browser download when the caller (SpeedPanel.tsx) doesn't override it —
+   * unlike mergeZones/selection above, export-summary needs nothing else
+   * from the caller and works end-to-end today.
+   */
+  downloadFile?: (filename: string, content: string, mimeType: string) => void;
 
   // Project data (read-only)
   project: WorldProject;
+}
+
+/** Real browser download — the default for `downloadFile` when a caller doesn't override it. */
+function browserDownload(filename: string, content: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function parseConnectionId(id: string): [string, string] | null {
@@ -172,6 +210,44 @@ export function executeAction(
         elevation = n;
       }
       stores.updateZone(context.id, { elevation });
+      return { executed: true };
+    }
+
+    case 'merge-zones': {
+      // F-bdf856bf: registered (FT-008) with a real backing implementation
+      // (project-store's mergeZones) but no case here — every click
+      // silently fell through to `default`. mergeZones/selection are
+      // optional on ExecuteStores until SpeedPanel.tsx threads them through
+      // (see the interface doc comment above); until then this fails closed
+      // instead of pretending to succeed.
+      if (!stores.mergeZones) return { executed: false };
+      const zoneIds = stores.selection?.zones ?? (context?.type === 'zone' ? [context.id] : []);
+      if (zoneIds.length < 2) return { executed: false };
+      const mergedId = stores.mergeZones(zoneIds);
+      if (!mergedId) return { executed: false };
+      return { executed: true };
+    }
+
+    case 'open-review':
+      // F-bdf856bf: registered as a global action with no case — clicking it
+      // silently did nothing. setRightTab is already required on
+      // ExecuteStores (every caller provides it), so this is a full fix with
+      // no caveats.
+      stores.setRightTab('review');
+      return { executed: true };
+
+    case 'export-summary': {
+      // F-bdf856bf: registered with a real backing implementation
+      // (review/export-summary's reviewSnapshotToMarkdown) but no case here.
+      // Builds the same Markdown a full Review-panel export produces, from
+      // stores.project alone — no editor-session provenance (kit name,
+      // import format) is available to a quick-action, so those optional
+      // fields are simply omitted from the snapshot rather than faked.
+      const snapshot: EnrichedReviewSnapshot = { ...buildReviewSnapshot(stores.project), hasExported: false };
+      const markdown = reviewSnapshotToMarkdown(snapshot);
+      const filename = summaryFilename(stores.project.name, 'md');
+      const download = stores.downloadFile ?? browserDownload;
+      download(filename, markdown, 'text/markdown');
       return { executed: true };
     }
 

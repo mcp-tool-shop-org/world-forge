@@ -26,6 +26,8 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     showEntities: true,
     showLandmarks: true,
     showSpawns: true,
+    activeModal: null,
+    showSearch: false,
     clearSelection: vi.fn(),
     selectAll: vi.fn(),
     moveSelected: vi.fn(),
@@ -111,6 +113,72 @@ describe('dispatchHotkey — input safety', () => {
     const ctx = makeCtx();
     const result = dispatchHotkey(e, ctx);
     expect(result.handled).toBe(false);
+  });
+});
+
+describe('dispatchHotkey — modal/overlay-aware guard (F-340b4aff)', () => {
+  it('does not delete the selection when a modal is open (Delete key)', () => {
+    const sel: SelectionSet = { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] };
+    const ctx = makeCtx({ selection: sel, activeModal: 'export' });
+    const e = makeEvent({ code: 'Delete' });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(ctx.removeSelected).not.toHaveBeenCalled();
+  });
+
+  it('does not select-all underneath an open modal (Ctrl+A)', () => {
+    const ctx = makeCtx({
+      activeModal: 'import',
+      project: { zones: [{ id: 'z1' }], entityPlacements: [], landmarks: [], spawnPoints: [], encounterAnchors: [] } as any,
+    });
+    const e = makeEvent({ code: 'KeyA', ctrlKey: true });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(ctx.selectAll).not.toHaveBeenCalled();
+  });
+
+  it('does not duplicate the selection underneath an open modal (Ctrl+D)', () => {
+    const sel: SelectionSet = { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] };
+    const ctx = makeCtx({ selection: sel, activeModal: 'template-manager' });
+    const e = makeEvent({ code: 'KeyD', ctrlKey: true });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(ctx.duplicateSelected).not.toHaveBeenCalled();
+  });
+
+  it('does not nudge the selection underneath an open modal (arrow keys)', () => {
+    const sel: SelectionSet = { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] };
+    const ctx = makeCtx({ selection: sel, activeModal: 'save-template' });
+    const e = makeEvent({ code: 'ArrowUp' });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(ctx.moveSelected).not.toHaveBeenCalled();
+  });
+
+  it('does not switch tools underneath an open modal (bare V/Z/C/E/L/S/T/O)', () => {
+    const ctx = makeCtx({ activeModal: 'save-kit' });
+    const e = makeEvent({ code: 'KeyV' });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(ctx.setTool).not.toHaveBeenCalled();
+  });
+
+  it('does not act while the search overlay is open, even with no modal active', () => {
+    const sel: SelectionSet = { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] };
+    const ctx = makeCtx({ selection: sel, activeModal: null, showSearch: true });
+    const e = makeEvent({ code: 'Delete' });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(ctx.removeSelected).not.toHaveBeenCalled();
+  });
+
+  it('acts normally once the modal is closed (activeModal: null)', () => {
+    const sel: SelectionSet = { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] };
+    const ctx = makeCtx({ selection: sel, activeModal: null, showSearch: false });
+    const e = makeEvent({ code: 'Delete' });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(true);
+    expect(ctx.removeSelected).toHaveBeenCalled();
   });
 });
 

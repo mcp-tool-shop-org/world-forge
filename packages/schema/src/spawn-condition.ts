@@ -73,6 +73,10 @@ export function parseSpawnCondition(s: string | undefined): SpawnConditionNode |
 
   if (trimmed.startsWith('random:')) {
     const raw = trimmed.slice('random:'.length);
+    // F-005: Number('') === 0 and Number('   ') === 0 in JS — without this
+    // guard an empty or whitespace-only operand silently parsed as p=0
+    // instead of being rejected as malformed.
+    if (raw.trim().length === 0) return null;
     const p = Number(raw);
     if (!Number.isFinite(p) || p < 0 || p > 1) return null;
     return { type: 'random-probability', params: { p } };
@@ -105,6 +109,9 @@ export function parseSpawnCondition(s: string | undefined): SpawnConditionNode |
     const cmp = rest.slice(colon + 1);
     const split = splitComparator(cmp);
     if (!split) return null;
+    // F-005: reject an empty/whitespace-only remainder before Number() coerces
+    // it to 0 (e.g. "faction:foo:>" has split.rest === "").
+    if (split.rest.trim().length === 0) return null;
     const value = Number(split.rest);
     if (!Number.isFinite(value)) return null;
     if (!COMPARATORS.has(split.op)) return null;
@@ -115,6 +122,7 @@ export function parseSpawnCondition(s: string | undefined): SpawnConditionNode |
     const cmp = trimmed.slice('level:'.length);
     const split = splitComparator(cmp);
     if (!split) return null;
+    if (split.rest.trim().length === 0) return null;
     const value = Number(split.rest);
     if (!Number.isFinite(value)) return null;
     if (!COMPARATORS.has(split.op)) return null;
@@ -126,6 +134,7 @@ export function parseSpawnCondition(s: string | undefined): SpawnConditionNode |
   if (trimmed.startsWith('party-level:')) {
     const split = splitComparator(trimmed.slice('party-level:'.length));
     if (!split) return null;
+    if (split.rest.trim().length === 0) return null;
     const value = Number(split.rest);
     if (!Number.isFinite(value)) return null;
     if (!COMPARATORS.has(split.op)) return null;
@@ -135,6 +144,7 @@ export function parseSpawnCondition(s: string | undefined): SpawnConditionNode |
   if (trimmed.startsWith('party-size:')) {
     const split = splitComparator(trimmed.slice('party-size:'.length));
     if (!split) return null;
+    if (split.rest.trim().length === 0) return null;
     const value = Number(split.rest);
     if (!Number.isFinite(value)) return null;
     if (!COMPARATORS.has(split.op)) return null;

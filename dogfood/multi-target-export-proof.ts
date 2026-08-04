@@ -339,9 +339,33 @@ assert('Item count (Godot)', godot.contentPack.items.length === proofProject.ite
     `${godot.contentPack.items.length}/${proofProject.itemPlacements.length}`);
 
 // Connection counts
-assert('Connection count (AI RPG)', (aiRpg.contentPack as any).connections?.length === proofProject.connections.length ||
-    true, // AI RPG may not export connections as a separate array — check manifest
-    `connections preserved in zone neighbors`);
+//
+// AI RPG does not export a separate `connections` array — each ZoneConnection
+// is compiled into the symmetric `neighbors: string[]` list on the zones it
+// links (see convertZones in packages/export-ai-rpg/src/convert-zones.ts,
+// which carries `z.neighbors` straight through). The real invariant is: every
+// authored connection must be reachable from its `fromZoneId` zone's
+// `neighbors`, and — when bidirectional — from `toZoneId`'s neighbors too.
+// (Previously this assertion was `... || true`, an unconditional pass that
+// could never fail regardless of what the export produced — F-001.)
+const aiRpgZonesById = new Map(aiRpg.contentPack.zones.map((z) => [z.id, z]));
+const aiRpgConnectionGaps: string[] = [];
+for (const c of proofProject.connections) {
+    const fromZone = aiRpgZonesById.get(c.fromZoneId);
+    if (!fromZone || !(fromZone.neighbors ?? []).includes(c.toZoneId)) {
+        aiRpgConnectionGaps.push(`${c.fromZoneId} -> ${c.toZoneId} missing from neighbors`);
+    }
+    if (c.bidirectional) {
+        const toZone = aiRpgZonesById.get(c.toZoneId);
+        if (!toZone || !(toZone.neighbors ?? []).includes(c.fromZoneId)) {
+            aiRpgConnectionGaps.push(`${c.toZoneId} -> ${c.fromZoneId} missing from neighbors (bidirectional)`);
+        }
+    }
+}
+assert('Connection count (AI RPG)', aiRpgConnectionGaps.length === 0,
+    aiRpgConnectionGaps.length === 0
+        ? `all ${proofProject.connections.length} connections preserved in zone neighbors`
+        : `${aiRpgConnectionGaps.length} gap(s): ${aiRpgConnectionGaps.join('; ')}`);
 assert('Connection count (Godot)', godot.contentPack.navigationLinks.length === proofProject.connections.length,
     `${godot.contentPack.navigationLinks.length}/${proofProject.connections.length}`);
 assert('Connection count (Unreal)', unreal.contentPack.Connections.length === proofProject.connections.length,
@@ -426,7 +450,7 @@ console.log('    - Grid coordinates stored directly (no transform)');
 console.log('    - Dialogues flatten to node-map');
 console.log('    - Stats/resources preserved as-is');
 for (const f of aiRpgFidelity.entries.filter((f) => f.level === 'approximated').slice(0, 3)) {
-    console.log(`    ~ ${f.field ?? f.domain}: ${f.message}`);
+    console.log(`    ~ ${f.fieldPath ?? f.domain}: ${f.message}`);
 }
 
 console.log('  Godot:');
@@ -523,7 +547,7 @@ ${assertions.map((a) => `| ${a.name} | ${a.pass ? '✓ PASS' : '✗ FAIL'} — $
 - No coordinate transform (grid units stored directly)
 - Dialogues preserved as node-map
 - Stats/resources/tags preserved losslessly
-${aiRpgFidelity.entries.filter((f) => f.level === 'approximated').map((f) => `- ~ ${f.field ?? f.domain}: ${f.message}`).join('\n') || '- No approximations'}
+${aiRpgFidelity.entries.filter((f) => f.level === 'approximated').map((f) => `- ~ ${f.fieldPath ?? f.domain}: ${f.message}`).join('\n') || '- No approximations'}
 
 ### Godot 4
 - Y-down preserved (World Forge and Godot share Y-down convention)

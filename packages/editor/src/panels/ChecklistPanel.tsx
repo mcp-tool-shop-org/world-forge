@@ -8,6 +8,7 @@ import { getModeProfile } from '../mode-profiles.js';
 import { useKitStore } from '../kits/index.js';
 import { scanDependencies } from '@world-forge/schema';
 import { buttonBase } from '../ui/styles.js';
+import { computeChecklistProgress } from './checklist-helpers.js';
 
 interface Step {
   id: string;
@@ -16,6 +17,9 @@ interface Step {
   isComplete: boolean;
   tab: RightTab;
   tool?: EditorTool;
+  /** See checklist-helpers.ts: excluded from the completed/total denominator
+   *  and the allDone gate. Used for steps with no backing completion state. */
+  advisory?: boolean;
 }
 
 export function ChecklistPanel() {
@@ -75,8 +79,14 @@ export function ChecklistPanel() {
       isComplete: hasExported, tab: 'issues',
     },
     {
+      // F-002: no hasReviewedProject-style store field exists to back a real
+      // completion signal for this step, so it's advisory — shown as a
+      // suggestion but excluded from the allDone gate (see checklist-helpers.ts).
+      // It must NOT be a hard gate on allDone: doing so made 100% completion
+      // permanently unreachable for every project, since nothing could ever
+      // flip isComplete to true.
       id: 'review', label: 'Review project', description: 'Check the review summary before sharing.',
-      isComplete: false, tab: 'review',
+      isComplete: false, tab: 'review', advisory: true,
     },
     // FT-029: Dependency check step (shown only when broken deps exist)
     ...(() => {
@@ -96,8 +106,8 @@ export function ChecklistPanel() {
   ];
   }, [project, hasExported, profile, activeKit]);
 
-  const completed = steps.filter((s) => s.isComplete).length;
-  const allDone = completed === steps.length;
+  // F-002: gate on non-advisory steps only — see checklist-helpers.ts.
+  const { completed, total, allDone } = computeChecklistProgress(steps);
 
   const handleClick = (step: Step) => {
     setRightTab(step.tab);
@@ -126,12 +136,12 @@ export function ChecklistPanel() {
       <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 12 }}>
         {allDone
           ? 'All steps complete! Your world is ready.'
-          : `${completed} of ${steps.length} steps complete`}
+          : `${completed} of ${total} steps complete`}
       </div>
 
       {/* Progress bar */}
       <div style={{ height: 4, background: 'var(--wf-bg-control)', borderRadius: 2, marginBottom: 12 }}>
-        <div style={{ height: 4, background: 'var(--wf-success)', borderRadius: 2, width: `${(completed / steps.length) * 100}%`, transition: 'width 0.3s' }} />
+        <div style={{ height: 4, background: 'var(--wf-success)', borderRadius: 2, width: `${total > 0 ? (completed / total) * 100 : 0}%`, transition: 'width 0.3s' }} />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

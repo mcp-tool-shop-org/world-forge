@@ -16,6 +16,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 /** A single baked tile cell — references an atlas source within the layer's TileSet. */
 export interface GodotTileCell {
@@ -65,10 +66,6 @@ export interface GodotTileLayer {
 export interface ConvertTileLayersResult {
     tileLayers: GodotTileLayer[];
     fidelity: FidelityEntry[];
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 /** Godot import convention for a tileset texture (peer to convert-assets' `res://assets/tilesets`). */
@@ -130,6 +127,26 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
                     sourceId,
                     atlasCoords: [],
                 });
+
+                // Honesty check (first time this layer references this tileset):
+                // scene-builder.ts's collectTileResources emits the TileSet's grid
+                // pitch (`tile_size`) from THIS layer's project-global tileSize, but
+                // this atlas source's own slice size (`texture_region_size`) from the
+                // tileset's own authored tileWidth/tileHeight — two independent,
+                // unreconciled fields. The scene still loads when they disagree, but
+                // the TileMapLayer's rendered art will not align to the grid it is
+                // placed on. Nothing upstream cross-checks the two, so say so here.
+                if (ts.tileWidth !== tileSize || ts.tileHeight !== tileSize) {
+                    fidelity.push({
+                        level: 'approximated',
+                        domain: 'tiles',
+                        severity: 'warning',
+                        entityId: layer.id,
+                        fieldPath: `tileLayers.${layer.id}.tileSize`,
+                        message: `Layer "${layer.id}" uses tileset "${def.tilesetId}" (${ts.tileWidth}x${ts.tileHeight}px tiles), which does not match the project's grid tile size (${tileSize}px) — the emitted TileSet's tile_size and this atlas source's texture_region_size will disagree, and the rendered art will not align to the grid it is placed on.`,
+                        reason: 'TileSet.tile_size is sourced from the project-global map.tileSize while each TileSetAtlasSource.texture_region_size is sourced from the tileset\'s own tileWidth/tileHeight; nothing reconciles the two.',
+                    });
+                }
             }
             const source = atlasSources[sourceId];
             if (!source.atlasCoords.some((c) => c.atlasX === def.atlasX && c.atlasY === def.atlasY)) {

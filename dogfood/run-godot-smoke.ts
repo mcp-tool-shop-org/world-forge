@@ -24,6 +24,7 @@ import { execSync } from 'node:child_process';
 
 import { exportToGodot } from '../packages/export-godot/src/index.js';
 import { proofProject } from './worlds/multi-target-proof.js';
+import { parseSmokeOutput, findResourceWarnings, computeOverallPass, deriveSmokeVerdict } from './godot-smoke-verdict.js';
 
 // ── Path resolution ──────────────────────────────────────────
 const __dirname = typeof import.meta.dirname === 'string'
@@ -34,33 +35,59 @@ const smokeDir = resolve(__dirname, 'godot-smoke');
 const outDir = resolve(__dirname, 'output', 'godot-smoke');
 
 // ── Godot binary resolution ──────────────────────────────────
+//
+// `where` (step 3/4 below) is a Windows-only shell command (cmd.exe /
+// System32) — it does not exist on Linux or macOS. On any POSIX box, both
+// `execSync('where ...')` calls throw immediately and get silently swallowed
+// by the surrounding catch, so PATH-lookup was previously dead code on every
+// non-Windows machine (F-003 / F-7c6f2616). `which` is the POSIX equivalent,
+// so the lookup command itself is now chosen per-platform. The hardcoded
+// candidate list (step 2) was Windows-only too — it now branches per-platform
+// and covers common Linux/macOS install locations as well, so PATH-lookup
+// isn't the ONLY cross-platform path left uncovered by a fixed candidate.
+const isWindows = process.platform === 'win32';
+const PATH_LOOKUP_CMD = isWindows ? 'where' : 'which';
+
 function findGodot(): string | null {
     // 1. Environment variable (highest priority)
     if (process.env.GODOT_BIN && existsSync(process.env.GODOT_BIN)) {
         return process.env.GODOT_BIN;
     }
 
-    // 2. Common Windows paths
-    const candidates = [
-        'C:\\Program Files\\Godot\\Godot_v4.4-stable_win64.exe',
-        'C:\\Program Files\\Godot\\godot.exe',
-        'C:\\Godot\\godot.exe',
-        resolve(process.env.LOCALAPPDATA ?? '', 'Programs', 'Godot', 'godot.exe'),
-        resolve(process.env.USERPROFILE ?? '', 'scoop', 'apps', 'godot', 'current', 'godot.exe'),
-    ];
+    // 2. Common install paths, per platform
+    const candidates = isWindows
+        ? [
+            'C:\\Program Files\\Godot\\Godot_v4.4-stable_win64.exe',
+            'C:\\Program Files\\Godot\\godot.exe',
+            'C:\\Godot\\godot.exe',
+            resolve(process.env.LOCALAPPDATA ?? '', 'Programs', 'Godot', 'godot.exe'),
+            resolve(process.env.USERPROFILE ?? '', 'scoop', 'apps', 'godot', 'current', 'godot.exe'),
+        ]
+        : [
+            '/usr/local/bin/godot4',
+            '/usr/local/bin/godot',
+            '/usr/bin/godot4',
+            '/usr/bin/godot',
+            '/snap/bin/godot4',
+            '/snap/bin/godot',
+            '/opt/godot/godot',
+            resolve(process.env.HOME ?? '', '.local', 'bin', 'godot4'),
+            resolve(process.env.HOME ?? '', 'Applications', 'Godot.app', 'Contents', 'MacOS', 'Godot'),
+            '/Applications/Godot.app/Contents/MacOS/Godot',
+        ];
     for (const candidate of candidates) {
         if (existsSync(candidate)) return candidate;
     }
 
-    // 3. Try `godot` on PATH
+    // 3. Try `godot` on PATH (where/which per-platform, see above)
     try {
-        const result = execSync('where godot', { encoding: 'utf-8', timeout: 5000 }).trim();
+        const result = execSync(`${PATH_LOOKUP_CMD} godot`, { encoding: 'utf-8', timeout: 5000 }).trim();
         if (result) return result.split('\n')[0].trim();
     } catch { /* not on PATH */ }
 
     // 4. Try `godot4` on PATH (some installs)
     try {
-        const result = execSync('where godot4', { encoding: 'utf-8', timeout: 5000 }).trim();
+        const result = execSync(`${PATH_LOOKUP_CMD} godot4`, { encoding: 'utf-8', timeout: 5000 }).trim();
         if (result) return result.split('\n')[0].trim();
     } catch { /* not on PATH */ }
 
@@ -141,20 +168,7 @@ console.log(`  Exit code: ${godotExitCode}`);
 
 // Step 4: Parse output
 console.log('\n── 4. Parse smoke results ──');
-const lines = godotOutput.split('\n').map(l => l.trim()).filter(Boolean);
-
-const kvPairs: Record<string, string> = {};
-const passes: string[] = [];
-const fails: string[] = [];
-
-for (const line of lines) {
-    if (line.startsWith('PASS: ')) passes.push(line.slice(6));
-    else if (line.startsWith('FAIL: ')) fails.push(line.slice(6));
-    else if (line.includes('=') && !line.startsWith('[') && !line.startsWith('  ')) {
-        const [key, ...rest] = line.split('=');
-        kvPairs[key] = rest.join('=');
-    }
-}
+const { passes, fails, kvPairs } = parseSmokeOutput(godotOutput);
 
 console.log(`  Assertions passed: ${passes.length}`);
 console.log(`  Assertions failed: ${fails.length}`);
@@ -168,14 +182,7 @@ if (kvPairs.nav_link_count) console.log(`  Nav links: ${kvPairs.nav_link_count}`
 if (kvPairs.zone_ids) console.log(`  Zone IDs: ${kvPairs.zone_ids}`);
 
 // Check for missing resource / script errors in Godot output
-const resourceWarnings = lines.filter(l =>
-    l.includes('Failed loading resource') ||
-    l.includes('Cannot load source code') ||
-    l.includes('res://') && l.includes('not found') ||
-    l.includes('SCRIPT ERROR') ||
-    l.includes('Cannot open file') ||
-    l.match(/ERROR.*load/i)
-);
+const resourceWarnings = findResourceWarnings(godotOutput);
 if (resourceWarnings.length > 0) {
     console.log(`\n  ✗ Missing resource/script warnings detected (${resourceWarnings.length}):`);
     for (const w of resourceWarnings) console.log(`    ${w}`);
@@ -183,15 +190,22 @@ if (resourceWarnings.length > 0) {
 }
 
 // Step 5: Determine verdict
-const smokeVerdict = kvPairs.smoke_verdict ?? (godotExitCode === 0 ? 'PASS' : 'FAIL');
-const overallPass = smokeVerdict === 'PASS' && godotExitCode === 0 && resourceWarnings.length === 0;
+//
+// F-004 fix: `fails` (parsed above from individual
+// `FAIL: ` lines) now GATES the verdict via computeOverallPass, instead of
+// being parsed and printed but never actually consulted. See
+// dogfood/godot-smoke-verdict.ts for the full rationale and
+// dogfood/__tests__/godot-smoke-verdict.test.ts for the regression test that
+// proves a smoke_verdict=PASS report with a live FAIL: line is still caught.
+const smokeVerdict = deriveSmokeVerdict(kvPairs, godotExitCode);
+const overallPass = computeOverallPass({ smokeVerdict, godotExitCode, resourceWarnings, fails });
 
 console.log(`\n═══ VERDICT: ${overallPass ? 'PASS' : 'FAIL'} ═══`);
 if (!overallPass) {
     console.log('  Engine could not consume generated scene.');
     if (godotOutput) {
         console.log('\n  Raw Godot output:');
-        for (const line of lines.slice(0, 40)) console.log(`    ${line}`);
+        for (const line of godotOutput.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 40)) console.log(`    ${line}`);
     }
 }
 

@@ -10,6 +10,7 @@
 import type { WorldProject, EntityPlacement, EntityRole, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 /** Godot scene template path pattern by role. */
 export type GodotSceneTemplate =
@@ -83,6 +84,24 @@ export function convertEntities(project: WorldProject): ConvertEntitiesResult {
     const all: GodotEntityInstance[] = [];
     const dropped: GodotDroppedEntity[] = [];
 
+    // Sibling node names are only unique within their own zone's "Entities"
+    // container, so de-dup is scoped per zone (mirrors convert-props.ts /
+    // convert-hazards.ts / convert-economy.ts / convert-structures.ts /
+    // convert-strata.ts, which all guard sibling collisions this way; entities
+    // and items were the two converters that did not).
+    const seenNamesByZone = new Map<string, Map<string, number>>();
+    const uniqueNodeName = (zoneId: string, base: string): string => {
+        let seen = seenNamesByZone.get(zoneId);
+        if (!seen) {
+            seen = new Map<string, number>();
+            seenNamesByZone.set(zoneId, seen);
+        }
+        const safe = sanitizeNodeName(base) || 'Entity';
+        const n = seen.get(safe) ?? 0;
+        seen.set(safe, n + 1);
+        return n === 0 ? safe : `${safe}_${n + 1}`;
+    };
+
     for (const placement of project.entityPlacements) {
         const zone = zonesById.get(placement.zoneId);
         if (!zone) {
@@ -132,7 +151,7 @@ export function convertEntities(project: WorldProject): ConvertEntitiesResult {
         }
 
         const instance: GodotEntityInstance = {
-            nodeName: sanitizeNodeName(placement.name ?? placement.entityId),
+            nodeName: uniqueNodeName(placement.zoneId, placement.name ?? placement.entityId),
             sceneTemplate,
             entityId: placement.entityId,
             displayName: placement.name,
@@ -172,8 +191,4 @@ export function convertEntities(project: WorldProject): ConvertEntitiesResult {
         manifest: { byZone, all, dropped, incomplete: dropped.length > 0 },
         fidelity,
     };
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@\s]/g, '_').replace(/^(\d)/, '_$1');
 }

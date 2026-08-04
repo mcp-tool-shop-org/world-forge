@@ -8,11 +8,16 @@
  *   1. Export proof world → ContentPack + Manifest + PackMeta
  *   2. Engine schema validation (loadContent from @ai-rpg-engine/content-schema)
  *   3. Cross-reference validation (validateRefs)
- *   4. Pack registration (registerPack from @ai-rpg-engine/pack-registry)
- *   5. Engine boot (createTestEngine from @ai-rpg-engine/core)
+ *   4. Pack registration (registerPack from @ai-rpg-engine/pack-registry) +
+ *      createGame() actually invoked, not just registered
+ *   5. Engine boot (createTestEngine from @ai-rpg-engine/core), loaded with a
+ *      real module (traversalCore from @ai-rpg-engine/modules) — not
+ *      `modules: []`, so there is a real verb surface to exercise
  *   6. Player spawns in start zone
- *   7. Zone traversal (move to neighbor)
- *   8. Action submission (engine tick advances)
+ *   7. Zone traversal (store-level move to neighbor, and back)
+ *   8. Engine tick advances; the 'move' verb is submitted through the
+ *      engine's own dispatcher (submitAction), not the store bypass Step 7
+ *      uses, and the resulting event is checked
  *   9. Serialize/deserialize (state persistence)
  *
  * Usage:
@@ -26,31 +31,62 @@ import { fileURLToPath } from 'node:url';
 import { exportToEngine, type ExportResult } from '../packages/export-ai-rpg/src/index.js';
 import { proofProject } from './worlds/multi-target-proof.js';
 
-// Engine runtime imports — these are NOT World Forge code.
+// Engine runtime TYPES — safe to import statically (types are erased, so
+// this carries no runtime dependency on @ai-rpg-engine being resolvable at
+// import time; only the dynamic `import()` calls in loadEngineModules below
+// need that, and only once main() actually runs).
+import type { ContentPack, LoadResult, RefsResult } from '@ai-rpg-engine/content-schema';
+import type { PackEntry } from '@ai-rpg-engine/pack-registry';
+import type { Engine, EngineModule, HarnessOptions, RulesetDefinition, TestEngine } from '@ai-rpg-engine/core';
+
+// Engine runtime VALUES — these are NOT World Forge code.
 // These packages are ESM-only with exports["."]={"import": ...} — no CJS entry.
-// We resolve them via direct file path import inside an async main to avoid
+// We resolve them via a dynamic import inside an async main to avoid
 // top-level await (tsx CJS mode doesn't support it).
-let loadContent: (pack: { entities?: unknown[]; zones?: unknown[]; dialogues?: unknown[]; quests?: unknown[] }) => { ok: boolean; errors: { path: string; message: string }[]; pack: unknown; summary: string };
-let validateRefs: (pack: { entities?: unknown[]; zones?: unknown[]; dialogues?: unknown[]; quests?: unknown[] }) => { ok: boolean; errors: { path: string; message: string }[] };
-let registerPack: (entry: unknown) => void;
-let getPack: (id: string) => unknown | undefined;
+//
+// These are ordinary bare-specifier imports (`@ai-rpg-engine/...`), resolved
+// by Node's normal package resolution — same as every other `@ai-rpg-engine/*`
+// import in this repo (e.g. packages/export-ai-rpg/src/*.ts). This file used
+// to hardcode a RELATIVE path straight into node_modules
+// (`'../node_modules/@ai-rpg-engine/content-schema/dist/index.js'`), which
+// only resolves when a `node_modules/@ai-rpg-engine` happens to exist exactly
+// one directory above this file — brittle across worktrees/checkouts, and
+// unlike a bare specifier, not something tsc's module resolution can follow
+// either (it doesn't walk parent directories for an explicit relative path
+// the way Node's runtime resolver does for bare specifiers), which is why
+// this file could never join tsconfig.dogfood.json's typechecked set before
+// (F-007) — and why the `new Engine(...)` bug at old Step 4 (should have been
+// `new EngineClass(...)`, F-009) went unnoticed: the
+// whole file was `unknown`-typed end to end, so a typo'd identifier and a
+// real one were equally invisible to tsc.
+let loadContent: (pack: ContentPack) => LoadResult;
+let validateRefs: (pack: ContentPack) => RefsResult;
+let registerPack: (entry: PackEntry) => void;
+let getPack: (id: string) => PackEntry | undefined;
 let clearRegistry: () => void;
-let createTestEngine: (options: unknown) => unknown;
-let EngineClass: new (options: unknown) => unknown;
+let createTestEngine: (options: HarnessOptions) => TestEngine;
+let EngineClass: typeof Engine;
+// traversalCore is a real, ready-made EngineModule (move/inspect verbs) from
+// @ai-rpg-engine/modules — loaded so this smoke test boots the engine with
+// actual content instead of `modules: []`. See the note at Step 5 below.
+let traversalCore: EngineModule;
 
 async function loadEngineModules() {
-    const cs = await import('../node_modules/@ai-rpg-engine/content-schema/dist/index.js');
+    const cs = await import('@ai-rpg-engine/content-schema');
     loadContent = cs.loadContent;
     validateRefs = cs.validateRefs;
 
-    const pr = await import('../node_modules/@ai-rpg-engine/pack-registry/dist/index.js');
+    const pr = await import('@ai-rpg-engine/pack-registry');
     registerPack = pr.registerPack;
     getPack = pr.getPack;
     clearRegistry = pr.clearRegistry;
 
-    const ec = await import('../node_modules/@ai-rpg-engine/core/dist/index.js');
+    const ec = await import('@ai-rpg-engine/core');
     createTestEngine = ec.createTestEngine;
     EngineClass = ec.Engine;
+
+    const mods = await import('@ai-rpg-engine/modules');
+    traversalCore = mods.traversalCore;
 }
 
 const __dirname = typeof import.meta.dirname === 'string'
@@ -126,15 +162,40 @@ async function main() {
     // Step 4: Pack registration
     console.log('\n── 4. Pack registry ──');
     clearRegistry();
-    const packEntry = {
-        meta: result.packMeta as unknown as Parameters<typeof registerPack>[0]['meta'],
+    // `result.packMeta` is already typed `PackMetadata` (packages/export-ai-rpg
+    // imports the SAME @ai-rpg-engine/pack-registry type) — no cast needed now
+    // that `registerPack` carries its real signature instead of `unknown`.
+    // Previously this went through `as unknown as Parameters<typeof
+    // registerPack>[0]['meta']`, a double-cast escape hatch that only existed
+    // because `registerPack` itself was typed `(entry: unknown) => void`.
+    //
+    // `ruleset` was previously `{ id, name, version, modules: ... }` — missing
+    // every field RulesetDefinition actually requires (stats, resources,
+    // verbs, formulas, defaultModules, progressionModels) and using a
+    // `modules` key that doesn't exist on the type at all (the real field is
+    // `defaultModules`). It worked at runtime because nothing here reads the
+    // missing fields, but tsc could never have told you that — the whole file
+    // was `unknown`-typed. Filled in with the complete, valid shape.
+    const ruleset: RulesetDefinition = {
+        id: 'standard-v1',
+        name: 'Standard',
+        version: '1.0.0',
+        stats: [],
+        resources: [],
+        verbs: [],
+        formulas: [],
+        defaultModules: result.manifest.modules,
+        progressionModels: [],
+    };
+    const packEntry: PackEntry = {
+        meta: result.packMeta,
         manifest: result.manifest,
-        ruleset: { id: 'standard-v1', name: 'Standard', version: '1.0.0', modules: result.manifest.modules },
-        createGame: (seed?: number) => new Engine({
+        ruleset,
+        createGame: (seed?: number) => new EngineClass({
             manifest: result.manifest,
             seed: seed ?? 42,
-            modules: [],
-            ruleset: { id: 'standard-v1', name: 'Standard', version: '1.0.0', modules: result.manifest.modules },
+            modules: [traversalCore],
+            ruleset,
         }),
     };
     let registrationOk = true;
@@ -149,6 +210,21 @@ async function main() {
         const retrieved = getPack(proofProject.id);
         assert(retrieved !== undefined, 'getPack_retrieves_by_id');
         assert(retrieved?.meta.name === proofProject.name, 'pack_name_matches');
+
+        // F-009 regression guard: `createGame` used to read the undefined
+        // global `Engine` instead of the locally-loaded `EngineClass` — a
+        // ReferenceError waiting to happen, but the closure was registered
+        // and never invoked anywhere in this file, so it could never surface
+        // as a failure. Call it for real.
+        if (retrieved) {
+            try {
+                const game = retrieved.createGame(7);
+                assert(game instanceof EngineClass, 'createGame_boots_engine',
+                    `expected an Engine instance, got ${typeof game}`);
+            } catch (err) {
+                assert(false, 'createGame_boots_engine', String(err));
+            }
+        }
     }
 
     // Step 5: Engine boot with exported content
@@ -178,10 +254,18 @@ async function main() {
         zoneId: startZone.id,
     }));
 
-    let engine: ReturnType<typeof createTestEngine>;
+    // `modules: [traversalCore]` — this used to be `modules: []`, which meant
+    // getAvailableActions() below always returned an empty list and no verb
+    // could ever be submitted, REGARDLESS of whether the exported content was
+    // correct or broken: a runtime smoke that boots with zero verbs cannot go
+    // red on a content regression, because there is nothing registered for it
+    // to reject. traversalCore (move/inspect) needs nothing beyond the
+    // zones/entities shape this file already builds, so it's a genuine,
+    // no-new-authoring way to exercise a real verb end-to-end (see Step 8).
+    let engine: TestEngine;
     try {
         engine = createTestEngine({
-            modules: [],
+            modules: [traversalCore],
             zones,
             entities,
             playerId: 'player-1',
@@ -221,13 +305,44 @@ async function main() {
     engine.store.advanceTick();
     assert(engine.tick === tickBefore + 1, 'tick_advances');
 
-    // Try submitting an action (may or may not have verbs registered without modules)
+    // Previously this only checked getAvailableActions() didn't throw, with
+    // `modules: []` guaranteeing an empty list either way ("no modules
+    // loaded" — the smoke test could never go red on a content regression
+    // here, because nothing was ever registered to reject). traversalCore is
+    // now loaded (Step 5), so this checks something real: the verb is
+    // actually registered, AND submitting it through the engine's own
+    // dispatcher (not the store.setPlayerLocation bypass Step 7 uses)
+    // produces the expected world.zone.entered event.
     try {
         const available = engine.getAvailableActions();
-        console.log(`    Available actions: ${available.length > 0 ? available.join(', ') : '(none — no modules loaded)'}`);
-        assert(true, 'getAvailableActions_no_crash');
+        console.log(`    Available actions: ${available.length > 0 ? available.join(', ') : '(none)'}`);
+        assert(available.includes('move'), 'traversal_verb_registered',
+            `expected "move" among registered verbs, got: ${available.join(', ') || '(none)'}`);
     } catch (err) {
-        assert(false, 'getAvailableActions_no_crash', String(err));
+        assert(false, 'traversal_verb_registered', String(err));
+    }
+
+    // Submit as one of the ACTUAL exported entities (not a synthetic player —
+    // no player entity was ever added to `entities`; `playerId: 'player-1'`
+    // above only seeds World­State.playerId/locationId, which Step 6/7 read
+    // directly, so a bare `submitAction('move', ...)` would hit the engine's
+    // ghost-actor guard and silently return no events). Using a real exported
+    // entity is also more on-point for what this file claims to prove:
+    // exported CONTENT is consumable, not a hand-built player rig.
+    const actor = entities[0];
+    if (neighborId && actor) {
+        try {
+            const events = engine.submitActionAs(actor.id, 'move', { targetIds: [neighborId] });
+            const entered = events.some((e) => e.type === 'world.zone.entered');
+            assert(entered, 'move_action_succeeds',
+                entered ? undefined : `events: ${events.map((e) => e.type).join(', ') || '(none)'}`);
+            assert(engine.entity(actor.id).zoneId === neighborId, 'move_action_updates_location',
+                `now in "${engine.entity(actor.id).zoneId}"`);
+        } catch (err) {
+            assert(false, 'move_action_succeeds', String(err));
+        }
+    } else {
+        assert(false, 'move_action_succeeds', neighborId ? 'no exported entity to act as' : 'no neighbor to move to');
     }
 
     // Step 9: Serialize/Deserialize
@@ -271,17 +386,18 @@ async function main() {
 - @ai-rpg-engine/content-schema
 - @ai-rpg-engine/core
 - @ai-rpg-engine/pack-registry
+- @ai-rpg-engine/modules (traversalCore — real move/inspect verbs, not an empty module list)
 
 ## Pipeline
 
 1. World Forge export → ContentPack
 2. Engine content-schema loadContent() validation
 3. Cross-reference validation (validateRefs)
-4. Pack registration (registerPack + getPack)
-5. Engine boot (createTestEngine)
+4. Pack registration (registerPack + getPack) + createGame() actually invoked
+5. Engine boot (createTestEngine) with traversalCore loaded
 6. Player spawn in start zone
-7. Zone traversal (move + return)
-8. Engine tick advance + action query
+7. Zone traversal (store-level move + return)
+8. Engine tick advance + 'move' verb submitted through the engine dispatcher
 9. Serialize/deserialize state
 
 ## Assertions (${passed} passed, ${failed} failed)

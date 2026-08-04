@@ -17,6 +17,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { sanitizeNodeName } from './node-naming.js';
 
 /** z_index units between adjacent strata. order=-1 → -100, order=+1 → +100. */
 export const STRATUM_Z_BAND = 100;
@@ -50,10 +51,6 @@ export interface ConvertStrataResult {
     /** zoneId → its stratum (id + z band) for stratum_id metadata + z_index banding on zone nodes. */
     zoneStrata: Record<string, { stratumId: string; zBand: number }>;
     fidelity: FidelityEntry[];
-}
-
-function sanitizeNodeName(name: string): string {
-    return name.replace(/[/@]/g, '_').replace(/\s+/g, '_');
 }
 
 export function convertStrata(project: WorldProject): ConvertStrataResult {

@@ -218,6 +218,31 @@ describe('Wave 1: SpawnCondition parse/validate', () => {
     expect(parseSpawnCondition('nonsense')).toBeNull();
   });
 
+  // F-005: Number('') === 0 in JS, so an empty numeric operand used to parse
+  // SUCCESSFULLY as the value 0 instead of being rejected as malformed. Each
+  // of these five grammars calls Number() on a possibly-empty remainder.
+  it('rejects an empty numeric operand instead of silently coercing to 0', () => {
+    expect(parseSpawnCondition('random:')).toBeNull();
+    expect(parseSpawnCondition('random:   ')).toBeNull(); // whitespace-only also coerces to 0
+    expect(parseSpawnCondition('faction:foo:>')).toBeNull();
+    expect(parseSpawnCondition('level:>=')).toBeNull();
+    expect(parseSpawnCondition('party-level:>')).toBeNull();
+    expect(parseSpawnCondition('party-size:>=')).toBeNull();
+  });
+
+  it('still accepts well-formed numeric operands for all five grammars (control)', () => {
+    expect(parseSpawnCondition('random:0.5')).toEqual({ type: 'random-probability', params: { p: 0.5 } });
+    expect(parseSpawnCondition('faction:foo:>50')).toEqual({ type: 'faction-rep', params: { id: 'foo', op: '>', value: 50 } });
+    expect(parseSpawnCondition('level:>=5')).toEqual({ type: 'player-level', params: { op: '>=', value: 5 } });
+    expect(parseSpawnCondition('party-level:>3')).toEqual({ type: 'party-level', params: { op: '>', value: 3 } });
+    expect(parseSpawnCondition('party-size:>=2')).toEqual({ type: 'party-size', params: { op: '>=', value: 2 } });
+  });
+
+  it('validateSpawnCondition rejects the empty-operand form as unrecognized (not silently valid)', () => {
+    expect(validateSpawnCondition('random:')).toContain('Unrecognized spawn condition');
+    expect(validateSpawnCondition('random:0.5')).toBeNull();
+  });
+
   it('validateSpawnCondition: null for valid, string for invalid', () => {
     expect(validateSpawnCondition('always')).toBeNull();
     expect(validateSpawnCondition(undefined)).toBeNull();
