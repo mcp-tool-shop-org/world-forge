@@ -1,0 +1,86 @@
+# F-f4cbf9e9: idempotent-retry guard for release.yml's publish sequence.
+#
+# Problem this closes: release.yml used to run six bare
+# `npm publish --provenance --access public` steps back-to-back. If package
+# N failed (network blip, npm 5xx, or a version that was somehow already
+# live) packages 1..N-1 were already permanently published, N..6 never ran,
+# and — because npm rejects republishing an existing version — EVERY way of
+# re-running the job (plain re-dispatch, GitHub's "Re-run failed jobs", or a
+# brand new release) failed again immediately at package 1. There was no
+# per-package "already published, skip" guard, so finishing the release
+# needed manual, undocumented intervention.
+#
+# Fix shape: before each publish, ask the registry directly
+# (`npm view <name>@<version> version`) whether that exact version already
+# exists.
+#   - Found  -> already published (this is what a re-run after a partial
+#     failure looks like for the packages that already succeeded) -> skip,
+#     exit 0, do NOT call `npm publish` again.
+#   - Not found (npm view's well-defined, stable E404 exit-1 contract,
+#     verified empirically against the real, public registry while building
+#     this fix — an entirely-unknown package name and an existing package at
+#     an unpublished version both come back non-zero the same way) ->
+#     publish for real.
+#   - `npm view` itself erroring for an UNRELATED reason (registry hiccup,
+#     timeout) is treated the same as "not found" -> falls through to
+#     attempt the publish, because that's the only path that can actually
+#     resolve the uncertainty; the publish call's own exit code is what
+#     governs the step from there. This is intentionally NOT the same as
+#     pattern-matching npm publish's own human-readable "cannot publish over
+#     the previously published version" error text — that message has
+#     changed across npm major versions and doing so would mean the gate's
+#     behavior on a real failure depends on string-matching a message this
+#     workflow doesn't control. `npm view`'s exit code is the stable,
+#     documented contract; the actual `npm publish` call is never
+#     string-matched, redirected, or piped, so ITS exit code always decides
+#     pass/fail for real errors (auth, OIDC, 5xx, tarball problems, etc.) —
+#     unchanged from before this fix, just no longer reached redundantly for
+#     packages already done. Piping `npm publish` into anything (e.g.
+#     `| tee log`) would make the step's exit code read the pipe's last
+#     command instead of publish's own — deliberately avoided; see the two
+#     `guard.sh` / `bad-guard2.sh` A/B runs referenced in the wave-4
+#     ci-tooling output for the exit-code proof, both the safe (no pipe) and
+#     unsafe (piped, exit-code-swallowing) shapes.
+#
+# Extracted into its own composite action (DECOMPOSE_BY_SECRETS,
+# .claude/rules/workflow-standards.md) rather than repeated inline six
+# times in release.yml: the existence-check strategy is the one thing here
+# likely to change again later (e.g. a registry mirror, a different
+# idempotency signal); keeping it in one file means it changes in one place
+# instead of six near-identical copies silently drifting apart.
+name: 'Publish package if missing'
+description: >-
+  Run `npm publish --provenance --access public` in the given directory,
+  unless that exact name@version is already live on the registry, in which
+  case skip it. Makes the release.yml publish sequence safe to re-run after
+  a partial failure. A real publish failure still fails this step (and the
+  job) with npm's own exit code — nothing here treats "npm publish exited
+  non-zero" as anything but a hard failure.
+
+inputs:
+  working-directory:
+    description: >-
+      Directory containing the package.json to publish (e.g.
+      packages/schema). Must be a directory already set up for
+      `npm publish` — dependencies installed, build/test already run by the
+      caller.
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Publish if not already on the registry
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        PKG_NAME="$(node -p "require('./package.json').name")"
+        PKG_VERSION="$(node -p "require('./package.json').version")"
+        SPEC="${PKG_NAME}@${PKG_VERSION}"
+
+        echo "Checking whether ${SPEC} is already published..."
+        if npm view "${SPEC}" version >/dev/null 2>&1; then
+          echo "::notice::${SPEC} is already on npm - skipping publish (idempotent re-run)."
+        else
+          echo "${SPEC} not found on the registry - publishing."
+          npm publish --provenance --access public
+        fi

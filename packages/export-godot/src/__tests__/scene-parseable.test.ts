@@ -22,6 +22,16 @@ import { convertZones } from '../convert-zones.js';
 import type { WorldProject } from '@world-forge/schema';
 
 /**
+ * A `[node ...]` header must fully tokenize as `[node` + one-or-more
+ * space-separated `key="value"` / `key=Bareword(args)` attributes + `]`.
+ * Mirrors the same full-line, anchored tokenizer scene-builder.ts's internal
+ * `assertParseable` uses (`NODE_HEADER_RE`), so tests using this exercise the
+ * real Godot grammar, not a proxy for it. Module-scoped (not per-describe)
+ * because more than one describe block below needs it.
+ */
+const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[A-Za-z_][A-Za-z0-9_]*\([^()]*\)))+\]$/;
+
+/**
  * The smallest input `buildWorldScene` will accept: one zone, nothing else.
  *
  * Deliberately minimal so a failure here is about the guard and not about some
@@ -171,11 +181,10 @@ describe('the emitted scene always has well-formed [node ...] headers (F-001/F-1
     // has SIX quote characters — evenly balanced. Any check that counts quotes
     // (or checks the count is even) passes this line. Only a check that
     // actually tokenizes the header the way Godot's tag-header parser does
-    // can tell it apart from a well-formed one. `NODE_HEADER_HAS_RE` below
-    // mirrors the same full-line, anchored tokenizer scene-builder.ts's
-    // internal `assertParseable` uses, so these tests exercise the real
-    // Godot grammar, not a proxy for it.
-    const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[A-Za-z_][A-Za-z0-9_]*\([^()]*\)))+\]$/;
+    // can tell it apart from a well-formed one. `NODE_HEADER_RE` (module
+    // scope, top of file) mirrors the same full-line, anchored tokenizer
+    // scene-builder.ts's internal `assertParseable` uses, so these tests
+    // exercise the real Godot grammar, not a proxy for it.
 
     it('RED CONTROL: a raw quote in a node name (bypassing sanitizeNodeName) is REFUSED by the structural backstop', () => {
         // Every node name reaching buildWorldScene is expected to already have
@@ -248,5 +257,90 @@ describe('the emitted scene always has well-formed [node ...] headers (F-001/F-1
         // Structural proof, not a quote count: the whole line must tokenize as
         // a well-formed [node ...] header.
         expect(zoneHeaderLine).toMatch(NODE_HEADER_RE);
+    });
+});
+
+describe('an empty name="" / parent="" is refused, not silently emitted (F-00cf78db)', () => {
+    // The trap this class of test has to avoid: `parent=""` and `name=""` are
+    // BOTH syntactically well-formed to NODE_HEADER_RE — a zero-length quoted
+    // string is a perfectly legal attribute value by that tokenizer's own
+    // grammar. So the malformed-header check above (which exists to catch an
+    // UNESCAPED quote desyncing the tag) does not fire here at all; this is a
+    // structurally distinct defect class assertParseable() did not use to
+    // guard against. Verified against the real, installed Godot 4.7.stable
+    // engine: a `parent=""` NodePath crashes the engine outright
+    // (CrashHandlerException, signal 11) inside its own resource loader,
+    // before any script runs — a segfault is a strictly worse failure mode
+    // than the parse-error refusal this file's other guards produce.
+
+    it('RED CONTROL: a zone with an empty nodeName (bypassing convertZones\' own fallback) is REFUSED', () => {
+        // Every zone nodeName reaching buildWorldScene is expected to already
+        // have gone through convertZones' uniqueZoneNodeName() fallback. This
+        // constructs the input the way a caller that skipped that step would
+        // (or the way convert-zones.ts itself did before F-00cf78db was
+        // fixed) — proving assertParseable's own empty-value check is a real,
+        // independent backstop, not a guard that structurally cannot fire.
+        const input = minimalInput();
+        input.zones[0].nodeName = '';
+
+        expect(() => buildWorldScene(input)).toThrowError(/refusing to emit an unparseable scene/);
+
+        let message = '';
+        try {
+            buildWorldScene(input);
+        } catch (err) {
+            message = err instanceof Error ? err.message : String(err);
+        }
+        // Collision/Navigation are always emitted for every zone (collectSubResources
+        // runs unconditionally), so an empty zone nodeName is sufficient on its own
+        // to produce a `parent=""` line — no entities/items/etc. required.
+        expect(message).toContain('parent=""');
+        expect(message).toContain('Godot');
+    });
+
+    it('the refusal explains why this is worse than a parse error (real-engine segfault), not just "malformed"', () => {
+        const input = minimalInput();
+        input.zones[0].nodeName = '';
+
+        let message = '';
+        try {
+            buildWorldScene(input);
+        } catch (err) {
+            message = err instanceof Error ? err.message : String(err);
+        }
+        expect(message).toMatch(/segfault|crash/i);
+        expect(message).toContain('sanitizeNodeName');
+    });
+
+    it('CONTROL: an ordinary, non-empty nodeName is not refused', () => {
+        const input = minimalInput();
+        input.zones[0].nodeName = 'Z';
+        expect(() => buildWorldScene(input)).not.toThrow();
+    });
+
+    it('CONTROL: parent="." (the ordinary root-child NodePath) is not mistaken for an empty parent', () => {
+        // parent="." has length 1 — must not collide with the parent="" check.
+        const tscn = buildWorldScene(minimalInput());
+        expect(tscn).toContain('parent="."');
+        expect(() => buildWorldScene(minimalInput())).not.toThrow();
+    });
+
+    it('scene root: an empty project name falls back to a non-empty root node name, not name=""', () => {
+        // scene-builder.ts:135 had the identical gap as convert-zones.ts:116 —
+        // sanitizeNodeName(input.projectName) with no fallback. A project
+        // whose name sanitizes to '' produced a scene root itself named "".
+        const input = { ...minimalInput(), projectName: '' };
+
+        expect(() => buildWorldScene(input)).not.toThrow();
+        const scene = buildWorldScene(input);
+        const rootLine = scene.split('\n').find((l) => l.startsWith('[node ') && l.includes('type="Node2D"]') && !l.includes('parent='));
+        expect(rootLine).toBeDefined();
+        expect(rootLine).not.toContain('name=""');
+        expect(rootLine).toMatch(NODE_HEADER_RE);
+    });
+
+    it('CONTROL: a normal project name is unaffected by the root-name fallback', () => {
+        const scene = buildWorldScene({ ...minimalInput(), projectName: 'Dustwalk' });
+        expect(scene).toContain('[node name="Dustwalk" type="Node2D"]');
     });
 });

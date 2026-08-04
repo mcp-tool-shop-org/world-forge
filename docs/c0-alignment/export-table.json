@@ -15,15 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 160,
-      "carried-lossless": 199,
+      "no-channel": 150,
+      "carried-lossless": 209,
       "carried-approximated": 18
     },
     "byChannel": {
-      "none": 160,
+      "none": 150,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 179,
+      "contentPack": 189,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -31,11 +31,11 @@
   },
   "exporterSelfReport": {
     "fidelitySummary": {
-      "total": 1,
-      "lossless": 0,
+      "total": 3,
+      "lossless": 2,
       "approximated": 1,
       "dropped": 0,
-      "losslessPercent": 0,
+      "losslessPercent": 67,
       "observed": true,
       "byDomain": {
         "items": {
@@ -43,12 +43,20 @@
           "lossless": 0,
           "approximated": 1,
           "dropped": 0
+        },
+        "world": {
+          "total": 2,
+          "lossless": 2,
+          "approximated": 0,
+          "dropped": 0
         }
       }
     },
     "warnings": [
       "2 district(s) map authored 'safety' directly onto the engine's 'surveillance' metric (convert-districts.ts) — these are NOT synonyms: a heavily-surveilled district is not a safe one, and high surveillance drives heat/pursuit in the engine's own doctrine, which is the OPPOSITE of what a high 'safety' score is meant to convey. This mapping is unverified against the engine's actual district-metrics consumer; treat exported 'surveillance' values with caution until confirmed.",
-      "Item \"item-tide-ration\" (Tide Ration) has slot 'consumable', which is schema-legal but has NO equivalent in the engine's EquipmentSlot set (weapon/armor/accessory/tool/trinket) — narrowed to 'trinket'. The item will not function as a consumable at runtime."
+      "Item \"item-tide-ration\" (Tide Ration) has slot 'consumable', which is schema-legal but has NO equivalent in the engine's EquipmentSlot set (weapon/armor/accessory/tool/trinket) — narrowed to 'trinket'. The item will not function as a consumable at runtime.",
+      "1 crafting station(s) exported as raw pass-through data on ContentPack.craftingStations — this package has no dedicated converter for them yet; verify your engine build's crafting-core module reads this field before shipping.",
+      "1 market node(s) exported as raw pass-through data on ContentPack.marketNodes — this package has no dedicated converter for them yet; verify your engine build's economy systems read this field before shipping."
     ],
     "comment": "Recorded verbatim. The lane reports 100% lossless / 0 dropped and zero warnings on a fixture where the table below classifies the majority of authored fields as no-channel."
   },
@@ -1089,47 +1097,47 @@
     },
     {
       "path": "craftingStations[].availableRecipes[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "craftingStations[].availableRecipes[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"craftingStations\" absent from all six export artifacts",
-      "note": "World-placed crafting stations have no pack field, although the engine ships a `crafting-core` module."
+      "evidence": "2 authored values match contentPack:craftingStations[].availableRecipes[] exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Recipe ids the station unlocks. No cross-reference to a recipe catalog exists on either side yet."
     },
     {
       "path": "craftingStations[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "craftingStations[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"craftingStations\" absent from all six export artifacts",
-      "note": "World-placed crafting stations have no pack field, although the engine ships a `crafting-core` module."
+      "evidence": "1 authored values match contentPack:craftingStations[].id exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). The station identity."
     },
     {
       "path": "craftingStations[].stationType",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "craftingStations[].stationType",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"craftingStations\" absent from all six export artifacts",
-      "note": "World-placed crafting stations have no pack field, although the engine ships a `crafting-core` module."
+      "evidence": "1 authored values match contentPack:craftingStations[].stationType exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Free-text station kind (e.g. ropewalk, forge)."
     },
     {
       "path": "craftingStations[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "craftingStations[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"craftingStations\" absent from all six export artifacts",
-      "note": "World-placed crafting stations have no pack field, although the engine ships a `crafting-core` module."
+      "evidence": "1 authored values match contentPack:craftingStations[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Which zone the station stands in."
     },
     {
       "path": "description",
@@ -2552,69 +2560,69 @@
     },
     {
       "path": "marketNodes[].contrabandAvailable",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "marketNodes[].contrabandAvailable",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"marketNodes\" absent from all six export artifacts",
-      "note": "Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names."
+      "evidence": "1 authored values match contentPack:marketNodes[].contrabandAvailable exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Whether illegal goods surface at this node."
     },
     {
       "path": "marketNodes[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "marketNodes[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"marketNodes\" absent from all six export artifacts",
-      "note": "Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names."
+      "evidence": "1 authored values match contentPack:marketNodes[].id exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). The market node identity."
     },
     {
       "path": "marketNodes[].merchantEntityId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "marketNodes[].merchantEntityId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"marketNodes\" absent from all six export artifacts",
-      "note": "Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names."
+      "evidence": "1 authored values match contentPack:marketNodes[].merchantEntityId exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Optional back-reference to the entity who runs the stall; validated against entityPlacements at authoring time (packages/schema/src/validate.ts:1414) but not re-resolved on export."
     },
     {
       "path": "marketNodes[].priceModifier",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "marketNodes[].priceModifier",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"marketNodes\" absent from all six export artifacts",
-      "note": "Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names."
+      "evidence": "1 authored values match contentPack:marketNodes[].priceModifier exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Multiplier applied against base item prices."
     },
     {
       "path": "marketNodes[].supplyCategories[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "marketNodes[].supplyCategories[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"marketNodes\" absent from all six export artifacts",
-      "note": "Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names."
+      "evidence": "2 authored values match contentPack:marketNodes[].supplyCategories[] exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Free-text categories of goods the node stocks."
     },
     {
       "path": "marketNodes[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "marketNodes[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"marketNodes\" absent from all six export artifacts",
-      "note": "Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names."
+      "evidence": "1 authored values match contentPack:marketNodes[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-4 (F-f216da1a). Which zone the node stands in."
     },
     {
       "path": "mode",

@@ -48,12 +48,26 @@ import {
   convertManifest,
   convertPackMeta,
 } from '../convert-pack.js';
+import type { WorldProject } from '@world-forge/schema';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 
 /** Module ids a real booted engine registered. The ground truth, not a list. */
 function registeredModuleIds(): string[] {
   return createGame(71).moduleManager.getModules().map((m) => m.id);
 }
+
+// F-f216da1a (swarm wave-4): minimalProject (as its name promises) authors
+// ZERO craftingStations, so it no longer emits all twelve DEFAULT_MODULES —
+// convertManifest now drops 'crafting-core' when there is no crafting
+// content for that module to act on (see convert-pack.ts's doc comment).
+// The tests below that need to see the FULL twelve-module list use this
+// variant instead, which authors exactly one station.
+const projectWithCraftingStation: WorldProject = {
+  ...minimalProject,
+  craftingStations: [
+    { id: 'station-test', zoneId: minimalProject.zones[0].id, stationType: 'anvil', availableRecipes: [] },
+  ],
+};
 
 describe('C1/P2 — DEFAULT_MODULES carries no phantoms', () => {
   it('the list shrank from 18 to 12, and every removal is accounted for', () => {
@@ -102,8 +116,21 @@ describe('C1/P2 — DEFAULT_MODULES carries no phantoms', () => {
     expect(new Set(DEFAULT_MODULES).size).toBe(DEFAULT_MODULES.length);
   });
 
-  it('the manifest actually emits this list', () => {
-    expect(convertManifest(minimalProject).modules).toEqual(DEFAULT_MODULES);
+  it('the manifest actually emits this list — when the project has crafting content', () => {
+    expect(convertManifest(projectWithCraftingStation).modules).toEqual(DEFAULT_MODULES);
+  });
+
+  it("F-f216da1a: 'crafting-core' is dropped when the project authors no crafting stations", () => {
+    // minimalProject is the REQUIRED (not optional) craftingStations field at
+    // its emptiest — the exact shape that used to still ship a manifest
+    // claiming the crafting module was active with nothing behind it.
+    expect(minimalProject.craftingStations).toEqual([]);
+    const modules = convertManifest(minimalProject).modules;
+    expect(modules).not.toContain('crafting-core');
+    expect(modules).toEqual(DEFAULT_MODULES.filter((m) => m !== 'crafting-core'));
+    // Every OTHER module id is untouched — this finding narrows exactly one
+    // id, not the whole list.
+    expect(modules).toHaveLength(DEFAULT_MODULES.length - 1);
   });
 });
 
@@ -150,8 +177,14 @@ describe('engine deps 3.x — every emitted module id resolves against a real bo
     // skipping: nine of eighteen ids named nothing, and rode along in every
     // manifest this exporter ever wrote because manifest validation checked
     // that `modules` was an array of strings and never resolved an id.
+    //
+    // F-f216da1a (swarm wave-4): uses projectWithCraftingStation, not
+    // minimalProject, so this test keeps proving what it always proved — ALL
+    // TWELVE ids resolve — now that minimalProject itself only emits eleven.
     const registered = new Set(registeredModuleIds());
-    const unresolved = convertManifest(minimalProject).modules.filter((id) => !registered.has(id));
+    const modules = convertManifest(projectWithCraftingStation).modules;
+    expect(modules).toEqual(DEFAULT_MODULES);
+    const unresolved = modules.filter((id) => !registered.has(id));
     expect(unresolved, `unresolved module ids: ${unresolved.join(', ')}`).toEqual([]);
     expect(DEFAULT_MODULES).toHaveLength(12);
   });

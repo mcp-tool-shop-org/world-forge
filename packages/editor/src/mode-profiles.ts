@@ -1,7 +1,7 @@
 // mode-profiles.ts — per-mode defaults for grid, connections, guide text, etc.
 
 import type { AuthoringMode, ConnectionKind } from '@world-forge/schema';
-import { DEFAULT_MODE } from '@world-forge/schema';
+import { DEFAULT_MODE, isValidMode } from '@world-forge/schema';
 
 /** Static configuration profile for an authoring mode. */
 export interface ModeProfile {
@@ -174,12 +174,42 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
  * Example: generateZoneName('dungeon', 3) → "Chamber 3"
  */
 export function generateZoneName(mode: AuthoringMode, index: number): string {
-  const profile = MODE_PROFILES[mode ?? DEFAULT_MODE];
+  // F-5fc88e24: route through getModeProfile rather than indexing MODE_PROFILES
+  // directly — this used to have the identical unguarded-lookup defect (see
+  // getModeProfile's docs below) one line above it in this same file.
+  const profile = getModeProfile(mode);
   return `${profile.zoneNamePattern} ${index}`;
 }
 
-/** Get the profile for a mode, defaulting to dungeon for undefined/legacy projects. */
+/**
+ * Get the profile for a mode, defaulting to DEFAULT_MODE for undefined/legacy
+ * projects.
+ *
+ * F-5fc88e24: this used to be a bare `MODE_PROFILES[mode ?? DEFAULT_MODE]`.
+ * `project.mode` is never validated on load or in the schema (normalizeProjectShape
+ * spreads it through unchecked; validate.ts's isValidMode() guard is a separate,
+ * not-yet-wired schema-domain gap), so a typo, a stale value from a schema
+ * migration, or a hand-edited project file reaches this function completely
+ * unchanged — and `??` only substitutes for `null`/`undefined`, not e.g. a stray
+ * number. A bare bracket lookup then returns `undefined` for any of those, and
+ * every caller immediately dereferences `.icon` / `.label` / `.connectionKinds[0]`
+ * off the result — App.tsx does this UNCONDITIONALLY, twice, on every render — so
+ * an invalid mode took down the entire editor on first render.
+ *
+ * `isValidMode` is a whitelist check (`AUTHORING_MODES.includes(value)`), not a
+ * bracket lookup, so — unlike a plain `??` guard — it is also immune to the
+ * prototype-pollution class of bug documented in
+ * packages/export-ai-rpg/src/safe-lookup.ts (a `mode` of literally `'__proto__'`
+ * would otherwise resolve to `Object.prototype` instead of missing, since that
+ * IS an inherited property of any plain object literal).
+ */
 export function getModeProfile(mode: AuthoringMode | undefined): ModeProfile {
+  if (mode !== undefined && !isValidMode(mode)) {
+    console.warn(
+      `[mode-profiles] Unrecognized authoring mode ${JSON.stringify(mode)} — falling back to "${DEFAULT_MODE}".`,
+    );
+    return MODE_PROFILES[DEFAULT_MODE];
+  }
   return MODE_PROFILES[mode ?? DEFAULT_MODE];
 }
 

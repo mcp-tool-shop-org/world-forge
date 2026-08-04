@@ -389,8 +389,18 @@ export function importFromContentPack(
     itemPlacements,
     encounterAnchors: pack.encounterAnchors ?? [],
     spawnPoints,
-    craftingStations: [],
-    marketNodes: [],
+    // F-f216da1a (swarm wave-4): these used to be hardcoded to `[]` even
+    // though the export side now actually carries this content on
+    // `ContentPack.craftingStations` / `.marketNodes` (raw pass-through —
+    // see export.ts's ContentPack doc comment) — a round trip erased both
+    // in this direction regardless of what the pack held. `?? []` guards a
+    // hand-authored/older ContentPack that omits the keys entirely, the same
+    // defensive style already used for `pack.dialogues ?? []` /
+    // `pack.encounterAnchors ?? []` / `pack.progressionTrees ?? []` above —
+    // `ContentPack` is a type annotation on the input, not a runtime
+    // guarantee, so this boundary treats it as untrusted parsed JSON.
+    craftingStations: pack.craftingStations ?? [],
+    marketNodes: pack.marketNodes ?? [],
 
     tilesets: [],
     tileLayers: [],

@@ -107,8 +107,11 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   map: 'The authored grid (dimensions, tile size) has no pack field. The engine\'s space model is a graph; it has no coordinates to receive.',
   connections: 'Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses.',
   spawnPoints: 'Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string.',
-  craftingStations: 'World-placed crafting stations have no pack field, although the engine ships a `crafting-core` module.',
-  marketNodes: 'Market nodes have no pack field, although the engine ships live per-district economies — the moat the 2.5D charter names.',
+  // craftingStations/marketNodes moved OUT of DROPPED_CONTAINERS by swarm
+  // wave-4 (F-f216da1a) — see CRAFTING_STATION_ROWS/MARKET_NODE_ROWS below.
+  // Kept as a comment rather than deleted, the same reason hazardDefinitions'
+  // and lootTables' entries were: the diff should show a domain LEAVING this
+  // list, which is the shape of progress here.
   buildings: 'Placed enterable buildings have no pack field.',
   hubs: 'Service/connectivity hubs have no pack field.',
   strongholds: 'Fortified faction seats have no pack field.',
@@ -227,9 +230,63 @@ const LOOT_TABLE_ROWS: ExportRow[] = (
   note: `CLOSED BY swarm wave-2 (F-ee46a52c). ${note}`,
 }));
 
+/**
+ * F-f216da1a (swarm wave-4) — the crafting-station and market-node rows.
+ *
+ * ⚠ THIS DOMAIN LEFT `DROPPED_CONTAINERS`, the same transition
+ * HAZARD_DEFINITION_ROWS and LOOT_TABLE_ROWS made. The finding:
+ * `WorldProject.craftingStations` and `.marketNodes` were read NOWHERE in
+ * this package despite BOTH being REQUIRED (not optional) fields, validated
+ * extensively (duplicate-id checks, dangling-zone checks, and for
+ * marketNodes a dangling-merchant-entity check) — a complete silent drop of
+ * an entire authored subsystem, in BOTH round-trip directions (the importer
+ * hardcoded `[]` right back), and compounded by the manifest unconditionally
+ * claiming the `'crafting-core'` module regardless of whether any crafting
+ * content crossed.
+ *
+ * Every field is `carried-lossless` as a RAW PASS-THROUGH — the same
+ * un-converted shape as `lootTables[]` immediately above and
+ * `factionPresences[]`/`pressureHotspots[]` further below — because this
+ * package's own ContentPack has no dedicated station/market vocabulary of
+ * its own to convert INTO.
+ */
+const CRAFTING_STATION_ROWS: ExportRow[] = (
+  [
+    ['id', 'The station identity.'],
+    ['zoneId', 'Which zone the station stands in.'],
+    ['stationType', 'Free-text station kind (e.g. ropewalk, forge).'],
+    ['availableRecipes[]', 'Recipe ids the station unlocks. No cross-reference to a recipe catalog exists on either side yet.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `craftingStations[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `craftingStations[].${field}`,
+  note: `CLOSED BY swarm wave-4 (F-f216da1a). ${note}`,
+}));
+
+const MARKET_NODE_ROWS: ExportRow[] = (
+  [
+    ['id', 'The market node identity.'],
+    ['zoneId', 'Which zone the node stands in.'],
+    ['merchantEntityId', 'Optional back-reference to the entity who runs the stall; validated against entityPlacements at authoring time (packages/schema/src/validate.ts:1414) but not re-resolved on export.'],
+    ['supplyCategories[]', 'Free-text categories of goods the node stocks.'],
+    ['priceModifier', 'Multiplier applied against base item prices.'],
+    ['contrabandAvailable', 'Whether illegal goods surface at this node.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `marketNodes[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `marketNodes[].${field}`,
+  note: `CLOSED BY swarm wave-4 (F-f216da1a). ${note}`,
+}));
+
 export const EXPLICIT_ROWS: ExportRow[] = [
   ...HAZARD_DEFINITION_ROWS,
   ...LOOT_TABLE_ROWS,
+  ...CRAFTING_STATION_ROWS,
+  ...MARKET_NODE_ROWS,
   // ── Project identity ────────────────────────────────────────────────
   { path: 'id', class: 'carried-lossless', channel: 'manifest', packPath: 'id', note: 'Also lands on packMeta.id, buildCatalog.packId, and manifest.contentPacks[].' },
   { path: 'name', class: 'carried-lossless', channel: 'manifest', packPath: 'title', transform: 'renamed-key', note: 'manifest.title and packMeta.name both receive it verbatim.' },

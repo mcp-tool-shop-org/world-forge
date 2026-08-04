@@ -914,7 +914,16 @@ export function Canvas() {
     duplicateSelected, setShowSearch, setRightTab, setTool,
     showSpeedPanel, closeSpeedPanel,
     copySelection: useEditorStore.getState().copySelection,
-    pasteClipboard: () => { /* paste handled by project-store when available */ },
+    // F-6c8800aa: this used to be a hardcoded no-op ("paste handled by
+    // project-store when available") — project-store's pasteClipboard action
+    // never arrived, so Ctrl+V did nothing while README/CHANGELOG/SCORECARD
+    // all publicly certified it as working. Mirrors how duplicateSelected is
+    // wired: commit through the project store (a single undoable action), then
+    // select the newly-pasted objects, same UX as Ctrl+D.
+    pasteClipboard: () => {
+      const newSel = useProjectStore.getState().pasteClipboard();
+      if (newSel) selectAll(newSel, false);
+    },
   };
 
   useEffect(() => {

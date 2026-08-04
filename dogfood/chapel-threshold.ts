@@ -155,6 +155,14 @@ if (contentPack.progressionTrees.length === 0) {
   gaps.push('No progression trees exported — engine expects character advancement');
 }
 
+// Test-only fault injection (dogfood/__tests__/chapel-threshold-gap-gate.test.ts):
+// lets a regression test exercise the "gap reintroduced" branch of the exit
+// gate (F-239f17d3) deterministically, via a real subprocess run.
+// WORLD_FORGE_FORCE_DOGFOOD_GAP is never set during a normal run.
+if (process.env.WORLD_FORGE_FORCE_DOGFOOD_GAP === '1') {
+  gaps.push('Test-injected gap (WORLD_FORGE_FORCE_DOGFOOD_GAP) — exercises the exit-code gate for regression coverage');
+}
+
 if (gaps.length > 0) {
   console.log(`Found ${gaps.length} gaps:\n`);
   for (const g of gaps) {
@@ -165,3 +173,13 @@ if (gaps.length > 0) {
 }
 
 console.log('\n=== Done ===');
+
+// F-239f17d3: WALKTHROUGH.md frames this gap count as a regression narrative
+// meant to trend toward and stay at zero ("The Chapel Threshold now exports
+// with zero gaps"), but this script only ever console.log'd the gap list —
+// it never turned a reintroduced gap into a failing exit code. A regression
+// that broke, say, the build-catalog export would print "Found 1 gaps:" and
+// still exit 0. Make it an actual regression gate: any gap fails the run.
+if (gaps.length > 0) {
+  process.exit(1);
+}

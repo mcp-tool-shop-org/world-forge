@@ -11,7 +11,7 @@
     "atmospheric"
   ],
   "tags": [],
-  "engineVersion": "2.0.0",
+  "engineVersion": ">=3.8.0 <4.0.0",
   "version": "1.0.0",
   "description": "A ruined chapel atop an ancient crypt, where the faithful once prayed and the dead now stir.",
   "narratorTone": "epic chronicle voice, archaic turns of phrase"

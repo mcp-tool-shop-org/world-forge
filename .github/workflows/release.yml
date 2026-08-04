@@ -15,10 +15,25 @@
 # Workflow standards compliance (see .claude/rules/workflow-standards.md):
 #   PIN_PER_STEP (2)        — actions SHA-pinned; node + npm versions fixed.
 #   ANDON_AUTHORITY (2)     — build/test/pack gates run BEFORE any publish; any
-#                             failure halts the job (no continue-on-error).
-#   NAMED_COMPENSATORS (3)  — see table below; npm publish has a named undo.
+#                             failure halts the job (no continue-on-error,
+#                             anywhere, including the per-package publish
+#                             guard added for F-f4cbf9e9 — an "already
+#                             published" existence check is a clean skip, but
+#                             a REAL npm publish failure still fails the step
+#                             and the job with npm's own exit code).
+#   NAMED_COMPENSATORS (3)  — see table below; npm publish has a named undo
+#                             for a bad version that's fully live, AND (new,
+#                             F-f4cbf9e9) a retry-forward path via
+#                             .github/actions/publish-if-missing for a
+#                             release that's only PARTIALLY live — re-running
+#                             this job now completes the remaining packages
+#                             instead of failing on the ones already done.
 #   DECOMPOSE_BY_SECRETS (2)— this file owns the release secret (irreversible
-#                             publish); ci.yml owns per-PR verification.
+#                             publish); ci.yml owns per-PR verification; the
+#                             per-package existence-check strategy lives in
+#                             its own composite action (publish-if-missing)
+#                             since it's the one piece here likely to change
+#                             again independently of the release sequence.
 #   UNCERTAINTY_GATED_HUMANS(2) — the human gate IS `gh release create` (a
 #                             person decides to cut the release; CI does not
 #                             auto-release on tag push).
@@ -31,6 +46,18 @@
 #   | (per package, x6)            | (npm forbids unpublish after 72h / for depended-on pkgs);   | consumers pin <prev>; ship a fixed <v+1>.        |       |
 #   |                              | then publish a fixed patch <v+1>.                           |                                                  |       |
 #   | GitHub Release create        | `gh release delete <tag> --cleanup-tag`                     | release + tag removed from remote.               | Mike  |
+#
+#   Half-published release (F-f4cbf9e9 — e.g. packages 1-3 of 6 succeeded,
+#   4 failed, 5-6 never ran): the fix makes the FORWARD path (re-run this
+#   same job — plain re-dispatch, "Re-run failed jobs", or re-running via a
+#   new workflow_dispatch-less trigger) safe and sufficient: each already-
+#   published package is detected via `npm view` and skipped, only the
+#   remaining packages actually publish. Recovery is "re-run the job," no
+#   manual intervention or version bump required. If a package must NOT go
+#   out at all (e.g. it was published in a broken state and packages 4-6
+#   still need a fix first), fall back to the per-package deprecate row
+#   above for the ones already live, patch the source, and cut a new
+#   release — same as any other bad-publish recovery. Owner: Mike.
 
 name: Release
 
@@ -40,7 +67,18 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # F-f4cbf9e9: was `true`. `github.ref` for a `release` event is the tag
+  # (e.g. refs/tags/v4.5.1), which is unique per release, so this group only
+  # ever collides with ANOTHER run for the exact same tag — i.e. someone
+  # manually re-triggering the same release while the first attempt is
+  # still running. With `true`, that second trigger CANCELLED the in-flight
+  # run mid-`npm publish`, producing the same half-published state as a
+  # genuine failure, just from a cancellation instead of an error. `false`
+  # queues the new run behind the in-flight one instead of killing it, so
+  # the only way to get a half-published release is a real failure — which
+  # the per-package publish-if-missing guard (see steps below) now makes
+  # safely retriable anyway.
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -96,26 +134,43 @@ jobs:
       #   1. schema (no deps)
       #   2. export-ai-rpg, export-unreal, export-godot, renderer-2d (depend on schema)
       #   3. editor (depends on all above)
+      #
+      # Each step delegates to ./.github/actions/publish-if-missing
+      # (F-f4cbf9e9), which checks `npm view <name>@<version>` first and
+      # skips the publish if that exact version is already live — so
+      # re-running this job after a partial failure (or a cancelled
+      # mid-sequence run) completes the remaining packages instead of
+      # failing again on the ones already done. A real publish failure
+      # still fails the step/job normally; see the action file for the
+      # full reasoning and the wave-4 ci-tooling output for the exit-code
+      # proof (skip path exits 0 without calling publish; real-error path
+      # exits non-zero).
       - name: Publish @world-forge/schema
-        working-directory: packages/schema
-        run: npm publish --provenance --access public
+        uses: ./.github/actions/publish-if-missing
+        with:
+          working-directory: packages/schema
 
       - name: Publish @world-forge/export-ai-rpg
-        working-directory: packages/export-ai-rpg
-        run: npm publish --provenance --access public
+        uses: ./.github/actions/publish-if-missing
+        with:
+          working-directory: packages/export-ai-rpg
 
       - name: Publish @world-forge/export-unreal
-        working-directory: packages/export-unreal
-        run: npm publish --provenance --access public
+        uses: ./.github/actions/publish-if-missing
+        with:
+          working-directory: packages/export-unreal
 
       - name: Publish @world-forge/export-godot
-        working-directory: packages/export-godot
-        run: npm publish --provenance --access public
+        uses: ./.github/actions/publish-if-missing
+        with:
+          working-directory: packages/export-godot
 
       - name: Publish @world-forge/renderer-2d
-        working-directory: packages/renderer-2d
-        run: npm publish --provenance --access public
+        uses: ./.github/actions/publish-if-missing
+        with:
+          working-directory: packages/renderer-2d
 
       - name: Publish @world-forge/editor
-        working-directory: packages/editor
-        run: npm publish --provenance --access public
+        uses: ./.github/actions/publish-if-missing
+        with:
+          working-directory: packages/editor

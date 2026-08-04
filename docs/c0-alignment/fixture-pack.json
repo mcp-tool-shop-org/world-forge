@@ -884,5 +884,29 @@
         "silt"
       ]
     }
+  ],
+  "craftingStations": [
+    {
+      "id": "station-ropewalk",
+      "zoneId": "zone-surface-yard",
+      "stationType": "ropewalk",
+      "availableRecipes": [
+        "recipe-splice-rope",
+        "recipe-tar-line"
+      ]
+    }
+  ],
+  "marketNodes": [
+    {
+      "id": "market-yard-stall",
+      "zoneId": "zone-surface-yard",
+      "merchantEntityId": "npc-quartermaster",
+      "supplyCategories": [
+        "rope",
+        "food"
+      ],
+      "priceModifier": 1.15,
+      "contrabandAvailable": true
+    }
   ]
 }

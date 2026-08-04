@@ -26,7 +26,10 @@
         "targetZoneId": "chapel-nave",
         "label": "Through the doors"
       }
-    ]
+    ],
+    "scene": {
+      "dressingDensity": "normal"
+    }
   },
   {
     "id": "chapel-nave",
@@ -64,7 +67,10 @@
         "targetZoneId": "vestry-door",
         "label": "Vestry door"
       }
-    ]
+    ],
+    "scene": {
+      "dressingDensity": "normal"
+    }
   },
   {
     "id": "chapel-alcove",
@@ -93,7 +99,10 @@
         "targetZoneId": "chapel-nave",
         "label": "Back to nave"
       }
-    ]
+    ],
+    "scene": {
+      "dressingDensity": "normal"
+    }
   },
   {
     "id": "vestry-door",
@@ -125,7 +134,10 @@
         "targetZoneId": "crypt-chamber",
         "label": "Descend into the crypt"
       }
-    ]
+    ],
+    "scene": {
+      "dressingDensity": "normal"
+    }
   },
   {
     "id": "crypt-chamber",
@@ -158,6 +170,9 @@
         "targetZoneId": "vestry-door",
         "label": "Climb back up"
       }
-    ]
+    ],
+    "scene": {
+      "dressingDensity": "normal"
+    }
   }
 ]
