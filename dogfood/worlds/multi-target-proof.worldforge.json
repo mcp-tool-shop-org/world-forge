@@ -63,7 +63,8 @@
         }
       ],
       "parentDistrictId": "dist-town",
-      "backgroundId": "asset-tavern-bg"
+      "backgroundId": "asset-tavern-bg",
+      "stratumId": "surface"
     },
     {
       "id": "zone-market",
@@ -154,7 +155,11 @@
       "elevationRange": {
         "floor": -5,
         "ceiling": -1
-      }
+      },
+      "stratumId": "underground",
+      "hazardRefs": [
+        "haz-crumbling"
+      ]
     },
     {
       "id": "zone-alley",
@@ -227,7 +232,15 @@
           "type": "inspect"
         }
       ],
-      "parentDistrictId": "dist-town"
+      "parentDistrictId": "dist-town",
+      "entryGate": {
+        "conditions": [
+          "party-level:>=3",
+          "flag:gate-pass"
+        ],
+        "mode": "hard",
+        "reason": "The guards demand a gate pass and a party of at least level 3."
+      }
     }
   ],
   "connections": [
@@ -361,7 +374,7 @@
     {
       "id": "dlg-mara",
       "speakers": [
-        "Mara Greystone"
+        "npc-mara"
       ],
       "entryNodeId": "greeting",
       "nodes": {
@@ -680,12 +693,263 @@
     }
   ],
   "progressionTrees": [],
-  "craftingStations": [],
-  "marketNodes": [],
-  "tilesets": [],
-  "tileLayers": [],
-  "props": [],
-  "propPlacements": [],
+  "craftingStations": [
+    {
+      "id": "craft-smith",
+      "zoneId": "zone-tavern",
+      "stationType": "forge",
+      "availableRecipes": [
+        "iron-blade",
+        "horseshoe"
+      ]
+    }
+  ],
+  "marketNodes": [
+    {
+      "id": "market-bazaar",
+      "zoneId": "zone-market",
+      "merchantEntityId": "npc-mara",
+      "supplyCategories": [
+        "food",
+        "tools"
+      ],
+      "priceModifier": 1.2,
+      "contrabandAvailable": false
+    }
+  ],
+  "buildings": [
+    {
+      "id": "bld-inn",
+      "name": "The Roadside Inn",
+      "buildingType": "tavern",
+      "gridX": 5,
+      "gridY": 5,
+      "width": 3,
+      "height": 2,
+      "zoneId": "zone-market",
+      "interiorZoneId": "zone-cellar",
+      "tags": [
+        "lodging"
+      ]
+    }
+  ],
+  "hubs": [
+    {
+      "id": "hub-square",
+      "name": "Market Square",
+      "zoneId": "zone-market",
+      "hubType": "market-square",
+      "serviceTypes": [
+        "market",
+        "inn"
+      ],
+      "connectedZoneIds": [
+        "zone-tavern",
+        "zone-alley"
+      ],
+      "tags": []
+    }
+  ],
+  "strongholds": [
+    {
+      "id": "hold-keep",
+      "name": "Dustwall Keep",
+      "zoneId": "zone-gate",
+      "factionId": "faction-garrison",
+      "defenseLevel": 3,
+      "garrisonEntityIds": [
+        "npc-holt"
+      ],
+      "tags": []
+    }
+  ],
+  "strata": [
+    {
+      "id": "surface",
+      "name": "Surface",
+      "order": 0,
+      "zRange": {
+        "floor": 0,
+        "ceiling": 12
+      },
+      "visibleStrata": [
+        "underground"
+      ],
+      "tags": []
+    },
+    {
+      "id": "underground",
+      "name": "Underground",
+      "order": -1,
+      "zRange": {
+        "floor": -5,
+        "ceiling": 0
+      },
+      "tags": []
+    }
+  ],
+  "stratumLinks": [
+    {
+      "id": "slink-trapdoor",
+      "fromStratumId": "surface",
+      "toStratumId": "underground",
+      "fromZoneId": "zone-tavern",
+      "toZoneId": "zone-cellar",
+      "bidirectional": true,
+      "linkType": "stairs"
+    }
+  ],
+  "hazardDefinitions": [
+    {
+      "id": "haz-crumbling",
+      "name": "Crumbling Floor",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 4,
+          "tickOn": "turn-end"
+        }
+      ],
+      "trigger": "on-enter",
+      "moveCostDelta": 1,
+      "passable": "yes",
+      "blocksVision": false,
+      "tags": [
+        "terrain"
+      ]
+    }
+  ],
+  "tilesets": [
+    {
+      "id": "ts-dustwalk",
+      "name": "Dustwalk Tiles",
+      "tileWidth": 32,
+      "tileHeight": 32,
+      "tiles": [
+        {
+          "id": "dw-floor",
+          "tilesetId": "ts-dustwalk",
+          "row": 0,
+          "col": 0,
+          "tags": [
+            "floor"
+          ],
+          "walkable": true,
+          "opacity": 1
+        },
+        {
+          "id": "dw-wall",
+          "tilesetId": "ts-dustwalk",
+          "row": 0,
+          "col": 1,
+          "tags": [
+            "wall"
+          ],
+          "walkable": false,
+          "opacity": 1
+        }
+      ]
+    }
+  ],
+  "tileLayers": [
+    {
+      "id": "tl-ground",
+      "name": "Ground",
+      "zIndex": 0,
+      "tiles": [
+        {
+          "tileId": "dw-wall",
+          "gridX": 0,
+          "gridY": 0
+        },
+        {
+          "tileId": "dw-wall",
+          "gridX": 1,
+          "gridY": 0
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 0,
+          "gridY": 1
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 1,
+          "gridY": 1
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 2,
+          "gridY": 1
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 3,
+          "gridY": 1
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 0,
+          "gridY": 2
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 1,
+          "gridY": 2
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 2,
+          "gridY": 2
+        },
+        {
+          "tileId": "dw-floor",
+          "gridX": 3,
+          "gridY": 2
+        }
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "prop-barrel",
+      "name": "Barrel",
+      "width": 1,
+      "height": 1,
+      "tags": [
+        "container"
+      ],
+      "walkable": false,
+      "interactable": true
+    },
+    {
+      "id": "prop-rug",
+      "name": "Rug",
+      "width": 2,
+      "height": 1,
+      "tags": [
+        "decor"
+      ],
+      "walkable": true,
+      "interactable": false
+    }
+  ],
+  "propPlacements": [
+    {
+      "id": "pp-barrel-1",
+      "propId": "prop-barrel",
+      "gridX": 1,
+      "gridY": 1,
+      "zoneId": "zone-tavern"
+    },
+    {
+      "id": "pp-rug-1",
+      "propId": "prop-rug",
+      "gridX": 2,
+      "gridY": 2,
+      "zoneId": "zone-tavern"
+    }
+  ],
   "ambientLayers": [
     {
       "id": "amb-cellar-drip",

@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { MODE_PROFILES, getModeProfile, getDefaultConnectionKind } from '../mode-profiles.js';
-import { AUTHORING_MODES } from '@world-forge/schema';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { MODE_PROFILES, getModeProfile, getDefaultConnectionKind, generateZoneName } from '../mode-profiles.js';
+import { AUTHORING_MODES, DEFAULT_MODE } from '@world-forge/schema';
+import type { AuthoringMode } from '@world-forge/schema';
 
 /** Valid checklist step IDs from ChecklistPanel. */
 const VALID_STEP_IDS = new Set(['district', 'zone', 'spawn', 'player', 'npc', 'export']);
@@ -182,5 +183,104 @@ describe('ModeProfiles', () => {
 
   it('wilderness spawn override says camp spawn', () => {
     expect(getModeProfile('wilderness').guideOverrides.spawn?.label).toBe('Place a camp spawn');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────
+// F-5fc88e24: getModeProfile(mode) did a bare `MODE_PROFILES[mode ??
+// DEFAULT_MODE]` with no guard for a mode value outside the 7-mode union.
+// project.mode is never validated on load (normalizeProjectShape spreads it
+// through unchecked; validate.ts's isValidMode() guard is a separate,
+// not-yet-wired schema-domain gap), so a typo, a stale value from a schema
+// migration, or a hand-edited project file reaches this function unchanged.
+// App.tsx calls getModeProfile(project.mode).icon UNCONDITIONALLY on every
+// render, twice, with no guard around either call site — an undefined
+// profile is a first-render TypeError that takes down the whole editor to
+// the ErrorBoundary.
+// ──────────────────────────────────────────────────────────────────
+
+describe('F-5fc88e24: invalid mode fallback (getModeProfile / generateZoneName)', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('does not throw for an unrecognized mode string (reproduces the exact crash trigger)', () => {
+    expect(() => getModeProfile('castle-siege-mode-that-does-not-exist' as AuthoringMode)).not.toThrow();
+  });
+
+  it('falls back to the DEFAULT_MODE profile for an unrecognized mode string', () => {
+    const profile = getModeProfile('castle-siege-mode-that-does-not-exist' as AuthoringMode);
+    expect(profile).toBeDefined();
+    expect(profile.mode).toBe(DEFAULT_MODE);
+    // The very access pattern App.tsx uses unconditionally, twice per render —
+    // must not throw "Cannot read properties of undefined".
+    expect(profile.icon.length).toBeGreaterThan(0);
+    expect(profile.label.length).toBeGreaterThan(0);
+  });
+
+  it('warns when falling back for an unrecognized mode', () => {
+    getModeProfile('nonsense' as AuthoringMode);
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('is immune to a "__proto__" prototype-pollution key (does not resolve to Object.prototype)', () => {
+    const profile = getModeProfile('__proto__' as AuthoringMode);
+    expect(profile.mode).toBe(DEFAULT_MODE);
+    // A naive `MODE_PROFILES['__proto__']` bracket lookup would have returned
+    // Object.prototype (truthy, so a bare `??` fallback never fires) — assert
+    // we got a REAL profile, not the object prototype wearing a disguise.
+    expect(profile.icon.length).toBeGreaterThan(0);
+    expect(Object.prototype.hasOwnProperty.call(MODE_PROFILES, profile.mode)).toBe(true);
+  });
+
+  it('handles a non-string garbage value without throwing (?? only substitutes null/undefined)', () => {
+    expect(() => getModeProfile(42 as unknown as AuthoringMode)).not.toThrow();
+    expect(getModeProfile(42 as unknown as AuthoringMode).mode).toBe(DEFAULT_MODE);
+  });
+
+  it('handles null the same as an invalid value (warn + fallback), not a silent pass-through', () => {
+    const profile = getModeProfile(null as unknown as AuthoringMode);
+    expect(profile.mode).toBe(DEFAULT_MODE);
+    // Unlike `undefined` (a legitimate "field omitted" case), `null` is a
+    // present-but-wrong value and should be flagged the same as any other
+    // invalid mode, not silently absorbed by `?? DEFAULT_MODE`.
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('generateZoneName falls back to the DEFAULT_MODE pattern for an unrecognized mode instead of throwing', () => {
+    expect(() => generateZoneName('nonsense' as AuthoringMode, 1)).not.toThrow();
+    expect(generateZoneName('nonsense' as AuthoringMode, 1)).toBe(`${MODE_PROFILES[DEFAULT_MODE].zoneNamePattern} 1`);
+  });
+
+  // -- Controls: well-formed input must keep behaving exactly as before --
+
+  it('control: getModeProfile(undefined) still returns the DEFAULT_MODE profile silently (no warning)', () => {
+    warnSpy.mockClear();
+    const profile = getModeProfile(undefined);
+    expect(profile.mode).toBe(DEFAULT_MODE);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('control: getModeProfile still returns the exact profile for every valid mode, with no warning', () => {
+    for (const mode of AUTHORING_MODES) {
+      warnSpy.mockClear();
+      const profile = getModeProfile(mode);
+      expect(profile.mode).toBe(mode);
+      expect(profile).toBe(MODE_PROFILES[mode]);
+      expect(warnSpy).not.toHaveBeenCalled();
+    }
+  });
+
+  it('control: generateZoneName still produces the documented example for every valid mode', () => {
+    expect(generateZoneName('dungeon', 3)).toBe('Chamber 3');
+    for (const mode of AUTHORING_MODES) {
+      expect(generateZoneName(mode, 1)).toBe(`${MODE_PROFILES[mode].zoneNamePattern} 1`);
+    }
   });
 });

@@ -132,7 +132,9 @@ export function buildWorldScene(input: SceneBuildInput): string {
     }
 
     // Root node — y-sort enabled so 2.5D depth ordering works out of the box.
-    lines.push(`[node name="${sanitizeNodeName(input.projectName)}" type="Node2D"]`);
+    // F-00cf78db: the identical gap convert-zones.ts:116 had — a project name
+    // that sanitizes to '' used to produce a scene root itself named "".
+    lines.push(`[node name="${sanitizeNodeName(input.projectName) || 'World'}" type="Node2D"]`);
     lines.push('y_sort_enabled = true');
     lines.push('');
 
@@ -506,6 +508,16 @@ export function buildWorldScene(input: SceneBuildInput): string {
 const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[A-Za-z_][A-Za-z0-9_]*\([^()]*\)))+\]$/;
 
 /**
+ * Matches one `key="value"` attribute inside a `[node ...]` header line. Used
+ * ONLY after NODE_HEADER_RE has already accepted the line as well-formed — it
+ * narrows *which* well-formed headers are still unsafe to load, it does not
+ * re-decide well-formedness. See the THIRD defect class in assertParseable's
+ * doc comment below (F-00cf78db): a zero-length quoted value is syntactically
+ * legal to NODE_HEADER_RE but semantically catastrophic to the real engine.
+ */
+const NODE_ATTR_RE = /([A-Za-z_][A-Za-z0-9_]*)="((?:[^"\\]|\\.)*)"/g;
+
+/**
  * Refuse to return a scene Godot cannot parse.
  *
  * ⚠ MEASURED, not defensive programming. `metadata/hidden = ${item.hidden}` was
@@ -533,6 +545,20 @@ const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[
  * causes this; the check here is the backstop for anything that reaches
  * `buildWorldScene` without going through that sanitizer.
  *
+ * A THIRD defect class (F-00cf78db) is a well-formed header that is still
+ * unsafe: `name=""` / `parent=""` — a zero-length quoted attribute value —
+ * tokenizes as perfectly legal to NODE_HEADER_RE (it never claimed to reject
+ * an empty string, only an unescaped one), so neither check above fires.
+ * Godot's response to it is not a parse error: `parent=""` crashes the real
+ * engine outright (`CrashHandlerException: Program crashed with signal 11`,
+ * verified against the real, installed Godot 4.7.stable engine) inside its
+ * own resource loader, before any script runs — strictly worse than the
+ * "refuses to load" failure mode the other two checks guard against. Every
+ * name/parent value reaching this function is expected to have already gone
+ * through a sanitizer with a non-empty fallback (e.g. `sanitizeNodeName(x) ||
+ * 'Node'`, the pattern every converter in this package uses); this is the
+ * backstop for anything that reaches `buildWorldScene` without one.
+ *
  * Throwing is the right failure: `exportToGodot` catches converter throws and returns
  * a structured `{ success: false, errors }`, so the caller gets a named refusal
  * instead of a broken file.
@@ -540,6 +566,7 @@ const NODE_HEADER_RE = /^\[node(?: [A-Za-z_][A-Za-z0-9_]*=(?:"(?:[^"\\]|\\.)*"|[
 function assertParseable(scene: string): string {
     const bareTokenOffenders: string[] = [];
     const malformedHeaderOffenders: string[] = [];
+    const emptyAttrOffenders: string[] = [];
     const lines = scene.split('\n');
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -549,8 +576,22 @@ function assertParseable(scene: string): string {
             bareTokenOffenders.push(`line ${i + 1}: ${line}`);
             continue;
         }
-        if (line.startsWith('[node ') && !NODE_HEADER_RE.test(line)) {
-            malformedHeaderOffenders.push(`line ${i + 1}: ${line}`);
+        if (line.startsWith('[node ')) {
+            if (!NODE_HEADER_RE.test(line)) {
+                malformedHeaderOffenders.push(`line ${i + 1}: ${line}`);
+            } else {
+                // Well-formed per NODE_HEADER_RE, but name="" / parent="" is a
+                // distinct, semantically fatal defect that tokenizer accepts
+                // (see the THIRD defect class above) — check each attribute
+                // value the header actually carries.
+                NODE_ATTR_RE.lastIndex = 0;
+                let attr: RegExpExecArray | null;
+                while ((attr = NODE_ATTR_RE.exec(line))) {
+                    if ((attr[1] === 'name' || attr[1] === 'parent') && attr[2] === '') {
+                        emptyAttrOffenders.push(`line ${i + 1}: ${attr[1]}="" — ${line}`);
+                    }
+                }
+            }
         }
     }
     if (bareTokenOffenders.length > 0) {
@@ -572,6 +613,22 @@ function assertParseable(scene: string): string {
             + `this with a parse error and a total refusal to load the scene.\n  ${malformedHeaderOffenders.join('\n  ')}\n`
             + '  Fix: the offending name must be produced by sanitizeNodeName() (node-naming.ts) before it '
             + 'reaches buildWorldScene.',
+        );
+    }
+    if (emptyAttrOffenders.length > 0) {
+        throw new Error(
+            `refusing to emit an unparseable scene: ${emptyAttrOffenders.length} `
+            + `[node ...] header${emptyAttrOffenders.length === 1 ? '' : 's'} would carry an empty `
+            + `name="" or parent="" value. This is syntactically well-formed — a zero-length quoted `
+            + `string is a legal attribute value — so it will NOT be caught as a parse error. Instead, `
+            + `Godot's real engine crashes outright loading a parent="" NodePath (CrashHandlerException, `
+            + `signal 11, inside its own resource loader, before any script runs) — verified against the `
+            + `real, installed Godot 4.7.stable engine — and an empty name="" silently collides two `
+            + `sibling nodes into one unreachable pair with zero warning. Both are worse than a parse `
+            + `error, which is at least a loud refusal.\n  ${emptyAttrOffenders.join('\n  ')}\n`
+            + '  Fix: the offending value must come from a sanitizer with a non-empty fallback '
+            + "(sanitizeNodeName(x) || 'Node' or similar, the pattern every converter in this package "
+            + 'uses) before it reaches buildWorldScene.',
         );
     }
     return scene;

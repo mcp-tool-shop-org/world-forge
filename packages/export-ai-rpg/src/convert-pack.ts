@@ -118,15 +118,33 @@ export const ENGINE_VERSION_RANGE = '>=3.8.0 <4.0.0';
  * **Precondition:** `validateProject(project).valid === true`. Converters do
  * not guard against missing nested properties and will throw if input is
  * malformed. (AIR-B-006)
+ *
+ * **F-f216da1a (swarm wave-4):** `modules` used to be `DEFAULT_MODULES`
+ * verbatim, unconditionally — so a project with ZERO authored crafting
+ * stations still shipped a manifest claiming `'crafting-core'` was active,
+ * while `ContentPack.craftingStations` carried nothing for that module to
+ * act on. "Silently claiming a module that isn't there is the worse half of
+ * that bug" (the finding's own words) — this closes it by gating the ONE
+ * module id with a direct, checkable 1:1 content correspondence
+ * (`craftingStations` ↔ `'crafting-core'`, per the C0 audit's own
+ * DROPPED_CONTAINERS note: "the engine ships a `crafting-core` module").
+ * The other ids in `DEFAULT_MODULES` (notably `'economy-core'`,
+ * `'opportunity-core'`) have no such single-field correspondence — economy
+ * systems plausibly matter even with zero placed market NODES specifically
+ * (e.g. item pricing) — so they are deliberately left unconditional here;
+ * narrowing them is out of this finding's scope.
  */
 export function convertManifest(project: WorldProject): GameManifest {
+  const modules = project.craftingStations.length > 0
+    ? DEFAULT_MODULES
+    : DEFAULT_MODULES.filter((m) => m !== 'crafting-core');
   return {
     id: project.id,
     title: project.name,
     version: project.version,
     engineVersion: ENGINE_VERSION_RANGE,
     ruleset: 'standard-v1',
-    modules: DEFAULT_MODULES,
+    modules,
     contentPacks: [project.id],
   };
 }

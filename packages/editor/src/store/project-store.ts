@@ -17,6 +17,7 @@ import type {
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
+import { pasteFromClipboard as doPaste } from '../paste.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
 import { useEditorStore } from './editor-store.js';
 import type { ResizeResult } from '../resize-handles.js';
@@ -317,6 +318,15 @@ interface ProjectState {
   moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, dx: number, dy: number) => void;
   removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => void;
   duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] };
+  /**
+   * F-6c8800aa: paste the current clipboard (from useEditorStore) into the
+   * project as a single undoable action. Self-contained (reads the clipboard
+   * itself) so it matches HotkeyContext.pasteClipboard's zero-arg shape.
+   * Returns null when there is nothing to paste (no clipboard, or an empty
+   * one) so callers can skip selecting/history-pushing on a no-op — mirrors
+   * duplicateSelected's own "nothing changed" early return.
+   */
+  pasteClipboard: (offset?: { dx: number; dy: number }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] } | null;
   alignSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, axis: AlignAxis) => void;
   distributeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, axis: DistributeAxis) => void;
 
@@ -1109,6 +1119,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (newProject === project) return { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
     const label = `Duplicate ${count} ${count === 1 ? 'object' : 'objects'}`;
+    get().updateProject(() => newProject, label);
+    return newSelection;
+  },
+  pasteClipboard: (offset) => {
+    const clipboard = useEditorStore.getState().getClipboard();
+    if (!clipboard) return null;
+    const count = clipboard.zones.length + clipboard.entities.length + clipboard.landmarks.length
+      + clipboard.spawns.length + clipboard.encounters.length;
+    if (count === 0) return null;
+    const { project } = get();
+    const { project: newProject, newSelection } = doPaste(clipboard, project, offset);
+    const label = `Paste ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject(() => newProject, label);
     return newSelection;
   },

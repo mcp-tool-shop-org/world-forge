@@ -86,6 +86,16 @@ export const SIM_AFFECTING_KEYS = [
   // equivalence test this file's header describes will go red for the same
   // reason C3/P1 and C3/P3 did.
   'lootTables',
+  // F-f216da1a (swarm wave-4). Same reasoning as lootTables immediately
+  // above: which crafting stations/market nodes exist changes what a player
+  // can craft or buy exactly as much as `entities`/`items` do, so a
+  // content-hash that ignored these two would let two packs with different
+  // stations/nodes hash identically. Also NOT yet mirrored into the engine's
+  // gate.ts for the same reason lootTables is not (unpublished, out of this
+  // package's reach) — mirror when the engine publishes support, or the
+  // cross-repo equivalence test goes red, same as above.
+  'craftingStations',
+  'marketNodes',
 ] as const;
 
 /**

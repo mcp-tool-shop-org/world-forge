@@ -13,7 +13,7 @@
  *   dogfood/output/godot/content-pack.json
  *   dogfood/output/godot/world.tscn
  *   dogfood/output/unreal/content-pack.json
- *   dogfood/output/DOGFOOD_MULTI_TARGET_EXPORT_2026-04-30.md
+ *   dogfood/output/DOGFOOD_MULTI_TARGET_EXPORT_<YYYY-MM-DD>.md  (dated per run)
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -414,6 +414,16 @@ assert('No dropped entities (Godot)', !godot.contentPack.entities.incomplete,
 assert('No dropped entities (Unreal)', !unreal.contentPack.Actors.Incomplete,
     `dropped: ${unreal.contentPack.Actors.Dropped.length}`);
 
+// Test-only fault injection (dogfood/__tests__/multi-target-export-proof-exit-code.test.ts):
+// lets a regression test exercise the "cross-lane invariant fails" branch of
+// the exit-code gate (F-6245cd73) and the Product Assessment conditional
+// deterministically, via a real subprocess run, without touching real export
+// behavior. WORLD_FORGE_FORCE_DOGFOOD_FAIL is never set during a normal run.
+if (process.env.WORLD_FORGE_FORCE_DOGFOOD_FAIL === '1') {
+    assert('Test-injected failure (WORLD_FORGE_FORCE_DOGFOOD_FAIL)', false,
+        'deliberately failed via env var — exercises the exit-code/receipt gate for regression coverage');
+}
+
 console.log('');
 
 // ═══════════════════════════════════════════════════════════════
@@ -474,7 +484,48 @@ console.log('');
 // 8. WRITE PROOF RECEIPT
 // ═══════════════════════════════════════════════════════════════
 
-const receipt = `# Multi-Target Export Proof — ${new Date().toISOString().slice(0, 10)}
+// F-239f17d3-adjacent (same defect family as F-6245cd73): this section used
+// to be hardcoded prose — literal ✓ marks, "successfully", and "This proves"
+// — regardless of `verdict`/`failCount`. A failing run could produce a
+// receipt whose "Product Assessment" section still claimed success two
+// headings below a verdict line reading BLOCKED/NEEDS FOLLOW-UP.
+//
+// Gate the section on `allPass` (failCount === 0) — the SAME condition that
+// separates the verdict's two "pass" tiers (PASSES / PASSES WITH NOTES) from
+// its two "fail" tiers (BLOCKED / NEEDS FOLLOW-UP). Requiring zero fidelity
+// drops here too would be a DIFFERENT, stricter condition than the verdict
+// uses, and would just reintroduce the same self-contradiction with new
+// wording: a "PASSES WITH NOTES" run (allPass, but some documented drops)
+// would print verdict=PASS two headings above assessment=FAIL. Drops are
+// already reported honestly elsewhere (Export Matrix, Transform Notes) — an
+// approximated/dropped field is not itself a cross-lane invariant failure.
+const totalDropped = aiRpgDropped + godotDropped + unrealDropped;
+const productAssessment = allPass
+    ? `World Forge exported one canonical authored world to three engine targets, and all ${assertions.length} cross-lane invariant assertions passed:
+1. AI RPG Engine — ContentPack with lossless round-trip and honest fidelity report
+2. Godot 4 — Structurally valid .tscn scene + typed resources with correct coordinate mapping
+3. Unreal Engine 5 — Proper cm scale, Y-flip, elevation→Z, PascalCase pack, format versioning
+
+Every target preserves core world identity (IDs, names, structure).${totalDropped === 0
+            ? ' Every target-specific approximation (axis flips, scale, elevation flattening) is explicitly documented in the fidelity report as lossless or approximated — nothing was dropped.'
+            : ` ${totalDropped} fidelity ${totalDropped === 1 ? 'entry was' : 'entries were'} reported as dropped this run (not silently — see the Export Matrix and Target-Specific Transform Notes above for which fields, and which lane).`}
+
+What this run establishes is narrower than "the export is lossless": all ${assertions.length} cross-lane invariants held, so the three lanes agree about the world's identity. What each lane approximated or dropped is a separate question, and the Export Matrix above is where it is answered.`
+    : `World Forge did NOT cleanly export one canonical authored world to three engine targets this run.
+
+${failCount} of ${assertions.length} cross-lane invariant assertion(s) failed. See "Cross-Lane Invariants" above for which assertion(s) failed and which lane(s)/field(s) are responsible.
+
+This run does not support the multi-target world-construction-bench claim. Re-run after addressing the failing assertion(s) before treating this proof as passing.`;
+
+// One date, used for both the heading and the filename. These used to disagree:
+// the heading interpolated today, while the file was hardcoded to
+// DOGFOOD_MULTI_TARGET_EXPORT_2026-04-30.md, so every run overwrote one file whose
+// name claimed April 30 with content dated something else. On a proof artifact,
+// provenance that contradicts itself is a defect in the proof.
+const receiptDate = new Date().toISOString().slice(0, 10);
+const receiptFile = `DOGFOOD_MULTI_TARGET_EXPORT_${receiptDate}.md`;
+
+const receipt = `# Multi-Target Export Proof — ${receiptDate}
 
 ## Source World
 
@@ -573,16 +624,24 @@ Assertions: **${passCount}/${assertions.length}** passed
 
 ## Product Assessment
 
-World Forge successfully exported one canonical authored world to three engine targets:
-1. ✓ AI RPG Engine — ContentPack with lossless round-trip and honest fidelity report
-2. ✓ Godot 4 — Structurally valid .tscn scene + typed resources with correct coordinate mapping
-3. ✓ Unreal Engine 5 — Proper cm scale, Y-flip, elevation→Z, PascalCase pack, format versioning
-
-Every target preserves core world identity (IDs, names, structure). Every target-specific approximation (axis flips, scale, elevation flattening) is explicitly documented in the fidelity report — not silent.
-
-This proves World Forge is a multi-target world construction bench, not a single-engine exporter.
+${productAssessment}
 `;
 
-writeFileSync(resolve(outBase, 'DOGFOOD_MULTI_TARGET_EXPORT_2026-04-30.md'), receipt);
-console.log('Proof receipt: dogfood/output/DOGFOOD_MULTI_TARGET_EXPORT_2026-04-30.md');
+writeFileSync(resolve(outBase, receiptFile), receipt);
+console.log(`Proof receipt: dogfood/output/${receiptFile}`);
 console.log('Done.');
+
+// ═══════════════════════════════════════════════════════════════
+// 9. EXIT CODE — must reflect the verdict, not just the early guards
+// ═══════════════════════════════════════════════════════════════
+//
+// F-6245cd73: this script's only process.exit() calls used to be the four
+// early-failure guards above (validation / lane export failures), all of
+// which run BEFORE the cross-lane invariant section. Once execution reached
+// the verdict, the script fell off the end with Node's default exit code 0
+// no matter how many of the 20+ cross-lane invariants failed — so a CI
+// wrapper gating on this script's exit status could never see a failure
+// here, unlike its siblings (run-godot-smoke.ts, run-unreal-smoke.ts,
+// run-ai-rpg-smoke.ts), which all set their exit code from their verdict.
+// Mirror that same pattern here.
+process.exit(failCount === 0 ? 0 : 1);

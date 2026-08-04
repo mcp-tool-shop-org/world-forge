@@ -39,7 +39,7 @@
  * @module export
  */
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, LootTable } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, LootTable, CraftingStation, MarketNode } from '@world-forge/schema';
 import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
 import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -172,6 +172,39 @@ export type ContentPack = {
    * this channel.
    */
   lootTables: LootTable[];
+  /**
+   * F-f216da1a (swarm wave-4) — CLOSED. `WorldProject.craftingStations` and
+   * `WorldProject.marketNodes` were read NOWHERE in this package: no key on
+   * `ContentPack`, no warning at export, no fidelity entry — despite BOTH
+   * being REQUIRED (not optional, unlike `lootTables` above) `WorldProject`
+   * fields, validated extensively (duplicate-id checks, dangling-zone checks,
+   * and for marketNodes a dangling-merchant-entity check —
+   * packages/schema/src/validate.ts lines 1382-1414). An author who places
+   * stations/nodes in the editor's Economy panel got a ContentPack with zero
+   * warnings and zero fidelity entries mentioning either field — the same
+   * silent-drop shape as the already-fixed F-ee46a52c (`lootTables`).
+   *
+   * RAW PASS-THROUGH, same class as `lootTables`: this package's own
+   * `ContentPack` has no dedicated station/market vocabulary of its own to
+   * convert INTO, so there is nothing to mirror a per-field converter
+   * against. UNLIKE `lootTables`, no `?? []` here — both fields are
+   * REQUIRED on `WorldProject` (see project.ts:64-65, no `?`), and
+   * `validateProject` already refuses a project where either is not a real
+   * array (validate.ts:120-121), so by the time this line runs both are
+   * guaranteed present, exactly like `encounterAnchors` / `factionPresences`
+   * / `pressureHotspots` above.
+   *
+   * Compounding factor this fix ALSO closes: `convertManifest`'s
+   * `DEFAULT_MODULES` unconditionally listed `'crafting-core'`, so a project
+   * with ZERO crafting stations still shipped a manifest claiming the
+   * crafting module was active. `convertManifest` now drops `'crafting-core'`
+   * from the emitted list when `craftingStations` is empty — see its doc
+   * comment in convert-pack.ts. `exportToEngine` also warns (below) when
+   * either field is non-empty, so an author knows this content crossed as an
+   * unconverted raw channel rather than assuming full engine support.
+   */
+  craftingStations: CraftingStation[];
+  marketNodes: MarketNode[];
 };
 
 export type AssetBindingMap = {
@@ -352,6 +385,36 @@ export function exportToEngine(
     warnings.push('No faction presences defined — faction system will be inactive');
   }
 
+  // 10b. F-f216da1a: warn on RAW PASS-THROUGH content, not on absence.
+  //
+  // Deliberately the opposite polarity from the missing-feature warnings just
+  // above: an empty crafting/market layer is an ordinary, unremarkable world
+  // (plenty of dungeon-crawl-shaped projects author neither), so warning on
+  // EMPTY here would just be noise — see the accompanying control test that
+  // pins a silent, warning-free export for that shape. The loud case is the
+  // opposite one: there IS authored content, and it crosses onto
+  // ContentPack.craftingStations / .marketNodes with no dedicated converter
+  // behind it, so the author should know to verify their engine build's
+  // consumer for it before shipping.
+  if (project.craftingStations.length > 0) {
+    const msg = `${project.craftingStations.length} crafting station(s) exported as raw pass-through data on ContentPack.craftingStations — this package has no dedicated converter for them yet; verify your engine build's crafting-core module reads this field before shipping.`;
+    warnings.push(msg);
+    fidelityEntries.push({
+      level: 'lossless', domain: 'world', severity: 'info',
+      message: `${project.craftingStations.length} crafting station(s) passed through to ContentPack.craftingStations verbatim (no dedicated converter yet)`,
+      reason: 'crafting-stations-raw-passthrough',
+    });
+  }
+  if (project.marketNodes.length > 0) {
+    const msg = `${project.marketNodes.length} market node(s) exported as raw pass-through data on ContentPack.marketNodes — this package has no dedicated converter for them yet; verify your engine build's economy systems read this field before shipping.`;
+    warnings.push(msg);
+    fidelityEntries.push({
+      level: 'lossless', domain: 'world', severity: 'info',
+      message: `${project.marketNodes.length} market node(s) passed through to ContentPack.marketNodes verbatim (no dedicated converter yet)`,
+      reason: 'market-nodes-raw-passthrough',
+    });
+  }
+
   // 11. Collect asset manifest and bindings for round-trip preservation.
   //
   // AIR-B-001: Binding maps are keyed by entity/zone/item/landmark IDs. Object
@@ -441,6 +504,11 @@ export function exportToEngine(
     // pass-through, unconditional key presence, see the ContentPack.lootTables
     // doc comment for why this is not routed through a dedicated converter.
     lootTables: project.lootTables ?? [],
+    // F-f216da1a. No `?? []` — both are REQUIRED on WorldProject (see the
+    // ContentPack.craftingStations doc comment above for why that matters
+    // here specifically).
+    craftingStations: project.craftingStations,
+    marketNodes: project.marketNodes,
   };
 
   if (profile === 'debug' || emitSchemaVersion) {
@@ -458,6 +526,8 @@ export function exportToEngine(
       pressureHotspots: [],
       hazardDefinitions: [],
       lootTables: [],
+      craftingStations: [],
+      marketNodes: [],
     };
     // Wipe the placeholder keys so we can re-insert them in the canonical order
     // *after* the metadata keys.
@@ -491,6 +561,8 @@ export function exportToEngine(
     prefixed.pressureHotspots = contentPack.pressureHotspots;
     prefixed.hazardDefinitions = contentPack.hazardDefinitions;
     prefixed.lootTables = contentPack.lootTables;
+    prefixed.craftingStations = contentPack.craftingStations;
+    prefixed.marketNodes = contentPack.marketNodes;
 
     return {
       success: true,
