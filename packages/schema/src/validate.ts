@@ -133,6 +133,27 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       });
     }
   }
+
+  // F-4b9345d3: the town layer's three arrays are OPTIONAL (project.ts:72-74),
+  // so they cannot join requiredArrays — a legacy project that omits them is
+  // valid and must stay valid. But "absent" and "corrupted to a non-array" are
+  // different facts, and rules 87-89 below iterate these fields. Guard the
+  // second case only: present-but-wrong-type is reported here, absent passes
+  // through untouched.
+  const optionalArrays: [unknown, string][] = [
+    [project.buildings, 'buildings'],
+    [project.hubs, 'hubs'],
+    [project.strongholds, 'strongholds'],
+  ];
+  for (const [value, field] of optionalArrays) {
+    if (value !== undefined && !Array.isArray(value)) {
+      errors.push({
+        path: field,
+        message: `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`,
+      });
+    }
+  }
+
   if (errors.length > 0) {
     return { valid: false, errors, warningCount: 0 };
   }
@@ -1470,6 +1491,67 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       if (!zoneIds.has(zid)) {
         errors.push({ path: `ambientLayers.${al.id}.zoneIds`, message: `Ambient layer "${al.id}" references nonexistent zone "${zid}"` });
       }
+    }
+  }
+
+  // 87. Building ID uniqueness + zoneId / interiorZoneId existence.
+  // interiorZoneId is the field town.ts's own header calls the link "from the
+  // town map to the interiors layer" — functionally the same thing as
+  // TransitionEntity.targetZoneId, which rule 61 already checks. Unchecked, a
+  // typo'd interiorZoneId means the player enters a building and arrives
+  // nowhere, with validateProject reporting the project clean.
+  const buildingIds = new Set<string>();
+  for (const b of project.buildings ?? []) {
+    if (buildingIds.has(b.id)) {
+      errors.push({ path: `buildings.${b.id}`, message: `Duplicate building ID: ${b.id}` });
+    }
+    buildingIds.add(b.id);
+    if (b.zoneId !== undefined && !zoneIds.has(b.zoneId)) {
+      errors.push({ path: `buildings.${b.id}.zoneId`, message: `Building "${b.id}" in nonexistent zone "${b.zoneId}"` });
+    }
+    if (b.interiorZoneId !== undefined && !zoneIds.has(b.interiorZoneId)) {
+      errors.push({ path: `buildings.${b.id}.interiorZoneId`, message: `Building "${b.id}" enters nonexistent interior zone "${b.interiorZoneId}"` });
+    }
+  }
+
+  // 88. Hub ID uniqueness + zoneId (required) + connectedZoneIds[] existence.
+  const hubIds = new Set<string>();
+  for (const h of project.hubs ?? []) {
+    if (hubIds.has(h.id)) {
+      errors.push({ path: `hubs.${h.id}`, message: `Duplicate hub ID: ${h.id}` });
+    }
+    hubIds.add(h.id);
+    if (!zoneIds.has(h.zoneId)) {
+      errors.push({ path: `hubs.${h.id}.zoneId`, message: `Hub "${h.id}" anchored to nonexistent zone "${h.zoneId}"` });
+    }
+    for (const zid of h.connectedZoneIds) {
+      if (!zoneIds.has(zid)) {
+        errors.push({ path: `hubs.${h.id}.connectedZoneIds`, message: `Hub "${h.id}" serves nonexistent zone "${zid}"` });
+      }
+    }
+  }
+
+  // 89. Stronghold ID uniqueness + zoneId (required) + garrisonEntityIds[]
+  // existence + defenseLevel finiteness. factionId is deliberately NOT checked:
+  // there is no faction registry in the schema (factions exist only as
+  // FactionPresence.factionId strings scoped to districts), so a stronghold
+  // held by a faction with no district presence is legitimately authorable.
+  const strongholdIds = new Set<string>();
+  for (const s of project.strongholds ?? []) {
+    if (strongholdIds.has(s.id)) {
+      errors.push({ path: `strongholds.${s.id}`, message: `Duplicate stronghold ID: ${s.id}` });
+    }
+    strongholdIds.add(s.id);
+    if (!zoneIds.has(s.zoneId)) {
+      errors.push({ path: `strongholds.${s.id}.zoneId`, message: `Stronghold "${s.id}" in nonexistent zone "${s.zoneId}"` });
+    }
+    for (const eid of s.garrisonEntityIds) {
+      if (!entityPlacementIds.has(eid)) {
+        errors.push({ path: `strongholds.${s.id}.garrisonEntityIds`, message: `Stronghold "${s.id}" garrisons nonexistent entity "${eid}"` });
+      }
+    }
+    if (!Number.isFinite(s.defenseLevel) || s.defenseLevel < 0) {
+      errors.push({ path: `strongholds.${s.id}.defenseLevel`, message: `Stronghold "${s.id}" has invalid defenseLevel ${String(s.defenseLevel)} — expected a finite number >= 0` });
     }
   }
 

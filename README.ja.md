@@ -16,7 +16,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- バージョン：開始 -->
-<p align="center"><strong>v4.5.0</strong> — 2360 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
+<p align="center"><strong>v4.5.0</strong> — 2682 tests + e2e browser checks, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4)</p>
 <!-- version:end -->
 
 ## アーキテクチャ
@@ -249,7 +249,7 @@ React 19とViteを使用したウェブアプリケーション。Zustandによ�
 
 エクスポートは3つのエンジンを対象としています。
 
-- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** - ContentPack形式で、[claude-rpg](https://github.com/mcp-tool-shop-org/claude-rpg)にロード可能
+- **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** - ContentPack形式：エクスポートしたパックを読み込み、ワールドを実行する決定論的シミュレーションランタイム
 - **Unreal Engine 5** - プライマリデータアセット、アクターのスポーンマニフェスト、およびワールドパーティションヒントを備えた2.5D対応コンテンツパック
 - **Godot 4** - ゾーンリソース、ナビゲーションリンク、およびエンティティマニフェストを持つ`.tscn`シーン生成
 
