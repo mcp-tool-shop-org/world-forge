@@ -8,6 +8,20 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/**'
+      # Added v4.6.0. These four were missing, so a change touching ONLY them ran
+      # no CI at all — and the required checks never appeared, which blocks the PR
+      # rather than failing it. Found the hard way: the fix for the release-blocking
+      # stderr assertion touched only dogfood/ and produced zero checks.
+      #   dogfood/**        — its tests are part of `vitest run`; they count toward
+      #                       the suite total and can fail it
+      #   e2e/**            — Playwright specs
+      #   scripts/**        — holds sync-version.mjs, which IS a CI gate now
+      #   vitest.config.ts  — decides which tests run at all
+      - 'dogfood/**'
+      - 'e2e/**'
+      - 'scripts/**'
+      - 'vitest.config.ts'
+      - 'tsconfig*.json'
   pull_request:
     paths:
       - 'packages/**'
@@ -15,6 +29,20 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/**'
+      # Added v4.6.0. These four were missing, so a change touching ONLY them ran
+      # no CI at all — and the required checks never appeared, which blocks the PR
+      # rather than failing it. Found the hard way: the fix for the release-blocking
+      # stderr assertion touched only dogfood/ and produced zero checks.
+      #   dogfood/**        — its tests are part of `vitest run`; they count toward
+      #                       the suite total and can fail it
+      #   e2e/**            — Playwright specs
+      #   scripts/**        — holds sync-version.mjs, which IS a CI gate now
+      #   vitest.config.ts  — decides which tests run at all
+      - 'dogfood/**'
+      - 'e2e/**'
+      - 'scripts/**'
+      - 'vitest.config.ts'
+      - 'tsconfig*.json'
   workflow_dispatch:
 
 permissions:
