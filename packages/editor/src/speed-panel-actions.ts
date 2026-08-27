@@ -17,7 +17,8 @@ export type SpeedPanelIconId =
   | 'merge'
   | 'elevation'
   | 'review'
-  | 'summary';
+  | 'summary'
+  | 'encounter';
 
 /** Geometric glyphs — not emoji, not 1–3 letter codes. */
 export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
@@ -34,6 +35,7 @@ export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
   elevation: '\u25B2',
   review: '\u2611',
   summary: '\u25A4',
+  encounter: '\u25C7',
 };
 
 export interface SpeedPanelAction {
@@ -118,6 +120,7 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   // -- Zone-only --
   { id: 'assign-district',  label: 'Assign District',    icon: SPEED_PANEL_ICON_GLYPH.district,   iconId: 'district',   description: 'Set this zone’s parent district',                   category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: true },
   { id: 'place-entity',     label: 'Place Entity Here',  icon: SPEED_PANEL_ICON_GLYPH.entity,     iconId: 'entity',     description: 'Drop an entity inside this zone',                   category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
+  { id: 'place-encounter',  label: 'Place Encounter Here', icon: SPEED_PANEL_ICON_GLYPH.encounter, iconId: 'encounter', description: 'Drop an encounter anchor inside this zone',         category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
   { id: 'connect-from',     label: 'Connect From Here',  icon: SPEED_PANEL_ICON_GLYPH.connect,    iconId: 'connect',    description: 'Start a connection from this zone',                 category: 'context', contextFilter: (h) => h?.type === 'zone',    macroSafe: false },
 
   // -- Connection-only --

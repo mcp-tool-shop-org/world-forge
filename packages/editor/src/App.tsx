@@ -28,6 +28,8 @@ import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
 import { ConnectionProperties } from './panels/ConnectionProperties.js';
 import { EncounterProperties } from './panels/EncounterProperties.js';
+import { LandmarkProperties } from './LandmarkProperties.js';
+import { SpawnProperties } from './SpawnProperties.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
 import { BuildCatalogPanel } from './panels/BuildCatalogPanel.js';
@@ -657,13 +659,15 @@ export function App() {
                     {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
                     {selectedConnection && <ConnectionProperties />}
                     {selection.encounters.length === 1 && <EncounterProperties />}
+                    {selection.landmarks.length === 1 && <LandmarkProperties />}
+                    {selection.spawns.length === 1 && <SpawnProperties />}
                     {selectedZoneId && <ZoneProperties />}
                     {selectedZoneId && <EconomyPanel />}
                     {selectedZoneId && <TownStructuresPanel />}
                     {activeTool === 'entity-place' && <EntityProperties />}
-                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && <StrataPanel />}
-                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && <HazardLibraryPanel />}
-                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <StrataPanel />}
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <HazardLibraryPanel />}
+                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && (
                       <div style={{ fontSize: 12, color: 'var(--wf-text-muted)', padding: '8px 0' }}>
                         Select a zone or use a tool to see properties.
                       </div>

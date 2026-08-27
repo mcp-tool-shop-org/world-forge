@@ -42,6 +42,8 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyS', action: 'tool-spawn', label: 'S', description: 'Switch to Spawn tool' },
   { key: 'KeyT', action: 'tool-tile', label: 'T', description: 'Switch to Tile Paint tool' },
   { key: 'KeyO', action: 'tool-prop', label: 'O', description: 'Switch to Prop Place tool' },
+  { key: 'KeyN', action: 'tool-encounter', label: 'N', description: 'Switch to Encounter Place tool' },
+  { key: 'KeyI', action: 'tool-item', label: 'I', description: 'Switch to Item Place tool' },
 ];
 
 /** Return a flat list of all registered hotkeys for display in a guide panel. */
@@ -57,6 +59,8 @@ export interface HotkeyContext {
   showEntities: boolean;
   showLandmarks: boolean;
   showSpawns: boolean;
+  /** F-5515c044: optional so older test bags still type-check. Default true. */
+  showTown?: boolean;
   /**
    * F-340b4aff: id of the currently-open modal (Export/Import/Template
    * Manager/Save Template/Save Kit), or `null` when none is open. Mirrors
@@ -177,7 +181,14 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       const landmarks = ctx.showLandmarks ? ctx.project.landmarks.map((l) => l.id) : [];
       const spawns = ctx.showSpawns ? ctx.project.spawnPoints.map((s) => s.id) : [];
       const encounters = ctx.project.encounterAnchors.map((enc) => enc.id);
-      ctx.selectAll({ zones, entities, landmarks, spawns, encounters }, false);
+      const items = (ctx.project.itemPlacements ?? []).map((i) => i.itemId);
+      const showTown = ctx.showTown !== false;
+      const markets = showTown ? (ctx.project.marketNodes ?? []).map((m) => m.id) : [];
+      const stations = showTown ? (ctx.project.craftingStations ?? []).map((s) => s.id) : [];
+      const buildings = showTown ? (ctx.project.buildings ?? []).map((b) => b.id) : [];
+      const hubs = showTown ? (ctx.project.hubs ?? []).map((h) => h.id) : [];
+      const strongholds = showTown ? (ctx.project.strongholds ?? []).map((s) => s.id) : [];
+      ctx.selectAll({ zones, entities, landmarks, spawns, encounters, items, markets, stations, buildings, hubs, strongholds }, false);
       return { handled: true, action };
     }
 
@@ -261,6 +272,8 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     case 'tool-spawn':     { ctx.setTool('spawn');        return { handled: true, action }; }
     case 'tool-tile':      { ctx.setTool('tile-paint');   return { handled: true, action }; }
     case 'tool-prop':      { ctx.setTool('prop-place');   return { handled: true, action }; }
+    case 'tool-encounter': { ctx.setTool('encounter-place'); return { handled: true, action }; }
+    case 'tool-item':      { ctx.setTool('item-place');    return { handled: true, action }; }
 
     default:
       return { handled: false };

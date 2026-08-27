@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel } from './store/editor-store.js';
+import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel, type SelectionKind } from './store/editor-store.js';
 import { useModalStore } from './store/modal-store.js';
 import { getConnectionEndpoints, findConnectionAt, getKindStyle, connectionMidpoint } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
@@ -18,6 +18,8 @@ import { fallbackTileColor } from './tile-render.js';
 import { nextId, generateZoneId } from './ids.js';
 import { pushToast } from './ui/Toast.js';
 import { readCssVar, resolveCssColor } from './ui/css-var.js';
+import { applyPlacementClick } from './canvas-placement.js';
+import { collectTownMarkers } from './town-markers.js';
 
 export { generateZoneId };
 
@@ -47,11 +49,11 @@ const DBL_RIGHT_RADIUS = 5;     // px proximity for double-right-click
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
+  const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, addLandmark, addItemPlacement, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
-    showConnections, showEntities, showLandmarks, showSpawns, showTiles, showProps, showAmbient, snapToObjects,
-    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
+    showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, snapToObjects,
+    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectKind, selectConnection,
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
@@ -558,6 +560,70 @@ export function Canvas() {
       }
     }
 
+    // Town markers — under the props layer (F-5515c044). Distinct glyph/color per kind.
+    if (showTown) {
+      const townDrag = (id: string, kind: SelectionKind) =>
+        isSel(selection, kind, id) && isDragging;
+      for (const m of collectTownMarkers(project, tileSize)) {
+        totalCount++;
+        if (hiddenIds.has(m.id)) continue;
+        const dx = townDrag(m.id, m.type) ? dragDX * tileSize : 0;
+        const dy = townDrag(m.id, m.type) ? dragDY * tileSize : 0;
+        const x = m.x + dx;
+        const y = m.y + dy;
+        const selected = isSel(selection, m.type, m.id);
+        if (m.w != null && m.h != null) {
+          if (!inViewport(x, y, m.w, m.h)) continue;
+          visibleCount++;
+          ctx.fillStyle = m.color;
+          ctx.globalAlpha = 0.55;
+          ctx.fillRect(x, y, m.w, m.h);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = selected ? tokenAccent : 'rgba(255,255,255,0.45)';
+          ctx.lineWidth = (selected ? 2 : 1) / zoom;
+          ctx.strokeRect(x, y, m.w, m.h);
+          if (zoom > 0.35) {
+            ctx.font = `${8 / zoom}px monospace`;
+            fillLabelPill(m.label, x + 4 / zoom, y + 10 / zoom, tokenTextMuted);
+          }
+        } else {
+          if (!pointInViewport(x, y)) continue;
+          visibleCount++;
+          const s = 5 / zoom;
+          ctx.fillStyle = m.color;
+          ctx.beginPath();
+          if (m.type === 'market') {
+            ctx.arc(x, y, s, 0, Math.PI * 2);
+          } else if (m.type === 'station') {
+            ctx.moveTo(x, y - s);
+            ctx.lineTo(x + s, y + s);
+            ctx.lineTo(x - s, y + s);
+            ctx.closePath();
+          } else if (m.type === 'hub') {
+            ctx.moveTo(x, y - s);
+            ctx.lineTo(x + s * 0.7, y - s * 0.2);
+            ctx.lineTo(x + s * 0.7, y + s * 0.7);
+            ctx.lineTo(x, y + s);
+            ctx.lineTo(x - s * 0.7, y + s * 0.7);
+            ctx.lineTo(x - s * 0.7, y - s * 0.2);
+            ctx.closePath();
+          } else {
+            ctx.rect(x - s, y - s, s * 2, s * 2);
+          }
+          ctx.fill();
+          if (selected) {
+            ctx.strokeStyle = tokenAccent;
+            ctx.lineWidth = 2 / zoom;
+            ctx.stroke();
+          }
+          if (zoom > 0.4) {
+            ctx.font = `${8 / zoom}px monospace`;
+            fillLabelPill(m.label, x + 8 / zoom, y + 3 / zoom, tokenTextMuted);
+          }
+        }
+      }
+    }
+
     // Props — placed furniture/objects. Image when the definition has an
     // imagePath (reusing the path-keyed image cache), else a colored box (amber =
     // interactable, slate = blocking, green = walkable). Sized by the definition's
@@ -671,6 +737,38 @@ export function Canvas() {
         ctx.fillStyle = '#ffd700';
         ctx.font = `${9 / zoom}px monospace`;
         ctx.fillText(lm.name, x + 8 / zoom, y + 3 / zoom);
+      }
+    }
+
+    // Items — small cyan marker (F-df71e70a)
+    for (const ip of project.itemPlacements ?? []) {
+      totalCount++;
+      if (hiddenIds.has(ip.itemId)) continue;
+      const zone = zoneMap.get(ip.zoneId);
+      if (!zone) continue;
+      const selected = isSel(selection, 'item', ip.itemId);
+      const canDrag = selected && isDragging && ip.gridX != null && ip.gridY != null;
+      const x = ((ip.gridX ?? zone.gridX + 2) + (canDrag ? dragDX : 0)) * tileSize;
+      const y = ((ip.gridY ?? zone.gridY + 2) + (canDrag ? dragDY : 0)) * tileSize;
+      if (!pointInViewport(x, y)) continue;
+      visibleCount++;
+      const s = 4 / zoom;
+      ctx.fillStyle = '#5eead4';
+      ctx.beginPath();
+      ctx.moveTo(x, y - s);
+      ctx.lineTo(x + s, y);
+      ctx.lineTo(x, y + s);
+      ctx.lineTo(x - s, y);
+      ctx.closePath();
+      ctx.fill();
+      if (selected) {
+        ctx.strokeStyle = tokenAccent;
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+      }
+      if (zoom > 0.4) {
+        ctx.font = `${8 / zoom}px monospace`;
+        fillLabelPill(ip.name ?? ip.itemId, x + 8 / zoom, y + 3 / zoom, tokenTextMuted);
       }
     }
 
@@ -877,7 +975,7 @@ export function Canvas() {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
 
   useEffect(() => {
     draw();
@@ -916,7 +1014,7 @@ export function Canvas() {
   // churn, and dispatchHotkey() always sees current values.
   hotkeyCtxRef.current = {
     selection, selectedConnection, project,
-    showEntities, showLandmarks, showSpawns,
+    showEntities, showLandmarks, showSpawns, showTown,
     // F-340b4aff: defense-in-depth — dispatchHotkey itself refuses to act
     // while a modal/search overlay is open. The primary guard (below, in
     // onKeyDown) reads live store state at event time so it can never be
@@ -1020,7 +1118,7 @@ export function Canvas() {
       gy >= z.gridY && gy < z.gridY + z.gridHeight,
     );
 
-  const visibility = { showEntities, showLandmarks, showSpawns, showConnections };
+  const visibility = { showEntities, showLandmarks, showSpawns, showConnections, showTown, showItems: true };
 
   // FT-009: Filter hidden objects from hit test results
   const filterHidden = useCallback((hits: import('./hit-testing.js').HitResult[]): import('./hit-testing.js').HitResult[] =>
@@ -1057,8 +1155,11 @@ export function Canvas() {
       const [from, to] = hit.id.split('::');
       return selectedConnection?.from === from && selectedConnection?.to === to;
     }
-    const t = hit.type as 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter';
-    return isSel(selection, t, hit.id);
+    if (hit.type === 'zone' || hit.type === 'entity' || hit.type === 'landmark' || hit.type === 'spawn' || hit.type === 'encounter'
+      || hit.type === 'item' || hit.type === 'market' || hit.type === 'station' || hit.type === 'building' || hit.type === 'hub' || hit.type === 'stronghold') {
+      return isSel(selection, hit.type, hit.id);
+    }
+    return false;
   };
 
   // --- Dispatch selection for a hit result ---
@@ -1071,6 +1172,7 @@ export function Canvas() {
     else if (hit.type === 'landmark') selectLandmark(hit.id, additive);
     else if (hit.type === 'spawn') selectSpawn(hit.id, additive);
     else if (hit.type === 'encounter') selectEncounter(hit.id, additive);
+    else selectKind(hit.type as SelectionKind, hit.id, additive);
   };
 
   // --- Mouse handlers ---
@@ -1176,6 +1278,9 @@ export function Canvas() {
       } else {
         pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
+    } else if (activeTool === 'landmark' || activeTool === 'item-place') {
+      const result = applyPlacementClick(activeTool, gx, gy, project, { addLandmark, addItemPlacement });
+      if (result === 'need-zone') pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
     } else if (activeTool === 'spawn') {
       // EUB-011: reject spawn creation if no zone found at click position
       const spawnZone = findZoneAt(gx, gy);

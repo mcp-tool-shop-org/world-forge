@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type {
-  WorldProject, Zone, ZoneEntryGate, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
+  WorldProject, Zone, ZoneEntryGate, ZoneConnection, District, EntityPlacement, ItemPlacement, Landmark, SpawnPoint,
   EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
   Building, Hub, Stronghold,
   Stratum, StratumLink, HazardDefinition,
@@ -19,7 +19,7 @@ import { DEFAULT_MODE } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
 import { pasteFromClipboard as doPaste } from '../paste.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
-import { useEditorStore } from './editor-store.js';
+import { useEditorStore, type SelectionSet } from './editor-store.js';
 import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
@@ -265,6 +265,11 @@ interface ProjectState {
   updateEntity: (entityId: string, updates: Partial<EntityPlacement>) => void;
   removeEntity: (entityId: string) => void;
 
+  // Item placement helpers
+  addItemPlacement: (i: ItemPlacement) => void;
+  updateItemPlacement: (itemId: string, updates: Partial<ItemPlacement>) => void;
+  removeItemPlacement: (itemId: string) => void;
+
   // Landmark helpers
   addLandmark: (l: Landmark) => void;
   updateLandmark: (id: string, updates: Partial<Landmark>) => void;
@@ -274,6 +279,8 @@ interface ProjectState {
   addSpawnPoint: (s: SpawnPoint) => void;
   updateSpawnPoint: (id: string, updates: Partial<SpawnPoint>) => void;
   removeSpawnPoint: (id: string) => void;
+  /** Mark one spawn as default and clear isDefault on every other spawn. */
+  setDefaultSpawnPoint: (id: string) => void;
 
   // Tile helpers
   addTileset: (t: Tileset) => void;
@@ -343,8 +350,8 @@ interface ProjectState {
   applyTileEdits: (layerId: string, edits: { gridX: number; gridY: number; tileId: string | null }[]) => void;
 
   // Batch helpers (multi-select operations)
-  moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, dx: number, dy: number) => void;
-  removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => void;
+  moveSelected: (selection: SelectionSet, dx: number, dy: number) => void;
+  removeSelected: (selection: SelectionSet) => void;
   duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] };
   /**
    * F-6c8800aa: paste the current clipboard (from useEditorStore) into the
@@ -997,6 +1004,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...p, entityPlacements: p.entityPlacements.filter((e) => e.entityId !== entityId),
   }), 'Delete entity'),
 
+  addItemPlacement: (i) => get().updateProject((p) => ({ ...p, itemPlacements: [...(p.itemPlacements ?? []), i] }), 'Add item'),
+  updateItemPlacement: (itemId, updates) => get().updateProject((p) => ({
+    ...p, itemPlacements: (p.itemPlacements ?? []).map((it) => it.itemId === itemId ? { ...it, ...updates } : it),
+  }), 'Update item'),
+  removeItemPlacement: (itemId) => get().updateProject((p) => ({
+    ...p, itemPlacements: (p.itemPlacements ?? []).filter((it) => it.itemId !== itemId),
+  }), 'Delete item'),
+
   // Landmark helpers
   addLandmark: (l) => get().updateProject((p) => ({ ...p, landmarks: [...p.landmarks, l] }), 'Add landmark'),
   updateLandmark: (id, updates) => get().updateProject((p) => ({
@@ -1014,6 +1029,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeSpawnPoint: (id) => get().updateProject((p) => ({
     ...p, spawnPoints: p.spawnPoints.filter((s) => s.id !== id),
   }), 'Delete spawn point'),
+  setDefaultSpawnPoint: (id) => get().updateProject((p) => ({
+    ...p, spawnPoints: p.spawnPoints.map((s) => ({ ...s, isDefault: s.id === id })),
+  }), 'Set default spawn'),
 
   // Tile helpers — tilesets, layers, and placements. The `?? []` guards keep
   // these robust against projects saved before these arrays existed (the type
@@ -1168,7 +1186,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
-    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const iSet = new Set(sel.items ?? []);
+    const bSet = new Set(sel.buildings ?? []);
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
+      + iSet.size + bSet.size;
     const label = `Move ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
@@ -1180,6 +1201,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const attached = zSet.size > 0
         ? translateAttachedByZones(p, zSet, dx, dy, { entities: eSet, landmarks: lSet, spawns: sSet })
         : null;
+      const shiftItems = (list: typeof p.itemPlacements, skipZoneMoved: boolean) =>
+        (list ?? []).map((it) => {
+          if (!iSet.has(it.itemId) || it.gridX == null || it.gridY == null) return it;
+          if (skipZoneMoved && zSet.has(it.zoneId)) return it;
+          return { ...it, gridX: it.gridX + dx, gridY: it.gridY + dy };
+        });
+      const shiftBuildings = (list: typeof p.buildings, skipZoneMoved: boolean) =>
+        (list ?? []).map((b) => {
+          if (!bSet.has(b.id)) return b;
+          if (skipZoneMoved && b.zoneId && zSet.has(b.zoneId)) return b;
+          return { ...b, gridX: b.gridX + dx, gridY: b.gridY + dy };
+        });
       return {
         ...p,
         zones: p.zones.map((z) => zSet.has(z.id) ? { ...z, gridX: z.gridX + dx, gridY: z.gridY + dy } : z),
@@ -1193,17 +1226,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         spawnPoints: attached
           ? attached.spawnPoints
           : p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+        itemPlacements: attached ? shiftItems(attached.itemPlacements, true) : shiftItems(p.itemPlacements, false),
+        buildings: attached ? shiftBuildings(attached.buildings, true) : shiftBuildings(p.buildings, false),
         ...(attached ? {
-          itemPlacements: attached.itemPlacements,
           propPlacements: attached.propPlacements,
-          buildings: attached.buildings,
           tileLayers: attached.tileLayers,
         } : {}),
       };
     }, label);
   },
   removeSelected: (sel) => {
-    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const iSet = new Set(sel.items ?? []);
+    const mSet = new Set(sel.markets ?? []);
+    const stSet = new Set(sel.stations ?? []);
+    const bSet = new Set(sel.buildings ?? []);
+    const hSet = new Set(sel.hubs ?? []);
+    const shSet = new Set(sel.strongholds ?? []);
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
+      + iSet.size + mSet.size + stSet.size + bSet.size + hSet.size + shSet.size;
     const label = `Delete ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
@@ -1238,6 +1278,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         landmarks: p.landmarks.filter((l) => !lSet.has(l.id)),
         spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id)),
         encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id)),
+        itemPlacements: (p.itemPlacements ?? []).filter((it) => !iSet.has(it.itemId)),
+        marketNodes: (p.marketNodes ?? []).filter((m) => !mSet.has(m.id)),
+        craftingStations: (p.craftingStations ?? []).filter((c) => !stSet.has(c.id)),
+        buildings: (p.buildings ?? []).filter((b) => !bSet.has(b.id)),
+        hubs: (p.hubs ?? []).filter((h) => !hSet.has(h.id)),
+        strongholds: (p.strongholds ?? []).filter((s) => !shSet.has(s.id)),
       };
     }, label);
   },
