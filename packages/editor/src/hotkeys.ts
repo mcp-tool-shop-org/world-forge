@@ -272,7 +272,7 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
  * links / menuitems. The canvas pan-on-Space chord is only legal when the
  * event is not targeting an activating control.
  */
-export function isActivatingControl(target: EventTarget | null): boolean {
+export function isActivatingControl(target: EventTarget | object | null): boolean {
   if (!target || typeof target !== 'object') return false;
   const el = target as {
     tagName?: string;
@@ -299,8 +299,8 @@ export function isActivatingControl(target: EventTarget | null): boolean {
  * SELECT (existing skip) or for buttons / [role=button] / links / contentEditable.
  */
 export function shouldArmSpacePan(
-  target: EventTarget | null,
-  activeElement: { tagName?: string } | null,
+  target: EventTarget | object | null,
+  activeElement: EventTarget | object | null,
   canvas: object | null,
 ): boolean {
   const tag = (target as { tagName?: string } | null)?.tagName;
@@ -308,7 +308,7 @@ export function shouldArmSpacePan(
   if (isActivatingControl(target)) return false;
   if (isActivatingControl(activeElement as EventTarget | null)) return false;
   if (!activeElement) return true;
-  const activeTag = activeElement.tagName;
+  const activeTag = (activeElement as { tagName?: string }).tagName;
   if (!activeTag || activeTag === 'BODY' || activeTag === 'HTML') return true;
   if (canvas && activeElement === canvas) return true;
   const contains = (canvas as { contains?: (node: unknown) => boolean } | null)?.contains;
