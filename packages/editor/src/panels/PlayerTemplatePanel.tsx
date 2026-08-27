@@ -8,6 +8,8 @@ import {
   createDefaultPlayerTemplate,
   isMissingSpawnPoint,
   pickDefaultSpawnPointId,
+  inventoryWithItem,
+  missingInventoryIds,
 } from './player-template-helpers.js';
 
 export function PlayerTemplatePanel() {
@@ -102,16 +104,14 @@ export function PlayerTemplatePanel() {
 
       {/* Inventory & Equipment */}
       <div style={sectionTitle}>Starting Inventory</div>
-      <label style={labelStyle}>
-        <input style={inputStyle} value={pt.startingInventory.join(', ')} placeholder="e.g. torch, healing-herb"
-          onChange={(e) => updatePlayerTemplate({
-            startingInventory: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-          })} />
-        <div style={hintStyle}>Comma-separated item IDs from your item placements.</div>
-      </label>
+      <InventoryPicker
+        inventory={pt.startingInventory}
+        items={project.itemPlacements}
+        onChange={(startingInventory) => updatePlayerTemplate({ startingInventory })}
+      />
 
       <div style={sectionTitle}>Starting Equipment</div>
-      <EquipmentEditor data={pt.startingEquipment}
+      <EquipmentEditor data={pt.startingEquipment} items={project.itemPlacements}
         onChange={(startingEquipment) => updatePlayerTemplate({ startingEquipment })} />
     </div>
   );
@@ -156,8 +156,37 @@ function KeyValueEditor({ data, placeholder, onChange }: {
   );
 }
 
-function EquipmentEditor({ data, onChange }: {
+function InventoryPicker({ inventory, items, onChange }: {
+  inventory: string[];
+  items: Array<{ itemId: string; name?: string }>;
+  onChange: (next: string[]) => void;
+}) {
+  const missing = missingInventoryIds(inventory, items);
+  if (items.length === 0) {
+    return <div style={hintStyle} data-testid="wf-player-inventory-empty">Place items on the map, then pick them here.</div>;
+  }
+  return (
+    <div style={{ marginBottom: 8 }} data-testid="wf-player-inventory-picker">
+      {items.map((it) => (
+        <label key={it.itemId} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', marginBottom: 3 }}>
+          <input
+            type="checkbox"
+            checked={inventory.includes(it.itemId)}
+            onChange={(e) => onChange(inventoryWithItem(inventory, it.itemId, e.target.checked))}
+          />
+          {it.name ?? it.itemId}
+        </label>
+      ))}
+      {missing.map((id) => (
+        <div key={id} style={{ ...hintStyle, color: 'var(--wf-danger-text)' }}>Missing placement: {id}</div>
+      ))}
+    </div>
+  );
+}
+
+function EquipmentEditor({ data, items, onChange }: {
   data: Record<string, string>;
+  items: Array<{ itemId: string; name?: string }>;
   onChange: (updated: Record<string, string>) => void;
 }) {
   const [newSlot, setNewSlot] = useState('');
@@ -180,8 +209,16 @@ function EquipmentEditor({ data, onChange }: {
       {entries.map(([slot, itemId]) => (
         <div key={slot} style={{ display: 'flex', gap: 6, marginBottom: 3, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: 'var(--wf-text-primary)', minWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slot}</span>
-          <input style={{ ...inputStyle, flex: 1, marginTop: 0 }} value={itemId} placeholder="item ID"
-            onChange={(e) => onChange({ ...data, [slot]: e.target.value })} />
+          <select style={{ ...inputStyle, flex: 1, marginTop: 0 }} value={itemId}
+            onChange={(e) => onChange({ ...data, [slot]: e.target.value })}>
+            <option value="">None</option>
+            {itemId && !items.some((i) => i.itemId === itemId) && (
+              <option value={itemId}>{itemId} (missing)</option>
+            )}
+            {items.map((i) => (
+              <option key={i.itemId} value={i.itemId}>{i.name ?? i.itemId}</option>
+            ))}
+          </select>
           <button onClick={() => handleRemove(slot)} style={xBtnStyle} title={`Remove ${slot}`}>&times;</button>
         </div>
       ))}

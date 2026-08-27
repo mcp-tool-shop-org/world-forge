@@ -27,6 +27,23 @@ export function isMissingSpawnPoint(
   return !spawnPoints.some((sp) => sp.id === spawnPointId);
 }
 
+export interface ItemLike {
+  itemId: string;
+  name?: string;
+}
+
+/** Add or remove an item id from starting inventory. */
+export function inventoryWithItem(inventory: string[], itemId: string, on: boolean): string[] {
+  if (on) return inventory.includes(itemId) ? inventory : [...inventory, itemId];
+  return inventory.filter((id) => id !== itemId);
+}
+
+/** Inventory ids that are not present in itemPlacements (fail validation). */
+export function missingInventoryIds(inventory: string[], items: ItemLike[]): string[] {
+  const known = new Set(items.map((i) => i.itemId));
+  return inventory.filter((id) => !known.has(id));
+}
+
 export function createDefaultPlayerTemplate(spawnPointId: string): PlayerTemplate {
   return {
     name: 'Wanderer',

@@ -15,7 +15,7 @@ import { requestTemplateManagerTab } from './TemplateManager.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from '../review/export-summary.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'item' | 'loot' | 'transition' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
   id: string;
   label: string;
   detail: string;
@@ -24,7 +24,8 @@ export interface SearchResult {
 const TYPE_CATEGORY: Record<SearchResult['type'], string> = {
   zone: 'Places', entity: 'People', landmark: 'Places', spawn: 'Places',
   district: 'Places', dialogue: 'People', tree: 'Review', connection: 'Places',
-  encounter: 'People', 'region-preset': 'Kits', 'encounter-preset': 'Kits',
+  encounter: 'People', item: 'Places', loot: 'Places', transition: 'Places',
+  'region-preset': 'Kits', 'encounter-preset': 'Kits',
   'starter-kit': 'Kits', dependency: 'Review', review: 'Review',
 };
 
@@ -38,6 +39,9 @@ const TYPE_ICONS: Record<SearchResult['type'], string> = {
   tree: '\u22A4',
   connection: '\u2194',
   encounter: '\u2694',
+  item: '\u25CE',
+  loot: '\u25C8',
+  transition: '\u2195',
   'region-preset': '\u25EB',
   'encounter-preset': '\u25CE',
   'starter-kit': '\u25A8',
@@ -48,6 +52,7 @@ const TYPE_ICONS: Record<SearchResult['type'], string> = {
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
   zone: 'var(--wf-accent)', entity: 'var(--wf-success-text)', landmark: 'var(--wf-accent)', spawn: 'var(--wf-warning)',
   district: 'var(--wf-accent)', dialogue: 'var(--wf-warning)', tree: 'var(--wf-accent)', connection: 'var(--wf-text-muted)', encounter: 'var(--wf-danger)',
+  item: 'var(--wf-warning)', loot: 'var(--wf-accent)', transition: 'var(--wf-text-muted)',
   'region-preset': 'var(--wf-accent)', 'encounter-preset': 'var(--wf-danger)', 'starter-kit': 'var(--wf-warning)', dependency: 'var(--wf-warning)', review: 'var(--wf-accent)',
 };
 
@@ -93,6 +98,25 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
   for (const enc of project.encounterAnchors) {
     const zone = project.zones.find((z) => z.id === enc.zoneId);
     results.push({ type: 'encounter', id: enc.id, label: enc.id, detail: `${enc.encounterType} in ${zone?.name ?? 'unknown'}, prob ${enc.probability}` });
+  }
+
+  // Items
+  for (const it of project.itemPlacements) {
+    const zone = project.zones.find((z) => z.id === it.zoneId);
+    if (!zone) console.warn(`[SearchOverlay] Item "${it.itemId}" references missing zone "${it.zoneId}"`);
+    results.push({ type: 'item', id: it.itemId, label: it.name ?? it.itemId, detail: `${it.slot ?? 'item'} in ${zone?.name ?? 'unknown'}` });
+  }
+
+  // Loot tables
+  for (const lt of project.lootTables ?? []) {
+    results.push({ type: 'loot', id: lt.id, label: lt.id, detail: `${lt.entries.length} entries, ${lt.rolls ?? 1} rolls` });
+  }
+
+  // Transitions
+  for (const tr of project.transitions ?? []) {
+    const zone = project.zones.find((z) => z.id === tr.zoneId);
+    const target = project.zones.find((z) => z.id === tr.targetZoneId);
+    results.push({ type: 'transition', id: tr.id, label: tr.label ?? tr.id, detail: `${tr.type} ${zone?.name ?? tr.zoneId} → ${target?.name ?? tr.targetZoneId}` });
   }
 
   // Connections
@@ -329,6 +353,20 @@ export function SearchOverlay() {
         const vp = frameBounds(items, tileSize, size.cw, size.ch);
         if (vp) setViewport(vp);
       }
+      setRightTab('map');
+    } else if (result.type === 'item') {
+      const item = project.itemPlacements.find((i) => i.itemId === result.id);
+      if (item) selectZone(item.zoneId, false);
+      setFocusTarget({ domain: 'items', subPath: `itemPlacements.${result.id}`, timestamp: Date.now() });
+      setRightTab('map');
+    } else if (result.type === 'loot') {
+      setSelection({ zones: [], entities: [], landmarks: [], spawns: [], encounters: [] });
+      setFocusTarget({ domain: 'loot', subPath: `lootTables.${result.id}`, timestamp: Date.now() });
+      setRightTab('map');
+    } else if (result.type === 'transition') {
+      const tr = (project.transitions ?? []).find((t) => t.id === result.id);
+      if (tr) selectZone(tr.zoneId, false);
+      setFocusTarget({ domain: 'transitions', subPath: `transitions.${result.id}`, timestamp: Date.now() });
       setRightTab('map');
     } else if (result.type === 'district') {
       const district = project.districts.find((d) => d.id === result.id);

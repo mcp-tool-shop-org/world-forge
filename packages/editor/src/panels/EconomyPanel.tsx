@@ -3,6 +3,8 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { PanelHeader, EmptyState } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
+import { ItemProperties } from './ItemProperties.js';
+import { TransitionProperties } from './TransitionProperties.js';
 
 const card: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, marginBottom: 6, background: 'var(--wf-bg-panel)' };
 const rowHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 };
@@ -32,6 +34,7 @@ export function EconomyPanel() {
   const stations = (project.craftingStations ?? []).filter((c) => c.zoneId === zoneId);
 
   return (
+    <>
     <div style={{ marginTop: 12 }} data-testid="wf-economy-panel">
       <PanelHeader title="Economy" />
 
@@ -84,5 +87,8 @@ export function EconomyPanel() {
       ))}
       <button style={addBtn} onClick={() => addCraftingStation({ id: `craft-${Date.now()}`, zoneId, stationType: 'general', availableRecipes: [] })}>+ Add crafting station</button>
     </div>
+    <ItemProperties />
+    <TransitionProperties />
+    </>
   );
 }

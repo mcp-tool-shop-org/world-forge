@@ -108,4 +108,25 @@ describe('F-ac5cee50: town structures / loot / transitions', () => {
     expect(nav.clearZone).toBeUndefined();
     expect(nav.selectZoneId).toBeUndefined();
   });
+
+  it('routes lootTables errors to the map tab and clears the selected zone (F-b483eb22)', () => {
+    const nav = navigationForError(err('lootTables.lt1.entries'));
+    expect(nav.tab).toBe('map');
+    expect(nav.clearZone).toBe(true);
+    expect(nav.selectZoneId).toBeUndefined();
+  });
+
+  it('routes itemPlacements errors to the owning zone (F-a3e545f9)', () => {
+    const lookup = { itemPlacements: [{ itemId: 'torch', zoneId: 'chapel-entrance' }] };
+    const nav = navigationForError(err('itemPlacements.torch.lootTableId'), lookup);
+    expect(nav.tab).toBe('map');
+    expect(nav.selectZoneId).toBe('chapel-entrance');
+    expect(nav.clearZone).toBeUndefined();
+  });
+
+  it('stays on map without a zone when the item lookup misses', () => {
+    const nav = navigationForError(err('itemPlacements.unknown.slot'));
+    expect(nav.tab).toBe('map');
+    expect(nav.selectZoneId).toBeUndefined();
+  });
 });

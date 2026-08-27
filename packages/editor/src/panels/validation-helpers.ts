@@ -52,6 +52,7 @@ export interface StructureLookup {
   hubs?: Array<{ id: string; zoneId: string }>;
   strongholds?: Array<{ id: string; zoneId: string }>;
   transitions?: Array<{ id: string; zoneId: string }>;
+  itemPlacements?: Array<{ itemId: string; zoneId: string }>;
 }
 
 function lookupZoneId(
@@ -75,8 +76,14 @@ export function navigationForError(err: ValidationError, project?: StructureLook
   const zoneMatch = p.match(/^zones\.([^.]+)/);
   if (zoneMatch) return { tab: 'map', selectZoneId: zoneMatch[1] };
 
+  const itemMatch = p.match(/^itemPlacements\.([^.]+)/);
+  if (itemMatch) {
+    const zoneId = project?.itemPlacements?.find((row) => row.itemId === itemMatch[1])?.zoneId;
+    return zoneId ? { tab: 'map', selectZoneId: zoneId } : { tab: 'map' };
+  }
+
   if (
-    p.startsWith('entityPlacements') || p.startsWith('itemPlacements') ||
+    p.startsWith('entityPlacements') ||
     p.startsWith('spawnPoints') || p.startsWith('connections') || p.startsWith('landmarks')
   ) {
     return { tab: 'map' };
@@ -102,8 +109,9 @@ export function navigationForError(err: ValidationError, project?: StructureLook
   }
 
   if (p.startsWith('lootTables')) {
-    // No loot editor yet — stay on map without hiding zone-scoped panels.
-    return { tab: 'map' };
+    // LootTablePanel is project-level (HazardLibrary sibling) — clear the zone
+    // so ZoneProperties does not hide it.
+    return { tab: 'map', clearZone: true };
   }
 
   // strata / stratumLinks / hazardDefinitions errors, and the generic
