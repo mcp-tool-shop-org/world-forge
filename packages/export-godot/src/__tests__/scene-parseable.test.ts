@@ -291,9 +291,9 @@ describe('an empty name="" / parent="" is refused, not silently emitted (F-00cf7
         } catch (err) {
             message = err instanceof Error ? err.message : String(err);
         }
-        // Collision/Navigation are always emitted for every zone (collectSubResources
-        // runs unconditionally), so an empty zone nodeName is sufficient on its own
-        // to produce a `parent=""` line — no entities/items/etc. required.
+        // Walkable zones still emit Navigation (collectSubResources), so an empty
+        // zone nodeName is sufficient on its own to produce a `parent=""` line —
+        // no entities/items/etc. required.
         expect(message).toContain('parent=""');
         expect(message).toContain('Godot');
     });

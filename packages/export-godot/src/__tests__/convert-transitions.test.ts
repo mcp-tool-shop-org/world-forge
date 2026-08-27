@@ -3,6 +3,7 @@
  *
  * F-7a98b80b: orphan zoneIds were still pushed (then filtered out of the
  * scene with no dropped fidelity), and hyphen/underscore ids collided.
+ * F-bba2aa24: missing targetZoneId was still pushed as lossless.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -24,6 +25,16 @@ describe('convertTransitions', () => {
         ));
         expect(transitions).toHaveLength(0);
         expect(fidelity.some((f) => f.level === 'dropped' && f.fieldPath === 'transitions.t1.zoneId')).toBe(true);
+        expect(fidelity.some((f) => f.level === 'lossless')).toBe(false);
+    });
+
+    it('drops a missing targetZoneId with a dropped fidelity error (does not push a lossless node)', () => {
+        const { transitions, fidelity } = convertTransitions(proj(
+            [zone('z1')],
+            [{ id: 't1', zoneId: 'z1', targetZoneId: 'ghost', type: 'stairwell', gridX: 1, gridY: 1 }],
+        ));
+        expect(transitions).toHaveLength(0);
+        expect(fidelity.some((f) => f.level === 'dropped' && f.fieldPath === 'transitions.t1.targetZoneId')).toBe(true);
         expect(fidelity.some((f) => f.level === 'lossless')).toBe(false);
     });
 
