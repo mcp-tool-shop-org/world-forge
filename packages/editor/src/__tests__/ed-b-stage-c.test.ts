@@ -120,7 +120,7 @@ describe('ED-B-001: transactional auto-save', () => {
     const err = getLastAutoSaveError();
     expect(err).toBeTruthy();
     expect(err!.toLowerCase()).toContain('storage is full');
-    expect(err!.toLowerCase()).toContain('undo history');
+    expect(err!.toLowerCase()).toContain('autosave history');
     expect(err!.toLowerCase()).toContain('previous auto-save is still intact');
   });
 

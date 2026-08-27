@@ -19,6 +19,9 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyC', ctrl: true, action: 'copy', label: 'Ctrl+C', description: 'Copy selected objects' },
   { key: 'KeyV', ctrl: true, action: 'paste', label: 'Ctrl+V', description: 'Paste from clipboard' },
   { key: 'KeyD', ctrl: true, action: 'duplicate', label: 'Ctrl+D', description: 'Duplicate selected objects' },
+  { key: 'KeyZ', ctrl: true, action: 'undo', label: 'Ctrl+Z', description: 'Undo last action' },
+  { key: 'KeyZ', ctrl: true, shift: true, action: 'redo', label: 'Ctrl+Shift+Z', description: 'Redo last undone action' },
+  { key: 'KeyY', ctrl: true, action: 'redo', label: 'Ctrl+Y', description: 'Redo last undone action' },
   { key: 'KeyA', ctrl: true, action: 'select-all', label: 'Ctrl+A', description: 'Select all visible objects' },
   { key: 'Delete', action: 'delete', label: 'Del', description: 'Delete selected objects' },
   { key: 'Backspace', action: 'delete', label: 'Backspace', description: 'Delete selected objects' },
@@ -74,6 +77,9 @@ export interface HotkeyContext {
   duplicateSelected: (sel: SelectionSet) => SelectionSet;
   copySelection?: (project: WorldProject) => void;
   pasteClipboard?: () => void;
+  /** F-f2564ffa: undo/redo — optional so existing test bags still type-check. */
+  undo?: () => void;
+  redo?: () => void;
   setShowSearch: (show: boolean) => void;
   setRightTab: (tab: RightTab) => void;
   setTool: (tool: EditorTool) => void;
@@ -136,10 +142,11 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       return { handled: true, action };
 
     case 'copy': {
+      // F-ef6c82dc: only swallow Ctrl+C when there is something to copy;
+      // otherwise let the browser copy selected non-input text (e.g. project name).
+      if (getSelectionCount(ctx.selection) === 0) return { handled: false };
       e.preventDefault();
-      if (getSelectionCount(ctx.selection) > 0 && ctx.copySelection) {
-        ctx.copySelection(ctx.project);
-      }
+      if (ctx.copySelection) ctx.copySelection(ctx.project);
       return { handled: true, action };
     }
 
@@ -222,6 +229,18 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     case 'save-preset': {
       e.preventDefault();
       ctx.setRightTab('presets');
+      return { handled: true, action };
+    }
+
+    case 'undo': {
+      e.preventDefault();
+      ctx.undo?.();
+      return { handled: true, action };
+    }
+
+    case 'redo': {
+      e.preventDefault();
+      ctx.redo?.();
       return { handled: true, action };
     }
 

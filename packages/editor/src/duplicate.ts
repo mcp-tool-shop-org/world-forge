@@ -1,6 +1,8 @@
 // duplicate.ts — pure duplication logic for selected objects
 
 import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
+import { collectZoneAttached, remapZoneAttached, applyAttachedToProject } from './zone-attached.js';
+import { nextId } from './ids.js';
 
 export interface SelectionSet {
   zones: string[];
@@ -28,15 +30,13 @@ export function duplicateSelected(
 
   const skipped: string[] = [];
 
-  // Build old-to-new ID map
+  // Build old-to-new ID map (F-ddfcddfb: nextId, not Date.now() alone)
   const idMap = new Map<string, string>();
-  const now = Date.now();
-  let counter = 0;
-  for (const id of selection.zones) idMap.set(id, `zone-${now}-${counter++}`);
-  for (const id of selection.entities) idMap.set(id, `entity-${now}-${counter++}`);
-  for (const id of selection.landmarks) idMap.set(id, `lm-${now}-${counter++}`);
-  for (const id of selection.spawns) idMap.set(id, `spawn-${now}-${counter++}`);
-  for (const id of selection.encounters) idMap.set(id, `enc-${now}-${counter++}`);
+  for (const id of selection.zones) idMap.set(id, nextId('zone'));
+  for (const id of selection.entities) idMap.set(id, nextId('entity'));
+  for (const id of selection.landmarks) idMap.set(id, nextId('lm'));
+  for (const id of selection.spawns) idMap.set(id, nextId('spawn'));
+  for (const id of selection.encounters) idMap.set(id, nextId('enc'));
 
   // Duplicate zones
   const newZones: Zone[] = [];
@@ -128,8 +128,12 @@ export function duplicateSelected(
     );
   }
 
+  // F-00a578f0: clone zone-attached furniture/town content whose parent
+  // zone is in this batch (they cannot be independently selected).
+  const attached = remapZoneAttached(collectZoneAttached(project, zoneSet), idMap, DUPE_OFFSET, DUPE_OFFSET);
+
   return {
-    project: {
+    project: applyAttachedToProject({
       ...project,
       zones: [...project.zones, ...newZones],
       connections: [...project.connections, ...newConnections],
@@ -138,7 +142,7 @@ export function duplicateSelected(
       landmarks: [...project.landmarks, ...newLandmarks],
       spawnPoints: [...project.spawnPoints, ...newSpawns],
       encounterAnchors: [...project.encounterAnchors, ...newEncounters],
-    },
+    }, attached),
     newSelection: {
       zones: newZones.map(z => z.id),
       entities: newEntities.map(e => e.entityId),

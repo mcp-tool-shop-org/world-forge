@@ -6,6 +6,7 @@ import {
   prepareProjectImport,
   extractDependencies,
   projectFilename,
+  migrateBundle,
   PROJECT_BUNDLE_VERSION,
 } from '../projects/index.js';
 import type { ProjectBundle } from '../projects/index.js';
@@ -153,6 +154,25 @@ describe('parseProjectBundle', () => {
     expect(result.bundle.mode).toBe(chapel.mode);
     expect(result.bundle.summary.zones).toBe(chapel.zones.length);
     expect(result.bundle.project.zones.length).toBe(chapel.zones.length);
+  });
+
+  it('F-c138d326: a v1 bundle still parses after migrateBundle (identity today, survives a conceptual bump to 2)', () => {
+    const raw = { bundleVersion: 1, name: 'legacy', project: { id: 'p1', name: 'P' } };
+    const result = parseProjectBundle(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.bundle.bundleVersion).toBe(PROJECT_BUNDLE_VERSION);
+    expect(Array.isArray(result.bundle.project.zones)).toBe(true);
+    expect(Array.isArray(result.bundle.project.assetPacks)).toBe(true);
+    const migrated = migrateBundle({ ...result.bundle, bundleVersion: 1 }, 1);
+    expect(migrated.bundleVersion).toBe(PROJECT_BUNDLE_VERSION);
+  });
+
+  it('F-08fe80b7: extractDependencies does not throw when assetPacks is missing', () => {
+    const bundle = serializeProject(helloWorld);
+    const stripped = { ...bundle, project: { ...bundle.project, assetPacks: undefined as unknown as typeof bundle.project.assetPacks } };
+    expect(() => extractDependencies(stripped)).not.toThrow();
+    expect(extractDependencies(stripped).assetPacks).toEqual([]);
   });
 });
 
