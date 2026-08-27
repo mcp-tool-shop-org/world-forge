@@ -11,6 +11,7 @@ import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
+import { defaultDownloadJson } from './export-handlers.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
 import { confirmDiscard } from '../modal-guards.js';
@@ -67,9 +68,18 @@ export function TemplateManager({ onClose }: Props) {
   const [filterMode, setFilterMode] = useState<AuthoringMode | undefined>(undefined);
   const [editingKit, setEditingKit] = useState<StarterKit | null>(null);
   const [showImportKit, setShowImportKit] = useState(false);
+  // F-c28f6fa5: keep the kit-export object URL; revoke on unmount / replace only.
+  const [kitFallback, setKitFallback] = useState<{ href: string; filename: string } | null>(null);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
   useEffect(() => { loadKits(); }, [loadKits]);
+  useEffect(() => {
+    return () => {
+      if (kitFallback?.href) {
+        try { URL.revokeObjectURL(kitFallback.href); } catch { /* ignore */ }
+      }
+    };
+  }, [kitFallback]);
 
   // Samples mode filter
   const [sampleModeFilter, setSampleModeFilter] = useState<AuthoringMode | undefined>(undefined);
@@ -157,15 +167,13 @@ export function TemplateManager({ onClose }: Props) {
   }, [duplicateKitAction]);
 
   const handleExportKit = useCallback((kit: StarterKit) => {
-    const bundle = serializeKit(kit);
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = kitFilename(kit.name);
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
+    if (kitFallback?.href) {
+      try { URL.revokeObjectURL(kitFallback.href); } catch { /* ignore */ }
+    }
+    const filename = kitFilename(kit.name);
+    const url = defaultDownloadJson(filename, serializeKit(kit));
+    if (url) setKitFallback({ href: url, filename });
+  }, [kitFallback]);
 
   const handleDeleteKit = useCallback((id: string) => {
     if (confirmDeleteKit === id) {
@@ -332,6 +340,16 @@ export function TemplateManager({ onClose }: Props) {
             </div>
             <div style={{ marginBottom: 12 }}>
               <button onClick={() => setShowImportKit(true)} style={smallBtnStyle}>Import Kit</button>
+              {kitFallback && (
+                <a
+                  href={kitFallback.href}
+                  download={kitFallback.filename}
+                  data-testid="wf-kit-export-fallback-link"
+                  style={{ fontSize: 11, color: '#58a6ff', marginLeft: 8, textDecoration: 'underline' }}
+                >
+                  If nothing appears, click here
+                </a>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filterKitsByMode(kits, filterMode).map((kit) => {
