@@ -615,6 +615,47 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     expect(zone?.physicsMode).toBe('platformer');
   });
 
+  it('round-trips TransitionEntity through export → import (F-c6b6426f)', () => {
+    // convertTransitions maps each TransitionEntity 1:1 into pack.Transitions
+    // and stamps a lossless fidelity entry, but deserializeV1 used to never
+    // read that array — elevators/warps/lifts vanished on import. Inverse of
+    // convertTransition: LocationCm → gridX/gridY via unrealAxisToGrid;
+    // Type/Label/Animation/DurationSeconds/Tags passthrough.
+    const transition: TransitionEntity = {
+      id: 't-lift',
+      zoneId: 'zone-entrance',
+      targetZoneId: 'zone-cellar',
+      type: 'elevator',
+      gridX: 3,
+      gridY: 4,
+      label: 'Entrance → Cellar Lift',
+      animation: 'elevator_descend',
+      durationSeconds: 2.5,
+      tags: ['vertical'],
+    };
+    const project: WorldProject = { ...minimalProject, transitions: [transition] };
+    const exported = exportToUnreal(project);
+    if (!exported.success) throw new Error('export failed');
+    expect(exported.contentPack.Transitions.length).toBe(1);
+
+    const imported = importFromUnreal(exported.contentPack);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+
+    expect(imported.project.transitions).toHaveLength(1);
+    const recovered = imported.project.transitions![0];
+    expect(recovered.id).toBe(transition.id);
+    expect(recovered.zoneId).toBe(transition.zoneId);
+    expect(recovered.targetZoneId).toBe(transition.targetZoneId);
+    expect(recovered.type).toBe(transition.type);
+    expect(recovered.gridX).toBe(transition.gridX);
+    expect(recovered.gridY).toBe(transition.gridY);
+    expect(recovered.label).toBe(transition.label);
+    expect(recovered.animation).toBe(transition.animation);
+    expect(recovered.durationSeconds).toBe(transition.durationSeconds);
+    expect(recovered.tags).toEqual(transition.tags);
+  });
+
   it('drops an unrecognized PhysicsMode on import with an approximated fidelity entry instead of guessing', () => {
     const exported = exportToUnreal(minimalProject);
     if (!exported.success) throw new Error('export failed');
@@ -816,6 +857,20 @@ describe('backward compat: old Unreal pack shapes', () => {
     expect(imported.success).toBe(true);
     if (imported.success) {
       expect(imported.project.entityPlacements).toEqual([]);
+    }
+  });
+
+  it('imports a pack missing Transitions without crashing', () => {
+    const result = exportToUnreal(minimalProject);
+    if (!result.success) throw new Error('export failed');
+
+    const oldPack = { ...result.contentPack } as Record<string, unknown>;
+    delete oldPack.Transitions;
+
+    const imported = importFromUnreal(oldPack as unknown as typeof result.contentPack);
+    expect(imported.success).toBe(true);
+    if (imported.success) {
+      expect(imported.project.transitions).toEqual([]);
     }
   });
 });

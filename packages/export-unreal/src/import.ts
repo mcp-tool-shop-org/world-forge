@@ -10,6 +10,7 @@ import type {
   WorldProject, Zone, ZoneExit, Interactable,
   District, EntityPlacement, EntityRole,
   ZoneConnection, ParallaxLayer,
+  TransitionEntity, TransitionEntityType,
   ValidationError,
 } from '@world-forge/schema';
 import { DEFAULT_MODE } from '@world-forge/schema';
@@ -20,6 +21,7 @@ import type { UnrealZoneDataAsset } from './convert-zones.js';
 import type { UnrealDistrictDataAsset } from './convert-districts.js';
 import type { UnrealActorSpawnEntry } from './convert-entities.js';
 import type { UnrealLevelStreamingHint } from './convert-connections.js';
+import type { UnrealTransitionEntity } from './convert-transitions.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { unrealAxisToGrid, zToElevationMeters } from './coordinate-transform.js';
 
@@ -193,6 +195,18 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
   );
   const connections: ZoneConnection[] = (pack.Connections ?? []).map(connectionFromUnreal);
 
+  // F-c6b6426f: convert-transitions.ts maps each TransitionEntity 1:1 into
+  // pack.Transitions and marks the mapping lossless; this importer used to
+  // never read that array, so every elevator/warp/lift vanished on import.
+  // Inverse of convertTransition: LocationCm → gridX/gridY via unrealAxisToGrid;
+  // Type/Label/Animation/DurationSeconds/Tags passthrough. Guard Type the
+  // same way PhysicsMode is guarded — a hand-edited pack can carry anything.
+  const transitions: TransitionEntity[] = [];
+  for (const u of pack.Transitions ?? []) {
+    const recovered = transitionFromUnreal(u, tileSizeCm, fidelity);
+    if (recovered) transitions.push(recovered);
+  }
+
   // Guard for pre-WorldPartition packs — fall back to sensible defaults so
   // old exports don't crash the import pipeline.
   const wp = pack.WorldPartition;
@@ -253,6 +267,7 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
     spawnPoints: [],
     craftingStations: [],
     marketNodes: [],
+    transitions,
 
     tilesets: [],
     tileLayers: [],
@@ -499,6 +514,51 @@ function connectionFromUnreal(u: UnrealLevelStreamingHint): ZoneConnection {
     label: u.Label,
     condition: u.Condition,
   };
+}
+
+/**
+ * Inverse of convertTransition in convert-transitions.ts. LocationCm (Unreal
+ * cm, Y-flipped) snaps back to integer grid tiles; presentation fields
+ * passthrough. Returns undefined when Type is not a TransitionEntityType so
+ * a hand-edited pack cannot inject an illegal union member.
+ */
+function transitionFromUnreal(
+  u: UnrealTransitionEntity,
+  tileSizeCm: number,
+  fidelity: FidelityEntry[],
+): TransitionEntity | undefined {
+  if (!isTransitionEntityType(u.Type)) {
+    fidelity.push({
+      level: 'approximated',
+      domain: 'transitions',
+      severity: 'warning',
+      entityId: u.Id,
+      fieldPath: `transitions.${u.Id}.type`,
+      message: `Transition "${u.Id}" has unrecognized Type "${String(u.Type)}" — dropped rather than guessed.`,
+      reason: 'Type is not one of elevator/warp/transporter/cargo-lift/stairwell (TransitionEntityType union).',
+    });
+    return undefined;
+  }
+
+  const { gridX, gridY } = unrealAxisToGrid(u.LocationCm.X, u.LocationCm.Y, tileSizeCm);
+  const out: TransitionEntity = {
+    id: u.Id,
+    zoneId: u.ZoneId,
+    targetZoneId: u.TargetZoneId,
+    type: u.Type,
+    gridX,
+    gridY,
+  };
+  if (u.Label !== undefined) out.label = u.Label;
+  if (u.Animation !== undefined) out.animation = u.Animation;
+  if (u.DurationSeconds !== undefined) out.durationSeconds = u.DurationSeconds;
+  if (u.Tags !== undefined) out.tags = u.Tags.slice();
+  return out;
+}
+
+function isTransitionEntityType(value: string): value is TransitionEntityType {
+  return value === 'elevator' || value === 'warp' || value === 'transporter'
+    || value === 'cargo-lift' || value === 'stairwell';
 }
 
 function isEntityRole(value: string): value is EntityRole {
