@@ -20,12 +20,15 @@
 #     verified empirically against the real, public registry while building
 #     this fix — an entirely-unknown package name and an existing package at
 #     an unpublished version both come back non-zero the same way) ->
-#     publish for real.
+#     print stderr, log "not found (E404)", publish for real.
 #   - `npm view` itself erroring for an UNRELATED reason (registry hiccup,
-#     timeout) is treated the same as "not found" -> falls through to
-#     attempt the publish, because that's the only path that can actually
-#     resolve the uncertainty; the publish call's own exit code is what
-#     governs the step from there. This is intentionally NOT the same as
+#     timeout, ENEEDAUTH, 429, 503) still fail-opens to publish, because
+#     that's the only path that can actually resolve the uncertainty; the
+#     publish call's own exit code is what governs the step from there.
+#     F-225a214c: stderr is captured and printed, and a non-E404 failure
+#     emits ::warning rather than claiming "not found". Discarding stderr
+#     used to make E404, ENEEDAUTH (the F-8cdb6b66 dummy token), 429, and
+#     503 look identical in the job log. This is intentionally NOT the same as
 #     pattern-matching npm publish's own human-readable "cannot publish over
 #     the previously published version" error text — that message has
 #     changed across npm major versions and doing so would mean the gate's
@@ -78,9 +81,18 @@ runs:
         SPEC="${PKG_NAME}@${PKG_VERSION}"
 
         echo "Checking whether ${SPEC} is already published..."
-        if npm view "${SPEC}" version >/dev/null 2>&1; then
+        VIEW_ERR="$(mktemp)"
+        if npm view "${SPEC}" version >"$VIEW_ERR" 2>&1; then
+          rm -f "$VIEW_ERR"
           echo "::notice::${SPEC} is already on npm - skipping publish (idempotent re-run)."
         else
-          echo "${SPEC} not found on the registry - publishing."
+          echo "npm view ${SPEC} version failed:"
+          cat "$VIEW_ERR"
+          if grep -q 'E404' "$VIEW_ERR"; then
+            echo "${SPEC} not found on the registry (E404) - publishing."
+          else
+            echo "::warning::npm view ${SPEC} failed with a non-E404 error (not a confirmed miss); fail-open to publish. Publish's own exit code governs from here."
+          fi
+          rm -f "$VIEW_ERR"
           npm publish --provenance --access public
         fi

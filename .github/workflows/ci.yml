@@ -28,6 +28,11 @@ jobs:
     # ceiling.
     timeout-minutes: 20
     strategy:
+      # F-89b7a3da: GitHub's default fail-fast: true cancelled the other Node
+      # leg mid-job, so if: always() never reached Coverage/Upload on the
+      # sibling. INF-B-004's "authoritative record" for the other LTS line was
+      # missing exactly when a version-specific failure is what you need it for.
+      fail-fast: false
       matrix:
         # Supported LTS lines only: 22 = Maintenance LTS, 24 = Active LTS.
         # Node 20 "Iron" reached end-of-life 2026-04-30 and was dropped.
@@ -39,6 +44,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
+      # F-059ff1b5: SHIP_GATE D. Shipping Hygiene checks off "Dependency
+      # scanning runs in CI (npm audit in verify)". verify is still
+      # build+test (package.json is out of this domain); this step is the
+      # job that can actually go red. No continue-on-error — high/critical
+      # advisories fail the required check. Org skips Dependabot.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
       - run: npm run build
       - run: npm test
       # F-1256813c class-fix (swept with F-2ed74a5c): typecheck:dogfood already
@@ -72,7 +84,11 @@ jobs:
         with:
           name: coverage-node-${{ matrix.node-version }}
           path: coverage/
-          if-no-files-found: ignore
+          # F-7c57e7b2: ignore let a coverage run that exited 0 without
+          # writing coverage/ stay green and produce no artifact — a weaker
+          # sibling of the removed Codecov continue-on-error. Missing
+          # coverage/ now fails the required check.
+          if-no-files-found: error
       # The Codecov upload step that used to follow was REMOVED in v4.6.0. It ran
       # with `continue-on-error: true` and `fail_ci_if_error: false` against a
       # `CODECOV_TOKEN` secret that does not exist on this repo, so it could never
@@ -104,6 +120,19 @@ jobs:
         env:
           CI: true
         run: npm run test:e2e
+      # F-5ff896af: coverage already uploads on always(); the browser gate
+      # had only the job log. harness-owned playwright.config.ts still needs
+      # trace: retain-on-failure / screenshot: only-on-failure so test-results/
+      # is not empty; this job still uploads whatever Playwright wrote.
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-e2e
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
 
   # INF-B-010: Type-check and build the Starlight handbook.
   # Keeps handbook drift (e.g. stale Package Map) from landing silently.
