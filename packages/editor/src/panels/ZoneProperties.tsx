@@ -553,7 +553,8 @@ function ParallaxPreviewStack({
             }}
           >
             <span style={{
-              background: 'rgba(0,0,0,0.55)', padding: '1px 4px', borderRadius: 2,
+              background: 'var(--wf-bg-elevated)', color: 'var(--wf-text-primary)',
+              padding: '1px 4px', borderRadius: 2,
             }}>
               {layer.id} · sf {layer.scrollFactor.toFixed(2)}
             </span>

@@ -132,6 +132,6 @@ export function ConnectionProperties() {
 const labelStyle: React.CSSProperties = labelText;
 const inputStyle: React.CSSProperties = inputCompact;
 const btnStyle: React.CSSProperties = {
-  display: 'block', width: '100%', color: '#fff', border: 'none',
+  display: 'block', width: '100%', color: 'var(--wf-text-primary)', border: 'none',
   borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
 };
