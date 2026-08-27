@@ -89,6 +89,17 @@ describe('run-godot-smoke.ts exit gates (F-66a22d53 / F-6551ab6c)', () => {
         expect(stderr).toContain('does not exist');
         expect(code).toBe(2);
     }, 60_000);
+
+    it('exits 2 when GODOT_BIN exists but --version is not Godot 4 (F-bd5349d4)', async () => {
+        const { code, stdout, stderr } = await runScript(
+            resolve(__dirname, '../run-godot-smoke.ts'),
+            { GODOT_BIN: process.execPath },
+        );
+        expect(stdout).toContain('Resolved via: GODOT_BIN');
+        expect(stderr).toMatch(/Godot 4 required/);
+        expect(stderr).toMatch(/Set GODOT_BIN/);
+        expect(code).toBe(2);
+    }, 60_000);
 });
 
 describe('run-ai-rpg-smoke.ts exit gate (F-66a22d53)', () => {
@@ -131,5 +142,54 @@ describe('export-stage-fixture.ts exit gate (F-66a22d53)', () => {
         );
         expect(stderr).toContain('WORLD_FORGE_FORCE_FIXTURE_FAIL');
         expect(code).not.toBe(0);
+    }, 60_000);
+});
+
+describe('export-stage-fixture.ts operator CLI (F-e430ef33 / F-aa8332da)', () => {
+    const SCRIPT = resolve(__dirname, '../export-stage-fixture.ts');
+
+    it('--help prints the real contract (salt-road, --engine-out) and does not demand --out', async () => {
+        const { code, stdout, stderr } = await runScript(SCRIPT, {}, ['--help']);
+        const text = `${stdout}${stderr}`;
+        expect(text).toMatch(/salt-road/);
+        expect(text).toMatch(/--engine-out/);
+        expect(text).toMatch(/coverage\|proof\|salt-road/);
+        expect(text).not.toContain('--out=<dir> is required');
+        expect(code).toBe(0);
+    }, 60_000);
+
+    it('unknown flags print the contract and exit 2', async () => {
+        const { code, stdout, stderr } = await runScript(SCRIPT, {}, ['--not-a-flag']);
+        expect(stderr).toMatch(/unknown flag/);
+        expect(stderr).toMatch(/--engine-out/);
+        expect(stderr).toMatch(/salt-road/);
+        expect(stdout).not.toContain('done.');
+        expect(code).toBe(2);
+    }, 60_000);
+
+    it('bare --engine-out without a file is a usage error (exit 2, no done.)', async () => {
+        const out = mkdtempSync(join(tmpdir(), 'wf-fixture-'));
+        const { code, stdout, stderr } = await runScript(
+            SCRIPT,
+            {},
+            ['--world=proof', `--out=${out}`, '--engine-out'],
+        );
+        expect(stderr).toMatch(/--engine-out requires a file path/);
+        expect(stdout).not.toContain('done.');
+        expect(code).toBe(2);
+    }, 60_000);
+
+    it('accepts --engine-out <file> space form (does not treat it as a usage error)', async () => {
+        const out = mkdtempSync(join(tmpdir(), 'wf-fixture-'));
+        const { code, stderr, stdout } = await runScript(
+            SCRIPT,
+            { WORLD_FORGE_FORCE_FIXTURE_FAIL: '1' },
+            ['--world=proof', `--out=${out}`, '--engine-out', join(out, 'engine-pack.json')],
+        );
+        expect(stderr).toContain('WORLD_FORGE_FORCE_FIXTURE_FAIL');
+        expect(stderr).not.toMatch(/--engine-out requires a file path/);
+        expect(stderr).not.toMatch(/unknown flag/);
+        expect(stdout).not.toContain('done.');
+        expect(code).toBe(1);
     }, 60_000);
 });

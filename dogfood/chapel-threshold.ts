@@ -46,7 +46,7 @@ const result = exportToEngine(chapelProject);
 if ('success' in result && result.success === false) {
   console.error('EXPORT FAILED — validation errors:');
   for (const err of result.errors) {
-    console.error(`  - ${err.message}`);
+    console.error(`  [${err.path ?? '(root)'}] ${err.message}`);
   }
   process.exit(1);
 }
@@ -162,22 +162,18 @@ if (process.env.WORLD_FORGE_FORCE_DOGFOOD_GAP === '1') {
 }
 
 if (gaps.length > 0) {
-  console.log(`Found ${gaps.length} gaps:\n`);
+  // F-683e8222: a red run used to look successful — gaps went to stdout,
+  // then `=== Done ===`, then exit 1 with an empty stderr. Skip Done, put
+  // the list + a one-line fix hint on stderr.
+  console.error(`Found ${gaps.length} gaps:\n`);
   for (const g of gaps) {
-    console.log(`  * ${g}`);
+    console.error(`  * ${g}`);
   }
-} else {
-  console.log('No gaps found — full engine handshake!');
-}
-
-console.log('\n=== Done ===');
-
-// F-239f17d3: WALKTHROUGH.md frames this gap count as a regression narrative
-// meant to trend toward and stay at zero ("The Chapel Threshold now exports
-// with zero gaps"), but this script only ever console.log'd the gap list —
-// it never turned a reintroduced gap into a failing exit code. A regression
-// that broke, say, the build-catalog export would print "Found 1 gaps:" and
-// still exit 0. Make it an actual regression gate: any gap fails the run.
-if (gaps.length > 0) {
+  console.error(
+    '\nFix: restore the missing engine-contract fields listed above (see dogfood/WALKTHROUGH.md) so this export has zero gaps, then re-run.',
+  );
   process.exit(1);
 }
+
+console.log('No gaps found — full engine handshake!');
+console.log('\n=== Done ===');

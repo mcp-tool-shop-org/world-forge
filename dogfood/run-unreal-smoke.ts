@@ -86,7 +86,10 @@ function run(): void {
         const result = exportToUnreal(proofProject);
         assert(result.success === true, 'export_succeeds');
         if (!result.success) {
-            console.log('  FATAL: export failed', result.errors);
+            console.error('  FATAL: export failed');
+            for (const e of result.errors) {
+                console.error(`    ${e.path ?? '(root)'}: ${e.message}`);
+            }
             return;
         }
         const exported = result.contentPack;

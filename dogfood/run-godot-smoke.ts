@@ -12,9 +12,13 @@
  *
  * Usage:
  *   GODOT_BIN="path/to/godot" npx tsx dogfood/run-godot-smoke.ts
+ *   npx tsx dogfood/run-godot-smoke.ts
+ *     (GODOT_BIN optional — searches common install paths, then godot/godot4 on PATH)
  *
  * Environment:
- *   GODOT_BIN — Path to Godot 4 executable (required)
+ *   GODOT_BIN — Path to Godot 4 executable (optional). When unset, searches
+ *               platform install candidates then `godot`/`godot4` on PATH.
+ *               The chosen path is printed as "Resolved via: ...".
  */
 
 import { writeFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -55,11 +59,18 @@ const outDir = resolve(__dirname, 'output', 'godot-smoke');
 const isWindows = process.platform === 'win32';
 const PATH_LOOKUP_CMD = isWindows ? 'where' : 'which';
 
-function findGodot(): string | null {
+interface GodotHit {
+    path: string;
+    source: string;
+}
+
+function findGodot(): GodotHit | null {
     // 1. Environment variable (highest priority). F-6551ab6c: a set-but-missing
     // GODOT_BIN must not fall through to PATH/candidates — the caller exits 2.
     if (process.env.GODOT_BIN) {
-        return existsSync(process.env.GODOT_BIN) ? process.env.GODOT_BIN : null;
+        return existsSync(process.env.GODOT_BIN)
+            ? { path: process.env.GODOT_BIN, source: 'GODOT_BIN' }
+            : null;
     }
 
     // 2. Common install paths, per platform
@@ -84,12 +95,14 @@ function findGodot(): string | null {
             '/Applications/Godot.app/Contents/MacOS/Godot',
         ];
     for (const candidate of candidates) {
-        if (existsSync(candidate)) return candidate;
+        if (existsSync(candidate)) return { path: candidate, source: `install candidate ${candidate}` };
     }
 
     // 3. Try `godot` on PATH (where/which per-platform, see above)
-    const onPath = lookupOnPath('godot') ?? lookupOnPath('godot4');
-    if (onPath) return onPath;
+    const godotOnPath = lookupOnPath('godot');
+    if (godotOnPath) return { path: godotOnPath, source: 'PATH (godot)' };
+    const godot4OnPath = lookupOnPath('godot4');
+    if (godot4OnPath) return { path: godot4OnPath, source: 'PATH (godot4)' };
 
     return null;
 }
@@ -101,7 +114,8 @@ console.log('═══ GODOT ENGINE SMOKE TEST ═══\n');
 console.log('── 1. Export proof world to Godot ──');
 const result = exportToGodot(proofProject);
 if (!result.success) {
-    console.error('  ✗ Export failed:', result.errors);
+    console.error('  ✗ Export failed:');
+    for (const e of result.errors) console.error(`    ${e.path ?? '(root)'}: ${e.message}`);
     process.exit(1);
 }
 console.log('  ✓ Export succeeded');
@@ -157,24 +171,41 @@ if (process.env.GODOT_BIN && !existsSync(process.env.GODOT_BIN)) {
     process.exit(2);
 }
 
-const godotBin = findGodot();
-if (!godotBin) {
+const godotHit = findGodot();
+if (!godotHit) {
     console.error('  ✗ Godot 4 not found.');
-    console.error('    Set GODOT_BIN environment variable to your Godot 4 executable path.');
-    console.error('    Example: GODOT_BIN="C:\\path\\to\\Godot_v4.4-stable_win64.exe"');
-    console.error('\n  Skipping engine execution — structural export is validated by multi-target proof.');
-    console.error('  To complete engine smoke, install Godot 4 and re-run with GODOT_BIN set.');
+    printInstallHint();
 
     writeSkipReceipt('SKIP — Godot binary not found');
     process.exit(2); // Exit 2 = skipped (not failure)
 }
 
+const godotBin = godotHit.path;
 console.log(`  Binary: ${godotBin}`);
+console.log(`  Resolved via: ${godotHit.source}`);
 
 // Get Godot version — spawnSync argv, never a shell-concatenated string.
 const versionRun = captureSpawn(godotBin, ['--version'], { timeout: 10_000 });
-const godotVersion = versionRun.output.trim() || 'unknown';
+if (versionRun.error?.code === 'ETIMEDOUT') {
+    console.error('  ✗ Godot timed out after 10s while reading --version.');
+    printInstallHint();
+    writeSkipReceipt('SKIP — Godot --version timed out');
+    process.exit(2);
+}
+if (versionRun.error) {
+    console.error(`  ✗ failed to spawn: ${versionRun.error.message}`);
+    printInstallHint();
+    writeSkipReceipt('SKIP — Godot failed to spawn');
+    process.exit(2);
+}
+const godotVersion = extractGodotVersion(versionRun.output);
 console.log(`  Version: ${godotVersion}`);
+if (!looksLikeGodot4(godotVersion)) {
+    console.error(`  ✗ Godot 4 required, but --version was: ${godotVersion}`);
+    printInstallHint();
+    writeSkipReceipt(`SKIP — not Godot 4 (${godotVersion})`);
+    process.exit(2);
+}
 
 // Run headless with smoke script. Capture stdout+stderr on every run
 // (F-9830ed99): execSync on exit 0 returned stdout only, so engine
@@ -248,7 +279,15 @@ const overallPass = computeOverallPass({ smokeVerdict, godotExitCode, resourceWa
 
 console.log(`\n═══ VERDICT: ${overallPass ? 'PASS' : 'FAIL'} ═══`);
 if (!overallPass) {
-    console.log('  Engine could not consume generated scene.');
+    // F-bd5349d4: a 30s hang or ENOENT used to share the scene-consume headline.
+    const spawnErr = godotRun.error;
+    if (spawnErr?.code === 'ETIMEDOUT') {
+        console.error('  Godot timed out after 30s');
+    } else if (spawnErr) {
+        console.error(`  failed to spawn: ${spawnErr.message}`);
+    } else {
+        console.log('  Engine could not consume generated scene.');
+    }
     if (godotOutput) {
         console.log('\n  Raw Godot output:');
         for (const line of godotOutput.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 40)) console.log(`    ${line}`);
@@ -281,6 +320,26 @@ function today(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
+function printInstallHint(): void {
+    console.error('    Set GODOT_BIN environment variable to your Godot 4 executable path.');
+    console.error('    Example: GODOT_BIN="C:\\path\\to\\Godot_v4.4-stable_win64.exe"');
+    console.error('\n  Skipping engine execution — structural export is validated by multi-target proof.');
+    console.error('  To complete engine smoke, install Godot 4 and re-run with GODOT_BIN set.');
+}
+
+/** Godot 4 prints `4.x...` or `Godot Engine v4.x...`. Rejects Node (`v18.4.0`) and Godot 3. */
+function looksLikeGodot4(version: string): boolean {
+    const v = version.trim();
+    if (!v || v === 'unknown') return false;
+    return /^4\.\d/.test(v) || /Godot(?:\s+Engine)?\s+v?4\.\d/i.test(v);
+}
+
+function extractGodotVersion(output: string): string {
+    const lines = output.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const hit = lines.find((l) => looksLikeGodot4(l));
+    return hit ?? (lines[0] ?? 'unknown');
+}
+
 /**
  * Spawn a process without a shell and always concatenate stdout+stderr.
  * F-9830ed99: execSync returns stdout only on exit 0; resource warnings
@@ -290,7 +349,7 @@ function captureSpawn(
     command: string,
     args: string[],
     opts: { timeout: number; cwd?: string },
-): { status: number; output: string } {
+): { status: number; output: string; error: NodeJS.ErrnoException | undefined } {
     const result = spawnSync(command, args, {
         encoding: 'utf-8',
         timeout: opts.timeout,
@@ -301,7 +360,7 @@ function captureSpawn(
     const stderr = result.stderr ?? '';
     let output = `${stdout}${stderr}`;
     if (result.error) output = `${output}\n${result.error.message}`.trim();
-    return { status: result.status ?? 1, output };
+    return { status: result.status ?? 1, output, error: result.error ?? undefined };
 }
 
 function lookupOnPath(binName: string): string | null {
