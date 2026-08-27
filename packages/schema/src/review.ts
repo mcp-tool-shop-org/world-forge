@@ -271,7 +271,7 @@ export function __resetClassifyDomainWarnings(): void {
   WARNED_UNKNOWN_PREFIXES.clear();
 }
 
-function asArray<T>(value: T[] | undefined | null | unknown): T[] {
+function asArray<T>(value: T[] | undefined | null): T[] {
   return Array.isArray(value) ? value : [];
 }
 

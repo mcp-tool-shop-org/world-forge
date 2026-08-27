@@ -252,7 +252,7 @@ export function scanDependencies(
 
   // --- District zone refs ---
   for (const d of project.districts ?? []) {
-    for (const zid of d.zoneIds) {
+    for (const zid of Array.isArray(d.zoneIds) ? d.zoneIds : []) {
       if (!zoneIds.has(zid)) {
         edges.push({
           domain: 'zone-ref', status: 'broken',

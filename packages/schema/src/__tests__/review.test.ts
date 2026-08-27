@@ -359,10 +359,10 @@ describe('buildReviewSnapshot', () => {
   it('does not throw when a district omits zoneIds', () => {
     const proj = clone({
       districts: [{
-        id: 'd1', name: 'Draft District', tags: [],
+        id: 'd1', name: 'Draft District', tags: [], zoneIds: [],
         baseMetrics: { commerce: 0, morale: 0, safety: 0, stability: 0 },
         economyProfile: { supplyCategories: [], scarcityDefaults: {} },
-      } as WorldProject['districts'][number]],
+      }],
     });
     delete (proj.districts[0] as { zoneIds?: unknown }).zoneIds;
     let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
