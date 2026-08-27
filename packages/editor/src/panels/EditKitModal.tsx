@@ -81,12 +81,13 @@ export function EditKitModal({ kit, onClose }: Props) {
     <ModalFrame title="Edit Kit" width={480} onClose={onClose}>
 
         {/* Name */}
-        <label style={labelStyle}>Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Kit name" />
+        <label style={labelStyle} htmlFor="wf-edit-kit-name">Name</label>
+        <input id="wf-edit-kit-name" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Kit name" />
 
         {/* Description */}
-        <label style={labelStyle}>Description</label>
+        <label style={labelStyle} htmlFor="wf-edit-kit-desc">Description</label>
         <textarea
+          id="wf-edit-kit-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }}
@@ -94,34 +95,38 @@ export function EditKitModal({ kit, onClose }: Props) {
         />
 
         {/* Icon */}
-        <label style={labelStyle}>Icon</label>
-        <input value={icon} onChange={(e) => setIcon(e.target.value)} style={{ ...inputStyle, width: 60 }} maxLength={2} />
+        <label style={labelStyle} htmlFor="wf-edit-kit-icon">Icon</label>
+        <input id="wf-edit-kit-icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ ...inputStyle, width: 60 }} maxLength={2} />
 
         {/* Modes */}
-        <label style={labelStyle}>Modes</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-          {AUTHORING_MODES.map((m) => {
-            const active = modes.includes(m);
-            return (
-              <button
-                key={m}
-                onClick={() => toggleMode(m)}
-                style={{
-                  background: active ? '#0d1d30' : '#0d1117',
-                  border: active ? '2px solid #58a6ff' : '1px solid #30363d',
-                  borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-                  color: active ? '#58a6ff' : '#8b949e', fontSize: 10,
-                }}
-              >
-                {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
-              </button>
-            );
-          })}
-        </div>
+        <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend style={labelStyle}>Modes</legend>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+            {AUTHORING_MODES.map((m) => {
+              const active = modes.includes(m);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => toggleMode(m)}
+                  aria-pressed={active}
+                  style={{
+                    background: active ? '#0d1d30' : '#0d1117',
+                    border: active ? '2px solid #58a6ff' : '1px solid #30363d',
+                    borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+                    color: active ? '#58a6ff' : '#8b949e', fontSize: 10,
+                  }}
+                >
+                  {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
 
         {/* Tags */}
-        <label style={labelStyle}>Tags (comma-separated)</label>
-        <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} style={inputStyle} placeholder="e.g. fantasy, dungeon" />
+        <label style={labelStyle} htmlFor="wf-edit-kit-tags">Tags (comma-separated)</label>
+        <input id="wf-edit-kit-tags" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} style={inputStyle} placeholder="e.g. fantasy, dungeon" />
 
         {/* Region Preset Refs */}
         <label style={labelStyle}>Region Presets</label>

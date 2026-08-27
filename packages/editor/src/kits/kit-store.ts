@@ -54,23 +54,28 @@ function persist(allKits: StarterKit[]): boolean {
   }
 }
 
-function loadFromStorage(): StoredKits {
+export interface StorageLoadResult<T> {
+  data: T;
+  reset: boolean;
+}
+
+function loadFromStorage(): StorageLoadResult<StoredKits> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { kits: [] };
+    if (!raw) return { data: { kits: [] }, reset: false };
     const parsed: unknown = JSON.parse(raw);
     // F-6cf2e4a4: valid JSON missing `kits` (or kits: null) used to crash
     // loadKits via `[...stored.kits]` on boot. Reset like the corrupt-JSON path.
     if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as StoredKits).kits)) {
       console.warn('Corrupted kit data in localStorage — resetting');
       localStorage.removeItem(STORAGE_KEY);
-      return { kits: [] };
+      return { data: { kits: [] }, reset: true };
     }
-    return { kits: (parsed as StoredKits).kits };
+    return { data: { kits: (parsed as StoredKits).kits }, reset: false };
   } catch {
     console.warn('Corrupted kit data in localStorage — resetting');
     localStorage.removeItem(STORAGE_KEY);
-    return { kits: [] };
+    return { data: { kits: [] }, reset: true };
   }
 }
 
@@ -78,7 +83,8 @@ interface KitState {
   /** All starter kits: built-in + custom. */
   kits: StarterKit[];
 
-  loadKits: () => void;
+  /** Load custom kits from localStorage. `reset` is true when stored data was unreadable and wiped. */
+  loadKits: () => { reset: boolean };
 
   // Kit CRUD (custom kits only)
   saveKit: (kit: Omit<StarterKit, 'id' | 'builtIn' | 'createdAt' | 'updatedAt'>) => StarterKit;
@@ -98,7 +104,8 @@ export const useKitStore = create<KitState>((set, get) => ({
 
   loadKits: () => {
     const stored = loadFromStorage();
-    set({ kits: [...BUILTIN_KITS, ...stored.kits] });
+    set({ kits: [...BUILTIN_KITS, ...stored.data.kits] });
+    return { reset: stored.reset };
   },
 
   saveKit: (input) => {

@@ -23,6 +23,13 @@ interface Props { onClose: () => void }
 
 type Tab = 'genres' | 'starters' | 'samples' | 'templates';
 
+/** Pending tab applied the next time TemplateManager mounts (Ctrl+K starter-kit). */
+let pendingTab: Tab | null = null;
+
+export function requestTemplateManagerTab(tab: Tab): void {
+  pendingTab = tab;
+}
+
 export function countContent(p: WorldProject) {
   return {
     zones: p.zones.length,
@@ -49,7 +56,11 @@ export function TemplateManager({ onClose }: Props) {
   const { templates, loadTemplates, duplicateTemplate, deleteTemplate } = useTemplateStore();
   const { kits, loadKits, duplicateKit: duplicateKitAction, deleteKit: deleteKitAction } = useKitStore();
 
-  const [tab, setTab] = useState<Tab>('genres');
+  const [tab, setTab] = useState<Tab>(() => {
+    const next = pendingTab ?? 'genres';
+    pendingTab = null;
+    return next;
+  });
 
   // Wizard state (genres tab)
   const [step, setStep] = useState<1 | 2>(1);
@@ -72,7 +83,12 @@ export function TemplateManager({ onClose }: Props) {
   const [kitFallback, setKitFallback] = useState<{ href: string; filename: string } | null>(null);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
-  useEffect(() => { loadKits(); }, [loadKits]);
+  useEffect(() => {
+    const result = loadKits();
+    if (result?.reset) {
+      pushToast('Saved kits could not be read and were reset.', 'warning', 4000);
+    }
+  }, [loadKits]);
   useEffect(() => {
     return () => {
       if (kitFallback?.href) {
@@ -221,8 +237,9 @@ export function TemplateManager({ onClose }: Props) {
         {/* Genres tab */}
         {tab === 'genres' && step === 1 && (
           <>
-            <label style={labelStyle}>Project Name</label>
+            <label style={labelStyle} htmlFor="wf-tm-genre-name">Project Name</label>
             <input
+              id="wf-tm-genre-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. My First World"
@@ -304,8 +321,9 @@ export function TemplateManager({ onClose }: Props) {
             <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
               Browse starter kits to begin a new project. Built-in kits ship with World Forge; custom kits are ones you&apos;ve saved.
             </div>
-            <label style={labelStyle}>Project Name</label>
+            <label style={labelStyle} htmlFor="wf-tm-kit-name">Project Name</label>
             <input
+              id="wf-tm-kit-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Leave blank to use kit name"

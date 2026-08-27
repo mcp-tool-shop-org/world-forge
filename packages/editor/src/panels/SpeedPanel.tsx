@@ -7,7 +7,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 import { SPEED_PANEL_ACTIONS, filterActions, type SpeedPanelAction, type GroupedActions, type SpeedPanelMacro } from '../speed-panel-actions.js';
 import { executeAction, executeMacro } from '../speed-panel-execute.js';
-import { productionExecuteStores, handleSpeedPanelExecuteResult } from './speed-panel-stores.js';
+import { productionExecuteStores, handleSpeedPanelExecuteResult, formatSpeedPanelFailure } from './speed-panel-stores.js';
 import { pushToast } from '../ui/Toast.js';
 
 const SECTION_STYLE: React.CSSProperties = { padding: '4px 8px', fontSize: 10, color: 'var(--wf-text-muted)', letterSpacing: 0.5 };
@@ -75,17 +75,20 @@ export function SpeedPanel() {
   // F-2a8f09c5: read the live bag at click time (includes mergeZones + selection)
   // and only close after executed:true. Failed actions keep the panel open.
   const execute = useCallback((actionId: string) => {
+    const actionLabel = SPEED_PANEL_ACTIONS.find((a) => a.id === actionId)?.label ?? actionId;
     try {
       const result = executeAction(actionId, speedPanelContext, productionExecuteStores());
       handleSpeedPanelExecuteResult(result, actionId, {
         closeSpeedPanel,
         addRecent,
         toast: pushToast,
+        actionLabel,
       });
     } catch (err) {
       // EUB-018: catch and log action execution errors
       console.error(`[SpeedPanel] Action "${actionId}" threw an error:`, err);
-      pushToast('Action failed', 'error');
+      const reason = err instanceof Error ? err.message : String(err);
+      pushToast(formatSpeedPanelFailure(actionLabel, reason), 'error');
     }
   }, [speedPanelContext, closeSpeedPanel, addRecent]);
 
@@ -176,6 +179,8 @@ export function SpeedPanel() {
           <button
             onClick={toggleSpeedPanelEditMode}
             title={speedPanelEditMode ? 'Exit edit mode' : 'Edit favorites & groups'}
+            aria-label={speedPanelEditMode ? 'Exit edit mode' : 'Edit favorites & groups'}
+            aria-pressed={speedPanelEditMode}
             style={{
               background: speedPanelEditMode ? 'var(--wf-bg-hover)' : 'transparent',
               border: 'none', color: speedPanelEditMode ? '#f0f6fc' : 'var(--wf-text-muted)',
@@ -190,7 +195,12 @@ export function SpeedPanel() {
         {macroStatus && (
           <div style={{ padding: '4px 8px', fontSize: 10, color: 'var(--wf-danger-text)', background: '#1c1107', borderBottom: '1px solid var(--wf-border-default)' }}>
             {macroStatus}
-            <span onClick={() => setMacroStatus(null)} style={{ cursor: 'pointer', marginLeft: 6, color: 'var(--wf-text-muted)' }}>{'\u2715'}</span>
+            <button
+              type="button"
+              onClick={() => setMacroStatus(null)}
+              aria-label="Dismiss macro status"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', marginLeft: 6, color: 'var(--wf-text-muted)', padding: 0, fontSize: 10 }}
+            >{'\u2715'}</button>
           </div>
         )}
 
@@ -231,11 +241,13 @@ export function SpeedPanel() {
                     <span style={{ flex: 1 }}>{g.group.name}</span>
                   )}
                   {speedPanelEditMode && (
-                    <span
+                    <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); removeGroup(g.group.id); }}
-                      style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, marginLeft: 4 }}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, marginLeft: 4, padding: 0 }}
                       title="Delete group"
-                    >{'\u2715'}</span>
+                      aria-label={`Delete group ${g.group.name}`}
+                    >{'\u2715'}</button>
                   )}
                 </div>
                 {!collapsed && g.actions.map((a) => {
@@ -305,16 +317,21 @@ export function SpeedPanel() {
                   <span style={{ color: 'var(--wf-text-muted)', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
                   {speedPanelEditMode && (
                     <>
-                      <span
+                      <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); setExpandedMacro(isExpanded ? null : m.id); }}
-                        style={{ cursor: 'pointer', color: 'var(--wf-text-muted)', fontSize: 10 }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wf-text-muted)', fontSize: 10, padding: 0 }}
                         title="Edit steps"
-                      >{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                      <span
+                        aria-label={isExpanded ? `Collapse steps for ${m.name}` : `Edit steps for ${m.name}`}
+                        aria-expanded={isExpanded}
+                      >{isExpanded ? '\u25BC' : '\u25B6'}</button>
+                      <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); removeMacro(m.id); }}
-                        style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10 }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, padding: 0 }}
                         title="Delete macro"
-                      >{'\u2715'}</span>
+                        aria-label={`Delete macro ${m.name}`}
+                      >{'\u2715'}</button>
                     </>
                   )}
                 </div>
@@ -328,19 +345,25 @@ export function SpeedPanel() {
                           <span style={{ color: 'var(--wf-text-muted)', width: 14 }}>{si + 1}.</span>
                           <span style={{ flex: 1 }}>{action?.label ?? step.actionId}</span>
                           <button
+                            type="button"
                             onClick={() => si > 0 && reorderMacroStep(m.id, si, si - 1)}
                             disabled={si === 0}
+                            aria-label={`Move step ${si + 1} up`}
                             style={{ background: 'transparent', border: 'none', color: si > 0 ? 'var(--wf-text-muted)' : 'var(--wf-border-default)', cursor: si > 0 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
                           >{'\u25B2'}</button>
                           <button
+                            type="button"
                             onClick={() => si < m.steps.length - 1 && reorderMacroStep(m.id, si, si + 1)}
                             disabled={si === m.steps.length - 1}
+                            aria-label={`Move step ${si + 1} down`}
                             style={{ background: 'transparent', border: 'none', color: si < m.steps.length - 1 ? 'var(--wf-text-muted)' : 'var(--wf-border-default)', cursor: si < m.steps.length - 1 ? 'pointer' : 'default', fontSize: 8, padding: 0 }}
                           >{'\u25BC'}</button>
-                          <span
+                          <button
+                            type="button"
                             onClick={() => removeStepFromMacro(m.id, si)}
-                            style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10 }}
-                          >{'\u2715'}</span>
+                            aria-label={`Remove step ${si + 1}`}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, padding: 0 }}
+                          >{'\u2715'}</button>
                         </div>
                       );
                     })}
@@ -430,18 +453,22 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
         color: active ? '#f0f6fc' : 'var(--wf-text-primary)',
       }}
     >
-      <span
+      <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
-        style={{ cursor: 'pointer', fontSize: 11, color: isPinned ? '#ffd700' : 'var(--wf-text-hint)', userSelect: 'none', flexShrink: 0 }}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 11, color: isPinned ? '#ffd700' : 'var(--wf-text-hint)', userSelect: 'none', flexShrink: 0, padding: 0 }}
         title={isPinned ? 'Unpin' : 'Pin'}
+        aria-label={isPinned ? `Unpin ${action.label}` : `Pin ${action.label}`}
+        aria-pressed={isPinned}
       >
         {isPinned ? '\u2605' : '\u2606'}
-      </span>
+      </button>
       <span style={{ color: 'var(--wf-text-muted)', fontSize: 10, width: 20, textAlign: 'center', flexShrink: 0 }}>{action.icon}</span>
       <span style={{ flex: 1 }}>{action.label}</span>
       {editMode && isPinned && (
         <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
             disabled={!onMoveUp}
             style={{
@@ -449,8 +476,10 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
               cursor: onMoveUp ? 'pointer' : 'default', fontSize: 10, padding: '0 2px',
             }}
             title="Move up"
+            aria-label={`Move ${action.label} up`}
           >{'\u25B2'}</button>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
             disabled={!onMoveDown}
             style={{
@@ -458,15 +487,18 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
               cursor: onMoveDown ? 'pointer' : 'default', fontSize: 10, padding: '0 2px',
             }}
             title="Move down"
+            aria-label={`Move ${action.label} down`}
           >{'\u25BC'}</button>
         </span>
       )}
       {groupEditMode && onRemoveFromGroup && (
-        <span
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onRemoveFromGroup(); }}
-          style={{ cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, flexShrink: 0 }}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--wf-danger-text)', fontSize: 10, flexShrink: 0, padding: 0 }}
           title="Remove from group"
-        >{'\u2715'}</span>
+          aria-label={`Remove ${action.label} from group`}
+        >{'\u2715'}</button>
       )}
     </div>
   );

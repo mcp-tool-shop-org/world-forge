@@ -6,11 +6,13 @@ import { useEditorStore } from '../store/editor-store.js';
 import { usePresetStore } from '../presets/preset-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
-import { type WorldProject, scanDependencies } from '@world-forge/schema';
+import { type WorldProject, scanDependencies, buildReviewSnapshot } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
-import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { useKitStore } from '../kits/index.js';
 import { pushToast } from '../ui/Toast.js';
+import { useModalStore } from '../store/modal-store.js';
+import { requestTemplateManagerTab } from './TemplateManager.js';
+import { reviewSnapshotToMarkdown, summaryFilename } from '../review/export-summary.js';
 
 export interface SearchResult {
   type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
@@ -104,7 +106,7 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
 
   // Review actions
   results.push({ type: 'review', id: 'open-review', label: 'Project Review', detail: 'Open review panel' });
-  results.push({ type: 'review', id: 'export-summary', label: 'Export Summary', detail: 'Export review summary' });
+  results.push({ type: 'review', id: 'export-summary', label: 'Export Summary', detail: 'Download review summary (Markdown)' });
 
   return results;
 }
@@ -158,6 +160,27 @@ export function pruneRecentSearches(index: SearchResult[], recent: string[]): st
 
 export { loadRecentSearches, saveRecentSearch, RECENT_SEARCHES_KEY };
 
+const SEARCH_LISTBOX_ID = 'wf-search-listbox';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+type NavItem =
+  | { kind: 'recent'; term: string }
+  | { kind: 'result'; result: SearchResult };
+
+function downloadReviewMarkdown(project: WorldProject): string {
+  const snapshot = { ...buildReviewSnapshot(project), hasExported: false };
+  const markdown = reviewSnapshotToMarkdown(snapshot);
+  const filename = summaryFilename(project.name, 'md');
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  return filename;
+}
+
 export function SearchOverlay() {
   const { project } = useProjectStore();
   const {
@@ -169,6 +192,8 @@ export function SearchOverlay() {
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches);
 
   const { regionPresets, encounterPresets } = usePresetStore();
@@ -203,11 +228,20 @@ export function SearchOverlay() {
   }, [project, regionPresets, encounterPresets, kits]);
   const results = useMemo(() => filterResults(searchIndex, query), [searchIndex, query]);
 
-  // Reset active index when results change
-  useEffect(() => { setActiveIdx(0); }, [results.length]);
+  const navItems: NavItem[] = useMemo(() => {
+    if (query.trim()) return results.map((result) => ({ kind: 'result' as const, result }));
+    return recentSearches.map((term) => ({ kind: 'recent' as const, term }));
+  }, [query, results, recentSearches]);
 
-  // Auto-focus input
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Reset active index when the navigable list changes
+  useEffect(() => { setActiveIdx(0); }, [navItems.length, query]);
+
+  // Auto-focus input; restore opener on unmount
+  useEffect(() => {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    inputRef.current?.focus();
+    return () => { openerRef.current?.focus(); };
+  }, []);
 
   const dismiss = useCallback(() => { setShowSearch(false); }, [setShowSearch]);
 
@@ -291,26 +325,90 @@ export function SearchOverlay() {
     } else if (result.type === 'region-preset' || result.type === 'encounter-preset') {
       setRightTab('presets');
     } else if (result.type === 'starter-kit') {
-      // No specific navigation — kit is informational in search
+      requestTemplateManagerTab('starters');
+      useModalStore.getState().openModal('template-manager');
     } else if (result.type === 'dependency') {
       setRightTab('deps');
     } else if (result.type === 'review') {
-      setRightTab('review');
+      if (result.id === 'export-summary') {
+        const filename = downloadReviewMarkdown(project);
+        pushToast(`Downloading ${filename}`, 'success', 3000);
+      } else {
+        setRightTab('review');
+      }
     }
   }, [query, project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 
+  const activateNavItem = useCallback((item: NavItem) => {
+    if (item.kind === 'recent') {
+      const hits = filterResults(searchIndex, item.term);
+      if (hits.length === 0) {
+        pushToast(`'${item.term}' no longer matches any object.`, 'warning', 3000);
+        const pruned = recentSearches.filter((s) => s !== item.term);
+        try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(pruned)); } catch { /* ignore */ }
+        setRecentSearches(pruned);
+        return;
+      }
+      setQuery(item.term);
+      return;
+    }
+    handleSelect(item.result);
+  }, [searchIndex, recentSearches, handleSelect]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { dismiss(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, results.length - 1)); return; }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); return; }
-    if (e.key === 'Enter' && results[activeIdx]) { handleSelect(results[activeIdx]); return; }
+    if (e.key === 'Escape') { e.stopPropagation(); dismiss(); return; }
+    if (e.key === 'Tab') {
+      // Trap Tab inside the dialog so it cannot walk into the editor behind the dimmer.
+      e.preventDefault();
+      e.stopPropagation();
+      const card = dialogRef.current;
+      if (!card) return;
+      const focusable = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) { inputRef.current?.focus(); return; }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) last.focus();
+        else {
+          const i = focusable.indexOf(document.activeElement as HTMLElement);
+          (focusable[i > 0 ? i - 1 : focusable.length - 1] ?? first).focus();
+        }
+      } else {
+        if (document.activeElement === last) first.focus();
+        else {
+          const i = focusable.indexOf(document.activeElement as HTMLElement);
+          (focusable[i >= 0 && i < focusable.length - 1 ? i + 1 : 0] ?? first).focus();
+        }
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIdx((i) => Math.min(i + 1, Math.max(navItems.length - 1, 0)));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+      return;
+    }
+    if (e.key === 'Enter' && navItems[activeIdx]) {
+      e.preventDefault();
+      e.stopPropagation();
+      activateNavItem(navItems[activeIdx]);
+      return;
+    }
   };
 
   // Scroll active item into view
   useEffect(() => {
-    const el = listRef.current?.children[activeIdx] as HTMLElement | undefined;
+    const el = document.getElementById(`wf-search-option-${activeIdx}`);
     el?.scrollIntoView({ block: 'nearest' });
   }, [activeIdx]);
+
+  const activeOptionId = navItems.length > 0 ? `wf-search-option-${activeIdx}` : undefined;
 
   return (
     <div
@@ -321,10 +419,13 @@ export function SearchOverlay() {
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Search"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         style={{
           width: 480, maxHeight: 420, background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',
           borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -337,6 +438,12 @@ export function SearchOverlay() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search zones, entities, districts..."
+            aria-label="Search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={true}
+            aria-controls={SEARCH_LISTBOX_ID}
+            aria-activedescendant={activeOptionId}
             style={{
               width: '100%', background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)',
               borderRadius: 4, padding: '8px 10px', color: 'var(--wf-text-primary)', fontSize: 13,
@@ -344,40 +451,11 @@ export function SearchOverlay() {
             }}
           />
         </div>
-        <div ref={listRef} style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
-          {/* FT-006: Recent searches when query is empty */}
+        <div ref={listRef} id={SEARCH_LISTBOX_ID} role="listbox" style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
+          {/* Recents are part of the keyboard list when the query is empty */}
           {!query.trim() && recentSearches.length > 0 && (
-            <div>
-              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-hint)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                Recent
-              </div>
-              {recentSearches.map((term) => (
-                <div
-                  key={term}
-                  onClick={() => {
-                    // ED-B-006: if the stored term no longer matches anything
-                    // (target was deleted since the search was saved), warn
-                    // the user with a toast rather than silently showing an
-                    // empty result list.
-                    const hits = filterResults(searchIndex, term);
-                    if (hits.length === 0) {
-                      pushToast(`'${term}' no longer matches any object.`, 'warning', 3000);
-                      const pruned = recentSearches.filter((s) => s !== term);
-                      try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(pruned)); } catch { /* ignore */ }
-                      setRecentSearches(pruned);
-                      return;
-                    }
-                    setQuery(term);
-                  }}
-                  style={{
-                    padding: '5px 12px', cursor: 'pointer', fontSize: 12,
-                    color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
-                  }}
-                >
-                  <span style={{ fontSize: 11, color: 'var(--wf-text-hint)' }}>{'\u23F0'}</span>
-                  {term}
-                </div>
-              ))}
+            <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-hint)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              Recent
             </div>
           )}
           {results.length === 0 && query.trim() && (
@@ -385,25 +463,50 @@ export function SearchOverlay() {
               No results for "{query}"
             </div>
           )}
-          {results.map((r, i) => (
-            <div
-              key={`${r.type}-${r.id}`}
-              onClick={() => handleSelect(r)}
-              style={{
-                padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
-              }}
-            >
-              <span style={{
-                fontSize: 9, fontWeight: 'bold', color: TYPE_COLORS[r.type],
-                background: 'var(--wf-bg-app)', borderRadius: 3, padding: '1px 4px', minWidth: 18, textAlign: 'center',
-              }}>
-                {TYPE_ICONS[r.type]}
-              </span>
-              <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
-              <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
-            </div>
-          ))}
+          {navItems.map((item, i) => {
+            if (item.kind === 'recent') {
+              return (
+                <div
+                  key={`recent-${item.term}`}
+                  id={`wf-search-option-${i}`}
+                  role="option"
+                  aria-selected={i === activeIdx}
+                  onClick={() => activateNavItem(item)}
+                  style={{
+                    padding: '5px 12px', cursor: 'pointer', fontSize: 12,
+                    color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
+                    background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: 'var(--wf-text-hint)' }}>{'\u23F0'}</span>
+                  {item.term}
+                </div>
+              );
+            }
+            const r = item.result;
+            return (
+              <div
+                key={`${r.type}-${r.id}`}
+                id={`wf-search-option-${i}`}
+                role="option"
+                aria-selected={i === activeIdx}
+                onClick={() => handleSelect(r)}
+                style={{
+                  padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                  background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
+                }}
+              >
+                <span style={{
+                  fontSize: 9, fontWeight: 'bold', color: TYPE_COLORS[r.type],
+                  background: 'var(--wf-bg-app)', borderRadius: 3, padding: '1px 4px', minWidth: 18, textAlign: 'center',
+                }}>
+                  {TYPE_ICONS[r.type]}
+                </span>
+                <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
+                <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
+              </div>
+            );
+          })}
         </div>
         <div style={{ padding: '6px 12px', borderTop: '1px solid var(--wf-border-default)', fontSize: 10, color: 'var(--wf-text-hint)' }}>
           <kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>↑↓</kbd> navigate

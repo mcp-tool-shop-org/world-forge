@@ -5,7 +5,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { scanDependencies, type DependencyEdge, type DepDomain } from '@world-forge/schema';
 import { repairsForEdge, batchRepair, type RepairAction } from '../repairs.js';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, onEnter } from './shared.js';
 import { buttonBase, buttonAccent } from '../ui/styles.js';
 import { edgeKey } from './dependency-panel-helpers.js';
 
@@ -159,7 +159,10 @@ export function DependencyPanel() {
         return (
           <div key={domain} style={{ marginBottom: 8 }}>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => toggle(domain)}
+              onKeyDown={onEnter(() => toggle(domain))}
               style={{
                 fontSize: 12, fontWeight: 600,
                 color: statusColors[edges[0]?.status] || '#8b949e',
@@ -184,7 +187,10 @@ export function DependencyPanel() {
 
                 {/* Source label — clickable */}
                 <span
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleNavigate(edge)}
+                  onKeyDown={onEnter(() => handleNavigate(edge))}
                   style={{ color: '#58a6ff', cursor: 'pointer', textDecoration: 'underline' }}
                   title={`Navigate to ${edge.sourceType} "${edge.sourceId}"`}
                 >
@@ -231,7 +237,10 @@ export function DependencyPanel() {
                       .map((repair, j) => (
                         <div
                           key={j}
+                          role="button"
+                          tabIndex={0}
                           onClick={() => handleRepair(repair)}
+                          onKeyDown={onEnter(() => handleRepair(repair))}
                           style={{
                             fontSize: 11, color: '#58a6ff', cursor: 'pointer', padding: '2px 4px',
                             borderRadius: 3,

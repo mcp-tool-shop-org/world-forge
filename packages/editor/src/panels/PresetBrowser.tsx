@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { usePresetStore, StoragePersistError } from '../presets/preset-store.js';
@@ -28,10 +28,17 @@ export function PresetBrowser() {
   const { selection } = useEditorStore();
   const { selectEncounter } = useEditorStore();
   const {
-    regionPresets, encounterPresets,
+    regionPresets, encounterPresets, loadPresets,
     saveRegionPreset, deleteRegionPreset, duplicateRegionPreset,
     saveEncounterPreset, deleteEncounterPreset, duplicateEncounterPreset,
   } = usePresetStore();
+
+  useEffect(() => {
+    const result = loadPresets();
+    if (result?.reset) {
+      pushToast('Saved presets could not be read and were reset.', 'warning', 4000);
+    }
+  }, [loadPresets]);
 
   const selectedZoneId = getSelectedZoneId(selection);
 

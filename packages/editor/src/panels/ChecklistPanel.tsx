@@ -9,6 +9,7 @@ import { useKitStore } from '../kits/index.js';
 import { scanDependencies } from '@world-forge/schema';
 import { buttonBase } from '../ui/styles.js';
 import { computeChecklistProgress } from './checklist-helpers.js';
+import { onEnter } from './shared.js';
 
 interface Step {
   id: string;
@@ -148,7 +149,10 @@ export function ChecklistPanel() {
         {steps.map((step) => (
           <div
             key={step.id}
+            role="button"
+            tabIndex={0}
             onClick={() => handleClick(step)}
+            onKeyDown={onEnter(() => handleClick(step))}
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 8px',
               borderRadius: 4, cursor: 'pointer',
@@ -254,7 +258,10 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
     <>
       {issues > 0 && (
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setRightTab('deps')}
+          onKeyDown={onEnter(() => setRightTab('deps'))}
           style={{ fontSize: 10, color: 'var(--wf-warning)', marginBottom: 4, cursor: 'pointer' }}
         >
           {issues} broken reference{issues !== 1 ? 's' : ''} — open Deps tab to repair
@@ -262,7 +269,10 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
       )}
       {orphaned > 0 && (
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setRightTab('deps')}
+          onKeyDown={onEnter(() => setRightTab('deps'))}
           style={{ fontSize: 10, color: '#8b949e', marginBottom: 4, cursor: 'pointer' }}
         >
           {orphaned} orphaned asset{orphaned !== 1 ? 's' : ''} — review in Deps tab

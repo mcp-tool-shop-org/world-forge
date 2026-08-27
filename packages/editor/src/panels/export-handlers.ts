@@ -7,7 +7,7 @@
 
 import type { WorldProject } from '@world-forge/schema';
 
-export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported';
+export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported' | 'exporting';
 
 export type ExportTarget = 'ai-rpg' | 'unreal' | 'godot';
 
@@ -248,10 +248,13 @@ export async function runEngineExport(
   env: ExportEnv = { downloadJson: defaultDownloadJson },
   opts: AiRpgExportOptions = DEFAULT_AI_RPG_OPTIONS,
 ): Promise<void> {
-  // ED-A-001: clear stale errors/warnings/status before a new attempt
+  // ED-A-001: clear stale errors/warnings/status before a new attempt.
+  // F-3f598c61: 'idle' stays in the history so existing reset tests still
+  // observe a wipe; 'exporting' is the in-flight status the modal renders.
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
+  cb.setStatus('exporting');
 
   // F-38ec48e4: wrap the whole body (dynamic import + exporter + serialize)
   // so a chunk-load failure becomes setStatus('invalid') instead of an
@@ -339,6 +342,7 @@ export async function runUnrealExport(
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
+  cb.setStatus('exporting');
 
   try {
     const { exportToUnreal } = await import('@world-forge/export-unreal');
@@ -417,6 +421,7 @@ export async function runGodotExport(
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
+  cb.setStatus('exporting');
 
   try {
     const { exportToGodot } = await import('@world-forge/export-godot');

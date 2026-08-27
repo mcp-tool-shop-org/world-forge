@@ -1,8 +1,13 @@
 // shared.tsx — reusable panel components and hooks
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { buttonDangerFull, buttonFullWidth } from '../ui/styles.js';
+
+/** Keyboard handler — fires callback on Enter or Space, matching button semantics. */
+export const onEnter = (fn: () => void) => (e: KeyboardEvent) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+};
 
 // ── Panel Header ─────────────────────────────────────────────
 
