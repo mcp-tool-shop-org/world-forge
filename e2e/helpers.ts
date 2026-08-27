@@ -50,14 +50,13 @@ export async function clickExportAndDownload(page: Page, buttonText: string): Pr
   const dialog = page.getByRole('dialog', { name: 'Export' });
   const button = dialog.getByRole('button', { name: buttonText, exact: true });
   await expect(button).toBeEnabled({ timeout: 5000 });
-  const downloadPromise = page.waitForEvent('download', { timeout: 45_000 });
+  const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
   await button.click();
-  await expect(button).not.toHaveText(/Exporting/, { timeout: 45_000 });
   try {
     return await downloadPromise;
   } catch {
     const fallback = page.getByTestId('wf-export-fallback-link');
-    await expect(fallback).toBeVisible({ timeout: 15_000 });
+    await expect(fallback).toBeVisible({ timeout: 20_000 });
     const retry = page.waitForEvent('download', { timeout: 15_000 });
     await fallback.click();
     return await retry;

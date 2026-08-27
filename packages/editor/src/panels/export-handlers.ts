@@ -104,7 +104,9 @@ export interface ExportCallbacks {
  * replace this.
  */
 export function defaultDownloadJson(filename: string, data: unknown): string | null {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  // Compact JSON: chapel Godot packs with a full world.tscn freeze Chromium for
+  // tens of seconds when pretty-printed on CI, so the e2e download never fires.
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

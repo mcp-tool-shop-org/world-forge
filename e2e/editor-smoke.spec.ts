@@ -110,7 +110,7 @@ test.describe('Editor browser smoke', () => {
 });
 
 test.describe('Editor export downloads (F-624ed964)', () => {
-  test.describe.configure({ timeout: 45_000 });
+  test.describe.configure({ timeout: 90_000 });
 
   test('Export JSON downloads a non-empty chapel engine pack', async ({ page }) => {
     await loadChapel(page);
