@@ -10,14 +10,23 @@ import { findHitAt, findAllHitsAt, findAllInRect, type HitResult } from './hit-t
 import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
-import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
+import { dispatchHotkey, shouldArmSpacePan, type HotkeyContext } from './hotkeys.js';
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
 import { executeContextMenuAction } from './speed-panel-execute.js';
 import { fallbackTileColor } from './tile-render.js';
 import { nextId, generateZoneId } from './ids.js';
+import { pushToast } from './ui/Toast.js';
 
 export { generateZoneId };
+
+/** F-fa0b8bf5: one-line fix-its for placement tools that fail closed. */
+export const CANVAS_PLACEMENT_HINTS = {
+  needZone: 'Click inside a zone',
+  needTile: 'Pick a tile in the left palette first',
+  needProp: 'Pick a prop in the left palette first',
+  zonePaintSize: 'Drag to at least 2×2',
+} as const;
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
@@ -97,6 +106,8 @@ export function Canvas() {
     actions: { id: string; label: string; icon: string }[];
     hit: HitResult | null;
   } | null>(null);
+  const contextMenuElRef = useRef<HTMLDivElement>(null);
+  const lastPointerRef = useRef({ sx: 0, sy: 0 });
 
   // FT-007: Connection preview — track cursor position during connection tool
   const connectionCursor = useRef<{ sx: number; sy: number } | null>(null);
@@ -912,6 +923,7 @@ export function Canvas() {
     undo: () => useProjectStore.getState().undo(),
     redo: () => useProjectStore.getState().redo(),
     copySelection: useEditorStore.getState().copySelection,
+    setConnectionStart,
     // F-6c8800aa: this used to be a hardcoded no-op ("paste handled by
     // project-store when available") — project-store's pasteClipboard action
     // never arrived, so Ctrl+V did nothing while README/CHANGELOG/SCORECARD
@@ -931,8 +943,11 @@ export function Canvas() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
       if (e.code === 'Space' && !e.repeat) {
-        e.preventDefault();
-        spaceHeld.current = true;
+        // F-6c1fa8ce: do not steal Space from focused buttons / tabs / links.
+        if (shouldArmSpacePan(e.target, document.activeElement, canvasRef.current)) {
+          e.preventDefault();
+          spaceHeld.current = true;
+        }
         return;
       }
 
@@ -1005,6 +1020,28 @@ export function Canvas() {
     hits.filter((h) => !hiddenIds.has(h.id)), [hiddenIds]);
   const filterHitSingle = useCallback((hit: import('./hit-testing.js').HitResult | null): import('./hit-testing.js').HitResult | null =>
     hit && !hiddenIds.has(hit.id) ? hit : null, [hiddenIds]);
+
+  /** F-77c70524: shared open path for mouse right-click and keyboard contextmenu. */
+  const openObjectContextMenu = (sx: number, sy: number) => {
+    const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
+    const actions = SPEED_PANEL_ACTIONS
+      .filter((a) => a.contextFilter(hit))
+      .slice(0, 7)
+      .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
+    if (actions.length > 0) {
+      setContextMenu({ x: sx, y: sy, actions, hit });
+    }
+  };
+
+  const runContextMenuAction = (actionId: string) => {
+    if (!contextMenu) return;
+    executeContextMenuAction(actionId, contextMenu.hit, {
+      w: canvasRef.current?.clientWidth ?? 800,
+      h: canvasRef.current?.clientHeight ?? 600,
+    });
+    setContextMenu(null);
+    canvasRef.current?.focus();
+  };
 
   // --- Check if a hit result is already selected ---
   const hitIsSelected = (hit: { type: string; id: string } | null) => {
@@ -1117,6 +1154,8 @@ export function Canvas() {
         } else {
           setConnectionStart(zone.id);
         }
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
     } else if (activeTool === 'entity-place') {
       const zone = findZoneAt(gx, gy);
@@ -1127,12 +1166,15 @@ export function Canvas() {
           gridX: gx, gridY: gy,
           role: getModeProfile(project.mode).defaultEntityRole as 'npc' | 'enemy' | 'merchant' | 'boss' | 'companion',
         });
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
     } else if (activeTool === 'spawn') {
       // EUB-011: reject spawn creation if no zone found at click position
       const spawnZone = findZoneAt(gx, gy);
       if (!spawnZone) {
         console.warn('[Canvas] Spawn rejected: no zone at click position', { gx, gy });
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
         return;
       }
       addSpawnPoint({
@@ -1153,12 +1195,17 @@ export function Canvas() {
           cooldownTurns: 3,
           tags: [],
         });
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
     } else if (activeTool === 'tile-paint') {
       // Read fresh selection state — a drag must not use a stale closure.
       const ed = useEditorStore.getState();
       const erasing = ed.tileEraseMode || e.altKey;
-      if (!erasing && !ed.activeTileId) return; // no tile selected to paint
+      if (!erasing && !ed.activeTileId) {
+        pushToast(CANVAS_PLACEMENT_HINTS.needTile, 'info');
+        return;
+      }
       const proj = useProjectStore.getState();
       // Resolve target layer: active, else first existing, else auto-create one.
       let layerId = ed.activeTileLayerId;
@@ -1176,7 +1223,10 @@ export function Canvas() {
       addTilePaintCell(gx, gy);
     } else if (activeTool === 'prop-place') {
       const propId = useEditorStore.getState().activePropId;
-      if (!propId) return; // no prop selected to place
+      if (!propId) {
+        pushToast(CANVAS_PLACEMENT_HINTS.needProp, 'info');
+        return;
+      }
       const zone = findZoneAt(gx, gy);
       useProjectStore.getState().addPropPlacement({
         id: nextId('prop'),
@@ -1228,14 +1278,7 @@ export function Canvas() {
             setTimeout(() => {
               // Only show if not consumed by a double-right-click
               if (rightClickTracker.current && rightClickTracker.current.time === now) {
-                const hit = filterHitSingle(findHitAt(clickSx, clickSy, viewport, project, tileSize, visibility));
-                const actions = SPEED_PANEL_ACTIONS
-                  .filter((a) => a.contextFilter(hit))
-                  .slice(0, 7)
-                  .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
-                if (actions.length > 0) {
-                  setContextMenu({ x: clickSx, y: clickSy, actions, hit });
-                }
+                openObjectContextMenu(clickSx, clickSy);
               }
             }, DBL_RIGHT_INTERVAL + 20);
           }
@@ -1315,6 +1358,8 @@ export function Canvas() {
           light: 5, noise: 0, hazards: [], interactables: [],
         });
         setSelectedZone(id);
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.zonePaintSize, 'info');
       }
       zonePaintStart.current = null;
     }
@@ -1348,6 +1393,13 @@ export function Canvas() {
     return () => window.removeEventListener('mouseup', onWindowMouseUp);
   }, []);
 
+  // F-77c70524: focus the first menuitem when the object-actions menu opens.
+  useEffect(() => {
+    if (!contextMenu) return;
+    const first = contextMenuElRef.current?.querySelector('[role="menuitem"]') as HTMLElement | null;
+    first?.focus();
+  }, [contextMenu]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isPanning.current && panStart.current) {
       const dx = (e.clientX - panStart.current.x) / viewport.zoom;
@@ -1360,6 +1412,7 @@ export function Canvas() {
     }
 
     const { sx, sy } = getScreenXY(e);
+    lastPointerRef.current = { sx, sy };
 
     // Tile brush drag: extend the active stroke with the cell under the cursor.
     if (tilePaint.current) {
@@ -1493,6 +1546,26 @@ export function Canvas() {
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
+
+  // F-77c70524: Shift+F10 / ContextMenu key fire a contextmenu event with
+  // button !== 2. Mouse right-click still uses the delayed mouseup path so
+  // double-right-click can open the speed panel without a flash.
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (e.button === 2) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    let sx = e.clientX - rect.left;
+    let sy = e.clientY - rect.top;
+    const offCanvas = (e.clientX === 0 && e.clientY === 0)
+      || sx < 0 || sy < 0 || sx > rect.width || sy > rect.height;
+    if (offCanvas) {
+      sx = lastPointerRef.current.sx;
+      sy = lastPointerRef.current.sy;
+    }
+    openObjectContextMenu(sx, sy);
+  };
 
   // --- Double-click to open details for clicked object ---
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -1650,12 +1723,15 @@ export function Canvas() {
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={handleContextMenu}
       />
 
-      {/* FT-005: Right-click context menu */}
+      {/* FT-005: Right-click context menu — F-77c70524: keyboard-operable. */}
       {contextMenu && (
         <div
+          ref={contextMenuElRef}
+          role="menu"
+          aria-label="Object actions"
           style={{
             position: 'absolute',
             left: contextMenu.x,
@@ -1669,10 +1745,34 @@ export function Canvas() {
             minWidth: 160,
           }}
           onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            const items = Array.from(e.currentTarget.querySelectorAll('[role="menuitem"]')) as HTMLElement[];
+            const idx = items.indexOf(document.activeElement as HTMLElement);
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              items[(idx + 1 + items.length) % items.length]?.focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              items[(idx - 1 + items.length) % items.length]?.focus();
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              items[0]?.focus();
+            } else if (e.key === 'End') {
+              e.preventDefault();
+              items[items.length - 1]?.focus();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setContextMenu(null);
+              canvasRef.current?.focus();
+            }
+          }}
         >
           {contextMenu.actions.map((action) => (
-            <div
+            <button
               key={action.id}
+              type="button"
+              role="menuitem"
               onClick={() => {
                 // F-ef5cce21: this used to be a hardcoded close-only no-op
                 // ("For now, just close. The speed-panel-execute module handles
@@ -1680,11 +1780,7 @@ export function Canvas() {
                 // class as the old Ctrl+V empty body. Mirrors SpeedPanel's bag
                 // (including mergeZones + selection). Tests reconstruct this
                 // closure in context-menu-wiring.test.ts.
-                executeContextMenuAction(action.id, contextMenu.hit, {
-                  w: canvasRef.current?.clientWidth ?? 800,
-                  h: canvasRef.current?.clientHeight ?? 600,
-                });
-                setContextMenu(null);
+                runContextMenuAction(action.id);
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = '#30363d'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -1696,11 +1792,16 @@ export function Canvas() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                textAlign: 'left',
+                font: 'inherit',
               }}
             >
               <span style={{ fontSize: 11, width: 20, textAlign: 'center', color: '#8b949e' }}>{action.icon}</span>
               <span>{action.label}</span>
-            </div>
+            </button>
           ))}
         </div>
       )}

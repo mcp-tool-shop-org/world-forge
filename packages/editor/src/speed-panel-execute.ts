@@ -12,6 +12,7 @@ import { frameBounds } from './viewport.js';
 import { useEditorStore } from './store/editor-store.js';
 import { useProjectStore } from './store/project-store.js';
 import { pushToast } from './ui/Toast.js';
+import { defaultDownloadViaAnchor } from './save-project.js';
 
 /** Bag of store methods needed by execute — keeps the function testable */
 export interface ExecuteStores {
@@ -76,15 +77,44 @@ export interface ExecuteStores {
   project: WorldProject;
 }
 
-/** Real browser download — the default for `downloadFile` when a caller doesn't override it. */
+/**
+ * F-8912e227: reuse save-project's held-URL downloader. Never revoke in the
+ * same tick as click (Safari cancels). Toast if the click is blocked.
+ */
 function browserDownload(filename: string, content: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  void defaultDownloadViaAnchor(content, filename, 1000, mimeType).then((ok) => {
+    if (!ok) {
+      pushToast('Download was blocked or aborted. Click Export in the top bar to try again.', 'error');
+    }
+  });
+}
+
+/**
+ * F-dd0278b5: map ExecuteResult.reason tokens to a fix-it sentence.
+ * Returns null for 'cancelled' so the caller skips the toast.
+ * The token itself stays on ExecuteResult.reason for macros/tests.
+ */
+export function failReasonToUserMessage(actionId: string, reason: string): string | null {
+  if (reason === 'cancelled') return null;
+  if (reason === 'need at least 2 zones' || (actionId === 'merge-zones' && reason.startsWith('need'))) {
+    return 'Select at least two zones, then Merge Zones again.';
+  }
+  switch (reason) {
+    case 'context mismatch':
+      return 'That action does not apply to the current selection.';
+    case 'unknown action':
+      return 'That action is not available.';
+    case 'mergeZones not available':
+      return 'Merge Zones is not available right now.';
+    case 'invalid elevation':
+      return 'Enter a number for elevation, or leave blank to clear.';
+    case 'merge failed':
+      return 'Could not merge those zones.';
+    case 'updateZone not available':
+      return 'Could not update the zone.';
+    default:
+      return `Could not run that action. ${reason}`;
+  }
 }
 
 function parseConnectionId(id: string): [string, string] | null {
@@ -326,7 +356,8 @@ export function executeContextMenuAction(
   if (!result.executed) {
     const reason = result.reason ?? `Action "${actionId}" did not run`;
     console.warn(`[context-menu] action "${actionId}" did not execute (${reason}) for hit type ${hit?.type ?? 'none'}`);
-    pushToast(reason, 'warning', 2500);
+    const message = failReasonToUserMessage(actionId, reason);
+    if (message) pushToast(message, 'warning', 4000);
   }
   return result;
 }

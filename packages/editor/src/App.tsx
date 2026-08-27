@@ -7,6 +7,7 @@ import {
   attemptCrashRecovery,
   startAutoSave, stopAutoSave,
   flushAutoSaveIfDirty,
+  AUTOSAVE_SAVE_HINT,
 } from './store/project-store.js';
 import { saveProjectFile } from './save-project.js';
 import { resetFileInput } from './file-load.js';
@@ -86,6 +87,9 @@ export function App() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
   const depsCount = useDependencyCount();
@@ -98,15 +102,11 @@ export function App() {
     try { localStorage.setItem('wf-theme', theme); } catch { /* ignore */ }
   }, [theme]);
 
-  // FT-022: Validation toast notification when issues are resolved
+  // FT-022: Validation toast when issues are resolved — F-2fc5e0ad: one live region.
   const prevIssueCount = useRef(issueCount);
-  const [showResolvedToast, setShowResolvedToast] = useState(false);
   useEffect(() => {
     if (prevIssueCount.current > 0 && issueCount < prevIssueCount.current) {
-      setShowResolvedToast(true);
-      const timer = setTimeout(() => setShowResolvedToast(false), 2000);
-      prevIssueCount.current = issueCount;
-      return () => clearTimeout(timer);
+      pushToast('Issue resolved \u2713', 'success', 2000);
     }
     prevIssueCount.current = issueCount;
   }, [issueCount]);
@@ -204,8 +204,12 @@ export function App() {
     resetFileInput(e.target);
     if (!file) return;
     setFileError(null);
+    setFileLoading(`Reading ${file.name}\u2026`);
     const reader = new FileReader();
+    const clearLoading = () => setFileLoading(null);
+    reader.onloadstart = () => setFileLoading(`Reading ${file.name}\u2026`);
     reader.onload = () => {
+      clearLoading();
       const raw = reader.result;
       try {
         const p = JSON.parse(raw as string);
@@ -242,17 +246,26 @@ export function App() {
     reader.onerror = () => {
       // EUB-002: log full reader.error for debugging
       console.error('[WorldForge] FileReader error:', reader.error);
+      clearLoading();
       setFileError(`Failed to read file: ${reader.error?.message ?? 'unknown error'}`);
     };
     reader.onabort = () => {
+      clearLoading();
       setFileError('File reading was aborted.');
     };
     reader.readAsText(file);
   }, [loadProject]);
 
   const handleSave = useCallback(() => {
+    // F-579225c9: ignore a second click while a picker/download is in flight.
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     // F-95295187: never markClean/clearAutoSave until the write is confirmed.
-    void saveProjectFile(project, { markClean, toast: pushToast });
+    void saveProjectFile(project, { markClean, toast: pushToast }).finally(() => {
+      savingRef.current = false;
+      setSaving(false);
+    });
   }, [project, markClean]);
 
   return (
@@ -307,7 +320,15 @@ export function App() {
         <button onClick={() => openModal('template-manager')} style={buttonBase}>New</button>
         <button onClick={() => openModal('import')} style={buttonBase}>Import</button>
         <button onClick={handleLoad} style={buttonBase}>Load</button>
-        <button onClick={handleSave} style={buttonBase}>Save</button>
+        <button
+          onClick={handleSave}
+          style={buttonBase}
+          disabled={saving}
+          aria-busy={saving}
+          aria-label={saving ? 'Saving' : 'Save'}
+        >
+          {saving ? 'Saving\u2026' : 'Save'}
+        </button>
         <button onClick={() => openModal('save-template')} style={buttonBase}>Save as Template</button>
         <button onClick={() => openModal('save-kit')} style={buttonBase}>Save as Kit</button>
         <button
@@ -335,6 +356,8 @@ export function App() {
       {autoSaveHealth.oversize && (
         <div
           data-testid="wf-autosave-oversize-banner"
+          role="alert"
+          aria-live="assertive"
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
             background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-warning, #d29922)',
@@ -342,7 +365,7 @@ export function App() {
           }}
         >
           <span style={{ flex: 1 }}>
-            Project too large for auto-save — use File {'\u2192'} Save manually. Auto-save will resume if the project shrinks.
+            Project too large for auto-save — {AUTOSAVE_SAVE_HINT}. Auto-save will resume if the project shrinks.
             {autoSaveHealth.lastBytes > 0 && (
               <span style={{ color: 'var(--wf-text-hint)', marginLeft: 6 }}>
                 ({Math.round(autoSaveHealth.lastBytes / 1024 / 1024 * 10) / 10} MB /
@@ -359,6 +382,8 @@ export function App() {
       {autoSaveErr && !autoSaveHealth.oversize && (
         <div
           data-testid="wf-autosave-error-banner"
+          role="alert"
+          aria-live="assertive"
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
             background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-danger, #f85149)',
@@ -377,8 +402,27 @@ export function App() {
       )}
 
       {/* EU-004: File error banner */}
+      {fileLoading && (
+        <div
+          data-testid="wf-file-reading-banner"
+          role="status"
+          aria-live="polite"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
+            background: 'var(--wf-bg-panel)', borderBottom: '1px solid var(--wf-border-default)',
+            color: 'var(--wf-text-muted)', fontSize: 12,
+          }}
+        >
+          {fileLoading}
+        </div>
+      )}
+
       {fileError && (
-        <div style={{
+        <div
+          role="alert"
+          aria-live="assertive"
+          data-testid="wf-file-error-banner"
+          style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
           background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-danger, #f85149)',
           color: 'var(--wf-danger, #f85149)', fontSize: 12,
@@ -459,11 +503,35 @@ export function App() {
               <div style={{ position: 'relative' }}>
               <div
                 data-testid="wf-tab-bar"
+                role="tablist"
+                aria-label="Editor panels"
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+                  e.preventDefault();
+                  const ids = tabs.map((t) => t.id);
+                  const idx = Math.max(0, ids.indexOf(rightTab));
+                  let next = idx;
+                  if (e.key === 'ArrowRight') next = (idx + 1) % ids.length;
+                  else if (e.key === 'ArrowLeft') next = (idx - 1 + ids.length) % ids.length;
+                  else if (e.key === 'Home') next = 0;
+                  else if (e.key === 'End') next = ids.length - 1;
+                  const nextId = ids[next];
+                  setRightTab(nextId);
+                  const btn = e.currentTarget.querySelector(`[data-tab-id="${nextId}"]`) as HTMLButtonElement | null;
+                  btn?.focus();
+                }}
                 style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)', background: 'var(--wf-bg-panel)', overflowX: 'auto' }}
               >
                 {tabs.map((t) => (
                   <button
                     key={t.id}
+                    type="button"
+                    role="tab"
+                    id={`wf-tab-${t.id}`}
+                    data-tab-id={t.id}
+                    aria-selected={rightTab === t.id}
+                    aria-controls={`wf-tab-panel-${t.id}`}
+                    tabIndex={rightTab === t.id ? 0 : -1}
                     onClick={() => setRightTab(t.id)}
                     style={{
                       flexShrink: 0, padding: '6px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
@@ -507,7 +575,12 @@ export function App() {
               </div>
 
               {/* Tab content */}
-              <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+              <div
+                role="tabpanel"
+                id={`wf-tab-panel-${rightTab}`}
+                aria-labelledby={`wf-tab-${rightTab}`}
+                style={{ flex: 1, overflow: 'auto', padding: 8 }}
+              >
                 {rightTab === 'map' && (
                   <>
                     {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
@@ -559,30 +632,21 @@ export function App() {
         {selectionCount > 0 && <span>Selected: {selectionCount}</span>}
         <div style={{ flex: 1 }} />
         {issueCount > 0 ? (
-          <span
+          <button
+            type="button"
             onClick={() => setRightTab('issues')}
-            style={{ color: 'var(--wf-danger)', cursor: 'pointer' }}
+            aria-label={`${issueCount} issue${issueCount !== 1 ? 's' : ''} — open Issues tab`}
+            style={{
+              background: 'none', border: 'none', padding: 0, font: 'inherit',
+              color: 'var(--wf-danger)', cursor: 'pointer',
+            }}
           >
             {issueCount} issue{issueCount !== 1 ? 's' : ''}
-          </span>
+          </button>
         ) : (
           <span style={{ color: 'var(--wf-success)' }}>Valid</span>
         )}
       </div>
-
-      {/* FT-022: Validation resolved toast */}
-      {showResolvedToast && (
-        <div style={{
-          position: 'fixed', bottom: 16, right: 16, zIndex: 9999,
-          background: '#238636', color: '#fff', padding: '8px 16px',
-          borderRadius: 6, fontSize: 13, fontWeight: 500,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-          animation: 'wf-toast-fade 2s ease-in-out',
-          pointerEvents: 'none',
-        }}>
-          Issue resolved {'\u2713'}
-        </div>
-      )}
 
       <ModalLayer />
 
