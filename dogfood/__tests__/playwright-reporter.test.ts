@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import playwrightConfig from '../../playwright.config.ts';
+import playwrightConfig from '../../playwright.config.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 

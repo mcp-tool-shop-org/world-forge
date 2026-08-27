@@ -145,6 +145,9 @@ console.log(`    Warnings: ${aiRpg.warnings.length}`);
 
 // Re-import for round-trip
 const aiRpgImport = importFromExportResult(aiRpg, 'Round-trip re-import');
+if (!aiRpgImport.success) {
+    throw new Error(`AI RPG round-trip import failed: ${aiRpgImport.message}`);
+}
 const aiRpgFidelity = aiRpgImport.fidelityReport;
 const aiRpgLossless = aiRpgFidelity.entries.filter((f) => f.level === 'lossless').length;
 const aiRpgApprox = aiRpgFidelity.entries.filter((f) => f.level === 'approximated').length;

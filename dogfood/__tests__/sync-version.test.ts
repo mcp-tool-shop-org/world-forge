@@ -27,7 +27,7 @@ describe('sync-version.mjs CI write guard (F-adf9c645)', () => {
     });
 
     it('default mode refuses to write when GITHUB_ACTIONS is set without CI=true', () => {
-        const env = { ...process.env, GITHUB_ACTIONS: 'true' };
+        const env: NodeJS.ProcessEnv = { ...process.env, GITHUB_ACTIONS: 'true' };
         delete env.CI;
         const stdout = execFileSync(process.execPath, [SCRIPT], {
             cwd: REPO_ROOT,

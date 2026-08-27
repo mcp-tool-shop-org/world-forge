@@ -100,5 +100,5 @@ export function scaleForSandbox(project: WorldProject): WorldProject {
         );
     }
 
-    return scaled as WorldProject;
+    return scaled as unknown as WorldProject;
 }
