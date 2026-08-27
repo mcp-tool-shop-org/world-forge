@@ -313,11 +313,11 @@ describe('FidelityReport accuracy', () => {
     expect(result.fidelityReport.summary.observed).toBe(false);
   });
 
-  it('connections-reconstructed entry present when zones have neighbors', () => {
+  it('connections-from-pack entry present when the pack carries typed connections', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
     const imported = requireImport(importFromExportResult(exported));
-    const connEntry = imported.fidelityReport.entries.find((e) => e.reason === 'connections-reconstructed');
+    const connEntry = imported.fidelityReport.entries.find((e) => e.reason === 'connections-from-pack');
     if (chapelProject.connections.length > 0) {
       expect(connEntry).toBeDefined();
       expect(connEntry!.level).toBe('lossless');

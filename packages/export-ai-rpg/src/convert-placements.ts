@@ -27,6 +27,8 @@ import type { FidelityEntry } from './fidelity.js';
 export interface ExportedPlacement {
   entityId: string;
   zoneId: string;
+  /** F-c2cdc36d: entity→dialogue binding. Restored on importEntities. */
+  dialogueId?: string;
   spawnCondition?: { type: string; params: Record<string, string | number | boolean> };
 }
 
@@ -56,6 +58,7 @@ export function convertPlacements(
       entityId: ep.entityId,
       zoneId: ep.zoneId,
     };
+    if (ep.dialogueId) record.dialogueId = ep.dialogueId;
 
     if (ep.spawnCondition) {
       const parsed = parseSpawnCondition(ep.spawnCondition);

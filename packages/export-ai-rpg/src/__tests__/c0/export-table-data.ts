@@ -105,16 +105,17 @@ export type ExportRow = CarriedRow | DroppedRow;
  */
 export const DROPPED_CONTAINERS: Record<string, string> = {
   map: 'The authored grid (dimensions, tile size) has no pack field. The engine\'s space model is a graph; it has no coordinates to receive.',
-  connections: 'Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses.',
-  spawnPoints: 'Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string.',
+  // connections moved OUT of DROPPED_CONTAINERS by swarm wave-32 (F-2d93b8d0)
+  // — see CONNECTION_ROWS below.
+  // spawnPoints moved OUT of DROPPED_CONTAINERS by swarm wave-32 (F-0e432e10)
+  // — see SPAWN_POINT_ROWS below.
   // craftingStations/marketNodes moved OUT of DROPPED_CONTAINERS by swarm
   // wave-4 (F-f216da1a) — see CRAFTING_STATION_ROWS/MARKET_NODE_ROWS below.
   // Kept as a comment rather than deleted, the same reason hazardDefinitions'
   // and lootTables' entries were: the diff should show a domain LEAVING this
   // list, which is the shape of progress here.
-  buildings: 'Placed enterable buildings have no pack field.',
-  hubs: 'Service/connectivity hubs have no pack field.',
-  strongholds: 'Fortified faction seats have no pack field.',
+  // buildings/hubs/strongholds moved OUT of DROPPED_CONTAINERS by swarm
+  // wave-32 (F-5f16cf2e) — see BUILDING_ROWS/HUB_ROWS/STRONGHOLD_ROWS below.
   strata: 'The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo.',
   stratumLinks: 'Cross-stratum connectors have no pack field.',
   // hazardDefinitions moved OUT of DROPPED_CONTAINERS by C3/P3 — see
@@ -282,11 +283,115 @@ const MARKET_NODE_ROWS: ExportRow[] = (
   note: `CLOSED BY swarm wave-4 (F-f216da1a). ${note}`,
 }));
 
+const CONNECTION_ROWS: ExportRow[] = [
+  ...(
+    [
+      ['fromZoneId', 'Source zone id.'],
+      ['toZoneId', 'Target zone id.'],
+      ['kind', 'ConnectionKind (door / warp / secret / …). Missing kind defaults to passage.'],
+      ['bidirectional', 'Whether the edge is two-way.'],
+      ['label', 'Optional display label.'],
+    ] as const
+  ).map(([field, note]) => ({
+    path: `connections[].${field}`,
+    class: 'carried-lossless' as const,
+    channel: 'contentPack' as const,
+    packPath: `connections[].${field}`,
+    note: `CLOSED BY swarm wave-32 (F-2d93b8d0). ${note}`,
+  })),
+  {
+    path: 'connections[].condition',
+    class: 'carried-approximated',
+    channel: 'contentPack',
+    packPath: 'connections[].condition.type',
+    transform: 'compiled-through-parseSpawnCondition',
+    note: 'CLOSED BY swarm wave-32 (F-2d93b8d0). The grammar string COMPILES into a ConditionSpec ({type, params}) — the same ink pattern as zone exits and entity spawnCondition.',
+  },
+];
+
+const SPAWN_POINT_ROWS: ExportRow[] = (
+  [
+    ['id', 'Spawn identity. playerTemplate.spawnPointId is a pointer into this array.'],
+    ['zoneId', 'Which zone the player starts in.'],
+    ['gridX', 'Tile X. Optional on the wire (charter); schema authors it.'],
+    ['gridY', 'Tile Y.'],
+    ['isDefault', 'Whether this is the default start.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `spawnPoints[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `spawnPoints[].${field}`,
+  note: `CLOSED BY swarm wave-32 (F-0e432e10). ${note}`,
+}));
+
+const BUILDING_ROWS: ExportRow[] = (
+  [
+    ['id', 'Building identity.'],
+    ['name', 'Player-facing name.'],
+    ['buildingType', 'Free-form kind (house / shop / temple / …).'],
+    ['gridX', 'Footprint origin X.'],
+    ['gridY', 'Footprint origin Y.'],
+    ['width', 'Footprint width in tiles.'],
+    ['height', 'Footprint height in tiles.'],
+    ['zoneId', 'Town zone the building sits in.'],
+    ['interiorZoneId', 'Interior zone entered from this building.'],
+    ['tags[]', 'Free tags.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `buildings[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `buildings[].${field}`,
+  note: `CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. ${note}`,
+}));
+
+const HUB_ROWS: ExportRow[] = (
+  [
+    ['id', 'Hub identity.'],
+    ['name', 'Player-facing name.'],
+    ['zoneId', 'Anchor zone.'],
+    ['hubType', 'Free-form kind (market-square / crossroads / …).'],
+    ['serviceTypes[]', 'Services offered.'],
+    ['connectedZoneIds[]', 'Zones this hub serves.'],
+    ['tags[]', 'Free tags.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `hubs[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `hubs[].${field}`,
+  note: `CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. ${note}`,
+}));
+
+const STRONGHOLD_ROWS: ExportRow[] = (
+  [
+    ['id', 'Stronghold identity.'],
+    ['name', 'Player-facing name.'],
+    ['zoneId', 'Occupied zone.'],
+    ['factionId', 'Controlling faction.'],
+    ['defenseLevel', 'Fortification strength.'],
+    ['garrisonEntityIds[]', 'Garrisoned entity ids.'],
+    ['tags[]', 'Free tags.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `strongholds[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `strongholds[].${field}`,
+  note: `CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. ${note}`,
+}));
+
 export const EXPLICIT_ROWS: ExportRow[] = [
   ...HAZARD_DEFINITION_ROWS,
   ...LOOT_TABLE_ROWS,
   ...CRAFTING_STATION_ROWS,
   ...MARKET_NODE_ROWS,
+  ...CONNECTION_ROWS,
+  ...SPAWN_POINT_ROWS,
+  ...BUILDING_ROWS,
+  ...HUB_ROWS,
+  ...STRONGHOLD_ROWS,
   // ── Project identity ────────────────────────────────────────────────
   { path: 'id', class: 'carried-lossless', channel: 'manifest', packPath: 'id', note: 'Also lands on packMeta.id, buildCatalog.packId, and manifest.contentPacks[].' },
   { path: 'name', class: 'carried-lossless', channel: 'manifest', packPath: 'title', transform: 'renamed-key', note: 'manifest.title and packMeta.name both receive it verbatim.' },
@@ -398,8 +503,8 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'districts[].baseMetrics.morale', class: 'carried-lossless', channel: 'contentPack', packPath: 'districts[].baseMetrics.morale', note: '' },
   { path: 'districts[].baseMetrics.stability', class: 'carried-lossless', channel: 'contentPack', packPath: 'districts[].baseMetrics.stability', note: '' },
   { path: 'districts[].baseMetrics.safety', class: 'carried-approximated', channel: 'contentPack', packPath: 'districts[].baseMetrics.surveillance', transform: 'safety-renamed-to-surveillance', note: 'convert-districts.ts:26 assigns authored SAFETY to engine SURVEILLANCE. They are not synonyms — a heavily-surveilled district is not a safe one; in the engine\'s own doctrine high surveillance drives heat and pursuit. The value crosses; the meaning inverts.' },
-  { path: 'districts[].economyProfile.supplyCategories[]', class: 'no-channel', absence: { kind: 'key-absent', key: 'economyProfile' }, note: 'Dropped by convert-districts.ts:13-28 while the engine runs live per-district economies — the exact surface the 2.5D charter calls the moat.' },
-  { path: 'districts[].economyProfile.scarcityDefaults{}', class: 'no-channel', absence: { kind: 'key-absent', key: 'economyProfile' }, note: 'See supplyCategories.' },
+  { path: 'districts[].economyProfile.supplyCategories[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'districts[].economyProfile.supplyCategories[]', note: 'CLOSED BY swarm wave-32 (F-229409a8). Copied onto the exported district; unrecognized strings warn and are omitted from DistrictEconomy.baseline but kept here for round-trip.' },
+  { path: 'districts[].economyProfile.scarcityDefaults{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'districts[].economyProfile.scarcityDefaults{}', note: 'CLOSED BY swarm wave-32 (F-229409a8). Full authored map copies; recognized SupplyCategory keys also land on economyProfile.baseline for economy-core.' },
 
   // ── Landmarks (partially carried, via the binding map only) ─────────
   { path: 'landmarks[].id', class: 'carried-lossless', channel: 'assetBindings', packPath: 'landmarks{}', transform: 'id-as-binding-map-key', note: 'A landmark id survives ONLY as a key in the asset binding map, and only when the landmark has an iconId. A landmark with no icon vanishes entirely.' },
@@ -407,8 +512,8 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'landmarks[].name', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'Points of interest do not reach the engine as content.' },
   { path: 'landmarks[].description', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'See name.' },
   { path: 'landmarks[].zoneId', class: 'no-channel', absence: { kind: 'key-absent', key: 'zoneId', scope: [{ channel: 'assetBindings', packPath: 'landmarks{}' }] }, note: 'No landmark→zone link crosses. Scoped to the landmark\'s only surviving image (the binding map): `zoneId` DOES appear globally, on the raw-pass-through encounterAnchors and pressureHotspots, so a global proof would be false here while the claim is true.' },
-  { path: 'landmarks[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX' }, note: 'No coordinates cross.' },
-  { path: 'landmarks[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY' }, note: 'No coordinates cross.' },
+  { path: 'landmarks[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX', scope: [{ channel: 'assetBindings', packPath: 'landmarks{}' }] }, note: 'No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridX.' },
+  { path: 'landmarks[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY', scope: [{ channel: 'assetBindings', packPath: 'landmarks{}' }] }, note: 'No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridY.' },
   { path: 'landmarks[].tags[]', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'Landmark tags do not cross.' },
   { path: 'landmarks[].interactionType', class: 'no-channel', absence: { kind: 'key-absent', key: 'interactionType' }, note: 'Landmark interaction type does not cross.' },
 
@@ -564,8 +669,8 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   // blueprint is a template, and the engine's spawn system clones templates
   // per instance, so a location on the template would be a lie for every clone.
   { path: 'entityPlacements[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'placements[].zoneId', note: 'CLOSED BY C3/P1. Its own channel, not a blueprint field: one template, N placements. The engine routes it into EntityState.zoneId at intake.' },
-  { path: 'entityPlacements[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX' }, note: 'No coordinates cross.' },
-  { path: 'entityPlacements[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY' }, note: 'No coordinates cross.' },
+  { path: 'entityPlacements[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX', scope: [{ channel: 'contentPack', packPath: 'placements[]' }] }, note: 'No entity coordinates cross on placements[]. Scoped because spawnPoints / itemPlacements / buildings now carry gridX.' },
+  { path: 'entityPlacements[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY', scope: [{ channel: 'contentPack', packPath: 'placements[]' }] }, note: 'No entity coordinates cross on placements[]. Scoped because spawnPoints / itemPlacements / buildings now carry gridY.' },
   // ⚠ FLIPPED BY C3/P1. C0's note read: "The SpawnCondition grammar's ORIGINAL
   // home field is dropped on export, while zone-exit conditions (a later
   // borrower of the same grammar) are carried garbled. The grammar has no intact
@@ -578,7 +683,7 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   // format), and the class records the transform honestly rather than claiming
   // the value crossed unchanged.
   { path: 'entityPlacements[].spawnCondition', class: 'carried-approximated', channel: 'contentPack', packPath: 'placements[].spawnCondition.type', transform: 'compiled-through-parseSpawnCondition', note: 'CLOSED BY C3/P1. The grammar string COMPILES into a ConditionSpec ({type, params}) — the engine never parses author syntax. Decompiled back by formatConditionSpec on import; the round-trip is pinned over all thirteen operand families.' },
-  { path: 'entityPlacements[].dialogueId', class: 'no-channel', absence: { kind: 'key-absent', key: 'dialogueId' }, note: 'The entity→dialogue binding is dropped even though BOTH sides cross: entities are exported and dialogues are exported, but nothing links them.' },
+  { path: 'entityPlacements[].dialogueId', class: 'carried-lossless', channel: 'contentPack', packPath: 'placements[].dialogueId', note: 'CLOSED BY swarm wave-32 (F-c2cdc36d). Carried on ExportedPlacement (same channel as zoneId) and encoded as a dialogue:<id> tag on the blueprint.' },
   { path: 'entityPlacements[].ai.goals[]', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'entities[]' }] }, note: 'Authored AI goals do not cross.' },
   { path: 'entityPlacements[].ai.fears[]', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'entities[]' }] }, note: 'Authored AI fears do not cross. Scoped: an authored fear ("flooding") collides with an unrelated `pressureHotspots[].pressureType` value, which an unscoped proof reads as carriage.' },
   { path: 'entityPlacements[].portraitId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'entities{}.portraitId', note: 'Binding-map channel only; not in the ContentPack.' },
@@ -588,7 +693,7 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'itemPlacements[].itemId', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].id', transform: 'renamed-key', note: '' },
   { path: 'itemPlacements[].name', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].name', note: 'Falls back to itemId when unset.' },
   { path: 'itemPlacements[].description', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].description', transform: 'synthesised-when-absent', note: 'When authored it crosses verbatim. When absent the exporter SYNTHESISES `Found in <container>` (or the literal `An item.`), so an unauthored description is indistinguishable from an authored one downstream.' },
-  { path: 'itemPlacements[].container', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].description', transform: 'folded-into-synthesised-description', note: 'Container survives ONLY as prose inside a synthesised description, and ONLY when `description` is unset (convert-items.ts). Authoring both drops the container WITH a warning and a fidelity entry (reason `item-container-dropped-when-description-present`, F-06fd0fb3). The fixture exercises both branches.' },
+  { path: 'itemPlacements[].container', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].container', note: 'CLOSED BY swarm wave-32 (F-42772fc9). Placement channel. convertItems still folds container into a synthesised description when description is unset, and drops it from the catalog description when both are authored (F-06fd0fb3).' },
   // ⚠ FLIPPED BY swarm wave-2 (F-1c1a6e56, the pinned-test rule). C0 measured
   // this fallback as SILENT — no warnings param, no fidelity param on
   // convertItems at all, unlike every sibling converter. The VALUE still
@@ -606,11 +711,11 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'itemPlacements[].resourceModifiers{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].resourceModifiers{}', note: 'Omitted entirely when empty.' },
   { path: 'itemPlacements[].grantedTags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].grantedTags[]', note: 'Omitted entirely when empty.' },
   { path: 'itemPlacements[].grantedVerbs[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].grantedVerbs[]', note: 'Omitted entirely when empty.' },
-  { path: 'itemPlacements[].hidden', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].provenance.flags[]', transform: 'boolean-reencoded-as-contraband-flag', note: 'A boolean "hidden on the map" becomes the ECONOMIC flag `contraband` on item provenance. Only the true case is encoded; `hidden: false` writes nothing, so the field is not recoverable, and the meaning shifts from placement to legality. The re-encode is now REPORTED (warning + fidelity reason `hidden-reencoded-as-contraband`, F-06fd0fb3).' },
+  { path: 'itemPlacements[].hidden', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].hidden', note: 'CLOSED BY swarm wave-32 (F-42772fc9). The boolean now crosses on the placement channel. convertItems still ALSO re-encodes hidden:true as provenance flag contraband (F-06fd0fb3), reported separately.' },
   { path: 'itemPlacements[].iconId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'items{}.iconId', note: 'Binding-map channel only; not in the ContentPack.' },
-  { path: 'itemPlacements[].zoneId', class: 'no-channel', absence: { kind: 'key-absent', key: 'zoneId', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'Item PLACEMENT is dropped: `ItemDefinition` is a catalog record with no location. An exported pack knows every item and where none of them are.' },
-  { path: 'itemPlacements[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX' }, note: 'No coordinates cross.' },
-  { path: 'itemPlacements[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY' }, note: 'No coordinates cross.' },
+  { path: 'itemPlacements[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].zoneId', note: 'CLOSED BY swarm wave-32 (F-42772fc9). Placement channel; ItemDefinition remains the catalog.' },
+  { path: 'itemPlacements[].gridX', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].gridX', note: 'CLOSED BY swarm wave-32 (F-42772fc9).' },
+  { path: 'itemPlacements[].gridY', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].gridY', note: 'CLOSED BY swarm wave-32 (F-42772fc9).' },
   // ⚠ NOTE UPDATED BY swarm wave-2 (F-ee46a52c) — the CLASS is unchanged
   // (still no-channel) but the OLD REASON is now false, AND the proof needed
   // a SCOPE it didn't need before. The loot tables themselves are no longer
@@ -623,7 +728,7 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   // `contentPack.lootTables[].id` as if it were the item's back-reference
   // leaking — the same collision-shape `entityPlacements[].ai.fears[]` above
   // already documents for a different pair of fields.
-  { path: 'itemPlacements[].lootTableId', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'The loot-table BACK-reference has no target field on ItemDefinition. The loot tables themselves now cross via ContentPack.lootTables (CLOSED BY swarm wave-2, F-ee46a52c) and reference items by the same itemId convertItems emits, so the FORWARD link (table → item) survives; only this reverse link (item → table) has no channel.' },
+  { path: 'itemPlacements[].lootTableId', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].lootTableId', note: 'CLOSED BY swarm wave-32 (F-42772fc9). The reverse item→lootTableId link now lives on the placement channel. The forward table→itemId link already crossed via ContentPack.lootTables (F-ee46a52c).' },
 
   // ── Assets / asset packs (World-Forge-side round-trip channels) ─────
   { path: 'assets[].id', class: 'carried-lossless', channel: 'assets', packPath: 'assets[].id', note: 'The whole `assets` array is passed through untouched into ExportResult.assets — a World Forge re-import channel with no engine reader.' },
