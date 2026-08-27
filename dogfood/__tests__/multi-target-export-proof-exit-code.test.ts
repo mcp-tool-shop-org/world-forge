@@ -142,3 +142,41 @@ describe('multi-target-export-proof.ts exit code gate (F-6245cd73)', () => {
         expect(receipt).toContain('cross-lane invariant assertions passed');
     }, 60_000);
 });
+
+const PROOF_FORCE_FLAGS = [
+    'breakFixCaught',
+    'breakFixRepaired',
+    'hasGdScene',
+    'allResValid',
+    'zoneIdsPreserved',
+    'entityIdsPreserved',
+    'unrealZoneIdsPreserved',
+] as const;
+
+const PROOF_FLAG_RECEIPT: Record<(typeof PROOF_FORCE_FLAGS)[number], string> = {
+    breakFixCaught: 'ghost-invalid=false',
+    breakFixRepaired: 'repair-valid=false',
+    hasGdScene: '[gd_scene] header=false',
+    allResValid: 'res:// prefixed=false',
+    zoneIdsPreserved: '**Zone IDs preserved:** false',
+    entityIdsPreserved: '**Entity IDs preserved:** false',
+    unrealZoneIdsPreserved: '**Zone IDs preserved:** false',
+};
+
+describe('multi-target-export-proof.ts structural gates (F-987419c9)', () => {
+    it.each(PROOF_FORCE_FLAGS)(
+        'exits non-zero and receipt is honest when %s is forced false',
+        async (flag) => {
+            const { code } = await runScript({ WORLD_FORGE_FORCE_PROOF_FLAG: flag });
+            expect(code).not.toBe(0);
+
+            const receipt = await readFile(RECEIPT_PATH, 'utf-8');
+            expect(receipt).toMatch(/\*\*(BLOCKED|NEEDS FOLLOW-UP)/);
+            expect(receipt).toContain(PROOF_FLAG_RECEIPT[flag]);
+            expect(receipt).not.toContain('Ghost entity in nonexistent zone caught → removed → revalidated clean');
+            expect(receipt).not.toMatch(/valid `\[gd_scene\]` header/);
+            expect(receipt).not.toContain('all valid `res://` prefixed');
+        },
+        60_000,
+    );
+});

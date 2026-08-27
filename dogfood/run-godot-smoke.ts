@@ -20,7 +20,7 @@
 import { writeFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
 import { exportToGodot } from '../packages/export-godot/src/index.js';
 import { proofProject } from './worlds/multi-target-proof.js';
@@ -80,16 +80,8 @@ function findGodot(): string | null {
     }
 
     // 3. Try `godot` on PATH (where/which per-platform, see above)
-    try {
-        const result = execSync(`${PATH_LOOKUP_CMD} godot`, { encoding: 'utf-8', timeout: 5000 }).trim();
-        if (result) return result.split('\n')[0].trim();
-    } catch { /* not on PATH */ }
-
-    // 4. Try `godot4` on PATH (some installs)
-    try {
-        const result = execSync(`${PATH_LOOKUP_CMD} godot4`, { encoding: 'utf-8', timeout: 5000 }).trim();
-        if (result) return result.split('\n')[0].trim();
-    } catch { /* not on PATH */ }
+    const onPath = lookupOnPath('godot') ?? lookupOnPath('godot4');
+    if (onPath) return onPath;
 
     return null;
 }
@@ -136,33 +128,22 @@ if (!godotBin) {
 
 console.log(`  Binary: ${godotBin}`);
 
-// Get Godot version
-let godotVersion = 'unknown';
-try {
-    godotVersion = execSync(`"${godotBin}" --version`, { encoding: 'utf-8', timeout: 10000 }).trim();
-    console.log(`  Version: ${godotVersion}`);
-} catch {
-    console.log('  Version: could not determine');
-}
+// Get Godot version — spawnSync argv, never a shell-concatenated string.
+const versionRun = captureSpawn(godotBin, ['--version'], { timeout: 10_000 });
+const godotVersion = versionRun.output.trim() || 'unknown';
+console.log(`  Version: ${godotVersion}`);
 
-// Run headless with smoke script
-let godotOutput = '';
-let godotExitCode = -1;
-const godotCmd = `"${godotBin}" --headless --path "${smokeDir}" --script res://smoke_load_world.gd`;
+// Run headless with smoke script. Capture stdout+stderr on every run
+// (F-9830ed99): execSync on exit 0 returned stdout only, so engine
+// warnings on stderr ('Failed loading resource', 'SCRIPT ERROR') never
+// reached findResourceWarnings() on the green path.
+const godotArgs = ['--headless', '--path', smokeDir, '--script', 'res://smoke_load_world.gd'];
+const godotCmd = [godotBin, ...godotArgs].join(' ');
 console.log(`  Command: ${godotCmd}`);
 
-try {
-    godotOutput = execSync(godotCmd, {
-        encoding: 'utf-8',
-        timeout: 30000,
-        cwd: smokeDir,
-    });
-    godotExitCode = 0;
-} catch (err: unknown) {
-    const execErr = err as { status?: number; stdout?: string; stderr?: string };
-    godotExitCode = execErr.status ?? 1;
-    godotOutput = (execErr.stdout ?? '') + (execErr.stderr ?? '');
-}
+const godotRun = captureSpawn(godotBin, godotArgs, { timeout: 30_000, cwd: smokeDir });
+const godotOutput = godotRun.output;
+const godotExitCode = godotRun.status;
 
 console.log(`  Exit code: ${godotExitCode}`);
 
@@ -198,7 +179,7 @@ if (resourceWarnings.length > 0) {
 // dogfood/__tests__/godot-smoke-verdict.test.ts for the regression test that
 // proves a smoke_verdict=PASS report with a live FAIL: line is still caught.
 const smokeVerdict = deriveSmokeVerdict(kvPairs, godotExitCode);
-const overallPass = computeOverallPass({ smokeVerdict, godotExitCode, resourceWarnings, fails });
+const overallPass = computeOverallPass({ smokeVerdict, godotExitCode, resourceWarnings, fails, passes });
 
 console.log(`\n═══ VERDICT: ${overallPass ? 'PASS' : 'FAIL'} ═══`);
 if (!overallPass) {
@@ -233,6 +214,40 @@ process.exit(overallPass ? 0 : 1);
 
 function today(): string {
     return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Spawn a process without a shell and always concatenate stdout+stderr.
+ * F-9830ed99: execSync returns stdout only on exit 0; resource warnings
+ * that Godot prints on stderr were therefore invisible on the green path.
+ */
+function captureSpawn(
+    command: string,
+    args: string[],
+    opts: { timeout: number; cwd?: string },
+): { status: number; output: string } {
+    const result = spawnSync(command, args, {
+        encoding: 'utf-8',
+        timeout: opts.timeout,
+        cwd: opts.cwd,
+        windowsHide: true,
+    });
+    const stdout = result.stdout ?? '';
+    const stderr = result.stderr ?? '';
+    let output = `${stdout}${stderr}`;
+    if (result.error) output = `${output}\n${result.error.message}`.trim();
+    return { status: result.status ?? 1, output };
+}
+
+function lookupOnPath(binName: string): string | null {
+    const result = spawnSync(PATH_LOOKUP_CMD, [binName], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+    });
+    const out = (result.stdout ?? '').trim();
+    if (result.status === 0 && out) return out.split(/\r?\n/)[0].trim();
+    return null;
 }
 
 interface SmokeResults {

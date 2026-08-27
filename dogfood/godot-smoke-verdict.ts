@@ -63,6 +63,12 @@ export interface VerdictInputs {
      * appended, e.g. for resource warnings).
      */
     fails: string[];
+    /**
+     * Individual `PASS: ` lines parsed from captured stdout+stderr.
+     * Empty captured output (or stderr-only engine noise) must not pass:
+     * overallPass requires at least one of these (F-9830ed99).
+     */
+    passes: string[];
 }
 
 /**
@@ -76,17 +82,28 @@ export interface VerdictInputs {
  * condition, so a GDScript that emits individual `FAIL: ` lines but
  * mis-reports (or is edited to unconditionally report) `smoke_verdict=PASS`
  * is still caught here rather than trusted at face value.
+ *
+ * F-9830ed99: also require `passes.length > 0`. Empty or stderr-only
+ * capture plus exit 0 used to yield VERDICT PASS because a missing
+ * `smoke_verdict` was inferred as PASS and no PASS: lines were required.
  */
 export function computeOverallPass(inputs: VerdictInputs): boolean {
     return (
         inputs.smokeVerdict === 'PASS' &&
         inputs.godotExitCode === 0 &&
         inputs.resourceWarnings.length === 0 &&
-        inputs.fails.length === 0
+        inputs.fails.length === 0 &&
+        inputs.passes.length > 0
     );
 }
 
-/** Derive the self-reported verdict string, falling back to exit-code inference when absent. */
-export function deriveSmokeVerdict(kvPairs: Record<string, string>, godotExitCode: number): string {
-    return kvPairs.smoke_verdict ?? (godotExitCode === 0 ? 'PASS' : 'FAIL');
+/**
+ * Derive the self-reported verdict string.
+ *
+ * F-9830ed99: a missing `smoke_verdict` token is FAIL, never inferred PASS
+ * from exit 0. Empty/stderr-only Godot output plus a clean exit used to
+ * fall through to PASS here.
+ */
+export function deriveSmokeVerdict(kvPairs: Record<string, string>, _godotExitCode: number): string {
+    return kvPairs.smoke_verdict ?? 'FAIL';
 }
