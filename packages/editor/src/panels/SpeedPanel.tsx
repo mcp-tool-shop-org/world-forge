@@ -6,15 +6,15 @@ import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 import { SPEED_PANEL_ACTIONS, filterActions, type SpeedPanelAction, type GroupedActions, type SpeedPanelMacro } from '../speed-panel-actions.js';
-import { executeAction, executeMacro, type ExecuteStores } from '../speed-panel-execute.js';
+import { executeAction, executeMacro } from '../speed-panel-execute.js';
+import { productionExecuteStores, handleSpeedPanelExecuteResult } from './speed-panel-stores.js';
+import { pushToast } from '../ui/Toast.js';
 
 const SECTION_STYLE: React.CSSProperties = { padding: '4px 8px', fontSize: 10, color: 'var(--wf-text-muted)', letterSpacing: 0.5 };
 
 export function SpeedPanel() {
-  const { speedPanelPosition, speedPanelContext, closeSpeedPanel, speedPanelEditMode, toggleSpeedPanelEditMode,
-    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
-    setRightTab, setTool, setConnectionStart, setViewport, clearSelection } = useEditorStore();
-  const { project, removeSelected, duplicateSelected, removeConnection, addConnection, updateZone } = useProjectStore();
+  const { speedPanelPosition, speedPanelContext, closeSpeedPanel, speedPanelEditMode, toggleSpeedPanelEditMode } = useEditorStore();
+  const { project } = useProjectStore();
   const { pinnedIds, togglePin, reorderPin, addRecent, recentIds,
     groups, addGroup, updateGroup, removeGroup, addActionToGroup, removeActionFromGroup,
     macros, addMacro, updateMacro, removeMacro, addStepToMacro, removeStepFromMacro, reorderMacroStep,
@@ -72,37 +72,32 @@ export function SpeedPanel() {
     setOffset({ left, top });
   }, [speedPanelPosition]);
 
-  // Build the stores bag for executeAction
-  const stores: ExecuteStores = useMemo(() => ({
-    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
-    clearSelection, setRightTab, setTool, setConnectionStart, setViewport,
-    removeSelected, duplicateSelected, removeConnection, addConnection, project, updateZone,
-  }), [selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
-    clearSelection, setRightTab, setTool, setConnectionStart, setViewport,
-    removeSelected, duplicateSelected, removeConnection, addConnection, project, updateZone]);
-
+  // F-2a8f09c5: read the live bag at click time (includes mergeZones + selection)
+  // and only close after executed:true. Failed actions keep the panel open.
   const execute = useCallback((actionId: string) => {
-    closeSpeedPanel();
     try {
-      const result = executeAction(actionId, speedPanelContext, stores);
-      if (result.executed) {
-        addRecent(actionId);
-      }
+      const result = executeAction(actionId, speedPanelContext, productionExecuteStores());
+      handleSpeedPanelExecuteResult(result, actionId, {
+        closeSpeedPanel,
+        addRecent,
+        toast: pushToast,
+      });
     } catch (err) {
       // EUB-018: catch and log action execution errors
       console.error(`[SpeedPanel] Action "${actionId}" threw an error:`, err);
+      pushToast('Action failed', 'error');
     }
-  }, [speedPanelContext, closeSpeedPanel, stores, addRecent]);
+  }, [speedPanelContext, closeSpeedPanel, addRecent]);
 
   const runMacro = useCallback((macro: SpeedPanelMacro) => {
-    const result = executeMacro(macro, speedPanelContext, stores);
+    const result = executeMacro(macro, speedPanelContext, productionExecuteStores());
     if (result.abortedAt !== undefined) {
       setMacroStatus(`Macro "${macro.name}" aborted at step ${result.abortedAt! + 1}: ${result.reason}`);
     } else {
       addRecent('macro:' + macro.id);
       closeSpeedPanel();
     }
-  }, [speedPanelContext, stores, addRecent, closeSpeedPanel]);
+  }, [speedPanelContext, addRecent, closeSpeedPanel]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.stopPropagation(); closeSpeedPanel(); return; }

@@ -5,6 +5,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectionCount } from '../store/editor-store.js';
 import type { AlignAxis, DistributeAxis } from '../layout.js';
 import { buttonBase, buttonAccent, inputBase, selectBase } from '../ui/styles.js';
+import { deleteSelectedZonesOnly, batchDeleteConfirmMessage } from './batch-zone-delete.js';
 
 export function SelectionActionsPanel() {
   const { project, updateProject, alignSelected, distributeSelected } = useProjectStore();
@@ -79,22 +80,8 @@ export function SelectionActionsPanel() {
   };
 
   const handleDeleteAll = () => {
-    if (!confirm(`Delete ${zoneCount} zones? This cannot be undone.`)) return;
-    updateProject((p) => {
-      const ids = new Set(selection.zones);
-      return {
-        ...p,
-        zones: p.zones.filter((z) => !ids.has(z.id)),
-        connections: p.connections.filter((c) => !ids.has(c.fromZoneId) && !ids.has(c.toZoneId)),
-        districts: p.districts.map((d) => ({
-          ...d,
-          zoneIds: d.zoneIds.filter((zid) => !ids.has(zid)),
-        })),
-        entityPlacements: p.entityPlacements.filter((e) => !ids.has(e.zoneId)),
-        landmarks: p.landmarks.filter((l) => !ids.has(l.zoneId)),
-        spawnPoints: p.spawnPoints.filter((s) => !ids.has(s.zoneId)),
-      };
-    }, `Delete ${zoneCount} zones`);
+    if (!confirm(batchDeleteConfirmMessage(zoneCount))) return;
+    updateProject((p) => deleteSelectedZonesOnly(p, selection.zones), `Delete ${zoneCount} zones`);
     clearSelection();
   };
 

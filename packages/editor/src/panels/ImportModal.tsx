@@ -10,6 +10,7 @@ import { scanDependencies } from '@world-forge/schema';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
+import { applyBundleImport, canConfirmImport, distinctBundleWarnings } from './import-modal-helpers.js';
 
 interface Props { onClose: () => void }
 
@@ -123,7 +124,8 @@ export function ImportModal({ onClose }: Props) {
 
   const doImport = useCallback(() => {
     if (bundleResult) {
-      loadProject(bundleResult.project);
+      // F-f6081e61: refuse schema-invalid bundles (isValid:false) — do not loadProject.
+      if (!applyBundleImport(bundleResult, loadProject)) return;
       resetChecklist();
       setImportFidelity(buildFidelityReport([]), 'project-bundle');
       setImportSnapshot(structuredClone(bundleResult.project));
@@ -153,16 +155,18 @@ export function ImportModal({ onClose }: Props) {
   }, [result, bundleResult, loadProject, resetChecklist, setImportFidelity, setImportSnapshot, setProjectBundleSource, setRightTab, onClose]);
 
   const handleImport = useCallback(() => {
+    if (!canConfirmImport({ result, bundleResult })) return;
     if (dirty && !confirmOverwrite) {
       setConfirmOverwrite(true);
       return;
     }
     doImport();
-  }, [dirty, confirmOverwrite, doImport]);
+  }, [dirty, confirmOverwrite, doImport, result, bundleResult]);
 
-  const hasResult = !!(result || bundleResult);
+  const importEnabled = canConfirmImport({ result, bundleResult });
   const p = result?.project ?? bundleResult?.project;
   const deps = bundleResult ? extractDependencies(bundleResult.bundle) : null;
+  const bundleWarnings = bundleResult ? distinctBundleWarnings(bundleResult) : null;
 
   return (
     <ModalFrame title="Import Project" width={480} onClose={onClose}>
@@ -214,73 +218,100 @@ export function ImportModal({ onClose }: Props) {
           </div>
         )}
 
-        {/* Project bundle preview */}
-        {bundleResult && p && (
+        {/* Project bundle — preview only when valid (mirrors ImportKitModal) */}
+        {bundleResult && (
           <div style={{ marginBottom: 16 }}>
-            <span style={{ ...badgeStyle, ...FORMAT_COLORS['project-bundle'] }}>{FORMAT_LABELS['project-bundle']}</span>
+            {bundleResult.isValid && p && (
+              <>
+                <span style={{ ...badgeStyle, ...FORMAT_COLORS['project-bundle'] }}>{FORMAT_LABELS['project-bundle']}</span>
 
-            <div style={{ marginTop: 12, fontSize: 13, color: '#c9d1d9' }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{bundleResult.bundle.name}</div>
-              {bundleResult.bundle.description && (
-                <div style={{ color: '#8b949e', fontSize: 12, marginBottom: 4 }}>{bundleResult.bundle.description}</div>
-              )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                {bundleResult.bundle.mode && (
-                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}` }}>
-                    {bundleResult.bundle.mode}
-                  </span>
+                <div style={{ marginTop: 12, fontSize: 13, color: '#c9d1d9' }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{bundleResult.bundle.name}</div>
+                  {bundleResult.bundle.description && (
+                    <div style={{ color: '#8b949e', fontSize: 12, marginBottom: 4 }}>{bundleResult.bundle.description}</div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {bundleResult.bundle.mode && (
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}` }}>
+                        {bundleResult.bundle.mode}
+                      </span>
+                    )}
+                    {bundleResult.bundle.genre && (
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
+                        {bundleResult.bundle.genre}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: '#8b949e' }}>
+                    <span>Zones: {bundleResult.bundle.summary.zones}</span>
+                    <span>Districts: {bundleResult.bundle.summary.districts}</span>
+                    <span>Entities: {bundleResult.bundle.summary.entities}</span>
+                    <span>Items: {bundleResult.bundle.summary.items}</span>
+                    <span>Dialogues: {bundleResult.bundle.summary.dialogues}</span>
+                    <span>Spawns: {bundleResult.bundle.summary.spawns}</span>
+                  </div>
+                </div>
+
+                {deps?.kitRef && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#58a6ff' }}>
+                    Kit provenance: {deps.kitRef.name}
+                    {deps.kitRef.source && <span style={{ color: '#8b949e' }}> ({deps.kitRef.source})</span>}
+                  </div>
                 )}
-                {bundleResult.bundle.genre && (
-                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
-                    {bundleResult.bundle.genre}
-                  </span>
+
+                {deps && deps.assetPacks.length > 0 && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: '#8b949e' }}>
+                    Asset packs: {deps.assetPacks.map((pack) => pack.label).join(', ')}
+                  </div>
                 )}
-              </div>
 
-              {/* Summary counts from bundle */}
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: '#8b949e' }}>
-                <span>Zones: {bundleResult.bundle.summary.zones}</span>
-                <span>Districts: {bundleResult.bundle.summary.districts}</span>
-                <span>Entities: {bundleResult.bundle.summary.entities}</span>
-                <span>Items: {bundleResult.bundle.summary.items}</span>
-                <span>Dialogues: {bundleResult.bundle.summary.dialogues}</span>
-                <span>Spawns: {bundleResult.bundle.summary.spawns}</span>
-              </div>
-            </div>
+                {bundleResult.bundle.exportedAt && (
+                  <div style={{ marginTop: 4, fontSize: 10, color: '#484f58' }}>
+                    Exported: {new Date(bundleResult.bundle.exportedAt).toLocaleString()}
+                  </div>
+                )}
 
-            {/* Kit provenance */}
-            {deps?.kitRef && (
-              <div style={{ marginTop: 8, fontSize: 11, color: '#58a6ff' }}>
-                Kit provenance: {deps.kitRef.name}
-                {deps.kitRef.source && <span style={{ color: '#8b949e' }}> ({deps.kitRef.source})</span>}
+                <DepHealthPreview project={bundleResult.project} />
+              </>
+            )}
+
+            {/* Validation errors — F-f6081e61: these are blocking, not warnings */}
+            {bundleResult.validationErrors.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#f85149', marginBottom: 4 }}>
+                  Errors ({bundleResult.validationErrors.length})
+                </div>
+                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#f85149' }}>
+                  {bundleResult.validationErrors.map((err, i) => (
+                    <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {err}</div>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Asset packs */}
-            {deps && deps.assetPacks.length > 0 && (
-              <div style={{ marginTop: 4, fontSize: 11, color: '#8b949e' }}>
-                Asset packs: {deps.assetPacks.map((p) => p.label).join(', ')}
-              </div>
-            )}
-
-            {/* Exported timestamp */}
-            {bundleResult.bundle.exportedAt && (
-              <div style={{ marginTop: 4, fontSize: 10, color: '#484f58' }}>
-                Exported: {new Date(bundleResult.bundle.exportedAt).toLocaleString()}
-              </div>
-            )}
-
-            {/* Dependency health */}
-            <DepHealthPreview project={bundleResult.project} />
-
-            {/* Validation warnings */}
-            {bundleResult.validationWarnings.length > 0 && (
+            {/* Parse warnings (envelope), kept separate from validation errors */}
+            {bundleWarnings && bundleWarnings.parseWarnings.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
-                  Warnings ({bundleResult.validationWarnings.length})
+                  Parse warnings ({bundleWarnings.parseWarnings.length})
                 </div>
                 <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#d29922' }}>
-                  {bundleResult.validationWarnings.map((w, i) => (
+                  {bundleWarnings.parseWarnings.map((w, i) => (
+                    <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {w}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Validation warnings that are not also listed as errors */}
+            {bundleWarnings && bundleWarnings.validationWarnings.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
+                  Warnings ({bundleWarnings.validationWarnings.length})
+                </div>
+                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#d29922' }}>
+                  {bundleWarnings.validationWarnings.map((w, i) => (
                     <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {w}</div>
                   ))}
                 </div>
@@ -301,12 +332,12 @@ export function ImportModal({ onClose }: Props) {
           <button onClick={onClose} style={buttonBase}>Cancel</button>
           <button
             onClick={handleImport}
-            disabled={!hasResult}
+            disabled={!importEnabled}
             style={{
               ...buttonBase,
-              background: hasResult ? (confirmOverwrite ? '#9e6a03' : 'var(--wf-success)') : 'var(--wf-bg-control)',
-              color: hasResult ? '#fff' : 'var(--wf-text-hint)',
-              cursor: hasResult ? 'pointer' : 'default',
+              background: importEnabled ? (confirmOverwrite ? '#9e6a03' : 'var(--wf-success)') : 'var(--wf-bg-control)',
+              color: importEnabled ? '#fff' : 'var(--wf-text-hint)',
+              cursor: importEnabled ? 'pointer' : 'default',
               border: 'none',
             }}
           >
