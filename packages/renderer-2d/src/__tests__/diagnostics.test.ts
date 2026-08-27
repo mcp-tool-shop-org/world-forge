@@ -60,6 +60,7 @@ import { EntityRenderer } from '../entity-renderer.js';
 import { ConnectionRenderer } from '../connection-renderer.js';
 import { MinimapRenderer } from '../minimap.js';
 import { ZoneOverlayRenderer } from '../zone-renderer.js';
+import { WorldViewport } from '../viewport.js';
 
 describe('DiagnosticInfo shape (INF-B-008)', () => {
   it('TileLayerRenderer.getDiagnostics()', () => {
@@ -122,5 +123,27 @@ describe('DiagnosticInfo shape (INF-B-008)', () => {
     );
     // 1 entity = 1 graphic + 1 label = 2 children
     expect(r.getDiagnostics().childCount).toBe(2);
+  });
+
+  it('WorldViewport.getDiagnostics() before init, after init, and after destroy (F-0f41f51a)', async () => {
+    const vp = new WorldViewport({
+      width: 800, height: 600, gridWidth: 10, gridHeight: 10, tileSize: 32,
+    });
+    const before = vp.getDiagnostics();
+    expect(before.className).toBe('WorldViewport');
+    expect(before.destroyed).toBe(false);
+    expect(before.childCount).toBe(0);
+
+    const el = { appendChild: vi.fn() } as unknown as HTMLElement;
+    await vp.init(el);
+    const mounted = vp.getDiagnostics();
+    expect(mounted.className).toBe('WorldViewport');
+    expect(mounted.destroyed).toBe(false);
+    expect(mounted.childCount).toBeGreaterThanOrEqual(0);
+
+    vp.destroy();
+    const after = vp.getDiagnostics();
+    expect(after.destroyed).toBe(true);
+    expect(after.className).toBe('WorldViewport');
   });
 });

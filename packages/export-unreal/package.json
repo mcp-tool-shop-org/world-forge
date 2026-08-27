@@ -10,6 +10,21 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./signing": {
+      "types": "./dist/signing.d.ts",
+      "import": "./dist/signing.js",
+      "default": "./dist/signing.js"
+    },
+    "./summary": {
+      "types": "./dist/summary.d.ts",
+      "import": "./dist/summary.js",
+      "default": "./dist/summary.js"
+    },
+    "./diff": {
+      "types": "./dist/diff.d.ts",
+      "import": "./dist/diff.js",
+      "default": "./dist/diff.js"
     }
   },
   "scripts": {

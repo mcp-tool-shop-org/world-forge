@@ -11,6 +11,7 @@ import { readFile, stat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { UnrealPackMeta } from './export.js';
+import { verifyPackSignature } from './signing.js';
 
 export interface PackSummary {
   packDir: string;
@@ -21,6 +22,9 @@ export interface PackSummary {
     formatVersion: string;
     signed: boolean;
     signatureAlgorithm?: string;
+    /** Present when `signed` is true — result of verifyPackSignature. */
+    signatureValid?: boolean;
+    signatureReason?: string;
   };
   counts: {
     zones: number;
@@ -157,6 +161,15 @@ export async function summarizePack(packDir: string): Promise<PackSummary | Summ
   const sizeBytes = await dirSize(packDir);
 
   const sig = meta.Signature;
+  let signatureValid: boolean | undefined;
+  let signatureReason: string | undefined;
+  if (sig) {
+    // F-38fa7a71: presence is not integrity. Verify the hash so --summary
+    // cannot print "Signed: yes (sha256)" for a pack whose Meta no longer matches.
+    const verified = verifyPackSignature(meta);
+    signatureValid = verified.valid;
+    signatureReason = verified.reason;
+  }
   return {
     packDir,
     meta: {
@@ -166,6 +179,8 @@ export async function summarizePack(packDir: string): Promise<PackSummary | Summ
       formatVersion: meta.FormatVersion,
       signed: !!sig,
       signatureAlgorithm: sig?.algorithm,
+      signatureValid,
+      signatureReason,
     },
     counts: {
       zones: zoneFiles.length,
@@ -188,7 +203,7 @@ export function formatSummary(summary: PackSummary): string {
     `Pack: ${summary.meta.name} (${summary.meta.id})`,
     `  Version:       ${summary.meta.version}`,
     `  FormatVersion: ${summary.meta.formatVersion}`,
-    `  Signed:        ${summary.meta.signed ? `yes (${summary.meta.signatureAlgorithm ?? 'unknown'})` : 'no'}`,
+    `  Signed:        ${formatSignedLine(summary)}`,
     `  Size on disk:  ${sizeKb} KB`,
     `  Zones:         ${summary.counts.zones}`,
     `  Districts:     ${summary.counts.districts}`,
@@ -199,4 +214,12 @@ export function formatSummary(summary: PackSummary): string {
     `  Asset refs:    ${summary.counts.assetRefs}`,
   ];
   return lines.join('\n');
+}
+
+function formatSignedLine(summary: PackSummary): string {
+  if (!summary.meta.signed) return 'no';
+  const algo = summary.meta.signatureAlgorithm ?? 'unknown';
+  if (summary.meta.signatureValid === true) return `yes (${algo}, valid)`;
+  const reason = summary.meta.signatureReason ? `: ${summary.meta.signatureReason}` : '';
+  return `yes (${algo}, INVALID${reason})`;
 }

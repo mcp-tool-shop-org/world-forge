@@ -3,7 +3,7 @@
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from './export.js';
+import { exportToUnreal, applyPackSigning, UNREAL_PACK_FORMAT_VERSION } from './export.js';
 import { summarizePack, formatSummary } from './summary.js';
 import { diffPacks, formatDiff } from './diff.js';
 import type { WorldProject } from '@world-forge/schema';
@@ -14,6 +14,7 @@ import type { WorldProject } from '@world-forge/schema';
 // callers are told to rely on the format version, not a frozen field list.
 const USAGE = `Usage: world-forge-export-unreal <project.json> [options]
        world-forge-export-unreal --summary <pack-dir>
+       world-forge-export-unreal --verify <pack-dir>
        world-forge-export-unreal --diff <prev-dir> <new-dir>  [--detailed]
 
 Export options:
@@ -27,6 +28,7 @@ Export options:
 
 Summary / diff options:
   --summary <dir>    Print summary of the pack at <dir>
+  --verify <dir>     Verify pack Signature; exit non-zero on mismatch or unsigned
   --diff <a> <b>     Compare packs at <a> (previous) and <b> (new)
   --detailed         With --diff, list added/removed/changed ids
 
@@ -69,6 +71,32 @@ async function main(): Promise<void> {
       process.exit(1);
     }
     console.log(formatSummary(result));
+    process.exit(0);
+  }
+
+  const verifyIdx = args.indexOf('--verify');
+  if (verifyIdx !== -1) {
+    const dir = args[verifyIdx + 1];
+    if (!dir) {
+      console.error('Error: --verify requires a pack directory path (e.g., --verify ./UnrealPack)');
+      process.exit(1);
+    }
+    const result = await summarizePack(resolve(dir));
+    if ('error' in result) {
+      console.error(`Error: ${result.error}`);
+      if (result.hint) console.error(`Hint: ${result.hint}`);
+      process.exit(1);
+    }
+    if (!result.meta.signed) {
+      console.error('Error: pack is not signed (no Signature on pack.json).');
+      console.error('Hint: re-export with --sign, then --verify.');
+      process.exit(1);
+    }
+    if (result.meta.signatureValid !== true) {
+      console.error(`Error: pack signature is INVALID${result.meta.signatureReason ? `: ${result.meta.signatureReason}` : '.'}`);
+      process.exit(1);
+    }
+    console.log(`Signature valid (${result.meta.signatureAlgorithm ?? 'sha256'}).`);
     process.exit(0);
   }
 
@@ -131,13 +159,18 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const exportOptions: { tileSizeCm?: number; signing?: { algorithm: 'sha256' } } = {};
+  const exportOptions: { tileSizeCm?: number } = {};
   if (tileSizeCm !== undefined) exportOptions.tileSizeCm = tileSizeCm;
-  if (sign) exportOptions.signing = { algorithm: 'sha256' };
   const result = exportToUnreal(
     project,
     Object.keys(exportOptions).length > 0 ? exportOptions : undefined,
   );
+
+  if (result.success && sign) {
+    // F-36785d5f: signing lives behind a dynamic import so the browser-safe
+    // exportToUnreal graph never contains node:crypto.
+    result.contentPack.Meta = await applyPackSigning(result.contentPack.Meta, { algorithm: 'sha256' });
+  }
 
   if (!result.success) {
     console.error('Validation failed:');

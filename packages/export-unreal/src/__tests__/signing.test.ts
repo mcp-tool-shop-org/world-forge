@@ -7,6 +7,18 @@ import {
 import type { UnrealPackMeta } from '../export.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 
+function exportSigned() {
+  const result = exportToUnreal(minimalProject);
+  if (!result.success) throw new Error('export failed');
+  return {
+    ...result,
+    contentPack: {
+      ...result.contentPack,
+      Meta: composeSignedMeta(result.contentPack.Meta),
+    },
+  };
+}
+
 function baseMeta(): UnrealPackMeta {
   return {
     Id: 'pack-x',
@@ -96,9 +108,8 @@ describe('exportToUnreal signing integration', () => {
     expect(result.contentPack.Meta.Signature).toBeUndefined();
   });
 
-  it('attaches a Signature when signing.algorithm is sha256', () => {
-    const result = exportToUnreal(minimalProject, { signing: { algorithm: 'sha256' } });
-    if (!result.success) throw new Error('export failed');
+  it('attaches a Signature when composeSignedMeta is applied after export (F-36785d5f)', () => {
+    const result = exportSigned();
     const sig = result.contentPack.Meta.Signature;
     expect(sig).toBeDefined();
     expect(sig?.algorithm).toBe('sha256');
@@ -107,22 +118,26 @@ describe('exportToUnreal signing integration', () => {
   });
 
   it('verifyPackSignature succeeds on a freshly exported signed pack', () => {
-    const result = exportToUnreal(minimalProject, { signing: { algorithm: 'sha256' } });
-    if (!result.success) throw new Error('export failed');
+    const result = exportSigned();
     expect(verifyPackSignature(result.contentPack.Meta).valid).toBe(true);
   });
 
   it('tampering with an exported signed pack fails verification', () => {
-    const result = exportToUnreal(minimalProject, { signing: { algorithm: 'sha256' } });
-    if (!result.success) throw new Error('export failed');
+    const result = exportSigned();
     const tampered: UnrealPackMeta = { ...result.contentPack.Meta, Name: 'Different Name' };
     expect(verifyPackSignature(tampered).valid).toBe(false);
   });
 
   it('signature shape is stable across two exports of the same project', () => {
-    const a = exportToUnreal(minimalProject, { signing: { algorithm: 'sha256' } });
-    const b = exportToUnreal(minimalProject, { signing: { algorithm: 'sha256' } });
-    if (!a.success || !b.success) throw new Error('export failed');
+    const a = exportSigned();
+    const b = exportSigned();
     expect(a.contentPack.Meta.Signature?.value).toBe(b.contentPack.Meta.Signature?.value);
+  });
+
+  it('F-36785d5f: exportToUnreal itself does not attach a Signature (browser-safe)', () => {
+    const result = exportToUnreal(minimalProject, { signing: { algorithm: 'sha256' } });
+    if (!result.success) throw new Error('export failed');
+    expect(result.contentPack.Meta.Signature).toBeUndefined();
+    expect(result.warnings.some((w) => w.includes('signing'))).toBe(true);
   });
 });

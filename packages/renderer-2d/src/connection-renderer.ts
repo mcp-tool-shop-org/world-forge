@@ -48,10 +48,20 @@ export class ConnectionRenderer {
     for (const child of removed) child.destroy({ children: true });
     const zoneMap = new Map(zones.map((z) => [z.id, z]));
 
+    // F-77095738: aggregate missing from/to zone ids into one warning per
+    // update, matching EntityRenderer.update / TileLayerRenderer.update.
+    const missingByZone = new Map<string, number>();
+    let skipped = 0;
+
     for (const conn of connections) {
       const from = zoneMap.get(conn.fromZoneId);
       const to = zoneMap.get(conn.toZoneId);
-      if (!from || !to) continue;
+      if (!from || !to) {
+        skipped += 1;
+        if (!from) missingByZone.set(conn.fromZoneId, (missingByZone.get(conn.fromZoneId) ?? 0) + 1);
+        if (!to) missingByZone.set(conn.toZoneId, (missingByZone.get(conn.toZoneId) ?? 0) + 1);
+        continue;
+      }
 
       const fx = (from.gridX + from.gridWidth / 2) * this.tileSize;
       const fy = (from.gridY + from.gridHeight / 2) * this.tileSize;
@@ -60,16 +70,23 @@ export class ConnectionRenderer {
 
       const g = new Graphics();
       const isDashed = !!conn.condition;
+      const style = {
+        width: 1,
+        color: isDashed ? 0xffaa00 : 0x888888,
+        alpha: 0.6,
+      };
 
       if (isDashed) {
-        g.setStrokeStyle({ width: 1, color: 0xffaa00, alpha: 0.6 });
+        // F-7f5f8d32: PixiJS v8 Graphics has no setLineDash — draw dash
+        // segments along (fx,fy)→(tx,ty), same loop as ZoneOverlayRenderer.
+        const dashLen = Math.max(4, Math.floor(this.tileSize / 4));
+        const gapLen = Math.max(3, Math.floor(dashLen * 0.6));
+        this.drawDashedLine(g, fx, fy, tx, ty, dashLen, gapLen, style);
       } else {
-        g.setStrokeStyle({ width: 1, color: 0x888888, alpha: 0.6 });
+        g.moveTo(fx, fy);
+        g.lineTo(tx, ty);
+        g.stroke(style);
       }
-
-      g.moveTo(fx, fy);
-      g.lineTo(tx, ty);
-      g.stroke();
 
       // Arrowhead for one-way connections
       if (!conn.bidirectional) {
@@ -85,10 +102,53 @@ export class ConnectionRenderer {
           tx - headLen * Math.cos(angle + Math.PI / 6),
           ty - headLen * Math.sin(angle + Math.PI / 6),
         );
-        g.stroke();
+        g.stroke(style);
       }
 
       this.container.addChild(g);
+    }
+
+    if (missingByZone.size > 0) {
+      const parts = Array.from(missingByZone.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([zoneId, count]) => `"${zoneId}" (${count})`)
+        .join(', ');
+      console.warn(
+        `ConnectionRenderer.update: ${skipped} connection${skipped === 1 ? '' : 's'} reference ${missingByZone.size} missing zone${missingByZone.size === 1 ? '' : 's'} — skipping lines for ${parts}. Check that each endpoint zone exists.`,
+      );
+    }
+  }
+
+  /**
+   * Draw a dashed segment along (x1,y1)→(x2,y2). PixiJS v8 Graphics has no
+   * setLineDash, so each dash is its own stroked moveTo/lineTo.
+   */
+  private drawDashedLine(
+    g: Graphics,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    dashLen: number,
+    gapLen: number,
+    style: { width: number; color: number; alpha: number },
+  ): void {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len === 0) return;
+    const ux = dx / len;
+    const uy = dy / len;
+    const stride = dashLen + gapLen;
+    let d = 0;
+    while (d < len) {
+      const segLen = Math.min(dashLen, len - d);
+      const sx = x1 + ux * d;
+      const sy = y1 + uy * d;
+      const ex = x1 + ux * (d + segLen);
+      const ey = y1 + uy * (d + segLen);
+      g.moveTo(sx, sy).lineTo(ex, ey).stroke(style);
+      d += stride;
     }
   }
 }

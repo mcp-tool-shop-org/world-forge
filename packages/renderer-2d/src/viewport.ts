@@ -1,6 +1,7 @@
 // viewport.ts — PixiJS viewport wrapper with camera controls
 
 import { Application, Container, Graphics } from 'pixi.js';
+import type { DiagnosticInfo } from './diagnostics.js';
 
 export interface ViewportOptions {
   width: number;
@@ -71,6 +72,12 @@ export class WorldViewport {
     try {
       container.appendChild(this.app.canvas as HTMLCanvasElement);
     } catch (err) {
+      // F-99bd3aa5: app.init() succeeded but mount failed. Tear down the live
+      // Application so a retry of init() does not call app.init() twice (the
+      // INF-B-002 one-shot guard only looks at _initialized, which is still
+      // false here) and so GPU/canvas resources are not leaked until destroy().
+      this.app.destroy(true, { children: true, texture: true, textureSource: true });
+      this.app = new Application();
       throw new Error(
         'Failed to mount World Forge viewport — check that the container element is attached to the DOM.',
         { cause: err },
@@ -87,6 +94,18 @@ export class WorldViewport {
    */
   isMounted(): boolean {
     return this._initialized && !this._destroyed;
+  }
+
+  /**
+   * INF-B-008: Lifecycle observability. Safe to call at any time, including
+   * before init() and after destroy(). Never mutates state.
+   */
+  getDiagnostics(): DiagnosticInfo {
+    return {
+      className: 'WorldViewport',
+      destroyed: this._destroyed,
+      childCount: this.world.children.length,
+    };
   }
 
   private drawGrid(): void {
