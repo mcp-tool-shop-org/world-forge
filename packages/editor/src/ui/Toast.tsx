@@ -92,18 +92,19 @@ export function ToastHost({ shiftForMinimap = false }: { shiftForMinimap?: boole
 
   if (toasts.length === 0) return null;
 
-  // Sit above the 24px status line. When the minimap occupies bottom-right,
-  // shift left by minimap width + its inset so Valid / Issues stay visible.
+  // F-69a1f39b: absolute in the canvas well (same containing block as the
+  // minimap). Viewport-fixed + inspector inset made shiftForMinimap land on
+  // top of the minimap; canvas-absolute right uses the same geometry.
   const right = shiftForMinimap
     ? 'calc(var(--wf-minimap-width) + var(--wf-space-2) + var(--wf-space-2))'
-    : 'var(--wf-space-4)';
+    : 'var(--wf-space-2)';
 
   return (
     <div
       data-testid="wf-toast-host"
       style={{
-        position: 'fixed',
-        bottom: 'calc(var(--wf-bottombar-height) + var(--wf-space-2))',
+        position: 'absolute',
+        bottom: 'var(--wf-space-2)',
         right,
         zIndex: 'var(--wf-z-toast)' as unknown as number,
         display: 'flex', flexDirection: 'column', gap: 6,

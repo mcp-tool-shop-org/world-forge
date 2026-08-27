@@ -229,6 +229,27 @@ export function Canvas() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const { panX, panY, zoom } = viewport;
+    const tokenAccent = readCssVar('--wf-accent', '#58a6ff');
+    const tokenTextPrimary = readCssVar('--wf-text-primary', '#c9d1d9');
+    const tokenTextMuted = readCssVar('--wf-text-muted', '#8b949e');
+    const tokenElevated = readCssVar('--wf-bg-elevated', '#1c2128');
+    const tokenOverlay = readCssVar('--wf-bg-overlay', 'rgba(0, 0, 0, 0.7)');
+    const tokenAccentText = readCssVar('--wf-accent-text', '#58a6ff');
+    const fillLabelPill = (text: string, tx: number, ty: number, fg: string, align: CanvasTextAlign = 'start') => {
+      ctx.save();
+      ctx.textAlign = align;
+      ctx.textBaseline = 'alphabetic';
+      const tw = ctx.measureText(text).width;
+      const fontPx = Number.parseFloat(ctx.font) || 10;
+      const pad = 2 / zoom;
+      const pillX = align === 'center' ? tx - tw / 2 - pad : tx - pad;
+      const pillY = ty - fontPx + pad;
+      ctx.fillStyle = tokenElevated;
+      ctx.fillRect(pillX, pillY, tw + pad * 2, fontPx + pad * 2);
+      ctx.fillStyle = fg;
+      ctx.fillText(text, tx, ty);
+      ctx.restore();
+    };
     ctx.setTransform(zoom, 0, 0, zoom, -panX * zoom, -panY * zoom);
 
     // FT-010: Viewport culling bounds (world coordinates with margin)
@@ -475,7 +496,7 @@ export function Canvas() {
       if (selected && simplifiedSelection) {
         ctx.fillStyle = color + '10';
         ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#58a6ff';
+        ctx.strokeStyle = tokenAccent;
         ctx.lineWidth = 2 / zoom;
         ctx.strokeRect(x, y, w, h);
       } else {
@@ -486,17 +507,12 @@ export function Canvas() {
         ctx.strokeRect(x, y, w, h);
       }
 
-      // Zone label with dark background pill
+      // Zone label on elevated pill (F-407b7c74: leftover of F-ce49d7e0)
       const fontSize = Math.max(9, Math.min(14, 11 / zoom));
       ctx.font = `${fontSize}px monospace`;
       const labelX = x + 4 / zoom;
       const labelY = y + (fontSize + 3) / zoom;
-      const textWidth = ctx.measureText(zone.name).width;
-      const labelPad = 2 / zoom;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(labelX - labelPad, labelY - fontSize + labelPad, textWidth + labelPad * 2, fontSize + labelPad);
-      ctx.fillStyle = selected ? '#fff' : '#ccc';
-      ctx.fillText(zone.name, labelX, labelY);
+      fillLabelPill(zone.name, labelX, labelY, selected ? tokenTextPrimary : tokenTextMuted);
 
       // ED-FT-003: elevation badge (e.g. "+12m" or "-4m..+8m"). Shown only when
       // the layer toggle is on and the zone carries elevation data. The renderer
@@ -606,21 +622,20 @@ export function Canvas() {
         // Selection ring (FT-021: simplified = outline rect instead of ring for large selections)
         if (selected) {
           if (simplifiedSelection) {
-            ctx.strokeStyle = '#58a6ff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 1.5 / zoom;
             const r2 = radius + 3 / zoom;
             ctx.strokeRect(x - r2, y - r2, r2 * 2, r2 * 2);
           } else {
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 2 / zoom;
             ctx.beginPath();
             ctx.arc(x, y, radius + 3 / zoom, 0, Math.PI * 2);
             ctx.stroke();
           }
         }
-        ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
-        ctx.fillText(ep.entityId, x + 10 / zoom, y + 3 / zoom);
+        fillLabelPill(ep.entityId, x + 10 / zoom, y + 3 / zoom, tokenTextMuted);
       }
     }
 
@@ -648,12 +663,12 @@ export function Canvas() {
         // Selection ring (FT-021: simplified = outline rect for large selections)
         if (selected) {
           if (simplifiedSelection) {
-            ctx.strokeStyle = '#58a6ff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 1.5 / zoom;
             const r2 = s + 2 / zoom;
             ctx.strokeRect(x - r2, y - r2, r2 * 2, r2 * 2);
           } else {
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 2 / zoom;
             ctx.beginPath();
             ctx.arc(x, y, s + 2 / zoom, 0, Math.PI * 2);
@@ -681,13 +696,12 @@ export function Canvas() {
         ctx.fillRect(x - s, y - s, s * 2, s * 2);
         // Selection ring (FT-021: simplified = thin outline for large selections)
         if (selected) {
-          ctx.strokeStyle = simplifiedSelection ? '#58a6ff' : '#fff';
+          ctx.strokeStyle = tokenAccent;
           ctx.lineWidth = (simplifiedSelection ? 1.5 : 2) / zoom;
           ctx.strokeRect(x - s - 2 / zoom, y - s - 2 / zoom, s * 2 + 4 / zoom, s * 2 + 4 / zoom);
         }
-        ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
-        ctx.fillText('SPAWN', x + 8 / zoom, y + 3 / zoom);
+        fillLabelPill('SPAWN', x + 8 / zoom, y + 3 / zoom, tokenTextMuted);
       }
     }
 
@@ -722,17 +736,14 @@ export function Canvas() {
       ctx.fill();
       // Selection ring
       if (selected) {
-        ctx.strokeStyle = '#58a6ff';
+        ctx.strokeStyle = tokenAccent;
         ctx.lineWidth = 2 / zoom;
         ctx.stroke();
       }
       // Type label at zoom > 0.4
       if (zoom > 0.4) {
-        ctx.fillStyle = '#ccc';
         ctx.font = `${8 / zoom}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillText(enc.encounterType, cx + ox, cy + s + 10 / zoom);
-        ctx.textAlign = 'start';
+        fillLabelPill(enc.encounterType, cx + ox, cy + s + 10 / zoom, tokenTextMuted, 'center');
       }
     }
 
@@ -772,9 +783,9 @@ export function Canvas() {
             const hy = h.gy * tileSize;
             ctx.beginPath();
             ctx.arc(hx, hy, hRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = tokenTextPrimary;
             ctx.fill();
-            ctx.strokeStyle = '#4a9eff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 2 / zoom;
             ctx.stroke();
           }
@@ -845,9 +856,9 @@ export function Canvas() {
       const label = `${selCount} selected`;
       ctx.font = '11px monospace';
       const tw = ctx.measureText(label).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillStyle = tokenOverlay;
       ctx.fillRect(8, 8, tw + 12, 20);
-      ctx.fillStyle = '#58a6ff';
+      ctx.fillStyle = tokenAccentText;
       ctx.fillText(label, 14, 22);
     }
 
@@ -863,9 +874,9 @@ export function Canvas() {
       const statsY = selCount > 1 ? 36 : 8;
       const lineH = 14;
       const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillStyle = tokenOverlay;
       ctx.fillRect(8, statsY, maxW + 12, lines.length * lineH + 6);
-      ctx.fillStyle = '#8b949e';
+      ctx.fillStyle = tokenAccentText;
       for (let i = 0; i < lines.length; i++) {
         ctx.fillText(lines[i], 14, statsY + 14 + i * lineH);
       }
@@ -1628,9 +1639,9 @@ export function Canvas() {
   else if (hoveredConnection.current) cursor = 'pointer';
   else if (activeTool === 'select') cursor = 'default';
 
-  // FT-014: Minimap rendering
-  const minimapWidth = 200;
-  const minimapHeight = 150;
+  // FT-014: Minimap rendering — F-69a1f39b: size/inset from tokens, not 200×150/8.
+  const minimapWidth = parseFloat(readCssVar('--wf-minimap-width', '200px')) || 200;
+  const minimapHeight = parseFloat(readCssVar('--wf-minimap-height', '150px')) || 150;
   const renderMinimap = () => {
     if (!showMinimap || project.zones.length === 0) return null;
     const canvas = canvasRef.current;
@@ -1677,8 +1688,11 @@ export function Canvas() {
       <div
         onClick={handleMinimapClick}
         style={{
-          position: 'absolute', bottom: 8, right: 8,
-          width: minimapWidth, height: minimapHeight,
+          position: 'absolute',
+          bottom: 'var(--wf-space-2)',
+          right: 'var(--wf-space-2)',
+          width: 'var(--wf-minimap-width)',
+          height: 'var(--wf-minimap-height)',
           background: 'var(--wf-bg-elevated)',
           border: '1px solid var(--wf-border-default)', borderRadius: 4,
           cursor: 'pointer', overflow: 'hidden',
