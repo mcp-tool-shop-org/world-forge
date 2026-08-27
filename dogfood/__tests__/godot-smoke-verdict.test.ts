@@ -20,6 +20,7 @@ import {
     findResourceWarnings,
     computeOverallPass,
     deriveSmokeVerdict,
+    assertKvAgainstProof,
 } from '../godot-smoke-verdict.js';
 
 describe('parseSmokeOutput', () => {
@@ -151,5 +152,67 @@ describe('computeOverallPass (F-004 / F-9830ed99)', () => {
             passes: [],
         });
         expect(pass).toBe(false);
+    });
+});
+
+describe('assertKvAgainstProof (F-a6ef9bdd)', () => {
+    const expected = {
+        zoneCount: 5,
+        entityCount: 4,
+        itemCount: 3,
+        spawnPointCount: 2,
+        transitionCount: 1,
+        navLinkCount: 4,
+        zoneIds: ['zone-tavern', 'zone-market', 'zone-cellar', 'zone-alley', 'zone-gate'],
+    };
+
+    it('adds nothing when kvPairs match the proof world', () => {
+        const fails: string[] = [];
+        assertKvAgainstProof(
+            {
+                zone_count: '5',
+                entity_count: '4',
+                item_count: '3',
+                spawn_point_count: '2',
+                transition_count: '1',
+                nav_link_count: '4',
+                zone_ids: 'zone-tavern,zone-market,zone-cellar,zone-alley,zone-gate',
+            },
+            expected,
+            fails,
+        );
+        expect(fails).toEqual([]);
+    });
+
+    it('fails when a converter drops a zone but GDScript constants were bumped in lockstep', () => {
+        const fails: string[] = [];
+        assertKvAgainstProof(
+            {
+                zone_count: '4',
+                entity_count: '4',
+                item_count: '3',
+                spawn_point_count: '2',
+                transition_count: '1',
+                nav_link_count: '4',
+                zone_ids: 'zone-tavern,zone-market,zone-alley,zone-gate',
+            },
+            expected,
+            fails,
+        );
+        expect(fails.some((f) => f.startsWith('zone_count vs proofProject'))).toBe(true);
+        expect(fails.some((f) => f.startsWith('zone_ids vs proofProject'))).toBe(true);
+    });
+
+    it('feeds computeOverallPass: matching kv + PASS still fails when kv mismatches are on the fail-list', () => {
+        const fails: string[] = [];
+        assertKvAgainstProof({ zone_count: '0' }, expected, fails);
+        expect(fails.length).toBeGreaterThan(0);
+        expect(computeOverallPass({
+            smokeVerdict: 'PASS',
+            godotExitCode: 0,
+            resourceWarnings: [],
+            fails,
+            passes: ['zone_count matches'],
+        })).toBe(false);
     });
 });

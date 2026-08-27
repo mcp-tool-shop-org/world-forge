@@ -1,15 +1,9 @@
-// unreal-smoke-transitions.test.ts — regression coverage for F-933d65b9.
+// chapel-threshold-unreal-25d-gate.test.ts — F-4641d61e / F-66a22d53.
 //
-// run-unreal-smoke.ts used to `assert(true, 'transition_zone_refs_valid')`
-// when pack.Transitions.length === 0, so a convert-transitions regression
-// that emitted [] still recorded a pass for the ID-preservation step and
-// could exit 0 with VERDICT PASS. The script now requires
-// pack.Transitions.length === (proofProject.transitions ?? []).length
-// (must be > 0 for this fixture) before validating refs.
-//
-// WORLD_FORGE_FORCE_UNREAL_EMPTY_TRANSITIONS=1 — checked only by the
-// script, never set in a normal run — empties the pack array so this suite
-// can exercise the gate without depending on a live converter bug.
+// chapel-threshold-unreal.ts authored elevation/skyline/parallax then only
+// console.log'd OriginCm/ElevationCm. A converter that zeroed elevation or
+// dropped parallax still exited 0. WORLD_FORGE_FORCE_UNREAL_25D_FAIL mutates
+// the pack so this suite can fire the gate without a live converter bug.
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFile } from 'node:child_process';
@@ -20,7 +14,7 @@ import { dirname, resolve } from 'node:path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '../..');
-const SCRIPT_PATH = resolve(__dirname, '../run-unreal-smoke.ts');
+const SCRIPT_PATH = resolve(__dirname, '../chapel-threshold-unreal.ts');
 const SCHEMA_DIST = resolve(REPO_ROOT, 'packages/schema/dist/index.js');
 
 beforeAll(async () => {
@@ -29,7 +23,7 @@ beforeAll(async () => {
     } catch {
         throw new Error(
             `${SCHEMA_DIST} not found. Run "npm run build" first — ` +
-            `run-unreal-smoke.ts imports @world-forge/export-unreal which ` +
+            `chapel-threshold-unreal.ts imports @world-forge/export-unreal which ` +
             `transitively needs @world-forge/schema's built output.`,
         );
     }
@@ -38,7 +32,7 @@ beforeAll(async () => {
             if (error) {
                 reject(new Error(
                     'tsx is not available via `npx --no-install tsx`. ' +
-                    'This suite spawns `npx tsx dogfood/run-unreal-smoke.ts`.',
+                    'This suite spawns `npx tsx dogfood/chapel-threshold-unreal.ts`.',
                 ));
             } else {
                 resolvePromise();
@@ -71,29 +65,20 @@ function runScript(extraEnv: Record<string, string> = {}): Promise<{ code: numbe
     });
 }
 
-describe('run-unreal-smoke.ts transition ref gate (F-933d65b9)', () => {
-    it('exits 0 on a clean run (fixture has transitions)', async () => {
+describe('chapel-threshold-unreal.ts 2.5D gate (F-4641d61e)', () => {
+    it('exits 0 when elevation/skyline/parallax survive', async () => {
         const { code, stdout } = await runScript();
-        expect(stdout).toContain('transition_count_matches_source');
-        expect(stdout).toContain('transition_zone_refs_valid');
-        expect(stdout).not.toMatch(/✗ transition_count_matches_source/);
+        expect(stdout).toContain('✓ cellar_elevation_cm');
+        expect(stdout).toContain('✓ zone_0_skyline_survives');
+        expect(stdout).toContain('✓ zone_0_parallax_survives');
         expect(code).toBe(0);
     }, 60_000);
 
-    it('exits non-zero when Transitions is forced empty', async () => {
-        const { code, stdout } = await runScript({ WORLD_FORGE_FORCE_UNREAL_EMPTY_TRANSITIONS: '1' });
-        expect(stdout).toMatch(/✗ transition_count_matches_source/);
-        expect(stdout).toMatch(/✗ transition_zone_refs_valid/);
-        expect(stdout).toContain('Transitions is empty');
-        expect(code).not.toBe(0);
-    }, 60_000);
-});
-
-describe('run-unreal-smoke.ts required-fixture receipt (F-fb07f3a1)', () => {
-    it('exits non-zero and still writes a receipt when cellar is dropped', async () => {
-        const { code, stdout } = await runScript({ WORLD_FORGE_FORCE_UNREAL_DROP_CELLAR: '1' });
-        expect(stdout).toMatch(/✗ cellar_zone_found/);
-        expect(stdout).toContain('Receipt:');
+    it('exits non-zero when 2.5D fields are forced dropped', async () => {
+        const { code, stdout } = await runScript({ WORLD_FORGE_FORCE_UNREAL_25D_FAIL: '1' });
+        expect(stdout).toMatch(/✗ cellar_elevation_cm/);
+        expect(stdout).toMatch(/✗ zone_0_skyline_survives/);
+        expect(stdout).toMatch(/✗ zone_0_parallax_survives/);
         expect(code).not.toBe(0);
     }, 60_000);
 });

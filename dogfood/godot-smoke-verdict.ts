@@ -107,3 +107,52 @@ export function computeOverallPass(inputs: VerdictInputs): boolean {
 export function deriveSmokeVerdict(kvPairs: Record<string, string>, _godotExitCode: number): string {
     return kvPairs.smoke_verdict ?? 'FAIL';
 }
+
+export interface ProofCounts {
+    zoneCount: number;
+    entityCount: number;
+    itemCount: number;
+    spawnPointCount: number;
+    transitionCount: number;
+    navLinkCount: number;
+    zoneIds: readonly string[];
+}
+
+/**
+ * F-a6ef9bdd: connect GDScript-printed kvPairs to the TypeScript proof world.
+ * smoke_load_world.gd has its own EXPECTED_* constants; a lockstep edit of
+ * those constants plus a converter that drops a zone still PASSed because the
+ * TS runner never compared kvPairs to proofProject. Push mismatches onto the
+ * same `fails` list that feeds computeOverallPass.
+ */
+export function assertKvAgainstProof(
+    kvPairs: Record<string, string>,
+    expected: ProofCounts,
+    fails: string[],
+): void {
+    const checks: Array<[string, number]> = [
+        ['zone_count', expected.zoneCount],
+        ['entity_count', expected.entityCount],
+        ['item_count', expected.itemCount],
+        ['spawn_point_count', expected.spawnPointCount],
+        ['transition_count', expected.transitionCount],
+        ['nav_link_count', expected.navLinkCount],
+    ];
+    for (const [key, want] of checks) {
+        const got = kvPairs[key];
+        if (got !== String(want)) {
+            fails.push(`${key} vs proofProject: expected ${want}, got ${got ?? 'missing'}`);
+        }
+    }
+    const reported = new Set(
+        (kvPairs.zone_ids ?? '').split(',').map((id) => id.trim()).filter(Boolean),
+    );
+    const source = new Set(expected.zoneIds);
+    const missing = [...source].filter((id) => !reported.has(id));
+    const extra = [...reported].filter((id) => !source.has(id));
+    if (missing.length > 0 || extra.length > 0) {
+        fails.push(
+            `zone_ids vs proofProject: expected ${[...source].sort().join(',')}, got ${kvPairs.zone_ids ?? 'missing'}`,
+        );
+    }
+}

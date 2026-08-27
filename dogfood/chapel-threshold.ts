@@ -1,21 +1,19 @@
 // dogfood/chapel-threshold.ts — export the chapel fixture and write output files
 // Run: npx tsx dogfood/chapel-threshold.ts
 //
-// INF-B-007 [SKIP]: committed output snapshots for regression detection
-// ---------------------------------------------------------------------
-// As of v4.2.0 the generated files under dogfood/output/ are .gitignored, so
-// they are intentionally NOT tracked for snapshot-based regression diffs. The
-// decision to NOT add snapshot files here is deliberate — adding them would
-// require a real snapshot-diff CI step (normalization rules, reviewer UX,
-// per-domain tolerance) that is out of scope for a humanization pass.
+// INF-B-007 / F-2abb3406: generated files under dogfood/output/ are .gitignored
+// and are NOT the e2e input. Playwright globalSetup (e2e/global-setup.ts) writes
+// chapel-project.json from the schema chapel fixture at suite start. This script
+// still writes the same filename as a local dogfood artifact; it must not be
+// committed. chapel-export-result.json was an unreferenced leftover and is gone.
 //
 // If a future release wants snapshot regression, the work is:
-//   1. Un-gitignore a whitelisted subset of dogfood/output/.
+//   1. Un-gitignore a named fixture path and document it as the e2e input, OR
+//      keep generating it in Playwright globalSetup (current path).
 //   2. Add a CI step that runs this dogfood script, then `git diff --exit-code`
-//      against the committed snapshots.
+//      against committed snapshots.
 //   3. Add a documented refresh path (`npm run dogfood:refresh` or similar) so
 //      intentional changes are a one-command regeneration, not a manual diff.
-// Revisit when the export surface stabilizes across all three engine lanes.
 
 import { chapelProject } from '../packages/schema/src/__tests__/fixtures/chapel-authored.js';
 import { exportToEngine } from '../packages/export-ai-rpg/src/export.js';

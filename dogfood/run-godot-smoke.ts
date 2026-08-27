@@ -23,8 +23,15 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 import { exportToGodot } from '../packages/export-godot/src/index.js';
+import { SCHEMA_VERSION } from '../packages/schema/src/index.js';
 import { proofProject } from './worlds/multi-target-proof.js';
-import { parseSmokeOutput, findResourceWarnings, computeOverallPass, deriveSmokeVerdict } from './godot-smoke-verdict.js';
+import {
+    parseSmokeOutput,
+    findResourceWarnings,
+    computeOverallPass,
+    deriveSmokeVerdict,
+    assertKvAgainstProof,
+} from './godot-smoke-verdict.js';
 
 // ── Path resolution ──────────────────────────────────────────
 const __dirname = typeof import.meta.dirname === 'string'
@@ -49,9 +56,10 @@ const isWindows = process.platform === 'win32';
 const PATH_LOOKUP_CMD = isWindows ? 'where' : 'which';
 
 function findGodot(): string | null {
-    // 1. Environment variable (highest priority)
-    if (process.env.GODOT_BIN && existsSync(process.env.GODOT_BIN)) {
-        return process.env.GODOT_BIN;
+    // 1. Environment variable (highest priority). F-6551ab6c: a set-but-missing
+    // GODOT_BIN must not fall through to PATH/candidates — the caller exits 2.
+    if (process.env.GODOT_BIN) {
+        return existsSync(process.env.GODOT_BIN) ? process.env.GODOT_BIN : null;
     }
 
     // 2. Common install paths, per platform
@@ -109,6 +117,46 @@ console.log(`  ✓ Copied world.tscn → ${sceneTarget}`);
 
 // Step 3: Find and run Godot
 console.log('\n── 3. Run Godot 4 headless ──');
+
+function writeSkipReceipt(verdict: string): void {
+    mkdirSync(outDir, { recursive: true });
+    const partialReceipt = buildReceipt(null, verdict);
+    const receiptPath = resolve(outDir, `DOGFOOD_GODOT_ENGINE_SMOKE_${today()}.md`);
+    writeFileSync(receiptPath, partialReceipt, 'utf-8');
+    console.log(`\n  Partial receipt: ${receiptPath}`);
+}
+
+// F-66a22d53: FORCE-fail skips the binary so the exit-code gate is testable
+// without a Godot install. Never set during a normal run.
+if (process.env.WORLD_FORGE_FORCE_GODOT_FAIL === '1') {
+    console.log('  ✗ Test-injected failure (WORLD_FORGE_FORCE_GODOT_FAIL)');
+    mkdirSync(outDir, { recursive: true });
+    const receipt = buildReceipt({
+        godotBin: '(forced fail — Godot not invoked)',
+        godotVersion: 'n/a',
+        godotCmd: 'WORLD_FORGE_FORCE_GODOT_FAIL=1',
+        godotExitCode: 1,
+        godotOutput: '',
+        passes: [],
+        fails: ['Test-injected failure (WORLD_FORGE_FORCE_GODOT_FAIL)'],
+        kvPairs: {},
+        smokeVerdict: 'FAIL',
+    }, 'FAIL');
+    const receiptPath = resolve(outDir, `DOGFOOD_GODOT_ENGINE_SMOKE_${today()}.md`);
+    writeFileSync(receiptPath, receipt, 'utf-8');
+    console.log(`\nReceipt: ${receiptPath}`);
+    process.exit(1);
+}
+
+// F-6551ab6c: a pinned GODOT_BIN that does not exist is an operator error,
+// not a cue to silently run some other binary from PATH/candidates.
+if (process.env.GODOT_BIN && !existsSync(process.env.GODOT_BIN)) {
+    console.error(`  ✗ GODOT_BIN is set to "${process.env.GODOT_BIN}" but that path does not exist.`);
+    console.error('    Refusing to search PATH/candidates — the pinned binary is missing.');
+    writeSkipReceipt('SKIP — GODOT_BIN set but missing');
+    process.exit(2);
+}
+
 const godotBin = findGodot();
 if (!godotBin) {
     console.error('  ✗ Godot 4 not found.');
@@ -117,12 +165,7 @@ if (!godotBin) {
     console.error('\n  Skipping engine execution — structural export is validated by multi-target proof.');
     console.error('  To complete engine smoke, install Godot 4 and re-run with GODOT_BIN set.');
 
-    // Write partial receipt
-    mkdirSync(outDir, { recursive: true });
-    const partialReceipt = buildReceipt(null, 'SKIP — Godot binary not found');
-    const receiptPath = resolve(outDir, `DOGFOOD_GODOT_ENGINE_SMOKE_${today()}.md`);
-    writeFileSync(receiptPath, partialReceipt, 'utf-8');
-    console.log(`\n  Partial receipt: ${receiptPath}`);
+    writeSkipReceipt('SKIP — Godot binary not found');
     process.exit(2); // Exit 2 = skipped (not failure)
 }
 
@@ -161,6 +204,28 @@ if (kvPairs.entity_count) console.log(`  Entity count: ${kvPairs.entity_count}`)
 if (kvPairs.item_count) console.log(`  Item count: ${kvPairs.item_count}`);
 if (kvPairs.nav_link_count) console.log(`  Nav links: ${kvPairs.nav_link_count}`);
 if (kvPairs.zone_ids) console.log(`  Zone IDs: ${kvPairs.zone_ids}`);
+
+// F-a6ef9bdd: GDScript EXPECTED_* constants are the in-engine check, not the
+// only check. Compare printed counts + zone_ids against proofProject.
+const kvFailStart = fails.length;
+assertKvAgainstProof(
+    kvPairs,
+    {
+        zoneCount: proofProject.zones.length,
+        entityCount: proofProject.entityPlacements.length,
+        itemCount: proofProject.itemPlacements.length,
+        spawnPointCount: proofProject.spawnPoints.length,
+        transitionCount: (proofProject.transitions ?? []).length,
+        navLinkCount: proofProject.connections.length,
+        zoneIds: proofProject.zones.map((z) => z.id),
+    },
+    fails,
+);
+const kvFails = fails.slice(kvFailStart);
+if (kvFails.length > 0) {
+    console.log(`  Proof-world mismatches: ${kvFails.length}`);
+    for (const f of kvFails) console.log(`    ✗ ${f}`);
+}
 
 // Check for missing resource / script errors in Godot output
 const resourceWarnings = findResourceWarnings(godotOutput);
@@ -270,7 +335,7 @@ function buildReceipt(results: SmokeResults | null, verdict: string): string {
 
 **Date:** ${ts}
 **Proof world:** Dustwalk — Multi-Target Proof (proof-dustwalk)
-**Schema:** 4.4.0
+**Schema:** ${SCHEMA_VERSION}
 
 ## Status
 
@@ -291,7 +356,7 @@ Godot 4 binary not found on this machine. Set \`GODOT_BIN\` and re-run.
 
 **Date:** ${ts}
 **Proof world:** Dustwalk — Multi-Target Proof (proof-dustwalk)
-**Schema:** 4.4.0
+**Schema:** ${SCHEMA_VERSION}
 **Godot:** ${results.godotVersion}
 **Binary:** ${results.godotBin}
 

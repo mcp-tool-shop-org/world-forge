@@ -211,6 +211,11 @@ if (wireSide.counts.gatedZones !== authoredGateCount) {
         `emitted gatedZones=${wireSide.counts.gatedZones} but the world authors ${authoredGateCount}`,
     );
 }
+// Test-only fault injection (dogfood/__tests__/dogfood-runner-exit-codes.test.ts):
+// WORLD_FORGE_FORCE_FIXTURE_FAIL is never set during a normal run.
+if (process.env.WORLD_FORGE_FORCE_FIXTURE_FAIL === '1') {
+    selfChecks.push('Test-injected failure (WORLD_FORGE_FORCE_FIXTURE_FAIL) — exercises the exit-code gate');
+}
 // Same class, one field over: a gate in the projection with no gate in the scene text
 // would let the client believe a door is guarded that the exporter never marked.
 for (const z of wireSide.zones) {
