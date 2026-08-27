@@ -16,7 +16,8 @@ export type FidelityDomain =
   | 'zones' | 'districts' | 'entities' | 'items'
   | 'connections' | 'world-partition' | 'assets' | 'parallax'
   | 'elevation' | 'skyline' | 'dialogues' | 'world'
-  | 'lighting' | 'collision' | 'physics' | 'transitions';
+  | 'lighting' | 'collision' | 'physics' | 'transitions'
+  | 'tiles' | 'props' | 'structures';
 
 export interface FidelityEntry {
   level: FidelityLevel;
@@ -105,4 +106,13 @@ export function buildFidelityReport(
   options?: { droppedEntityCount?: number },
 ): FidelityReport {
   return { entries, summary: summarizeFidelity(entries, options) };
+}
+
+/**
+ * Format unresolved identities for drop messages. Caps at `cap` then
+ * `…and N more` so a 200-orphan world does not dump a wall of ids.
+ */
+export function formatDroppedIdentities(identities: string[], cap = 8): string {
+  if (identities.length <= cap) return identities.join(', ');
+  return `${identities.slice(0, cap).join(', ')}, …and ${identities.length - cap} more`;
 }

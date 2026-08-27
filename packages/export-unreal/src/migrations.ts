@@ -14,9 +14,9 @@
  *     loaders may read it if present.
  *   - **Patch bump** — clarifications, doc-only changes.
  *
- * Today only one migration edge exists: `1.0.0 → 1.1.0` (no-op; the `Signature`
- * field introduced by UE-FT-007 is optional, so nothing to rewrite). The
- * framework is deliberately in place so the next bump has a home to land in.
+ * Migration edges:
+ *   `1.0.0 → 1.1.0` — no-op; optional `Signature` (UE-FT-007).
+ *   `1.1.0 → 1.2.0` — no-op; additive Strata / Tiles / Props / Hazards arrays.
  */
 
 import type { UnrealPackMeta } from './export.js';
@@ -81,6 +81,11 @@ export const MIGRATIONS: ReadonlyArray<Migration> = [
     from: '1.0.0',
     to: '1.1.0',
     migrate: (meta) => ({ ...meta, FormatVersion: '1.1.0' }),
+  },
+  {
+    from: '1.1.0',
+    to: '1.2.0',
+    migrate: (meta) => ({ ...meta, FormatVersion: '1.2.0' }),
   },
 ];
 

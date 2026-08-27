@@ -11,7 +11,9 @@ export { importFromUnreal } from './import.js';
 export type { UnrealImportResult, UnrealImportError } from './import.js';
 
 export { convertZones } from './convert-zones.js';
-export type { UnrealZoneDataAsset, UnrealParallaxLayer, ConvertZonesResult } from './convert-zones.js';
+export type {
+  UnrealZoneDataAsset, UnrealParallaxLayer, UnrealEntryGate, ConvertZonesResult,
+} from './convert-zones.js';
 
 export { convertDistricts } from './convert-districts.js';
 export type { UnrealDistrictDataAsset, ConvertDistrictsResult } from './convert-districts.js';
@@ -39,13 +41,35 @@ export type {
   UnrealTransitionEntity, UnrealDroppedTransition, ConvertTransitionsResult,
 } from './convert-transitions.js';
 
+export { convertStrata, STRATUM_Z_BAND } from './convert-strata.js';
+export type {
+  UnrealStratum, UnrealStratumLink, UnrealStrataManifest, ConvertStrataResult,
+} from './convert-strata.js';
+
+export { convertTileLayers, fallbackTileColor, HISM_TILE_THRESHOLD } from './convert-tile-layers.js';
+export type {
+  UnrealTileCell, UnrealCollisionBox, UnrealHismCluster,
+  UnrealTileLayer, UnrealTileManifest, ConvertTileLayersResult,
+} from './convert-tile-layers.js';
+
+export { convertProps } from './convert-props.js';
+export type {
+  UnrealPropActor, UnrealPropManifest, ConvertPropsResult,
+} from './convert-props.js';
+
+export { convertHazards, encodeHazardEffect } from './convert-hazards.js';
+export type {
+  UnrealHazardEffect, UnrealHazardDefinition, UnrealHazardVolume,
+  UnrealHazardManifest, ConvertHazardsResult,
+} from './convert-hazards.js';
+
 export {
   pixelsToUnrealCm, elevationToZ, worldForgeToUnrealAxis, gridToUnrealAxis,
   DEFAULT_TILE_SIZE_CM,
 } from './coordinate-transform.js';
 export type { UnrealVec3, WorldForgePoint } from './coordinate-transform.js';
 
-export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
+export { summarizeFidelity, buildFidelityReport, formatDroppedIdentities } from './fidelity.js';
 export type {
   FidelityLevel, FidelitySeverity, FidelityDomain,
   FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,

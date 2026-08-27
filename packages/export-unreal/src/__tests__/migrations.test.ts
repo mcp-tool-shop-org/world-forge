@@ -110,9 +110,20 @@ describe('migratePack', () => {
 });
 
 describe('MIGRATIONS chain', () => {
-  it('has v1.0.0 → v1.1.0 registered', () => {
-    const step = MIGRATIONS.find((m) => m.from === '1.0.0' && m.to === '1.1.0');
-    expect(step).toBeDefined();
+  it('has v1.0.0 → v1.1.0 and v1.1.0 → v1.2.0 registered', () => {
+    expect(MIGRATIONS.find((m) => m.from === '1.0.0' && m.to === '1.1.0')).toBeDefined();
+    expect(MIGRATIONS.find((m) => m.from === '1.1.0' && m.to === '1.2.0')).toBeDefined();
+  });
+
+  it('walks 1.0.0 → 1.2.0 in two steps', () => {
+    const meta = metaWithVersion('1.0.0');
+    const result = migratePack(meta, '1.2.0');
+    if (isMigrationError(result)) throw new Error('expected success');
+    expect(result.appliedSteps).toEqual([
+      { from: '1.0.0', to: '1.1.0' },
+      { from: '1.1.0', to: '1.2.0' },
+    ]);
+    expect(result.meta.FormatVersion).toBe('1.2.0');
   });
 
   it('each step transforms FormatVersion to match its `to`', () => {
@@ -125,16 +136,16 @@ describe('MIGRATIONS chain', () => {
 });
 
 describe('UNREAL_PACK_FORMAT_VERSION', () => {
-  it('is 1.1.0 (Signature added as optional minor bump)', () => {
-    expect(UNREAL_PACK_FORMAT_VERSION).toBe('1.1.0');
+  it('is 1.2.0 (strata/tiles/props/hazards added as optional minor bump)', () => {
+    expect(UNREAL_PACK_FORMAT_VERSION).toBe('1.2.0');
   });
 });
 
 describe('importFromUnreal + migration integration', () => {
-  it('current pack round-trips unchanged at v1.1.0', () => {
+  it('current pack round-trips unchanged at v1.2.0', () => {
     const exp = exportToUnreal(minimalProject);
     if (!exp.success) throw new Error('export failed');
-    expect(exp.contentPack.Meta.FormatVersion).toBe('1.1.0');
+    expect(exp.contentPack.Meta.FormatVersion).toBe('1.2.0');
     const back = importFromUnreal(exp.contentPack);
     expect(back.success).toBe(true);
   });
@@ -164,12 +175,12 @@ describe('importFromUnreal + migration integration', () => {
     }
   });
 
-  it('a synthetic v1.2.0 pack loads with a forward-compat warning entry', () => {
+  it('a synthetic v1.3.0 pack loads with a forward-compat warning entry', () => {
     const exp = exportToUnreal(minimalProject);
     if (!exp.success) throw new Error('export failed');
     const futureMinor = {
       ...exp.contentPack,
-      Meta: { ...exp.contentPack.Meta, FormatVersion: '1.2.0' },
+      Meta: { ...exp.contentPack.Meta, FormatVersion: '1.3.0' },
     };
     const back = importFromUnreal(futureMinor);
     expect(back.success).toBe(true);

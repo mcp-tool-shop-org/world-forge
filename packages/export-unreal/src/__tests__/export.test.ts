@@ -556,6 +556,117 @@ describe('exportToUnreal: Wave 2 — sky / lighting / collision / parallax / phy
     expect(entry).toBeDefined();
   });
 
+  it('F-a05c69b8 / F-9615478f / F-c1f4acbd: strata, tiles, props, gates, hazards land on the pack and round-trip', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      strata: [
+        { id: 'strat-surface', name: 'Surface', order: 0, tags: [] },
+        { id: 'strat-cellar', name: 'Cellar Level', order: -1, zRange: { floor: -8, ceiling: 0 }, tags: [] },
+      ],
+      stratumLinks: [
+        {
+          id: 'link-stairs',
+          fromStratumId: 'strat-surface',
+          toStratumId: 'strat-cellar',
+          fromZoneId: 'zone-entrance',
+          toZoneId: 'zone-cellar',
+          bidirectional: true,
+          linkType: 'stairs',
+        },
+      ],
+      hazardDefinitions: [
+        {
+          id: 'hz-lava',
+          name: 'Lava',
+          effects: [{ kind: 'damage', amount: 5, tickOn: 'turn-end' }],
+          trigger: 'on-enter',
+          tags: ['fire'],
+        },
+      ],
+      tilesets: [
+        {
+          id: 'ts-dungeon',
+          name: 'Dungeon',
+          tileWidth: 32,
+          tileHeight: 32,
+          tiles: [
+            { id: 't-floor', tilesetId: 'ts-dungeon', row: 0, col: 0, tags: ['floor'], walkable: true, opacity: 1 },
+            { id: 't-wall', tilesetId: 'ts-dungeon', row: 0, col: 1, tags: ['wall'], walkable: false, opacity: 1 },
+          ],
+        },
+      ],
+      tileLayers: [
+        {
+          id: 'layer-ground',
+          name: 'Ground',
+          zIndex: 0,
+          tiles: [
+            { tileId: 't-floor', gridX: 1, gridY: 1 },
+            { tileId: 't-wall', gridX: 2, gridY: 1 },
+          ],
+        },
+      ],
+      props: [
+        { id: 'prop-barrel', name: 'Barrel', width: 1, height: 1, tags: [], walkable: false, interactable: true },
+      ],
+      propPlacements: [
+        { id: 'pp-1', propId: 'prop-barrel', gridX: 3, gridY: 3, zoneId: 'zone-entrance' },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              stratumId: 'strat-surface',
+              entryGate: { conditions: ['item:iron-key'], mode: 'hard', reason: 'Locked.' },
+              hazardRefs: ['hz-lava'],
+            }
+          : { ...z, stratumId: 'strat-cellar' },
+      ),
+    };
+
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const entrance = result.contentPack.Zones.find((z) => z.Id === 'zone-entrance');
+    expect(entrance?.StratumId).toBe('strat-surface');
+    expect(entrance?.ZBand).toBe(0);
+    expect(entrance?.EntryGate).toEqual({
+      Mode: 'hard', Conditions: ['item:iron-key'], Reason: 'Locked.',
+    });
+    expect(entrance?.HazardRefs).toEqual(['hz-lava']);
+
+    expect(result.contentPack.Strata.Strata.map((s) => s.Id)).toEqual(['strat-surface', 'strat-cellar']);
+    expect(result.contentPack.Strata.Links).toHaveLength(1);
+    expect(result.contentPack.Tiles.Layers[0].Cells).toHaveLength(2);
+    expect(result.contentPack.Tiles.CollisionBoxes).toHaveLength(1);
+    expect(result.contentPack.Tiles.CollisionBoxes[0].TileId).toBe('t-wall');
+    expect(result.contentPack.Props.Actors).toHaveLength(1);
+    expect(result.contentPack.Props.CollisionBoxes).toHaveLength(1);
+    expect(result.contentPack.Hazards.Volumes).toHaveLength(1);
+    expect(result.contentPack.Hazards.Definitions[0].Id).toBe('hz-lava');
+
+    // TilesetAssetId is kept; cells exist so we no longer claim bake-on-UE5-side.
+    expect(result.fidelity.entries.some((e) => e.level === 'dropped' && e.fieldPath === 'tileLayers')).toBe(false);
+    expect(result.fidelity.entries.some((e) => e.level === 'dropped' && e.fieldPath === 'strata')).toBe(false);
+    expect(result.fidelity.entries.some((e) => e.level === 'dropped' && e.fieldPath === 'hazardDefinitions')).toBe(false);
+
+    const back = importFromUnreal(result.contentPack);
+    expect(back.success).toBe(true);
+    if (!back.success) return;
+    expect(back.project.strata?.map((s) => s.id)).toEqual(['strat-surface', 'strat-cellar']);
+    expect(back.project.stratumLinks?.[0].id).toBe('link-stairs');
+    expect(back.project.zones.find((z) => z.id === 'zone-entrance')?.stratumId).toBe('strat-surface');
+    expect(back.project.zones.find((z) => z.id === 'zone-entrance')?.entryGate).toEqual({
+      conditions: ['item:iron-key'], mode: 'hard', reason: 'Locked.',
+    });
+    expect(back.project.zones.find((z) => z.id === 'zone-entrance')?.hazardRefs).toEqual(['hz-lava']);
+    expect(back.project.hazardDefinitions?.[0].id).toBe('hz-lava');
+    expect(back.project.tileLayers[0].tiles).toHaveLength(2);
+    expect(back.project.propPlacements[0].id).toBe('pp-1');
+    expect(back.project.props[0].walkable).toBe(false);
+  });
+
   it('passes TransitionEntity through to UnrealContentPack.Transitions', () => {
     const transition: TransitionEntity = {
       id: 't-lift',

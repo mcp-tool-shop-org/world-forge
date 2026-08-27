@@ -3,6 +3,7 @@
 import type { WorldProject, Zone, ParallaxLayer } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { elevationToZ, gridToUnrealAxis, DEFAULT_TILE_SIZE_CM, type UnrealVec3 } from './coordinate-transform.js';
+import { STRATUM_Z_BAND } from './convert-strata.js';
 
 /**
  * A Primary Data Asset JSON shape the UE5 loader (Blueprint or C++) can consume.
@@ -51,6 +52,22 @@ export interface UnrealZoneDataAsset {
   GravityCmPerSec2?: number;
   GravityDirection?: 'down' | 'up' | 'none';
   PhysicsMode?: string;
+
+  // ── Vertical strata (F-a05c69b8) ────────────────────────────
+  /** Discrete vertical layer this zone belongs to. */
+  StratumId?: string;
+  /** order * STRATUM_Z_BAND — draw/PVS band for this zone's stratum. */
+  ZBand?: number;
+
+  // ── World-modeling gates + typed hazards (F-c1f4acbd) ───────
+  EntryGate?: UnrealEntryGate;
+  HazardRefs?: string[];
+}
+
+export interface UnrealEntryGate {
+  Mode: 'hard' | 'soft';
+  Conditions: string[];
+  Reason?: string;
 }
 
 export interface UnrealParallaxLayer {
@@ -68,11 +85,23 @@ export interface ConvertZonesResult {
 export function convertZones(project: WorldProject, tileSizeCm: number = DEFAULT_TILE_SIZE_CM): ConvertZonesResult {
   const tileSize = project.map.tileSize;
   const fidelity: FidelityEntry[] = [];
-  const zones: UnrealZoneDataAsset[] = project.zones.map((z) => convertZone(z, tileSize, tileSizeCm, fidelity));
+  const bandById = new Map<string, number>();
+  for (const s of project.strata ?? []) {
+    bandById.set(s.id, s.order * STRATUM_Z_BAND);
+  }
+  const zones: UnrealZoneDataAsset[] = project.zones.map((z) =>
+    convertZone(z, tileSize, tileSizeCm, fidelity, bandById),
+  );
   return { zones, fidelity };
 }
 
-function convertZone(z: Zone, tileSize: number, tileSizeCm: number, fidelity: FidelityEntry[]): UnrealZoneDataAsset {
+function convertZone(
+  z: Zone,
+  tileSize: number,
+  tileSizeCm: number,
+  fidelity: FidelityEntry[],
+  bandById: Map<string, number>,
+): UnrealZoneDataAsset {
   const elevationMeters = z.elevation ?? 0;
   const origin = gridToUnrealAxis(z.gridX, z.gridY, tileSizeCm, elevationMeters);
   const widthCm = z.gridWidth * tileSizeCm;
@@ -226,6 +255,45 @@ function convertZone(z: Zone, tileSize: number, tileSizeCm: number, fidelity: Fi
       fieldPath: `zones.${z.id}.physics`,
       message: `Zone "${z.id}" physics overrides preserved.`,
       reason: 'Mapped gravityOverride (m/s² → cm/s²), gravityDirection, physicsMode.',
+    });
+  }
+
+  // ── Vertical strata (F-a05c69b8) ────────────────────────────
+  if (z.stratumId !== undefined) {
+    const band = bandById.get(z.stratumId);
+    if (band !== undefined) {
+      asset.StratumId = z.stratumId;
+      asset.ZBand = band;
+    }
+  }
+
+  // ── Entry gate + typed hazard refs (F-c1f4acbd) ─────────────
+  if (z.entryGate) {
+    asset.EntryGate = {
+      Mode: z.entryGate.mode,
+      Conditions: Array.isArray(z.entryGate.conditions) ? z.entryGate.conditions.slice() : [],
+      Reason: z.entryGate.reason,
+    };
+    fidelity.push({
+      level: 'approximated',
+      domain: 'structures',
+      severity: 'info',
+      entityId: z.id,
+      fieldPath: `zones.${z.id}.entryGate`,
+      message: `Zone "${z.id}" entry gate exported as EntryGate (mode/conditions/reason); the UE5 loader evaluates it against party state on entry.`,
+      reason: 'Entry gates have no dedicated UE5 actor; they ride on UnrealZoneDataAsset and the runtime allows/denies entry from them.',
+    });
+  }
+  if (Array.isArray(z.hazardRefs) && z.hazardRefs.length > 0) {
+    asset.HazardRefs = z.hazardRefs.slice();
+    fidelity.push({
+      level: 'approximated',
+      domain: 'structures',
+      severity: 'info',
+      entityId: z.id,
+      fieldPath: `zones.${z.id}.hazardRefs`,
+      message: `Zone "${z.id}" typed hazardRefs (${z.hazardRefs.length}) passed through onto UnrealZoneDataAsset; volume actors live in pack.Hazards.`,
+      reason: 'Zone.hazardRefs is the zone→definition binding; convert-hazards.ts emits the matching volume actors.',
     });
   }
 

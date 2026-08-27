@@ -183,6 +183,16 @@ export class WorldViewport {
     this.world.position.set(this._panX, this._panY);
   }
 
+  /** Current pan X in screen pixels. Drive ParallaxRenderer.applyPan from this. */
+  get panX(): number {
+    return this._panX;
+  }
+
+  /** Current pan Y in screen pixels. Drive ParallaxRenderer.applyPan from this. */
+  get panY(): number {
+    return this._panY;
+  }
+
   zoom(factor: number): void {
     if (this.warnIfDestroyed('zoom')) return;
     this._zoom = Math.max(0.1, Math.min(5, this._zoom * factor));

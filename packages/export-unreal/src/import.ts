@@ -7,22 +7,32 @@
  */
 
 import type {
-  WorldProject, Zone, ZoneExit, Interactable,
+  WorldProject, Zone, ZoneExit, Interactable, ZoneEntryGate,
   District, EntityPlacement, EntityRole,
   ZoneConnection, ConnectionKind, ParallaxLayer,
   TransitionEntity, TransitionEntityType,
   ValidationError, AuthoringMode,
+  Stratum, StratumLink,
+  HazardDefinition, HazardEffect,
+  Tileset, TileLayer, TileDefinition,
+  PropDefinition, PropPlacement,
 } from '@world-forge/schema';
 import { DEFAULT_MODE, isValidMode, VALID_CONNECTION_KINDS } from '@world-forge/schema';
 import { KNOWN_DROPPED } from './field-coverage.js';
 import type { UnrealContentPack, UnrealPackMeta } from './export.js';
 import { UNREAL_PACK_FORMAT_VERSION } from './export.js';
 import { migratePack, parseSemVer, compareSemVer, type MigrationWarning } from './migrations.js';
-import type { UnrealZoneDataAsset } from './convert-zones.js';
+import type { UnrealZoneDataAsset, UnrealEntryGate } from './convert-zones.js';
 import type { UnrealDistrictDataAsset } from './convert-districts.js';
 import type { UnrealActorSpawnEntry } from './convert-entities.js';
 import type { UnrealLevelStreamingHint } from './convert-connections.js';
 import type { UnrealTransitionEntity } from './convert-transitions.js';
+import type { UnrealStrataManifest, UnrealStratum, UnrealStratumLink } from './convert-strata.js';
+import type { UnrealTileManifest, UnrealTileLayer, UnrealTileCell } from './convert-tile-layers.js';
+import type { UnrealPropManifest, UnrealPropActor } from './convert-props.js';
+import type {
+  UnrealHazardManifest, UnrealHazardDefinition, UnrealHazardEffect,
+} from './convert-hazards.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { unrealAxisToGrid, zToElevationMeters } from './coordinate-transform.js';
 
@@ -217,6 +227,18 @@ function deserializeV1Unchecked(pack: UnrealContentPack): UnrealImportResult | U
   const actorList = Array.isArray(pack.Actors?.All) ? pack.Actors.All : [];
   const connectionList = Array.isArray(pack.Connections) ? pack.Connections : [];
   const transitionList = Array.isArray(pack.Transitions) ? pack.Transitions : [];
+  const strataManifest: UnrealStrataManifest = pack.Strata && typeof pack.Strata === 'object'
+    ? pack.Strata
+    : { Strata: [], Links: [] };
+  const tilesManifest: UnrealTileManifest = pack.Tiles && typeof pack.Tiles === 'object'
+    ? pack.Tiles
+    : { Layers: [], CollisionBoxes: [], HismClusters: [] };
+  const propsManifest: UnrealPropManifest = pack.Props && typeof pack.Props === 'object'
+    ? pack.Props
+    : { Actors: [], CollisionBoxes: [] };
+  const hazardsManifest: UnrealHazardManifest = pack.Hazards && typeof pack.Hazards === 'object'
+    ? pack.Hazards
+    : { Volumes: [], Definitions: [] };
 
   const zones: Zone[] = zoneList.map((z) => zoneFromUnreal(z, tileSizeCm, fidelity));
   const districts: District[] = districtList.map((d) => districtFromUnreal(d, fidelity));
@@ -314,13 +336,16 @@ function deserializeV1Unchecked(pack: UnrealContentPack): UnrealImportResult | U
     marketNodes: [],
     transitions,
 
-    tilesets: [],
-    tileLayers: [],
-    props: [],
-    propPlacements: [],
+    tilesets: tilesetsFromUnreal(tilesManifest),
+    tileLayers: tileLayersFromUnreal(tilesManifest),
+    props: propsFromUnreal(propsManifest),
+    propPlacements: propPlacementsFromUnreal(propsManifest, tileSizeCm),
     ambientLayers: [],
     assets: [],
     assetPacks: [],
+    strata: strataFromUnreal(strataManifest),
+    stratumLinks: stratumLinksFromUnreal(strataManifest),
+    hazardDefinitions: hazardDefinitionsFromUnreal(hazardsManifest),
   };
 
   // UE-B-004: single consolidated fidelity entry covering every WorldProject
@@ -479,7 +504,232 @@ function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: Fi
     }
   }
 
+  // ── Stratum + entry gate + typed hazard refs (round-trip) ───────────────
+  if (typeof u.StratumId === 'string' && u.StratumId.length > 0) {
+    zone.stratumId = u.StratumId;
+  }
+  if (Array.isArray(u.HazardRefs) && u.HazardRefs.length > 0) {
+    zone.hazardRefs = u.HazardRefs.filter((r): r is string => typeof r === 'string');
+  }
+  const gate = entryGateFromUnreal(u.EntryGate, u.Id, fidelity);
+  if (gate) zone.entryGate = gate;
+
   return zone;
+}
+
+function entryGateFromUnreal(
+  raw: UnrealEntryGate | undefined,
+  zoneId: string,
+  fidelity: FidelityEntry[],
+): ZoneEntryGate | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const mode = raw.Mode === 'soft' || raw.Mode === 'hard' ? raw.Mode : undefined;
+  if (!mode) {
+    fidelity.push({
+      level: 'approximated',
+      domain: 'structures',
+      severity: 'warning',
+      entityId: zoneId,
+      fieldPath: `zones.${zoneId}.entryGate.mode`,
+      message: `Zone "${zoneId}" has unrecognized EntryGate.Mode "${String(raw.Mode)}" — gate dropped rather than guessed.`,
+      reason: 'EntryGate.Mode is not one of hard/soft (ZoneEntryGate.mode union).',
+    });
+    return undefined;
+  }
+  const conditions = Array.isArray(raw.Conditions)
+    ? raw.Conditions.filter((c): c is string => typeof c === 'string')
+    : [];
+  if (conditions.length === 0) {
+    fidelity.push({
+      level: 'approximated',
+      domain: 'structures',
+      severity: 'warning',
+      entityId: zoneId,
+      fieldPath: `zones.${zoneId}.entryGate`,
+      message: `Zone "${zoneId}" EntryGate had no expressible conditions — gate dropped.`,
+      reason: 'An empty AND-array is vacuously true and would silently unlock the zone.',
+    });
+    return undefined;
+  }
+  const gate: ZoneEntryGate = { mode, conditions };
+  if (typeof raw.Reason === 'string' && raw.Reason.length > 0) gate.reason = raw.Reason;
+  return gate;
+}
+
+function strataFromUnreal(manifest: UnrealStrataManifest): Stratum[] {
+  const list = Array.isArray(manifest.Strata) ? manifest.Strata : [];
+  return list.map((s: UnrealStratum): Stratum => {
+    const out: Stratum = {
+      id: s.Id,
+      name: s.Name,
+      order: s.Order,
+      tags: Array.isArray(s.Tags) ? s.Tags.slice() : [],
+    };
+    if (s.ZRangeCm) {
+      out.zRange = {
+        floor: zToElevationMeters(s.ZRangeCm.FloorCm),
+        ceiling: zToElevationMeters(s.ZRangeCm.CeilingCm),
+      };
+    }
+    if (Array.isArray(s.VisibleStrata) && s.VisibleStrata.length > 0) {
+      out.visibleStrata = s.VisibleStrata.slice();
+    }
+    return out;
+  });
+}
+
+function stratumLinksFromUnreal(manifest: UnrealStrataManifest): StratumLink[] {
+  const list = Array.isArray(manifest.Links) ? manifest.Links : [];
+  return list.map((l: UnrealStratumLink): StratumLink => ({
+    id: l.Id,
+    fromStratumId: l.FromStratumId,
+    toStratumId: l.ToStratumId,
+    fromZoneId: l.FromZoneId,
+    toZoneId: l.ToZoneId,
+    bidirectional: l.Bidirectional,
+    linkType: l.LinkType,
+  }));
+}
+
+function colorToTags(color: string | undefined): string[] {
+  if (color === '#555555') return ['wall'];
+  if (color === '#2244aa') return ['water'];
+  if (color === '#886622') return ['door'];
+  return [];
+}
+
+function tilesetsFromUnreal(manifest: UnrealTileManifest): Tileset[] {
+  const layers = Array.isArray(manifest.Layers) ? manifest.Layers : [];
+  const byTileset = new Map<string, Map<string, TileDefinition>>();
+  for (const layer of layers as UnrealTileLayer[]) {
+    const cells = Array.isArray(layer.Cells) ? layer.Cells : [];
+    for (const c of cells as UnrealTileCell[]) {
+      const tsId = c.TilesetId || 'tileset-imported';
+      let tiles = byTileset.get(tsId);
+      if (!tiles) {
+        tiles = new Map();
+        byTileset.set(tsId, tiles);
+      }
+      if (!tiles.has(c.TileId)) {
+        tiles.set(c.TileId, {
+          id: c.TileId,
+          tilesetId: tsId,
+          row: c.AtlasRow,
+          col: c.AtlasCol,
+          tags: colorToTags(c.Color),
+          walkable: c.Walkable,
+          opacity: c.Opacity ?? 1,
+        });
+      }
+    }
+  }
+  return [...byTileset.entries()].map(([id, tiles]) => ({
+    id,
+    name: id,
+    tileWidth: 32,
+    tileHeight: 32,
+    tiles: [...tiles.values()],
+  }));
+}
+
+function tileLayersFromUnreal(manifest: UnrealTileManifest): TileLayer[] {
+  const layers = Array.isArray(manifest.Layers) ? manifest.Layers : [];
+  return layers.map((layer: UnrealTileLayer): TileLayer => ({
+    id: layer.Id,
+    name: layer.Name,
+    zIndex: layer.ZIndex,
+    tiles: (Array.isArray(layer.Cells) ? layer.Cells : []).map((c) => ({
+      tileId: c.TileId,
+      gridX: c.GridX,
+      gridY: c.GridY,
+    })),
+  }));
+}
+
+function propsFromUnreal(manifest: UnrealPropManifest): PropDefinition[] {
+  const actors = Array.isArray(manifest.Actors) ? manifest.Actors : [];
+  const byId = new Map<string, PropDefinition>();
+  for (const a of actors as UnrealPropActor[]) {
+    if (byId.has(a.PropId)) continue;
+    byId.set(a.PropId, {
+      id: a.PropId,
+      name: a.DisplayName,
+      imagePath: a.ImagePath,
+      width: a.WidthTiles,
+      height: a.HeightTiles,
+      tags: Array.isArray(a.Tags) ? a.Tags.slice() : [],
+      walkable: a.Walkable,
+      interactable: a.Interactable,
+    });
+  }
+  return [...byId.values()];
+}
+
+function propPlacementsFromUnreal(manifest: UnrealPropManifest, tileSizeCm: number): PropPlacement[] {
+  const actors = Array.isArray(manifest.Actors) ? manifest.Actors : [];
+  return actors.map((a: UnrealPropActor): PropPlacement => {
+    const { gridX, gridY } = unrealAxisToGrid(a.LocationCm?.X ?? 0, a.LocationCm?.Y ?? 0, tileSizeCm);
+    const out: PropPlacement = {
+      id: a.Id,
+      propId: a.PropId,
+      gridX,
+      gridY,
+    };
+    if (a.ZoneId) out.zoneId = a.ZoneId;
+    return out;
+  });
+}
+
+function effectFromUnreal(e: UnrealHazardEffect): HazardEffect | undefined {
+  switch (e.Kind) {
+    case 'damage':
+      return {
+        kind: 'damage',
+        amount: e.Amount,
+        amountIsPercentMaxHp: e.AmountIsPercentMaxHp,
+        tickOn: e.TickOn === 'turn-start' ? 'turn-start' : 'turn-end',
+        durationTicks: e.DurationTicks,
+      };
+    case 'status':
+      return {
+        kind: 'status',
+        statusId: e.StatusId,
+        chance: e.Chance,
+        stacking: e.Stacking === 'stack' || e.Stacking === 'ignore' ? e.Stacking : 'refresh',
+      };
+    case 'instakill':
+      return { kind: 'instakill' };
+    case 'ignite':
+      return { kind: 'ignite', igniteChance: e.IgniteChance };
+    default:
+      return undefined;
+  }
+}
+
+function hazardDefinitionsFromUnreal(manifest: UnrealHazardManifest): HazardDefinition[] {
+  const list = Array.isArray(manifest.Definitions) ? manifest.Definitions : [];
+  return list.map((d: UnrealHazardDefinition): HazardDefinition => {
+    const effects = (Array.isArray(d.Effects) ? d.Effects : [])
+      .map(effectFromUnreal)
+      .filter((e): e is HazardEffect => e !== undefined);
+    const out: HazardDefinition = {
+      id: d.Id,
+      name: d.Name,
+      effects,
+      trigger: d.Trigger === 'per-turn' || d.Trigger === 'on-exit' || d.Trigger === 'timed'
+        ? d.Trigger
+        : 'on-enter',
+      tags: Array.isArray(d.Tags) ? d.Tags.slice() : [],
+    };
+    if (d.MoveCostDelta) out.moveCostDelta = d.MoveCostDelta;
+    if (d.Passable === 'yes' || d.Passable === 'flying-only' || d.Passable === 'never') {
+      out.passable = d.Passable;
+    }
+    if (d.BlocksVision) out.blocksVision = true;
+    if (Array.isArray(d.WeatherConditions)) out.weatherConditions = d.WeatherConditions.slice();
+    if (Array.isArray(d.ImmuneTags)) out.immuneTags = d.ImmuneTags.slice();
+    return out;
+  });
 }
 
 function isPhysicsMode(value: string): value is NonNullable<Zone['physicsMode']> {

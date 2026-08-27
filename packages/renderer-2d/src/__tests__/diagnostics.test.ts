@@ -7,6 +7,8 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('pixi.js', () => {
   class MockContainer {
     children: unknown[] = [];
+    x = 0;
+    y = 0;
     position = { set: vi.fn() };
     scale = { set: vi.fn() };
     addChild(child: unknown) { this.children.push(child); }
@@ -40,6 +42,12 @@ vi.mock('pixi.js', () => {
     }
     destroy() {}
   }
+  class MockSprite {
+    width = 0;
+    height = 0;
+    static from() { return new MockSprite(); }
+    destroy() {}
+  }
   class MockApplication {
     stage = new MockContainer();
     canvas = {} as HTMLCanvasElement;
@@ -52,6 +60,7 @@ vi.mock('pixi.js', () => {
     Container: MockContainer,
     Graphics: MockGraphics,
     Text: MockText,
+    Sprite: MockSprite,
   };
 });
 
@@ -60,6 +69,7 @@ import { EntityRenderer } from '../entity-renderer.js';
 import { ConnectionRenderer } from '../connection-renderer.js';
 import { MinimapRenderer } from '../minimap.js';
 import { ZoneOverlayRenderer } from '../zone-renderer.js';
+import { ParallaxRenderer } from '../parallax-renderer.js';
 import { WorldViewport } from '../viewport.js';
 
 describe('DiagnosticInfo shape (INF-B-008)', () => {
@@ -109,6 +119,16 @@ describe('DiagnosticInfo shape (INF-B-008)', () => {
     const r = new ZoneOverlayRenderer({ tileSize: 32 });
     const d = r.getDiagnostics();
     expect(d.className).toBe('ZoneOverlayRenderer');
+    expect(d.destroyed).toBe(false);
+    expect(d.childCount).toBe(0);
+    r.destroy();
+    expect(r.getDiagnostics().destroyed).toBe(true);
+  });
+
+  it('ParallaxRenderer.getDiagnostics()', () => {
+    const r = new ParallaxRenderer({ tileSize: 32 });
+    const d = r.getDiagnostics();
+    expect(d.className).toBe('ParallaxRenderer');
     expect(d.destroyed).toBe(false);
     expect(d.childCount).toBe(0);
     r.destroy();

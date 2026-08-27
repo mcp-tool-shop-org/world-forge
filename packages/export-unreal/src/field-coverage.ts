@@ -84,26 +84,21 @@ const FIELD_COVERAGE: { readonly [K in keyof WorldProject]-?: FieldStatus } = {
   craftingStations: { kind: 'dropped', reason: 'Gameplay-only data; driven by UE5 subsystem.' },
   marketNodes: { kind: 'dropped', reason: 'Gameplay-only data; driven by UE5 subsystem.' },
 
-  // ── v4.5 world-modeling layer (F-5a78be0b) ──────────────────────────────
-  // Confirmed by grep across packages/export-unreal/src: zero references to
-  // any of these six fields anywhere in the converter pipeline. Godot has a
-  // dedicated converter for each (convert-hazards.ts / convert-strata.ts /
-  // convert-gates.ts / convert-structures.ts); Unreal does not yet. Honest
-  // classification per F-e2908aac's fix order: no code path exists, so these
-  // are KNOWN_DROPPED, not COVERED — and collectDroppedFieldFidelity() below
-  // makes sure an export that actually authors this data reports it as
-  // dropped rather than staying silent about it.
+  // ── v4.5 world-modeling layer ───────────────────────────────────────────
+  // buildings / hubs / strongholds still have no Unreal converter (Godot has
+  // convert-structures.ts). strata / stratumLinks / hazardDefinitions shipped
+  // in F-a05c69b8 / F-c1f4acbd (convert-strata.ts / convert-hazards.ts).
   buildings: { kind: 'dropped', reason: 'No Unreal converter yet — placed town structures are not emitted into the pack (v4.5 field; Godot has convert-structures.ts, Unreal does not).' },
   hubs: { kind: 'dropped', reason: 'No Unreal converter yet — connectivity hubs are not emitted into the pack (v4.5 field; Godot has convert-structures.ts, Unreal does not).' },
   strongholds: { kind: 'dropped', reason: 'No Unreal converter yet — faction strongholds are not emitted into the pack (v4.5 field; Godot has convert-structures.ts, Unreal does not).' },
-  strata: { kind: 'dropped', reason: 'No Unreal converter yet — discrete vertical layers are not emitted into the pack (v4.5 field; Godot has convert-strata.ts, Unreal does not).' },
-  stratumLinks: { kind: 'dropped', reason: 'No Unreal converter yet — stratum connectors are not emitted into the pack (v4.5 field; Godot has convert-strata.ts, Unreal does not).' },
-  hazardDefinitions: { kind: 'dropped', reason: 'No Unreal converter yet — typed hazard definitions are not emitted; convert-zones.ts still only reads the legacy Zone.hazards string[] tags (v4.5 field; Godot has convert-hazards.ts, Unreal does not).' },
+  strata: { kind: 'covered' },
+  stratumLinks: { kind: 'covered' },
+  hazardDefinitions: { kind: 'covered' },
 
-  tilesets: { kind: 'dropped', reason: 'Tiles are baked into zone assets on the UE5 side.' },
-  tileLayers: { kind: 'dropped', reason: 'Tile layers are baked into zone assets on the UE5 side.' },
-  props: { kind: 'dropped', reason: 'Props spawn via UE5 Blueprint catalogs, not from the pack.' },
-  propPlacements: { kind: 'dropped', reason: 'Prop placements handled via UE5 Blueprint spawners.' },
+  tilesets: { kind: 'covered' },
+  tileLayers: { kind: 'covered' },
+  props: { kind: 'covered' },
+  propPlacements: { kind: 'covered' },
   ambientLayers: { kind: 'dropped', reason: 'Ambient effects rebuilt from zone tags on the UE5 side.' },
   assets: { kind: 'dropped', reason: 'Asset manifest is the UE5 project responsibility, not this pack.' },
   assetPacks: { kind: 'dropped', reason: 'Pack registry is handled by UE5 project plugins, not this exporter.' },

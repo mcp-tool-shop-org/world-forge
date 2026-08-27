@@ -4,6 +4,8 @@ export { WorldViewport, DEFAULT_GRID_COLOR, DEFAULT_GRID_ALPHA, GRID_MAJOR_EVERY
 export type { ViewportOptions } from './viewport.js';
 export { ZoneOverlayRenderer, DISTRICT_COLORS } from './zone-renderer.js';
 export type { ZoneRenderOptions } from './zone-renderer.js';
+export { ParallaxRenderer } from './parallax-renderer.js';
+export type { ParallaxRenderOptions } from './parallax-renderer.js';
 export { ConnectionRenderer } from './connection-renderer.js';
 export { EntityRenderer } from './entity-renderer.js';
 export type { EntityRenderOptions } from './entity-renderer.js';

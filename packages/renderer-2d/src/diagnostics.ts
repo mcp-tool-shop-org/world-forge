@@ -1,4 +1,4 @@
-// diagnostics.ts — shared observability shape for the 5 renderers + viewport.
+// diagnostics.ts — shared observability shape for the 6 renderers + viewport.
 // INF-B-008: every renderer (and the viewport) exposes getDiagnostics() so
 // external tooling can inspect lifecycle state without reaching into private
 // fields or toggling debug builds. Pure read-only — never mutate state.
