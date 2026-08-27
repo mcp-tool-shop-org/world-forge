@@ -70,6 +70,23 @@ export function convertTransitions(
       continue;
     }
 
+    // F-56fbfdb5: source-zone orphans already drop; a missing target used
+    // to still ship as lossless. Mirror convertConnections / Godot.
+    if (!zonesById.has(t.targetZoneId)) {
+      const reason = `Target zone "${t.targetZoneId}" not found in project.zones.`;
+      fidelity.push({
+        level: 'dropped',
+        domain: 'transitions',
+        severity: 'error',
+        entityId: t.id,
+        fieldPath: `transitions.${t.id}.targetZoneId`,
+        message: `Transition "${t.id}" dropped — target zone "${t.targetZoneId}" not found.`,
+        reason: 'Orphan target zone reference.',
+      });
+      dropped.push({ Id: t.id, ZoneId: t.zoneId, Reason: reason });
+      continue;
+    }
+
     transitions.push(convertTransition(t, parent, tileSizeCm));
     fidelity.push({
       level: 'lossless',

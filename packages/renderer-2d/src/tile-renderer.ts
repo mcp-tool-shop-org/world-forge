@@ -74,8 +74,17 @@ export class TileLayerRenderer {
     // Key is `${layerId}::${tileId}` so we can attribute each missing id back
     // to its layer in the summary.
     const missingCounts = new Map<string, number>();
+    // F-c95fe6c0: sibling of F-4cfcd60a. tileset.tiles is skip+warn; a
+    // layer whose tiles is omitted or {} used to TypeError and abort every
+    // remaining layer. Skip the bad layer and keep walking siblings.
+    const malformedLayers: string[] = [];
 
     for (const layer of sorted) {
+      if (!Array.isArray(layer.tiles)) {
+        malformedLayers.push(layer.id);
+        continue;
+      }
+
       const layerContainer = new Container();
 
       for (const placement of layer.tiles) {
@@ -109,6 +118,13 @@ export class TileLayerRenderer {
       const ids = malformedTilesets.map((id) => `"${id}"`).join(', ');
       console.warn(
         `TileLayerRenderer.update: ${malformedTilesets.length} tileset${malformedTilesets.length === 1 ? '' : 's'} omitted a tiles array — skipping ${ids}. Sibling tilesets still render.`,
+      );
+    }
+
+    if (malformedLayers.length > 0) {
+      const ids = malformedLayers.map((id) => `"${id}"`).join(', ');
+      console.warn(
+        `TileLayerRenderer.update: ${malformedLayers.length} layer${malformedLayers.length === 1 ? '' : 's'} omitted a tiles array — skipping ${ids}. Sibling layers still render.`,
       );
     }
 

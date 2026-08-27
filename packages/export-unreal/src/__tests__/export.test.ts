@@ -279,6 +279,34 @@ describe('exportToUnreal', () => {
     expect(result.fidelity.some((e) => e.level === 'lossless' && e.entityId === 't-lift')).toBe(true);
   });
 
+  it('F-56fbfdb5: convertTransitions drops a ghost targetZoneId instead of claiming lossless', () => {
+    const orphan: WorldProject = {
+      ...minimalProject,
+      transitions: [
+        {
+          id: 't-ghost-target',
+          zoneId: 'zone-entrance',
+          targetZoneId: 'zone-does-not-exist',
+          type: 'elevator',
+        },
+      ],
+    };
+    const result = convertTransitions(orphan);
+    expect(result.transitions.find((t) => t.Id === 't-ghost-target')).toBeUndefined();
+    expect(result.transitions).toHaveLength(0);
+    expect(result.dropped).toHaveLength(1);
+    expect(result.incomplete).toBe(true);
+    expect(result.dropped[0].Reason).toContain('zone-does-not-exist');
+    const entry = result.fidelity.find(
+      (e) => e.entityId === 't-ghost-target' && e.level === 'dropped' && e.domain === 'transitions',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.severity).toBe('error');
+    expect(entry?.fieldPath).toBe('transitions.t-ghost-target.targetZoneId');
+    expect(entry?.message).toContain('zone-does-not-exist');
+    expect(result.fidelity.some((e) => e.entityId === 't-ghost-target' && e.level === 'lossless')).toBe(false);
+  });
+
   it('F-8360c1fb: convertWorldPartition falls back on an unknown mode instead of emitting NaN cells', () => {
     const result = convertWorldPartition({
       ...minimalProject,

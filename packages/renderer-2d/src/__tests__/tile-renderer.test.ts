@@ -141,6 +141,32 @@ describe('TileLayerRenderer', () => {
     warnSpy.mockRestore();
   });
 
+  it('skips layers whose tiles is not an array and still renders sibling layers (F-c95fe6c0)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'floor-1', tags: [] }])];
+    const layers: TileLayer[] = [
+      {
+        id: 'layer-truncated',
+        name: 'Truncated',
+        zIndex: 0,
+        tiles: {} as unknown as TileLayer['tiles'],
+      },
+      {
+        id: 'layer-good',
+        name: 'Ground',
+        zIndex: 1,
+        tiles: [{ tileId: 'floor-1', gridX: 0, gridY: 0 }],
+      },
+    ];
+    expect(() => renderer.update(layers, tilesets)).not.toThrow();
+    expect(renderer.container.children.length).toBe(1);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/layer-truncated/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/tiles array/);
+    warnSpy.mockRestore();
+  });
+
   it('treats omitted/non-array tags as empty so a truncated tile still renders (F-4cfcd60a)', () => {
     const renderer = new TileLayerRenderer(32);
     const tilesets: Tileset[] = [{
