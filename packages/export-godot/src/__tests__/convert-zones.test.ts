@@ -56,6 +56,11 @@ describe('convertZones — basic conversion', () => {
         const { zones } = convertZones(proj([zone('zone-entrance', 'Entrance Hall')]));
         expect(zones[0].nodeName).toBe('Entrance_Hall');
     });
+
+    it('passes collisionType through so the scene builder can honour void/hazard hulls', () => {
+        const { zones } = convertZones(proj([zone('z1', 'Pit', { collisionType: 'void' })]));
+        expect(zones[0].collisionType).toBe('void');
+    });
 });
 
 describe('convertZones — empty-name fallback (F-00cf78db)', () => {
