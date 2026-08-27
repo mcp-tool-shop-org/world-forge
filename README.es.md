@@ -97,7 +97,7 @@ Convierte un `WorldProject` en un paquete de contenido para Godot 4 con texto de
 - **Ciudad:** mercados + estaciones de artesanía, y edificios (huellas `StaticBody2D`) / centros / fortalezas como marcadores de posición `Node2D`, todos los cuales llevan sus datos como metadatos.
 - **Modelado del mundo:** estratos verticales (bandas por zona `z_index` + conectores `StratumLink`), peligros tipados como regiones `Area2D` y metadatos de entrada de zona.
 - **Informe de fidelidad:** seguimiento estructurado de los datos sin pérdidas, aproximados o eliminados, verificados con el motor real de Godot 4 (simulación en segundo plano, 36 aserciones).
-- **Versión del formato:** `GODOT_PACK_FORMAT_VERSION` 1.0.0
+- **Versión del formato:** `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 

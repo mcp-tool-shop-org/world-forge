@@ -97,7 +97,7 @@ Convertit un `WorldProject` en un paquet de contenu Godot 4 avec du texte de sc�
 - **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
 - **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
 - **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
-- **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.0.0
+- **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 
