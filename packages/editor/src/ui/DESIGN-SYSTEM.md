@@ -17,21 +17,29 @@ This keeps theming easy (swap CSS variables) without turning every style into a 
 
 | Token | Usage |
 |---|---|
-| `--wf-bg-app` | Page background (`#0d1117`) |
-| `--wf-bg-panel` | Panel / card background (`#161b22`) |
-| `--wf-bg-control` | Button / widget fill (`#21262d`) |
-| `--wf-bg-hover` | Hover state fill (`#30363d`) |
-| `--wf-bg-input` | Text input background (`#0d1117`) |
-| `--wf-bg-overlay` | Modal backdrop (`rgba(0,0,0,0.7)`) |
-| `--wf-text-primary` | Main text (`#c9d1d9`) |
-| `--wf-text-muted` | Secondary text (`#8b949e`) |
-| `--wf-text-hint` | Disabled / placeholder (`#484f58`) |
-| `--wf-accent` | Links / highlights (`#58a6ff`) |
-| `--wf-success` | Green states (`#238636`) |
-| `--wf-danger` | Red / destructive (`#da3633`) |
-| `--wf-warning` | Orange / caution (`#d29922`) |
-| `--wf-border-default` | Standard borders (`#30363d`) |
-| `--wf-border-subtle` | Lighter separators (`#21262d`) |
+| `--wf-bg-app` | Page / canvas well |
+| `--wf-bg-panel` | Panel / card background |
+| `--wf-bg-elevated` | Menus, toasts, canvas labels |
+| `--wf-bg-control` | Button / widget fill |
+| `--wf-bg-hover` | Hover state fill |
+| `--wf-bg-input` | Text input background |
+| `--wf-bg-overlay` | Modal backdrop |
+| `--wf-text-primary` | Main text |
+| `--wf-text-muted` | Secondary / interactive chrome (Ctrl+K, mode pill) |
+| `--wf-text-hint` | Disabled / placeholder only |
+| `--wf-accent` | Links / highlights (fill) |
+| `--wf-accent-text` | Accent as 4.5:1 text on panel |
+| `--wf-success` | Green fill |
+| `--wf-success-text` | Green as 4.5:1 text on panel |
+| `--wf-danger` | Red fill |
+| `--wf-danger-text` | Red as 4.5:1 text on panel |
+| `--wf-warning` | Caution fill |
+| `--wf-warning-text` | Caution as 4.5:1 text on panel |
+| `--wf-border-default` | Standard borders |
+| `--wf-border-subtle` | Lighter separators |
+| `--wf-grid-line` | Canvas grid (≥3:1 on `--wf-bg-app`) |
+
+Light (`html.light` / `body.light`) and dark (`:root` / `html.dark` / `body.dark`) each define the full color table.
 
 ### Spacing
 

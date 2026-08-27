@@ -7,7 +7,7 @@ import { useModalStore } from './store/modal-store.js';
 import { getConnectionEndpoints, findConnectionAt, getKindStyle, connectionMidpoint } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
 import { findHitAt, findAllHitsAt, findAllInRect, type HitResult } from './hit-testing.js';
-import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
+import { computeSnap, getNonSelectedEdges, computeResizeSnap, SNAP_GUIDE_COLOR, type SnapGuide } from './snap.js';
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
 import { dispatchHotkey, shouldArmSpacePan, type HotkeyContext } from './hotkeys.js';
@@ -17,6 +17,7 @@ import { executeContextMenuAction } from './speed-panel-execute.js';
 import { fallbackTileColor } from './tile-render.js';
 import { nextId, generateZoneId } from './ids.js';
 import { pushToast } from './ui/Toast.js';
+import { readCssVar, resolveCssColor } from './ui/css-var.js';
 
 export { generateZoneId };
 
@@ -223,7 +224,9 @@ export function Canvas() {
 
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = readCssVar('--wf-bg-app', '#0d1117');
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const { panX, panY, zoom } = viewport;
     ctx.setTransform(zoom, 0, 0, zoom, -panX * zoom, -panY * zoom);
@@ -263,7 +266,7 @@ export function Canvas() {
 
     // Grid
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.strokeStyle = readCssVar('--wf-grid-line', '#5c636b');
       ctx.lineWidth = 1 / zoom;
       for (let x = 0; x <= project.map.gridWidth; x++) {
         ctx.beginPath();
@@ -377,13 +380,13 @@ export function Canvas() {
 
         // Visual state
         if (isSelConn) {
-          ctx.strokeStyle = '#58a6ff';
+          ctx.strokeStyle = readCssVar('--wf-accent', '#58a6ff');
           ctx.lineWidth = 3 / zoom;
         } else if (isHovered) {
-          ctx.strokeStyle = kindStyle.hoverColor;
+          ctx.strokeStyle = resolveCssColor(kindStyle.hoverColor, '#8b949e');
           ctx.lineWidth = 2 / zoom;
         } else {
-          ctx.strokeStyle = kindStyle.color;
+          ctx.strokeStyle = resolveCssColor(kindStyle.color, '#8b949e');
           ctx.lineWidth = 1 / zoom;
         }
 
@@ -429,9 +432,9 @@ export function Canvas() {
           ctx.font = `${fontSize / zoom}px 'Segoe UI', system-ui, sans-serif`;
           const textW = ctx.measureText(conn.label).width;
           const pad = 3 / zoom;
-          ctx.fillStyle = 'rgba(13,17,23,0.85)';
+          ctx.fillStyle = readCssVar('--wf-bg-elevated', '#1c2128');
           ctx.fillRect(mid.mx - textW / 2 - pad, mid.my - fontSize / zoom / 2 - pad, textW + pad * 2, fontSize / zoom + pad * 2);
-          ctx.fillStyle = '#c9d1d9';
+          ctx.fillStyle = readCssVar('--wf-text-primary', '#c9d1d9');
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(conn.label, mid.mx, mid.my);
@@ -781,7 +784,7 @@ export function Canvas() {
 
     // Snap guide lines (world-space) — drag and resize
     if ((isDragging || isResizing) && activeGuides.current.length > 0) {
-      ctx.strokeStyle = 'rgba(0, 180, 255, 0.7)';
+      ctx.strokeStyle = resolveCssColor(SNAP_GUIDE_COLOR, '#22d3ee');
       ctx.lineWidth = 1 / zoom;
       ctx.setLineDash([4 / zoom, 4 / zoom]);
       for (const guide of activeGuides.current) {
@@ -808,7 +811,7 @@ export function Canvas() {
           x: connectionCursor.current.sx / zoom + panX,
           y: connectionCursor.current.sy / zoom + panY,
         };
-        ctx.strokeStyle = '#22d3ee';
+        ctx.strokeStyle = readCssVar('--wf-snap-guide', '#22d3ee');
         ctx.lineWidth = 2 / zoom;
         ctx.setLineDash([6 / zoom, 4 / zoom]);
         ctx.beginPath();
@@ -1676,8 +1679,8 @@ export function Canvas() {
         style={{
           position: 'absolute', bottom: 8, right: 8,
           width: minimapWidth, height: minimapHeight,
-          background: 'rgba(13,17,23,0.85)',
-          border: '1px solid #30363d', borderRadius: 4,
+          background: 'var(--wf-bg-elevated)',
+          border: '1px solid var(--wf-border-default)', borderRadius: 4,
           cursor: 'pointer', overflow: 'hidden',
         }}
       >
@@ -1703,8 +1706,8 @@ export function Canvas() {
           top: (vpTop - minY) * scale,
           width: vpW * scale,
           height: vpH * scale,
-          border: '1.5px solid rgba(255,255,255,0.6)',
-          background: 'rgba(255,255,255,0.08)',
+          border: '1.5px solid var(--wf-accent)',
+          background: 'color-mix(in srgb, var(--wf-accent) 12%, transparent)',
           pointerEvents: 'none',
         }} />
       </div>
@@ -1718,7 +1721,7 @@ export function Canvas() {
         role="img"
         aria-label="World map canvas"
         tabIndex={0}
-        style={{ width: '100%', height: '100%', cursor }}
+        style={{ width: '100%', height: '100%', cursor, background: 'var(--wf-bg-app)' }}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -1736,10 +1739,10 @@ export function Canvas() {
             position: 'absolute',
             left: contextMenu.x,
             top: contextMenu.y,
-            background: '#1c2128',
-            border: '1px solid #30363d',
+            background: 'var(--wf-bg-elevated)',
+            border: '1px solid var(--wf-border-default)',
             borderRadius: 6,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            boxShadow: 'var(--wf-shadow-panel)',
             padding: '4px 0',
             zIndex: 100,
             minWidth: 160,
@@ -1782,12 +1785,12 @@ export function Canvas() {
                 // closure in context-menu-wiring.test.ts.
                 runContextMenuAction(action.id);
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#30363d'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wf-bg-hover)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               style={{
                 padding: '6px 12px',
                 fontSize: 12,
-                color: '#c9d1d9',
+                color: 'var(--wf-text-primary)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -1799,8 +1802,13 @@ export function Canvas() {
                 font: 'inherit',
               }}
             >
-              <span style={{ fontSize: 11, width: 20, textAlign: 'center', color: '#8b949e' }}>{action.icon}</span>
-              <span>{action.label}</span>
+              <span style={{ fontSize: 16, width: 16, textAlign: 'center', color: 'var(--wf-text-muted)', lineHeight: 1 }}>{action.icon}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                <span>{action.label}</span>
+                {action.description && (
+                  <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{action.description}</span>
+                )}
+              </span>
             </button>
           ))}
         </div>

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { SNAP_GUIDE_COLOR, SNAP_GUIDE_DASH, computeSnapDistance } from '../snap.js';
 
 describe('Snap Guide Visual Improvements (FT-011)', () => {
-  it('SNAP_GUIDE_COLOR is cyan-400', () => {
-    expect(SNAP_GUIDE_COLOR).toBe('#22d3ee');
+  it('SNAP_GUIDE_COLOR is the snap-guide token', () => {
+    expect(SNAP_GUIDE_COLOR).toBe('var(--wf-snap-guide)');
   });
 
   it('SNAP_GUIDE_DASH is [6, 4]', () => {

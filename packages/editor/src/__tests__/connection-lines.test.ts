@@ -219,7 +219,7 @@ describe('getKindStyle', () => {
   it('returns distinct style for channel (not passage fallback)', () => {
     const style = getKindStyle('channel');
     expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
-    expect(style.color).toContain('56,154,224');
+    expect(style.color).toBe('var(--wf-conn-channel)');
   });
 
   it('returns dashed style for route', () => {
@@ -243,7 +243,7 @@ describe('getKindStyle', () => {
   it('returns distinct style for trail', () => {
     const style = getKindStyle('trail');
     expect(style).not.toEqual(CONNECTION_KIND_STYLES.passage);
-    expect(style.color).toContain('87,166,74');
+    expect(style.color).toBe('var(--wf-conn-trail)');
   });
 });
 

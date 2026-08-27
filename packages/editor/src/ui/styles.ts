@@ -37,10 +37,13 @@ export const sectionHeader: CSSProperties = {
 export const toolbarRow: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
+  flexWrap: 'wrap',
   gap: 'var(--wf-space-2)',
   padding: '6px var(--wf-space-3)',
+  minHeight: 'var(--wf-topbar-height)',
   background: 'var(--wf-bg-panel)',
   borderBottom: '1px solid var(--wf-border-default)',
+  overflowX: 'auto',
 };
 
 // ── Buttons ──────────────────────────────────────────────────

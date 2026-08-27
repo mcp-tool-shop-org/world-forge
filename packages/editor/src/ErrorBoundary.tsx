@@ -105,9 +105,10 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div style={{ padding: 40, fontFamily: 'system-ui, sans-serif', color: '#e4e4e7', background: '#18181b', minHeight: '100vh' }}>
+      <div style={{ padding: 40, fontFamily: 'var(--wf-font-family)', color: 'var(--wf-text-primary)', background: 'var(--wf-bg-app)', minHeight: '100vh' }}>
+        <img src="/mark.svg" alt="World Forge" width={32} height={32} style={{ display: 'block', marginBottom: 16 }} />
         <h1 style={{ margin: '0 0 12px', fontSize: 24 }}>Something went wrong</h1>
-        <p style={{ margin: '0 0 20px', color: '#a1a1aa' }}>
+        <p style={{ margin: '0 0 20px', color: 'var(--wf-text-muted)' }}>
           The editor encountered an unexpected error.{' '}
           {/* EUB-015: localStorage access is wrapped in try-catch to handle SecurityError in restricted contexts */}
           {(() => { try { return typeof localStorage !== 'undefined' && localStorage.length >= 0 ? 'Your project data is preserved in local storage.' : ''; } catch { return 'Local storage is unavailable \u2014 data may not be preserved.'; } })()}
@@ -116,7 +117,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <pre
             data-testid="error-details-pre"
             style={{
-              padding: 16, background: '#27272a', borderRadius: 8, overflow: 'auto', fontSize: 13, color: '#f87171', marginBottom: 20,
+              padding: 16, background: 'var(--wf-bg-elevated)', borderRadius: 8, overflow: 'auto', fontSize: 13, color: 'var(--wf-danger-text)', marginBottom: 20,
               userSelect: 'text', WebkitUserSelect: 'text',
             }}
           >
@@ -133,28 +134,28 @@ export class ErrorBoundary extends Component<Props, State> {
           </pre>
         )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={this.handleReset} style={{ padding: '8px 20px', background: '#3f3f46', color: '#e4e4e7', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
+          <button onClick={this.handleReset} style={{ padding: '8px 20px', background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
             Try Again
           </button>
-          <button onClick={this.handleReload} style={{ padding: '8px 20px', background: '#3f3f46', color: '#e4e4e7', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
+          <button onClick={this.handleReload} style={{ padding: '8px 20px', background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>
             Reload Page
           </button>
           {/* ED-B-009: lets users paste a structured report into a GitHub issue. */}
           <button
             onClick={this.handleCopyDetails}
             data-testid="error-copy-details"
-            style={{ padding: '8px 20px', background: '#3f3f46', color: '#e4e4e7', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}
+            style={{ padding: '8px 20px', background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}
           >
             {this.state.copyFailed ? 'Copy failed — select the text below' : this.state.copied ? 'Copied!' : 'Copy error details'}
           </button>
           <button
             onClick={this.handleDownloadDetails}
             data-testid="error-download-details"
-            style={{ padding: '8px 20px', background: '#3f3f46', color: '#e4e4e7', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}
+            style={{ padding: '8px 20px', background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}
           >
             Download error.json
           </button>
-          <span style={{ fontSize: 12, color: '#a1a1aa' }}>
+          <span style={{ fontSize: 12, color: 'var(--wf-text-muted)' }}>
             {this.state.copied ? '(paste into a GitHub issue)' : this.state.copyFailed ? 'Clipboard blocked — select the report or download it.' : ''}
           </span>
         </div>
