@@ -28,10 +28,10 @@ const domainOrder: DepDomain[] = [
 ];
 
 const statusColors: Record<string, string> = {
-  broken: '#f85149',
-  mismatched: '#d29922',
-  orphaned: '#8b949e',
-  informational: '#58a6ff',
+  broken: 'var(--wf-danger-text)',
+  mismatched: 'var(--wf-warning)',
+  orphaned: 'var(--wf-text-muted)',
+  informational: 'var(--wf-accent)',
 };
 
 export function DependencyPanel() {
@@ -117,7 +117,7 @@ export function DependencyPanel() {
     return (
       <div>
         <PanelHeader title="Dependencies" />
-        <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
+        <div style={{ color: 'var(--wf-success-text)', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
           No dependency issues found.
         </div>
       </div>
@@ -129,12 +129,12 @@ export function DependencyPanel() {
       <PanelHeader title="Dependencies" badge={`${totalIssues} issue${totalIssues !== 1 ? 's' : ''}`} />
 
       {/* Summary bar */}
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
-        {brokenCount > 0 && <span style={{ color: '#f85149' }}>{brokenCount} broken</span>}
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 8 }}>
+        {brokenCount > 0 && <span style={{ color: 'var(--wf-danger-text)' }}>{brokenCount} broken</span>}
         {brokenCount > 0 && (mismatchedCount > 0 || orphanedCount > 0) && ', '}
-        {mismatchedCount > 0 && <span style={{ color: '#d29922' }}>{mismatchedCount} mismatched</span>}
+        {mismatchedCount > 0 && <span style={{ color: 'var(--wf-warning)' }}>{mismatchedCount} mismatched</span>}
         {mismatchedCount > 0 && orphanedCount > 0 && ', '}
-        {orphanedCount > 0 && <span style={{ color: '#8b949e' }}>{orphanedCount} orphaned</span>}
+        {orphanedCount > 0 && <span style={{ color: 'var(--wf-text-muted)' }}>{orphanedCount} orphaned</span>}
       </div>
 
       {/* Batch actions */}
@@ -165,7 +165,7 @@ export function DependencyPanel() {
               onKeyDown={onEnter(() => toggle(domain))}
               style={{
                 fontSize: 12, fontWeight: 600,
-                color: statusColors[edges[0]?.status] || '#8b949e',
+                color: statusColors[edges[0]?.status] || 'var(--wf-text-muted)',
                 cursor: 'pointer', padding: '4px 0', userSelect: 'none',
               }}
             >
@@ -174,12 +174,12 @@ export function DependencyPanel() {
             {!isCollapsed && edges.map((edge, i) => (
               <div key={i} style={{
                 fontSize: 11, padding: '4px 0 4px 14px',
-                borderLeft: `2px solid ${statusColors[edge.status] || '#30363d'}`,
+                borderLeft: `2px solid ${statusColors[edge.status] || 'var(--wf-border-default)'}`,
               }}>
                 {/* Status badge */}
                 <span style={{
                   display: 'inline-block', fontSize: 9, fontWeight: 600,
-                  background: statusColors[edge.status] || '#30363d',
+                  background: statusColors[edge.status] || 'var(--wf-border-default)',
                   color: '#fff', borderRadius: 4, padding: '1px 4px', marginRight: 4,
                 }}>
                   {edge.status}
@@ -191,14 +191,14 @@ export function DependencyPanel() {
                   tabIndex={0}
                   onClick={() => handleNavigate(edge)}
                   onKeyDown={onEnter(() => handleNavigate(edge))}
-                  style={{ color: '#58a6ff', cursor: 'pointer', textDecoration: 'underline' }}
+                  style={{ color: 'var(--wf-accent)', cursor: 'pointer', textDecoration: 'underline' }}
                   title={`Navigate to ${edge.sourceType} "${edge.sourceId}"`}
                 >
                   {edge.sourceLabel || edge.sourceId}
                 </span>
 
                 {/* Message */}
-                <div style={{ color: '#8b949e', fontSize: 10, marginTop: 2 }}>
+                <div style={{ color: 'var(--wf-text-muted)', fontSize: 10, marginTop: 2 }}>
                   {edge.message}
                 </div>
 
@@ -228,8 +228,8 @@ export function DependencyPanel() {
 
                 {/* Relink picker */}
                 {relinkKey === edgeKey(edge) && (
-                  <div style={{ marginTop: 4, padding: 4, background: '#161b22', borderRadius: 4, border: '1px solid #30363d' }}>
-                    <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 4 }}>
+                  <div style={{ marginTop: 4, padding: 4, background: 'var(--wf-bg-panel)', borderRadius: 4, border: '1px solid var(--wf-border-default)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 4 }}>
                       Choose a {edge.expectedKind} asset:
                     </div>
                     {repairsForEdge(edge, project)
@@ -242,10 +242,10 @@ export function DependencyPanel() {
                           onClick={() => handleRepair(repair)}
                           onKeyDown={onEnter(() => handleRepair(repair))}
                           style={{
-                            fontSize: 11, color: '#58a6ff', cursor: 'pointer', padding: '2px 4px',
+                            fontSize: 11, color: 'var(--wf-accent)', cursor: 'pointer', padding: '2px 4px',
                             borderRadius: 3,
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#1c2128'; }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wf-bg-elevated)'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
                           {repair.label}

@@ -1,16 +1,16 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
-import { PanelHeader, useFocusHighlight } from './shared.js';
+import { PanelHeader, EmptyState, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 
-const card: CSSProperties = { border: '1px solid #30363d', borderRadius: 4, padding: 6, marginBottom: 6, background: '#161b22' };
+const card: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, marginBottom: 6, background: 'var(--wf-bg-panel)' };
 const rowHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 };
-const lbl: CSSProperties = { display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4 };
-const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3, marginTop: 2 };
+const lbl: CSSProperties = { display: 'block', fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 };
+const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 3, marginTop: 2 };
 const addBtn: CSSProperties = { ...buttonBase, padding: '3px 8px', fontSize: 11, borderRadius: 3 };
 const delBtn: CSSProperties = { ...buttonBase, padding: '0 6px', fontSize: 12 };
-const section: CSSProperties = { fontSize: 11, color: '#8b949e', margin: '10px 0 4px' };
+const section: CSSProperties = { fontSize: 11, color: 'var(--wf-text-muted)', margin: '10px 0 4px' };
 const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 };
 const csv = (s: string): string[] => s.split(',').map((x) => x.trim()).filter(Boolean);
 const numInp = (v: number, on: (n: number) => void) => (
@@ -48,10 +48,17 @@ export function TownStructuresPanel() {
       <PanelHeader title="Town Structures" />
 
       <div style={{ ...section, marginTop: 0 }}>Buildings ({buildings.length})</div>
+      {buildings.length === 0 && hubs.length === 0 && strongholds.length === 0 && (
+        <EmptyState
+          title="No town structures"
+          description="Add a building, hub, or stronghold to furnish this zone."
+          icon={'\u25A8'}
+        />
+      )}
       {buildings.map((b) => (
         <div key={b.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{b.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{b.id}</span>
             <button title="Remove building" style={delBtn} onClick={() => removeBuilding(b.id)}>×</button>
           </div>
           <label style={lbl}>Name
@@ -78,7 +85,7 @@ export function TownStructuresPanel() {
       {hubs.map((h) => (
         <div key={h.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{h.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{h.id}</span>
             <button title="Remove hub" style={delBtn} onClick={() => removeHub(h.id)}>×</button>
           </div>
           <label style={lbl}>Name
@@ -103,7 +110,7 @@ export function TownStructuresPanel() {
       {strongholds.map((s) => (
         <div key={s.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{s.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{s.id}</span>
             <button title="Remove stronghold" style={delBtn} onClick={() => removeStronghold(s.id)}>×</button>
           </div>
           <label style={lbl}>Name

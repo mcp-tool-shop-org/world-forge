@@ -22,10 +22,10 @@ const FORMAT_LABELS: Record<ImportFormat, string> = {
 };
 
 const FORMAT_COLORS: Record<ImportFormat, React.CSSProperties> = {
-  'world-project': { background: '#0d2818', color: '#3fb950', border: '1px solid #238636' },
-  'content-pack': { background: '#2a1c08', color: '#d29922', border: '1px solid #9e6a03' },
-  'export-result': { background: '#2a1c08', color: '#d29922', border: '1px solid #9e6a03' },
-  'project-bundle': { background: '#0d2818', color: '#3fb950', border: '1px solid #238636' },
+  'world-project': { background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))', color: 'var(--wf-success-text)', border: '1px solid var(--wf-success)' },
+  'content-pack': { background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', color: 'var(--wf-warning)', border: '1px solid var(--wf-warning)' },
+  'export-result': { background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', color: 'var(--wf-warning)', border: '1px solid var(--wf-warning)' },
+  'project-bundle': { background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))', color: 'var(--wf-success-text)', border: '1px solid var(--wf-success)' },
 };
 
 export function ImportModal({ onClose }: Props) {
@@ -186,23 +186,23 @@ export function ImportModal({ onClose }: Props) {
           <button onClick={() => fileInput.current?.click()} style={buttonBase} disabled={reading}>
             {reading ? `Reading ${fileName}…` : 'Choose File'}
           </button>
-          {fileName && !reading && <span style={{ marginLeft: 8, color: '#8b949e', fontSize: 12 }}>{fileName}</span>}
+          {fileName && !reading && <span style={{ marginLeft: 8, color: 'var(--wf-text-muted)', fontSize: 12 }}>{fileName}</span>}
           <input ref={fileInput} type="file" accept=".json,.wfproject.json" style={{ display: 'none' }} onChange={handleFile} disabled={reading} />
         </div>
 
         {/* Error states */}
-        {parseError && <div role="alert" aria-live="assertive" style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{parseError}</div>}
-        {importError && <div role="alert" aria-live="assertive" style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{importError}</div>}
+        {parseError && <div role="alert" aria-live="assertive" style={{ color: 'var(--wf-danger-text)', fontSize: 13, marginBottom: 12 }}>{parseError}</div>}
+        {importError && <div role="alert" aria-live="assertive" style={{ color: 'var(--wf-danger-text)', fontSize: 13, marginBottom: 12 }}>{importError}</div>}
 
         {/* Standard format preview */}
         {result && p && (
           <div style={{ marginBottom: 16 }}>
             <span style={{ ...badgeStyle, ...FORMAT_COLORS[result.format] }}>{FORMAT_LABELS[result.format]}</span>
 
-            <div style={{ marginTop: 12, fontSize: 13, color: '#c9d1d9' }}>
+            <div style={{ marginTop: 12, fontSize: 13, color: 'var(--wf-text-primary)' }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>{p.name}</div>
-              <div style={{ color: '#8b949e', fontSize: 12, marginBottom: 8 }}>{p.description}</div>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: '#8b949e' }}>
+              <div style={{ color: 'var(--wf-text-muted)', fontSize: 12, marginBottom: 8 }}>{p.description}</div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--wf-text-muted)' }}>
                 <span>Zones: {p.zones.length}</span>
                 <span>Districts: {p.districts.length}</span>
                 <span>Entities: {p.entityPlacements.length}</span>
@@ -217,10 +217,10 @@ export function ImportModal({ onClose }: Props) {
 
             {result.warnings.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-warning)', marginBottom: 4 }}>
                   Warnings ({result.warnings.length})
                 </div>
-                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#d29922' }}>
+                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: 'var(--wf-warning)' }}>
                   {result.warnings.map((w, i) => (
                     <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {w}</div>
                   ))}
@@ -237,25 +237,25 @@ export function ImportModal({ onClose }: Props) {
               <>
                 <span style={{ ...badgeStyle, ...FORMAT_COLORS['project-bundle'] }}>{FORMAT_LABELS['project-bundle']}</span>
 
-                <div style={{ marginTop: 12, fontSize: 13, color: '#c9d1d9' }}>
+                <div style={{ marginTop: 12, fontSize: 13, color: 'var(--wf-text-primary)' }}>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>{bundleResult.bundle.name}</div>
                   {bundleResult.bundle.description && (
-                    <div style={{ color: '#8b949e', fontSize: 12, marginBottom: 4 }}>{bundleResult.bundle.description}</div>
+                    <div style={{ color: 'var(--wf-text-muted)', fontSize: 12, marginBottom: 4 }}>{bundleResult.bundle.description}</div>
                   )}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                     {bundleResult.bundle.mode && (
-                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}` }}>
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))', color: 'var(--wf-accent)', border: `1px solid ${ACTIVE_TAB_BG}` }}>
                         {bundleResult.bundle.mode}
                       </span>
                     )}
                     {bundleResult.bundle.genre && (
-                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)' }}>
                         {bundleResult.bundle.genre}
                       </span>
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: '#8b949e' }}>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--wf-text-muted)' }}>
                     <span>Zones: {bundleResult.bundle.summary.zones}</span>
                     <span>Districts: {bundleResult.bundle.summary.districts}</span>
                     <span>Entities: {bundleResult.bundle.summary.entities}</span>
@@ -266,20 +266,20 @@ export function ImportModal({ onClose }: Props) {
                 </div>
 
                 {deps?.kitRef && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: '#58a6ff' }}>
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--wf-accent)' }}>
                     Kit provenance: {deps.kitRef.name}
-                    {deps.kitRef.source && <span style={{ color: '#8b949e' }}> ({deps.kitRef.source})</span>}
+                    {deps.kitRef.source && <span style={{ color: 'var(--wf-text-muted)' }}> ({deps.kitRef.source})</span>}
                   </div>
                 )}
 
                 {deps && deps.assetPacks.length > 0 && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: '#8b949e' }}>
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--wf-text-muted)' }}>
                     Asset packs: {deps.assetPacks.map((pack) => pack.label).join(', ')}
                   </div>
                 )}
 
                 {bundleResult.bundle.exportedAt && (
-                  <div style={{ marginTop: 4, fontSize: 10, color: '#484f58' }}>
+                  <div style={{ marginTop: 4, fontSize: 10, color: 'var(--wf-text-muted)' }}>
                     Exported: {new Date(bundleResult.bundle.exportedAt).toLocaleString()}
                   </div>
                 )}
@@ -291,10 +291,10 @@ export function ImportModal({ onClose }: Props) {
             {/* Validation errors — F-f6081e61: these are blocking, not warnings */}
             {bundleResult.validationErrors.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#f85149', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-danger-text)', marginBottom: 4 }}>
                   Errors ({bundleResult.validationErrors.length})
                 </div>
-                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#f85149' }}>
+                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: 'var(--wf-danger-text)' }}>
                   {bundleResult.validationErrors.map((err, i) => (
                     <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {err}</div>
                   ))}
@@ -305,10 +305,10 @@ export function ImportModal({ onClose }: Props) {
             {/* Parse warnings (envelope), kept separate from validation errors */}
             {bundleWarnings && bundleWarnings.parseWarnings.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-warning)', marginBottom: 4 }}>
                   Parse warnings ({bundleWarnings.parseWarnings.length})
                 </div>
-                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#d29922' }}>
+                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: 'var(--wf-warning)' }}>
                   {bundleWarnings.parseWarnings.map((w, i) => (
                     <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {w}</div>
                   ))}
@@ -319,10 +319,10 @@ export function ImportModal({ onClose }: Props) {
             {/* Validation warnings that are not also listed as errors */}
             {bundleWarnings && bundleWarnings.validationWarnings.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-warning)', marginBottom: 4 }}>
                   Warnings ({bundleWarnings.validationWarnings.length})
                 </div>
-                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: '#d29922' }}>
+                <div style={{ maxHeight: 120, overflow: 'auto', fontSize: 11, color: 'var(--wf-warning)' }}>
                   {bundleWarnings.validationWarnings.map((w, i) => (
                     <div key={i} style={{ marginBottom: 2 }}>{'\u2022'} {w}</div>
                   ))}
@@ -334,7 +334,7 @@ export function ImportModal({ onClose }: Props) {
 
         {/* Unsaved changes warning */}
         {confirmOverwrite && (
-          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: '#2a1c08', border: '1px solid #9e6a03', fontSize: 12, color: '#d29922' }}>
+          <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-warning)', fontSize: 12, color: 'var(--wf-warning)' }}>
             Your current project has unsaved changes. Import anyway?
           </div>
         )}
@@ -347,7 +347,7 @@ export function ImportModal({ onClose }: Props) {
             disabled={!importEnabled || reading}
             style={{
               ...buttonBase,
-              background: importEnabled && !reading ? (confirmOverwrite ? '#9e6a03' : 'var(--wf-success)') : 'var(--wf-bg-control)',
+              background: importEnabled && !reading ? (confirmOverwrite ? 'var(--wf-warning)' : 'var(--wf-success)') : 'var(--wf-bg-control)',
               color: importEnabled && !reading ? '#fff' : 'var(--wf-text-hint)',
               cursor: importEnabled && !reading ? 'pointer' : 'default',
               border: 'none',
@@ -372,7 +372,7 @@ function DepHealthPreview({ project }: { project: import('@world-forge/schema').
 
   if (issues === 0 && orphaned === 0) {
     return (
-      <div style={{ marginTop: 8, fontSize: 11, color: '#3fb950' }}>
+      <div style={{ marginTop: 8, fontSize: 11, color: 'var(--wf-success-text)' }}>
         Dependencies: all references resolved
       </div>
     );
@@ -380,16 +380,16 @@ function DepHealthPreview({ project }: { project: import('@world-forge/schema').
 
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 11, color: '#8b949e' }}>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>
         Dependencies:{' '}
-        {broken > 0 && <span style={{ color: '#f85149' }}>{broken} broken</span>}
+        {broken > 0 && <span style={{ color: 'var(--wf-danger-text)' }}>{broken} broken</span>}
         {broken > 0 && (mismatched > 0 || orphaned > 0) && ', '}
-        {mismatched > 0 && <span style={{ color: '#d29922' }}>{mismatched} mismatched</span>}
+        {mismatched > 0 && <span style={{ color: 'var(--wf-warning)' }}>{mismatched} mismatched</span>}
         {mismatched > 0 && orphaned > 0 && ', '}
-        {orphaned > 0 && <span style={{ color: '#8b949e' }}>{orphaned} orphaned</span>}
+        {orphaned > 0 && <span style={{ color: 'var(--wf-text-muted)' }}>{orphaned} orphaned</span>}
       </div>
       {issues > 0 && (
-        <div style={{ marginTop: 4, fontSize: 10, color: '#d29922' }}>
+        <div style={{ marginTop: 4, fontSize: 10, color: 'var(--wf-warning)' }}>
           This project has broken references that can be repaired after import
         </div>
       )}

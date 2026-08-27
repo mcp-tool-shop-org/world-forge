@@ -9,8 +9,25 @@ import { SPEED_PANEL_ACTIONS, filterActions, type SpeedPanelAction, type Grouped
 import { executeAction, executeMacro } from '../speed-panel-execute.js';
 import { productionExecuteStores, handleSpeedPanelExecuteResult, formatSpeedPanelFailure } from './speed-panel-stores.js';
 import { pushToast } from '../ui/Toast.js';
+import { EmptyState } from './shared.js';
 
-const SECTION_STYLE: React.CSSProperties = { padding: '4px 8px', fontSize: 10, color: 'var(--wf-text-muted)', letterSpacing: 0.5 };
+const SPEED_GLYPH: Record<string, string> = {
+  'new-zone': '+',
+  'fit-content': '\u25A1',
+  'edit-props': '\u270E',
+  'delete': '\u2715',
+  'duplicate': '\u2398',
+  'assign-district': '\u25A6',
+  'place-entity': '\u25C9',
+  'connect-from': '\u2192',
+  'swap-direction': '\u21C4',
+  'merge-zones': '\u29C9',
+  'set-elevation': '\u2191',
+  'open-review': '\u2630',
+  'export-summary': '\u2913',
+};
+
+const SECTION_STYLE: React.CSSProperties = { padding: 'var(--wf-space-1) var(--wf-space-2)', fontSize: 10, color: 'var(--wf-text-muted)', letterSpacing: 0.5 };
 
 export function SpeedPanel() {
   const { speedPanelPosition, speedPanelContext, closeSpeedPanel, speedPanelEditMode, toggleSpeedPanelEditMode } = useEditorStore();
@@ -62,7 +79,8 @@ export function SpeedPanel() {
     const parent = panelRef.current.parentElement;
     if (!parent) return;
     const pRect = parent.getBoundingClientRect();
-    const pw = 240, ph = panelRef.current.offsetHeight || 400;
+    const pw = panelRef.current.offsetWidth || 240;
+    const ph = panelRef.current.offsetHeight || 400;
     let left = speedPanelPosition.x;
     let top = speedPanelPosition.y;
     if (left + pw > pRect.width) left = pRect.width - pw - 4;
@@ -142,7 +160,7 @@ export function SpeedPanel() {
   return (
     <>
       {/* Backdrop — click to dismiss */}
-      <div onClick={closeSpeedPanel} style={{ position: 'absolute', inset: 0, zIndex: 90 }} />
+      <div onClick={closeSpeedPanel} style={{ position: 'absolute', inset: 0, zIndex: 'var(--wf-z-speed)' as unknown as number }} />
       {/* Panel */}
       <div
         ref={panelRef}
@@ -151,13 +169,13 @@ export function SpeedPanel() {
           position: 'absolute',
           left: offset.left || speedPanelPosition.x,
           top: offset.top || speedPanelPosition.y,
-          width: 240,
-          maxHeight: 400,
+          width: 'calc(var(--wf-sidebar-width) + var(--wf-space-5))',
+          maxHeight: 'min(80vh, calc(var(--wf-space-6) * 17))',
           background: 'var(--wf-bg-panel)',
           border: '1px solid var(--wf-border-default)',
           borderRadius: 6,
           boxShadow: 'var(--wf-shadow-panel)',
-          zIndex: 91,
+          zIndex: 'calc(var(--wf-z-speed) + 1)' as unknown as number,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -173,7 +191,7 @@ export function SpeedPanel() {
             placeholder="Quick action..."
             style={{
               background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: 'none',
-              padding: '8px 10px', fontSize: 12, outline: 'none', flex: 1, minWidth: 0,
+              padding: 'var(--wf-space-2) var(--wf-space-3)', fontSize: 12, outline: 'none', flex: 1, minWidth: 0,
             }}
           />
           <button
@@ -183,8 +201,8 @@ export function SpeedPanel() {
             aria-pressed={speedPanelEditMode}
             style={{
               background: speedPanelEditMode ? 'var(--wf-bg-hover)' : 'transparent',
-              border: 'none', color: speedPanelEditMode ? '#f0f6fc' : 'var(--wf-text-muted)',
-              cursor: 'pointer', padding: '0 8px', fontSize: 12,
+              border: 'none', color: speedPanelEditMode ? 'var(--wf-text-primary)' : 'var(--wf-text-muted)',
+              cursor: 'pointer', padding: '0 var(--wf-space-2)', fontSize: 12,
             }}
           >
             {'\u270E'}
@@ -193,7 +211,7 @@ export function SpeedPanel() {
 
         {/* Macro status banner */}
         {macroStatus && (
-          <div style={{ padding: '4px 8px', fontSize: 10, color: 'var(--wf-danger-text)', background: '#1c1107', borderBottom: '1px solid var(--wf-border-default)' }}>
+          <div style={{ padding: 'var(--wf-space-1) var(--wf-space-2)', fontSize: 10, color: 'var(--wf-danger-text)', background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', borderBottom: '1px solid var(--wf-border-default)' }}>
             {macroStatus}
             <button
               type="button"
@@ -297,10 +315,10 @@ export function SpeedPanel() {
                 <div
                   onClick={() => { if (!speedPanelEditMode) runMacro(m); }}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '5px 8px', cursor: 'pointer', fontSize: 12,
+                    display: 'flex', alignItems: 'center', gap: 'var(--wf-space-2)',
+                    padding: 'var(--wf-space-1) var(--wf-space-2)', cursor: 'pointer', fontSize: 12,
                     background: idx === activeIdx ? 'var(--wf-bg-hover)' : 'transparent',
-                    color: idx === activeIdx ? '#f0f6fc' : 'var(--wf-text-primary)',
+                    color: 'var(--wf-text-primary)',
                   }}
                 >
                   <span style={{ color: 'var(--wf-success-text)', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
@@ -423,7 +441,11 @@ export function SpeedPanel() {
           })}
 
           {allNavigable.length === 0 && (
-            <div style={{ padding: '12px 10px', fontSize: 12, color: 'var(--wf-text-hint)' }}>No actions</div>
+            <EmptyState
+              title="No actions"
+              description="Nothing matches this context. Try another target or clear the filter."
+              icon={'\u2630'}
+            />
           )}
         </div>
       </div>
@@ -447,23 +469,23 @@ function ActionRow({ action, active, isPinned, onTogglePin, onExecute, editMode,
     <div
       onClick={onExecute}
       style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '5px 8px', cursor: 'pointer', fontSize: 12,
+        display: 'flex', alignItems: 'center', gap: 'var(--wf-space-2)',
+        padding: 'var(--wf-space-1) var(--wf-space-2)', cursor: 'pointer', fontSize: 12,
         background: active ? 'var(--wf-bg-hover)' : 'transparent',
-        color: active ? '#f0f6fc' : 'var(--wf-text-primary)',
+        color: 'var(--wf-text-primary)',
       }}
     >
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
-        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 11, color: isPinned ? '#ffd700' : 'var(--wf-text-hint)', userSelect: 'none', flexShrink: 0, padding: 0 }}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 11, color: isPinned ? 'var(--wf-warning)' : 'var(--wf-text-muted)', userSelect: 'none', flexShrink: 0, padding: 0 }}
         title={isPinned ? 'Unpin' : 'Pin'}
         aria-label={isPinned ? `Unpin ${action.label}` : `Pin ${action.label}`}
         aria-pressed={isPinned}
       >
         {isPinned ? '\u2605' : '\u2606'}
       </button>
-      <span style={{ color: 'var(--wf-text-muted)', fontSize: 10, width: 20, textAlign: 'center', flexShrink: 0 }}>{action.icon}</span>
+      <span style={{ color: 'var(--wf-text-muted)', fontSize: 14, width: 24, textAlign: 'center', flexShrink: 0 }}>{SPEED_GLYPH[action.id] ?? action.icon}</span>
       <span style={{ flex: 1 }}>{action.label}</span>
       {editMode && isPinned && (
         <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>

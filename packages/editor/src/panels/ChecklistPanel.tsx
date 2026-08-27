@@ -173,7 +173,7 @@ export function ChecklistPanel() {
               }}>
                 {step.label}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--wf-text-hint)' }}>{step.description}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{step.description}</div>
             </div>
           </div>
         ))}
@@ -228,13 +228,13 @@ const headerStyle: React.CSSProperties = {
 
 const kbdStyle: React.CSSProperties = {
   display: 'inline-block',
-  background: 'var(--wf-bg-control, #21262d)',
-  border: '1px solid var(--wf-border-default, #30363d)',
+  background: 'var(--wf-bg-control)',
+  border: '1px solid var(--wf-border-default)',
   borderRadius: 3,
   padding: '1px 5px',
   fontFamily: 'monospace',
   fontSize: 10,
-  color: 'var(--wf-accent, #58a6ff)',
+  color: 'var(--wf-accent)',
   lineHeight: '16px',
   minWidth: 20,
   textAlign: 'center',
@@ -273,7 +273,7 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
           tabIndex={0}
           onClick={() => setRightTab('deps')}
           onKeyDown={onEnter(() => setRightTab('deps'))}
-          style={{ fontSize: 10, color: '#8b949e', marginBottom: 4, cursor: 'pointer' }}
+          style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 4, cursor: 'pointer' }}
         >
           {orphaned} orphaned asset{orphaned !== 1 ? 's' : ''} — review in Deps tab
         </div>

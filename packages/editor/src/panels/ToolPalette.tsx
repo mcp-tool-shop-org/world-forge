@@ -5,16 +5,17 @@ import { computeContentBounds, fitBoundsToViewport, centerOnZone, frameBounds, M
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { buttonBase } from '../ui/styles.js';
 import { defaultShowElevation } from './zone-2d5-helpers.js';
+import { LayerChip } from './shared.js';
 
-const tools: { id: EditorTool; label: string; key: string }[] = [
-  { id: 'select', label: 'Select', key: 'V' },
-  { id: 'zone-paint', label: 'Zone', key: 'Z' },
-  { id: 'connection', label: 'Connect', key: 'C' },
-  { id: 'entity-place', label: 'Entity', key: 'E' },
-  { id: 'landmark', label: 'Landmark', key: 'L' },
-  { id: 'spawn', label: 'Spawn', key: 'S' },
-  { id: 'tile-paint', label: 'Tiles', key: 'T' },
-  { id: 'prop-place', label: 'Prop', key: 'O' },
+const tools: { id: EditorTool; label: string; key: string; icon: string }[] = [
+  { id: 'select', label: 'Select', key: 'V', icon: '\u25C7' },
+  { id: 'zone-paint', label: 'Zone', key: 'Z', icon: '\u25A6' },
+  { id: 'connection', label: 'Connect', key: 'C', icon: '\u2194' },
+  { id: 'entity-place', label: 'Entity', key: 'E', icon: '\u25C9' },
+  { id: 'landmark', label: 'Landmark', key: 'L', icon: '\u25B2' },
+  { id: 'spawn', label: 'Spawn', key: 'S', icon: '\u2605' },
+  { id: 'tile-paint', label: 'Tiles', key: 'T', icon: '\u25A3' },
+  { id: 'prop-place', label: 'Prop', key: 'O', icon: '\u25A2' },
 ];
 
 export function ToolPalette() {
@@ -113,27 +114,29 @@ export function ToolPalette() {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Tools</div>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Tools</div>
       {tools.map((t) => (
         <button
           key={t.id}
           onClick={() => setTool(t.id)}
           style={{
-            display: 'block', width: '100%', textAlign: 'left',
+            display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
             padding: '4px 8px', marginBottom: 2, cursor: 'pointer', fontSize: 12,
-            background: activeTool === t.id ? ACTIVE_TAB_BG : '#21262d',
-            color: activeTool === t.id ? '#fff' : '#c9d1d9',
-            border: '1px solid #30363d', borderRadius: 3,
+            background: activeTool === t.id ? ACTIVE_TAB_BG : 'var(--wf-bg-control)',
+            color: activeTool === t.id ? '#fff' : 'var(--wf-text-primary)',
+            border: '1px solid var(--wf-border-default)', borderRadius: 3,
           }}
         >
-          [{t.key}] {t.label}
+          <span style={{ width: 16, textAlign: 'center', flexShrink: 0 }} aria-hidden>{t.icon}</span>
+          <span style={{ flex: 1 }}>{t.label}</span>
+          <kbd style={{ fontSize: 10, color: activeTool === t.id ? '#fff' : 'var(--wf-text-muted)' }}>{t.key}</kbd>
         </button>
       ))}
 
-      <div style={{ marginTop: 12, fontSize: 11, color: '#8b949e' }}>Viewport</div>
+      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--wf-text-muted)' }}>Viewport</div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 4, alignItems: 'center' }}>
         <button style={btnStyle} onClick={() => setViewport({ zoom: Math.min(MAX_ZOOM, viewport.zoom + 0.1) })}>+</button>
-        <span style={{ fontSize: 11, color: '#c9d1d9', minWidth: 36, textAlign: 'center' }}>{zoomPercent}%</span>
+        <span style={{ fontSize: 11, color: 'var(--wf-text-primary)', minWidth: 36, textAlign: 'center' }}>{zoomPercent}%</span>
         <button style={btnStyle} onClick={() => setViewport({ zoom: Math.max(MIN_ZOOM, viewport.zoom - 0.1) })}>-</button>
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -142,51 +145,22 @@ export function ToolPalette() {
         <button style={btnStyle} onClick={resetViewport}>Reset</button>
       </div>
 
-      <div style={{ marginTop: 12, fontSize: 11, color: '#8b949e' }}>Layers</div>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showGrid} onChange={toggleGrid} /> Grid
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showConnections} onChange={toggleConnections} /> Connections
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showEntities} onChange={toggleEntities} /> Entities
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showLandmarks} onChange={toggleLandmarks} /> Landmarks
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showSpawns} onChange={toggleSpawns} /> Spawns
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showBackgrounds} onChange={toggleBackgrounds} /> Backgrounds
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showTiles} onChange={toggleTiles} /> Tiles
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showProps} onChange={toggleProps} /> Props
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showAmbient} onChange={toggleAmbient} /> Ambient
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showMinimap} onChange={toggleMinimap} /> Minimap
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showElevation} onChange={toggleElevation} /> Show Elevation
-      </label>
-      <hr style={{ margin: '6px 0 4px', borderColor: '#30363d', borderStyle: 'solid', borderWidth: '1px 0 0' }} />
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={snapToObjects} onChange={toggleSnapToObjects} /> Snap to Objects
-      </label>
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showPerfStats} onChange={togglePerfStats} /> Perf Stats
-      </label>
-      {/* INF-FT-003: toggle for the DiagnosticsOverlay (PixiJS renderer health HUD). */}
-      <label style={{ display: 'block', fontSize: 12, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showRendererDiagnostics} onChange={toggleRendererDiagnostics} /> Show renderer diagnostics
-      </label>
+      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--wf-text-muted)' }}>Layers</div>
+      <LayerChip label="Grid" pressed={showGrid} onToggle={toggleGrid} />
+      <LayerChip label="Connections" pressed={showConnections} onToggle={toggleConnections} />
+      <LayerChip label="Entities" pressed={showEntities} onToggle={toggleEntities} />
+      <LayerChip label="Landmarks" pressed={showLandmarks} onToggle={toggleLandmarks} />
+      <LayerChip label="Spawns" pressed={showSpawns} onToggle={toggleSpawns} />
+      <LayerChip label="Backgrounds" pressed={showBackgrounds} onToggle={toggleBackgrounds} />
+      <LayerChip label="Tiles" pressed={showTiles} onToggle={toggleTiles} />
+      <LayerChip label="Props" pressed={showProps} onToggle={toggleProps} />
+      <LayerChip label="Ambient" pressed={showAmbient} onToggle={toggleAmbient} />
+      <LayerChip label="Minimap" pressed={showMinimap} onToggle={toggleMinimap} />
+      <LayerChip label="Show Elevation" pressed={showElevation} onToggle={toggleElevation} />
+      <hr style={{ margin: '6px 0 4px', borderColor: 'var(--wf-border-default)', borderStyle: 'solid', borderWidth: '1px 0 0' }} />
+      <LayerChip label="Snap to Objects" pressed={snapToObjects} onToggle={toggleSnapToObjects} />
+      <LayerChip label="Perf Stats" pressed={showPerfStats} onToggle={togglePerfStats} />
+      <LayerChip label="Show renderer diagnostics" pressed={showRendererDiagnostics} onToggle={toggleRendererDiagnostics} />
     </div>
   );
 }

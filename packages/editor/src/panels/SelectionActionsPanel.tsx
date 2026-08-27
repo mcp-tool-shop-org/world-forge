@@ -89,7 +89,7 @@ export function SelectionActionsPanel() {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 13, color: '#c9d1d9', fontWeight: 'bold' }}>
+        <span style={{ fontSize: 13, color: 'var(--wf-text-primary)', fontWeight: 'bold' }}>
           {count} objects selected
         </span>
         <button onClick={clearSelection} style={smallBtn}>Deselect</button>
@@ -97,7 +97,7 @@ export function SelectionActionsPanel() {
 
       {/* Align */}
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Align</div>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Align</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
           <button onClick={() => handleAlign('left')} style={actionBtn} title="Align left edges">Left</button>
           <button onClick={() => handleAlign('center-h')} style={actionBtn} title="Align horizontal centers">Center H</button>
@@ -110,7 +110,7 @@ export function SelectionActionsPanel() {
 
       {/* Distribute */}
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Distribute</div>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Distribute</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
           <button
             onClick={() => handleDistribute('horizontal')}
@@ -134,8 +134,8 @@ export function SelectionActionsPanel() {
       {/* Zone-specific operations */}
       {zoneCount > 0 && (
         <>
-          <div style={{ borderTop: '1px solid #30363d', marginTop: 8, paddingTop: 8 }}>
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>
+          <div style={{ borderTop: '1px solid var(--wf-border-default)', marginTop: 8, paddingTop: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>
               Zone Operations ({zoneCount} zone{zoneCount > 1 ? 's' : ''})
             </div>
           </div>
@@ -186,7 +186,7 @@ export function SelectionActionsPanel() {
           {zoneCount > 1 && (
             <button
               onClick={handleDeleteAll}
-              style={{ ...smallBtn, color: '#f85149', borderColor: '#f8514966', width: '100%', marginTop: 4 }}
+              style={{ ...smallBtn, color: 'var(--wf-danger-text)', borderColor: 'var(--wf-danger-text)66', width: '100%', marginTop: 4 }}
             >
               Delete {zoneCount} zones
             </button>

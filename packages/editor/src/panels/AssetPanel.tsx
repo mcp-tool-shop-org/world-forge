@@ -4,14 +4,9 @@ import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import type { AssetKind } from '@world-forge/schema';
 import { sectionHeader as sectionTitle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, labelText } from '../ui/styles.js';
+import { EmptyState, KIND_TOKEN } from './shared.js';
 
-const KIND_COLORS: Record<AssetKind, string> = {
-  portrait: '#58a6ff',
-  sprite: '#3fb950',
-  background: '#bc8cff',
-  icon: '#d29922',
-  tileset: '#39d5ff',
-};
+const KIND_COLORS: Record<AssetKind, string> = KIND_TOKEN as Record<AssetKind, string>;
 
 const KINDS: AssetKind[] = ['portrait', 'sprite', 'background', 'icon', 'tileset'];
 
@@ -94,42 +89,42 @@ export function AssetPanel() {
         }}
         onDragEnd={() => setDraggingAssetId(null)}
         style={{
-          border: draggingAssetId === a.id ? '1px solid #58a6ff' : '1px solid #30363d',
+          border: draggingAssetId === a.id ? '1px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
           borderRadius: 4, padding: 8, marginBottom: 4,
-          background: isExpanded ? '#161b22' : '#0d1117', cursor: 'grab',
+          background: isExpanded ? 'var(--wf-bg-panel)' : 'var(--wf-bg-app)', cursor: 'grab',
         }}
         onClick={() => setExpandedId(isExpanded ? null : a.id)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {/* FT-027: Drag grip handle */}
-          <span style={{ fontSize: 10, color: '#484f58', cursor: 'grab', userSelect: 'none' }} title="Drag onto a zone or entity to assign this asset">{'\u2630'}</span>
+          <span style={{ fontSize: 10, color: 'var(--wf-text-muted)', cursor: 'grab', userSelect: 'none' }} title="Drag onto a zone or entity to assign this asset">{'\u2630'}</span>
           <span style={{
             fontSize: 10, fontWeight: 600, color: '#fff', padding: '1px 6px',
             borderRadius: 3, background: KIND_COLORS[a.kind],
           }}>
             {a.kind}
           </span>
-          <span style={{ fontSize: 12, color: '#c9d1d9', flex: 1 }}>{a.label}</span>
+          <span style={{ fontSize: 12, color: 'var(--wf-text-primary)', flex: 1 }}>{a.label}</span>
           {/* FT-028: Generic name advisory */}
           {isGenericAssetName(a.label) && (
             <span
               title="Consider a descriptive name like 'npc-merchant-01'"
-              style={{ fontSize: 10, color: '#d29922', cursor: 'help' }}
+              style={{ fontSize: 10, color: 'var(--wf-warning)', cursor: 'help' }}
             >
               {'\u26A0'} name
             </span>
           )}
-          {isOrphan && <span style={{ fontSize: 10, color: '#d29922' }}>unused</span>}
+          {isOrphan && <span style={{ fontSize: 10, color: 'var(--wf-warning)' }}>unused</span>}
           <button
             onClick={(e) => { e.stopPropagation(); removeAsset(a.id); }}
-            style={{ ...smallBtnStyle, background: '#da3633', color: '#fff', border: 'none' }}
+            style={{ ...smallBtnStyle, background: 'var(--wf-danger)', color: '#fff', border: 'none' }}
           >
             x
           </button>
         </div>
-        <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>{a.path || '(no path)'}</div>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 2 }}>{a.path || '(no path)'}</div>
         {a.tags.length > 0 && (
-          <div style={{ fontSize: 10, color: '#8b949e', marginTop: 2 }}>{a.tags.join(', ')}</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginTop: 2 }}>{a.tags.join(', ')}</div>
         )}
 
         {isExpanded && (
@@ -187,7 +182,7 @@ export function AssetPanel() {
       {/* Packs section */}
       {project.assetPacks.length > 0 && (
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>
             Packs ({project.assetPacks.length})
           </div>
           {project.assetPacks.map((pack) => {
@@ -197,18 +192,18 @@ export function AssetPanel() {
               <div
                 key={pack.id}
                 style={{
-                  border: '1px solid #30363d', borderRadius: 4, padding: 8, marginBottom: 4,
-                  background: isExpanded ? '#161b22' : '#0d1117', cursor: 'pointer',
+                  border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 8, marginBottom: 4,
+                  background: isExpanded ? 'var(--wf-bg-panel)' : 'var(--wf-bg-app)', cursor: 'pointer',
                 }}
                 onClick={() => setExpandedPackId(isExpanded ? null : pack.id)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', padding: '1px 6px', borderRadius: 3, background: '#6e7681' }}>pack</span>
-                  <span style={{ fontSize: 12, color: '#c9d1d9', flex: 1 }}>{pack.label}</span>
-                  <span style={{ fontSize: 10, color: '#8b949e' }}>v{pack.version} ({packAssetCount})</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', padding: '1px 6px', borderRadius: 3, background: 'var(--wf-text-muted)' }}>pack</span>
+                  <span style={{ fontSize: 12, color: 'var(--wf-text-primary)', flex: 1 }}>{pack.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>v{pack.version} ({packAssetCount})</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeAssetPack(pack.id); }}
-                    style={{ ...smallBtnStyle, background: '#da3633', color: '#fff', border: 'none' }}
+                    style={{ ...smallBtnStyle, background: 'var(--wf-danger)', color: '#fff', border: 'none' }}
                   >
                     x
                   </button>
@@ -280,7 +275,7 @@ export function AssetPanel() {
           onChange={(e) => setSearch(e.target.value)}
         />
         {project.assetPacks.length > 0 && (
-          <label style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'nowrap', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <label style={{ fontSize: 10, color: 'var(--wf-text-muted)', whiteSpace: 'nowrap', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
             <input type="checkbox" checked={groupByPack} onChange={(e) => setGroupByPack(e.target.checked)} />
             Group
           </label>
@@ -290,9 +285,16 @@ export function AssetPanel() {
       {/* Assets list */}
       <div style={{ marginTop: 8 }}>
         {assets.length === 0 && (
-          <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
-            {project.assets.length === 0 ? 'No assets yet. Add one to get started.' : 'No assets match the filter.'}
-          </div>
+          <EmptyState
+            title={project.assets.length === 0 ? 'No assets yet' : 'No matching assets'}
+            description={project.assets.length === 0
+              ? 'Add an asset or pack to bind portraits, sprites, and tilesets to the world.'
+              : 'No assets match the current filter.'}
+            icon={'\u25A8'}
+            actions={project.assets.length === 0
+              ? [{ label: '+ Add Asset', onClick: handleAddAsset }]
+              : undefined}
+          />
         )}
         {groupByPack ? (
           <>
@@ -301,7 +303,7 @@ export function AssetPanel() {
               if (packAssets.length === 0) return null;
               return (
                 <div key={pack.id}>
-                  <div style={{ fontSize: 11, color: '#58a6ff', fontWeight: 600, margin: '8px 0 4px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--wf-accent)', fontWeight: 600, margin: '8px 0 4px' }}>
                     {pack.label} ({packAssets.length})
                   </div>
                   {packAssets.map(renderAssetCard)}
@@ -313,7 +315,7 @@ export function AssetPanel() {
               if (unassigned.length === 0) return null;
               return (
                 <div>
-                  <div style={{ fontSize: 11, color: '#8b949e', fontWeight: 600, margin: '8px 0 4px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', fontWeight: 600, margin: '8px 0 4px' }}>
                     Unassigned ({unassigned.length})
                   </div>
                   {unassigned.map(renderAssetCard)}
@@ -329,9 +331,9 @@ export function AssetPanel() {
       {/* FT-027: Drag-and-drop hint tooltip */}
       {draggingAssetId && (
         <div style={{
-          position: 'sticky', bottom: 0, fontSize: 10, color: '#58a6ff',
-          background: 'rgba(22,27,34,0.95)', padding: '6px 8px', borderRadius: 4,
-          border: '1px solid #30363d', marginTop: 4, textAlign: 'center',
+          position: 'sticky', bottom: 0, fontSize: 10, color: 'var(--wf-accent)',
+          background: 'color-mix(in srgb, var(--wf-bg-panel) 95%, transparent)', padding: '6px 8px', borderRadius: 4,
+          border: '1px solid var(--wf-border-default)', marginTop: 4, textAlign: 'center',
         }}>
           Drag onto a zone or entity to assign this asset
         </div>
@@ -339,7 +341,7 @@ export function AssetPanel() {
 
       {/* Diagnostics */}
       {(orphanCount > 0 || orphanedPackCount > 0 || unassignedCount > 0) && (
-        <div style={{ fontSize: 11, color: '#d29922', marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-warning)', marginTop: 8 }}>
           {orphanCount > 0 && <div>{orphanCount} asset{orphanCount !== 1 ? 's' : ''} unreferenced</div>}
           {orphanedPackCount > 0 && <div>{orphanedPackCount} pack{orphanedPackCount !== 1 ? 's' : ''} with no assets</div>}
           {unassignedCount > 0 && project.assetPacks.length > 0 && (

@@ -4,21 +4,19 @@ import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { assembleSceneData } from './scene-preview-utils.js';
+import { EmptyState, ROLE_TOKEN } from './shared.js';
 
-const roleColors: Record<string, string> = {
-  npc: '#4a9eff', enemy: '#ff4444', merchant: '#ffd700',
-  'quest-giver': '#44ff44', companion: '#44ffaa', boss: '#ff2222',
-};
+const roleColors: Record<string, string> = ROLE_TOKEN;
 
 const rarityColors: Record<string, string> = {
-  common: '#8b949e', uncommon: '#3fb950', rare: '#58a6ff', legendary: '#d2a8ff',
+  common: 'var(--wf-text-muted)', uncommon: 'var(--wf-success-text)', rare: 'var(--wf-accent)', legendary: 'var(--wf-accent)',
 };
 
 function KindBadge({ kind }: { kind: string }) {
   return (
     <span style={{
       fontSize: 9, padding: '1px 4px', borderRadius: 2,
-      background: '#30363d', color: '#8b949e', marginLeft: 4,
+      background: 'var(--wf-bg-hover)', color: 'var(--wf-text-muted)', marginLeft: 4,
     }}>
       [{kind}]
     </span>
@@ -27,7 +25,7 @@ function KindBadge({ kind }: { kind: string }) {
 
 function MissingLabel({ id }: { id: string }) {
   return (
-    <span style={{ color: '#f85149', fontSize: 10 }}>Missing: {id}</span>
+    <span style={{ color: 'var(--wf-danger-text)', fontSize: 10 }}>Missing: {id}</span>
   );
 }
 
@@ -43,10 +41,10 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
     console.error('[ScenePreview] assembleSceneData failed for zone', zoneId, err);
     return (
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Scene Preview</div>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Scene Preview</div>
         <div style={{
-          padding: 12, background: '#0d1117', border: '1px solid #30363d', borderRadius: 4,
-          fontSize: 11, color: '#d29922', textAlign: 'center',
+          padding: 12, background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 4,
+          fontSize: 11, color: 'var(--wf-warning)', textAlign: 'center',
         }}>
           Preview unavailable for this zone.
         </div>
@@ -63,7 +61,7 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
       <div
         onClick={() => setCollapsed(!collapsed)}
         style={{
-          fontSize: 11, color: '#8b949e', marginBottom: 4, cursor: 'pointer',
+          fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4, cursor: 'pointer',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           userSelect: 'none',
         }}
@@ -75,26 +73,28 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
       {!collapsed && (
         <div style={{
           position: 'relative', minHeight: 60,
-          background: '#0d1117', border: '1px solid #30363d', borderRadius: 4,
+          background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 4,
           padding: 8, overflow: 'hidden',
         }}>
           {!hasContent && (
-            <div style={{ color: '#484f58', fontSize: 11, textAlign: 'center', padding: 16 }}>
-              No visual data bound to this zone
-            </div>
+            <EmptyState
+              title="No visual data"
+              description="Bind a background, tileset, or entities to this zone to preview it."
+              icon={'\u25A1'}
+            />
           )}
 
           {/* Background layer */}
           {showBackgrounds && data.background && (
             <div style={{
               padding: '6px 8px', marginBottom: 4, borderRadius: 3,
-              background: '#161b22',
-              border: data.background.missing ? '1px solid #f85149' : '1px solid #30363d',
+              background: 'var(--wf-bg-panel)',
+              border: data.background.missing ? '1px solid var(--wf-danger-text)' : '1px solid var(--wf-border-default)',
             }}>
               {data.background.missing ? (
                 <MissingLabel id={data.background.id} />
               ) : (
-                <span style={{ fontSize: 11, color: '#c9d1d9' }}>
+                <span style={{ fontSize: 11, color: 'var(--wf-text-primary)' }}>
                   {data.background.asset.label}<KindBadge kind="background" />
                 </span>
               )}
@@ -105,13 +105,13 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
           {showBackgrounds && data.tileset && (
             <div style={{
               padding: '6px 8px', marginBottom: 4, borderRadius: 3,
-              background: '#161b22',
-              border: data.tileset.missing ? '1px solid #f85149' : '1px solid #30363d',
+              background: 'var(--wf-bg-panel)',
+              border: data.tileset.missing ? '1px solid var(--wf-danger-text)' : '1px solid var(--wf-border-default)',
             }}>
               {data.tileset.missing ? (
                 <MissingLabel id={data.tileset.id} />
               ) : (
-                <span style={{ fontSize: 11, color: '#c9d1d9' }}>
+                <span style={{ fontSize: 11, color: 'var(--wf-text-primary)' }}>
                   {data.tileset.asset.label}<KindBadge kind="tileset" />
                 </span>
               )}
@@ -120,7 +120,7 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
 
           {/* Ambient overlay */}
           {showAmbient && data.ambient.map((al) => {
-            const color = al.color ?? '#888888';
+            const color = al.color ?? 'var(--wf-text-muted)';
             const r = parseInt(color.slice(1, 3), 16);
             const g = parseInt(color.slice(3, 5), 16);
             const b = parseInt(color.slice(5, 7), 16);
@@ -128,9 +128,9 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
               <div key={al.id} style={{
                 padding: '4px 8px', marginBottom: 4, borderRadius: 3,
                 background: `rgba(${r},${g},${b},${al.intensity * 0.3})`,
-                border: '1px solid #30363d',
+                border: '1px solid var(--wf-border-default)',
               }}>
-                <span style={{ fontSize: 10, color: '#8b949e' }}>
+                <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>
                   {al.name} ({al.type}, {Math.round(al.intensity * 100)}%)
                 </span>
               </div>
@@ -147,13 +147,13 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
                 }}>
                   <span style={{
                     width: 8, height: 8, borderRadius: '50%',
-                    background: roleColors[e.placement.role] ?? '#888',
+                    background: roleColors[e.placement.role] ?? 'var(--wf-text-muted)',
                     flexShrink: 0,
                   }} />
-                  <span style={{ color: '#c9d1d9' }}>
+                  <span style={{ color: 'var(--wf-text-primary)' }}>
                     {e.placement.name ?? e.placement.entityId}
                   </span>
-                  <span style={{ fontSize: 9, color: '#484f58' }}>{e.placement.role}</span>
+                  <span style={{ fontSize: 9, color: 'var(--wf-text-muted)' }}>{e.placement.role}</span>
                   {e.portrait && <KindBadge kind="portrait" />}
                   {e.missingPortrait && <MissingLabel id={e.placement.portraitId!} />}
                   {e.sprite && <KindBadge kind="sprite" />}
@@ -172,10 +172,10 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
                   padding: '3px 8px', fontSize: 11,
                 }}>
                   <span style={{
-                    width: 8, height: 8, background: '#ffd700',
+                    width: 8, height: 8, background: 'var(--wf-warning)',
                     transform: 'rotate(45deg)', flexShrink: 0,
                   }} />
-                  <span style={{ color: '#ffd700' }}>{l.landmark.name}</span>
+                  <span style={{ color: 'var(--wf-warning)' }}>{l.landmark.name}</span>
                   {l.icon && <KindBadge kind="icon" />}
                   {l.missingIcon && <MissingLabel id={l.landmark.iconId!} />}
                 </div>
@@ -200,7 +200,7 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
                     {i.item.name ?? i.item.itemId}
                   </span>
                   {i.item.slot && (
-                    <span style={{ fontSize: 9, color: '#484f58' }}>{i.item.slot}</span>
+                    <span style={{ fontSize: 9, color: 'var(--wf-text-muted)' }}>{i.item.slot}</span>
                   )}
                   {i.icon && <KindBadge kind="icon" />}
                   {i.missingIcon && <MissingLabel id={i.item.iconId!} />}
@@ -218,10 +218,10 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
                   padding: '3px 8px', fontSize: 11,
                 }}>
                   <span style={{
-                    width: 8, height: 8, background: '#00ff88', flexShrink: 0,
+                    width: 8, height: 8, background: 'var(--wf-success-text)', flexShrink: 0,
                   }} />
-                  <span style={{ color: '#00ff88' }}>SPAWN</span>
-                  {sp.isDefault && <span style={{ fontSize: 9, color: '#ffd700' }}>★ default</span>}
+                  <span style={{ color: 'var(--wf-success-text)' }}>SPAWN</span>
+                  {sp.isDefault && <span style={{ fontSize: 9, color: 'var(--wf-warning)' }}>★ default</span>}
                 </div>
               ))}
             </div>
@@ -230,7 +230,7 @@ export function ScenePreview({ zoneId }: { zoneId: string }) {
           {/* Connections summary */}
           {data.connections.length > 0 && (
             <div style={{
-              fontSize: 10, color: '#484f58', borderTop: '1px solid #21262d',
+              fontSize: 10, color: 'var(--wf-text-muted)', borderTop: '1px solid var(--wf-bg-control)',
               paddingTop: 4, marginTop: 4,
             }}>
               → {data.connections.map((c) =>

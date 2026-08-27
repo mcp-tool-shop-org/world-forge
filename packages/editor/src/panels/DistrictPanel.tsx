@@ -4,7 +4,7 @@ import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { frameBounds } from '../viewport.js';
 import { getCanvasSize } from '../frame-helpers.js';
 import { inputBase as sharedInputStyle } from '../ui/styles.js';
-import { ConfirmButton } from './shared.js';
+import { ConfirmButton, EmptyState } from './shared.js';
 import { inputCompact } from '../ui/styles.js';
 import type { DistrictMetrics } from '@world-forge/schema';
 
@@ -62,34 +62,41 @@ export function DistrictPanel() {
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Districts</div>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Districts</div>
+      {project.districts.length === 0 && (
+        <EmptyState
+          title="No districts"
+          description="Group zones into districts to author faction presence and pressure."
+          icon={'\u25A3'}
+        />
+      )}
       {project.districts.map((d) => {
         const isExpanded = expanded === d.id;
         const factions = project.factionPresences.filter((f) => f.districtIds.includes(d.id));
         const hotspots = project.pressureHotspots.filter((h) => d.zoneIds.includes(h.zoneId));
 
         return (
-          <div key={d.id} style={{ marginBottom: 6, padding: 4, background: '#161b22', borderRadius: 3, fontSize: 12 }}>
+          <div key={d.id} style={{ marginBottom: 6, padding: 4, background: 'var(--wf-bg-panel)', borderRadius: 3, fontSize: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ cursor: 'pointer', color: '#8b949e', fontSize: 10 }}
+              <span style={{ cursor: 'pointer', color: 'var(--wf-text-muted)', fontSize: 10 }}
                 onClick={() => setExpanded(isExpanded ? null : d.id)}>
                 {isExpanded ? '\u25BC' : '\u25B6'}
               </span>
               <input
-                style={{ background: 'transparent', border: 'none', color: '#c9d1d9', fontSize: 12, flex: 1 }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--wf-text-primary)', fontSize: 12, flex: 1 }}
                 value={d.name}
                 onChange={(e) => updateDistrict(d.id, { name: e.target.value })}
               />
             </div>
             <div
-              style={{ fontSize: 10, color: d.zoneIds.length > 0 ? '#58a6ff' : '#8b949e', cursor: d.zoneIds.length > 0 ? 'pointer' : 'default', paddingLeft: 14 }}
+              style={{ fontSize: 10, color: d.zoneIds.length > 0 ? 'var(--wf-accent)' : 'var(--wf-text-muted)', cursor: d.zoneIds.length > 0 ? 'pointer' : 'default', paddingLeft: 14 }}
               onClick={() => d.zoneIds.length > 0 && handleFrameDistrict(d.id)}
             >
               {d.zoneIds.length} zones{factions.length > 0 ? ` · ${factions.length} factions` : ''}{hotspots.length > 0 ? ` · ${hotspots.length} hotspots` : ''}
             </div>
             {selectedZoneIds.length > 0 && (
               <button onClick={() => handleAssignZone(d.id)}
-                style={{ fontSize: 10, background: '#21262d', color: '#58a6ff', border: '1px solid #30363d', borderRadius: 2, cursor: 'pointer', padding: '1px 4px', marginTop: 2 }}>
+                style={{ fontSize: 10, background: 'var(--wf-bg-control)', color: 'var(--wf-accent)', border: '1px solid var(--wf-border-default)', borderRadius: 2, cursor: 'pointer', padding: '1px 4px', marginTop: 2 }}>
                 + Assign {selectedZoneIds.length === 1 ? 'selected zone' : `${selectedZoneIds.length} zones`}
               </button>
             )}
@@ -100,11 +107,11 @@ export function DistrictPanel() {
                 <div style={sectionLabel}>Metrics</div>
                 {(['commerce', 'morale', 'safety', 'stability'] as (keyof DistrictMetrics)[]).map((k) => (
                   <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, marginBottom: 2 }}>
-                    <span style={{ width: 52, color: '#8b949e' }}>{k}</span>
+                    <span style={{ width: 52, color: 'var(--wf-text-muted)' }}>{k}</span>
                     <input type="range" min={0} max={100} value={d.baseMetrics[k]}
                       style={{ flex: 1 }}
                       onChange={(e) => updateDistrict(d.id, { baseMetrics: { ...d.baseMetrics, [k]: parseInt(e.target.value) } })} />
-                    <span style={{ width: 24, color: '#c9d1d9', fontSize: 10, textAlign: 'right' }}>{d.baseMetrics[k]}</span>
+                    <span style={{ width: 24, color: 'var(--wf-text-primary)', fontSize: 10, textAlign: 'right' }}>{d.baseMetrics[k]}</span>
                   </label>
                 ))}
 
@@ -138,21 +145,21 @@ export function DistrictPanel() {
                 {/* Faction Presences */}
                 <div style={sectionLabel}>Faction Presences</div>
                 {factions.map((f) => (
-                  <div key={f.factionId} style={{ padding: 3, background: '#0d1117', borderRadius: 2, marginBottom: 3 }}>
-                    <div style={{ fontSize: 11, color: '#c9d1d9' }}>{f.factionId}</div>
+                  <div key={f.factionId} style={{ padding: 3, background: 'var(--wf-bg-app)', borderRadius: 2, marginBottom: 3 }}>
+                    <div style={{ fontSize: 11, color: 'var(--wf-text-primary)' }}>{f.factionId}</div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, marginTop: 2 }}>
-                      <span style={{ color: '#8b949e', width: 50 }}>influence</span>
+                      <span style={{ color: 'var(--wf-text-muted)', width: 50 }}>influence</span>
                       <input type="range" min={0} max={100} value={f.influence} style={{ flex: 1 }}
                         onChange={(e) => updateFaction(f.factionId, { influence: parseInt(e.target.value) })} />
-                      <span style={{ width: 20, color: '#c9d1d9' }}>{f.influence}</span>
+                      <span style={{ width: 20, color: 'var(--wf-text-primary)' }}>{f.influence}</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, marginTop: 1 }}>
-                      <span style={{ color: '#8b949e', width: 50 }}>alert</span>
+                      <span style={{ color: 'var(--wf-text-muted)', width: 50 }}>alert</span>
                       <input type="range" min={0} max={100} value={f.alertLevel} style={{ flex: 1 }}
                         onChange={(e) => updateFaction(f.factionId, { alertLevel: parseInt(e.target.value) })} />
-                      <span style={{ width: 20, color: '#c9d1d9' }}>{f.alertLevel}</span>
+                      <span style={{ width: 20, color: 'var(--wf-text-primary)' }}>{f.alertLevel}</span>
                     </label>
-                    <button style={{ ...smallBtn, color: '#f85149' }}
+                    <button style={{ ...smallBtn, color: 'var(--wf-danger-text)' }}
                       onClick={() => removeFaction(f.factionId)}>remove</button>
                   </div>
                 ))}
@@ -168,24 +175,24 @@ export function DistrictPanel() {
                 {/* Pressure Hotspots */}
                 <div style={sectionLabel}>Pressure Hotspots</div>
                 {hotspots.map((h) => (
-                  <div key={h.id} style={{ padding: 3, background: '#0d1117', borderRadius: 2, marginBottom: 3 }}>
-                    <div style={{ fontSize: 11, color: '#c9d1d9' }}>{h.id}</div>
+                  <div key={h.id} style={{ padding: 3, background: 'var(--wf-bg-app)', borderRadius: 2, marginBottom: 3 }}>
+                    <div style={{ fontSize: 11, color: 'var(--wf-text-primary)' }}>{h.id}</div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, marginTop: 2 }}>
-                      <span style={{ color: '#8b949e', width: 50 }}>type</span>
+                      <span style={{ color: 'var(--wf-text-muted)', width: 50 }}>type</span>
                       <input style={{ ...inputStyle, marginTop: 0, fontSize: 10 }} value={h.pressureType}
                         onChange={(e) => updatePressureHotspot(h.id, { pressureType: e.target.value })} />
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, marginTop: 1 }}>
-                      <span style={{ color: '#8b949e', width: 50 }}>prob</span>
+                      <span style={{ color: 'var(--wf-text-muted)', width: 50 }}>prob</span>
                       <input style={{ ...inputStyle, marginTop: 0, fontSize: 10 }} type="number" min={0} max={1} step={0.05} value={h.baseProbability}
                         onChange={(e) => updatePressureHotspot(h.id, { baseProbability: parseFloat(e.target.value) || 0 })} />
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, marginTop: 1 }}>
-                      <span style={{ color: '#8b949e', width: 50 }}>tags</span>
+                      <span style={{ color: 'var(--wf-text-muted)', width: 50 }}>tags</span>
                       <input style={{ ...inputStyle, marginTop: 0, fontSize: 10 }} value={h.tags.join(', ')}
                         onChange={(e) => updatePressureHotspot(h.id, { tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
                     </label>
-                    <button style={{ ...smallBtn, color: '#f85149' }}
+                    <button style={{ ...smallBtn, color: 'var(--wf-danger-text)' }}
                       onClick={() => removePressureHotspot(h.id)}>remove</button>
                   </div>
                 ))}
@@ -210,18 +217,18 @@ export function DistrictPanel() {
         );
       })}
       <button onClick={handleCreate}
-        style={{ fontSize: 11, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3, cursor: 'pointer', padding: '3px 8px', width: '100%' }}>
+        style={{ fontSize: 11, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 3, cursor: 'pointer', padding: '3px 8px', width: '100%' }}>
         + Add District
       </button>
     </div>
   );
 }
 
-const sectionLabel: React.CSSProperties = { fontSize: 10, color: '#8b949e', marginTop: 6, marginBottom: 2 };
+const sectionLabel: React.CSSProperties = { fontSize: 10, color: 'var(--wf-text-muted)', marginTop: 6, marginBottom: 2 };
 const inputStyle: React.CSSProperties = {
   ...inputCompact, fontSize: 11, padding: '2px 5px',
 };
 const smallBtn: React.CSSProperties = {
-  fontSize: 10, background: 'transparent', color: '#58a6ff', border: 'none',
+  fontSize: 10, background: 'transparent', color: 'var(--wf-accent)', border: 'none',
   cursor: 'pointer', padding: '2px 0', marginTop: 2,
 };

@@ -26,8 +26,8 @@ export function EntityProperties() {
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Entity Placement</div>
-      <p style={{ fontSize: 12, color: '#8b949e' }}>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Entity Placement</div>
+      <p style={{ fontSize: 12, color: 'var(--wf-text-muted)' }}>
         Click on a zone to place an entity. The entity will be created as an NPC by default.
       </p>
 
@@ -40,9 +40,9 @@ export function EntityProperties() {
             data-testid={`role-pill-${role}`}
             style={{
               padding: '2px 8px', fontSize: 11, borderRadius: 10, cursor: 'pointer',
-              border: role === activeRole ? '1px solid var(--wf-accent, #58a6ff)' : '1px solid var(--wf-border-default, #30363d)',
-              background: role === activeRole ? 'var(--wf-accent, #58a6ff)' : 'var(--wf-bg-control, #21262d)',
-              color: role === activeRole ? '#fff' : 'var(--wf-text-muted, #8b949e)',
+              border: role === activeRole ? '1px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
+              background: role === activeRole ? 'var(--wf-accent)' : 'var(--wf-bg-control)',
+              color: role === activeRole ? '#fff' : 'var(--wf-text-muted)',
             }}
           >
             {role === 'all' ? 'All' : role} ({roleCounts[role] ?? 0})
@@ -51,15 +51,15 @@ export function EntityProperties() {
       </div>
 
       {/* Filtered entity list */}
-      <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4 }}>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 4 }}>
         {filteredEntities.length === 0 ? (
           <div style={{ fontStyle: 'italic', padding: '4px 0' }}>No entities{activeRole !== 'all' ? ` with role "${activeRole}"` : ''}</div>
         ) : (
           filteredEntities.map((ep) => (
             <div key={ep.entityId} style={{ padding: '2px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
               <VisibilityToggle id={ep.entityId} />
-              <span style={{ color: 'var(--wf-text-primary, #c9d1d9)' }}>{ep.name ?? ep.entityId}</span>
-              <span style={{ color: 'var(--wf-text-hint, #484f58)', fontSize: 10 }}>{ep.role}</span>
+              <span style={{ color: 'var(--wf-text-primary)' }}>{ep.name ?? ep.entityId}</span>
+              <span style={{ color: 'var(--wf-text-muted)', fontSize: 10 }}>{ep.role}</span>
             </div>
           ))
         )}

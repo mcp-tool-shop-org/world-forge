@@ -1,18 +1,18 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { PanelHeader, useFocusHighlight } from './shared.js';
+import { PanelHeader, EmptyState, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 import type { HazardEffect } from '@world-forge/schema';
 
-const card: CSSProperties = { border: '1px solid #30363d', borderRadius: 4, padding: 6, marginBottom: 6, background: '#161b22' };
+const card: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, marginBottom: 6, background: 'var(--wf-bg-panel)' };
 const rowHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 };
-const lbl: CSSProperties = { display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4 };
-const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3, marginTop: 2 };
+const lbl: CSSProperties = { display: 'block', fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 };
+const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 3, marginTop: 2 };
 const addBtn: CSSProperties = { ...buttonBase, padding: '3px 8px', fontSize: 11, borderRadius: 3 };
 const delBtn: CSSProperties = { ...buttonBase, padding: '0 6px', fontSize: 12 };
-const section: CSSProperties = { fontSize: 11, color: '#8b949e', margin: '10px 0 4px' };
+const section: CSSProperties = { fontSize: 11, color: 'var(--wf-text-muted)', margin: '10px 0 4px' };
 const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 };
-const effectCard: CSSProperties = { border: '1px solid #30363d', borderRadius: 3, padding: 5, marginBottom: 4, background: '#0d1117' };
+const effectCard: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 3, padding: 5, marginBottom: 4, background: 'var(--wf-bg-app)' };
 
 /** A fresh effect of the given kind, used when adding an effect or switching kinds. */
 function defaultEffect(kind: HazardEffect['kind']): HazardEffect {
@@ -44,11 +44,22 @@ export function HazardLibraryPanel() {
     <div ref={focusRef} style={{ marginTop: 12 }} data-testid="wf-hazard-library-panel">
       <PanelHeader title="Hazard Library" />
       <div style={{ ...section, marginTop: 0 }}>Hazards ({hazards.length})</div>
+      {hazards.length === 0 && (
+        <EmptyState
+          title="No hazards yet"
+          description="Define typed hazards (damage, status, ignite) that zones can opt into."
+          icon={'\u26A0'}
+          actions={[{
+            label: '+ Add hazard',
+            onClick: () => addHazardDefinition({ id: `hazard-${Date.now()}`, name: 'Hazard', effects: [defaultEffect('damage')], trigger: 'on-enter', tags: [] }),
+          }]}
+        />
+      )}
 
       {hazards.map((h) => (
         <div key={h.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{h.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{h.id}</span>
             <button title="Remove hazard" style={delBtn} onClick={() => removeHazardDefinition(h.id)}>×</button>
           </div>
           <label style={lbl}>Name
@@ -83,7 +94,7 @@ export function HazardLibraryPanel() {
             </label>
           </div>
 
-          <div style={{ fontSize: 11, color: '#8b949e', margin: '6px 0 3px' }}>Effects ({h.effects.length})</div>
+          <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', margin: '6px 0 3px' }}>Effects ({h.effects.length})</div>
           {h.effects.map((eff, i) => (
             <div key={i} style={effectCard}>
               <div style={rowHead}>
@@ -139,7 +150,7 @@ export function HazardLibraryPanel() {
                     onChange={(e) => setEffects(h.id, h.effects.map((x, xi) => xi === i ? { ...eff, igniteChance: Number(e.target.value) || 0 } : x))} />
                 </label>
               )}
-              {eff.kind === 'instakill' && <div style={{ fontSize: 11, color: '#6e7681' }}>Instantly defeats the occupant.</div>}
+              {eff.kind === 'instakill' && <div style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>Instantly defeats the occupant.</div>}
             </div>
           ))}
           <button style={addBtn} onClick={() => setEffects(h.id, [...h.effects, defaultEffect('damage')])}>+ Add effect</button>

@@ -74,7 +74,7 @@ export function SaveTemplateModal({ onClose }: Props) {
         />
 
         {/* Content summary */}
-        <div style={{ fontSize: 11, color: '#8b949e', marginTop: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 8, marginBottom: 16 }}>
           This template will include: {project.zones.length} zones, {project.entityPlacements.length} entities,
           {' '}{project.dialogues.length} dialogues, {project.itemPlacements.length} items
         </div>

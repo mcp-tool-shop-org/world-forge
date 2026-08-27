@@ -75,7 +75,7 @@ export function ValidationPanel() {
     return (
       <div>
         <PanelHeader title="Validation" />
-        <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
+        <div style={{ color: 'var(--wf-success-text)', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
           No issues found — ready to export.
         </div>
         {advisory.items.length > 0 && (
@@ -100,7 +100,7 @@ export function ValidationPanel() {
               onClick={() => toggle(domain)}
               onKeyDown={onEnter(() => toggle(domain))}
               style={{
-                fontSize: 12, fontWeight: 600, color: '#f85149',
+                fontSize: 12, fontWeight: 600, color: 'var(--wf-danger-text)',
                 cursor: 'pointer', padding: '4px 0', userSelect: 'none',
               }}
             >
@@ -115,12 +115,12 @@ export function ValidationPanel() {
                 onKeyDown={onEnter(() => handleClick(err))}
                 title={`Jump to: ${err.path}`}
                 style={{
-                  fontSize: 11, color: '#f0883e', padding: '3px 0 3px 14px',
-                  cursor: 'pointer', borderLeft: '2px solid #30363d',
+                  fontSize: 11, color: 'var(--wf-warning)', padding: '3px 0 3px 14px',
+                  cursor: 'pointer', borderLeft: '2px solid var(--wf-border-default)',
                   transition: 'background 0.15s',
                   display: 'flex', alignItems: 'baseline', gap: 6,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#1c2128'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wf-bg-elevated)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
                 <span style={{ flex: 1 }}>
@@ -132,7 +132,7 @@ export function ValidationPanel() {
                     onClick={(e) => { e.stopPropagation(); setRightTab('deps'); }}
                     onKeyDown={(e) => e.stopPropagation()}
                     title="Open Dependency Manager to repair"
-                    style={{ fontSize: 10, color: '#d29922', whiteSpace: 'nowrap', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ fontSize: 10, color: 'var(--wf-warning)', whiteSpace: 'nowrap', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     Open Deps
                   </button>
@@ -161,7 +161,7 @@ function AdvisorySuggestions({ items, collapsed, toggle }: {
         data-testid="wf-suggestions-toggle"
         onClick={() => toggle('advisory')}
         style={{
-          fontSize: 12, fontWeight: 600, color: '#58a6ff',
+          fontSize: 12, fontWeight: 600, color: 'var(--wf-accent)',
           cursor: 'pointer', padding: '4px 8px', userSelect: 'none',
           background: 'none', border: 'none', width: '100%', textAlign: 'left',
         }}
@@ -172,7 +172,7 @@ function AdvisorySuggestions({ items, collapsed, toggle }: {
         <div
           key={i}
           style={{
-            fontSize: 11, color: '#58a6ff', padding: '3px 0 3px 14px',
+            fontSize: 11, color: 'var(--wf-accent)', padding: '3px 0 3px 14px',
             borderLeft: `2px solid ${ACTIVE_TAB_BG}`,
           }}
         >
