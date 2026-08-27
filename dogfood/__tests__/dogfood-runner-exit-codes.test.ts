@@ -1,4 +1,4 @@
-// dogfood-runner-exit-codes.test.ts — F-66a22d53 / F-6551ab6c.
+// dogfood-runner-exit-codes.test.ts — F-66a22d53 / F-6551ab6c / F-b0172a8e.
 //
 // chapel-threshold.ts and multi-target-export-proof.ts already have real-
 // subprocess exit-code tests. The remaining dogfood/*.ts runners with the
@@ -8,10 +8,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -122,6 +122,42 @@ describe('run-ai-rpg-smoke.ts exit gate (F-66a22d53)', () => {
         expect(stdout).toMatch(/✗ test_injected_failure/);
         expect(code).not.toBe(0);
     }, 60_000);
+
+    it('prints path: message per export error, not the raw errors array (F-b0172a8e)', async () => {
+        const { code, stderr } = await runScript(
+            resolve(__dirname, '../run-ai-rpg-smoke.ts'),
+            { WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL: '1' },
+        );
+        expect(stderr).toContain('Export failed:');
+        expect(stderr).toMatch(/forced-export-fail: WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL/);
+        // util.inspect of `{path, message}[]` quotes the path as a field, not `path: message`.
+        expect(stderr).not.toMatch(/path:\s*'forced-export-fail'/);
+        expect(stderr).not.toMatch(/\[\s*\{/);
+        expect(code).not.toBe(0);
+    }, 60_000);
+});
+
+/** console.error(label, *.errors) dumps util.inspect of the array instead of path: message. */
+const ERRORS_ARRAY_DUMP = /console\.error\([^;]*,\s*[^;]*\.errors\s*\)/;
+
+function collectDogfoodTs(dir: string, acc: string[] = []): string[] {
+    for (const name of readdirSync(dir)) {
+        if (name === '__tests__' || name === 'output' || name === 'node_modules') continue;
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) collectDogfoodTs(p, acc);
+        else if (name.endsWith('.ts')) acc.push(p);
+    }
+    return acc;
+}
+
+describe('dogfood export-failure stderr (F-b0172a8e)', () => {
+    it('does not dump an errors object/array as a console.error argument', () => {
+        const dogfoodDir = resolve(__dirname, '..');
+        const offenders = collectDogfoodTs(dogfoodDir).filter((file) =>
+            ERRORS_ARRAY_DUMP.test(readFileSync(file, 'utf-8')),
+        );
+        expect(offenders.map((f) => relative(REPO_ROOT, f).replaceAll('\\', '/'))).toEqual([]);
+    });
 });
 
 describe('export-stage-fixture.ts exit gate (F-66a22d53)', () => {

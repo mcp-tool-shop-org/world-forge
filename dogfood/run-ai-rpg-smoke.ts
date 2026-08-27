@@ -121,9 +121,16 @@ async function main() {
 
     // Step 1: Export
     console.log('── 1. Export proof world ──');
-    const exportResult = exportToEngine(proofProject);
+    // WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL is never set during a normal run.
+    const exportResult = process.env.WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL === '1'
+        ? {
+            success: false as const,
+            errors: [{ path: 'forced-export-fail', message: 'WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL' }],
+        }
+        : exportToEngine(proofProject);
     if (!exportResult.success) {
-        console.error('  ✗ Export failed:', (exportResult as { errors: unknown[] }).errors);
+        console.error('  ✗ Export failed:');
+        for (const e of exportResult.errors) console.error(`    ${e.path ?? '(root)'}: ${e.message}`);
         process.exit(1);
     }
     const result = exportResult as ExportResult;
