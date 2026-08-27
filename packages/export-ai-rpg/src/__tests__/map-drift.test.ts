@@ -7,6 +7,7 @@
 // silently fall back to the raw engine value — these tests catch that.
 
 import { describe, it, expect } from 'vitest';
+import { VALID_GENRES } from '@ai-rpg-engine/pack-registry';
 import { GENRE_MAP, DIFFICULTY_MAP, TONE_MAP, DEFAULT_MODULES } from '../convert-pack.js';
 import { REVERSE_GENRE, REVERSE_DIFFICULTY } from '../import.js';
 
@@ -65,6 +66,26 @@ describe('forward ↔ reverse map drift guards', () => {
         `TONE_MAP['${sourceKey}'] = '${canonicalValue}' is an alias — add a REVERSE_TONE to import.ts ` +
         `and update the importer to use it, then update this test.`,
       ).toBe(canonicalValue);
+    }
+  });
+
+  it('every VALID_GENRES member is a GENRE_MAP target (F-0fdda22c)', () => {
+    const targets = new Set(Object.values(GENRE_MAP));
+    for (const g of VALID_GENRES) {
+      expect(
+        targets.has(g),
+        `GENRE_MAP has no value targeting VALID_GENRES member '${g}'. Identity-map it so it cannot silently fall back to fantasy.`,
+      ).toBe(true);
+    }
+  });
+
+  it('every GENRE_MAP identity key round-trips through REVERSE_GENRE to itself (F-0fdda22c)', () => {
+    for (const [source, target] of Object.entries(GENRE_MAP)) {
+      if (source !== target) continue;
+      expect(
+        REVERSE_GENRE[source],
+        `GENRE_MAP identity key '${source}' must reverse to itself, not an alias.`,
+      ).toBe(source);
     }
   });
 

@@ -20,9 +20,9 @@ beforeAll(async () => {
   }
 });
 
-function runCli(args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
+function runCli(args: string[], extraEnv?: NodeJS.ProcessEnv): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    execFile('node', [CLI_PATH, ...args], { timeout: 10_000 }, (error, stdout, stderr) => {
+    execFile('node', [CLI_PATH, ...args], { timeout: 10_000, env: extraEnv ? { ...process.env, ...extraEnv } : process.env }, (error, stdout, stderr) => {
       resolve({ code: error?.code !== undefined ? (error.code as unknown as number) : error ? 1 : 0, stdout, stderr });
     });
   });
@@ -188,5 +188,49 @@ describe('CLI: world-forge-export', () => {
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(contentPack.schemaVersion).toBeUndefined();
+  });
+
+  // F-4ac43db0: --emit-schema-version wins over --no-emit-schema-version and env
+  it('--emit-schema-version wins over --no-emit-schema-version when both appear', async () => {
+    const outDir = join(tmpDir, 'export-schemaver-force-on');
+    const { code } = await runCli([validJsonPath, '--out', outDir, '--no-emit-schema-version', '--emit-schema-version']);
+    expect(code).toBe(0);
+    const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
+    expect(typeof contentPack.schemaVersion).toBe('string');
+    expect(contentPack.schemaVersion.length).toBeGreaterThan(0);
+  });
+
+  it('WORLD_FORGE_EMIT_SCHEMA_VERSION=0 strips schemaVersion unless --emit-schema-version is set', async () => {
+    const outDir = join(tmpDir, 'export-schemaver-env-off');
+    const { code } = await runCli([validJsonPath, '--out', outDir], { WORLD_FORGE_EMIT_SCHEMA_VERSION: '0' });
+    expect(code).toBe(0);
+    const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
+    expect(contentPack.schemaVersion).toBeUndefined();
+  });
+
+  it('--emit-schema-version overrides WORLD_FORGE_EMIT_SCHEMA_VERSION=0', async () => {
+    const outDir = join(tmpDir, 'export-schemaver-env-override');
+    const { code } = await runCli(
+      [validJsonPath, '--out', outDir, '--emit-schema-version'],
+      { WORLD_FORGE_EMIT_SCHEMA_VERSION: '0' },
+    );
+    expect(code).toBe(0);
+    const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
+    expect(typeof contentPack.schemaVersion).toBe('string');
+  });
+
+  // F-82e1add2: --out followed by another flag is a swallowed flag, not a path
+  it('rejects --out --profile debug (swallowed flag) with exit code 1', async () => {
+    const { code, stderr } = await runCli([validJsonPath, '--out', '--profile', 'debug']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('--profile');
+    expect(stderr).toMatch(/swallowed flag/);
+    let existed = true;
+    try {
+      await access(join(tmpDir, '--profile'));
+    } catch {
+      existed = false;
+    }
+    expect(existed).toBe(false);
   });
 });

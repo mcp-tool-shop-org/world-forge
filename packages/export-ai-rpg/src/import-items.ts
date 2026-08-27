@@ -11,8 +11,11 @@ export function importItems(
   const warnings: string[] = [];
   const fidelity: FidelityEntry[] = [];
 
-  // EB-014: Early return with empty result when no items to import
-  if (engineItems.length === 0) {
+  // EB-014: Early return with empty result when no items to import.
+  // F-1d5f2ce5: a hand-authored pack may omit `items` entirely (detectImportFormat
+  // only requires entities+zones), so treat missing/non-array as empty rather
+  // than throwing on `.length`.
+  if (!Array.isArray(engineItems) || engineItems.length === 0) {
     return { placements: [], warnings, fidelity };
   }
 

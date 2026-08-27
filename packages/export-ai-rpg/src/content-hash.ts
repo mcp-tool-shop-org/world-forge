@@ -101,6 +101,17 @@ export const SIM_AFFECTING_KEYS = [
   // cross-repo equivalence test goes red, same as above.
   'craftingStations',
   'marketNodes',
+  // F-8820cfd8 (swarm wave-9). The three ContentPack channels exportToEngine
+  // ALWAYS writes that were still missing from this list: `items` (the catalog
+  // this pack actually emits — engine-side quests/abilities/statuses/verbs/
+  // itemUseEffects were present while the local catalog was not), plus the
+  // two raw pass-through sim layers `factionPresences` / `pressureHotspots`.
+  // Two packs that differ only in item stats, faction influence, or hotspot
+  // probability must not stamp identical manifest.contentHash values.
+  // Same unpublished-engine-gate.ts discipline as lootTables above.
+  'items',
+  'factionPresences',
+  'pressureHotspots',
 ] as const;
 
 /**

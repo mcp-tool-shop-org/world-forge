@@ -375,8 +375,19 @@ export function exportToEngine(
   }
 
   // 10. Warn on other missing features
-  if (project.landmarks.length === 0) {
-    warnings.push('No landmarks placed — consider adding points of interest');
+  // F-aa2c07bb: landmarks used to warn when EMPTY ('consider adding points of
+  // interest') and stay silent when authored-and-dropped (only iconId can
+  // survive in assetBindings; name/description/zone/position never reach the
+  // engine). Flip to the craftingStations polarity: loud on present, silent
+  // on empty.
+  if (project.landmarks.length > 0) {
+    const msg = `${project.landmarks.length} landmark(s) authored-and-dropped — only iconId can survive in assetBindings; name/description/zone/position do not reach the engine.`;
+    warnings.push(msg);
+    fidelityEntries.push({
+      level: 'dropped', domain: 'world', severity: 'warning',
+      message: msg,
+      reason: 'landmarks-authored-and-dropped',
+    });
   }
   if (project.pressureHotspots.length === 0) {
     warnings.push('No pressure hotspots — world pressures will not spawn');
@@ -413,6 +424,33 @@ export function exportToEngine(
       message: `${project.marketNodes.length} market node(s) passed through to ContentPack.marketNodes verbatim (no dedicated converter yet)`,
       reason: 'market-nodes-raw-passthrough',
     });
+  }
+
+  // 10c. F-aa2c07bb: leftover v4.5 authored subsystems listed in C0
+  // DROPPED_CONTAINERS (buildings/hubs/strongholds/strata/stratumLinks/
+  // transitions) have no ContentPack key. Same polarity as craftingStations:
+  // loud on present, silent on empty. level:'dropped' — do NOT stamp
+  // lossless on a no-channel domain (that would inflate losslessPercent
+  // while the town/stratum/transition layers vanish unmeasured).
+  const droppedNoChannel: Array<{ key: 'buildings' | 'hubs' | 'strongholds' | 'strata' | 'stratumLinks' | 'transitions'; label: string; reason: string }> = [
+    { key: 'buildings', label: 'building(s)', reason: 'buildings-dropped' },
+    { key: 'hubs', label: 'hub(s)', reason: 'hubs-dropped' },
+    { key: 'strongholds', label: 'stronghold(s)', reason: 'strongholds-dropped' },
+    { key: 'strata', label: 'stratum/strata', reason: 'strata-dropped' },
+    { key: 'stratumLinks', label: 'stratum link(s)', reason: 'stratum-links-dropped' },
+    { key: 'transitions', label: 'transition(s)', reason: 'transitions-dropped' },
+  ];
+  for (const { key, label, reason } of droppedNoChannel) {
+    const list = project[key];
+    if (Array.isArray(list) && list.length > 0) {
+      const msg = `${list.length} ${label} authored but dropped — ContentPack has no channel for '${key}'.`;
+      warnings.push(msg);
+      fidelityEntries.push({
+        level: 'dropped', domain: 'world', severity: 'warning',
+        message: msg,
+        reason,
+      });
+    }
   }
 
   // 11. Collect asset manifest and bindings for round-trip preservation.

@@ -9,7 +9,8 @@ import type { WorldProject } from '@world-forge/schema';
 const USAGE = `Usage: world-forge-export <project.json> [options]
 
 Options:
-  --out <dir>               Output directory (default: ./export) (created if missing)
+  --out <dir>               Output directory (default: ./export) (created if missing).
+                            <dir> must be a path and must not start with '-'
   --validate-only           Validate without writing files
   --profile <name>          Export profile: 'release' (default) or 'debug'
                             debug adds a _debug block (timestamp, schemaVersion,
@@ -18,8 +19,10 @@ Options:
   --dry-run                 Validate + report sizes without writing files
                             (mutually exclusive with --out)
   --no-emit-schema-version  Strip the ContentPack.schemaVersion field
-                            (default: schemaVersion IS emitted)
-  --emit-schema-version     Force-on (default; useful only to override env)
+  --emit-schema-version     Force-on. Wins over --no-emit-schema-version and
+                            over WORLD_FORGE_EMIT_SCHEMA_VERSION=0/false/off.
+                            (default: schemaVersion IS emitted; the env var
+                            WORLD_FORGE_EMIT_SCHEMA_VERSION=0 disables it)
   --verbose                 Show detailed export diagnostics (includes err.stack on failure)
   --help                    Show this help
 
@@ -28,6 +31,19 @@ Exit codes:
   1  any error (bad args, unreadable input, invalid JSON, validation failure, write failure)
 
 See also: world-forge-export-unreal (for Unreal Engine 5 2.5D games).`;
+
+/** F-4ac43db0: --emit-schema-version wins over --no-emit-schema-version and over env. */
+function resolveEmitSchemaVersion(args: string[]): boolean {
+  if (args.includes('--emit-schema-version')) return true;
+  if (args.includes('--no-emit-schema-version')) return false;
+  const raw = process.env.WORLD_FORGE_EMIT_SCHEMA_VERSION;
+  if (raw !== undefined) {
+    const v = raw.trim().toLowerCase();
+    if (v === '0' || v === 'false' || v === 'no' || v === 'off') return false;
+    if (v === '1' || v === 'true' || v === 'yes' || v === 'on' || v === '') return true;
+  }
+  return true;
+}
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -43,10 +59,18 @@ async function main(): Promise<void> {
   const dryRun = args.includes('--dry-run');
   const outIdx = args.indexOf('--out');
 
-  // EB-002: Bounds check for --out flag argument
-  if (outIdx !== -1 && !args[outIdx + 1]) {
-    console.error('Error: --out requires a path value (e.g., --out ./my-export)');
-    process.exit(1);
+  // EB-002: Bounds check for --out flag argument.
+  // F-82e1add2: a following token that starts with '-' is another flag, not a
+  // path — `--out --profile debug` used to mkdir a directory named `--profile`.
+  if (outIdx !== -1) {
+    const outVal = args[outIdx + 1];
+    if (!outVal || outVal.startsWith('-')) {
+      console.error(
+        `Error: --out requires a path value that does not start with '-' (got '${outVal ?? '(missing)'}')` +
+          (outVal?.startsWith('-') ? ` — '${outVal}' looks like a swallowed flag, not a directory` : ' (e.g., --out ./my-export)'),
+      );
+      process.exit(1);
+    }
   }
 
   // AIR-FT-005: --dry-run is mutually exclusive with --out
@@ -58,10 +82,19 @@ async function main(): Promise<void> {
   const outDir = outIdx !== -1 ? args[outIdx + 1] : './export';
 
   // AIR-FT-001: --profile flag
+  // F-82e1add2: reject values that start with '-' the same way --out does, so
+  // `--profile --out ./x` fails closed as a swallowed flag rather than as an
+  // unknown enum (the enum guard already saved this sibling; keep the class).
   const profileIdx = args.indexOf('--profile');
-  if (profileIdx !== -1 && !args[profileIdx + 1]) {
-    console.error('Error: --profile requires a value: release | debug');
-    process.exit(1);
+  if (profileIdx !== -1) {
+    const profileVal = args[profileIdx + 1];
+    if (!profileVal || profileVal.startsWith('-')) {
+      console.error(
+        `Error: --profile requires a value: release | debug (got '${profileVal ?? '(missing)'}')` +
+          (profileVal?.startsWith('-') ? ` — '${profileVal}' looks like a swallowed flag, not a profile` : ''),
+      );
+      process.exit(1);
+    }
   }
   const profileRaw = profileIdx !== -1 ? args[profileIdx + 1] : 'release';
   if (profileRaw !== 'release' && profileRaw !== 'debug') {
@@ -70,8 +103,11 @@ async function main(): Promise<void> {
   }
   const profile: ExportProfile = profileRaw;
 
-  // AIR-FT-005: schemaVersion emission (default on; --no-emit-schema-version opts out)
-  const emitSchemaVersion = !args.includes('--no-emit-schema-version');
+  // AIR-FT-005 / F-4ac43db0: schemaVersion emission.
+  // Priority: --emit-schema-version (force on) > --no-emit-schema-version
+  // (force off) > WORLD_FORGE_EMIT_SCHEMA_VERSION env (0/false/off disables)
+  // > default on. The positive flag exists to override the env.
+  const emitSchemaVersion = resolveEmitSchemaVersion(args);
 
   // Read project file
   let raw: string;

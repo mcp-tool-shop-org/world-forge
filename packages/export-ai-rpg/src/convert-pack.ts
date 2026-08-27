@@ -2,43 +2,34 @@
 
 import type { WorldProject } from '@world-forge/schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
-import type { PackMetadata, PackGenre, PackDifficulty, PackTone, VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES } from '@ai-rpg-engine/pack-registry';
+import type { PackMetadata, PackGenre, PackDifficulty, PackTone } from '@ai-rpg-engine/pack-registry';
+import { VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES } from '@ai-rpg-engine/pack-registry';
 import { safeLookup } from './safe-lookup.js';
 
+/**
+ * F-0fdda22c: identity targets are DERIVED from the engine's VALID_GENRES so
+ * a newly added engine genre (mercantile / pursuit at 3.x, and whatever 4.x
+ * adds) cannot sit unmapped and silently fall back to 'fantasy'. Editor-side
+ * aliases (detective→mystery, zombie→post-apocalyptic) overlay the identity
+ * table; they are not VALID_GENRES members.
+ */
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
 export const GENRE_MAP: Record<string, PackGenre> = {
-  fantasy: 'fantasy',
-  'sci-fi': 'sci-fi',
-  cyberpunk: 'cyberpunk',
-  horror: 'horror',
-  mystery: 'mystery',
+  ...(Object.fromEntries(VALID_GENRES.map((g) => [g, g])) as Record<string, PackGenre>),
   detective: 'mystery',
-  western: 'western',
-  pirate: 'pirate',
   zombie: 'post-apocalyptic',
-  'post-apocalyptic': 'post-apocalyptic',
-  historical: 'historical',
 };
 
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
 export const TONE_MAP: Record<string, PackTone> = {
-  dark: 'dark',
-  gritty: 'gritty',
-  heroic: 'heroic',
-  noir: 'noir',
-  comedic: 'comedic',
-  eerie: 'eerie',
-  tense: 'tense',
-  atmospheric: 'atmospheric',
+  ...(Object.fromEntries(VALID_TONES.map((t) => [t, t])) as Record<string, PackTone>),
 };
 
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
 export const DIFFICULTY_MAP: Record<string, PackDifficulty> = {
-  beginner: 'beginner',
+  ...(Object.fromEntries(VALID_DIFFICULTIES.map((d) => [d, d])) as Record<string, PackDifficulty>),
   easy: 'beginner',
-  intermediate: 'intermediate',
   medium: 'intermediate',
-  advanced: 'advanced',
   hard: 'advanced',
 };
 
@@ -168,7 +159,16 @@ export function convertPackMeta(project: WorldProject, warnings?: string[]): Pac
   // exactly like any other unrecognized string, instead of silently resolving
   // to an inherited Object.prototype member and defeating the `?? 'fantasy'`
   // fallback below. See safe-lookup.ts for the full reproduction.
-  const genre = safeLookup(GENRE_MAP, project.genre) ?? 'fantasy';
+  // F-0fdda22c: unmapped genre/difficulty now warn the same way tones already
+  // do (AIR-B-008) — name the authored value and the fallback. Identity
+  // targets come from VALID_GENRES so mercantile/pursuit cannot stay silent.
+  const mappedGenre = safeLookup(GENRE_MAP, project.genre);
+  if (!mappedGenre) {
+    const msg = `Unrecognized genre '${project.genre}' — falling back to 'fantasy'. Mapped genres: ${Object.keys(GENRE_MAP).join(', ')}`;
+    console.warn(`[convert-pack] ${msg}`);
+    warnings?.push(msg);
+  }
+  const genre = mappedGenre ?? 'fantasy';
   const invalidTones: string[] = [];
   const tones = project.tones
     .map((t) => {
@@ -187,7 +187,13 @@ export function convertPackMeta(project: WorldProject, warnings?: string[]): Pac
     console.warn(`[convert-pack] ${msg}`);
     warnings?.push(msg);
   }
-  const difficulty = safeLookup(DIFFICULTY_MAP, project.difficulty) ?? 'intermediate';
+  const mappedDifficulty = safeLookup(DIFFICULTY_MAP, project.difficulty);
+  if (!mappedDifficulty) {
+    const msg = `Unrecognized difficulty '${project.difficulty}' — falling back to 'intermediate'. Mapped difficulties: ${Object.keys(DIFFICULTY_MAP).join(', ')}`;
+    console.warn(`[convert-pack] ${msg}`);
+    warnings?.push(msg);
+  }
+  const difficulty = mappedDifficulty ?? 'intermediate';
 
   const tags: string[] = [];
   if (project.mode) tags.push(`mode:${project.mode}`);
