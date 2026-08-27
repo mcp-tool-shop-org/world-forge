@@ -60,6 +60,8 @@ import { importDialogues } from './import-dialogues.js';
 import { importPlayerTemplate } from './import-player-template.js';
 import { importBuildCatalog } from './import-build-catalog.js';
 import { importProgressionTrees } from './import-progression-trees.js';
+import { importConnections } from './import-connections.js';
+import { importSpawnPoints } from './import-spawn-points.js';
 
 export type ImportFormat = 'world-project' | 'content-pack' | 'export-result' | 'project-bundle';
 
@@ -425,6 +427,7 @@ export function importFromContentPack(
   let entityWarnings: string[] = [];
   let itemWarnings: string[] = [];
   let entityFidelity: FidelityEntry[] = [];
+  let itemFidelity: FidelityEntry[] = [];
   const engineEntities = pack.entities ?? [];
   const engineItems = pack.items ?? [];
 
@@ -446,9 +449,10 @@ export function importFromContentPack(
     entityPlacements = entityResult.placements;
     entityWarnings = entityResult.warnings;
     entityFidelity = entityResult.fidelity;
-    const itemResult = importItems(engineItems, zones.map((z) => z.id));
+    const itemResult = importItems(engineItems, zones.map((z) => z.id), pack.itemPlacements);
     itemPlacements = itemResult.placements;
     itemWarnings = itemResult.warnings;
+    itemFidelity = itemResult.fidelity;
     const dialogueResult = importDialogues(pack.dialogues ?? []);
     dialogues = dialogueResult.dialogues;
     const playerResult = importPlayerTemplate(pack.playerTemplate);
@@ -475,25 +479,30 @@ export function importFromContentPack(
     }
   }
 
-  // 3. Generate connections from zone neighbor pairs (deduplicated, bidirectional)
-  const connections: ZoneConnection[] = [];
-  const seen = new Set<string>();
-  for (const zone of zones) {
-    for (const nid of zone.neighbors) {
-      const key = [zone.id, nid].sort().join('|');
-      if (!seen.has(key)) {
-        seen.add(key);
-        connections.push({ fromZoneId: zone.id, toZoneId: nid, bidirectional: true });
+  // 3. Restore typed connections from the pack channel (F-2d93b8d0). Legacy
+  // packs without connections[] still reconstruct unlabeled bidirectional
+  // pairs from zone.neighbors.
+  const connResult = importConnections(pack.connections);
+  allFidelity.push(...connResult.fidelity);
+  let connections: ZoneConnection[] = connResult.connections;
+  if (!connResult.fromPack) {
+    const seen = new Set<string>();
+    for (const zone of zones) {
+      for (const nid of zone.neighbors) {
+        const key = [zone.id, nid].sort().join('|');
+        if (!seen.has(key)) {
+          seen.add(key);
+          connections.push({ fromZoneId: zone.id, toZoneId: nid, bidirectional: true });
+        }
       }
     }
-  }
-
-  if (connections.length > 0) {
-    allFidelity.push({
-      level: 'lossless', domain: 'world', severity: 'info',
-      message: `${connections.length} connection(s) reconstructed from zone neighbor data`,
-      reason: 'connections-reconstructed',
-    });
+    if (connections.length > 0) {
+      allFidelity.push({
+        level: 'lossless', domain: 'world', severity: 'info',
+        message: `${connections.length} connection(s) reconstructed from zone neighbor data`,
+        reason: 'connections-reconstructed',
+      });
+    }
   }
 
   // 4. Compute map dimensions from auto-layout bounds (40×30 minimum floor)
@@ -505,27 +514,33 @@ export function importFromContentPack(
   maxX = Math.max(maxX, 40);
   maxY = Math.max(maxY, 30);
 
-  // 5. Create spawn point
-  if (zones.length === 0) {
-    allFidelity.push({
-      level: 'dropped', domain: 'zones', severity: 'warning',
-      message: 'No zones found — cannot create spawn point. The imported world will have no navigable areas.',
-      reason: 'no-zones-no-spawn',
-    });
+  // 5. Restore spawn points from the pack channel (F-0e432e10). Legacy packs
+  // without spawnPoints[] still synthesize a single imported-spawn on zones[0].
+  const spawnResult = importSpawnPoints(pack.spawnPoints);
+  allFidelity.push(...spawnResult.fidelity);
+  let spawnPoints = spawnResult.spawnPoints;
+  if (!spawnResult.fromPack) {
+    if (zones.length === 0) {
+      allFidelity.push({
+        level: 'dropped', domain: 'zones', severity: 'warning',
+        message: 'No zones found — cannot create spawn point. The imported world will have no navigable areas.',
+        reason: 'no-zones-no-spawn',
+      });
+    }
+    const spawnZone = zones[0];
+    const spawnPointId = (playerTemplate?.spawnPointId && playerTemplate.spawnPointId !== '') ? playerTemplate.spawnPointId : 'imported-spawn';
+    spawnPoints = spawnZone ? [{
+      id: spawnPointId,
+      zoneId: spawnZone.id,
+      gridX: spawnZone.gridX + 1,
+      gridY: spawnZone.gridY + 1,
+      isDefault: true,
+    }] : [];
   }
-  const spawnZone = zones[0];
-  const spawnPointId = (playerTemplate?.spawnPointId && playerTemplate.spawnPointId !== '') ? playerTemplate.spawnPointId : 'imported-spawn';
-  const spawnPoints = spawnZone ? [{
-    id: spawnPointId,
-    zoneId: spawnZone.id,
-    gridX: spawnZone.gridX + 1,
-    gridY: spawnZone.gridY + 1,
-    isDefault: true,
-  }] : [];
 
   // Update player template spawnPointId if it was created fresh (check empty string too)
   if (playerTemplate && (!playerTemplate.spawnPointId || playerTemplate.spawnPointId === '') && spawnPoints.length > 0) {
-    playerTemplate.spawnPointId = spawnPointId;
+    playerTemplate.spawnPointId = spawnPoints[0].id;
   }
 
   // 6. Recover metadata from PackMetadata if available
@@ -596,6 +611,10 @@ export function importFromContentPack(
     // rule 77 rejects a ref whose definition is missing from the project.
     hazardDefinitions: pack.hazardDefinitions ?? [],
     lootTables: pack.lootTables ?? [],
+    // F-5f16cf2e: town structures raw pass-through restore.
+    buildings: pack.buildings ?? [],
+    hubs: pack.hubs ?? [],
+    strongholds: pack.strongholds ?? [],
 
     tilesets: [],
     tileLayers: [],
@@ -661,7 +680,16 @@ export function importFromContentPack(
         : `Entity zone placements reconstructed for ${roundRobinFallbackCount} of ${engineEntities.length} entities (original zone unknown for these; the rest were restored from the pack's placements[] data).`,
     );
   }
-  if (engineItems.length > 0) warnings.push('Item zone placements reconstructed (original zones unknown)');
+  const itemFallbackCount = itemFidelity.filter(
+    (f) => f.domain === 'items' && f.reason === 'zone-placement-first-zone',
+  ).length;
+  if (itemFallbackCount > 0) {
+    warnings.push(
+      itemFallbackCount === engineItems.length
+        ? 'Item zone placements reconstructed (original zones unknown) — this pack has no itemPlacements[] data.'
+        : `Item zone placements reconstructed for ${itemFallbackCount} of ${engineItems.length} items (original zone unknown for these; the rest were restored from the pack's itemPlacements[] data).`,
+    );
+  }
   warnings.push('Visual layers not imported (tilesets, props, ambient)');
 
   // 11. Validate and surface any remaining issues

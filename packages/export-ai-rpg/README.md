@@ -34,13 +34,19 @@ if (!result.success) {
 ```bash
 npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
+npx world-forge-export --import ./my-pack --out ./imported
+npx world-forge-export --from-pack ./my-pack --out ./imported
 ```
 
 Put `<project.json>` first, or as the first non-option token (`world-forge-export --validate-only project.json` is accepted). Unknown flags are errors and exit 1.
 
+`--out` produces `content-pack.json`, `manifest.json`, `pack-meta.json`, `fidelity.json`, and when present `assets.json` / `asset-bindings.json` / `asset-packs.json`.
+
 | Option | Meaning |
 |--------|---------|
 | `--out <dir>` | Output directory (default: `./export`; created if missing). Mutually exclusive with `--validate-only` and `--dry-run`. `<dir>` must not start with `-`. |
+| `--import <file>` | Import a WorldProject, ContentPack, ExportResult JSON, or a pack directory. Writes `world-project.json` to `--out`, or stdout if `--out` is omitted. |
+| `--from-pack <dir>` | Import a pack directory (`content-pack.json` + `pack-meta.json` + `manifest.json`) via `importFromExportResult`. Reads sidecar `fidelity.json` / `assets.json` / `asset-bindings.json` / `asset-packs.json` when present. |
 | `--validate-only` | Validate without writing files. Mutually exclusive with `--out`. |
 | `--profile release\|debug` | Export profile. `debug` adds a `_debug` block (timestamp, schemaVersion, sourceProjectId, fidelityVerbose). Default: `release`. |
 | `--dry-run` | Validate and report sizes without writing files. Mutually exclusive with `--out`. |

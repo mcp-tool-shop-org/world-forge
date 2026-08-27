@@ -39,19 +39,21 @@
  * @module export
  */
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, LootTable, CraftingStation, MarketNode } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, LootTable, CraftingStation, MarketNode, Building, Hub, Stronghold } from '@world-forge/schema';
 import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
-import type { ZoneDefinition, EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
+import type { EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
-import type { DistrictDefinition } from '@ai-rpg-engine/modules';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { ItemDefinition } from '@ai-rpg-engine/equipment';
 
 import { convertZones, type ExportedZone } from './convert-zones.js';
-import { convertDistricts } from './convert-districts.js';
+import { convertDistricts, type ExportedDistrict } from './convert-districts.js';
 import { convertEntities } from './convert-entities.js';
 import { convertPlacements, type ExportedPlacement } from './convert-placements.js';
 import { convertItems } from './convert-items.js';
+import { convertItemPlacements, type ExportedItemPlacement } from './convert-item-placements.js';
+import { convertConnections, type ExportedConnection } from './convert-connections.js';
+import { convertSpawnPoints, type ExportedSpawnPoint } from './convert-spawn-points.js';
 import { convertDialogues } from './convert-dialogues.js';
 import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-player-template.js';
 import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-catalog.js';
@@ -130,10 +132,27 @@ export type ContentPack = {
   placements: ExportedPlacement[];
   /** `ExportedZone`, not `ZoneDefinition` — the C3/P2 `entryGate` field lives on engine `main` and is unpublished. */
   zones: ExportedZone[];
-  districts: DistrictDefinition[];
+  /**
+   * F-2d93b8d0 — typed inter-zone edges (kind / bidirectional / compiled
+   * condition / label). Zone.neighbors still cross on each zone; this channel
+   * is the graph the engine's space model actually walks.
+   */
+  connections: ExportedConnection[];
+  /** `ExportedDistrict`, not stock `DistrictDefinition` — F-229409a8 adds economyProfile. */
+  districts: ExportedDistrict[];
   dialogues: DialogueDefinition[];
   items: ItemDefinition[];
+  /**
+   * F-42772fc9 — WHERE the items stand. ItemDefinition is the catalog;
+   * this channel carries zoneId / grid / container / lootTableId / hidden.
+   */
+  itemPlacements: ExportedItemPlacement[];
   playerTemplate?: ExportedPlayerTemplate;
+  /**
+   * F-0e432e10 — spawn records (id, zoneId, isDefault, grid). playerTemplate.spawnPointId
+   * is a pointer into this array, not a dangling string.
+   */
+  spawnPoints: ExportedSpawnPoint[];
   buildCatalog?: ExportedBuildCatalog;
   progressionTrees: ProgressionTreeDefinition[];
   encounterAnchors: EncounterAnchor[];
@@ -205,6 +224,15 @@ export type ContentPack = {
    */
   craftingStations: CraftingStation[];
   marketNodes: MarketNode[];
+  /**
+   * F-5f16cf2e — v4.5 town structures as a RAW PASS-THROUGH (same class as
+   * lootTables / craftingStations). Engine has no Building/Hub/Stronghold type
+   * yet, so the F-aa2c07bb dropped *warning* is kept; the data itself now
+   * crosses so it can round-trip and be consumed as untyped data.
+   */
+  buildings: Building[];
+  hubs: Hub[];
+  strongholds: Stronghold[];
 };
 
 export type AssetBindingMap = {
@@ -276,12 +304,15 @@ export function exportToEngine(
   // 2–8. Per-domain conversion (wrapped in try/catch to surface internal
   // converter errors as structured ExportErrors rather than raw exceptions).
   let zones: ReturnType<typeof convertZones>;
+  let connections: ReturnType<typeof convertConnections>;
   let districts: ReturnType<typeof convertDistricts>;
   let entities: ReturnType<typeof convertEntities>;
   let placements: ReturnType<typeof convertPlacements>;
   let items: ReturnType<typeof convertItems>;
+  let itemPlacements: ReturnType<typeof convertItemPlacements>;
   let dialogues: ReturnType<typeof convertDialogues>;
   let playerTemplate: ReturnType<typeof convertPlayerTemplate>;
+  let spawnPoints: ReturnType<typeof convertSpawnPoints>;
   let buildCatalog: ReturnType<typeof convertBuildCatalog>;
   let progressionTrees: ReturnType<typeof convertProgressionTrees>;
   let manifest: ReturnType<typeof convertManifest>;
@@ -292,8 +323,11 @@ export function exportToEngine(
     // F-b372b7e0: interactable name-only collapse reports on warnings+fidelity)
     zones = convertZones(project, warnings, fidelityEntries);
 
-    // 3. Convert districts (F-6cd32f2d: warnings report the safety->surveillance approximation)
-    districts = convertDistricts(project, warnings);
+    // F-2d93b8d0: typed connections (kind / bidirectional / compiled condition / label)
+    connections = convertConnections(project, warnings, fidelityEntries);
+
+    // 3. Convert districts (F-6cd32f2d: safety->surveillance; F-229409a8: economyProfile)
+    districts = convertDistricts(project, warnings, fidelityEntries);
 
     // 4. Convert entities
     if (project.entityPlacements.length === 0) {
@@ -338,12 +372,16 @@ export function exportToEngine(
 
     // 5. Convert items (F-1c1a6e56: warnings/fidelity report the slot/rarity fallback)
     items = convertItems(project, warnings, fidelityEntries);
+    // F-42772fc9: WHERE the items stand (zone / grid / container / lootTableId).
+    itemPlacements = convertItemPlacements(project, warnings, fidelityEntries);
 
     // 6. Convert dialogues
     dialogues = convertDialogues(project);
 
     // 7. Convert player template, build catalog, progression trees (AIR-B-009)
     playerTemplate = convertPlayerTemplate(project, warnings);
+    // F-0e432e10: spawn records themselves, not just the dangling spawnPointId.
+    spawnPoints = convertSpawnPoints(project, warnings, fidelityEntries);
     buildCatalog = convertBuildCatalog(project);
     progressionTrees = convertProgressionTrees(project);
 
@@ -427,16 +465,33 @@ export function exportToEngine(
     });
   }
 
-  // 10c. F-aa2c07bb: leftover v4.5 authored subsystems listed in C0
-  // DROPPED_CONTAINERS (buildings/hubs/strongholds/strata/stratumLinks/
-  // transitions) have no ContentPack key. Same polarity as craftingStations:
-  // loud on present, silent on empty. level:'dropped' — do NOT stamp
-  // lossless on a no-channel domain (that would inflate losslessPercent
-  // while the town/stratum/transition layers vanish unmeasured).
-  const droppedNoChannel: Array<{ key: 'buildings' | 'hubs' | 'strongholds' | 'strata' | 'stratumLinks' | 'transitions'; label: string; reason: string }> = [
-    { key: 'buildings', label: 'building(s)', reason: 'buildings-dropped' },
-    { key: 'hubs', label: 'hub(s)', reason: 'hubs-dropped' },
-    { key: 'strongholds', label: 'stronghold(s)', reason: 'strongholds-dropped' },
+  // 10c. F-aa2c07bb / F-5f16cf2e: leftover v4.5 authored subsystems.
+  //
+  // buildings/hubs/strongholds now have a ContentPack channel (raw pass-through,
+  // F-5f16cf2e) — stamp lossless-passthrough fidelity when non-empty, but KEEP
+  // the dropped *warning* until a real engine type exists. strata/stratumLinks/
+  // transitions still have no channel: loud on present, silent on empty,
+  // level:'dropped'.
+  const townPassthrough: Array<{ key: 'buildings' | 'hubs' | 'strongholds'; label: string; passReason: string }> = [
+    { key: 'buildings', label: 'building(s)', passReason: 'buildings-raw-passthrough' },
+    { key: 'hubs', label: 'hub(s)', passReason: 'hubs-raw-passthrough' },
+    { key: 'strongholds', label: 'stronghold(s)', passReason: 'strongholds-raw-passthrough' },
+  ];
+  for (const { key, label, passReason } of townPassthrough) {
+    const list = project[key];
+    if (Array.isArray(list) && list.length > 0) {
+      // F-aa2c07bb warning kept (no engine type yet) even though the data now
+      // crosses as a raw pass-through — do not treat that warning as the converter.
+      const msg = `${list.length} ${label} exported as raw pass-through data on ContentPack.${key} — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.`;
+      warnings.push(msg);
+      fidelityEntries.push({
+        level: 'lossless', domain: 'world', severity: 'info',
+        message: `${list.length} ${label} passed through to ContentPack.${key} verbatim (no dedicated engine type yet)`,
+        reason: passReason,
+      });
+    }
+  }
+  const droppedNoChannel: Array<{ key: 'strata' | 'stratumLinks' | 'transitions'; label: string; reason: string }> = [
     { key: 'strata', label: 'stratum/strata', reason: 'strata-dropped' },
     { key: 'stratumLinks', label: 'stratum link(s)', reason: 'stratum-links-dropped' },
     { key: 'transitions', label: 'transition(s)', reason: 'transitions-dropped' },
@@ -526,10 +581,13 @@ export function exportToEngine(
     // are read together at intake.
     placements,
     zones,
+    connections,
     districts,
     dialogues,
     items,
+    itemPlacements,
     playerTemplate,
+    spawnPoints,
     buildCatalog,
     progressionTrees,
     encounterAnchors: project.encounterAnchors,
@@ -548,6 +606,11 @@ export function exportToEngine(
     // here specifically).
     craftingStations: project.craftingStations,
     marketNodes: project.marketNodes,
+    // F-5f16cf2e. Optional on WorldProject (additive v4.5) — `?? []` so the
+    // key is unconditional, same as lootTables / hazardDefinitions.
+    buildings: project.buildings ?? [],
+    hubs: project.hubs ?? [],
+    strongholds: project.strongholds ?? [],
   };
 
   if (profile === 'debug' || emitSchemaVersion) {
@@ -556,9 +619,12 @@ export function exportToEngine(
       entities: [],
       placements: [],
       zones: [],
+      connections: [],
       districts: [],
       dialogues: [],
       items: [],
+      itemPlacements: [],
+      spawnPoints: [],
       progressionTrees: [],
       encounterAnchors: [],
       factionPresences: [],
@@ -567,6 +633,9 @@ export function exportToEngine(
       lootTables: [],
       craftingStations: [],
       marketNodes: [],
+      buildings: [],
+      hubs: [],
+      strongholds: [],
     };
     // Wipe the placeholder keys so we can re-insert them in the canonical order
     // *after* the metadata keys.
@@ -589,10 +658,13 @@ export function exportToEngine(
     prefixed.entities = contentPack.entities;
     prefixed.placements = contentPack.placements;
     prefixed.zones = contentPack.zones;
+    prefixed.connections = contentPack.connections;
     prefixed.districts = contentPack.districts;
     prefixed.dialogues = contentPack.dialogues;
     prefixed.items = contentPack.items;
+    prefixed.itemPlacements = contentPack.itemPlacements;
     if (contentPack.playerTemplate) prefixed.playerTemplate = contentPack.playerTemplate;
+    prefixed.spawnPoints = contentPack.spawnPoints;
     if (contentPack.buildCatalog) prefixed.buildCatalog = contentPack.buildCatalog;
     prefixed.progressionTrees = contentPack.progressionTrees;
     prefixed.encounterAnchors = contentPack.encounterAnchors;
@@ -602,6 +674,9 @@ export function exportToEngine(
     prefixed.lootTables = contentPack.lootTables;
     prefixed.craftingStations = contentPack.craftingStations;
     prefixed.marketNodes = contentPack.marketNodes;
+    prefixed.buildings = contentPack.buildings;
+    prefixed.hubs = contentPack.hubs;
+    prefixed.strongholds = contentPack.strongholds;
 
     return {
       success: true,

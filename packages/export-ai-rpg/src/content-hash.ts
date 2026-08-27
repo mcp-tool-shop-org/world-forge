@@ -112,6 +112,14 @@ export const SIM_AFFECTING_KEYS = [
   'items',
   'factionPresences',
   'pressureHotspots',
+  // Wave 32: new ContentPack channels that change what the simulation
+  // computes (typed graph, spawn locations, item whereabouts, town layer).
+  'connections',
+  'itemPlacements',
+  'spawnPoints',
+  'buildings',
+  'hubs',
+  'strongholds',
 ] as const;
 
 /**

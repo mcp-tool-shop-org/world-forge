@@ -54,6 +54,7 @@ export function convertEntities(
   // AIR-B-003: Collect known faction ids so we can flag dangling references.
   // Factions in WorldProject are identified by `factionPresences[].factionId`.
   const knownFactionIds = new Set(project.factionPresences.map((fp) => fp.factionId));
+  const knownDialogueIds = new Set(project.dialogues.map((d) => d.id));
 
   return project.entityPlacements.map((ep) => {
     // ep.role is typed as the closed EntityRole union, but at runtime it is
@@ -101,6 +102,37 @@ export function convertEntities(
         tags.push(`faction:UNKNOWN`);
       } else {
         tags.push(`faction:${ep.factionId}`);
+      }
+    }
+
+    // F-c2cdc36d: EntityBlueprint has no dialogue field, so the binding is
+    // encoded as a `dialogue:<id>` tag (same pattern as factionId) AND carried
+    // on ExportedPlacement.dialogueId. Warn when the id does not resolve.
+    if (ep.dialogueId) {
+      tags.push(`dialogue:${ep.dialogueId}`);
+      if (!knownDialogueIds.has(ep.dialogueId)) {
+        const entityLabel = ep.name || ep.entityId;
+        const msg = `Entity "${ep.entityId}" (${entityLabel}) references dialogueId "${ep.dialogueId}" which is not in project.dialogues[] — tagged as dialogue:${ep.dialogueId} anyway so a pack consumer can still start the tree if the dialogue is supplied later.`;
+        warnings?.push(msg);
+        fidelity?.push({
+          domain: 'entities',
+          level: 'approximated',
+          severity: 'warning',
+          entityId: ep.entityId,
+          fieldPath: 'dialogueId',
+          message: msg,
+          reason: 'dialogue-id-unresolved',
+        });
+      } else {
+        fidelity?.push({
+          domain: 'entities',
+          level: 'lossless',
+          severity: 'info',
+          entityId: ep.entityId,
+          fieldPath: 'dialogueId',
+          message: `Entity '${ep.entityId}' dialogueId '${ep.dialogueId}' encoded as tag dialogue:${ep.dialogueId} and on placements[].dialogueId.`,
+          reason: 'dialogue-id-as-tag',
+        });
       }
     }
 

@@ -152,20 +152,20 @@ describe('importDistricts', () => {
     expect(districts[0].baseMetrics.commerce).toBe(30);
   });
 
-  it('defaults economyProfile', () => {
+  it('restores economyProfile from the pack (F-229409a8)', () => {
     const result = exportToEngine(minimalProject);
     if (!result.success) throw new Error('export failed');
     const { districts } = importDistricts(result.contentPack.districts);
-    expect(districts[0].economyProfile).toEqual({ supplyCategories: [], scarcityDefaults: {} });
+    expect(districts[0].economyProfile).toEqual(minimalProject.districts[0].economyProfile);
   });
 
-  it('emits surveillance-to-safety and economy-data-lost fidelity', () => {
+  it('emits surveillance-to-safety and economy-from-pack fidelity', () => {
     const result = exportToEngine(minimalProject);
     if (!result.success) throw new Error('export failed');
     const { fidelity } = importDistricts(result.contentPack.districts);
     expect(fidelity.some((f) => f.reason === 'surveillance-to-safety')).toBe(true);
-    expect(fidelity.some((f) => f.reason === 'economy-data-lost')).toBe(true);
-    expect(fidelity.find((f) => f.reason === 'economy-data-lost')!.level).toBe('dropped');
+    expect(fidelity.some((f) => f.reason === 'economy-from-pack')).toBe(true);
+    expect(fidelity.find((f) => f.reason === 'economy-from-pack')!.level).toBe('lossless');
   });
 });
 

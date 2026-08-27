@@ -57,12 +57,15 @@ export function importEntities(
     const eb = engineEntities[i];
     const role = reverseRole(eb.type, eb.tags ?? []);
 
-    // Strip role-injected tags and faction:* tags to recover author tags
+    // Strip role-injected tags and faction:* / dialogue:* tags to recover author tags
     let factionId: string | undefined;
+    let dialogueIdFromTag: string | undefined;
     const authorTags: string[] = [];
     for (const tag of eb.tags ?? []) {
       if (tag.startsWith('faction:')) {
         factionId = tag.slice(8);
+      } else if (tag.startsWith('dialogue:')) {
+        dialogueIdFromTag = tag.slice(9);
       } else if (!ROLE_INJECTED_TAGS.has(tag)) {
         authorTags.push(tag);
       }
@@ -104,6 +107,7 @@ export function importEntities(
       reason: 'role-reverse-mapped',
     });
 
+    const dialogueId = placementRecord?.dialogueId || dialogueIdFromTag;
     const placement: EntityPlacement = {
       entityId: eb.id,
       name: eb.name,
@@ -112,6 +116,7 @@ export function importEntities(
       tags: authorTags.length > 0 ? authorTags : undefined,
       factionId,
     };
+    if (dialogueId) placement.dialogueId = dialogueId;
 
     // Decompile the placement's compiled spawnCondition back into
     // SpawnCondition-grammar, the same codec `import-zones.ts` uses for exits

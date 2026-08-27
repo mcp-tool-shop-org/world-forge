@@ -55,6 +55,10 @@ describe('CLI: world-forge-export', () => {
     expect(stdout).toContain('--dry-run');
     expect(stdout).toContain('--profile');
     expect(stdout).toContain('--verbose');
+    expect(stdout).toContain('--import');
+    expect(stdout).toContain('--from-pack');
+    expect(stdout).toContain('fidelity.json');
+    expect(stdout).toContain('Produces (under --out)');
     expect(stdout).toContain('unknown option');
     expect(stdout).toContain('mutually exclusive with --out');
   });
@@ -112,6 +116,75 @@ describe('CLI: world-forge-export', () => {
 
     const packMeta = JSON.parse(await readFile(join(outDir, 'pack-meta.json'), 'utf-8'));
     expect(packMeta).toBeDefined();
+
+    // F-3162133c: --out always writes fidelity.json next to the three pack files.
+    const fidelity = JSON.parse(await readFile(join(outDir, 'fidelity.json'), 'utf-8'));
+    expect(fidelity.entries).toBeDefined();
+    expect(Array.isArray(fidelity.entries)).toBe(true);
+  });
+
+  it('F-3162133c: --out writes assets.json / asset-bindings.json when the project has assets', async () => {
+    const withAssets = {
+      ...minimalProject,
+      assets: [{ id: 'bg-1', kind: 'background', label: 'Hall', path: 'assets/hall.png', tags: [] }],
+      zones: minimalProject.zones.map((z: (typeof minimalProject.zones)[number], i: number) =>
+        i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
+      ),
+    };
+    const assetsJsonPath = join(tmpDir, 'with-assets.json');
+    await writeFile(assetsJsonPath, JSON.stringify(withAssets, null, 2));
+    const outDir = join(tmpDir, 'export-assets-sidecars');
+    const { code } = await runCli([assetsJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    const assets = JSON.parse(await readFile(join(outDir, 'assets.json'), 'utf-8'));
+    expect(assets[0].id).toBe('bg-1');
+    const bindings = JSON.parse(await readFile(join(outDir, 'asset-bindings.json'), 'utf-8'));
+    expect(bindings.zones['zone-entrance'].backgroundId).toBe('bg-1');
+  });
+
+  it('F-c5ed434d: --import of a pack directory writes world-project.json', async () => {
+    const packDir = join(tmpDir, 'export-for-import');
+    const { code: exportCode } = await runCli([validJsonPath, '--out', packDir]);
+    expect(exportCode).toBe(0);
+    const importDir = join(tmpDir, 'imported-project');
+    const { code, stdout } = await runCli(['--from-pack', packDir, '--out', importDir]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Imported to');
+    expect(stdout).toContain('world-project.json');
+    const project = JSON.parse(await readFile(join(importDir, 'world-project.json'), 'utf-8'));
+    expect(Array.isArray(project.zones)).toBe(true);
+    expect(project.zones.length).toBeGreaterThan(0);
+    expect(Array.isArray(project.spawnPoints)).toBe(true);
+    expect(project.spawnPoints.length).toBeGreaterThan(0);
+  });
+
+  it('F-c5ed434d: --import of a ContentPack JSON file is accepted', async () => {
+    const packDir = join(tmpDir, 'export-for-import-file');
+    const { code: exportCode } = await runCli([validJsonPath, '--out', packDir]);
+    expect(exportCode).toBe(0);
+    const importDir = join(tmpDir, 'imported-from-file');
+    const { code, stdout } = await runCli(['--import', join(packDir, 'content-pack.json'), '--out', importDir]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Imported to');
+    const project = JSON.parse(await readFile(join(importDir, 'world-project.json'), 'utf-8'));
+    expect(project.zones.length).toBeGreaterThan(0);
+  });
+
+  it('F-c5ed434d: --import without --out writes WorldProject JSON to stdout', async () => {
+    const packDir = join(tmpDir, 'export-for-import-stdout');
+    const { code: exportCode } = await runCli([validJsonPath, '--out', packDir]);
+    expect(exportCode).toBe(0);
+    const { code, stdout } = await runCli(['--import', join(packDir, 'content-pack.json')]);
+    expect(code).toBe(0);
+    const project = JSON.parse(stdout.split('\nWarnings:')[0] || stdout);
+    expect(Array.isArray(project.zones)).toBe(true);
+  });
+
+  it('F-c5ed434d: unknown --import is NOT still an unknown-option error', async () => {
+    const { code, stderr } = await runCli(['--import']);
+    expect(code).not.toBe(0);
+    expect(stderr).not.toContain("unknown option '--import'");
+    expect(stderr).toContain('--import requires a path');
   });
 
   // AIR-FT-001: --profile flag
