@@ -288,9 +288,6 @@ function run(): void {
     }
 }
 
-run();
-process.exit(failed === 0 ? 0 : 1);
-
 // ── Receipt ──────────────────────────────────────────────────
 // F-c621e532: rows come from pack.Zones[].OriginCm / ElevationCm (or n/a
 // when the zone is missing). Hardcoded 0,-400,-300 painted a success-shaped
@@ -377,3 +374,6 @@ ${verdict === 'PASS'
     writeFileSync(receiptPath, receipt, 'utf-8');
     console.log(`\nReceipt: ${receiptPath}`);
 }
+
+run();
+process.exit(failed === 0 ? 0 : 1);
