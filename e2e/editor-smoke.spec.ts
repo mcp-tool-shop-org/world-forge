@@ -101,7 +101,7 @@ test.describe('Editor browser smoke', () => {
     // a `.catch(() => false)` soft-check here (as this test previously had)
     // means a fully broken advisory renderer would still pass, because the
     // conditional body simply never runs. See F-002.
-    const advisories = page.locator('text=Advisories');
+    const advisories = page.getByText('Advisories', { exact: true }).first();
     await expect(advisories).toBeVisible({ timeout: 3000 });
 
     // Modal still renders correctly alongside the advisories section.
