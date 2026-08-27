@@ -39,11 +39,12 @@ const ROLE_AI_PROFILE: Record<EntityRole, string> = {
  * not guard against missing nested properties and will throw if input is
  * malformed. (AIR-B-006)
  *
- * **AIR-B-004:** Pass a `fidelity` array to collect structured entries when a
- * `custom` field value cannot be JSON-serialized (e.g. circular reference).
- * The console.warn is still emitted for legacy consumers; the fidelity entry
- * is the programmatic signal that mirrors the pattern used by the import-side
- * converters.
+ * **AIR-B-004 / F-cd05e76f:** Pass a `fidelity` array to collect structured
+ * entries when a `custom` field value cannot be JSON-serialized (e.g. circular
+ * reference). The same loss is pushed onto `warnings` so the CLI `Warnings:`
+ * block (and `Fidelity:` dump) can print it — `console.warn` alone is not a
+ * diagnostic channel when the consumer is not a TTY. The console.warn is still
+ * emitted for legacy consumers.
  */
 export function convertEntities(
   project: WorldProject,
@@ -130,14 +131,16 @@ export function convertEntities(
           sanitized[k] = v;
         } catch {
           const entityLabel = ep.name || ep.entityId;
-          console.warn(`[convert-entities] Entity '${entityLabel}': custom field '${k}' has a non-JSON-serializable value (${typeof v}) — skipping this field.`);
+          const msg = `Entity '${entityLabel}' custom field '${k}' has a non-JSON-serializable value (likely circular reference) and was dropped from the export.`;
+          console.warn(`[convert-entities] ${msg}`);
+          warnings?.push(msg);
           fidelity?.push({
             domain: 'entities',
             level: 'approximated',
             severity: 'warning',
             entityId: ep.entityId,
             fieldPath: `custom.${k}`,
-            message: `Entity '${entityLabel}' custom field '${k}' could not be JSON-serialized (likely circular reference) and was dropped from the export.`,
+            message: msg,
             reason: 'custom-field-not-json-serializable',
           });
         }

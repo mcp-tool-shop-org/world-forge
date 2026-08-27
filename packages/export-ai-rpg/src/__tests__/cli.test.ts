@@ -52,6 +52,11 @@ describe('CLI: world-forge-export', () => {
     const { stdout } = await runCli(['--help']);
     expect(stdout).toContain('Usage: world-forge-export');
     expect(stdout).toContain('--validate-only');
+    expect(stdout).toContain('--dry-run');
+    expect(stdout).toContain('--profile');
+    expect(stdout).toContain('--verbose');
+    expect(stdout).toContain('unknown option');
+    expect(stdout).toContain('mutually exclusive with --out');
   });
 
   it('shows help with no args', async () => {
@@ -75,6 +80,8 @@ describe('CLI: world-forge-export', () => {
     const { code, stderr } = await runCli([badJsonPath]);
     expect(code).not.toBe(0);
     expect(stderr).toContain('not valid JSON');
+    // F-a7f30487: keep the parser's own location text, not just the wrapper.
+    expect(stderr).toMatch(/Unexpected token|position/);
   });
 
   it('rejects missing file with exit code 1', async () => {
@@ -233,4 +240,116 @@ describe('CLI: world-forge-export', () => {
     }
     expect(existed).toBe(false);
   });
+
+  // F-08ce4899: unknown flags are errors, not silent no-ops
+  it('rejects unknown option --strict with exit code 1 and does not write a pack', async () => {
+    const outDir = join(tmpDir, 'export-strict-should-not-exist');
+    const { code, stderr } = await runCli([validJsonPath, '--out', outDir, '--strict']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("unknown option '--strict'");
+    expect(stderr).toContain('--help');
+    let existed = true;
+    try {
+      await access(outDir);
+    } catch {
+      existed = false;
+    }
+    expect(existed).toBe(false);
+  });
+
+  it('rejects unknown option --pretty with exit code 1 and does not write a pack', async () => {
+    const outDir = join(tmpDir, 'export-pretty-should-not-exist');
+    const { code, stderr } = await runCli([validJsonPath, '--out', outDir, '--pretty']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("unknown option '--pretty'");
+    let existed = true;
+    try {
+      await access(outDir);
+    } catch {
+      existed = false;
+    }
+    expect(existed).toBe(false);
+  });
+
+  // F-608e5fc5: --validate-only is mutually exclusive with --out (same as --dry-run)
+  it('--validate-only is mutually exclusive with --out and does not create the out dir', async () => {
+    const outDir = join(tmpDir, 'export-validate-only-conflict');
+    const { code, stderr } = await runCli([validJsonPath, '--validate-only', '--out', outDir]);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('mutually exclusive');
+    expect(stderr).toContain('--validate-only');
+    let existed = true;
+    try {
+      await access(outDir);
+    } catch {
+      existed = false;
+    }
+    expect(existed).toBe(false);
+  });
+
+  // F-b2103ece: flag-first is not ENOENT on a path named --validate-only
+  it('accepts --validate-only before the project path', async () => {
+    const { code, stdout, stderr } = await runCli(['--validate-only', validJsonPath]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Validation passed');
+    expect(stderr).not.toMatch(/ENOENT/);
+    expect(stderr).not.toMatch(/cannot read "--validate-only"/);
+  });
+
+  it('rejects a leading flag with no project path (does not ENOENT the flag)', async () => {
+    const { code, stderr } = await runCli(['--validate-only']);
+    expect(code).not.toBe(0);
+    expect(stderr).toMatch(/project\.json|first/);
+    expect(stderr).not.toMatch(/ENOENT/);
+    expect(stderr).not.toMatch(/cannot read "--validate-only"/);
+  });
+
+  // F-a7f30487: truncated JSON keeps the parser's position text
+  it('rejects truncated JSON naming the parser position', async () => {
+    const truncatedPath = join(tmpDir, 'truncated.json');
+    await writeFile(truncatedPath, '{');
+    const { code, stderr } = await runCli([truncatedPath]);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('not valid JSON');
+    expect(stderr).toMatch(/position/);
+  });
+
+  // F-f54a9f8b: --verbose is live on validate-only / dry-run / failure
+  it('--validate-only --verbose prints verbose diagnostics', async () => {
+    const { code, stdout } = await runCli([validJsonPath, '--validate-only', '--verbose']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Validation passed');
+    expect(stdout).toContain('Verbose Diagnostics');
+    expect(stdout).toContain('Profile:');
+  });
+
+  it('--dry-run --verbose prints verbose diagnostics', async () => {
+    const { code, stdout } = await runCli([validJsonPath, '--dry-run', '--verbose']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Dry run');
+    expect(stdout).toContain('Verbose Diagnostics');
+  });
+
+  it('failed export with --verbose prints errors plus verbose diagnostics', async () => {
+    const { code, stdout, stderr } = await runCli([invalidJsonPath, '--verbose']);
+    expect(code).not.toBe(0);
+    const combined = `${stdout}\n${stderr}`;
+    expect(combined).toContain('Validation failed');
+    expect(combined).toContain('Verbose Diagnostics');
+  });
+
+  // F-cd05e76f: Fidelity entries cannot hide behind a green Exported to.
+  // JSON files cannot encode a circular `custom` field (that path is covered
+  // by convertEntities unit tests); the CLI print channel is the same for
+  // any fidelity entry — landmarks on the minimal fixture is the on-disk case.
+  it('prints Fidelity: on a successful export so dropped rows cannot hide behind Exported to', async () => {
+    const outDir = join(tmpDir, 'export-fidelity-print');
+    const { code, stdout, stderr } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Exported to');
+    const combined = `${stdout}\n${stderr}`;
+    expect(combined).toMatch(/Fidelity:|Warnings:/);
+    expect(combined).toMatch(/landmarks-authored-and-dropped|authored-and-dropped/);
+  });
 });
+
