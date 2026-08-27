@@ -12,12 +12,14 @@ Tipos principales de TypeScript para [World Forge](https://github.com/mcp-tool-s
 
 ## Tipos
 
-- **Espaciales:** `WorldMap` (Mapa del mundo), `Zone` (Zona), `ZoneExit` (Salida de zona), `ZoneConnection` (Conexión de zona), `Landmark` (Punto de referencia), `Interactable` (Objeto interactuable).
+- **Espaciales:** `WorldMap` (Mapa del mundo), `Zone` (Zona), `ZoneExit` (Salida de zona), `ZoneConnection` (Conexión de zona), `Landmark` (Punto de referencia), `Interactable` (Objeto interactuable), `ZoneEntryGate`.
 - **Distritos:** `District` (Distrito), `DistrictMetrics` (Métricas del distrito), `EconomyProfile` (Perfil económico), `FactionPresence` (Presencia de facción), `PressureHotspot` (Punto caliente de presión).
 - **Entidades:** `EntityPlacement` (Colocación de entidad) (con `EntityStats` (Estadísticas de la entidad), `EntityResources` (Recursos de la entidad), `EntityAI` (IA de la entidad)), `ItemPlacement` (Colocación de objeto) (con `ItemSlot` (Ranura del objeto), `ItemRarity` (Rareza del objeto)), `SpawnPoint` (Punto de aparición), `EncounterAnchor` (Anclaje de encuentro), `CraftingStation` (Estación de creación), `MarketNode` (Nodo de mercado).
+- **Pueblo y estructuras:** `Building`, `Hub`, `Stronghold`.
+- **Modelado del mundo:** `Stratum`, `StratumLink` (capas verticales), `HazardDefinition` (unión de efectos tipados), más operandos de `SpawnCondition` del estado del grupo que impulsan `ZoneEntryGate`.
 - **Visuales:** `Tileset` (Conjunto de teselas), `TileDefinition` (Definición de tesela), `TileLayer` (Capa de teselas), `PropDefinition` (Definición de objeto), `PropPlacement` (Colocación de objeto), `AmbientLayer` (Capa ambiental).
 - **Proyecto:** `WorldProject` (Proyecto del mundo) — el contenedor completo del mundo creado.
-- **Validación:** `validateProject()` con 54 comprobaciones estructurales.
+- **Validación:** `validateProject()` — las comprobaciones estructurales numeradas viven en `src/validate.ts` (no trate un recuento publicado como el contrato).
 
 ## Instalación
 

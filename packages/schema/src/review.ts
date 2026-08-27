@@ -104,7 +104,7 @@ export interface ValidationSummary {
 
 export interface AdvisorySummary {
   suggestionCount: number;
-  firstSuggestions: Array<{ message: string }>;
+  firstSuggestions: Array<{ path: string; message: string }>;
 }
 
 export interface DependencyHealthSummary {
@@ -245,7 +245,9 @@ function classifyValidationDomain(path: string, suppressUnknownPrefixWarnings = 
   // Dedupe on the top-level segment (everything before the first '.') so
   // `zones.z1.field` and `zones.z2.other` only warn once for `zones`.
   const firstDot = path.indexOf('.');
-  const prefix = firstDot === -1 ? path : path.slice(0, firstDot);
+  const firstSegment = firstDot === -1 ? path : path.slice(0, firstDot);
+  // Strip connections[0] → connections so indexed paths stay in the known-world bucket.
+  const prefix = firstSegment.replace(/\[\d+\]/g, '');
   if (!suppressUnknownPrefixWarnings && prefix && !WARNED_UNKNOWN_PREFIXES.has(prefix)) {
     WARNED_UNKNOWN_PREFIXES.add(prefix);
     // Known-world prefixes that we intentionally route through the catch-all
@@ -492,7 +494,7 @@ export function buildReviewSnapshot(
   // Advisory summary
   const advisorySummary: AdvisorySummary = {
     suggestionCount: advisory.items.length,
-    firstSuggestions: advisory.items.slice(0, 5).map((a) => ({ message: a.message })),
+    firstSuggestions: advisory.items.slice(0, 5).map((a) => ({ path: a.path, message: a.message })),
   };
 
   // Dependency health

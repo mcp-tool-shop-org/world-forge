@@ -12,12 +12,14 @@ Tipi TypeScript fondamentali per [World Forge](https://github.com/mcp-tool-shop-
 
 ## Tipi
 
-- **Spaziali:** `WorldMap`, `Zone`, `ZoneExit`, `ZoneConnection`, `Landmark`, `Interactable`
+- **Spaziali:** `WorldMap`, `Zone`, `ZoneExit`, `ZoneConnection`, `Landmark`, `Interactable`, `ZoneEntryGate`
 - **Distretti:** `District`, `DistrictMetrics`, `EconomyProfile`, `FactionPresence`, `PressureHotspot`
 - **Entità:** `EntityPlacement` (con `EntityStats`, `EntityResources`, `EntityAI`), `ItemPlacement` (con `ItemSlot`, `ItemRarity`), `SpawnPoint`, `EncounterAnchor`, `CraftingStation`, `MarketNode`
+- **Città e strutture:** `Building`, `Hub`, `Stronghold`
+- **Modellazione del mondo:** `Stratum`, `StratumLink` (livelli verticali), `HazardDefinition` (unione di effetti tipizzati), più gli operandi `SpawnCondition` dello stato del gruppo che alimentano `ZoneEntryGate`
 - **Visivi:** `Tileset`, `TileDefinition`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
 - **Progetto:** `WorldProject` — il contenitore completo del mondo creato.
-- **Validazione:** `validateProject()` con 54 controlli strutturali.
+- **Validazione:** `validateProject()` — i controlli strutturali numerati sono in `src/validate.ts` (non trattare un conteggio pubblicato come il contratto).
 
 ## Installazione
 

@@ -12,12 +12,14 @@
 
 ## 类型
 
-- **空间：** `WorldMap`（世界地图）、`Zone`（区域）、`ZoneExit`（区域出口）、`ZoneConnection`（区域连接）、`Landmark`（地标）、`Interactable`（可互动对象）
+- **空间：** `WorldMap`（世界地图）、`Zone`（区域）、`ZoneExit`（区域出口）、`ZoneConnection`（区域连接）、`Landmark`（地标）、`Interactable`（可互动对象）、`ZoneEntryGate`
 - **区域：** `District`（区域）、`DistrictMetrics`（区域指标）、`EconomyProfile`（经济概况）、`FactionPresence`（势力存在）、`PressureHotspot`（压力热点）
 - **实体：** `EntityPlacement`（实体放置，包含 `EntityStats`（实体属性）、`EntityResources`（实体资源）、`EntityAI`（实体 AI））、`ItemPlacement`（物品放置，包含 `ItemSlot`（物品栏）、`ItemRarity`（物品稀有度））、`SpawnPoint`（生成点）、`EncounterAnchor`（遭遇点）、`CraftingStation`（制作站）、`MarketNode`（市场节点）
+- **城镇与结构：** `Building`、`Hub`、`Stronghold`
+- **世界建模：** `Stratum`、`StratumLink`（垂直层）、`HazardDefinition`（类型化效果联合），以及驱动 `ZoneEntryGate` 的队伍状态 `SpawnCondition` 操作数
 - **视觉：** `Tileset`（瓦片集）、`TileDefinition`（瓦片定义）、`TileLayer`（瓦片层）、`PropDefinition`（道具定义）、`PropPlacement`（道具放置）、`AmbientLayer`（环境层）
 - **项目：** `WorldProject`（世界项目）——完整的创作世界容器
-- **验证：** `validateProject()` 函数，包含 54 个结构性检查
+- **验证：** `validateProject()` — 编号的结构检查位于 `src/validate.ts`（请勿将已发布的数量视为契约）
 
 ## 安装
 
