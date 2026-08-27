@@ -9,8 +9,8 @@
  */
 
 import type { WorldProject } from '@world-forge/schema';
-import type { FidelityEntry } from './fidelity.js';
-import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { formatDroppedIdentities, type FidelityEntry } from './fidelity.js';
+import { resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotMarketNode {
@@ -40,7 +40,7 @@ export interface ConvertEconomyResult {
 }
 
 export function convertEconomy(project: WorldProject): ConvertEconomyResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
 
     // Zone-center lookup (pixels) for positioning zone-attached economy nodes.
@@ -55,6 +55,7 @@ export function convertEconomy(project: WorldProject): ConvertEconomyResult {
     const markets: GodotMarketNode[] = [];
     const craftingStations: GodotCraftingStation[] = [];
     const seen = new Map<string, number>();
+    const droppedIds: string[] = [];
     let droppedMarkets = 0;
     let droppedStations = 0;
 
@@ -69,6 +70,7 @@ export function convertEconomy(project: WorldProject): ConvertEconomyResult {
         const center = zoneCenter.get(m.zoneId);
         if (!center) {
             droppedMarkets++;
+            droppedIds.push(`market "${m.id}" (zoneId "${m.zoneId}")`);
             continue;
         }
         markets.push({
@@ -87,6 +89,7 @@ export function convertEconomy(project: WorldProject): ConvertEconomyResult {
         const center = zoneCenter.get(c.zoneId);
         if (!center) {
             droppedStations++;
+            droppedIds.push(`crafting station "${c.id}" (zoneId "${c.zoneId}")`);
             continue;
         }
         craftingStations.push({
@@ -106,7 +109,7 @@ export function convertEconomy(project: WorldProject): ConvertEconomyResult {
             domain: 'economy',
             severity: 'warning',
             fieldPath: 'marketNodes/craftingStations',
-            message: `${dropped} economy node(s) (${droppedMarkets} market, ${droppedStations} crafting) reference a zoneId with no matching zone — dropped.`,
+            message: `${dropped} economy node(s) (${droppedMarkets} market, ${droppedStations} crafting) reference a zoneId with no matching zone — dropped: ${formatDroppedIdentities(droppedIds)}.`,
             reason: 'A zone-attached economy node could not be positioned because its zone was not found.',
         });
     }

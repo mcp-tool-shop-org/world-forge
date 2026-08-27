@@ -80,3 +80,14 @@ describe('convertItems — node-name quote safety (F-001/F-18d722e0)', () => {
         expect(items[0].nodeName).toMatch(/^[a-zA-Z0-9_]+$/);
     });
 });
+
+describe('convertItems — orphan zone', () => {
+    it('drops the item and names the ghost zone in the message', () => {
+        const { items, fidelity } = convertItems(proj([zone('z1')], [placement('ghost-item', { zoneId: 'ghost' })]));
+        expect(items).toHaveLength(0);
+        const dropped = fidelity.find((f) => f.level === 'dropped');
+        expect(dropped).toBeDefined();
+        expect(dropped!.message).toContain('ghost-item');
+        expect(dropped!.message).toContain('ghost');
+    });
+});

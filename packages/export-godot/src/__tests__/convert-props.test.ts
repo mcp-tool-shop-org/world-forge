@@ -31,7 +31,10 @@ describe('convertProps', () => {
       { id: 'p2', propId: 'ghost', gridX: 1, gridY: 0 },
     ]));
     expect(props.map((p) => p.id)).toEqual(['p1']);
-    expect(fidelity.some((f) => f.domain === 'props' && f.level === 'dropped')).toBe(true);
+    const dropped = fidelity.find((f) => f.domain === 'props' && f.level === 'dropped');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('p2');
   });
 
   it('reports an approximated fidelity entry when props export', () => {

@@ -14,8 +14,8 @@
  */
 
 import type { WorldProject } from '@world-forge/schema';
-import type { FidelityEntry } from './fidelity.js';
-import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
+import { formatDroppedIdentities, type FidelityEntry } from './fidelity.js';
+import { resolveTileSize } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 import { deriveGodotFilename } from './convert-assets.js';
 
@@ -75,7 +75,7 @@ function texturePathFor(tilesetId: string, imagePath: string): string {
 }
 
 export function convertTileLayers(project: WorldProject): ConvertTileLayersResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
 
     const tilesets = project.tilesets ?? [];
@@ -98,12 +98,12 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
         const cells: GodotTileCell[] = [];
         const solidCells: Array<{ gridX: number; gridY: number }> = [];
         let tileCount = 0;
-        let droppedCount = 0;
+        const droppedTileIds: string[] = [];
 
         for (const placement of layer.tiles) {
             const def = tileIndex.get(placement.tileId);
             if (!def) {
-                droppedCount++;
+                droppedTileIds.push(`tileId "${placement.tileId}"`);
                 continue;
             }
             tileCount++;
@@ -170,14 +170,14 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
             imageBacked,
         });
 
-        if (droppedCount > 0) {
+        if (droppedTileIds.length > 0) {
             fidelity.push({
                 level: 'dropped',
                 domain: 'tiles',
                 severity: 'warning',
                 entityId: layer.id,
                 fieldPath: `tileLayers.${layer.id}.tiles`,
-                message: `${droppedCount} tile placement(s) in layer "${layer.id}" reference tile ids not found in any tileset — dropped.`,
+                message: `${droppedTileIds.length} tile placement(s) in layer "${layer.id}" reference tile ids not found in any tileset — dropped: ${formatDroppedIdentities(droppedTileIds)}.`,
                 reason: 'A placement\'s tileId did not resolve to a TileDefinition; the cell cannot be exported.',
             });
         }

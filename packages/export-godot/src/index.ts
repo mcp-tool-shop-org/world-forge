@@ -79,11 +79,11 @@ export type { MigrationResult, MigrationError, SemVer } from './migrations.js';
 export { uniqueSiblingName, sanitizeNodeName } from './node-naming.js';
 
 export {
-    gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX,
+    gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX, resolveTileSize,
 } from './coordinate-transform.js';
 export type { GodotVec2, GodotVec3 } from './coordinate-transform.js';
 
-export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
+export { summarizeFidelity, buildFidelityReport, formatDroppedIdentities } from './fidelity.js';
 export type {
     FidelityLevel, FidelitySeverity, FidelityDomain,
     FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,

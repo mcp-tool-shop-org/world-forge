@@ -294,6 +294,24 @@ export function exportToGodot(
         droppedEntityCount: entitiesResult.manifest.dropped.length,
     });
 
+    // Promote drop/approximation loss onto warnings[] so a warnings-only
+    // consumer sees the same authored content that vanished from the pack.
+    // Keep the four empty-world advisories above; this copies every
+    // level:'dropped' entry and every approximated entry at error/warning
+    // severity (info approximations stay in the fidelity report only).
+    if (fidelityReport.summary.dropped > 0) {
+        warnings.push(`${fidelityReport.summary.dropped} authored field(s)/object(s) dropped during Godot export.`);
+    }
+    const seenWarning = new Set(warnings);
+    for (const e of fidelityEntries) {
+        const promote = e.level === 'dropped'
+            || (e.level === 'approximated' && (e.severity === 'error' || e.severity === 'warning'));
+        if (!promote) continue;
+        if (seenWarning.has(e.message)) continue;
+        seenWarning.add(e.message);
+        warnings.push(e.message);
+    }
+
     return {
         success: true,
         contentPack,

@@ -18,6 +18,9 @@
   "scripts": {
     "build": "tsc"
   },
+  "bin": {
+    "world-forge-export-godot": "dist/cli.js"
+  },
   "files": [
     "dist",
     "!dist/__tests__",

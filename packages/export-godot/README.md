@@ -36,21 +36,63 @@ metadata, matching props), so a clean Godot project loads the export with no
 missing PackedScene `ExtResource`s. Image-backed tilesets still declare
 `Texture2D` ext_resources for authored tileset files.
 
+## CLI
+
+```
+npx @world-forge/export-godot --help
+npx world-forge-export-godot project.json --out ./GodotPack
+npx world-forge-export-godot project.json --validate-only
+npx world-forge-export-godot project.json --out ./GodotPack --no-world-tscn
+```
+
+`--out` requires a path that does not start with `-`. Writes `pack.json`, `world.tscn`, a `files/` tree (`res://` stripped), and `fidelity.json`. Exit 1 on `GodotExportError` or write failure, with path + message + a fix hint.
+
 ## Usage
 
-```ts
-import { exportToGodot } from '@world-forge/export-godot';
+`exportToGodot` returns a discriminated union (`GodotExportResult | GodotExportError`). Narrow on `success` before reading `contentPack`. Options `includeWorldTscn` and `sceneUidPrefix` live on `GodotExportOptions`.
 
-const result = exportToGodot(project);
-// result.contentPack    — full GodotContentPack (zones, tiles, props, town,
-//                          strata, hazards, …)
-// result.contentPack.worldSceneTscn — the playable .tscn text
-// result.fidelity       — structured fidelity report
+```ts
+import {
+  exportToGodot,
+  migrateGodotPack,
+  isMigrationError,
+  GODOT_PACK_FORMAT_VERSION,
+} from '@world-forge/export-godot';
+
+const result = exportToGodot(project, {
+  includeWorldTscn: true,
+  sceneUidPrefix: 'wf',
+});
+
+if (!result.success) {
+  for (const e of result.errors) {
+    console.error(`[${e.path}] ${e.message}`);
+  }
+  throw new Error('Godot export blocked until the project validates');
+}
+
+const { contentPack, warnings, fidelity } = result;
+// write contentPack.worldSceneTscn (the playable .tscn) and contentPack.files
+// (each stamped resourcePath → .tres body) onto disk, or hand them to a loader.
+void contentPack.worldSceneTscn;
+void contentPack.files;
+for (const w of warnings) console.warn(w);
+if (fidelity.summary.incomplete) {
+  console.warn('Pack is incomplete — inspect fidelity.entries for dropped/approximated data.');
+}
+
+const migrated = migrateGodotPack(contentPack, GODOT_PACK_FORMAT_VERSION);
+if (isMigrationError(migrated)) {
+  // MALFORMED_VERSION — pack.meta.formatVersion is not N.N.N
+  // UNKNOWN_MAJOR    — different major than the loader; re-export with a compatible exporter
+  // NO_PATH          — no migration chain from this version to the loader target; re-export
+  throw new Error(`${migrated.code}: ${migrated.message}`);
+}
 ```
 
 ## Format Version
 
-`GODOT_PACK_FORMAT_VERSION` — currently `1.1.0`.
+`GODOT_PACK_FORMAT_VERSION` — currently interpolated from the exporter constant (`1.1.0` as of this writing; import `GODOT_PACK_FORMAT_VERSION` rather than hard-coding `1.0.0`).
 
 Bump rules (keep in sync with `migrations.ts`):
 
@@ -58,7 +100,7 @@ Bump rules (keep in sync with `migrations.ts`):
 - **Minor** — optional field added. Old loaders ignore it; new loaders may read it.
 - **Patch** — clarifications, doc-only changes.
 
-When the pack shape changes, bump the constant and add a migration in `src/migrations.ts`. `migrateGodotPack()` walks that chain. 1.1.0 added `files` (each stamped `resourcePath` → `.tres` body) and `zoneGates` on the JSON pack so a data-driven loader does not need to parse the `.tscn`.
+When the pack shape changes, bump the constant and add a migration in `src/migrations.ts`. `migrateGodotPack()` walks that chain. 1.1.0 added `files` (each stamped `resourcePath` → `.tres` body) and `zoneGates` on the JSON pack so a data-driven loader does not need to parse the `.tscn`. `isMigrationError()` narrows `MALFORMED_VERSION` / `UNKNOWN_MAJOR` / `NO_PATH`; those loaders should re-export rather than guess.
 
 Pass `includeWorldTscn: false` on `GodotExportOptions` to skip scene generation when only the JSON pack is needed.
 

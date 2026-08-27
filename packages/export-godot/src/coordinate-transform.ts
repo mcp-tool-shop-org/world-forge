@@ -16,6 +16,23 @@
 /** Default tile size in pixels when WorldMap.tileSize is not available. */
 export const DEFAULT_TILE_SIZE_PX = 32;
 
+/**
+ * Resolve the project's tile size for converters.
+ *
+ * `undefined` (truncated / legacy JSON) falls back to DEFAULT_TILE_SIZE_PX.
+ * `0` / negative / NaN throw so the public converters cannot silently emit a
+ * 32px scene — `|| DEFAULT` used to swallow those. exportToGodot's converter
+ * catch surfaces this as `Converter failed: tileSize must be > 0 (got 0)`.
+ */
+export function resolveTileSize(project: { map?: { tileSize?: number } }): number {
+    const tileSize = project.map?.tileSize;
+    if (tileSize === undefined) return DEFAULT_TILE_SIZE_PX;
+    if (!Number.isFinite(tileSize) || tileSize <= 0) {
+        throw new RangeError(`tileSize must be > 0 (got ${tileSize})`);
+    }
+    return tileSize;
+}
+
 /** A 2D position in Godot pixel space. */
 export interface GodotVec2 {
     x: number;
@@ -68,6 +85,9 @@ export function gridToGodot3D(
  * Convert a pixel extent (width × height in tiles) to Godot 2D size.
  */
 export function extentToGodot2D(gridWidth: number, gridHeight: number, tileSize: number = DEFAULT_TILE_SIZE_PX): GodotVec2 {
+    if (tileSize <= 0) {
+        throw new RangeError(`extentToGodot2D: tileSize must be > 0 (got ${tileSize})`);
+    }
     return {
         x: gridWidth * tileSize,
         y: gridHeight * tileSize,

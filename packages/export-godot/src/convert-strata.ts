@@ -10,13 +10,16 @@
  * once y-sort is on *within* a layer, so cross-level order must come from a coarse
  * absolute z band on the sibling subtrees — see docs/world-modeling-design.md.)
  *
- * Link positions are the midpoint of their anchor zones when both are set, else
- * the single anchor zone's center, else the world origin.
+ * Link positions are the midpoint of their anchor zones when both resolve, else
+ * the single surviving anchor zone's center. An authored fromZoneId/toZoneId
+ * that does not resolve drops the link (same contract as convertTransitions
+ * targetZoneId / convertConnections toZoneId). Origin fallback is only used
+ * when both zone ids were omitted, and then the link is marked approximated.
  */
 
 import type { WorldProject } from '@world-forge/schema';
-import type { FidelityEntry } from './fidelity.js';
-import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { formatDroppedIdentities, type FidelityEntry } from './fidelity.js';
+import { resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 /** z_index units between adjacent strata. order=-1 → -100, order=+1 → +100. */
@@ -54,7 +57,7 @@ export interface ConvertStrataResult {
 }
 
 export function convertStrata(project: WorldProject): ConvertStrataResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
     const strataIn = project.strata ?? [];
     const linksIn = project.stratumLinks ?? [];
@@ -91,14 +94,55 @@ export function convertStrata(project: WorldProject): ConvertStrataResult {
         };
     });
 
-    const links: GodotStratumLink[] = linksIn.map((l) => {
-        const from = l.fromZoneId ? zoneCenter.get(l.fromZoneId) : undefined;
-        const to = l.toZoneId ? zoneCenter.get(l.toZoneId) : undefined;
+    const links: GodotStratumLink[] = [];
+    for (const l of linksIn) {
+        const fromAuthored = typeof l.fromZoneId === 'string' && l.fromZoneId.length > 0;
+        const toAuthored = typeof l.toZoneId === 'string' && l.toZoneId.length > 0;
+        const from = fromAuthored ? zoneCenter.get(l.fromZoneId!) : undefined;
+        const to = toAuthored ? zoneCenter.get(l.toZoneId!) : undefined;
+
+        if (fromAuthored && from === undefined) {
+            fidelity.push({
+                level: 'dropped',
+                domain: 'structures',
+                severity: 'error',
+                entityId: l.id,
+                fieldPath: `stratumLinks.${l.id}.fromZoneId`,
+                message: `Stratum link "${l.id}" dropped — fromZoneId "${l.fromZoneId}" not found.`,
+                reason: 'Orphan fromZoneId reference.',
+            });
+            continue;
+        }
+        if (toAuthored && to === undefined) {
+            fidelity.push({
+                level: 'dropped',
+                domain: 'structures',
+                severity: 'error',
+                entityId: l.id,
+                fieldPath: `stratumLinks.${l.id}.toZoneId`,
+                message: `Stratum link "${l.id}" dropped — toZoneId "${l.toZoneId}" not found.`,
+                reason: 'Orphan toZoneId reference.',
+            });
+            continue;
+        }
+
         let position: GodotVec2 = { x: 0, y: 0 };
         if (from && to) position = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
         else if (from) position = from;
         else if (to) position = to;
-        return {
+        else {
+            fidelity.push({
+                level: 'approximated',
+                domain: 'structures',
+                severity: 'warning',
+                entityId: l.id,
+                fieldPath: `stratumLinks.${l.id}`,
+                message: `Stratum link "${l.id}" has no fromZoneId/toZoneId — placed at world origin (0,0).`,
+                reason: 'No anchor zones authored; origin is a last-resort placement so a stairwell is not silently dropped.',
+            });
+        }
+
+        links.push({
             nodeName: uniqueName(`StratumLink_${l.id}`),
             id: l.id,
             fromStratumId: l.fromStratumId,
@@ -108,30 +152,30 @@ export function convertStrata(project: WorldProject): ConvertStrataResult {
             bidirectional: l.bidirectional,
             linkType: l.linkType,
             position,
-        };
-    });
+        });
+    }
 
     // zoneId → stratum, for z-band + metadata on the zone nodes. Only zones whose
     // stratumId resolves to a real stratum are banded.
     const zoneStrata: Record<string, { stratumId: string; zBand: number }> = {};
-    let zonesWithMissingStratum = 0;
+    const missingStratumIds: string[] = [];
     for (const z of project.zones) {
         if (z.stratumId === undefined) continue;
         const band = bandById.get(z.stratumId);
         if (band === undefined) {
-            zonesWithMissingStratum++;
+            missingStratumIds.push(`zone "${z.id}" (stratumId "${z.stratumId}")`);
             continue;
         }
         zoneStrata[z.id] = { stratumId: z.stratumId, zBand: band };
     }
 
-    if (zonesWithMissingStratum > 0) {
+    if (missingStratumIds.length > 0) {
         fidelity.push({
             level: 'dropped',
             domain: 'structures',
             severity: 'warning',
             fieldPath: 'zones.stratumId',
-            message: `${zonesWithMissingStratum} zone(s) reference a stratumId with no matching stratum — not banded.`,
+            message: `${missingStratumIds.length} zone(s) reference a stratumId with no matching stratum — not banded: ${formatDroppedIdentities(missingStratumIds)}.`,
             reason: 'A zone could not be assigned to a vertical layer because its stratum was not found.',
         });
     }

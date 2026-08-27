@@ -12,8 +12,8 @@
  */
 
 import type { WorldProject } from '@world-forge/schema';
-import type { FidelityEntry } from './fidelity.js';
-import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { formatDroppedIdentities, type FidelityEntry } from './fidelity.js';
+import { resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotBuilding {
@@ -63,7 +63,7 @@ export interface ConvertStructuresResult {
 }
 
 export function convertStructures(project: WorldProject): ConvertStructuresResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
 
     // Zone-center lookup (pixels) for positioning zone-attached hubs/strongholds.
@@ -101,11 +101,13 @@ export function convertStructures(project: WorldProject): ConvertStructuresResul
     }
 
     const hubs: GodotHub[] = [];
+    const droppedIds: string[] = [];
     let droppedHubs = 0;
     for (const h of project.hubs ?? []) {
         const center = zoneCenter.get(h.zoneId);
         if (!center) {
             droppedHubs++;
+            droppedIds.push(`hub "${h.id}" (zoneId "${h.zoneId}")`);
             continue;
         }
         hubs.push({
@@ -126,6 +128,7 @@ export function convertStructures(project: WorldProject): ConvertStructuresResul
         const center = zoneCenter.get(s.zoneId);
         if (!center) {
             droppedStrongholds++;
+            droppedIds.push(`stronghold "${s.id}" (zoneId "${s.zoneId}")`);
             continue;
         }
         strongholds.push({
@@ -147,7 +150,7 @@ export function convertStructures(project: WorldProject): ConvertStructuresResul
             domain: 'structures',
             severity: 'warning',
             fieldPath: 'hubs/strongholds',
-            message: `${dropped} zone-attached structure(s) (${droppedHubs} hub, ${droppedStrongholds} stronghold) reference a zoneId with no matching zone — dropped.`,
+            message: `${dropped} zone-attached structure(s) (${droppedHubs} hub, ${droppedStrongholds} stronghold) reference a zoneId with no matching zone — dropped: ${formatDroppedIdentities(droppedIds)}.`,
             reason: 'A hub/stronghold could not be positioned because its zone was not found.',
         });
     }
