@@ -55,3 +55,14 @@ export function sanitizeNodeName(name: string): string {
         .replace(/[^a-zA-Z0-9_]/g, '_')
         .replace(/^(\d)/, '_$1');
 }
+
+/**
+ * Sanitize `raw` then uniquify against `seen` (sibling names in one container).
+ * First occurrence keeps the sanitized name; later collisions get `_2`, `_3`, …
+ */
+export function uniqueSiblingName(seen: Map<string, number>, raw: string, fallback: string): string {
+    const safe = sanitizeNodeName(raw) || fallback;
+    const n = seen.get(safe) ?? 0;
+    seen.set(safe, n + 1);
+    return n === 0 ? safe : `${safe}_${n + 1}`;
+}

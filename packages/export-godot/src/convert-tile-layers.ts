@@ -17,6 +17,7 @@ import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
+import { deriveGodotFilename } from './convert-assets.js';
 
 /** A single baked tile cell — references an atlas source within the layer's TileSet. */
 export interface GodotTileCell {
@@ -68,9 +69,9 @@ export interface ConvertTileLayersResult {
     fidelity: FidelityEntry[];
 }
 
-/** Godot import convention for a tileset texture (peer to convert-assets' `res://assets/tilesets`). */
-function texturePathFor(tilesetId: string): string {
-    return `res://assets/tilesets/${tilesetId}.png`;
+/** Godot import convention for a tileset texture — same basename rule as convert-assets. */
+function texturePathFor(tilesetId: string, imagePath: string): string {
+    return `res://assets/tilesets/${deriveGodotFilename(tilesetId, imagePath)}`;
 }
 
 export function convertTileLayers(project: WorldProject): ConvertTileLayersResult {
@@ -121,7 +122,7 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
                 sourceIndexByTileset.set(def.tilesetId, sourceId);
                 atlasSources.push({
                     tilesetId: def.tilesetId,
-                    texturePath: texturePathFor(def.tilesetId),
+                    texturePath: texturePathFor(def.tilesetId, ts.imagePath ?? ''),
                     tileWidth: ts.tileWidth,
                     tileHeight: ts.tileHeight,
                     sourceId,

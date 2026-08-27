@@ -344,3 +344,30 @@ describe('an empty name="" / parent="" is refused, not silently emitted (F-00cf7
         expect(scene).toContain('[node name="Dustwalk" type="Node2D"]');
     });
 });
+
+describe('quoted property values must be well-formed string literals (F-2d6bede0)', () => {
+    it('RED: spawnCondition with an embedded quote is escaped, not raw, so assertParseable accepts it', () => {
+        const input = minimalInput();
+        input.entities = {
+            byZone: {
+                z: [{
+                    nodeName: 'Npc1',
+                    sceneTemplate: 'res://entities/npc/npc_generic.tscn',
+                    entityId: 'e1',
+                    zoneId: 'z',
+                    localPosition: { x: 8, y: 8 },
+                    role: 'npc',
+                    tags: [],
+                    spawnCondition: 'item:the "seal"',
+                }],
+            },
+            all: [],
+            dropped: [],
+            incomplete: false,
+        };
+        expect(() => buildWorldScene(input)).not.toThrow();
+        const scene = buildWorldScene(input);
+        const line = scene.split('\n').find((l) => l.startsWith('metadata/spawn_condition'));
+        expect(line).toMatch(/^metadata\/spawn_condition = "(?:[^"\\]|\\.)*"$/);
+    });
+});

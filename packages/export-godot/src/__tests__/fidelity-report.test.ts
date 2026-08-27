@@ -37,12 +37,19 @@ function makeProject(over: Record<string, unknown> = {}): WorldProject {
 
 describe('Godot fidelity reporting (Wave B-1.5)', () => {
     it('reports parallax as approximated metadata, not a false lossless ParallaxBackground mapping', () => {
-        const project = makeProject({ zones: [makeZone({ parallaxLayers: [{ assetId: 'a', factor: 0.5 }] })] });
-        const { fidelity } = convertZones(project);
+        const layers = [{ id: 'far', depth: 100, assetRef: 'a', scrollFactor: 0.5 }];
+        const project = makeProject({
+            zones: [makeZone({ parallaxLayers: layers, skylineRef: 'sky', physicsMode: 'platformer', timeOfDay: 'dusk' })],
+        });
+        const { zones, fidelity } = convertZones(project);
         const parallax = fidelity.find((f) => f.fieldPath?.endsWith('.parallaxLayers'));
         expect(parallax).toBeDefined();
         expect(parallax!.level).toBe('approximated');
         expect(parallax!.message).not.toMatch(/mapped to ParallaxBackground/i);
+        expect(zones[0].parallaxLayers).toEqual(layers);
+        expect(zones[0].skylineRef).toBe('sky');
+        expect(zones[0].physicsMode).toBe('platformer');
+        expect(zones[0].timeOfDay).toBe('dusk');
     });
 
     it('warns (not info) when a transition position defaults to the zone origin', () => {

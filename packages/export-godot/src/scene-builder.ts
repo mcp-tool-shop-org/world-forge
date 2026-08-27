@@ -42,9 +42,33 @@ import type { GodotHazardPlacement } from './convert-hazards.js';
 import type { GodotZoneGate } from './convert-gates.js';
 import { sanitizeNodeName } from './node-naming.js';
 import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
+import type { FidelityEntry } from './fidelity.js';
+
+/** Root-level siblings that must not collide with zone / tile-layer node names. */
+export const RESERVED_ROOT_NODE_NAMES = [
+    'Camera2D',
+    'Props',
+    'Markets',
+    'CraftingStations',
+    'Buildings',
+    'Hubs',
+    'Strongholds',
+    'Strata',
+    'StratumLinks',
+    'Hazards',
+    'NavigationLinks',
+] as const;
 
 export interface SceneBuildInput {
     projectName: string;
+    /** Source project.id — used to derive a per-world scene uid. */
+    projectId?: string;
+    /** Optional uid prefix (default `wf`). */
+    sceneUidPrefix?: string;
+    /** Project map.tileSize; sizes TransitionShape. Defaults to DEFAULT_TILE_SIZE_PX. */
+    tileSize?: number;
+    /** Sink for root-name collision fidelity (mutated when provided). */
+    fidelity?: FidelityEntry[];
     zones: GodotZoneResource[];
     entities: GodotEntityManifest;
     items: GodotItemResource[];
@@ -88,6 +112,7 @@ const Z_INDEX_MAX = 4096;
 export function buildWorldScene(input: SceneBuildInput): string {
     const lines: string[] = [];
     const tileLayers = input.tileLayers ?? [];
+    uniquifyRootNodeNames(input.zones, tileLayers, input.fidelity);
     // Tile resources — TileSet/TileSetAtlasSource sub-resources + tileset textures.
     // Entities/transitions are textureless Node2D / Area2D placeholders (scene
     // templates live in metadata) so a clean Godot project does not need the
@@ -100,21 +125,24 @@ export function buildWorldScene(input: SceneBuildInput): string {
     // Hazard region collision shapes (one RectangleShape2D per hazard placement).
     const hazardShapes = collectHazardShapes(input.hazards ?? []);
     // Shared Area2D trigger shape so fallback transitions fire body_entered.
-    const transitionShapes = collectTransitionShapes(input.transitions);
+    const transitionShapes = collectTransitionShapes(
+        input.transitions,
+        input.tileSize ?? DEFAULT_TILE_SIZE_PX,
+    );
 
     // Header — load_steps counts every ext + sub resource plus the implicit scene step.
     const loadSteps = tileResources.textures.length
         + subResources.blocks.length + tileResources.subBlocks.length
         + buildingShapes.blocks.length + hazardShapes.length
         + transitionShapes.length + 1;
-    lines.push(`[gd_scene load_steps=${loadSteps} format=3 uid="uid://world_forge_export"]`);
+    lines.push(`[gd_scene load_steps=${loadSteps} format=3${sceneUidAttribute(input.projectId, input.sceneUidPrefix)}]`);
     lines.push('');
 
     // External resource declarations — tileset textures only. PackedScene
     // templates are stored as metadata, matching props, so the scene loads
     // without files this pack does not ship.
     for (const tex of tileResources.textures) {
-        lines.push(`[ext_resource type="Texture2D" path="${tex.path}" id="${tex.id}"]`);
+        lines.push(`[ext_resource type="Texture2D" path=${quoted(tex.path)} id="${tex.id}"]`);
     }
     if (tileResources.textures.length > 0) lines.push('');
 
@@ -177,20 +205,29 @@ export function buildWorldScene(input: SceneBuildInput): string {
         } else if (zone.elevation !== undefined) {
             lines.push(`z_index = ${clampZ(elevZ)}`);
         }
-        lines.push(`metadata/zone_id = "${zone.id}"`);
-        if (zoneStratum) lines.push(`metadata/stratum_id = "${zoneStratum.stratumId}"`);
-        lines.push(`metadata/description = "${escapeGodot(zone.description)}"`);
+        lines.push(`metadata/zone_id = ${quoted(zone.id)}`);
+        if (zoneStratum) lines.push(`metadata/stratum_id = ${quoted(zoneStratum.stratumId)}`);
+        lines.push(`metadata/description = ${quoted(zone.description)}`);
         lines.push(`metadata/light = ${zone.light}`);
         lines.push(`metadata/noise = ${zone.noise}`);
         if (zone.elevation !== undefined) lines.push(`metadata/elevation = ${zone.elevation}`);
-        if (zone.parentDistrictId) lines.push(`metadata/district_id = "${zone.parentDistrictId}"`);
-        if (zone.collisionType) lines.push(`metadata/collision_type = "${escapeGodot(zone.collisionType)}"`);
+        if (zone.parentDistrictId) lines.push(`metadata/district_id = ${quoted(zone.parentDistrictId)}`);
+        if (zone.collisionType) lines.push(`metadata/collision_type = ${quoted(zone.collisionType)}`);
+        if (zone.skylineRef) lines.push(`metadata/skyline_ref = ${quoted(zone.skylineRef)}`);
+        if (zone.physicsMode) lines.push(`metadata/physics_mode = ${quoted(zone.physicsMode)}`);
+        if (zone.timeOfDay) lines.push(`metadata/time_of_day = ${quoted(zone.timeOfDay)}`);
+        if (zone.gravityOverride !== undefined) lines.push(`metadata/gravity_override = ${zone.gravityOverride}`);
+        if (zone.gravityDirection) lines.push(`metadata/gravity_direction = ${quoted(zone.gravityDirection)}`);
+        if (zone.parallaxLayers && zone.parallaxLayers.length > 0) {
+            lines.push(`metadata/parallax_count = ${zone.parallaxLayers.length}`);
+            lines.push(`metadata/parallax_layers = ${quoted(JSON.stringify(zone.parallaxLayers))}`);
+        }
         // Entry gate — the runtime reads these to allow/deny party entry on contact.
         const gate = input.zoneGates?.[zone.id];
         if (gate) {
-            lines.push(`metadata/entry_gate = "${escapeGodot(gate.conditions.join(';'))}"`);
-            lines.push(`metadata/entry_gate_mode = "${escapeGodot(gate.mode)}"`);
-            if (gate.reason) lines.push(`metadata/entry_gate_reason = "${escapeGodot(gate.reason)}"`);
+            lines.push(`metadata/entry_gate = ${quoted(gate.conditions.join(';'))}`);
+            lines.push(`metadata/entry_gate_mode = ${quoted(gate.mode)}`);
+            if (gate.reason) lines.push(`metadata/entry_gate_reason = ${quoted(gate.reason)}`);
         }
         lines.push('');
 
@@ -226,13 +263,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 // is metadata, not an ExtResource this pack does not ship.
                 lines.push(`[node name="${entity.nodeName}" type="Node2D" parent="${zone.nodeName}/Entities"]`);
                 lines.push(`position = Vector2(${entity.localPosition.x}, ${entity.localPosition.y})`);
-                lines.push(`metadata/entity_id = "${entity.entityId}"`);
-                lines.push(`metadata/role = "${entity.role}"`);
-                if (entity.sceneTemplate) lines.push(`metadata/scene_template = "${escapeGodot(entity.sceneTemplate)}"`);
-                if (entity.displayName) lines.push(`metadata/display_name = "${escapeGodot(entity.displayName)}"`);
-                if (entity.factionId) lines.push(`metadata/faction_id = "${entity.factionId}"`);
-                if (entity.dialogueId) lines.push(`metadata/dialogue_id = "${entity.dialogueId}"`);
-                if (entity.spawnCondition) lines.push(`metadata/spawn_condition = "${entity.spawnCondition}"`);
+                lines.push(`metadata/entity_id = ${quoted(entity.entityId)}`);
+                lines.push(`metadata/role = ${quoted(entity.role)}`);
+                if (entity.sceneTemplate) lines.push(`metadata/scene_template = ${quoted(entity.sceneTemplate)}`);
+                if (entity.displayName) lines.push(`metadata/display_name = ${quoted(entity.displayName)}`);
+                if (entity.factionId) lines.push(`metadata/faction_id = ${quoted(entity.factionId)}`);
+                if (entity.dialogueId) lines.push(`metadata/dialogue_id = ${quoted(entity.dialogueId)}`);
+                if (entity.spawnCondition) lines.push(`metadata/spawn_condition = ${quoted(entity.spawnCondition)}`);
                 lines.push('');
             }
         }
@@ -245,17 +282,17 @@ export function buildWorldScene(input: SceneBuildInput): string {
             for (const item of zoneItems) {
                 lines.push(`[node name="${item.nodeName}" type="Node2D" parent="${zone.nodeName}/Items"]`);
                 lines.push(`position = Vector2(${item.localPosition.x}, ${item.localPosition.y})`);
-                lines.push(`metadata/item_id = "${item.itemId}"`);
-                if (item.displayName) lines.push(`metadata/display_name = "${escapeGodot(item.displayName)}"`);
+                lines.push(`metadata/item_id = ${quoted(item.itemId)}`);
+                if (item.displayName) lines.push(`metadata/display_name = ${quoted(item.displayName)}`);
                 lines.push(`metadata/hidden = ${item.hidden}`);
                 // slot/rarity/container all route through escapeGodot(), matching
                 // display_name two lines above — item.container in particular is
                 // authored free text (packages/schema/src/entities.ts declares it
                 // `container?: string`, not a closed union like slot/rarity), and a
                 // literal '"' in it used to reach this line unescaped.
-                if (item.slot) lines.push(`metadata/slot = "${escapeGodot(item.slot)}"`);
-                if (item.rarity) lines.push(`metadata/rarity = "${escapeGodot(item.rarity)}"`);
-                if (item.container) lines.push(`metadata/container = "${escapeGodot(item.container)}"`);
+                if (item.slot) lines.push(`metadata/slot = ${quoted(item.slot)}`);
+                if (item.rarity) lines.push(`metadata/rarity = ${quoted(item.rarity)}`);
+                if (item.container) lines.push(`metadata/container = ${quoted(item.container)}`);
                 lines.push('');
             }
         }
@@ -268,7 +305,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
             for (const sp of zoneSpawns) {
                 lines.push(`[node name="${sp.nodeName}" type="Marker2D" parent="${zone.nodeName}/SpawnPoints"]`);
                 lines.push(`position = Vector2(${sp.localPosition.x}, ${sp.localPosition.y})`);
-                lines.push(`metadata/spawn_id = "${sp.id}"`);
+                lines.push(`metadata/spawn_id = ${quoted(sp.id)}`);
                 lines.push(`metadata/is_default = ${sp.isDefault}`);
                 lines.push('');
             }
@@ -284,12 +321,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 // body_entered fires without a PackedScene this pack does not ship.
                 lines.push(`[node name="${tr.nodeName}" type="Area2D" parent="${zone.nodeName}/Transitions"]`);
                 lines.push(`position = Vector2(${tr.localPosition.x}, ${tr.localPosition.y})`);
-                lines.push(`metadata/transition_id = "${tr.id}"`);
-                lines.push(`metadata/target_zone = "${tr.targetZoneId}"`);
-                lines.push(`metadata/type = "${tr.type}"`);
-                if (tr.sceneTemplate) lines.push(`metadata/scene_template = "${escapeGodot(tr.sceneTemplate)}"`);
-                if (tr.label) lines.push(`metadata/label = "${escapeGodot(tr.label)}"`);
-                if (tr.animation) lines.push(`metadata/animation = "${escapeGodot(tr.animation)}"`);
+                lines.push(`metadata/transition_id = ${quoted(tr.id)}`);
+                lines.push(`metadata/target_zone = ${quoted(tr.targetZoneId)}`);
+                lines.push(`metadata/type = ${quoted(tr.type)}`);
+                if (tr.sceneTemplate) lines.push(`metadata/scene_template = ${quoted(tr.sceneTemplate)}`);
+                if (tr.label) lines.push(`metadata/label = ${quoted(tr.label)}`);
+                if (tr.animation) lines.push(`metadata/animation = ${quoted(tr.animation)}`);
                 if (tr.durationSeconds !== undefined) lines.push(`metadata/duration = ${tr.durationSeconds}`);
                 lines.push('');
                 lines.push(`[node name="Trigger" type="CollisionShape2D" parent="${zone.nodeName}/Transitions/${tr.nodeName}"]`);
@@ -309,15 +346,15 @@ export function buildWorldScene(input: SceneBuildInput): string {
         for (const p of props) {
             lines.push(`[node name="${p.nodeName}" type="Node2D" parent="Props"]`);
             lines.push(`position = Vector2(${p.position.x}, ${p.position.y})`);
-            lines.push(`metadata/prop_id = "${p.id}"`);
-            lines.push(`metadata/prop_def = "${p.propId}"`);
-            if (p.displayName) lines.push(`metadata/display_name = "${escapeGodot(p.displayName)}"`);
+            lines.push(`metadata/prop_id = ${quoted(p.id)}`);
+            lines.push(`metadata/prop_def = ${quoted(p.propId)}`);
+            if (p.displayName) lines.push(`metadata/display_name = ${quoted(p.displayName)}`);
             lines.push(`metadata/walkable = ${p.walkable}`);
             lines.push(`metadata/interactable = ${p.interactable}`);
             lines.push(`metadata/width = ${p.width}`);
             lines.push(`metadata/height = ${p.height}`);
-            if (p.imagePath) lines.push(`metadata/image_path = "${escapeGodot(p.imagePath)}"`);
-            if (p.zoneId) lines.push(`metadata/zone_id = "${p.zoneId}"`);
+            if (p.imagePath) lines.push(`metadata/image_path = ${quoted(p.imagePath)}`);
+            if (p.zoneId) lines.push(`metadata/zone_id = ${quoted(p.zoneId)}`);
             lines.push('');
         }
     }
@@ -332,12 +369,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
         for (const m of markets) {
             lines.push(`[node name="${m.nodeName}" type="Node2D" parent="Markets"]`);
             lines.push(`position = Vector2(${m.position.x}, ${m.position.y})`);
-            lines.push(`metadata/market_id = "${m.id}"`);
-            lines.push(`metadata/zone_id = "${m.zoneId}"`);
-            lines.push(`metadata/supply_categories = "${escapeGodot(m.supplyCategories.join(','))}"`);
+            lines.push(`metadata/market_id = ${quoted(m.id)}`);
+            lines.push(`metadata/zone_id = ${quoted(m.zoneId)}`);
+            lines.push(`metadata/supply_categories = ${quoted(m.supplyCategories.join(','))}`);
             lines.push(`metadata/price_modifier = ${m.priceModifier}`);
             lines.push(`metadata/contraband = ${m.contrabandAvailable}`);
-            if (m.merchantEntityId) lines.push(`metadata/merchant_entity_id = "${m.merchantEntityId}"`);
+            if (m.merchantEntityId) lines.push(`metadata/merchant_entity_id = ${quoted(m.merchantEntityId)}`);
             lines.push('');
         }
     }
@@ -349,10 +386,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
         for (const c of craftingStations) {
             lines.push(`[node name="${c.nodeName}" type="Node2D" parent="CraftingStations"]`);
             lines.push(`position = Vector2(${c.position.x}, ${c.position.y})`);
-            lines.push(`metadata/station_id = "${c.id}"`);
-            lines.push(`metadata/zone_id = "${c.zoneId}"`);
-            lines.push(`metadata/station_type = "${escapeGodot(c.stationType)}"`);
-            lines.push(`metadata/recipes = "${escapeGodot(c.availableRecipes.join(','))}"`);
+            lines.push(`metadata/station_id = ${quoted(c.id)}`);
+            lines.push(`metadata/zone_id = ${quoted(c.zoneId)}`);
+            lines.push(`metadata/station_type = ${quoted(c.stationType)}`);
+            lines.push(`metadata/recipes = ${quoted(c.availableRecipes.join(','))}`);
             lines.push('');
         }
     }
@@ -368,12 +405,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
             const rectId = buildingShapes.rectIdByBuilding.get(b.id);
             lines.push(`[node name="${b.nodeName}" type="StaticBody2D" parent="Buildings"]`);
             lines.push(`position = Vector2(${b.position.x}, ${b.position.y})`);
-            lines.push(`metadata/building_id = "${b.id}"`);
-            lines.push(`metadata/name = "${escapeGodot(b.name)}"`);
-            lines.push(`metadata/building_type = "${escapeGodot(b.buildingType)}"`);
-            lines.push(`metadata/footprint_tiles = "${b.widthTiles}x${b.heightTiles}"`);
-            if (b.zoneId) lines.push(`metadata/zone_id = "${b.zoneId}"`);
-            if (b.interiorZoneId) lines.push(`metadata/interior_zone_id = "${b.interiorZoneId}"`);
+            lines.push(`metadata/building_id = ${quoted(b.id)}`);
+            lines.push(`metadata/name = ${quoted(b.name)}`);
+            lines.push(`metadata/building_type = ${quoted(b.buildingType)}`);
+            lines.push(`metadata/footprint_tiles = ${quoted(`${b.widthTiles}x${b.heightTiles}`)}`);
+            if (b.zoneId) lines.push(`metadata/zone_id = ${quoted(b.zoneId)}`);
+            if (b.interiorZoneId) lines.push(`metadata/interior_zone_id = ${quoted(b.interiorZoneId)}`);
             lines.push('');
             if (rectId) {
                 lines.push(`[node name="Footprint" type="CollisionShape2D" parent="Buildings/${b.nodeName}"]`);
@@ -391,12 +428,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
         for (const h of hubs) {
             lines.push(`[node name="${h.nodeName}" type="Node2D" parent="Hubs"]`);
             lines.push(`position = Vector2(${h.position.x}, ${h.position.y})`);
-            lines.push(`metadata/hub_id = "${h.id}"`);
-            lines.push(`metadata/name = "${escapeGodot(h.name)}"`);
-            lines.push(`metadata/zone_id = "${h.zoneId}"`);
-            lines.push(`metadata/hub_type = "${escapeGodot(h.hubType)}"`);
-            lines.push(`metadata/services = "${escapeGodot(h.serviceTypes.join(','))}"`);
-            lines.push(`metadata/connected_zones = "${escapeGodot(h.connectedZoneIds.join(','))}"`);
+            lines.push(`metadata/hub_id = ${quoted(h.id)}`);
+            lines.push(`metadata/name = ${quoted(h.name)}`);
+            lines.push(`metadata/zone_id = ${quoted(h.zoneId)}`);
+            lines.push(`metadata/hub_type = ${quoted(h.hubType)}`);
+            lines.push(`metadata/services = ${quoted(h.serviceTypes.join(','))}`);
+            lines.push(`metadata/connected_zones = ${quoted(h.connectedZoneIds.join(','))}`);
             lines.push('');
         }
     }
@@ -408,12 +445,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
         for (const s of strongholds) {
             lines.push(`[node name="${s.nodeName}" type="Node2D" parent="Strongholds"]`);
             lines.push(`position = Vector2(${s.position.x}, ${s.position.y})`);
-            lines.push(`metadata/stronghold_id = "${s.id}"`);
-            lines.push(`metadata/name = "${escapeGodot(s.name)}"`);
-            lines.push(`metadata/zone_id = "${s.zoneId}"`);
-            if (s.factionId) lines.push(`metadata/faction_id = "${s.factionId}"`);
+            lines.push(`metadata/stronghold_id = ${quoted(s.id)}`);
+            lines.push(`metadata/name = ${quoted(s.name)}`);
+            lines.push(`metadata/zone_id = ${quoted(s.zoneId)}`);
+            if (s.factionId) lines.push(`metadata/faction_id = ${quoted(s.factionId)}`);
             lines.push(`metadata/defense_level = ${s.defenseLevel}`);
-            lines.push(`metadata/garrison = "${escapeGodot(s.garrisonEntityIds.join(','))}"`);
+            lines.push(`metadata/garrison = ${quoted(s.garrisonEntityIds.join(','))}`);
             lines.push('');
         }
     }
@@ -427,15 +464,15 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push('');
         for (const s of strata) {
             lines.push(`[node name="${s.nodeName}" type="Node2D" parent="Strata"]`);
-            lines.push(`metadata/stratum_id = "${s.id}"`);
-            lines.push(`metadata/name = "${escapeGodot(s.name)}"`);
+            lines.push(`metadata/stratum_id = ${quoted(s.id)}`);
+            lines.push(`metadata/name = ${quoted(s.name)}`);
             lines.push(`metadata/order = ${s.order}`);
             lines.push(`metadata/z_band = ${s.zBand}`);
             if (s.zRange) {
                 lines.push(`metadata/z_floor = ${s.zRange.floor}`);
                 lines.push(`metadata/z_ceiling = ${s.zRange.ceiling}`);
             }
-            lines.push(`metadata/visible_strata = "${escapeGodot(s.visibleStrata.join(','))}"`);
+            lines.push(`metadata/visible_strata = ${quoted(s.visibleStrata.join(','))}`);
             lines.push('');
         }
     }
@@ -447,13 +484,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
         for (const l of stratumLinks) {
             lines.push(`[node name="${l.nodeName}" type="Node2D" parent="StratumLinks"]`);
             lines.push(`position = Vector2(${l.position.x}, ${l.position.y})`);
-            lines.push(`metadata/link_id = "${l.id}"`);
-            lines.push(`metadata/from_stratum = "${l.fromStratumId}"`);
-            lines.push(`metadata/to_stratum = "${l.toStratumId}"`);
-            if (l.fromZoneId) lines.push(`metadata/from_zone = "${l.fromZoneId}"`);
-            if (l.toZoneId) lines.push(`metadata/to_zone = "${l.toZoneId}"`);
+            lines.push(`metadata/link_id = ${quoted(l.id)}`);
+            lines.push(`metadata/from_stratum = ${quoted(l.fromStratumId)}`);
+            lines.push(`metadata/to_stratum = ${quoted(l.toStratumId)}`);
+            if (l.fromZoneId) lines.push(`metadata/from_zone = ${quoted(l.fromZoneId)}`);
+            if (l.toZoneId) lines.push(`metadata/to_zone = ${quoted(l.toZoneId)}`);
             lines.push(`metadata/bidirectional = ${l.bidirectional}`);
-            lines.push(`metadata/link_type = "${escapeGodot(l.linkType)}"`);
+            lines.push(`metadata/link_type = ${quoted(l.linkType)}`);
             lines.push('');
         }
     }
@@ -469,14 +506,22 @@ export function buildWorldScene(input: SceneBuildInput): string {
             const hz = hazards[i];
             lines.push(`[node name="${hz.nodeName}" type="Area2D" parent="Hazards"]`);
             lines.push(`position = Vector2(${hz.position.x}, ${hz.position.y})`);
-            lines.push(`metadata/hazard_id = "${hz.hazardId}"`);
-            lines.push(`metadata/zone_id = "${hz.zoneId}"`);
-            lines.push(`metadata/trigger = "${escapeGodot(hz.trigger)}"`);
+            lines.push(`metadata/hazard_id = ${quoted(hz.hazardId)}`);
+            lines.push(`metadata/zone_id = ${quoted(hz.zoneId)}`);
+            lines.push(`metadata/trigger = ${quoted(hz.trigger)}`);
             lines.push(`metadata/move_cost_delta = ${hz.moveCostDelta}`);
-            lines.push(`metadata/passable = "${escapeGodot(hz.passable)}"`);
+            lines.push(`metadata/passable = ${quoted(hz.passable)}`);
             lines.push(`metadata/blocks_vision = ${hz.blocksVision}`);
             lines.push(`metadata/effect_count = ${hz.effectCount}`);
-            lines.push(`metadata/effects = "${escapeGodot(hz.effects)}"`);
+            lines.push(`metadata/effects = ${quoted(hz.effects)}`);
+            if (hz.name) lines.push(`metadata/name = ${quoted(hz.name)}`);
+            if (hz.tags && hz.tags.length > 0) lines.push(`metadata/tags = ${quoted(hz.tags.join(','))}`);
+            if (hz.weatherConditions && hz.weatherConditions.length > 0) {
+                lines.push(`metadata/weather_conditions = ${quoted(hz.weatherConditions.join(','))}`);
+            }
+            if (hz.immuneTags && hz.immuneTags.length > 0) {
+                lines.push(`metadata/immune_tags = ${quoted(hz.immuneTags.join(','))}`);
+            }
             lines.push('');
             lines.push(`[node name="Region" type="CollisionShape2D" parent="Hazards/${hz.nodeName}"]`);
             lines.push(`shape = SubResource("HazardShape_${i}")`);
@@ -494,11 +539,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`start_position = Vector2(${link.startPosition.x}, ${link.startPosition.y})`);
             lines.push(`end_position = Vector2(${link.endPosition.x}, ${link.endPosition.y})`);
             lines.push(`bidirectional = ${link.bidirectional}`);
-            lines.push(`metadata/from_zone = "${link.fromZoneId}"`);
-            lines.push(`metadata/to_zone = "${link.toZoneId}"`);
-            lines.push(`metadata/kind = "${link.kind}"`);
-            lines.push(`metadata/transition_mode = "${link.transitionMode}"`);
-            if (link.label) lines.push(`metadata/label = "${escapeGodot(link.label)}"`);
+            lines.push(`metadata/from_zone = ${quoted(link.fromZoneId)}`);
+            lines.push(`metadata/to_zone = ${quoted(link.toZoneId)}`);
+            lines.push(`metadata/kind = ${quoted(link.kind)}`);
+            lines.push(`metadata/transition_mode = ${quoted(link.transitionMode)}`);
+            if (link.label) lines.push(`metadata/label = ${quoted(link.label)}`);
+            if (link.condition) lines.push(`metadata/condition = ${quoted(link.condition)}`);
             lines.push('');
         }
     }
@@ -582,6 +628,7 @@ function assertParseable(scene: string): string {
     const bareTokenOffenders: string[] = [];
     const malformedHeaderOffenders: string[] = [];
     const emptyAttrOffenders: string[] = [];
+    const malformedQuotedOffenders: string[] = [];
     const lines = scene.split('\n');
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -589,6 +636,12 @@ function assertParseable(scene: string): string {
         // legitimately named "The Undefined Berth" must not trip this.
         if (/=\s*(undefined|null|NaN|-?Infinity)\s*$/.test(line)) {
             bareTokenOffenders.push(`line ${i + 1}: ${line}`);
+            continue;
+        }
+        // Property lines whose first value token is a quoted string must be a
+        // well-formed Godot string literal (escapes allowed; raw " is not).
+        if (/^[A-Za-z_][\w/]*\s*=\s*"/.test(line) && !/^[A-Za-z_][\w/]*\s*=\s*"(?:[^"\\]|\\.)*"\s*$/.test(line)) {
+            malformedQuotedOffenders.push(`line ${i + 1}: ${line}`);
             continue;
         }
         if (line.startsWith('[node ')) {
@@ -644,6 +697,18 @@ function assertParseable(scene: string): string {
             + '  Fix: the offending value must come from a sanitizer with a non-empty fallback '
             + "(sanitizeNodeName(x) || 'Node' or similar, the pattern every converter in this package "
             + 'uses) before it reaches buildWorldScene.',
+        );
+    }
+    if (malformedQuotedOffenders.length > 0) {
+        throw new Error(
+            `refusing to emit an unparseable scene: ${malformedQuotedOffenders.length} propert`
+            + `${malformedQuotedOffenders.length === 1 ? 'y' : 'ies'} would be written as a quoted `
+            + `string that is not a well-formed Godot string literal — almost always a raw '"' inside `
+            + `metadata (spawn_condition, faction_id, item ids, connection condition) that terminates `
+            + `the value early. Godot rejects this with a parse error and a total refusal to load the scene.`
+            + `\n  ${malformedQuotedOffenders.join('\n  ')}\n`
+            + '  Fix: every quoted property interpolation must go through escapeGodot() (quoted()) '
+            + 'before it reaches the assembled .tscn text.',
         );
     }
     return scene;
@@ -737,7 +802,7 @@ function emitTileMapLayers(
         if (layer.cells.length > 0) {
             lines.push(`tile_map_data = PackedByteArray(${encodeTileMapData(layer.cells).join(', ')})`);
         }
-        lines.push(`metadata/layer_id = "${escapeGodot(layer.id)}"`);
+        lines.push(`metadata/layer_id = ${quoted(layer.id)}`);
         lines.push(`metadata/tile_count = ${layer.tileCount}`);
         lines.push(`metadata/image_backed = ${layer.imageBacked}`);
         lines.push(`metadata/solid_count = ${layer.solidCells.length}`);
@@ -860,9 +925,9 @@ function collectSubResources(zones: GodotZoneResource[]): SubResourceSet {
  * One shared tile-sized RectangleShape2D for every transition Area2D trigger.
  * Without a CollisionShape2D, Godot Area2D never fires body_entered.
  */
-function collectTransitionShapes(transitions: GodotTransitionNode[]): string[] {
+function collectTransitionShapes(transitions: GodotTransitionNode[], tileSize: number = DEFAULT_TILE_SIZE_PX): string[] {
     if (transitions.length === 0) return [];
-    const size = DEFAULT_TILE_SIZE_PX;
+    const size = tileSize > 0 ? tileSize : DEFAULT_TILE_SIZE_PX;
     return [
         `[sub_resource type="RectangleShape2D" id="TransitionShape"]\n` +
         `size = Vector2(${size}, ${size})`,
@@ -897,4 +962,65 @@ function clampZ(z: number): number {
 
 function escapeGodot(s: string): string {
     return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+/** Quoted Godot string literal; every property interpolation must go through this. */
+function quoted(s: string): string {
+    return `"${escapeGodot(s)}"`;
+}
+
+function sceneUidAttribute(projectId: string | undefined, prefix: string | undefined): string {
+    const id = (projectId ?? '').trim();
+    if (!id) return '';
+    const token = `${prefix || 'wf'}_${sanitizeNodeName(id).toLowerCase()}`;
+    return ` uid="uid://${token}"`;
+}
+
+/**
+ * De-dupe tile-layer and zone node names against each other and the reserved
+ * root containers (Camera2D, Props, Hazards, …). Mutates `nodeName` in place.
+ */
+export function uniquifyRootNodeNames(
+    zones: GodotZoneResource[],
+    tileLayers: GodotTileLayer[],
+    fidelity?: FidelityEntry[],
+): void {
+    const seen = new Map<string, number>();
+    const owner = new Map<string, string>();
+    for (const name of RESERVED_ROOT_NODE_NAMES) {
+        seen.set(name, 1);
+        owner.set(name, `reserved:${name}`);
+    }
+
+    const take = (base: string, fallback: string, kind: 'tile-layer' | 'zone', id: string): string => {
+        const safe = sanitizeNodeName(base) || fallback;
+        let candidate = safe;
+        let suffix = 1;
+        while ((seen.get(candidate) ?? 0) > 0) {
+            suffix++;
+            candidate = `${safe}_${suffix}`;
+        }
+        seen.set(candidate, 1);
+        if (candidate !== safe) {
+            const collidedWith = owner.get(safe) ?? safe;
+            fidelity?.push({
+                level: 'approximated',
+                domain: kind === 'tile-layer' ? 'tiles' : 'zones',
+                severity: 'warning',
+                entityId: id,
+                fieldPath: kind === 'tile-layer' ? `tileLayers.${id}.name` : `zones.${id}.name`,
+                message: `${kind} "${id}" node name "${safe}" collided with ${collidedWith} — renamed to "${candidate}" so both remain reachable in the scene tree.`,
+                reason: 'Root-level Godot siblings (zones, tile layers, and reserved containers) share one name namespace; scene deserialization does not auto-uniquify colliding names.',
+            });
+        }
+        owner.set(candidate, `${kind}:${id}`);
+        return candidate;
+    };
+
+    for (const layer of tileLayers) {
+        layer.nodeName = take(layer.nodeName || layer.name || layer.id, 'TileLayer', 'tile-layer', layer.id);
+    }
+    for (const zone of zones) {
+        zone.nodeName = take(zone.nodeName || zone.displayName || zone.id, 'Zone', 'zone', zone.id);
+    }
 }

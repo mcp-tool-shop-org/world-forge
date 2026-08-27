@@ -38,8 +38,8 @@ export function serializeTres(className: string, fields: TresField[]): string {
     return lines.join('\n') + '\n';
 }
 
-function formatValue(value: TresValue): string {
-    if (value === null) return 'null';
+function formatValue(value: TresValue | undefined): string {
+    if (value === null || value === undefined) return 'null';
     if (typeof value === 'string') return `"${escapeString(value)}"`;
     if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(6);
     if (typeof value === 'boolean') return value ? 'true' : 'false';
@@ -48,8 +48,11 @@ function formatValue(value: TresValue): string {
         const inner = value.map(formatValue).join(', ');
         return `[${inner}]`;
     }
-    // Dictionary
-    const entries = Object.entries(value).map(([k, v]) => `"${escapeString(k)}": ${formatValue(v)}`);
+    // Dictionary — skip undefined entries so optional nested fields (exit.condition)
+    // don't blow up Object.entries or emit spurious nulls.
+    const entries = Object.entries(value)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => `"${escapeString(k)}": ${formatValue(v as TresValue)}`);
     return `{${entries.join(', ')}}`;
 }
 
@@ -67,4 +70,19 @@ export function objectToTresFields(obj: Record<string, unknown>): TresField[] {
         fields.push({ key, value: value as TresValue });
     }
     return fields;
+}
+
+const TRES_SKIP_KEYS = new Set(['resourcePath', 'nodeName']);
+
+/**
+ * Serialize a converted resource object into a .tres body, omitting
+ * scene-only fields (`resourcePath`, `nodeName`).
+ */
+export function serializeResource(className: string, obj: Record<string, unknown>): string {
+    const fields: TresField[] = [];
+    for (const [key, value] of Object.entries(obj)) {
+        if (value === undefined || TRES_SKIP_KEYS.has(key)) continue;
+        fields.push({ key, value: value as TresValue });
+    }
+    return serializeTres(className, fields);
 }

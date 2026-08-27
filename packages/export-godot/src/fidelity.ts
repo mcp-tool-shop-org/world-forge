@@ -77,7 +77,7 @@ export function summarizeFidelity(
         dropped,
         losslessPercent: total > 0 ? Math.round((lossless / total) * 100) : 100,
         byDomain,
-        incomplete: droppedEntityCount > 0,
+        incomplete: dropped > 0 || droppedEntityCount > 0,
         droppedEntityCount,
     };
 }
