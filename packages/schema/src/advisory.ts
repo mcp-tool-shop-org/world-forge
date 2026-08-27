@@ -15,13 +15,18 @@ export interface AdvisoryResult {
   items: AdvisoryItem[];
 }
 
+/** Same helper as review.ts — omitted or non-array values walk as empty. */
+function asArray<T>(value: T[] | undefined | null): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 /**
  * Returns true if the hotspot represents a trap, either via an explicit 'trap' tag
  * or via a pressureType string that contains 'trap'. Extracted for readability so
  * the dungeon advisory check stays a one-liner.
  */
 function isTrapHotspot(h: PressureHotspot): boolean {
-  if (h.tags?.includes('trap')) return true;
+  if (asArray(h.tags).includes('trap')) return true;
   if (typeof h.pressureType === 'string' && h.pressureType.length > 0 && h.pressureType.includes('trap')) {
     return true;
   }
@@ -33,14 +38,14 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   const mode: AuthoringMode = project.mode ?? DEFAULT_MODE;
   const items: AdvisoryItem[] = [];
 
-  // Defensive: normalize optional arrays that consumers may omit
-  const zones = project.zones ?? [];
-  const connections = project.connections ?? [];
-  const districts = project.districts ?? [];
-  const assets = project.assets ?? [];
-  const factionPresences = project.factionPresences ?? [];
-  const pressureHotspots = project.pressureHotspots ?? [];
-  const encounterAnchors = project.encounterAnchors ?? [];
+  // Defensive: omitted or non-array collections walk as empty
+  const zones = asArray(project.zones);
+  const connections = asArray(project.connections);
+  const districts = asArray(project.districts);
+  const assets = asArray(project.assets);
+  const factionPresences = asArray(project.factionPresences);
+  const pressureHotspots = asArray(project.pressureHotspots);
+  const encounterAnchors = asArray(project.encounterAnchors);
 
   // ── Project metadata advisories ────────────────────────────
   // Type guards: defensively handle callers that hand us `{ author: null }` or
@@ -120,7 +125,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('channel') && !kinds.includes('route')) {
         items.push({ path: 'connections', message: 'Ocean tip: use channel or route connections for sea lanes.', severity: 'suggestion' });
       }
-      if (!districts.some((d) => d.tags?.includes('port') || d.tags?.includes('harbor'))) {
+      if (!districts.some((d) => asArray(d.tags).includes('port') || asArray(d.tags).includes('harbor'))) {
         items.push({ path: 'districts', message: 'Ocean tip: add a port or harbor district for docking.', severity: 'suggestion' });
       }
       break;
@@ -129,7 +134,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('warp') && !kinds.includes('docking')) {
         items.push({ path: 'connections', message: 'Space tip: use warp or docking connections between sectors.', severity: 'suggestion' });
       }
-      if (!zones.some((z) => z.tags?.includes('station'))) {
+      if (!zones.some((z) => asArray(z.tags).includes('station'))) {
         items.push({ path: 'zones', message: 'Space tip: add a station zone as a home base.', severity: 'suggestion' });
       }
       if (!zones.some((z) => z.elevation !== undefined || z.elevationRange !== undefined)) {
@@ -138,7 +143,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       // Any zone tagged 'station' should declare a physicsMode so exporters
       // know whether to run station-interior (normal), EVA (zero-g), etc.
       for (const z of zones) {
-        if (z.tags?.includes('station') && z.physicsMode === undefined) {
+        if (asArray(z.tags).includes('station') && z.physicsMode === undefined) {
           items.push({
             path: `zones.${z.id}.physicsMode`,
             message: `Space tip: station zone "${z.id}" has no physicsMode — set one (normal, platformer, zero-g, aquatic) so the exporter knows which physics runtime to apply.`,

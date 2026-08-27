@@ -306,4 +306,45 @@ describe('advisoryValidation', () => {
     expect(snap).toBeDefined();
     expect(snap!.advisory).toBeDefined();
   });
+
+  // --- F-df8b561a: non-array tags must not throw ---
+  // validateProject may stay valid:true on these shapes; that is the bug's setup,
+  // not a Stage B reopen. Non-array tags are treated as no tags.
+
+  it.each([
+    { mode: 'dungeon' as const, corrupt: 'hotspot', tags: {}, label: '{}' },
+    { mode: 'dungeon' as const, corrupt: 'hotspot', tags: 123, label: '123' },
+    { mode: 'space' as const, corrupt: 'zone', tags: {}, label: '{}' },
+    { mode: 'space' as const, corrupt: 'zone', tags: 123, label: '123' },
+    { mode: 'ocean' as const, corrupt: 'district', tags: {}, label: '{}' },
+    { mode: 'ocean' as const, corrupt: 'district', tags: 123, label: '123' },
+  ])(
+    '$mode $corrupt tags=$label never throws from advisoryValidation or buildReviewSnapshot',
+    ({ mode, corrupt, tags }) => {
+      const project = JSON.parse(JSON.stringify(minimalProject)) as WorldProject;
+      project.mode = mode;
+      if (corrupt === 'hotspot') {
+        (project.pressureHotspots[0] as { tags: unknown }).tags = tags;
+      } else if (corrupt === 'zone') {
+        (project.zones[0] as { tags: unknown }).tags = tags;
+      } else {
+        (project.districts[0] as { tags: unknown }).tags = tags;
+      }
+
+      let advisory: ReturnType<typeof advisoryValidation> | undefined;
+      expect(() => {
+        advisory = advisoryValidation(project);
+      }).not.toThrow();
+      expect(advisory).toBeDefined();
+      expect(Array.isArray(advisory!.items)).toBe(true);
+
+      let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+      expect(() => {
+        snap = buildReviewSnapshot(project);
+      }).not.toThrow();
+      expect(snap).toBeDefined();
+      expect(snap!.advisory).toBeDefined();
+      expect(Array.isArray(snap!.advisory.firstSuggestions)).toBe(true);
+    },
+  );
 });
