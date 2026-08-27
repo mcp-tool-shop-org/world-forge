@@ -27,8 +27,8 @@ The **2.5D fields** on `Zone` — `elevation`, `elevationRange`, `parallaxLayers
 schema ← renderer-2d
 schema ← export-ai-rpg
 schema ← export-unreal
-schema ← export-godot (stub)
-schema + renderer-2d + export-ai-rpg + export-unreal ← editor
+schema ← export-godot
+schema + renderer-2d + export-ai-rpg + export-godot + export-unreal ← editor
 ```
 
 Schema is the foundation. Each export lane depends only on schema — they are peers, not layered. The renderer depends only on schema. The editor depends on schema, the renderer, and every shipping export lane.
