@@ -3,6 +3,8 @@ import {
   pickDefaultSpawnPointId,
   isMissingSpawnPoint,
   createDefaultPlayerTemplate,
+  inventoryWithItem,
+  missingInventoryIds,
 } from '../player-template-helpers.js';
 
 describe('F-2430a6b2: player template spawn default', () => {
@@ -33,5 +35,18 @@ describe('F-2430a6b2: player template spawn default', () => {
     const pt = createDefaultPlayerTemplate('sp-default');
     expect(pt.spawnPointId).toBe('sp-default');
     expect(pt.spawnPointId).not.toBe('');
+  });
+});
+
+describe('F-a3e545f9: player template item picker helpers', () => {
+  it('toggles inventory ids without duplicating', () => {
+    expect(inventoryWithItem([], 'torch', true)).toEqual(['torch']);
+    expect(inventoryWithItem(['torch'], 'torch', true)).toEqual(['torch']);
+    expect(inventoryWithItem(['torch', 'key'], 'torch', false)).toEqual(['key']);
+  });
+
+  it('reports inventory ids that have no placement', () => {
+    expect(missingInventoryIds(['torch', 'ghost'], [{ itemId: 'torch' }])).toEqual(['ghost']);
+    expect(missingInventoryIds(['torch'], [{ itemId: 'torch' }])).toEqual([]);
   });
 });

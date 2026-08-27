@@ -3,6 +3,7 @@ import { useProjectStore } from '../store/project-store.js';
 import { PanelHeader, EmptyState, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 import type { HazardEffect } from '@world-forge/schema';
+import { LootTablePanel } from './LootTablePanel.js';
 
 const card: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, marginBottom: 6, background: 'var(--wf-bg-panel)' };
 const rowHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 };
@@ -41,6 +42,7 @@ export function HazardLibraryPanel() {
   const setEffects = (hid: string, effects: HazardEffect[]) => updateHazardDefinition(hid, { effects });
 
   return (
+    <>
     <div ref={focusRef} style={{ marginTop: 12 }} data-testid="wf-hazard-library-panel">
       <PanelHeader title="Hazard Library" />
       <div style={{ ...section, marginTop: 0 }}>Hazards ({hazards.length})</div>
@@ -159,5 +161,7 @@ export function HazardLibraryPanel() {
 
       <button style={addBtn} onClick={() => addHazardDefinition({ id: `hazard-${Date.now()}`, name: 'Hazard', effects: [defaultEffect('damage')], trigger: 'on-enter', tags: [] })}>+ Add hazard</button>
     </div>
+    <LootTablePanel />
+    </>
   );
 }

@@ -31,7 +31,7 @@ export function ObjectListPanel() {
   const { project, updateProject } = useProjectStore();
   const {
     selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
-    setSelection, setViewport, setRightTab, hiddenIds,
+    setSelection, setViewport, setRightTab, setFocusTarget, hiddenIds,
   } = useEditorStore();
 
   // ED-B-002: orphaned encounters surface as a dedicated group so the user
@@ -121,6 +121,12 @@ export function ObjectListPanel() {
       const vp = computeFrameViewport({ type: 'spawn', id }, project, size.cw, size.ch);
       if (vp) setViewport(vp);
     }
+  };
+
+  const handleSelectItem = (itemId: string, zoneId: string) => {
+    selectZone(zoneId, false);
+    setFocusTarget({ domain: 'items', subPath: `itemPlacements.${itemId}`, timestamp: Date.now() });
+    setRightTab('map');
   };
 
   const handleSelectEncounter = (id: string, zoneId: string) => {
@@ -218,6 +224,8 @@ export function ObjectListPanel() {
             if (spawns.some((s) => matchesFilter(s.id, s.id))) return true;
             const encs = project.encounterAnchors.filter((e) => e.zoneId === zid);
             if (encs.some((e) => matchesFilter(e.encounterType, e.id))) return true;
+            const items = project.itemPlacements.filter((i) => i.zoneId === zid);
+            if (items.some((i) => matchesFilter(i.name ?? i.itemId, i.itemId))) return true;
             return false;
           });
 
@@ -257,13 +265,15 @@ export function ObjectListPanel() {
                 const landmarks = project.landmarks.filter((l) => l.zoneId === zid);
                 const spawns = project.spawnPoints.filter((s) => s.zoneId === zid);
                 const encounters = project.encounterAnchors.filter((e) => e.zoneId === zid);
-                const childCount = entities.length + landmarks.length + spawns.length + encounters.length;
+                const items = project.itemPlacements.filter((i) => i.zoneId === zid);
+                const childCount = entities.length + landmarks.length + spawns.length + encounters.length + items.length;
 
                 // Filter children
                 const visEntities = q ? entities.filter((e) => matchesFilter(e.name ?? e.entityId, e.entityId)) : entities;
                 const visLandmarks = q ? landmarks.filter((l) => matchesFilter(l.name, l.id)) : landmarks;
                 const visSpawns = q ? spawns.filter((s) => matchesFilter(s.id, s.id)) : spawns;
                 const visEncounters = q ? encounters.filter((e) => matchesFilter(e.encounterType, e.id)) : encounters;
+                const visItems = q ? items.filter((i) => matchesFilter(i.name ?? i.itemId, i.itemId)) : items;
 
                 return (
                   <div key={zid} style={{ marginLeft: 12 }}>
@@ -369,6 +379,25 @@ export function ObjectListPanel() {
                             </div>
                           );
                         })}
+                        {visItems.map((it) => (
+                            <div
+                              key={it.itemId}
+                              role="button"
+                              tabIndex={0}
+                              data-testid={`wf-object-item-${it.itemId}`}
+                              onClick={() => handleSelectItem(it.itemId, it.zoneId)}
+                              onKeyDown={onEnter(() => handleSelectItem(it.itemId, it.zoneId))}
+                              style={{
+                                padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                borderLeft: '2px solid transparent',
+                                opacity: hiddenIds.has(it.itemId) ? 0.4 : 1,
+                              }}
+                            >
+                              <span style={{ color: 'var(--wf-warning)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>I</span>
+                              <span style={{ color: 'var(--wf-text-primary)' }}>{it.name ?? it.itemId}</span>
+                              {it.slot && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>{it.slot}</span>}
+                            </div>
+                        ))}
                         {visEncounters.map((enc) => {
                           const sel = isSel(selection, 'encounter', enc.id);
                           return (
