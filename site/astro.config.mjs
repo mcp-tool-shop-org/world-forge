@@ -17,7 +17,13 @@ export default defineConfig({
         alt: 'World Forge',
         replacesTitle: false,
       },
-      defaultTheme: 'dark',
+      components: {
+        ThemeProvider: './src/components/starlight/ThemeProvider.astro',
+        ThemeSelect: './src/components/starlight/ThemeSelect.astro',
+      },
+      expressiveCode: {
+        themes: ['houston', 'houston'],
+      },
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/mcp-tool-shop-org/world-forge' },
       ],
