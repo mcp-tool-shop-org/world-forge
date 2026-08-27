@@ -142,7 +142,7 @@ describe('MinimapRenderer', () => {
     };
     const renderer = new MinimapRenderer({ size: 100, gridWidth: 30, gridHeight: 25 });
     renderer.update(zones, districts);
-    const children = renderer.container.children as G[];
+    const children = renderer.container.children as unknown as G[];
     // children[0] is the square background; zone rect is the first non-bg.
     const zoneG = children[1];
     const zoneRect = zoneG.rects.find((r) => r.w !== 100 || r.h !== 100) ?? zoneG.rects[0];

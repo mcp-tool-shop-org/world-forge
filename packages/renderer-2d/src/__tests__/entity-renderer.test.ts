@@ -192,14 +192,14 @@ describe('EntityRenderer', () => {
     renderer.update(entities, zonePositions, { hoveredEntityId: 'npc-1' });
     expect(renderer.container.children.length).toBe(3);
     const hoverLabel = renderer.container.children.find(
-      (c): c is { text: string } => typeof (c as { text?: unknown }).text === 'string',
-    );
+      (c) => typeof (c as { text?: unknown }).text === 'string',
+    ) as unknown as { text: string } | undefined;
     expect(hoverLabel?.text).toBe('npc-1');
 
     renderer.update(entities, zonePositions, { hoveredEntityId: undefined, selectedEntityId: 'enemy-1' });
     const selectedLabel = renderer.container.children.find(
-      (c): c is { text: string } => typeof (c as { text?: unknown }).text === 'string',
-    );
+      (c) => typeof (c as { text?: unknown }).text === 'string',
+    ) as unknown as { text: string } | undefined;
     expect(selectedLabel?.text).toBe('enemy-1');
   });
 
@@ -208,7 +208,7 @@ describe('EntityRenderer', () => {
       [{ entityId: 'qg-1', zoneId: 'zone-1', role: 'quest-giver' }],
       zonePositions,
     );
-    const qg = renderer.container.children[0] as { calls: string[] };
+    const qg = renderer.container.children[0] as unknown as { calls: string[] };
     expect(qg.calls).toContain('moveTo');
     expect(qg.calls).toContain('closePath');
     expect(qg.calls).not.toContain('circle');
@@ -217,7 +217,7 @@ describe('EntityRenderer', () => {
       [{ entityId: 'comp-1', zoneId: 'zone-1', role: 'companion' }],
       zonePositions,
     );
-    const companion = renderer.container.children[0] as { calls: string[] };
+    const companion = renderer.container.children[0] as unknown as { calls: string[] };
     expect(companion.calls).toContain('circle');
     expect(companion.calls).not.toContain('moveTo');
   });

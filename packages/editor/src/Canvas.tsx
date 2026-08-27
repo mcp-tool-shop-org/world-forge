@@ -104,7 +104,7 @@ export function Canvas() {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
-    actions: { id: string; label: string; icon: string }[];
+    actions: { id: string; label: string; icon: string; description?: string }[];
     hit: HitResult | null;
   } | null>(null);
   const contextMenuElRef = useRef<HTMLDivElement>(null);

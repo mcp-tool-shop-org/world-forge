@@ -98,7 +98,7 @@ export function TilePalette() {
       <button style={addBtn} onClick={createLayer}>+ New layer</button>
 
       <div style={sectionLabel}>Tilesets</div>
-      {tilesets.length === 0 && <div style={hint}>No tilesets — create one to start painting.</div>}
+      {tilesets.length === 0 && <div style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>No tilesets — create one to start painting.</div>}
       {tilesets.map((ts) => (
         <div key={ts.id} style={row(ts.id === (activeTilesetId ?? tilesets[0]?.id))} onClick={() => setActiveTileset(ts.id)}>
           <span>{ts.name} <span style={{ color: 'var(--wf-text-muted)' }}>({ts.tiles.length})</span></span>

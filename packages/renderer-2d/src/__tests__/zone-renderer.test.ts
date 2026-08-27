@@ -140,9 +140,8 @@ describe('ZoneOverlayRenderer', () => {
     z.gridWidth = 3;
     renderer.update([z], districts);
     const label = renderer.container.children.find(
-      (c): c is { text: string; style: { wordWrapWidth?: number } } =>
-        typeof (c as { text?: unknown }).text === 'string',
-    );
+      (c) => typeof (c as { text?: unknown }).text === 'string',
+    ) as unknown as { text: string; style: { wordWrapWidth?: number } } | undefined;
     expect(label).toBeTruthy();
     const zonePx = 3 * 32;
     expect(label!.style.wordWrapWidth).toBeLessThanOrEqual(zonePx - 8);

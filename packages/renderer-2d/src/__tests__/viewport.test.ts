@@ -182,7 +182,7 @@ describe('WorldViewport', () => {
   it('F-87de2dd9: default grid stroke color/alpha pair is visible on navy', async () => {
     const vp = new WorldViewport(defaultOpts);
     await vp.init(makeContainer());
-    const grid = vp.world.children[0] as { strokes: Array<{ width?: number; color?: number; alpha?: number }> };
+    const grid = vp.world.children[0] as unknown as { strokes: Array<{ width?: number; color?: number; alpha?: number }> };
     expect(grid.strokes.length).toBeGreaterThan(0);
     expect(grid.strokes.every((s) => s.color === DEFAULT_GRID_COLOR)).toBe(true);
     expect(grid.strokes.every((s) => (s.alpha ?? 0) >= DEFAULT_GRID_ALPHA)).toBe(true);
@@ -194,12 +194,12 @@ describe('WorldViewport', () => {
     await vp.init(makeContainer());
     vp.zoom(2);
     expect(vp.zoomLevel).toBeCloseTo(2, 5);
-    const afterZoom = vp.world.children[0] as { strokes: Array<{ width?: number; color?: number }> };
+    const afterZoom = vp.world.children[0] as unknown as { strokes: Array<{ width?: number; color?: number }> };
     expect(afterZoom.strokes[0].width).toBeCloseTo(0.5, 5);
 
     vp.gridColor = 0x8b949e;
     expect(vp.gridColor).toBe(0x8b949e);
-    const afterSet = vp.world.children[0] as { strokes: Array<{ color?: number }> };
+    const afterSet = vp.world.children[0] as unknown as { strokes: Array<{ color?: number }> };
     expect(afterSet.strokes.every((s) => s.color === 0x8b949e)).toBe(true);
   });
 
