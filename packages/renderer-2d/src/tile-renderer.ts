@@ -50,7 +50,16 @@ export class TileLayerRenderer {
 
     // Build tile lookup
     const tileDefs = new Map<string, TileDefinition>();
+    // F-4cfcd60a: a truncated/hand-edited tileset may omit `tiles` or set it
+    // to a non-array. Iterating that throws TypeError and aborts the whole
+    // update — including sibling tilesets that would have rendered. Skip the
+    // bad tileset and emit one aggregated warning, matching missing-tileId.
+    const malformedTilesets: string[] = [];
     for (const ts of tilesets) {
+      if (!Array.isArray(ts.tiles)) {
+        malformedTilesets.push(ts.id);
+        continue;
+      }
       for (const t of ts.tiles) {
         tileDefs.set(t.id, t);
       }
@@ -83,15 +92,24 @@ export class TileLayerRenderer {
         const y = placement.gridY * this.tileSize;
 
         let color = 0x333333; // default floor
-        if (def.tags.includes('wall')) color = 0x555555;
-        else if (def.tags.includes('water')) color = 0x2244aa;
-        else if (def.tags.includes('door')) color = 0x886622;
+        // F-4cfcd60a: omitted/non-array tags must not throw; treat as [].
+        const tags = Array.isArray(def.tags) ? def.tags : [];
+        if (tags.includes('wall')) color = 0x555555;
+        else if (tags.includes('water')) color = 0x2244aa;
+        else if (tags.includes('door')) color = 0x886622;
 
         g.rect(x, y, this.tileSize, this.tileSize).fill({ color, alpha: def.opacity });
         layerContainer.addChild(g);
       }
 
       this.container.addChild(layerContainer);
+    }
+
+    if (malformedTilesets.length > 0) {
+      const ids = malformedTilesets.map((id) => `"${id}"`).join(', ');
+      console.warn(
+        `TileLayerRenderer.update: ${malformedTilesets.length} tileset${malformedTilesets.length === 1 ? '' : 's'} omitted a tiles array — skipping ${ids}. Sibling tilesets still render.`,
+      );
     }
 
     // R2D-B-003: emit a single consolidated warning covering every missing

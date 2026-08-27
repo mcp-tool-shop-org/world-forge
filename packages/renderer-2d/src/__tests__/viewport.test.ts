@@ -111,6 +111,36 @@ describe('WorldViewport', () => {
     );
   });
 
+  it('F-99bd3aa5: failed mount destroys the Application and leaves isMounted() false', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const spy = vi.spyOn(vp.app, 'destroy');
+    const original = new Error('Node is not connected');
+    const badContainer = {
+      appendChild: () => { throw original; },
+    } as unknown as HTMLElement;
+    await expect(vp.init(badContainer)).rejects.toThrow(/Failed to mount World Forge viewport/);
+    expect(spy).toHaveBeenCalled();
+    const [rendererDestroyOptions, stageDestroyOptions] = spy.mock.calls[0];
+    expect(rendererDestroyOptions).toBe(true);
+    if (typeof stageDestroyOptions === 'object' && stageDestroyOptions !== null) {
+      expect((stageDestroyOptions as { children?: boolean }).children).toBe(true);
+    } else {
+      expect(stageDestroyOptions).toBe(true);
+    }
+    expect(vp.isMounted()).toBe(false);
+  });
+
+  it('F-99bd3aa5: subsequent init() after a failed mount can recover', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const badContainer = {
+      appendChild: () => { throw new Error('detached node'); },
+    } as unknown as HTMLElement;
+    await expect(vp.init(badContainer)).rejects.toThrow(/Failed to mount/);
+    expect(vp.isMounted()).toBe(false);
+    await expect(vp.init(makeContainer())).resolves.toBeUndefined();
+    expect(vp.isMounted()).toBe(true);
+  });
+
   it('preserves original DOM error as cause when mount fails (IB-004)', async () => {
     const vp = new WorldViewport(defaultOpts);
     const original = new Error('detached node');

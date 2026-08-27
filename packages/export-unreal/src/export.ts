@@ -8,7 +8,8 @@
 import type { WorldProject, ValidationError } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';
 
-import { composeSignedMeta, type PackSignature, type SigningAlgorithm } from './signing.js';
+import type { PackSignature, SigningAlgorithm } from './signing.js';
+export type { PackSignature, SigningAlgorithm } from './signing.js';
 import { convertZones, type UnrealZoneDataAsset } from './convert-zones.js';
 import { convertDistricts, type UnrealDistrictDataAsset } from './convert-districts.js';
 import { convertEntities, type UnrealActorManifest } from './convert-entities.js';
@@ -174,6 +175,11 @@ export function exportToUnreal(
   const worldPartition = worldPartitionResult.hint;
 
   // Advisory warnings (non-fatal).
+  if (options?.signing) {
+    warnings.push(
+      'options.signing is Node-only and was not applied by this browser-safe export. Use CLI --sign or composeSignedMeta from @world-forge/export-unreal/signing.',
+    );
+  }
   if (project.entityPlacements.length === 0) {
     warnings.push('No entity placements — the exported world will spawn no actors.');
   }
@@ -245,18 +251,29 @@ export function composeBaseMeta(project: WorldProject, tileSizeCm: number): Unre
 }
 
 /**
- * UE-B-005: final meta builder. Composes the base meta then optionally threads
- * it through `composeSignedMeta` when signing is requested. The signing step
- * runs LAST so the hash covers every earlier-composed field.
+ * UE-B-005 / F-36785d5f: final meta builder. Base meta only — signing is
+ * applied by the Node-only CLI (`--sign`) or `composeSignedMeta` from
+ * `@world-forge/export-unreal/signing`. A static import of signing.ts here
+ * would pull `node:crypto` into every consumer of `exportToUnreal`, including
+ * browsers that never sign.
  */
 function buildMeta(
   project: WorldProject,
   tileSizeCm: number,
-  options: UnrealExportOptions | undefined,
+  _options: UnrealExportOptions | undefined,
 ): UnrealPackMeta {
-  let meta: UnrealPackMeta = composeBaseMeta(project, tileSizeCm);
-  if (options?.signing) {
-    meta = composeSignedMeta(meta, options.signing);
-  }
-  return meta;
+  return composeBaseMeta(project, tileSizeCm);
+}
+
+/**
+ * F-36785d5f: dynamically import signing.ts so the static graph of this
+ * module never contains `node:crypto`. Node callers (CLI `--sign`) await
+ * this after a successful export. Browser consumers must not call it.
+ */
+export async function applyPackSigning(
+  meta: UnrealPackMeta,
+  signing: { algorithm: SigningAlgorithm },
+): Promise<UnrealPackMeta> {
+  const { composeSignedMeta } = await import('./signing.js');
+  return composeSignedMeta(meta, signing);
 }

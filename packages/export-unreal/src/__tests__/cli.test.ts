@@ -126,6 +126,8 @@ describe('CLI: world-forge-export-unreal', () => {
     expect(stdout).toContain('zones/<id>.json');
     expect(stdout).toContain('districts/<id>.json');
     expect(stdout).toContain('actors/manifest.json');
+    expect(stdout).toContain('parallax-manifest.json');
+    expect(stdout).toContain('transitions.json');
     expect(stdout).toContain('connections.json');
     expect(stdout).toContain('world-partition.json');
     expect(stdout).toContain('fidelity.json');
@@ -296,6 +298,32 @@ describe('CLI: world-forge-export-unreal', () => {
     expect(typeof pack.Signature.value).toBe('string');
     expect(pack.Signature.value).toMatch(/^[0-9a-f]{64}$/);
     expect(Array.isArray(pack.Signature.signedFields)).toBe(true);
+  });
+
+  it('F-38fa7a71: --summary/--verify report INVALID after tampering a signed pack.json', async () => {
+    const outDir = join(tmpDir, 'signed-tamper-out');
+    const signed = await runCli([validJsonPath, '--out', outDir, '--sign']);
+    expect(signed.code).toBe(0);
+    const packPath = join(outDir, 'pack.json');
+    const pack = JSON.parse(await readFile(packPath, 'utf-8'));
+    pack.Name = 'TAMPERED';
+    await writeFile(packPath, JSON.stringify(pack, null, 2));
+
+    const summary = await runCli(['--summary', outDir]);
+    expect(summary.code).toBe(0);
+    expect(summary.stdout).toMatch(/INVALID/);
+
+    const verify = await runCli(['--verify', outDir]);
+    expect(verify.code).not.toBe(0);
+    expect(verify.stderr).toMatch(/INVALID|mismatch/i);
+  });
+
+  it('F-38fa7a71: --verify exits non-zero on an unsigned pack', async () => {
+    const outDir = join(tmpDir, 'unsigned-verify-out');
+    await runCli([validJsonPath, '--out', outDir]);
+    const verify = await runCli(['--verify', outDir]);
+    expect(verify.code).not.toBe(0);
+    expect(verify.stderr).toMatch(/not signed/i);
   });
 
   it('UE-FT-007: export without --sign has no Signature (backward compat)', async () => {

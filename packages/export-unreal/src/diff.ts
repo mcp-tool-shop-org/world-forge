@@ -27,6 +27,8 @@ export interface PackDiff {
   zones: CategoryDiff;
   districts: CategoryDiff;
   actors: CategoryDiff;
+  parallax: CategoryDiff;
+  transitions: CategoryDiff;
   formatVersion: { prev: string; next: string; changed: boolean };
   signature: { prev: boolean; next: boolean; changed: boolean };
 }
@@ -122,6 +124,44 @@ async function collectActors(dir: string): Promise<Record<string, string>> {
   return out;
 }
 
+async function collectParallax(dir: string): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  try {
+    const manifest = await readJson<{ Actors?: Array<{ ZoneId?: string; LayerId?: string } & Record<string, unknown>> }>(
+      join(dir, 'actors', 'parallax-manifest.json'),
+    );
+    if (Array.isArray(manifest.Actors)) {
+      for (const actor of manifest.Actors) {
+        if (typeof actor.ZoneId === 'string' && typeof actor.LayerId === 'string') {
+          out[`${actor.ZoneId}+${actor.LayerId}`] = canonicalStringify(actor);
+        }
+      }
+    }
+  } catch {
+    // Missing actors/parallax-manifest.json → no parallax diff entries.
+  }
+  return out;
+}
+
+async function collectTransitions(dir: string): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  try {
+    const list = await readJson<Array<{ Id?: string } & Record<string, unknown>>>(
+      join(dir, 'actors', 'transitions.json'),
+    );
+    if (Array.isArray(list)) {
+      for (const t of list) {
+        if (typeof t.Id === 'string') {
+          out[t.Id] = canonicalStringify(t);
+        }
+      }
+    }
+  } catch {
+    // Missing actors/transitions.json → no transition diff entries.
+  }
+  return out;
+}
+
 /** Compute a structural diff between two pack directories. */
 export async function diffPacks(prevDir: string, newDir: string): Promise<PackDiff | DiffError> {
   let prevMeta: UnrealPackMeta;
@@ -155,6 +195,14 @@ export async function diffPacks(prevDir: string, newDir: string): Promise<PackDi
     collectActors(prevDir),
     collectActors(newDir),
   ]);
+  const [prevParallax, nextParallax] = await Promise.all([
+    collectParallax(prevDir),
+    collectParallax(newDir),
+  ]);
+  const [prevTransitions, nextTransitions] = await Promise.all([
+    collectTransitions(prevDir),
+    collectTransitions(newDir),
+  ]);
 
   const prevFmt = prevMeta.FormatVersion;
   const nextFmt = nextMeta.FormatVersion;
@@ -167,6 +215,8 @@ export async function diffPacks(prevDir: string, newDir: string): Promise<PackDi
     zones: categoryDiff(prevZones, nextZones),
     districts: categoryDiff(prevDistricts, nextDistricts),
     actors: categoryDiff(prevActors, nextActors),
+    parallax: categoryDiff(prevParallax, nextParallax),
+    transitions: categoryDiff(prevTransitions, nextTransitions),
     formatVersion: { prev: prevFmt, next: nextFmt, changed: prevFmt !== nextFmt },
     signature: { prev: prevSigned, next: nextSigned, changed: prevSigned !== nextSigned },
   };
@@ -185,6 +235,10 @@ export function formatDiff(diff: PackDiff, detailed = false): string {
   if (detailed) lines.push(...detailLines(diff.districts));
   lines.push(categoryLine('Actors:', diff.actors));
   if (detailed) lines.push(...detailLines(diff.actors));
+  lines.push(categoryLine('Parallax:', diff.parallax));
+  if (detailed) lines.push(...detailLines(diff.parallax));
+  lines.push(categoryLine('Transitions:', diff.transitions));
+  if (detailed) lines.push(...detailLines(diff.transitions));
 
   if (diff.formatVersion.changed) {
     lines.push(`FormatVersion: ${diff.formatVersion.prev} -> ${diff.formatVersion.next}`);

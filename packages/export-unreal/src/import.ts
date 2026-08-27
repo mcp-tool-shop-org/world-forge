@@ -9,11 +9,12 @@
 import type {
   WorldProject, Zone, ZoneExit, Interactable,
   District, EntityPlacement, EntityRole,
-  ZoneConnection, ParallaxLayer,
+  ZoneConnection, ConnectionKind, ParallaxLayer,
   TransitionEntity, TransitionEntityType,
-  ValidationError,
+  ValidationError, AuthoringMode,
 } from '@world-forge/schema';
-import { DEFAULT_MODE } from '@world-forge/schema';
+import { DEFAULT_MODE, isValidMode, VALID_CONNECTION_KINDS } from '@world-forge/schema';
+import { KNOWN_DROPPED } from './field-coverage.js';
 import type { UnrealContentPack, UnrealPackMeta } from './export.js';
 import { UNREAL_PACK_FORMAT_VERSION } from './export.js';
 import { migratePack, parseSemVer, compareSemVer, type MigrationWarning } from './migrations.js';
@@ -146,7 +147,30 @@ export function importFromUnreal(pack: UnrealContentPack): UnrealImportResult | 
   return result;
 }
 
+/**
+ * Every WorldProject field an Unreal content pack cannot round-trip on import.
+ * DERIVED from KNOWN_DROPPED (F-a9c3a595) so tsc + FIELD_COVERAGE own both
+ * sides. Do not put `transitions` here — they are in the pack and round-trip
+ * (EXPORT-UNREAL-A-001); they are classified `covered`, not dropped.
+ */
+const UNREAL_UNRECOVERABLE_FIELDS: ReadonlyArray<string> = Object.keys(KNOWN_DROPPED);
+
 function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
+  try {
+    return deserializeV1Unchecked(pack);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      errors: [{
+        path: 'pack',
+        message: `Failed to deserialize Unreal pack: ${message}`,
+      }],
+    };
+  }
+}
+
+function deserializeV1Unchecked(pack: UnrealContentPack): UnrealImportResult | UnrealImportError {
   const fidelity: FidelityEntry[] = [];
 
   // Reconstruct a sensible tile size. Default is 100 cm/tile.
@@ -188,12 +212,18 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
     });
   }
 
-  const zones: Zone[] = (pack.Zones ?? []).map((z) => zoneFromUnreal(z, tileSizeCm, fidelity));
-  const districts: District[] = (pack.Districts ?? []).map(districtFromUnreal);
-  const entityPlacements: EntityPlacement[] = (pack.Actors?.All ?? []).map((a) =>
+  const zoneList = Array.isArray(pack.Zones) ? pack.Zones : [];
+  const districtList = Array.isArray(pack.Districts) ? pack.Districts : [];
+  const actorList = Array.isArray(pack.Actors?.All) ? pack.Actors.All : [];
+  const connectionList = Array.isArray(pack.Connections) ? pack.Connections : [];
+  const transitionList = Array.isArray(pack.Transitions) ? pack.Transitions : [];
+
+  const zones: Zone[] = zoneList.map((z) => zoneFromUnreal(z, tileSizeCm, fidelity));
+  const districts: District[] = districtList.map((d) => districtFromUnreal(d, fidelity));
+  const entityPlacements: EntityPlacement[] = actorList.map((a) =>
     entityFromUnreal(a, tileSizeCm, fidelity),
   );
-  const connections: ZoneConnection[] = (pack.Connections ?? []).map(connectionFromUnreal);
+  const connections: ZoneConnection[] = connectionList.map((c) => connectionFromUnreal(c, fidelity));
 
   // F-c6b6426f: convert-transitions.ts maps each TransitionEntity 1:1 into
   // pack.Transitions and marks the mapping lossless; this importer used to
@@ -202,7 +232,7 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
   // Type/Label/Animation/DurationSeconds/Tags passthrough. Guard Type the
   // same way PhysicsMode is guarded — a hand-edited pack can carry anything.
   const transitions: TransitionEntity[] = [];
-  for (const u of pack.Transitions ?? []) {
+  for (const u of transitionList) {
     const recovered = transitionFromUnreal(u, tileSizeCm, fidelity);
     if (recovered) transitions.push(recovered);
   }
@@ -210,7 +240,22 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
   // Guard for pre-WorldPartition packs — fall back to sensible defaults so
   // old exports don't crash the import pipeline.
   const wp = pack.WorldPartition;
-  const wpMode = wp?.SourceMode ?? DEFAULT_MODE;
+  let wpMode: AuthoringMode = DEFAULT_MODE;
+  const rawMode = wp?.SourceMode;
+  if (rawMode !== undefined && rawMode !== null) {
+    if (typeof rawMode === 'string' && isValidMode(rawMode)) {
+      wpMode = rawMode;
+    } else {
+      fidelity.push({
+        level: 'approximated',
+        domain: 'world-partition',
+        severity: 'warning',
+        fieldPath: 'WorldPartition.SourceMode',
+        message: `Pack WorldPartition.SourceMode "${String(rawMode)}" is not a valid AuthoringMode — defaulting to "${DEFAULT_MODE}".`,
+        reason: 'SourceMode is not one of dungeon/interior/district/world/ocean/space/wilderness.',
+      });
+    }
+  }
   const wpWidthCm = wp?.ExtentCm?.WidthCm ?? tileSizeCm;
   const wpDepthCm = wp?.ExtentCm?.DepthCm ?? tileSizeCm;
   if (!wp) {
@@ -297,63 +342,51 @@ function deserializeV1(pack: UnrealContentPack): UnrealImportResult | UnrealImpo
   return { success: true, project, fidelity: buildFidelityReport(fidelity) };
 }
 
-/**
- * Every WorldProject field an Unreal content pack cannot round-trip on import.
- * Kept in sync with `KNOWN_DROPPED` in the parity test — any schema change that
- * adds a gameplay/flavor field should land here too.
- */
-const UNREAL_UNRECOVERABLE_FIELDS: ReadonlyArray<string> = [
-  'dialogues',
-  'progressionTrees',
-  'playerTemplate',
-  'buildCatalog',
-  'itemPlacements',
-  'encounterAnchors',
-  'spawnPoints',
-  'craftingStations',
-  'marketNodes',
-  'landmarks',
-  'factionPresences',
-  'pressureHotspots',
-  'tilesets',
-  'tileLayers',
-  'props',
-  'propPlacements',
-  'ambientLayers',
-  'assets',
-  'assetPacks',
-  'genre',
-  'tones',
-  'difficulty',
-  'narratorTone',
-];
-
 function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: FidelityEntry[]): Zone {
-  const { gridX, gridY } = unrealAxisToGrid(u.OriginCm.X, u.OriginCm.Y, tileSizeCm);
+  const origin = readCmVec(u.OriginCm, u.Id, `zones.${u.Id}.OriginCm`, fidelity);
+  const { gridX, gridY } = unrealAxisToGrid(origin.X, origin.Y, tileSizeCm);
+
+  const interactables: Interactable[] = [];
+  const rawInteractables = Array.isArray(u.Interactables) ? u.Interactables : [];
+  for (const i of rawInteractables) {
+    if (!isInteractableType(i.Type)) {
+      fidelity.push({
+        level: 'approximated',
+        domain: 'zones',
+        severity: 'warning',
+        entityId: u.Id,
+        fieldPath: `zones.${u.Id}.interactables`,
+        message: `Zone "${u.Id}" interactable "${i.Name}" has unrecognized Type "${String(i.Type)}" — dropped rather than guessed.`,
+        reason: 'Type is not one of inspect/use/enter/talk/none (Interactable.type union).',
+      });
+      continue;
+    }
+    interactables.push({
+      name: i.Name,
+      type: i.Type,
+      description: i.Description,
+    });
+  }
 
   const zone: Zone = {
     id: u.Id,
     name: u.DisplayName,
-    tags: u.Tags.slice(),
+    tags: Array.isArray(u.Tags) ? u.Tags.slice() : [],
     description: u.Description,
     gridX,
     gridY,
     gridWidth: u.GridWidthTiles,
     gridHeight: u.GridHeightTiles,
-    neighbors: u.Neighbors.slice(),
-    exits: u.Exits.map<ZoneExit>((e) => ({
+    neighbors: Array.isArray(u.Neighbors) ? u.Neighbors.slice() : [],
+    exits: (Array.isArray(u.Exits) ? u.Exits : []).map<ZoneExit>((e) => ({
       targetZoneId: e.TargetZoneId,
       label: e.Label,
       condition: e.Condition,
     })),
     light: u.Light,
     noise: u.Noise,
-    hazards: u.Hazards.slice(),
-    interactables: u.Interactables.map<Interactable>((i) => ({
-      name: i.Name,
-      type: i.Type as Interactable['type'],
-      description: i.Description,
-    })),
+    hazards: Array.isArray(u.Hazards) ? u.Hazards.slice() : [],
+    interactables,
     parentDistrictId: u.ParentDistrictId,
     backgroundId: u.BackgroundAssetId,
     tilesetId: u.TilesetAssetId,
@@ -369,7 +402,7 @@ function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: Fi
       ceiling: zToElevationMeters(u.ElevationRangeCm.CeilingCm),
     };
   }
-  if (u.ParallaxLayers && u.ParallaxLayers.length > 0) {
+  if (Array.isArray(u.ParallaxLayers) && u.ParallaxLayers.length > 0) {
     zone.parallaxLayers = u.ParallaxLayers.map<ParallaxLayer>((p) => ({
       id: p.Id,
       depth: p.Depth,
@@ -390,13 +423,41 @@ function zoneFromUnreal(u: UnrealZoneDataAsset, tileSizeCm: number, fidelity: Fi
   if (u.TimeOfDayKey !== undefined) zone.timeOfDay = u.TimeOfDayKey;
 
   // ── Collision channel (UE-FT-003) — round-trip fix ──────────────────────
-  // UnrealZoneDataAsset.CollisionChannel is already the same union type as
-  // Zone.collisionType, so this is a direct, type-safe passthrough.
-  if (u.CollisionChannel !== undefined) zone.collisionType = u.CollisionChannel;
+  // F-dce08380: CollisionChannel is a closed union on the schema side but a
+  // hand-edited pack can carry anything. Guard rather than assign.
+  if (u.CollisionChannel !== undefined) {
+    if (isCollisionType(u.CollisionChannel)) {
+      zone.collisionType = u.CollisionChannel;
+    } else {
+      fidelity.push({
+        level: 'approximated',
+        domain: 'collision',
+        severity: 'warning',
+        entityId: u.Id,
+        fieldPath: `zones.${u.Id}.collisionType`,
+        message: `Zone "${u.Id}" has unrecognized CollisionChannel "${String(u.CollisionChannel)}" — dropped rather than guessed.`,
+        reason: 'CollisionChannel is not one of walkable/water/hazard/void/custom (Zone.collisionType union).',
+      });
+    }
+  }
 
   // ── Gravity + physicsMode (SCH-FT-006) — round-trip fix ─────────────────
   if (u.GravityCmPerSec2 !== undefined) zone.gravityOverride = u.GravityCmPerSec2 / 100; // cm/s² → m/s²
-  if (u.GravityDirection !== undefined) zone.gravityDirection = u.GravityDirection;
+  if (u.GravityDirection !== undefined) {
+    if (isGravityDirection(u.GravityDirection)) {
+      zone.gravityDirection = u.GravityDirection;
+    } else {
+      fidelity.push({
+        level: 'approximated',
+        domain: 'physics',
+        severity: 'warning',
+        entityId: u.Id,
+        fieldPath: `zones.${u.Id}.gravityDirection`,
+        message: `Zone "${u.Id}" has unrecognized GravityDirection "${String(u.GravityDirection)}" — dropped rather than guessed.`,
+        reason: 'GravityDirection is not one of down/up/none (Zone.gravityDirection union).',
+      });
+    }
+  }
   if (u.PhysicsMode !== undefined) {
     // Unlike CollisionChannel, UnrealZoneDataAsset.PhysicsMode is a bare
     // `string` (not Zone.physicsMode's literal union) — convert-zones.ts can
@@ -425,28 +486,65 @@ function isPhysicsMode(value: string): value is NonNullable<Zone['physicsMode']>
   return value === 'normal' || value === 'platformer' || value === 'zero-g' || value === 'aquatic';
 }
 
-function districtFromUnreal(u: UnrealDistrictDataAsset): District {
+function isInteractableType(value: unknown): value is Interactable['type'] {
+  return value === 'inspect' || value === 'use' || value === 'enter' || value === 'talk' || value === 'none';
+}
+
+function isCollisionType(value: unknown): value is NonNullable<Zone['collisionType']> {
+  return value === 'walkable' || value === 'water' || value === 'hazard' || value === 'void' || value === 'custom';
+}
+
+function isGravityDirection(value: unknown): value is NonNullable<Zone['gravityDirection']> {
+  return value === 'down' || value === 'up' || value === 'none';
+}
+
+function districtFromUnreal(u: UnrealDistrictDataAsset, fidelity: FidelityEntry[]): District {
+  const metrics = u.BaseMetrics && typeof u.BaseMetrics === 'object' ? u.BaseMetrics : undefined;
+  const economy = u.EconomyProfile && typeof u.EconomyProfile === 'object' ? u.EconomyProfile : undefined;
+  if (!metrics) {
+    fidelity.push({
+      level: 'approximated',
+      domain: 'districts',
+      severity: 'warning',
+      entityId: u.Id,
+      fieldPath: `districts.${u.Id}.baseMetrics`,
+      message: `District "${u.Id}" is missing BaseMetrics — defaulting commerce/morale/safety/stability to 0.`,
+      reason: 'Hand-edited pack omitted BaseMetrics.',
+    });
+  }
+  if (!economy) {
+    fidelity.push({
+      level: 'approximated',
+      domain: 'districts',
+      severity: 'warning',
+      entityId: u.Id,
+      fieldPath: `districts.${u.Id}.economyProfile`,
+      message: `District "${u.Id}" is missing EconomyProfile — defaulting to empty supply categories.`,
+      reason: 'Hand-edited pack omitted EconomyProfile.',
+    });
+  }
   return {
     id: u.Id,
     name: u.DisplayName,
-    zoneIds: u.ZoneIds.slice(),
-    tags: u.Tags.slice(),
+    zoneIds: Array.isArray(u.ZoneIds) ? u.ZoneIds.slice() : [],
+    tags: Array.isArray(u.Tags) ? u.Tags.slice() : [],
     controllingFaction: u.ControllingFaction,
     baseMetrics: {
-      commerce: u.BaseMetrics.Commerce,
-      morale: u.BaseMetrics.Morale,
-      safety: u.BaseMetrics.Safety,
-      stability: u.BaseMetrics.Stability,
+      commerce: metrics?.Commerce ?? 0,
+      morale: metrics?.Morale ?? 0,
+      safety: metrics?.Safety ?? 0,
+      stability: metrics?.Stability ?? 0,
     },
     economyProfile: {
-      supplyCategories: u.EconomyProfile.SupplyCategories.slice(),
-      scarcityDefaults: { ...u.EconomyProfile.ScarcityDefaults },
+      supplyCategories: Array.isArray(economy?.SupplyCategories) ? economy.SupplyCategories.slice() : [],
+      scarcityDefaults: { ...(economy?.ScarcityDefaults ?? {}) },
     },
   };
 }
 
 function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity: FidelityEntry[]): EntityPlacement {
-  const { gridX, gridY } = unrealAxisToGrid(u.LocationCm.X, u.LocationCm.Y, tileSizeCm);
+  const location = readCmVec(u.LocationCm, u.ActorId, `entityPlacements.${u.ActorId}.LocationCm`, fidelity);
+  const { gridX, gridY } = unrealAxisToGrid(location.X, location.Y, tileSizeCm);
 
   // Flag sub-grid placements: any actor whose cm location doesn't fall exactly
   // on a tile boundary will be snapped by the Math.round() above. The original
@@ -458,8 +556,8 @@ function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity
   // form normalizes negative locations so the distance-to-boundary is always
   // non-negative.
   const SUBGRID_EPSILON_CM = 0.001;
-  const xOffset = Math.abs(((u.LocationCm.X % tileSizeCm) + tileSizeCm) % tileSizeCm);
-  const yOffset = Math.abs(((u.LocationCm.Y % tileSizeCm) + tileSizeCm) % tileSizeCm);
+  const xOffset = Math.abs(((location.X % tileSizeCm) + tileSizeCm) % tileSizeCm);
+  const yOffset = Math.abs(((location.Y % tileSizeCm) + tileSizeCm) % tileSizeCm);
   const xOffAligned = xOffset > SUBGRID_EPSILON_CM && (tileSizeCm - xOffset) > SUBGRID_EPSILON_CM;
   const yOffAligned = yOffset > SUBGRID_EPSILON_CM && (tileSizeCm - yOffset) > SUBGRID_EPSILON_CM;
   if (xOffAligned || yOffAligned) {
@@ -469,7 +567,7 @@ function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity
       severity: 'info',
       entityId: u.ActorId,
       fieldPath: `entityPlacements.${u.ActorId}.gridX/gridY`,
-      message: `Entity "${u.ActorId}" sub-grid placement (${u.LocationCm.X}, ${u.LocationCm.Y} cm) snapped to grid (${gridX}, ${gridY}).`,
+      message: `Entity "${u.ActorId}" sub-grid placement (${location.X}, ${location.Y} cm) snapped to grid (${gridX}, ${gridY}).`,
       reason: `LocationCm not aligned to tileSizeCm=${tileSizeCm}; WorldProject grid is integer-only.`,
     });
   }
@@ -498,22 +596,36 @@ function entityFromUnreal(u: UnrealActorSpawnEntry, tileSizeCm: number, fidelity
     stats: u.Stats,
     resources: u.Resources,
     ai: u.AI ? { profileId: u.AI.ProfileId, goals: u.AI.Goals, fears: u.AI.Fears } : undefined,
-    tags: u.Tags,
+    tags: Array.isArray(u.Tags) ? u.Tags : undefined,
     custom: u.Custom,
     portraitId: u.PortraitAssetId,
     spriteId: u.SpriteAssetId,
   };
 }
 
-function connectionFromUnreal(u: UnrealLevelStreamingHint): ZoneConnection {
-  return {
+function connectionFromUnreal(u: UnrealLevelStreamingHint, fidelity: FidelityEntry[]): ZoneConnection {
+  const conn: ZoneConnection = {
     fromZoneId: u.FromZoneId,
     toZoneId: u.ToZoneId,
-    kind: u.Kind,
     bidirectional: u.Bidirectional,
     label: u.Label,
     condition: u.Condition,
   };
+  if (u.Kind !== undefined) {
+    if (VALID_CONNECTION_KINDS.has(u.Kind)) {
+      conn.kind = u.Kind as ConnectionKind;
+    } else {
+      fidelity.push({
+        level: 'approximated',
+        domain: 'connections',
+        severity: 'warning',
+        fieldPath: `connections.${u.FromZoneId}->${u.ToZoneId}.kind`,
+        message: `Connection ${u.FromZoneId}→${u.ToZoneId} has unrecognized Kind "${String(u.Kind)}" — dropped rather than guessed.`,
+        reason: 'Kind is not in VALID_CONNECTION_KINDS.',
+      });
+    }
+  }
+  return conn;
 }
 
 /**
@@ -540,7 +652,8 @@ function transitionFromUnreal(
     return undefined;
   }
 
-  const { gridX, gridY } = unrealAxisToGrid(u.LocationCm.X, u.LocationCm.Y, tileSizeCm);
+  const location = readCmVec(u.LocationCm, u.Id, `transitions.${u.Id}.LocationCm`, fidelity);
+  const { gridX, gridY } = unrealAxisToGrid(location.X, location.Y, tileSizeCm);
   const out: TransitionEntity = {
     id: u.Id,
     zoneId: u.ZoneId,
@@ -552,11 +665,11 @@ function transitionFromUnreal(
   if (u.Label !== undefined) out.label = u.Label;
   if (u.Animation !== undefined) out.animation = u.Animation;
   if (u.DurationSeconds !== undefined) out.durationSeconds = u.DurationSeconds;
-  if (u.Tags !== undefined) out.tags = u.Tags.slice();
+  if (Array.isArray(u.Tags)) out.tags = u.Tags.slice();
   return out;
 }
 
-function isTransitionEntityType(value: string): value is TransitionEntityType {
+function isTransitionEntityType(value: unknown): value is TransitionEntityType {
   return value === 'elevator' || value === 'warp' || value === 'transporter'
     || value === 'cargo-lift' || value === 'stairwell';
 }
@@ -585,4 +698,35 @@ function readOptionalPositiveNumber(
     return value;
   }
   return undefined;
+}
+
+/**
+ * F-e21cd428: OriginCm / LocationCm on a hand-edited pack may be missing or
+ * a non-object. Default to (0,0,0) and flag rather than throw on `.X`.
+ */
+function readCmVec(
+  raw: unknown,
+  entityId: string,
+  fieldPath: string,
+  fidelity: FidelityEntry[],
+): { X: number; Y: number; Z: number } {
+  if (raw && typeof raw === 'object') {
+    const rec = raw as Record<string, unknown>;
+    const X = typeof rec.X === 'number' && Number.isFinite(rec.X) ? rec.X : 0;
+    const Y = typeof rec.Y === 'number' && Number.isFinite(rec.Y) ? rec.Y : 0;
+    const Z = typeof rec.Z === 'number' && Number.isFinite(rec.Z) ? rec.Z : 0;
+    if (typeof rec.X === 'number' && typeof rec.Y === 'number') {
+      return { X, Y, Z };
+    }
+  }
+  fidelity.push({
+    level: 'approximated',
+    domain: 'world',
+    severity: 'warning',
+    entityId,
+    fieldPath,
+    message: `${fieldPath} missing or not an object — defaulting to origin (0,0,0).`,
+    reason: 'Hand-edited pack omitted a centimetre vector.',
+  });
+  return { X: 0, Y: 0, Z: 0 };
 }

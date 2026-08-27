@@ -4,6 +4,7 @@ export { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from './export.js';
 export type {
   UnrealContentPack, UnrealPackMeta,
   UnrealExportOptions, UnrealExportResult, UnrealExportError,
+  PackSignature, SigningAlgorithm,
 } from './export.js';
 
 export { importFromUnreal } from './import.js';
@@ -35,7 +36,7 @@ export type {
 
 export { convertTransitions } from './convert-transitions.js';
 export type {
-  UnrealTransitionEntity, ConvertTransitionsResult,
+  UnrealTransitionEntity, UnrealDroppedTransition, ConvertTransitionsResult,
 } from './convert-transitions.js';
 
 export {
@@ -58,15 +59,10 @@ export type {
   SemVer, Migration, MigrationResult, MigrationError, MigrationWarning,
 } from './migrations.js';
 
-// ── Node-only APIs (require node:crypto / node:fs) ────────────
-// These functions are NOT browser-safe. Import them only in Node.js contexts.
-
-// UE-FT-007: pack signing (node:crypto)
-export { signMeta, composeSignedMeta, verifyPackSignature } from './signing.js';
-export type { PackSignature, SigningAlgorithm, VerifyResult } from './signing.js';
-
-// UE-FT-005: CLI summary + diff helpers (node:fs)
-export { summarizePack, formatSummary } from './summary.js';
-export type { PackSummary, SummaryError } from './summary.js';
-export { diffPacks, formatDiff } from './diff.js';
-export type { PackDiff, CategoryDiff, DiffError } from './diff.js';
+// F-36785d5f: Node-only APIs (node:crypto / node:fs) are NOT re-exported from
+// this browser-safe barrel. Import them from the dedicated subpaths:
+//   @world-forge/export-unreal/signing
+//   @world-forge/export-unreal/summary
+//   @world-forge/export-unreal/diff
+// PackSignature / SigningAlgorithm types live on UnrealPackMeta (export.ts)
+// as type-only imports, so they do not pull node:crypto into this graph.
