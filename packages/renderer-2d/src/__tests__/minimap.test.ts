@@ -16,9 +16,16 @@ vi.mock('pixi.js', () => {
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
-    rect() { return this; }
-    fill() { return this; }
-    stroke() { return this; }
+    label = '';
+    rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+    fills: Array<{ color?: number; alpha?: number }> = [];
+    strokes: Array<{ width?: number; color?: number; alpha?: number }> = [];
+    rect(x: number, y: number, w: number, h: number) {
+      this.rects.push({ x, y, w, h });
+      return this;
+    }
+    fill(arg?: { color?: number; alpha?: number }) { this.fills.push(arg ?? {}); return this; }
+    stroke(arg?: { width?: number; color?: number; alpha?: number }) { this.strokes.push(arg ?? {}); return this; }
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Graphics', opts }); }
   }
   return { Container: MockContainer, Graphics: MockGraphics };
@@ -125,5 +132,30 @@ describe('MinimapRenderer', () => {
 
     renderer.destroy();
     expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
+  });
+
+  it('F-6e1482bc: letterboxes a 30×25 grid so zone w/h stay similar to the map', () => {
+    type G = {
+      label: string;
+      rects: Array<{ x: number; y: number; w: number; h: number }>;
+      strokes: Array<{ width?: number; alpha?: number }>;
+    };
+    const renderer = new MinimapRenderer({ size: 100, gridWidth: 30, gridHeight: 25 });
+    renderer.update(zones, districts);
+    const children = renderer.container.children as G[];
+    // children[0] is the square background; zone rect is the first non-bg.
+    const zoneG = children[1];
+    const zoneRect = zoneG.rects.find((r) => r.w !== 100 || r.h !== 100) ?? zoneG.rects[0];
+    expect(zoneRect.w / zoneRect.h).toBeCloseTo(zones[0].gridWidth / zones[0].gridHeight, 5);
+    expect(zoneG.strokes.some((s) => (s.width ?? 0) >= 1 && (s.alpha ?? 0) >= 0.8)).toBe(true);
+  });
+
+  it('F-6e1482bc: viewportRect child is present when a camera rect is passed', () => {
+    const renderer = new MinimapRenderer({ size: 100, gridWidth: 30, gridHeight: 25 });
+    renderer.update(zones, districts, { x: 2, y: 2, w: 8, h: 6 });
+    const vp = (renderer.container.children as Array<{ label?: string }>).find(
+      (c) => c.label === 'viewportRect',
+    );
+    expect(vp, 'expected a Graphics child labelled viewportRect').toBeTruthy();
   });
 });

@@ -121,8 +121,8 @@ describe('DiagnosticInfo shape (INF-B-008)', () => {
       [{ entityId: 'e1', zoneId: 'z1', role: 'npc' }],
       new Map([['z1', { x: 0, y: 0 }]]),
     );
-    // 1 entity = 1 graphic + 1 label = 2 children
-    expect(r.getDiagnostics().childCount).toBe(2);
+    // F-9347649b: rest state is 1 graphic, no id label
+    expect(r.getDiagnostics().childCount).toBe(1);
   });
 
   it('WorldViewport.getDiagnostics() before init, after init, and after destroy (F-0f41f51a)', async () => {

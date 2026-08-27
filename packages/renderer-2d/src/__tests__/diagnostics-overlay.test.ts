@@ -5,7 +5,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const destroyCalls: Array<{ kind: string; opts: unknown }> = [];
-const createdTexts: Array<{ text: string; style: unknown }> = [];
+const createdTexts: Array<{ text: string; style: unknown; width: number }> = [];
+const rectCalls: Array<{ x: number; y: number; w: number; h: number }> = [];
 
 vi.mock('pixi.js', () => {
   class MockContainer {
@@ -19,7 +20,10 @@ vi.mock('pixi.js', () => {
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
-    rect() { return this; }
+    rect(x: number, y: number, w: number, h: number) {
+      rectCalls.push({ x, y, w, h });
+      return this;
+    }
     fill() { return this; }
     stroke() { return this; }
     moveTo() { return this; }
@@ -28,12 +32,17 @@ vi.mock('pixi.js', () => {
   }
   class MockText {
     text: string;
-    style: unknown;
+    style: { wordWrap?: boolean; wordWrapWidth?: number; fill?: number; fontSize?: number };
+    width: number;
     position = { set: vi.fn() };
-    constructor(opts: { text: string; style: unknown }) {
+    constructor(opts: { text: string; style: { wordWrap?: boolean; wordWrapWidth?: number; fill?: number; fontSize?: number } }) {
       this.text = opts.text;
       this.style = opts.style;
-      createdTexts.push({ text: opts.text, style: opts.style });
+      const advance = 6;
+      const raw = opts.text.length * advance;
+      const cap = opts.style?.wordWrapWidth;
+      this.width = typeof cap === 'number' ? Math.min(raw, cap) : raw;
+      createdTexts.push({ text: opts.text, style: opts.style, width: this.width });
     }
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Text', opts }); }
   }
@@ -47,6 +56,7 @@ describe('DiagnosticsOverlay (INF-FT-003)', () => {
   beforeEach(() => {
     destroyCalls.length = 0;
     createdTexts.length = 0;
+    rectCalls.length = 0;
   });
 
   it('renders a title + one row per DiagnosticInfo', () => {
@@ -144,5 +154,19 @@ describe('DiagnosticsOverlay (INF-FT-003)', () => {
 
     overlay.destroy();
     expect(overlay.getDiagnostics().destroyed).toBe(true);
+  });
+
+  it('F-b56a095a: ZoneOverlayRenderer [destroyed] row fits in the default box', () => {
+    const overlay = new DiagnosticsOverlay();
+    overlay.setDiagnostics([
+      { className: 'ZoneOverlayRenderer', destroyed: true, childCount: 12 },
+    ]);
+    const dead = createdTexts.find((t) => t.text.startsWith('ZoneOverlayRenderer'));
+    expect(dead, 'expected a destroyed ZoneOverlayRenderer row').toBeTruthy();
+    expect(dead!.text).toContain('[destroyed]');
+    expect((dead!.style as { wordWrap?: boolean }).wordWrap).toBe(true);
+    const box = rectCalls[0];
+    expect(dead!.width + 16).toBeLessThanOrEqual(box.w);
+    expect(box.w).toBeGreaterThanOrEqual(280);
   });
 });

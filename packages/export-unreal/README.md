@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="./logo.png" alt="World Forge" width="400">
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@world-forge/export-unreal"><img src="https://img.shields.io/npm/v/@world-forge/export-unreal.svg" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
+
 # @world-forge/export-unreal
 
 Export pipeline for [World Forge](https://github.com/mcp-tool-shop-org/world-forge) — converts a `WorldProject` into an **Unreal Engine 5** content pack tuned for 2.5D games.

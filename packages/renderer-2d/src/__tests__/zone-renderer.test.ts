@@ -118,6 +118,38 @@ describe('ZoneOverlayRenderer', () => {
     expect(() => renderer.update(zones, districts, { selectedZoneId: 'z1', hoveredZoneId: 'z2' })).not.toThrow();
   });
 
+  it('F-8a7e82c7: hover fill and border differ from idle', () => {
+    renderer.update([zone('z1')], districts);
+    const idleFill = fillCalls.find((c) => c.color === 0x888888);
+    const idleStroke = strokeCalls[strokeCalls.length - 1];
+    fillCalls.length = 0;
+    strokeCalls.length = 0;
+    renderer.update([zone('z1')], districts, { hoveredZoneId: 'z1' });
+    const hoverFill = fillCalls.find((c) => c.color === 0x888888);
+    const hoverStroke = strokeCalls[strokeCalls.length - 1];
+    expect(hoverFill?.alpha).not.toBe(idleFill?.alpha);
+    expect(hoverFill?.alpha).toBeGreaterThanOrEqual(0.22);
+    expect(hoverStroke?.width).not.toBe(idleStroke?.width);
+    expect(hoverStroke?.width).toBe(2);
+    expect((hoverStroke?.alpha as number)).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('F-8a7e82c7: long zone name does not exceed zone pixel width', () => {
+    const z = zone('z1');
+    z.name = 'A Very Long Zone Name That Would Overflow Into The Neighbor Cell';
+    z.gridWidth = 3;
+    renderer.update([z], districts);
+    const label = renderer.container.children.find(
+      (c): c is { text: string; style: { wordWrapWidth?: number } } =>
+        typeof (c as { text?: unknown }).text === 'string',
+    );
+    expect(label).toBeTruthy();
+    const zonePx = 3 * 32;
+    expect(label!.style.wordWrapWidth).toBeLessThanOrEqual(zonePx - 8);
+    const est = label!.text.length * 11 * 0.6;
+    expect(est).toBeLessThanOrEqual(zonePx);
+  });
+
   it('destroy() clears the container and prevents subsequent render leaks (INF-A-008)', () => {
     renderer.update([zone('z1'), zone('z2')], districts);
     expect(renderer.container.children.length).toBe(4);
@@ -221,8 +253,9 @@ describe('ZoneOverlayRenderer', () => {
         ],
         districts,
       );
-      // No black shadow fill (0x000000).
-      expect(fillCalls.some((c) => c.color === 0x000000)).toBe(false);
+      // No shadow (0.25) or sunken tint (0.12). Label chips are 0x000000 at 0.55.
+      expect(fillCalls.some((c) => c.color === 0x000000 && c.alpha === 0.25)).toBe(false);
+      expect(fillCalls.some((c) => c.color === 0x000000 && c.alpha === 0.12)).toBe(false);
       // Exactly 3 zones × 2 children (Graphics + label) = 6 — no extra shadow/tint graphics.
       expect(renderer.container.children.length).toBe(6);
       // Strokes equal to 3 (one per zone, solid) — no dashed multi-stroke burst.

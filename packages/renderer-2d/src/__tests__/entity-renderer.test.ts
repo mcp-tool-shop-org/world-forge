@@ -59,8 +59,8 @@ describe('EntityRenderer', () => {
       { entityId: 'merchant-1', zoneId: 'zone-1', role: 'merchant' },
     ];
     expect(() => renderer.update(entities, zonePositions)).not.toThrow();
-    // 3 entities x 2 children each (graphic + label) = 6
-    expect(renderer.container.children.length).toBe(6);
+    // F-9347649b: rest state is 1 child per entity (role mark only).
+    expect(renderer.container.children.length).toBe(3);
   });
 
   it('uses fallback color/shape for unknown roles (I-004)', () => {
@@ -69,8 +69,8 @@ describe('EntityRenderer', () => {
     ];
     // Should not throw even with an unrecognized role
     expect(() => renderer.update(entities, zonePositions)).not.toThrow();
-    // Should still render graphic + label
-    expect(renderer.container.children.length).toBe(2);
+    // Rest state: role mark only (no id label).
+    expect(renderer.container.children.length).toBe(1);
   });
 
   it('warns and skips entities whose zoneId has no position (IB-002)', () => {
@@ -109,7 +109,7 @@ describe('EntityRenderer', () => {
       { entityId: 'npc-1', zoneId: 'zone-1', role: 'npc' },
     ];
     renderer.update(entities, zonePositions);
-    expect(renderer.container.children.length).toBe(2);
+    expect(renderer.container.children.length).toBe(1);
     renderer.update([], zonePositions);
     expect(renderer.container.children.length).toBe(0);
   });
@@ -122,23 +122,22 @@ describe('EntityRenderer', () => {
     renderer.update(first, zonePositions);
     // First update: nothing to destroy (container was empty).
     expect(destroyCalls.length).toBe(0);
-    expect(renderer.container.children.length).toBe(4); // 2 entities x (graphic+label)
+    expect(renderer.container.children.length).toBe(2); // 2 entities × role mark
 
     const second: EntityPlacement[] = [
       { entityId: 'npc-2', zoneId: 'zone-1', role: 'merchant' },
     ];
     renderer.update(second, zonePositions);
-    // Second update should destroy all 4 previous children (2 Graphics + 2 Text)
+    // Second update should destroy the 2 previous Graphics (no rest-state Text)
     // and pass { children: true } to destroy recursively.
     const graphicsDestroyed = destroyCalls.filter((c) => c.kind === 'Graphics').length;
     const textDestroyed = destroyCalls.filter((c) => c.kind === 'Text').length;
     expect(graphicsDestroyed).toBe(2);
-    expect(textDestroyed).toBe(2);
+    expect(textDestroyed).toBe(0);
     for (const call of destroyCalls) {
       expect(call.opts).toEqual({ children: true });
     }
-    // Bounded child count: after re-update, only the new entity's 2 children remain.
-    expect(renderer.container.children.length).toBe(2);
+    expect(renderer.container.children.length).toBe(1);
   });
 
   it('keeps container child count bounded across many updates (INF-A-002)', () => {
@@ -150,8 +149,8 @@ describe('EntityRenderer', () => {
     for (let i = 0; i < 10; i++) {
       renderer.update(entities, zonePositions);
     }
-    // 3 entities x 2 children = 6 regardless of update count
-    expect(renderer.container.children.length).toBe(6);
+    // 3 entities × 1 role mark regardless of update count
+    expect(renderer.container.children.length).toBe(3);
   });
 
   it('destroy() clears the container and prevents subsequent render leaks (INF-A-009)', () => {
@@ -160,7 +159,7 @@ describe('EntityRenderer', () => {
       { entityId: 'enemy-1', zoneId: 'zone-1', role: 'enemy' },
     ];
     renderer.update(entities, zonePositions);
-    expect(renderer.container.children.length).toBe(4);
+    expect(renderer.container.children.length).toBe(2);
 
     renderer.destroy();
     const containerDestroyed = destroyCalls.filter((c) => c.kind === 'Container');
@@ -179,5 +178,47 @@ describe('EntityRenderer', () => {
     // Idempotent.
     renderer.destroy();
     expect(destroyCalls.filter((c) => c.kind === 'Container').length).toBe(1);
+  });
+
+  it('F-9347649b: hover/selected adds a Text chip; rest stays mark-only', () => {
+    const entities: EntityPlacement[] = [
+      { entityId: 'npc-1', zoneId: 'zone-1', role: 'npc' },
+      { entityId: 'enemy-1', zoneId: 'zone-1', role: 'enemy' },
+    ];
+    renderer.update(entities, zonePositions);
+    expect(renderer.container.children.length).toBe(2);
+    expect(renderer.container.children.every((c) => !('text' in (c as object)))).toBe(true);
+
+    renderer.update(entities, zonePositions, { hoveredEntityId: 'npc-1' });
+    expect(renderer.container.children.length).toBe(3);
+    const hoverLabel = renderer.container.children.find(
+      (c): c is { text: string } => typeof (c as { text?: unknown }).text === 'string',
+    );
+    expect(hoverLabel?.text).toBe('npc-1');
+
+    renderer.update(entities, zonePositions, { hoveredEntityId: undefined, selectedEntityId: 'enemy-1' });
+    const selectedLabel = renderer.container.children.find(
+      (c): c is { text: string } => typeof (c as { text?: unknown }).text === 'string',
+    );
+    expect(selectedLabel?.text).toBe('enemy-1');
+  });
+
+  it('F-9347649b: quest-giver is a triangle, companion is a circle', () => {
+    renderer.update(
+      [{ entityId: 'qg-1', zoneId: 'zone-1', role: 'quest-giver' }],
+      zonePositions,
+    );
+    const qg = renderer.container.children[0] as { calls: string[] };
+    expect(qg.calls).toContain('moveTo');
+    expect(qg.calls).toContain('closePath');
+    expect(qg.calls).not.toContain('circle');
+
+    renderer.update(
+      [{ entityId: 'comp-1', zoneId: 'zone-1', role: 'companion' }],
+      zonePositions,
+    );
+    const companion = renderer.container.children[0] as { calls: string[] };
+    expect(companion.calls).toContain('circle');
+    expect(companion.calls).not.toContain('moveTo');
   });
 });
