@@ -2,6 +2,7 @@
 
 import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
 import type { ClipboardData, SelectionSet } from './store/editor-store.js';
+import { remapZoneAttached, applyAttachedToProject } from './zone-attached.js';
 
 export interface PasteResult {
   project: WorldProject;
@@ -93,13 +94,15 @@ export function pasteFromClipboard(
     gridY: l.gridY + dy,
   }));
 
-  // Remap spawns
+  // Remap spawns. F-f0d45cfb: never paste a second isDefault spawn —
+  // duplicateSelected already forces isDefault: false.
   const newSpawns: SpawnPoint[] = clipboard.spawns.map((s) => ({
     ...structuredClone(s),
     id: idMap.get(s.id)!,
     zoneId: idMap.get(s.zoneId) ?? s.zoneId,
     gridX: s.gridX + dx,
     gridY: s.gridY + dy,
+    isDefault: false,
   }));
 
   // Remap encounters
@@ -130,7 +133,9 @@ export function pasteFromClipboard(
     return { ...d, zoneIds: [...d.zoneIds, ...pastedInDistrict.map((zid) => idMap.get(zid)!)] };
   });
 
-  const newProject: WorldProject = {
+  const remappedAttached = remapZoneAttached(clipboard, idMap, dx, dy);
+
+  const newProject: WorldProject = applyAttachedToProject({
     ...project,
     zones: [...project.zones, ...newZones],
     connections: [...project.connections, ...newConnections],
@@ -139,7 +144,7 @@ export function pasteFromClipboard(
     landmarks: [...project.landmarks, ...newLandmarks],
     spawnPoints: [...project.spawnPoints, ...newSpawns],
     encounterAnchors: [...project.encounterAnchors, ...newEncounters],
-  };
+  }, remappedAttached);
 
   return {
     project: newProject,

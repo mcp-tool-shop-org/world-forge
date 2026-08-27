@@ -6,7 +6,10 @@ import {
   getLastAutoSaveError, clearLastAutoSaveError, getAutoSaveHealth,
   attemptCrashRecovery,
   startAutoSave, stopAutoSave,
+  flushAutoSaveIfDirty,
 } from './store/project-store.js';
+import { saveProjectFile } from './save-project.js';
+import { resetFileInput } from './file-load.js';
 import { validateProject } from '@world-forge/schema';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
 import { ToastHost, pushToast } from './ui/Toast.js';
@@ -143,6 +146,19 @@ export function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  // F-e6f1b71a: flush the crash-recovery slot on hide/quit. Timers freeze
+  // when a mobile browser backgrounds; beforeunload is only a prompt.
+  useEffect(() => {
+    const onPageHide = () => { flushAutoSaveIfDirty(); };
+    const onVisibility = () => { if (document.hidden) flushAutoSaveIfDirty(); };
+    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
   // ED-B-001 + ED-B-008: poll the auto-save health + error getters each tick so the
   // non-intrusive banner below can surface silent quota failures and oversize
   // auto-save suspensions. A 3-second poll keeps the banner responsive without
@@ -183,6 +199,9 @@ export function App() {
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // F-5c713675: always clear so choosing the same .json again fires onChange
+    // (success, parse error, and empty-file paths).
+    resetFileInput(e.target);
     if (!file) return;
     setFileError(null);
     const reader = new FileReader();
@@ -232,20 +251,8 @@ export function App() {
   }, [loadProject]);
 
   const handleSave = useCallback(() => {
-    const filename = `${project.id}.json`;
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    // Mark project as clean after save — clears dirty dot and beforeunload warning.
-    markClean();
-    // ED-B-013: confirm the save actually triggered. The download itself is
-    // opaque (browser may drop it into a downloads tray), so a short toast
-    // closes the loop.
-    pushToast(`Saved as ${filename}`, 'success', 2000);
+    // F-95295187: never markClean/clearAutoSave until the write is confirmed.
+    void saveProjectFile(project, { markClean, toast: pushToast });
   }, [project, markClean]);
 
   return (

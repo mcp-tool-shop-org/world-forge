@@ -2,10 +2,14 @@
 
 import { create } from 'zustand';
 import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
-import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
+import type {
+  WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection,
+  ItemPlacement, PropPlacement, MarketNode, CraftingStation, Building, Hub, Stronghold, PressureHotspot,
+} from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 import type { HitResult } from '../hit-testing.js';
+import { collectZoneAttached } from '../zone-attached.js';
 
 /** Deep-cloned selection data for clipboard operations. */
 export interface ClipboardData {
@@ -19,6 +23,18 @@ export interface ClipboardData {
    * Optional so older clipboards / tests that omit it still paste.
    */
   connections?: ZoneConnection[];
+  /**
+   * F-00a578f0: zoneId-bearing collections cloned when their parent zone is
+   * in the copy batch. Optional so older clipboards still paste.
+   */
+  itemPlacements?: ItemPlacement[];
+  propPlacements?: PropPlacement[];
+  marketNodes?: MarketNode[];
+  craftingStations?: CraftingStation[];
+  buildings?: Building[];
+  hubs?: Hub[];
+  strongholds?: Stronghold[];
+  pressureHotspots?: PressureHotspot[];
 }
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint' | 'prop-place';
@@ -157,6 +173,8 @@ interface EditorState {
   isHidden: (id: string) => boolean;
   showAll: () => void;
   hideSelected: () => void;
+  /** F-17014243: drop per-object hidden ids (memory + localStorage). Called on load/new. */
+  clearHiddenIds: () => void;
 
   // Performance stats overlay (FT-010)
   showPerfStats: boolean;
@@ -336,8 +354,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const connections = project.connections
       .filter((c) => zoneSet.has(c.fromZoneId) && zoneSet.has(c.toZoneId))
       .map((c) => structuredClone(c));
+    // F-00a578f0: clone every zoneId-bearing object whose zone is in the batch
+    // (same predicate as connections: parent zone co-selected). These types
+    // cannot be independently selected, so omitting them dropped furniture
+    // when duplicating a furnished room.
+    const attached = collectZoneAttached(project, zoneSet);
     if (zones.length + entities.length + landmarks.length + spawns.length + encounters.length === 0) return {};
-    return { clipboard: { zones, entities, landmarks, spawns, encounters, connections } };
+    return { clipboard: { zones, entities, landmarks, spawns, encounters, connections, ...attached } };
   }),
   getClipboard: () => get().clipboard,
 
@@ -367,6 +390,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   }),
   isHidden: (id) => get().hiddenIds.has(id),
   showAll: () => {
+    get().clearHiddenIds();
+  },
+  clearHiddenIds: () => {
     try { localStorage.removeItem('wf-hidden-ids'); } catch { /* ignore */ }
     set({ hiddenIds: new Set<string>() });
   },
@@ -376,7 +402,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (ids.length === 0) return {};
     const next = new Set(s.hiddenIds);
     for (const id of ids) next.add(id);
-    try { localStorage.setItem('wf-hidden-ids', JSON.stringify([...next])); } catch { /* ignore */ }
+    // F-17014243: same one-time write-failure warning as toggleHidden (ED-A-005).
+    try {
+      localStorage.setItem('wf-hidden-ids', JSON.stringify([...next]));
+    } catch (err) {
+      if (!_warnedHiddenWrite) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[editor] could not persist hidden-ids to localStorage: ${msg}`);
+        _warnedHiddenWrite = true;
+      }
+    }
     return { hiddenIds: next };
   }),
 

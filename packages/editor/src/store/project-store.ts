@@ -23,6 +23,8 @@ import { useEditorStore } from './editor-store.js';
 import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
+import { nextId } from '../ids.js';
+import { reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
 
 export function createEmptyProject(mode?: AuthoringMode): WorldProject {
   const profile = getModeProfile(mode);
@@ -118,6 +120,26 @@ export function normalizeProjectShape(raw: unknown): WorldProject | null {
   function str(v: unknown, fallback: string): string {
     return typeof v === 'string' ? v : fallback;
   }
+  function finitePositive(v: unknown): number | null {
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+  }
+  // F-d3c285f0: a truncated map object `{id:'m'}` used to be trusted, then
+  // Canvas divided by tileSize and painted NaN. Require finite positives;
+  // merge missing numerics from empty.map.
+  function normalizeMap(rawMap: unknown): WorldProject['map'] {
+    if (!rawMap || typeof rawMap !== 'object' || Array.isArray(rawMap)) return empty.map;
+    const m = rawMap as Record<string, unknown>;
+    const tileSize = finitePositive(m.tileSize) ?? empty.map.tileSize;
+    const gridWidth = finitePositive(m.gridWidth) ?? empty.map.gridWidth;
+    const gridHeight = finitePositive(m.gridHeight) ?? empty.map.gridHeight;
+    return {
+      ...empty.map,
+      ...(m as unknown as WorldProject['map']),
+      tileSize,
+      gridWidth,
+      gridHeight,
+    };
+  }
 
   return {
     ...empty,
@@ -129,7 +151,7 @@ export function normalizeProjectShape(raw: unknown): WorldProject | null {
     genre: str(r.genre, empty.genre),
     difficulty: str(r.difficulty, empty.difficulty),
     narratorTone: str(r.narratorTone, empty.narratorTone),
-    map: r.map && typeof r.map === 'object' && !Array.isArray(r.map) ? (r.map as WorldProject['map']) : empty.map,
+    map: normalizeMap(r.map),
     tones: arr(r.tones, empty.tones),
     zones: arr(r.zones, empty.zones),
     connections: arr(r.connections, empty.connections),
@@ -211,6 +233,8 @@ interface ProjectState {
   addConnection: (c: ZoneConnection) => void;
   updateConnection: (fromId: string, toId: string, updates: Partial<Pick<ZoneConnection, 'label' | 'kind' | 'bidirectional' | 'condition'>>) => void;
   removeConnection: (fromId: string, toId: string) => void;
+  /** F-c8fa9fb6: reverse from/to in a single undoable mutation. */
+  swapConnection: (fromId: string, toId: string) => void;
 
   // District helpers
   addDistrict: (d: District) => void;
@@ -571,7 +595,8 @@ export function attemptCrashRecovery(): CrashRecoveryOutcome {
  * ED-A-014: If the serialized project size exceeds the practical per-origin
  * limit, we skip the setItem call entirely (and warn once).
  */
-function writeAutoSave(project: WorldProject): void {
+/** Exposed so lifecycle-flush tests can spy the writer (F-e6f1b71a). */
+export function writeAutoSave(project: WorldProject): void {
   const now = Date.now();
   const entry: AutoSaveEntry = { project, timestamp: now };
   let serialized: string;
@@ -603,9 +628,10 @@ function writeAutoSave(project: WorldProject): void {
 
   // ED-B-001: Transactional write. Snapshot the prior values of BOTH keys before
   // touching anything, so if either setItem throws (quota / disabled storage)
-  // we can roll the pair back to a consistent state. Otherwise the project
-  // could land while history stays stale — the user recovers a snapshot whose
-  // undo stack doesn't match its canvas.
+  // we can roll the pair back to a consistent state. wf-autosave-history stores
+  // the last N autosave snapshots (not the in-memory undo stack, which is never
+  // persisted). A failed history write would otherwise leave the crash-recovery
+  // slot pointing at a snapshot whose previous-snapshot ring doesn't match.
   let priorProject: string | null = null;
   let priorHistoryRaw: string | null = null;
   try {
@@ -631,7 +657,7 @@ function writeAutoSave(project: WorldProject): void {
     serializedHistory = JSON.stringify(history);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    _lastAutoSaveError = `Auto-save skipped — could not serialize undo history (${msg}). Your canvas is safe; use File → Export Project Bundle to back up.`;
+    _lastAutoSaveError = `Auto-save skipped — could not serialize autosave history (${msg}). Your canvas is safe; use File → Export Project Bundle to back up.`;
     return;
   }
 
@@ -655,7 +681,7 @@ function writeAutoSave(project: WorldProject): void {
     localStorage.setItem(AUTOSAVE_HISTORY_KEY, serializedHistory);
   } catch (err) {
     rollbackProject();
-    surfaceAutoSaveFailure(err, 'undo history', /* afterRollback */ true);
+    surfaceAutoSaveFailure(err, 'autosave history', /* afterRollback */ true);
     return;
   }
 
@@ -669,7 +695,7 @@ function writeAutoSave(project: WorldProject): void {
 
 /**
  * ED-B-001: shared error surface for the two-phase auto-save. `stage` names the
- * specific write that failed ("project snapshot" vs "undo history") so the
+ * specific write that failed ("project snapshot" vs "autosave history") so the
  * user-facing message can be specific rather than "something failed." When
  * `afterRollback` is true we add a line confirming the previous save is still
  * intact — that's the user's safety net after a mid-transaction failure.
@@ -733,6 +759,18 @@ export function stopAutoSave(): void {
   }
 }
 
+/**
+ * F-e6f1b71a: synchronous crash-recovery flush for pagehide / visibilitychange.
+ * beforeunload stays the unsaved-changes prompt and does not write.
+ * Returns true when a write was attempted.
+ */
+export function flushAutoSaveIfDirty(): boolean {
+  const state = useProjectStore.getState();
+  if (!state.dirty) return false;
+  writeAutoSave(state.project);
+  return true;
+}
+
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: createEmptyProject(),
   dirty: false,
@@ -756,6 +794,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dirty: false, undoStack: [], redoStack: [],
     });
     useEditorStore.getState().clearSelection();
+    // F-17014243: hidden ids are a global localStorage set; chapel-style
+    // projects reuse stable ids, so hiding in A then loading B hid B's objects.
+    useEditorStore.getState().clearHiddenIds();
     // F-9e54f408: the user explicitly loaded a project — drop the crash-recovery
     // slot so abandoned project A cannot resurrect after loading B. Failed loads
     // return false above without reaching here.
@@ -765,6 +806,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   newProject: () => {
     set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] });
     useEditorStore.getState().clearSelection();
+    useEditorStore.getState().clearHiddenIds();
     // F-9e54f408: New abandons the previous in-memory project; drop its slot.
     clearAutoSave();
   },
@@ -778,9 +820,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   updateProject: (updater, label) => {
     const { project, undoStack } = get();
+    const next = updater(project);
+    // F-1f67a7ce: applyRegionPreset / align / distribute return the same
+    // reference when they no-op — don't push an undo entry or flip dirty.
+    if (next === project) return;
     const entry: UndoEntry = { project, label: label ?? 'Edit' };
     const newStack = [...undoStack.slice(-UNDO_DEPTH_LIMIT), entry];
-    set({ project: updater(project), dirty: true, undoStack: newStack, redoStack: [] });
+    set({ project: next, dirty: true, undoStack: newStack, redoStack: [] });
   },
 
   undo: () => {
@@ -829,7 +875,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }), 'Update zone'),
   removeZone: (id) => get().updateProject((p) => ({
     ...p,
-    zones: p.zones.filter((z) => z.id !== id),
+    zones: p.zones
+      .filter((z) => z.id !== id)
+      .map((z) => ({
+        ...z,
+        neighbors: z.neighbors.filter((n) => n !== id),
+        exits: z.exits.filter((e) => e.targetZoneId !== id),
+      })),
     connections: p.connections.filter((c) => c.fromZoneId !== id && c.toZoneId !== id),
   }), 'Delete zone'),
   resizeZone: (zoneId, result) => get().updateProject((p) => ({
@@ -854,9 +906,45 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...p, connections: p.connections.map((c) =>
       c.fromZoneId === fromId && c.toZoneId === toId ? { ...c, ...updates } : c),
   }), 'Update connection'),
-  removeConnection: (fromId, toId) => get().updateProject((p) => ({
-    ...p, connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
-  }), 'Delete connection'),
+  removeConnection: (fromId, toId) => get().updateProject((p) => {
+    // F-9ed42a51: inverse of addConnection — strip neighbor entries on both
+    // ends when the connection was bidirectional.
+    const conn = p.connections.find((c) => c.fromZoneId === fromId && c.toZoneId === toId);
+    return {
+      ...p,
+      connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
+      zones: p.zones.map((z) => {
+        if (z.id === fromId) {
+          return { ...z, neighbors: z.neighbors.filter((n) => n !== toId) };
+        }
+        if (conn?.bidirectional && z.id === toId) {
+          return { ...z, neighbors: z.neighbors.filter((n) => n !== fromId) };
+        }
+        return z;
+      }),
+    };
+  }, 'Delete connection'),
+  swapConnection: (fromId, toId) => get().updateProject((p) => {
+    // F-c8fa9fb6: one undo entry labeled for the swap, not delete+add.
+    const conn = p.connections.find((c) => c.fromZoneId === fromId && c.toZoneId === toId);
+    if (!conn) return p;
+    const connections = p.connections.map((c) =>
+      c.fromZoneId === fromId && c.toZoneId === toId
+        ? { ...c, fromZoneId: toId, toZoneId: fromId }
+        : c,
+    );
+    if (conn.bidirectional) return { ...p, connections };
+    const zones = p.zones.map((z) => {
+      if (z.id === fromId) {
+        return { ...z, neighbors: z.neighbors.filter((n) => n !== toId) };
+      }
+      if (z.id === toId && !z.neighbors.includes(fromId)) {
+        return { ...z, neighbors: [...z.neighbors, fromId] };
+      }
+      return z;
+    });
+    return { ...p, connections, zones };
+  }, 'Swap connection direction'),
 
   // District helpers
   addDistrict: (d) => get().updateProject((p) => ({ ...p, districts: [...p.districts, d] }), 'Add district'),
@@ -1083,13 +1171,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const eSet = new Set(sel.entities);
       const lSet = new Set(sel.landmarks);
       const sSet = new Set(sel.spawns);
+      // Translate zones first conceptually; attached children use original
+      // zone bounds (translateAttachedByZones reads p.zones before we replace).
+      const attached = zSet.size > 0
+        ? translateAttachedByZones(p, zSet, dx, dy, { entities: eSet, landmarks: lSet, spawns: sSet })
+        : null;
       return {
         ...p,
         zones: p.zones.map((z) => zSet.has(z.id) ? { ...z, gridX: z.gridX + dx, gridY: z.gridY + dy } : z),
-        entityPlacements: p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
-          ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
-        landmarks: p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
-        spawnPoints: p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+        entityPlacements: attached
+          ? attached.entityPlacements
+          : p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
+            ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
+        landmarks: attached
+          ? attached.landmarks
+          : p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
+        spawnPoints: attached
+          ? attached.spawnPoints
+          : p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+        ...(attached ? {
+          itemPlacements: attached.itemPlacements,
+          propPlacements: attached.propPlacements,
+          buildings: attached.buildings,
+          tileLayers: attached.tileLayers,
+        } : {}),
       };
     }, label);
   },
@@ -1104,7 +1209,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const encSet = new Set(sel.encounters);
       return {
         ...p,
-        zones: p.zones.filter((z) => !zSet.has(z.id)),
+        zones: p.zones
+          .filter((z) => !zSet.has(z.id))
+          .map((z) => ({
+            ...z,
+            neighbors: z.neighbors.filter((n) => !zSet.has(n)),
+            exits: z.exits.filter((e) => !zSet.has(e.targetZoneId)),
+          })),
         connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
         districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
         // F-df80d913: deleting a zone here must NOT cascade-delete its
@@ -1404,7 +1515,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       );
       if (targetZone) {
         pressureHotspots.push({
-          id: `hotspot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id: nextId('hotspot'),
           zoneId: targetZone,
           pressureType: ph.pressureType,
           baseProbability: ph.baseProbability,
@@ -1417,7 +1528,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }, 'Apply region preset'),
 
   createEncounterFromPreset: (zoneId, preset) => {
-    const id = `enc-${Date.now()}`;
+    const id = nextId('enc');
     get().updateProject((p) => ({
       ...p,
       encounterAnchors: [...p.encounterAnchors, {
@@ -1440,7 +1551,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const zones = project.zones.filter((z) => zoneIds.includes(z.id));
     if (zones.length < 2) return null;
 
-    const mergedId = `zone-merged-${Date.now()}`;
+    const mergedId = nextId('zone-merged');
     const idSet = new Set(zoneIds);
 
     // Compute bounding box
@@ -1508,7 +1619,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return { ...d, zoneIds: [...filtered, mergedId] };
       });
 
-      return { ...p, zones: newZones, entityPlacements, landmarks, spawnPoints, encounterAnchors, connections, districts };
+      const attached = reassignAttachedZoneIds(p, idSet, mergedId);
+
+      return {
+        ...p,
+        zones: newZones,
+        entityPlacements,
+        landmarks,
+        spawnPoints,
+        encounterAnchors,
+        connections,
+        districts,
+        ...attached,
+      };
     }, `Merge ${zoneIds.length} zones`);
 
     return mergedId;
@@ -1544,7 +1667,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
 
       entities.push({
-        entityId: `entity-batch-${Date.now()}-${i}`,
+        entityId: nextId('entity-batch'),
         name: `${config.role} ${i + 1}`,
         zoneId: config.zoneId,
         gridX: gx,

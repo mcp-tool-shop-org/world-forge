@@ -83,10 +83,36 @@ describe('executeAction', () => {
     );
   });
 
-  it('unknown action returns false', () => {
+  it('unknown action returns false with reason "unknown action" (not context mismatch)', () => {
     const stores = makeStores();
     const result = executeAction('unknown-action', null, stores);
     expect(result.executed).toBe(false);
+    expect(result.reason).toBe('unknown action');
+  });
+
+  it('F-e57095f8: executeMacro passes the actual fail reason through', () => {
+    const stores = makeStores();
+    const result = executeMacro(
+      { id: 'm', name: 'Bad', steps: [{ actionId: 'not-a-real-action' }] },
+      null,
+      stores,
+    );
+    expect(result.abortedAt).toBe(0);
+    expect(result.reason).toContain('unknown action');
+    expect(result.reason).not.toContain('context mismatch');
+  });
+
+  it('F-69d97784: fit-content uses canvasSize when provided (not hardcoded 800×600)', () => {
+    const stores800 = makeStores();
+    const stores1440 = makeStores({ canvasSize: { w: 1440, h: 900 } });
+    const ctx = null;
+    executeAction('fit-content', ctx, stores800);
+    executeAction('fit-content', ctx, stores1440);
+    const vp800 = (stores800.setViewport as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const vp1440 = (stores1440.setViewport as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(vp800).toBeDefined();
+    expect(vp1440).toBeDefined();
+    expect(vp1440).not.toEqual(vp800);
   });
 
   it('edit-props returns false for malformed connection ID (no ::)', () => {

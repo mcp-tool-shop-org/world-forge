@@ -91,6 +91,13 @@ describe('matchHotkey', () => {
     expect(matchHotkey(makeEvent({ code: 'KeyC' }))).toBe('tool-connection');
     expect(matchHotkey(makeEvent({ code: 'KeyC', ctrlKey: true }))).toBe('copy');
   });
+
+  it('F-f2564ffa: matches Ctrl+Z to undo and does not steal bare Z (zone tool)', () => {
+    expect(matchHotkey(makeEvent({ code: 'KeyZ' }))).toBe('tool-zone');
+    expect(matchHotkey(makeEvent({ code: 'KeyZ', ctrlKey: true }))).toBe('undo');
+    expect(matchHotkey(makeEvent({ code: 'KeyZ', ctrlKey: true, shiftKey: true }))).toBe('redo');
+    expect(matchHotkey(makeEvent({ code: 'KeyY', ctrlKey: true }))).toBe('redo');
+  });
 });
 
 describe('dispatchHotkey — input safety', () => {
@@ -180,6 +187,15 @@ describe('dispatchHotkey — modal/overlay-aware guard (F-340b4aff)', () => {
     expect(result.handled).toBe(true);
     expect(ctx.removeSelected).toHaveBeenCalled();
   });
+
+  it('F-f2564ffa: does not undo underneath an open modal (Ctrl+Z)', () => {
+    const undo = vi.fn();
+    const ctx = makeCtx({ activeModal: 'export', undo });
+    const e = makeEvent({ code: 'KeyZ', ctrlKey: true });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(undo).not.toHaveBeenCalled();
+  });
 });
 
 describe('dispatchHotkey — actions', () => {
@@ -221,6 +237,36 @@ describe('dispatchHotkey — actions', () => {
     const e = makeEvent({ code: 'ArrowUp' });
     dispatchHotkey(e, ctx);
     expect(ctx.moveSelected).toHaveBeenCalledWith(sel, 0, -1);
+  });
+
+  it('F-f2564ffa: Ctrl+Z calls undo and Ctrl+Shift+Z / Ctrl+Y call redo', () => {
+    const undo = vi.fn();
+    const redo = vi.fn();
+    const ctx = makeCtx({ undo, redo });
+    expect(dispatchHotkey(makeEvent({ code: 'KeyZ', ctrlKey: true }), ctx)).toEqual({ handled: true, action: 'undo' });
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(dispatchHotkey(makeEvent({ code: 'KeyZ', ctrlKey: true, shiftKey: true }), ctx)).toEqual({ handled: true, action: 'redo' });
+    expect(dispatchHotkey(makeEvent({ code: 'KeyY', ctrlKey: true }), ctx)).toEqual({ handled: true, action: 'redo' });
+    expect(redo).toHaveBeenCalledTimes(2);
+  });
+
+  it('F-ef6c82dc: Ctrl+C with empty selection does not preventDefault (browser copy of non-input text)', () => {
+    const ctx = makeCtx();
+    const e = makeEvent({ code: 'KeyC', ctrlKey: true });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(false);
+    expect(e.preventDefault).not.toHaveBeenCalled();
+    expect(ctx.copySelection).not.toHaveBeenCalled();
+  });
+
+  it('F-ef6c82dc: Ctrl+C with a selection preventDefaults and copies', () => {
+    const sel: SelectionSet = { zones: ['z1'], entities: [], landmarks: [], spawns: [], encounters: [] };
+    const ctx = makeCtx({ selection: sel });
+    const e = makeEvent({ code: 'KeyC', ctrlKey: true });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(true);
+    expect(e.preventDefault).toHaveBeenCalled();
+    expect(ctx.copySelection).toHaveBeenCalled();
   });
 
   it('nudge with shift multiplies by 5', () => {

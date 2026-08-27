@@ -13,8 +13,11 @@ import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
 import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
-import { executeAction, buildExecuteStores } from './speed-panel-execute.js';
+import { executeContextMenuAction } from './speed-panel-execute.js';
 import { fallbackTileColor } from './tile-render.js';
+import { nextId, generateZoneId } from './ids.js';
+
+export { generateZoneId };
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
@@ -31,20 +34,6 @@ type MouseLike = { clientX: number; clientY: number; shiftKey: boolean };
 export const LARGE_SELECTION_THRESHOLD = 50;
 const DBL_RIGHT_INTERVAL = 300; // ms between right-clicks for speed panel
 const DBL_RIGHT_RADIUS = 5;     // px proximity for double-right-click
-
-// EU-012: nextZoneId is a monotonic counter used only for generating unique zone IDs
-// within a session. It does not need resetting on project load because zone IDs are
-// prefixed with a timestamp (Date.now()), making collisions effectively impossible.
-let nextZoneId = 1;
-
-/**
- * EUB-012: Generate a unique zone ID using timestamp + monotonic counter.
- * Contract: each call returns a globally unique string within this session.
- * Format: "zone-{timestamp}-{counter}" — collision-free because counter is monotonic.
- */
-export function generateZoneId(): string {
-  return `zone-${Date.now()}-${nextZoneId++}`;
-}
 
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -920,6 +909,8 @@ export function Canvas() {
     clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
     duplicateSelected, setShowSearch, setRightTab, setTool,
     showSpeedPanel, closeSpeedPanel,
+    undo: () => useProjectStore.getState().undo(),
+    redo: () => useProjectStore.getState().redo(),
     copySelection: useEditorStore.getState().copySelection,
     // F-6c8800aa: this used to be a hardcoded no-op ("paste handled by
     // project-store when available") — project-store's pasteClipboard action
@@ -1131,7 +1122,7 @@ export function Canvas() {
       const zone = findZoneAt(gx, gy);
       if (zone) {
         addEntity({
-          entityId: `entity-${Date.now()}`,
+          entityId: nextId('entity'),
           zoneId: zone.id,
           gridX: gx, gridY: gy,
           role: getModeProfile(project.mode).defaultEntityRole as 'npc' | 'enemy' | 'merchant' | 'boss' | 'companion',
@@ -1145,7 +1136,7 @@ export function Canvas() {
         return;
       }
       addSpawnPoint({
-        id: `spawn-${Date.now()}`,
+        id: nextId('spawn'),
         zoneId: spawnZone.id,
         gridX: gx, gridY: gy,
         isDefault: project.spawnPoints.length === 0,
@@ -1154,7 +1145,7 @@ export function Canvas() {
       const zone = findZoneAt(gx, gy);
       if (zone) {
         addEncounter({
-          id: `enc-${Date.now()}`,
+          id: nextId('enc'),
           zoneId: zone.id,
           encounterType: getModeProfile(project.mode).encounterTypes[0],
           enemyIds: [],
@@ -1176,7 +1167,7 @@ export function Canvas() {
         if (existing) {
           layerId = existing.id;
         } else {
-          layerId = `tile-layer-${Date.now()}`;
+          layerId = nextId('tile-layer');
           proj.addTileLayer({ id: layerId, name: 'Tiles', zIndex: 0, tiles: [] });
         }
         ed.setActiveTileLayer(layerId);
@@ -1188,7 +1179,7 @@ export function Canvas() {
       if (!propId) return; // no prop selected to place
       const zone = findZoneAt(gx, gy);
       useProjectStore.getState().addPropPlacement({
-        id: `prop-${Date.now()}`,
+        id: nextId('prop'),
         propId,
         gridX: gx, gridY: gy,
         zoneId: zone?.id,
@@ -1689,7 +1680,10 @@ export function Canvas() {
                 // class as the old Ctrl+V empty body. Mirrors SpeedPanel's bag
                 // (including mergeZones + selection). Tests reconstruct this
                 // closure in context-menu-wiring.test.ts.
-                executeAction(action.id, contextMenu.hit, buildExecuteStores());
+                executeContextMenuAction(action.id, contextMenu.hit, {
+                  w: canvasRef.current?.clientWidth ?? 800,
+                  h: canvasRef.current?.clientHeight ?? 600,
+                });
                 setContextMenu(null);
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = '#30363d'; }}

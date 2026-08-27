@@ -120,6 +120,18 @@ describe('normalizeProjectShape', () => {
     expect(Array.isArray(result!.hazardDefinitions)).toBe(true);
     expect(result!.hazardDefinitions).toEqual([]);
   });
+
+  it('F-d3c285f0: truncated map:{id:"m"} gets empty-project tileSize so screenToGrid stays finite', () => {
+    const empty = createEmptyProject();
+    const result = normalizeProjectShape({ id: 'p1', name: 'Bare', map: { id: 'm' } });
+    expect(result).not.toBeNull();
+    expect(result!.map.tileSize).toBe(empty.map.tileSize);
+    expect(result!.map.tileSize).toBeGreaterThan(0);
+    expect(Number.isFinite(result!.map.tileSize)).toBe(true);
+    expect(Number.isFinite(100 / result!.map.tileSize)).toBe(true);
+    expect(Number.isFinite(result!.map.gridWidth)).toBe(true);
+    expect(Number.isFinite(result!.map.gridHeight)).toBe(true);
+  });
 });
 
 describe('loadProject — the previous project survives a failed load (F-b7d3a887, rule 2: never half-apply)', () => {

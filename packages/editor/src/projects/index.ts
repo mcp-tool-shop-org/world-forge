@@ -4,6 +4,7 @@ export {
   prepareProjectImport,
   extractDependencies,
   projectFilename,
+  migrateBundle,
   PROJECT_BUNDLE_VERSION,
 } from './bundle.js';
 

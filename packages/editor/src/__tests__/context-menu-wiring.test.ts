@@ -16,22 +16,22 @@
 //   executeAction(action.id, contextMenu.hit, buildExecuteStores());
 //   setContextMenu(null);
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { executeAction, buildExecuteStores } from '../speed-panel-execute.js';
+import { buildExecuteStores, executeContextMenuAction } from '../speed-panel-execute.js';
 import type { HitResult } from '../hit-testing.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 
 /**
  * Mirrors Canvas.tsx's context-menu item onClick EXACTLY:
- *   executeAction(action.id, contextMenu.hit, buildExecuteStores());
+ *   executeContextMenuAction(action.id, contextMenu.hit, canvasSize);
  *   setContextMenu(null);
  * Closing the menu is a React setState we don't have here; execution is the
  * load-bearing half (the previous implementation did the close and skipped this).
  */
-function onContextMenuItemClick(actionId: string, hit: HitResult | null): { executed: boolean } {
-  return executeAction(actionId, hit, buildExecuteStores());
+function onContextMenuItemClick(actionId: string, hit: HitResult | null): { executed: boolean; reason?: string } {
+  return executeContextMenuAction(actionId, hit);
 }
 
 describe('F-ef5cce21: canvas context menu — real onClick wiring', () => {
@@ -85,5 +85,15 @@ describe('F-ef5cce21: canvas context menu — real onClick wiring', () => {
     const after = useProjectStore.getState().project.connections;
     expect(after.length).toBe(beforeCount - 1);
     expect(after.find((c) => c.fromZoneId === 'chapel-entrance' && c.toZoneId === 'chapel-nave')).toBeUndefined();
+  });
+
+  it('F-96d567c8: Merge Zones with a single selected zone fails closed with a reason (not a silent close)', () => {
+    useEditorStore.getState().selectZone('chapel-entrance', false);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = onContextMenuItemClick('merge-zones', { type: 'zone', id: 'chapel-entrance' });
+    expect(result.executed).toBe(false);
+    expect(result.reason).toBe('need at least 2 zones');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

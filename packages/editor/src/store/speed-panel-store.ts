@@ -1,7 +1,7 @@
 // speed-panel-store.ts — persisted pinned actions, recents, groups, macros for the Speed Panel
 
 import { create } from 'zustand';
-import type { SpeedPanelGroup, SpeedPanelMacro, MacroStep } from '../speed-panel-actions.js';
+import { SPEED_PANEL_ACTIONS, type SpeedPanelGroup, type SpeedPanelMacro } from '../speed-panel-actions.js';
 
 // -- localStorage keys --
 const PINS_KEY = 'world-forge-speed-panel-pins';
@@ -10,16 +10,50 @@ const GROUPS_KEY = 'world-forge-speed-panel-groups';
 const MACROS_KEY = 'world-forge-speed-panel-macros';
 
 const MAX_RECENTS = 5;
+/** F-e57095f8: drop persisted macro steps whose actionId is no longer registered. */
+const KNOWN_ACTION_IDS = new Set(SPEED_PANEL_ACTIONS.map((a) => a.id));
 
-function loadJson<T>(key: string, fallback: T): T {
+export function loadJson<T>(key: string, fallback: T, isValid: (v: unknown) => v is T): T {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    // F-9f500bd2: valid JSON of the wrong type (object/string/null) used to
+    // pass the parse catch and then throw from pinnedIds.includes / groups.map.
+    if (!isValid(parsed)) return fallback;
+    return parsed;
   } catch { return fallback; }
 }
 
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === 'string');
+const isArray = (v: unknown): v is unknown[] => Array.isArray(v);
+
+let _warnedSpeedPanelWrite = false;
+
 function saveJson(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
+  // F-a4323dfa: quota/SecurityError must not throw out of the zustand setter
+  // (that aborted the in-memory update). Warn once, keep memory state.
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    if (!_warnedSpeedPanelWrite) {
+      console.warn('Failed to persist speed-panel state to localStorage:', e);
+      _warnedSpeedPanelWrite = true;
+    }
+  }
+}
+
+function loadMacros(): SpeedPanelMacro[] {
+  const parsed = loadJson<unknown[]>(MACROS_KEY, [], isArray);
+  return parsed
+    .filter((m): m is SpeedPanelMacro =>
+      !!m && typeof m === 'object' && typeof (m as SpeedPanelMacro).id === 'string' && Array.isArray((m as SpeedPanelMacro).steps),
+    )
+    .map((m) => ({
+      ...m,
+      steps: m.steps.filter((s) => s && KNOWN_ACTION_IDS.has(s.actionId)),
+    }));
 }
 
 // -- Store interface --
@@ -54,7 +88,7 @@ export interface SpeedPanelPinState {
 
 export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
   // -- Pins --
-  pinnedIds: loadJson<string[]>(PINS_KEY, []),
+  pinnedIds: loadJson<string[]>(PINS_KEY, [], isStringArray),
 
   togglePin: (actionId) => set((s) => {
     const next = s.pinnedIds.includes(actionId)
@@ -74,7 +108,7 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
   }),
 
   // -- Recents --
-  recentIds: loadJson<string[]>(RECENTS_KEY, []),
+  recentIds: loadJson<string[]>(RECENTS_KEY, [], isStringArray),
 
   addRecent: (id) => set((s) => {
     const deduped = s.recentIds.filter((r) => r !== id);
@@ -84,7 +118,7 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
   }),
 
   // -- Groups --
-  groups: loadJson<SpeedPanelGroup[]>(GROUPS_KEY, []),
+  groups: loadJson<SpeedPanelGroup[]>(GROUPS_KEY, [], isArray as (v: unknown) => v is SpeedPanelGroup[]),
 
   addGroup: (group) => set((s) => {
     const next = [...s.groups, group];
@@ -123,7 +157,7 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
   }),
 
   // -- Macros --
-  macros: loadJson<SpeedPanelMacro[]>(MACROS_KEY, []),
+  macros: loadMacros(),
 
   addMacro: (macro) => set((s) => {
     const next = [...s.macros, macro];
