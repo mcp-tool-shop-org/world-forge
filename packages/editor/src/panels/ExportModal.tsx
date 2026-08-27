@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import {
-  runEngineExport, runUnrealExport, runGodotExport,
+  runEngineExport, runUnrealExport, runGodotExport, defaultDownloadJson,
   type ExportReceipt, type AiRpgExportOptions, type UnrealExportOptions, type GodotExportUIOptions,
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
@@ -94,6 +94,33 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         setStatus('invalid');
         setErrors([err instanceof Error ? err.message : String(err)]);
       });
+  };
+
+  // F-c28f6fa5: keep the object URL and reuse the ED-B-002 fallback anchor.
+  // A blocked synthetic click must not report "saved" against a revoked URL.
+  const handleExportBundle = () => {
+    const activeKit = activeKitId ? kits.find((k) => k.id === activeKitId) : undefined;
+    // ED-B-010: if the project references a kit that has since been
+    // deleted, make the provenance loss explicit rather than silently
+    // dropping it. confirm() is blocking + built-in; good enough for
+    // this edge case until we have a proper in-app dialog primitive.
+    if (activeKitId && !activeKit) {
+      const proceed = typeof window !== 'undefined' && typeof window.confirm === 'function'
+        ? window.confirm('The active kit was deleted. Continue without kit provenance?')
+        : true;
+      if (!proceed) return;
+    }
+    const bundle = serializeProject(
+      project,
+      activeKit ? { name: activeKit.name, source: activeKit.builtIn ? 'built-in' : activeKit.source } : null,
+    );
+    if (fallback?.href) {
+      try { URL.revokeObjectURL(fallback.href); } catch { /* ignore */ }
+    }
+    const filename = projectFilename(project.name);
+    const url = defaultDownloadJson(filename, bundle);
+    if (url) setFallback({ href: url, filename });
+    setBundleExported(true);
   };
 
   // F-001: routing now goes through the single shared navigationForError
@@ -448,12 +475,14 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {status === 'valid' && <div style={{ color: '#3fb950', fontSize: 13 }}>Validation passed!</div>}
-      {status === 'exported' && (
+      {(status === 'exported' || fallback) && (
         <div style={{ color: '#3fb950', fontSize: 13 }}>
-          Download triggered {'\u2014'} check your browser's downloads.
+          {status === 'exported' && (
+            <>Download triggered {'\u2014'} check your browser's downloads.{fallback ? ' ' : ''}</>
+          )}
           {fallback && (
             <>
-              {' '}If nothing appears,{' '}
+              If nothing appears,{' '}
               <a
                 href={fallback.href}
                 download={fallback.filename}
@@ -536,34 +565,18 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
           );
           return null;
         })()}
-        <button onClick={() => {
-          const activeKit = activeKitId ? kits.find((k) => k.id === activeKitId) : undefined;
-          // ED-B-010: if the project references a kit that has since been
-          // deleted, make the provenance loss explicit rather than silently
-          // dropping it. confirm() is blocking + built-in; good enough for
-          // this edge case until we have a proper in-app dialog primitive.
-          if (activeKitId && !activeKit) {
-            const proceed = typeof window !== 'undefined' && typeof window.confirm === 'function'
-              ? window.confirm('The active kit was deleted. Continue without kit provenance?')
-              : true;
-            if (!proceed) return;
-          }
-          const bundle = serializeProject(
-            project,
-            activeKit ? { name: activeKit.name, source: activeKit.builtIn ? 'built-in' : activeKit.source } : null,
-          );
-          const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = projectFilename(project.name);
-          a.click();
-          URL.revokeObjectURL(url);
-          setBundleExported(true);
-        }} style={{ ...buttonBase, background: activeTabBg, color: '#fff' }}>
+        <button onClick={handleExportBundle} style={{ ...buttonBase, background: activeTabBg, color: '#fff' }}>
           Export Project Bundle
         </button>
-        {bundleExported && <span style={{ color: '#3fb950', fontSize: 12, marginLeft: 8 }}>Bundle saved!</span>}
+        {bundleExported && fallback && (
+          <a
+            href={fallback.href}
+            download={fallback.filename}
+            style={{ color: '#58a6ff', fontSize: 12, marginLeft: 8, textDecoration: 'underline' }}
+          >
+            If nothing appears, click here
+          </a>
+        )}
         {/* FT-018: Multi-user documentation hint */}
         <div style={{ fontSize: 10, color: '#484f58', marginTop: 8, fontStyle: 'italic' }}>
           Projects are designed for single-author use. For team collaboration, consider versioning project files with Git.
