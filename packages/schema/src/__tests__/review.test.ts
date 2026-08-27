@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { classifyHealth, buildReviewSnapshot } from '../review.js';
 import type { WorldProject } from '../project.js';
 import type { ValidationResult } from '../validate.js';
+import { SCHEMA_VERSION } from '../validate.js';
 import type { DependencySummary } from '../dependencies.js';
 import { chapelProject } from './fixtures/chapel-authored.js';
 
@@ -44,7 +45,7 @@ function cleanSummary(overrides: Partial<DependencySummary> = {}): DependencySum
 }
 
 function validResult(overrides: Partial<ValidationResult> = {}): ValidationResult {
-  return { valid: true, errors: [], warningCount: 0, ...overrides };
+  return { valid: true, errors: [], warningCount: 0, errorCount: 0, schemaVersion: SCHEMA_VERSION, ...overrides };
 }
 
 // ── classifyHealth ──────────────────────────────────────────
@@ -220,7 +221,7 @@ describe('buildReviewSnapshot', () => {
       connections: [
         { fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true, kind: 'door' as const },
         { fromZoneId: 'z2', toZoneId: 'z3', bidirectional: false, kind: 'secret' as const },
-        { fromZoneId: 'z1', toZoneId: 'z3', bidirectional: true, kind: 'door' as const, condition: 'has-key' },
+        { fromZoneId: 'z1', toZoneId: 'z3', bidirectional: true, kind: 'door' as const, condition: 'item:key' },
       ],
     });
     const snap = buildReviewSnapshot(proj);
@@ -237,7 +238,7 @@ describe('buildReviewSnapshot', () => {
         { ...base.zones[0], id: 'z2', name: 'Zone 2' },
       ],
       connections: [
-        { fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true, condition: 'has-key' },
+        { fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true, condition: 'item:key' },
         { fromZoneId: 'z1', toZoneId: 'z2', bidirectional: true },
       ],
     });
@@ -344,6 +345,33 @@ describe('buildReviewSnapshot', () => {
   });
 
   // --- SB-009: District with missing baseMetrics defaults to zero ---
+
+  it('does not throw when top-level arrays are omitted (corrupt import)', () => {
+    const p = { ...clone(), assets: undefined, assetPacks: undefined } as unknown as WorldProject;
+    delete (p as { assets?: unknown }).assets;
+    let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+    expect(() => {
+      snap = buildReviewSnapshot(p);
+    }).not.toThrow();
+    expect(snap!.health).toBe('blocked');
+    expect(snap!.validation.valid).toBe(false);
+  });
+
+  it('does not throw when a district omits zoneIds', () => {
+    const proj = clone({
+      districts: [{
+        id: 'd1', name: 'Draft District', tags: [], zoneIds: [],
+        baseMetrics: { commerce: 0, morale: 0, safety: 0, stability: 0 },
+        economyProfile: { supplyCategories: [], scarcityDefaults: {} },
+      }],
+    });
+    delete (proj.districts[0] as { zoneIds?: unknown }).zoneIds;
+    let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+    expect(() => {
+      snap = buildReviewSnapshot(proj);
+    }).not.toThrow();
+    expect(snap!.regions[0].zoneCount).toBe(0);
+  });
 
   it('handles district with missing baseMetrics gracefully', () => {
     const proj = clone({

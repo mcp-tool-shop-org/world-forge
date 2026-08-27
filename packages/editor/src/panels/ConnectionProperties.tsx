@@ -73,8 +73,8 @@ export function ConnectionProperties() {
         <div
           data-testid="connection-orphaned-banner"
           style={{
-            fontSize: 11, color: '#f85149', background: '#3d1214',
-            border: '1px solid #f85149', borderRadius: 4,
+            fontSize: 11, color: 'var(--wf-danger-text)', background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))',
+            border: '1px solid var(--wf-danger-text)', borderRadius: 4,
             padding: '6px 8px', marginBottom: 8, lineHeight: 1.4,
           }}
         >
@@ -84,11 +84,11 @@ export function ConnectionProperties() {
       )}
       <label style={labelStyle}>From
         <input style={inputStyle} value={fromZone?.name ?? conn.fromZoneId} readOnly />
-        {!fromZone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
+        {!fromZone && <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>To
         <input style={inputStyle} value={toZone?.name ?? conn.toZoneId} readOnly />
-        {!toZone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
+        {!toZone && <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>Label
         <input style={inputStyle} value={conn.label ?? ''} disabled={endpointMissing}
@@ -115,7 +115,7 @@ export function ConnectionProperties() {
           onChange={(e) => updateConnection(conn.fromZoneId, conn.toZoneId, { condition: e.target.value || undefined })} />
       </label>
       {!conn.bidirectional && !endpointMissing && (
-        <button style={{ ...btnStyle, background: '#30363d', marginBottom: 4 }} onClick={handleSwapDirection}>
+        <button style={{ ...btnStyle, background: 'var(--wf-bg-hover)', marginBottom: 4 }} onClick={handleSwapDirection}>
           Swap Direction
         </button>
       )}
@@ -132,6 +132,6 @@ export function ConnectionProperties() {
 const labelStyle: React.CSSProperties = labelText;
 const inputStyle: React.CSSProperties = inputCompact;
 const btnStyle: React.CSSProperties = {
-  display: 'block', width: '100%', color: '#fff', border: 'none',
+  display: 'block', width: '100%', color: 'var(--wf-text-primary)', border: 'none',
   borderRadius: 3, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
 };

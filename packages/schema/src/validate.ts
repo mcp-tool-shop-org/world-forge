@@ -1,10 +1,20 @@
 // validate.ts — WorldProject validation
 
 import type { WorldProject } from './project.js';
-import type { ConnectionKind } from './spatial.js';
+import {
+  WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS,
+  WORLD_PROJECT_REQUIRED_ARRAY_FIELDS,
+} from './project.js';
+import type {
+  ConnectionKind, TransitionEntityType, Interactable, Landmark,
+  PhysicsMode, GravityDirection,
+} from './spatial.js';
 import type { AssetKind } from './assets.js';
+import type { EntityRole, ItemSlot, ItemRarity } from './entities.js';
+import type { AmbientLayer } from './visual.js';
 import { validateSpawnCondition } from './spawn-condition.js';
 import { AUTHORING_MODES, isValidMode } from './authoring-mode.js';
+import { backfillOmittedRequiredArrays } from './project-shape.js';
 
 export type ValidationError = {
   path: string;
@@ -14,17 +24,32 @@ export type ValidationError = {
 export type ValidationResult = {
   valid: boolean;
   errors: ValidationError[];
-  /** Number of validation errors found. Present when using validateProject(). */
-  warningCount?: number;
+  /** Number of validation errors. Always emitted by validateProject(). */
+  errorCount: number;
   /**
-   * Schema version that produced this result. Populated by validateProject().
+   * Deprecated alias of {@link errorCount}. Historically assigned
+   * `errors.length` (not an advisory count). Kept so existing callers that
+   * match `warningCount` continue to work; new code should read errorCount.
+   */
+  warningCount: number;
+  /**
+   * Schema version that produced this result. Always emitted.
    *
    * SCH-B-001 (v4.4): downstream tooling (export-ai-rpg, export-unreal, editor
    * migration helpers) needs to know which schema generation validated a given
    * project so that cross-version imports can fall back to migration paths.
    * Missing this field would force callers to guess, so it is always emitted.
+   *
+   * This is the *producing validator* version. Authored documents carry their
+   * own optional `WorldProject.schemaVersion` (generation that wrote the JSON).
+   * Exporters should read `project.schemaVersion` first and this field second.
    */
-  schemaVersion?: string;
+  schemaVersion: string;
+  /**
+   * Extra diagnostic lines. Populated when {@link ValidateOptions.verbose} is
+   * true; omitted otherwise so the default result shape stays compact.
+   */
+  diagnostics?: string[];
 };
 
 /**
@@ -36,21 +61,54 @@ export type ValidationResult = {
  * package.json. `validateProject()` also stamps this value into every
  * ValidationResult so error logs carry the producing schema version.
  */
-export const SCHEMA_VERSION = '4.6.0';
+export const SCHEMA_VERSION = '4.7.0';
+
+/**
+ * Stamp `SCHEMA_VERSION` onto a WorldProject when missing or blank, and
+ * backfill omitted required arrays (craftingStations, tilesets, …) added after
+ * v4.0. Present-but-wrong types are left untouched so validateProject still
+ * reports them. create-empty / editor save / export CLIs should call this
+ * (or normalizeProjectShape) before validateProject so a legally authored
+ * v4.0 JSON is structurally valid under v4.x.
+ *
+ * validateProject itself does not mutate the document; it records the
+ * producing schema on ValidationResult.
+ */
+export function stampProjectSchemaVersion(project: WorldProject): WorldProject {
+  const filled = backfillOmittedRequiredArrays(project);
+  if (typeof filled.schemaVersion === 'string' && filled.schemaVersion.trim().length > 0) {
+    return filled;
+  }
+  return { ...filled, schemaVersion: SCHEMA_VERSION };
+}
 
 /** Options for validateProject. */
 export interface ValidateOptions {
-  /** When true, emit extra detail in warnings array. Defaults to false. */
+  /**
+   * When true, attach a `diagnostics` array of `"path: message"` lines so
+   * editor integrations can show inline detail without reshaping `errors`.
+   */
   verbose?: boolean;
 }
 
 /**
- * All valid connection kinds — the array is DERIVED from a Record<ConnectionKind, true>
+ * Closed-union lookup set. Derived from Record<Union, true> so a missing union
+ * member is a compile error; `.has()` accepts string so JSON importers can
+ * refuse-to-guess without a cast.
+ */
+export type ClosedUnionSet<T extends string> = ReadonlySet<T> & { has(value: string): boolean };
+
+function closedUnionSet<T extends string>(lookup: Record<T, true>): ClosedUnionSet<T> {
+  return new Set(Object.keys(lookup) as T[]) as ClosedUnionSet<T>;
+}
+
+/**
+ * All valid connection kinds — the set is DERIVED from a Record<ConnectionKind, true>
  * lookup so it can never drift from the ConnectionKind union in spatial.ts.
  *
  * SCH-A-002: Adding a new ConnectionKind now produces a compile-time error on the
  * lookup object (missing key) rather than silently allowing invalid kinds through.
- * The array is computed from Object.keys() so it automatically gains the new kind
+ * The set is computed from Object.keys() so it automatically gains the new kind
  * once the lookup is updated — no second manual edit needed.
  */
 const VALID_CONNECTION_KINDS_LOOKUP: Record<ConnectionKind, true> = {
@@ -58,9 +116,9 @@ const VALID_CONNECTION_KINDS_LOOKUP: Record<ConnectionKind, true> = {
   secret: true, hazard: true, channel: true, route: true, docking: true,
   warp: true, trail: true,
 };
-const VALID_CONNECTION_KINDS_ARRAY: ReadonlyArray<ConnectionKind> =
-  Object.keys(VALID_CONNECTION_KINDS_LOOKUP) as ConnectionKind[];
-export const VALID_CONNECTION_KINDS = new Set<string>(VALID_CONNECTION_KINDS_ARRAY);
+export const VALID_CONNECTION_KINDS: ClosedUnionSet<ConnectionKind> =
+  closedUnionSet(VALID_CONNECTION_KINDS_LOOKUP);
+const VALID_CONNECTION_KINDS_ARRAY: ReadonlyArray<ConnectionKind> = [...VALID_CONNECTION_KINDS];
 
 // Bidirectional compile-time exhaustiveness: this assignment fails to type-check
 // if VALID_CONNECTION_KINDS_ARRAY ever loses coverage of a ConnectionKind, so the
@@ -74,88 +132,182 @@ void _assertConnectionKindCoverage;
  *
  * SCH-A-001: Same pattern as VALID_CONNECTION_KINDS above. Adding a new AssetKind
  * in assets.ts forces a compile-time error on this lookup (missing key). The
- * array is derived via Object.keys() so it cannot silently drift from the union.
+ * set is derived via Object.keys() so it cannot silently drift from the union.
  */
 const VALID_ASSET_KINDS_LOOKUP: Record<AssetKind, true> = {
   portrait: true, sprite: true, background: true, icon: true, tileset: true,
 };
-const VALID_ASSET_KINDS_ARRAY: ReadonlyArray<AssetKind> =
-  Object.keys(VALID_ASSET_KINDS_LOOKUP) as AssetKind[];
-export const VALID_ASSET_KINDS = new Set<string>(VALID_ASSET_KINDS_ARRAY);
+export const VALID_ASSET_KINDS: ClosedUnionSet<AssetKind> = closedUnionSet(VALID_ASSET_KINDS_LOOKUP);
+const VALID_ASSET_KINDS_ARRAY: ReadonlyArray<AssetKind> = [...VALID_ASSET_KINDS];
 
 const _assertAssetKindCoverage: AssetKind = VALID_ASSET_KINDS_ARRAY[0] as AssetKind;
 void _assertAssetKindCoverage;
 
+const VALID_TRANSITION_TYPES_LOOKUP: Record<TransitionEntityType, true> = {
+  elevator: true, warp: true, transporter: true, 'cargo-lift': true, stairwell: true,
+};
+export const VALID_TRANSITION_TYPES: ClosedUnionSet<TransitionEntityType> =
+  closedUnionSet(VALID_TRANSITION_TYPES_LOOKUP);
+
+const VALID_PHYSICS_MODES_LOOKUP: Record<PhysicsMode, true> = {
+  normal: true, platformer: true, 'zero-g': true, aquatic: true,
+};
+export const VALID_PHYSICS_MODES: ClosedUnionSet<PhysicsMode> =
+  closedUnionSet(VALID_PHYSICS_MODES_LOOKUP);
+
+const VALID_GRAVITY_DIRECTIONS_LOOKUP: Record<GravityDirection, true> = {
+  down: true, up: true, none: true,
+};
+export const VALID_GRAVITY_DIRECTIONS: ClosedUnionSet<GravityDirection> =
+  closedUnionSet(VALID_GRAVITY_DIRECTIONS_LOOKUP);
+
+type InteractableType = Interactable['type'];
+type LandmarkInteractionType = Landmark['interactionType'];
+type AmbientLayerType = AmbientLayer['type'];
+
+const VALID_ENTITY_ROLES_LOOKUP: Record<EntityRole, true> = {
+  npc: true, enemy: true, merchant: true, 'quest-giver': true, companion: true, boss: true,
+};
+export const VALID_ENTITY_ROLES: ClosedUnionSet<EntityRole> = closedUnionSet(VALID_ENTITY_ROLES_LOOKUP);
+
+const VALID_ITEM_SLOTS_LOOKUP: Record<ItemSlot, true> = {
+  weapon: true, armor: true, trinket: true, tool: true, accessory: true, consumable: true,
+};
+export const VALID_ITEM_SLOTS: ClosedUnionSet<ItemSlot> = closedUnionSet(VALID_ITEM_SLOTS_LOOKUP);
+
+const VALID_ITEM_RARITIES_LOOKUP: Record<ItemRarity, true> = {
+  common: true, uncommon: true, rare: true, legendary: true,
+};
+export const VALID_ITEM_RARITIES: ClosedUnionSet<ItemRarity> = closedUnionSet(VALID_ITEM_RARITIES_LOOKUP);
+
+const VALID_INTERACTABLE_TYPES_LOOKUP: Record<InteractableType, true> = {
+  inspect: true, use: true, enter: true, talk: true, none: true,
+};
+export const VALID_INTERACTABLE_TYPES: ClosedUnionSet<InteractableType> =
+  closedUnionSet(VALID_INTERACTABLE_TYPES_LOOKUP);
+
+const VALID_LANDMARK_INTERACTION_TYPES_LOOKUP: Record<LandmarkInteractionType, true> = {
+  inspect: true, use: true, enter: true, talk: true, none: true,
+};
+export const VALID_LANDMARK_INTERACTION_TYPES: ClosedUnionSet<LandmarkInteractionType> =
+  closedUnionSet(VALID_LANDMARK_INTERACTION_TYPES_LOOKUP);
+
+const VALID_AMBIENT_LAYER_TYPES_LOOKUP: Record<AmbientLayerType, true> = {
+  fog: true, rain: true, dust: true, glow: true, shadow: true, custom: true,
+};
+export const VALID_AMBIENT_LAYER_TYPES: ClosedUnionSet<AmbientLayerType> =
+  closedUnionSet(VALID_AMBIENT_LAYER_TYPES_LOOKUP);
+
+const DISTRICT_METRIC_KEYS = ['commerce', 'morale', 'safety', 'stability'] as const;
+
 /** Semver pattern for pack version validation (x.y.z). */
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 
+function expectedArrayMessage(field: string, value: unknown): string {
+  return `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`;
+}
+
+/** Guard a required nested array: report and skip iteration instead of throwing. */
+function isArrayOrReport(value: unknown, path: string, errors: ValidationError[]): boolean {
+  if (Array.isArray(value)) return true;
+  errors.push({ path, message: expectedArrayMessage(path, value) });
+  return false;
+}
+
+/** True when value is a string with at least one non-whitespace character. */
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/** Empty/whitespace vs wrong-type copy for isNonEmptyString failures. */
+function nonEmptyStringIssue(subject: string, field: string, value: unknown): string {
+  if (typeof value !== 'string') {
+    return `${subject} ${field} must be a non-empty string (got ${typeof value})`;
+  }
+  return `${subject} has empty ${field}`;
+}
+
+/** Author-facing locator: from/to pair plus optional label. */
+function connectionLocator(c: { fromZoneId: string; toZoneId: string; label?: string }): string {
+  const labelPart = typeof c.label === 'string' && c.label.trim().length > 0 ? ` (label "${c.label}")` : '';
+  return `Connection from "${c.fromZoneId}" to "${c.toZoneId}"${labelPart}`;
+}
+
+/** Present-and-not-an-array is an error; omitted stays valid (caller skips). */
+function isOptionalArrayOrReport(value: unknown, path: string, errors: ValidationError[]): boolean {
+  if (value === undefined) return false;
+  return isArrayOrReport(value, path, errors);
+}
+
+function finishResult(
+  errors: ValidationError[],
+  verbose: boolean,
+): ValidationResult {
+  const errorCount = errors.length;
+  const result: ValidationResult = {
+    valid: errorCount === 0,
+    errors,
+    errorCount,
+    warningCount: errorCount,
+    schemaVersion: SCHEMA_VERSION,
+  };
+  if (verbose) {
+    result.diagnostics = errors.map((e) => `${e.path}: ${e.message}`);
+  }
+  return result;
+}
+
 export function validateProject(project: WorldProject, options?: ValidateOptions): ValidationResult {
   const errors: ValidationError[] = [];
-  let warningCount = 0;
   const verbose = options?.verbose ?? false;
 
   // Structural guards: ensure top-level array fields exist and are arrays.
   // Corrupted/truncated JSON imports may have undefined or wrong types here.
-  const requiredArrays: [unknown, string][] = [
-    [project.zones, 'zones'],
-    [project.connections, 'connections'],
-    [project.districts, 'districts'],
-    [project.entityPlacements, 'entityPlacements'],
-    [project.itemPlacements, 'itemPlacements'],
-    [project.spawnPoints, 'spawnPoints'],
-    [project.landmarks, 'landmarks'],
-    [project.dialogues, 'dialogues'],
-    [project.progressionTrees, 'progressionTrees'],
-    [project.encounterAnchors, 'encounterAnchors'],
-    [project.factionPresences, 'factionPresences'],
-    [project.pressureHotspots, 'pressureHotspots'],
-    [project.assets, 'assets'],
-    [project.assetPacks, 'assetPacks'],
-    // F-001 (CRITICAL): these seven required array fields (project.ts) were
-    // entirely absent from this guard — a project with any of them corrupted
-    // to the wrong type entirely still validated as fully valid. Added here
-    // using the exact same Array.isArray + message pattern as every sibling
-    // above; see the id-uniqueness/cross-reference rules further down for the
-    // deeper checks these fields also lacked.
-    [project.craftingStations, 'craftingStations'],
-    [project.marketNodes, 'marketNodes'],
-    [project.tilesets, 'tilesets'],
-    [project.tileLayers, 'tileLayers'],
-    [project.props, 'props'],
-    [project.propPlacements, 'propPlacements'],
-    [project.ambientLayers, 'ambientLayers'],
-  ];
-  for (const [value, field] of requiredArrays) {
+  // Field lists live on WorldProject so they cannot drift from createEmptyProject
+  // / normalizeProjectShape / stampProjectSchemaVersion. Omitted required arrays
+  // still fail here — call stampProjectSchemaVersion (or normalizeProjectShape)
+  // first so a v4.0 JSON missing post-v4.0 arrays becomes valid.
+  for (const field of WORLD_PROJECT_REQUIRED_ARRAY_FIELDS) {
+    const value = project[field];
     if (!Array.isArray(value)) {
       errors.push({
         path: field,
-        message: `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`,
+        message: expectedArrayMessage(field, value),
       });
     }
   }
 
-  // F-4b9345d3: the town layer's three arrays are OPTIONAL (project.ts:72-74),
-  // so they cannot join requiredArrays — a legacy project that omits them is
-  // valid and must stay valid. But "absent" and "corrupted to a non-array" are
-  // different facts, and rules 87-89 below iterate these fields. Guard the
-  // second case only: present-but-wrong-type is reported here, absent passes
-  // through untouched.
-  const optionalArrays: [unknown, string][] = [
-    [project.buildings, 'buildings'],
-    [project.hubs, 'hubs'],
-    [project.strongholds, 'strongholds'],
-  ];
-  for (const [value, field] of optionalArrays) {
+  // Optional WorldProject arrays cannot join the required list — a legacy project
+  // that omits them is valid. Present-but-not-an-array (including null) is an
+  // error; undefined stays valid. Town arrays (F-4b9345d3) plus leftover
+  // loot/transitions/strata/hazardDefinitions (F-7282f981).
+  for (const field of WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS) {
+    const value = project[field];
     if (value !== undefined && !Array.isArray(value)) {
       errors.push({
         path: field,
-        message: `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`,
+        message: expectedArrayMessage(field, value),
       });
     }
   }
 
+  // WorldMap is a required object (not an array). Truncated JSON that drops
+  // `map` used to pass the structural gate that exists to catch truncated JSON.
+  const mapValue = (project as { map?: unknown }).map;
+  if (
+    mapValue === undefined
+    || mapValue === null
+    || typeof mapValue !== 'object'
+    || Array.isArray(mapValue)
+  ) {
+    errors.push({
+      path: 'map',
+      message: `Expected "map" to be an object but got ${mapValue === null ? 'null' : Array.isArray(mapValue) ? 'array' : typeof mapValue}. The project file may be corrupted or truncated.`,
+    });
+  }
+
   if (errors.length > 0) {
-    return { valid: false, errors, warningCount: 0 };
+    return finishResult(errors, verbose);
   }
 
   // SCH-A-004: Project metadata type guards — author/license/category are optional
@@ -182,6 +334,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       message: `Project category must be a string when present (got ${typeof projAny.category}).`,
     });
   }
+  if (projAny.schemaVersion !== undefined && typeof projAny.schemaVersion !== 'string') {
+    errors.push({
+      path: 'schemaVersion',
+      message: `Project schemaVersion must be a string when present (got ${typeof projAny.schemaVersion}).`,
+    });
+  }
 
   // F-004: isValidMode() was exported specifically to guard this field but was
   // never called from here, so a garbage `mode` value passed validateProject
@@ -191,6 +349,18 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       path: 'mode',
       message: `Project mode "${project.mode}" is not a supported authoring mode (expected one of: ${AUTHORING_MODES.join(', ')}).`,
     });
+  }
+
+  // Map grid dimensions must be finite and > 0 (NaN/0 used to pass silently).
+  const map = project.map;
+  for (const dim of ['gridWidth', 'gridHeight', 'tileSize'] as const) {
+    const value = map[dim];
+    if (!Number.isFinite(value) || value <= 0) {
+      errors.push({
+        path: `map.${dim}`,
+        message: `Map ${dim} (${value}) must be a finite number > 0.`,
+      });
+    }
   }
 
   // 1. At least one spawn point
@@ -203,13 +373,42 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     errors.push({ path: 'spawnPoints', message: 'At least one spawn point must be marked as default' });
   }
 
-  // 3. ID uniqueness — zones
+  // 3. ID uniqueness — zones; parentDistrictId, elevation, interactable types
   const zoneIds = new Set<string>();
   for (const z of project.zones) {
     if (zoneIds.has(z.id)) {
       errors.push({ path: `zones.${z.id}`, message: `Duplicate zone ID: ${z.id}` });
     }
     zoneIds.add(z.id);
+    if (z.elevation !== undefined && !Number.isFinite(z.elevation)) {
+      errors.push({
+        path: `zones.${z.id}.elevation`,
+        message: `Zone "${z.id}" elevation (${z.elevation}) must be a finite number.`,
+      });
+    }
+    if (z.light !== undefined && !Number.isFinite(z.light)) {
+      errors.push({
+        path: `zones.${z.id}.light`,
+        message: `Zone "${z.id}" light (${z.light}) must be a finite number.`,
+      });
+    }
+    if (z.noise !== undefined && !Number.isFinite(z.noise)) {
+      errors.push({
+        path: `zones.${z.id}.noise`,
+        message: `Zone "${z.id}" noise (${z.noise}) must be a finite number.`,
+      });
+    }
+    if (isArrayOrReport(z.interactables, `zones.${z.id}.interactables`, errors)) {
+      for (let i = 0; i < z.interactables.length; i++) {
+        const it = z.interactables[i];
+        if (it && !VALID_INTERACTABLE_TYPES.has(it.type)) {
+          errors.push({
+            path: `zones.${z.id}.interactables[${i}].type`,
+            message: `Zone "${z.id}" interactable has unsupported type "${it.type}" (expected one of: ${[...VALID_INTERACTABLE_TYPES].join(', ')}).`,
+          });
+        }
+      }
+    }
   }
 
   // 4. ID uniqueness — districts
@@ -221,8 +420,19 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     districtIds.add(d.id);
   }
 
+  // parentDistrictId is the same kind of id as District.zoneIds (rule 7).
+  for (const z of project.zones) {
+    if (z.parentDistrictId !== undefined && !districtIds.has(z.parentDistrictId)) {
+      errors.push({
+        path: `zones.${z.id}.parentDistrictId`,
+        message: `Zone "${z.id}" references nonexistent parent district "${z.parentDistrictId}"`,
+      });
+    }
+  }
+
   // 5. Zone neighbors must reference existing zones
   for (const z of project.zones) {
+    if (!isArrayOrReport(z.neighbors, `zones.${z.id}.neighbors`, errors)) continue;
     for (const nid of z.neighbors) {
       if (!zoneIds.has(nid)) {
         errors.push({ path: `zones.${z.id}.neighbors`, message: `Zone "${z.id}" references nonexistent neighbor "${nid}"` });
@@ -233,8 +443,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // 6. Symmetrical neighbors — if A lists B, B should list A
   // Build zone map and neighbor Sets for O(1) lookups (avoids O(n²) find + O(n³) includes)
   const zoneMap = new Map(project.zones.map((z) => [z.id, z]));
-  const neighborSets = new Map(project.zones.map((z) => [z.id, new Set(z.neighbors)]));
+  const neighborSets = new Map(project.zones.map((z) => [
+    z.id,
+    new Set(Array.isArray(z.neighbors) ? z.neighbors : []),
+  ]));
   for (const z of project.zones) {
+    if (!Array.isArray(z.neighbors)) continue;
     for (const nid of z.neighbors) {
       // Skip symmetry check for nonexistent neighbors — already reported in step 5.
       // Without this guard, we'd silently skip instead of making intent clear.
@@ -254,6 +468,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // is the same kind of zone-to-zone reference as neighbors[] (rule 5) and
   // ZoneConnection.toZoneId (rule 11) — checked the same way for consistency.
   for (const z of project.zones) {
+    if (!isArrayOrReport(z.exits, `zones.${z.id}.exits`, errors)) continue;
     for (const exit of z.exits) {
       if (!zoneIds.has(exit.targetZoneId)) {
         errors.push({
@@ -273,24 +488,56 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 7. District zoneIds must reference existing zones
   for (const d of project.districts) {
+    if (!isArrayOrReport(d.zoneIds, `districts.${d.id}.zoneIds`, errors)) continue;
     for (const zid of d.zoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `districts.${d.id}.zoneIds`, message: `District "${d.id}" references nonexistent zone "${zid}"` });
       }
     }
+    const metrics = d.baseMetrics;
+    if (metrics && typeof metrics === 'object') {
+      for (const key of DISTRICT_METRIC_KEYS) {
+        const value = metrics[key];
+        if (value === undefined) continue;
+        if (!Number.isFinite(value) || value < 0 || value > 100) {
+          errors.push({
+            path: `districts.${d.id}.baseMetrics.${key}`,
+            message: `District "${d.id}" ${key} (${value}) must be a finite number in [0, 100].`,
+          });
+        }
+      }
+    }
   }
 
-  // 8. Entity placements must reference valid zones
+  // 8. Entity placements must reference valid zones + closed EntityRole
   for (const ep of project.entityPlacements) {
     if (!zoneIds.has(ep.zoneId)) {
       errors.push({ path: `entityPlacements.${ep.entityId}`, message: `Entity "${ep.entityId}" placed in nonexistent zone "${ep.zoneId}"` });
     }
+    if (!VALID_ENTITY_ROLES.has(ep.role)) {
+      errors.push({
+        path: `entityPlacements.${ep.entityId}.role`,
+        message: `Entity "${ep.entityId}" has unsupported role "${ep.role}" (expected one of: ${[...VALID_ENTITY_ROLES].join(', ')}).`,
+      });
+    }
   }
 
-  // 9. Item placements must reference valid zones
+  // 9. Item placements must reference valid zones + closed slot/rarity
   for (const ip of project.itemPlacements) {
     if (!zoneIds.has(ip.zoneId)) {
       errors.push({ path: `itemPlacements.${ip.itemId}`, message: `Item "${ip.itemId}" placed in nonexistent zone "${ip.zoneId}"` });
+    }
+    if (ip.slot !== undefined && !VALID_ITEM_SLOTS.has(ip.slot)) {
+      errors.push({
+        path: `itemPlacements.${ip.itemId}.slot`,
+        message: `Item "${ip.itemId}" has unsupported slot "${ip.slot}" (expected one of: ${[...VALID_ITEM_SLOTS].join(', ')}).`,
+      });
+    }
+    if (ip.rarity !== undefined && !VALID_ITEM_RARITIES.has(ip.rarity)) {
+      errors.push({
+        path: `itemPlacements.${ip.itemId}.rarity`,
+        message: `Item "${ip.itemId}" has unsupported rarity "${ip.rarity}" (expected one of: ${[...VALID_ITEM_RARITIES].join(', ')}).`,
+      });
     }
   }
 
@@ -302,29 +549,41 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   }
 
   // 11. Connections must reference valid zones (kinds validated against VALID_CONNECTION_KINDS — module-level constant)
-  for (const c of project.connections) {
+  for (let i = 0; i < project.connections.length; i++) {
+    const c = project.connections[i];
+    const path = `connections[${i}]`;
+    const loc = connectionLocator(c);
     if (!zoneIds.has(c.fromZoneId)) {
-      errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.fromZoneId}"` });
+      errors.push({ path, message: `${loc} references nonexistent fromZoneId "${c.fromZoneId}"` });
     }
     if (!zoneIds.has(c.toZoneId)) {
-      errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.toZoneId}"` });
+      errors.push({ path, message: `${loc} references nonexistent toZoneId "${c.toZoneId}"` });
     }
     // 11b. Connection kind must be valid
     if (c.kind && !VALID_CONNECTION_KINDS.has(c.kind)) {
-      errors.push({ path: 'connections', message: `Connection has unsupported kind "${c.kind}"` });
+      errors.push({
+        path,
+        message: `${loc} has unsupported kind "${c.kind}" (expected one of: ${VALID_CONNECTION_KINDS_ARRAY.join(', ')}).`,
+      });
     }
     // 11c. Connection condition must be a legal SpawnCondition (F-007) —
     // mirrors rule 59/78's use of the shared validator.
     const connCondErr = validateSpawnCondition(c.condition);
     if (connCondErr) {
-      errors.push({ path: 'connections', message: `Connection: ${connCondErr}` });
+      errors.push({ path, message: `${loc}: ${connCondErr}` });
     }
   }
 
-  // 12. Landmark zoneIds must exist
+  // 12. Landmark zoneIds must exist + closed interactionType
   for (const lm of project.landmarks) {
     if (!zoneIds.has(lm.zoneId)) {
       errors.push({ path: `landmarks.${lm.id}`, message: `Landmark "${lm.id}" in nonexistent zone "${lm.zoneId}"` });
+    }
+    if (!VALID_LANDMARK_INTERACTION_TYPES.has(lm.interactionType)) {
+      errors.push({
+        path: `landmarks.${lm.id}.interactionType`,
+        message: `Landmark "${lm.id}" has unsupported interactionType "${lm.interactionType}" (expected one of: ${[...VALID_LANDMARK_INTERACTION_TYPES].join(', ')}).`,
+      });
     }
   }
 
@@ -337,28 +596,54 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     encounterIds.add(ea.id);
   }
 
-  // 13b. Encounter anchor zoneId must exist
+  // 13b. Encounter anchor zoneId must exist; probability must be finite in [0, 1].
+  // enemyIds are free-form engine catalog ids (not WorldProject entityPlacement
+  // ids) — the engine resolves them against its own entity registry.
   for (const ea of project.encounterAnchors) {
     if (!zoneIds.has(ea.zoneId)) {
       errors.push({ path: `encounterAnchors.${ea.id}`, message: `Encounter anchor "${ea.id}" in nonexistent zone "${ea.zoneId}"` });
     }
-  }
-
-  // 13c. Encounter anchor encounterType must be non-empty and not whitespace-only
-  for (const ea of project.encounterAnchors) {
-    if (!ea.encounterType || ea.encounterType.trim().length === 0) {
+    if (!Number.isFinite(ea.probability) || ea.probability < 0 || ea.probability > 1) {
       errors.push({
-        path: `encounterAnchors.${ea.id}`,
-        message: `Encounter anchor "${ea.id}" has ${!ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
+        path: `encounterAnchors.${ea.id}.probability`,
+        message: `Encounter anchor "${ea.id}" probability (${ea.probability}) must be a finite number in [0, 1].`,
       });
     }
   }
 
-  // 14. Faction districtIds must reference valid districts
+  // 13c. Encounter anchor encounterType must be a non-empty, non-whitespace string.
+  // Non-strings (e.g. 123 from truncated JSON) must return ValidationResult, not throw on .trim().
+  for (const ea of project.encounterAnchors) {
+    if (!isNonEmptyString(ea.encounterType)) {
+      errors.push({
+        path: `encounterAnchors.${ea.id}`,
+        message: `Encounter anchor "${ea.id}" has ${typeof ea.encounterType !== 'string' || !ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
+      });
+    }
+  }
+
+  // 14. Faction districtIds must reference valid districts; patrolRoutes.zoneIds
+  // are the same kind of zone ref as connection zone refs (rule 11).
   for (const fp of project.factionPresences) {
+    if (!isArrayOrReport(fp.districtIds, `factionPresences.${fp.factionId}.districtIds`, errors)) continue;
     for (const did of fp.districtIds) {
       if (!districtIds.has(did)) {
         errors.push({ path: `factionPresences.${fp.factionId}`, message: `Faction "${fp.factionId}" references nonexistent district "${did}"` });
+      }
+    }
+    if (isOptionalArrayOrReport(fp.patrolRoutes, `factionPresences.${fp.factionId}.patrolRoutes`, errors)) {
+      for (let i = 0; i < fp.patrolRoutes!.length; i++) {
+        const route = fp.patrolRoutes![i];
+        const routePath = `factionPresences.${fp.factionId}.patrolRoutes[${i}].zoneIds`;
+        if (!isArrayOrReport(route.zoneIds, routePath, errors)) continue;
+        for (const zid of route.zoneIds) {
+          if (!zoneIds.has(zid)) {
+            errors.push({
+              path: routePath,
+              message: `Faction "${fp.factionId}" patrol route references nonexistent zone "${zid}"`,
+            });
+          }
+        }
       }
     }
   }
@@ -390,6 +675,16 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
     dialogueIds.add(dlg.id);
 
+    // 17-19. Node graph — `nodes` is a required Record. Omitted/corrupt JSON
+    // must return ValidationResult, not throw on `dlg.nodes[entry]`.
+    if (dlg.nodes === undefined || dlg.nodes === null || typeof dlg.nodes !== 'object' || Array.isArray(dlg.nodes)) {
+      errors.push({
+        path: `dialogues.${dlg.id}.nodes`,
+        message: `Expected "dialogues.${dlg.id}.nodes" to be an object but got ${dlg.nodes === null ? 'null' : Array.isArray(dlg.nodes) ? 'array' : typeof dlg.nodes}. The project file may be corrupted or truncated.`,
+      });
+      continue;
+    }
+
     // 17. Entry node must exist
     if (!dlg.nodes[dlg.entryNodeId]) {
       errors.push({
@@ -407,7 +702,9 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
           message: `Node "${nodeId}" auto-advances to nonexistent node "${node.nextNodeId}"`,
         });
       }
-      if (node.choices) {
+      // choices is optional; omitted (undefined) is valid. Present-but-not-an-array
+      // (null / {} / 123) must report, not throw. Falsy skip of null hid unreachable nodes.
+      if (node.choices !== undefined && isArrayOrReport(node.choices, `dialogues.${dlg.id}.nodes.${nodeId}.choices`, errors)) {
         for (const choice of node.choices) {
           if (!nodeIds.has(choice.nextNodeId)) {
             errors.push({
@@ -437,7 +734,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         const nd = dlg.nodes[current];
         if (!nd) continue;
         if (nd.nextNodeId && nodeIds.has(nd.nextNodeId)) queue.push(nd.nextNodeId);
-        if (nd.choices) {
+        if (nd.choices !== undefined && isArrayOrReport(nd.choices, `dialogues.${dlg.id}.nodes.${current}.choices`, errors)) {
           for (const ch of nd.choices) {
             if (nodeIds.has(ch.nextNodeId)) queue.push(ch.nextNodeId);
           }
@@ -485,31 +782,41 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     const pt = project.playerTemplate;
 
     // 21. Spawn point must exist
-    if (!spawnPointIds.has(pt.spawnPointId)) {
+    if (!isNonEmptyString(pt.spawnPointId)) {
       errors.push({
         path: 'playerTemplate.spawnPointId',
-        message: `Player template spawn point "${pt.spawnPointId}" does not exist`,
+        message: 'Player template spawnPointId is empty — pick an id from spawnPoints[].',
+      });
+    } else if (!spawnPointIds.has(pt.spawnPointId)) {
+      errors.push({
+        path: 'playerTemplate.spawnPointId',
+        message: `Player template spawnPointId "${pt.spawnPointId}" is not in spawnPoints[]. Add a spawn point with that id, or pick an existing id.`,
       });
     }
 
-    // 22. Starting inventory items should exist in item placements
+    // 22. Starting inventory items must exist in item placements (not catalog-only ids)
     const itemIds = new Set(project.itemPlacements.map((ip) => ip.itemId));
-    for (const itemId of pt.startingInventory) {
-      if (!itemIds.has(itemId)) {
-        errors.push({
-          path: `playerTemplate.startingInventory`,
-          message: `Player template starting item "${itemId}" not found in item placements`,
-        });
+    if (isArrayOrReport(pt.startingInventory, 'playerTemplate.startingInventory', errors)) {
+      for (let i = 0; i < pt.startingInventory.length; i++) {
+        const itemId = pt.startingInventory[i];
+        if (!itemIds.has(itemId)) {
+          errors.push({
+            path: `playerTemplate.startingInventory[${i}]`,
+            message: `Player template startingInventory[${i}] item "${itemId}" is not in itemPlacements[]. Add a placement with that itemId, pick an existing itemId, or remove this entry.`,
+          });
+        }
       }
     }
 
-    // 23. Starting equipment items should exist
-    for (const [slot, itemId] of Object.entries(pt.startingEquipment)) {
-      if (!itemIds.has(itemId)) {
-        errors.push({
-          path: `playerTemplate.startingEquipment.${slot}`,
-          message: `Player template equipment "${itemId}" in slot "${slot}" not found in item placements`,
-        });
+    // 23. Starting equipment items must exist in item placements (not catalog-only ids)
+    if (pt.startingEquipment && typeof pt.startingEquipment === 'object') {
+      for (const [slot, itemId] of Object.entries(pt.startingEquipment)) {
+        if (!itemIds.has(itemId)) {
+          errors.push({
+            path: `playerTemplate.startingEquipment.${slot}`,
+            message: `Player template startingEquipment.${slot} item "${itemId}" is not in itemPlacements[]. Add a placement with that itemId, pick an existing itemId, or clear this slot.`,
+          });
+        }
       }
     }
 
@@ -527,9 +834,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       });
     }
 
-    // 25. Default archetype must exist in build catalog
+    // 25. Default archetype must exist in build catalog. Do not gate on
+    // Array.isArray — a present-but-corrupt catalog must still surface the
+    // dangling player-template ref (F-9aaa76cf).
     if (pt.defaultArchetypeId && project.buildCatalog) {
-      if (!project.buildCatalog.archetypes.some((a) => a.id === pt.defaultArchetypeId)) {
+      const archetypes = project.buildCatalog.archetypes;
+      const listed = Array.isArray(archetypes) && archetypes.some((a) => a.id === pt.defaultArchetypeId);
+      if (!listed) {
         errors.push({
           path: 'playerTemplate.defaultArchetypeId',
           message: `Player template references archetype "${pt.defaultArchetypeId}" which is not in buildCatalog.archetypes[]. Add it to the catalog, or pick an existing archetype id.`,
@@ -537,9 +848,11 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       }
     }
 
-    // 26. Default background must exist in build catalog
+    // 26. Default background must exist in build catalog (same non-array gate).
     if (pt.defaultBackgroundId && project.buildCatalog) {
-      if (!project.buildCatalog.backgrounds.some((b) => b.id === pt.defaultBackgroundId)) {
+      const backgrounds = project.buildCatalog.backgrounds;
+      const listed = Array.isArray(backgrounds) && backgrounds.some((b) => b.id === pt.defaultBackgroundId);
+      if (!listed) {
         errors.push({
           path: 'playerTemplate.defaultBackgroundId',
           message: `Player template references background "${pt.defaultBackgroundId}" which is not in buildCatalog.backgrounds[]. Add it to the catalog, or pick an existing background id.`,
@@ -558,86 +871,102 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
     // 27. Archetype ID uniqueness + progression tree refs
     const progressionTreeIds = new Set(project.progressionTrees.map((t) => t.id));
-    for (const arch of bc.archetypes) {
-      if (archetypeIds.has(arch.id)) {
-        errors.push({ path: `buildCatalog.archetypes.${arch.id}`, message: `Duplicate archetype ID: ${arch.id}` });
-      }
-      archetypeIds.add(arch.id);
+    if (isArrayOrReport(bc.archetypes, 'buildCatalog.archetypes', errors)) {
+      for (const arch of bc.archetypes) {
+        if (archetypeIds.has(arch.id)) {
+          errors.push({ path: `buildCatalog.archetypes.${arch.id}`, message: `Duplicate archetype ID: ${arch.id}` });
+        }
+        archetypeIds.add(arch.id);
 
-      if (!progressionTreeIds.has(arch.progressionTreeId)) {
-        errors.push({
-          path: `buildCatalog.archetypes.${arch.id}.progressionTreeId`,
-          message: `Archetype "${arch.id}" references nonexistent progression tree "${arch.progressionTreeId}"`,
-        });
+        if (!progressionTreeIds.has(arch.progressionTreeId)) {
+          errors.push({
+            path: `buildCatalog.archetypes.${arch.id}.progressionTreeId`,
+            message: `Archetype "${arch.id}" references nonexistent progression tree "${arch.progressionTreeId}"`,
+          });
+        }
       }
     }
 
     // 28. Background ID uniqueness
     const backgroundIds = new Set<string>();
-    for (const bg of bc.backgrounds) {
-      if (backgroundIds.has(bg.id)) {
-        errors.push({ path: `buildCatalog.backgrounds.${bg.id}`, message: `Duplicate background ID: ${bg.id}` });
+    if (isArrayOrReport(bc.backgrounds, 'buildCatalog.backgrounds', errors)) {
+      for (const bg of bc.backgrounds) {
+        if (backgroundIds.has(bg.id)) {
+          errors.push({ path: `buildCatalog.backgrounds.${bg.id}`, message: `Duplicate background ID: ${bg.id}` });
+        }
+        backgroundIds.add(bg.id);
       }
-      backgroundIds.add(bg.id);
     }
 
     // 29. Trait ID uniqueness + incompatibility refs
-    for (const trait of bc.traits) {
-      if (traitIds.has(trait.id)) {
-        errors.push({ path: `buildCatalog.traits.${trait.id}`, message: `Duplicate trait ID: ${trait.id}` });
+    if (isArrayOrReport(bc.traits, 'buildCatalog.traits', errors)) {
+      for (const trait of bc.traits) {
+        if (traitIds.has(trait.id)) {
+          errors.push({ path: `buildCatalog.traits.${trait.id}`, message: `Duplicate trait ID: ${trait.id}` });
+        }
+        traitIds.add(trait.id);
       }
-      traitIds.add(trait.id);
-    }
-    for (const trait of bc.traits) {
-      if (trait.incompatibleWith) {
-        for (const incompat of trait.incompatibleWith) {
-          if (!traitIds.has(incompat)) {
-            errors.push({
-              path: `buildCatalog.traits.${trait.id}.incompatibleWith`,
-              message: `Trait "${trait.id}" lists incompatible trait "${incompat}" that does not exist`,
-            });
+      for (const trait of bc.traits) {
+        if (trait.incompatibleWith !== undefined && isArrayOrReport(
+          trait.incompatibleWith,
+          `buildCatalog.traits.${trait.id}.incompatibleWith`,
+          errors,
+        )) {
+          for (const incompat of trait.incompatibleWith) {
+            if (!traitIds.has(incompat)) {
+              errors.push({
+                path: `buildCatalog.traits.${trait.id}.incompatibleWith`,
+                message: `Trait "${trait.id}" lists incompatible trait "${incompat}" that does not exist`,
+              });
+            }
           }
         }
       }
     }
 
     // 30. Discipline ID uniqueness
-    for (const disc of bc.disciplines) {
-      if (disciplineIds.has(disc.id)) {
-        errors.push({ path: `buildCatalog.disciplines.${disc.id}`, message: `Duplicate discipline ID: ${disc.id}` });
+    if (isArrayOrReport(bc.disciplines, 'buildCatalog.disciplines', errors)) {
+      for (const disc of bc.disciplines) {
+        if (disciplineIds.has(disc.id)) {
+          errors.push({ path: `buildCatalog.disciplines.${disc.id}`, message: `Duplicate discipline ID: ${disc.id}` });
+        }
+        disciplineIds.add(disc.id);
       }
-      disciplineIds.add(disc.id);
     }
 
     // 31. Cross-title refs must point to existing archetypes + disciplines
-    for (const ct of bc.crossTitles) {
-      if (!archetypeIds.has(ct.archetypeId)) {
-        errors.push({
-          path: `buildCatalog.crossTitles`,
-          message: `Cross-title references nonexistent archetype "${ct.archetypeId}"`,
-        });
-      }
-      if (!disciplineIds.has(ct.disciplineId)) {
-        errors.push({
-          path: `buildCatalog.crossTitles`,
-          message: `Cross-title references nonexistent discipline "${ct.disciplineId}"`,
-        });
+    if (isArrayOrReport(bc.crossTitles, 'buildCatalog.crossTitles', errors)) {
+      for (const ct of bc.crossTitles) {
+        if (!archetypeIds.has(ct.archetypeId)) {
+          errors.push({
+            path: `buildCatalog.crossTitles`,
+            message: `Cross-title references nonexistent archetype "${ct.archetypeId}"`,
+          });
+        }
+        if (!disciplineIds.has(ct.disciplineId)) {
+          errors.push({
+            path: `buildCatalog.crossTitles`,
+            message: `Cross-title references nonexistent discipline "${ct.disciplineId}"`,
+          });
+        }
       }
     }
 
     // 32. Entanglement refs must point to existing archetypes + disciplines
-    for (const ent of bc.entanglements) {
-      if (!archetypeIds.has(ent.archetypeId)) {
-        errors.push({
-          path: `buildCatalog.entanglements.${ent.id}`,
-          message: `Entanglement "${ent.id}" references nonexistent archetype "${ent.archetypeId}"`,
-        });
-      }
-      if (!disciplineIds.has(ent.disciplineId)) {
-        errors.push({
-          path: `buildCatalog.entanglements.${ent.id}`,
-          message: `Entanglement "${ent.id}" references nonexistent discipline "${ent.disciplineId}"`,
-        });
+    if (isArrayOrReport(bc.entanglements, 'buildCatalog.entanglements', errors)) {
+      for (const ent of bc.entanglements) {
+        if (!archetypeIds.has(ent.archetypeId)) {
+          errors.push({
+            path: `buildCatalog.entanglements.${ent.id}`,
+            message: `Entanglement "${ent.id}" references nonexistent archetype "${ent.archetypeId}"`,
+          });
+        }
+        if (!disciplineIds.has(ent.disciplineId)) {
+          errors.push({
+            path: `buildCatalog.entanglements.${ent.id}`,
+            message: `Entanglement "${ent.id}" references nonexistent discipline "${ent.disciplineId}"`,
+          });
+        }
       }
     }
   }
@@ -653,6 +982,10 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
     treeIds.add(tree.id);
 
+    if (!isArrayOrReport(tree.nodes, `progressionTrees.${tree.id}.nodes`, errors)) {
+      continue;
+    }
+
     const nodeIds = new Set(tree.nodes.map((n) => n.id));
     const nodeIdDupes = new Set<string>();
 
@@ -666,8 +999,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       }
       nodeIdDupes.add(node.id);
 
-      // 35. Required node refs must exist
-      if (node.requires) {
+      // 35. Required node refs must exist. requires is optional; present-but-not-an-array
+      // ({} / 5 / null) must report, not throw on for...of.
+      if (node.requires !== undefined && isArrayOrReport(
+        node.requires,
+        `progressionTrees.${tree.id}.nodes.${node.id}.requires`,
+        errors,
+      )) {
         for (const reqId of node.requires) {
           if (!nodeIds.has(reqId)) {
             errors.push({
@@ -692,7 +1030,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // requires-cycle island (e.g. "x requires y" + "y requires x", neither
     // ever reachable from any root). That island now correctly stays
     // unreached: neither node's prerequisites are ever satisfied.
-    const roots = tree.nodes.filter((n) => !n.requires || n.requires.length === 0);
+    const roots = tree.nodes.filter((n) => !Array.isArray(n.requires) || n.requires.length === 0);
     if (roots.length === 0 && tree.nodes.length > 0) {
       errors.push({
         path: `progressionTrees.${tree.id}`,
@@ -705,7 +1043,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         changed = false;
         for (const node of tree.nodes) {
           if (reachable.has(node.id)) continue;
-          const reqs = node.requires ?? [];
+          const reqs = Array.isArray(node.requires) ? node.requires : [];
           if (reqs.length > 0 && reqs.every((r) => reachable.has(r))) {
             reachable.add(node.id);
             changed = true;
@@ -738,17 +1076,20 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     assetMap.set(a.id, { kind: a.kind });
   }
 
-  // 38. Asset path must be non-empty
+  // 38. Asset path must be a non-empty string (non-strings must not throw on .trim())
   for (const a of project.assets) {
-    if (!a.path || a.path.trim().length === 0) {
-      errors.push({ path: `assets.${a.id}.path`, message: `Asset "${a.id}" has empty path` });
+    if (!isNonEmptyString(a.path)) {
+      errors.push({ path: `assets.${a.id}.path`, message: nonEmptyStringIssue(`Asset "${a.id}"`, 'path', a.path) });
     }
   }
 
   // 39. Asset kind must be valid
   for (const a of project.assets) {
     if (!VALID_ASSET_KINDS.has(a.kind)) {
-      errors.push({ path: `assets.${a.id}.kind`, message: `Asset "${a.id}" has unsupported kind "${a.kind}"` });
+      errors.push({
+        path: `assets.${a.id}.kind`,
+        message: `Asset "${a.id}" has unsupported kind "${a.kind}" (expected one of: ${VALID_ASSET_KINDS_ARRAY.join(', ')}).`,
+      });
     }
   }
 
@@ -810,7 +1151,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (z.tilesetId) referencedAssetIds.add(z.tilesetId);
     // 2.5D (v4.2.0): skyline + parallax assetRefs also count as valid references.
     if (z.skylineRef) referencedAssetIds.add(z.skylineRef);
-    if (z.parallaxLayers) {
+    if (z.skyAtmosphereRef) referencedAssetIds.add(z.skyAtmosphereRef);
+    if (Array.isArray(z.parallaxLayers)) {
       for (const layer of z.parallaxLayers) {
         if (layer.assetRef) referencedAssetIds.add(layer.assetRef);
       }
@@ -844,17 +1186,17 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     packIds.add(pack.id);
   }
 
-  // 48. Pack label must be non-empty
+  // 48. Pack label must be a non-empty string (non-strings must not throw on .trim())
   for (const pack of project.assetPacks) {
-    if (!pack.label || pack.label.trim().length === 0) {
-      errors.push({ path: `assetPacks.${pack.id}.label`, message: `Asset pack "${pack.id}" has empty label` });
+    if (!isNonEmptyString(pack.label)) {
+      errors.push({ path: `assetPacks.${pack.id}.label`, message: nonEmptyStringIssue(`Asset pack "${pack.id}"`, 'label', pack.label) });
     }
   }
 
-  // 49. Pack version must be non-empty
+  // 49. Pack version must be a non-empty string (non-strings must not throw on .trim())
   for (const pack of project.assetPacks) {
-    if (!pack.version || pack.version.trim().length === 0) {
-      errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" has empty version` });
+    if (!isNonEmptyString(pack.version)) {
+      errors.push({ path: `assetPacks.${pack.id}.version`, message: nonEmptyStringIssue(`Asset pack "${pack.id}"`, 'version', pack.version) });
     }
   }
 
@@ -878,7 +1220,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 52. Pack version must be valid semver format (x.y.z) — uses module-level SEMVER_PATTERN
   for (const pack of project.assetPacks) {
-    if (pack.version && pack.version.trim().length > 0 && !SEMVER_PATTERN.test(pack.version)) {
+    if (isNonEmptyString(pack.version) && !SEMVER_PATTERN.test(pack.version)) {
       errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" version "${pack.version}" is not valid semver (expected x.y.z)` });
     }
   }
@@ -906,18 +1248,21 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // 54. 2.5D parallax layer depth must be unique per zone.
   // Also validates assetRef resolves to an asset of kind 'background' or 'sprite'
   // (SCH-A-002) and that scrollFactor is finite in [0.0, 1.0] (SCH-A-003).
+  // Present-but-not-an-array used to skip this rule entirely (F-9aaa76cf).
   for (const zone of project.zones) {
-    if (!zone.parallaxLayers || zone.parallaxLayers.length === 0) continue;
+    if (zone.parallaxLayers === undefined) continue;
+    if (!isArrayOrReport(zone.parallaxLayers, `zones.${zone.id}.parallaxLayers`, errors)) continue;
+    if (zone.parallaxLayers.length === 0) continue;
     const seenDepths = new Map<number, string>();
     const seenIds = new Set<string>();
     for (const layer of zone.parallaxLayers) {
       // SCH-A-006: layer.id must be non-empty and not whitespace-only.
       // Checked before dedup so an empty id still errors informatively instead
       // of colliding under the dedup Set on the empty string.
-      if (!layer.id || layer.id.trim().length === 0) {
+      if (!isNonEmptyString(layer.id)) {
         errors.push({
           path: `zones.${zone.id}.parallaxLayers.${layer.id}`,
-          message: `Zone "${zone.id}" has a parallax layer with ${!layer.id ? 'missing' : 'whitespace-only'} id — provide a non-empty id.`,
+          message: `Zone "${zone.id}" has a parallax layer with ${typeof layer.id !== 'string' || !layer.id ? 'missing' : 'whitespace-only'} id — provide a non-empty id.`,
         });
       }
       if (seenIds.has(layer.id)) {
@@ -988,6 +1333,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // (SCH-A-004) Mirrors the zone backgroundId/tilesetId pattern above.
   for (const zone of project.zones) {
     checkAssetRef(zone.skylineRef, 'background', `zones.${zone.id}.skylineRef`, `Zone "${zone.id}"`);
+    checkAssetRef(zone.skyAtmosphereRef, 'background', `zones.${zone.id}.skyAtmosphereRef`, `Zone "${zone.id}"`);
   }
 
   // --- LootTable validation (SCH-FT-001) ---
@@ -1002,7 +1348,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
     lootTableIds.add(lt.id);
 
-    if (!lt.entries || lt.entries.length === 0) {
+    if (!Array.isArray(lt.entries)) {
+      errors.push({
+        path: `lootTables.${lt.id}.entries`,
+        message: expectedArrayMessage(`lootTables.${lt.id}.entries`, lt.entries),
+      });
+    } else if (lt.entries.length === 0) {
       errors.push({
         path: `lootTables.${lt.id}.entries`,
         message: `Loot table "${lt.id}" must contain at least one entry`,
@@ -1019,7 +1370,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       }
     }
 
-    for (let i = 0; i < (lt.entries ?? []).length; i++) {
+    if (!Array.isArray(lt.entries)) continue;
+    for (let i = 0; i < lt.entries.length; i++) {
       const entry = lt.entries[i];
       // 57. Each entry's weight must be > 0 and finite.
       if (!Number.isFinite(entry.weight) || entry.weight <= 0) {
@@ -1068,19 +1420,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
-  // LootTable entry.itemId must reference an existing item placement.
-  const allItemIds = new Set(project.itemPlacements.map((ip) => ip.itemId));
-  for (const lt of lootTables) {
-    for (let i = 0; i < (lt.entries ?? []).length; i++) {
-      const entry = lt.entries[i];
-      if (entry.itemId && !allItemIds.has(entry.itemId)) {
-        errors.push({
-          path: `lootTables.${lt.id}.entries[${i}].itemId`,
-          message: `Loot table "${lt.id}" entry references nonexistent item "${entry.itemId}"`,
-        });
-      }
-    }
-  }
+  // LootTableEntry.itemId is an ItemPlacement.itemId OR a free-form engine id.
+  // Do not require every lootable item to also be a world placement.
 
   // 59. EntityPlacement.spawnCondition grammar (SCH-FT-003).
   for (const ep of project.entityPlacements) {
@@ -1104,7 +1445,15 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
     transitionIds.add(t.id);
 
-    // 61. zoneId + targetZoneId must reference existing zones.
+    // 61. type is a closed union — imported JSON can smuggle stray strings.
+    if (!VALID_TRANSITION_TYPES.has(t.type)) {
+      errors.push({
+        path: `transitions.${t.id}.type`,
+        message: `Transition "${t.id}" has unsupported type "${t.type}" (expected one of: ${[...VALID_TRANSITION_TYPES].join(', ')}).`,
+      });
+    }
+
+    // 61b. zoneId + targetZoneId must reference existing zones.
     if (!zoneIds.has(t.zoneId)) {
       errors.push({
         path: `transitions.${t.id}.zoneId`,
@@ -1176,6 +1525,19 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         message: `Zone "${zone.id}" has unsupported collisionType "${zone.collisionType}" (expected one of: walkable, water, hazard, void, custom)`,
       });
     }
+
+    if (zone.physicsMode !== undefined && !VALID_PHYSICS_MODES.has(zone.physicsMode)) {
+      errors.push({
+        path: `zones.${zone.id}.physicsMode`,
+        message: `Zone "${zone.id}" has unsupported physicsMode "${zone.physicsMode}" (expected one of: ${[...VALID_PHYSICS_MODES].join(', ')})`,
+      });
+    }
+    if (zone.gravityDirection !== undefined && !VALID_GRAVITY_DIRECTIONS.has(zone.gravityDirection)) {
+      errors.push({
+        path: `zones.${zone.id}.gravityDirection`,
+        message: `Zone "${zone.id}" has unsupported gravityDirection "${zone.gravityDirection}" (expected one of: ${[...VALID_GRAVITY_DIRECTIONS].join(', ')})`,
+      });
+    }
   }
 
   // --- World-modeling: strata + stratum links (SCH world-modeling slice 1) ---
@@ -1221,7 +1583,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 69. Stratum.visibleStrata must reference existing strata.
   for (const s of strata) {
-    for (const vid of s.visibleStrata ?? []) {
+    if (!isOptionalArrayOrReport(s.visibleStrata, `strata.${s.id}.visibleStrata`, errors)) continue;
+    for (const vid of s.visibleStrata!) {
       if (!stratumIds.has(vid)) {
         errors.push({
           path: `strata.${s.id}.visibleStrata`,
@@ -1270,6 +1633,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   const VALID_HAZARD_TRIGGERS = new Set(['on-enter', 'per-turn', 'on-exit', 'timed']);
   const VALID_HAZARD_PASSABILITY = new Set(['yes', 'flying-only', 'never']);
+  const VALID_HAZARD_EFFECT_KINDS = ['damage', 'status', 'ignite', 'instakill'] as const;
   const hazardDefs = project.hazardDefinitions ?? [];
   const hazardIds = new Set<string>();
 
@@ -1300,6 +1664,9 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // branch, so a garbled/typo'd/future kind silently produced zero errors.
     // 'instakill' is handled explicitly (no extra fields) so it is never
     // misflagged by that catch-all.
+    if (!isArrayOrReport(h.effects, `hazardDefinitions.${h.id}.effects`, errors)) {
+      continue;
+    }
     for (let i = 0; i < h.effects.length; i++) {
       const e = h.effects[i];
       const base = `hazardDefinitions.${h.id}.effects[${i}]`;
@@ -1318,11 +1685,17 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
           break;
         }
         case 'status': {
-          if (!e.statusId || e.statusId.trim().length === 0) {
+          if (!isNonEmptyString(e.statusId)) {
             errors.push({ path: base, message: `Hazard "${h.id}" status effect has a missing statusId.` });
           }
           if (!Number.isFinite(e.chance) || e.chance < 0 || e.chance > 1) {
             errors.push({ path: base, message: `Hazard "${h.id}" status chance (${e.chance}) must be a finite number in [0, 1].` });
+          }
+          if (e.stacking !== 'refresh' && e.stacking !== 'stack' && e.stacking !== 'ignore') {
+            errors.push({
+              path: base,
+              message: `Hazard "${h.id}" status effect has unsupported stacking "${e.stacking}" (expected refresh, stack, or ignore).`,
+            });
           }
           break;
         }
@@ -1342,7 +1715,10 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
           // runtime value is whatever garbage/future data actually arrived.
           const _exhaustive: never = e;
           const unknownKind = (_exhaustive as { kind?: unknown }).kind;
-          errors.push({ path: base, message: `Hazard "${h.id}" has an unsupported effect kind "${String(unknownKind)}".` });
+          errors.push({
+            path: base,
+            message: `Hazard "${h.id}" has an unsupported effect kind "${String(unknownKind)}" (expected one of: ${VALID_HAZARD_EFFECT_KINDS.join(', ')}).`,
+          });
         }
       }
     }
@@ -1350,7 +1726,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 77. Zone.hazardRefs must reference existing hazard definitions.
   for (const z of project.zones) {
-    for (const ref of z.hazardRefs ?? []) {
+    if (!isOptionalArrayOrReport(z.hazardRefs, `zones.${z.id}.hazardRefs`, errors)) continue;
+    for (const ref of z.hazardRefs!) {
       if (!hazardIds.has(ref)) {
         errors.push({ path: `zones.${z.id}.hazardRefs`, message: `Zone "${z.id}" references nonexistent hazard "${ref}".` });
       }
@@ -1365,7 +1742,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!VALID_GATE_MODES.has(gate.mode)) {
       errors.push({ path: `zones.${z.id}.entryGate.mode`, message: `Zone "${z.id}" entry gate has unsupported mode "${gate.mode}" (expected hard or soft).` });
     }
-    if (!Array.isArray(gate.conditions) || gate.conditions.length === 0) {
+    if (!Array.isArray(gate.conditions)) {
+      errors.push({
+        path: `zones.${z.id}.entryGate.conditions`,
+        message: expectedArrayMessage(`zones.${z.id}.entryGate.conditions`, gate.conditions),
+      });
+    } else if (gate.conditions.length === 0) {
       errors.push({ path: `zones.${z.id}.entryGate.conditions`, message: `Zone "${z.id}" entry gate must have at least one condition.` });
     } else {
       for (let i = 0; i < gate.conditions.length; i++) {
@@ -1413,6 +1795,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (mn.merchantEntityId && !entityPlacementIds.has(mn.merchantEntityId)) {
       errors.push({ path: `marketNodes.${mn.id}.merchantEntityId`, message: `Market node "${mn.id}" references nonexistent merchant entity "${mn.merchantEntityId}"` });
     }
+    if (!Number.isFinite(mn.priceModifier)) {
+      errors.push({
+        path: `marketNodes.${mn.id}.priceModifier`,
+        message: `Market node "${mn.id}" priceModifier (${mn.priceModifier}) must be a finite number.`,
+      });
+    }
   }
 
   // 81. Tileset ID uniqueness.
@@ -1430,6 +1818,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // existing tileset.
   const tileDefinitionIds = new Set<string>();
   for (const ts of project.tilesets) {
+    if (!isArrayOrReport(ts.tiles, `tilesets.${ts.id}.tiles`, errors)) continue;
     for (const td of ts.tiles) {
       if (tileDefinitionIds.has(td.id)) {
         errors.push({ path: `tilesets.${ts.id}.tiles.${td.id}`, message: `Duplicate tile definition ID: ${td.id}` });
@@ -1449,6 +1838,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `tileLayers.${tl.id}`, message: `Duplicate tile layer ID: ${tl.id}` });
     }
     tileLayerIds.add(tl.id);
+    if (!isArrayOrReport(tl.tiles, `tileLayers.${tl.id}.tiles`, errors)) continue;
     for (const placement of tl.tiles) {
       if (!tileDefinitionIds.has(placement.tileId)) {
         errors.push({ path: `tileLayers.${tl.id}.tiles`, message: `Tile layer "${tl.id}" references nonexistent tile "${placement.tileId}"` });
@@ -1487,10 +1877,23 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `ambientLayers.${al.id}`, message: `Duplicate ambient layer ID: ${al.id}` });
     }
     ambientLayerIds.add(al.id);
+    if (!isArrayOrReport(al.zoneIds, `ambientLayers.${al.id}.zoneIds`, errors)) continue;
     for (const zid of al.zoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `ambientLayers.${al.id}.zoneIds`, message: `Ambient layer "${al.id}" references nonexistent zone "${zid}"` });
       }
+    }
+    if (!VALID_AMBIENT_LAYER_TYPES.has(al.type)) {
+      errors.push({
+        path: `ambientLayers.${al.id}.type`,
+        message: `Ambient layer "${al.id}" has unsupported type "${al.type}" (expected one of: ${[...VALID_AMBIENT_LAYER_TYPES].join(', ')}).`,
+      });
+    }
+    if (!Number.isFinite(al.intensity)) {
+      errors.push({
+        path: `ambientLayers.${al.id}.intensity`,
+        message: `Ambient layer "${al.id}" intensity (${al.intensity}) must be a finite number.`,
+      });
     }
   }
 
@@ -1512,6 +1915,18 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (b.interiorZoneId !== undefined && !zoneIds.has(b.interiorZoneId)) {
       errors.push({ path: `buildings.${b.id}.interiorZoneId`, message: `Building "${b.id}" enters nonexistent interior zone "${b.interiorZoneId}"` });
     }
+    if (!Number.isFinite(b.width) || b.width <= 0) {
+      errors.push({
+        path: `buildings.${b.id}.width`,
+        message: `Building "${b.id}" width (${b.width}) must be a finite number > 0.`,
+      });
+    }
+    if (!Number.isFinite(b.height) || b.height <= 0) {
+      errors.push({
+        path: `buildings.${b.id}.height`,
+        message: `Building "${b.id}" height (${b.height}) must be a finite number > 0.`,
+      });
+    }
   }
 
   // 88. Hub ID uniqueness + zoneId (required) + connectedZoneIds[] existence.
@@ -1524,6 +1939,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!zoneIds.has(h.zoneId)) {
       errors.push({ path: `hubs.${h.id}.zoneId`, message: `Hub "${h.id}" anchored to nonexistent zone "${h.zoneId}"` });
     }
+    if (!isArrayOrReport(h.connectedZoneIds, `hubs.${h.id}.connectedZoneIds`, errors)) continue;
     for (const zid of h.connectedZoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `hubs.${h.id}.connectedZoneIds`, message: `Hub "${h.id}" serves nonexistent zone "${zid}"` });
@@ -1545,9 +1961,11 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!zoneIds.has(s.zoneId)) {
       errors.push({ path: `strongholds.${s.id}.zoneId`, message: `Stronghold "${s.id}" in nonexistent zone "${s.zoneId}"` });
     }
-    for (const eid of s.garrisonEntityIds) {
-      if (!entityPlacementIds.has(eid)) {
-        errors.push({ path: `strongholds.${s.id}.garrisonEntityIds`, message: `Stronghold "${s.id}" garrisons nonexistent entity "${eid}"` });
+    if (isArrayOrReport(s.garrisonEntityIds, `strongholds.${s.id}.garrisonEntityIds`, errors)) {
+      for (const eid of s.garrisonEntityIds) {
+        if (!entityPlacementIds.has(eid)) {
+          errors.push({ path: `strongholds.${s.id}.garrisonEntityIds`, message: `Stronghold "${s.id}" garrisons nonexistent entity "${eid}"` });
+        }
       }
     }
     if (!Number.isFinite(s.defenseLevel) || s.defenseLevel < 0) {
@@ -1555,12 +1973,5 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
-  // Structured warning counts for callers that want a quick health check
-  warningCount = errors.length;
-  if (verbose && errors.length > 0) {
-    // In verbose mode, callers can inspect the full errors array for detail.
-    // This is useful for editor integrations that want to show inline diagnostics.
-  }
-
-  return { valid: errors.length === 0, errors, warningCount, schemaVersion: SCHEMA_VERSION };
+  return finishResult(errors, verbose);
 }

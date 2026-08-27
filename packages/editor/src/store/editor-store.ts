@@ -2,10 +2,14 @@
 
 import { create } from 'zustand';
 import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
-import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor } from '@world-forge/schema';
+import type {
+  WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection,
+  ItemPlacement, PropPlacement, MarketNode, CraftingStation, Building, Hub, Stronghold, PressureHotspot,
+} from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 import type { HitResult } from '../hit-testing.js';
+import { collectZoneAttached } from '../zone-attached.js';
 
 /** Deep-cloned selection data for clipboard operations. */
 export interface ClipboardData {
@@ -14,9 +18,26 @@ export interface ClipboardData {
   landmarks: Landmark[];
   spawns: SpawnPoint[];
   encounters: EncounterAnchor[];
+  /**
+   * Connections whose both ends were co-selected at copy time.
+   * Optional so older clipboards / tests that omit it still paste.
+   */
+  connections?: ZoneConnection[];
+  /**
+   * F-00a578f0: zoneId-bearing collections cloned when their parent zone is
+   * in the copy batch. Optional so older clipboards still paste.
+   */
+  itemPlacements?: ItemPlacement[];
+  propPlacements?: PropPlacement[];
+  marketNodes?: MarketNode[];
+  craftingStations?: CraftingStation[];
+  buildings?: Building[];
+  hubs?: Hub[];
+  strongholds?: Stronghold[];
+  pressureHotspots?: PressureHotspot[];
 }
 
-export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint' | 'prop-place';
+export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint' | 'prop-place' | 'item-place';
 export type RightTab = 'map' | 'player' | 'builds' | 'trees' | 'dialogue' | 'assets' | 'issues' | 'deps' | 'review' | 'guide' | 'import-summary' | 'diff' | 'objects' | 'presets';
 export type BuildsSubTab = 'config' | 'archetypes' | 'backgrounds' | 'traits' | 'disciplines' | 'combos';
 
@@ -34,9 +55,45 @@ export interface SelectionSet {
   landmarks: string[];
   spawns: string[];
   encounters: string[];
+  /** Optional so older literals / tests still type-check. */
+  items?: string[];
+  markets?: string[];
+  stations?: string[];
+  buildings?: string[];
+  hubs?: string[];
+  strongholds?: string[];
 }
 
-const EMPTY_SELECTION: SelectionSet = { zones: [], entities: [], landmarks: [], spawns: [], encounters: [] };
+export type SelectionKind =
+  | 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter'
+  | 'item' | 'market' | 'station' | 'building' | 'hub' | 'stronghold';
+
+export const SELECTION_KIND_KEY: Record<SelectionKind, keyof SelectionSet> = {
+  zone: 'zones',
+  entity: 'entities',
+  landmark: 'landmarks',
+  spawn: 'spawns',
+  encounter: 'encounters',
+  item: 'items',
+  market: 'markets',
+  station: 'stations',
+  building: 'buildings',
+  hub: 'hubs',
+  stronghold: 'strongholds',
+};
+
+export function emptySelection(): SelectionSet {
+  return {
+    zones: [], entities: [], landmarks: [], spawns: [], encounters: [],
+    items: [], markets: [], stations: [], buildings: [], hubs: [], strongholds: [],
+  };
+}
+
+const EMPTY_SELECTION: SelectionSet = emptySelection();
+
+function idsOf(sel: SelectionSet, key: keyof SelectionSet): string[] {
+  return sel[key] ?? [];
+}
 
 // --- Pure selection helpers (exported for tests & panels) ---
 
@@ -47,13 +104,14 @@ export function getSelectedZoneId(sel: SelectionSet): string | null {
 
 /** Total count of all selected objects */
 export function getSelectionCount(sel: SelectionSet): number {
-  return sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+  return sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
+    + idsOf(sel, 'items').length + idsOf(sel, 'markets').length + idsOf(sel, 'stations').length
+    + idsOf(sel, 'buildings').length + idsOf(sel, 'hubs').length + idsOf(sel, 'strongholds').length;
 }
 
 /** Check if a specific object is in the selection */
-export function isSelected(sel: SelectionSet, type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter', id: string): boolean {
-  const key = type === 'zone' ? 'zones' : type === 'entity' ? 'entities' : type === 'landmark' ? 'landmarks' : type === 'spawn' ? 'spawns' : 'encounters';
-  return sel[key].includes(id);
+export function isSelected(sel: SelectionSet, type: SelectionKind, id: string): boolean {
+  return idsOf(sel, SELECTION_KIND_KEY[type]).includes(id);
 }
 
 /** Returns the selected connection, or null if none */
@@ -77,6 +135,8 @@ interface EditorState {
   showEntities: boolean;
   showLandmarks: boolean;
   showSpawns: boolean;
+  /** F-5515c044: town markers (markets, stations, buildings, hubs, strongholds). */
+  showTown: boolean;
   showBackgrounds: boolean;
   showTiles: boolean;
   showProps: boolean;
@@ -111,6 +171,8 @@ interface EditorState {
   selectLandmark: (id: string, additive: boolean) => void;
   selectSpawn: (id: string, additive: boolean) => void;
   selectEncounter: (id: string, additive: boolean) => void;
+  /** F-df71e70a / F-5515c044: select items and town markers. */
+  selectKind: (type: SelectionKind, id: string, additive: boolean) => void;
   selectAll: (set: SelectionSet, additive: boolean) => void;
   /** Backward compat: set single zone selection (used by validation/export navigation) */
   setSelectedZone: (id: string | null) => void;
@@ -123,6 +185,7 @@ interface EditorState {
   toggleEntities: () => void;
   toggleLandmarks: () => void;
   toggleSpawns: () => void;
+  toggleTown: () => void;
   toggleBackgrounds: () => void;
   toggleTiles: () => void;
   toggleProps: () => void;
@@ -152,6 +215,8 @@ interface EditorState {
   isHidden: (id: string) => boolean;
   showAll: () => void;
   hideSelected: () => void;
+  /** F-17014243: drop per-object hidden ids (memory + localStorage). Called on load/new. */
+  clearHiddenIds: () => void;
 
   // Performance stats overlay (FT-010)
   showPerfStats: boolean;
@@ -204,6 +269,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showEntities: true,
   showLandmarks: true,
   showSpawns: true,
+  showTown: true,
   showBackgrounds: true,
   showTiles: true,
   showProps: true,
@@ -270,6 +336,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ? { ...s.selection, encounters: toggleInArray(s.selection.encounters, id) }
       : { ...EMPTY_SELECTION, encounters: [id] },
   })),
+  selectKind: (type, id, additive) => set((s) => {
+    const key = SELECTION_KIND_KEY[type];
+    return {
+      selectedConnection: null,
+      selection: additive
+        ? { ...s.selection, [key]: toggleInArray(idsOf(s.selection, key), id) }
+        : { ...EMPTY_SELECTION, [key]: [id] },
+    };
+  }),
   selectAll: (incoming, additive) => set((s) => ({
     selectedConnection: null,
     selection: additive ? {
@@ -278,7 +353,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       landmarks: [...new Set([...s.selection.landmarks, ...incoming.landmarks])],
       spawns: [...new Set([...s.selection.spawns, ...incoming.spawns])],
       encounters: [...new Set([...s.selection.encounters, ...incoming.encounters])],
-    } : incoming,
+      items: [...new Set([...idsOf(s.selection, 'items'), ...idsOf(incoming, 'items')])],
+      markets: [...new Set([...idsOf(s.selection, 'markets'), ...idsOf(incoming, 'markets')])],
+      stations: [...new Set([...idsOf(s.selection, 'stations'), ...idsOf(incoming, 'stations')])],
+      buildings: [...new Set([...idsOf(s.selection, 'buildings'), ...idsOf(incoming, 'buildings')])],
+      hubs: [...new Set([...idsOf(s.selection, 'hubs'), ...idsOf(incoming, 'hubs')])],
+      strongholds: [...new Set([...idsOf(s.selection, 'strongholds'), ...idsOf(incoming, 'strongholds')])],
+    } : { ...EMPTY_SELECTION, ...incoming },
   })),
   /** Backward compat: replaces selection with single zone (or clears if null) */
   setSelectedZone: (id) => set({ selectedConnection: null, selection: id ? { ...EMPTY_SELECTION, zones: [id] } : { ...EMPTY_SELECTION } }),
@@ -293,6 +374,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   toggleEntities: () => set((s) => ({ showEntities: !s.showEntities })),
   toggleLandmarks: () => set((s) => ({ showLandmarks: !s.showLandmarks })),
   toggleSpawns: () => set((s) => ({ showSpawns: !s.showSpawns })),
+  toggleTown: () => set((s) => ({ showTown: !s.showTown })),
   toggleBackgrounds: () => set((s) => ({ showBackgrounds: !s.showBackgrounds })),
   toggleTiles: () => set((s) => ({ showTiles: !s.showTiles })),
   toggleProps: () => set((s) => ({ showProps: !s.showProps })),
@@ -324,8 +406,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const landmarks = project.landmarks.filter((l) => sel.landmarks.includes(l.id)).map((l) => structuredClone(l));
     const spawns = project.spawnPoints.filter((sp) => sel.spawns.includes(sp.id)).map((sp) => structuredClone(sp));
     const encounters = project.encounterAnchors.filter((enc) => sel.encounters.includes(enc.id)).map((enc) => structuredClone(enc));
-    if (zones.length + entities.length + landmarks.length + spawns.length + encounters.length === 0) return {};
-    return { clipboard: { zones, entities, landmarks, spawns, encounters } };
+    const items = (project.itemPlacements ?? []).filter((i) => idsOf(sel, 'items').includes(i.itemId)).map((i) => structuredClone(i));
+    // F-923c690c: copy connections whose both ends are in the selected zone set
+    // (same predicate as duplicateSelected). Canvas draws from project.connections,
+    // so omitting them produced isolated pasted rooms with no door line.
+    const zoneSet = new Set(sel.zones);
+    const connections = project.connections
+      .filter((c) => zoneSet.has(c.fromZoneId) && zoneSet.has(c.toZoneId))
+      .map((c) => structuredClone(c));
+    // F-00a578f0: clone every zoneId-bearing object whose zone is in the batch
+    // (same predicate as connections: parent zone co-selected). These types
+    // cannot be independently selected, so omitting them dropped furniture
+    // when duplicating a furnished room.
+    const attached = collectZoneAttached(project, zoneSet);
+    if (zones.length + entities.length + landmarks.length + spawns.length + encounters.length + items.length === 0) return {};
+    const attachedItems = attached.itemPlacements ?? [];
+    const itemIds = new Set(attachedItems.map((i) => i.itemId));
+    const extraItems = items.filter((i) => !itemIds.has(i.itemId));
+    return { clipboard: { zones, entities, landmarks, spawns, encounters, connections, ...attached, itemPlacements: [...attachedItems, ...extraItems] } };
   }),
   getClipboard: () => get().clipboard,
 
@@ -355,16 +453,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   }),
   isHidden: (id) => get().hiddenIds.has(id),
   showAll: () => {
+    get().clearHiddenIds();
+  },
+  clearHiddenIds: () => {
     try { localStorage.removeItem('wf-hidden-ids'); } catch { /* ignore */ }
     set({ hiddenIds: new Set<string>() });
   },
   hideSelected: () => set((s) => {
     const sel = s.selection;
-    const ids = [...sel.zones, ...sel.entities, ...sel.landmarks, ...sel.spawns, ...sel.encounters];
+    const ids = [
+      ...sel.zones, ...sel.entities, ...sel.landmarks, ...sel.spawns, ...sel.encounters,
+      ...idsOf(sel, 'items'), ...idsOf(sel, 'markets'), ...idsOf(sel, 'stations'),
+      ...idsOf(sel, 'buildings'), ...idsOf(sel, 'hubs'), ...idsOf(sel, 'strongholds'),
+    ];
     if (ids.length === 0) return {};
     const next = new Set(s.hiddenIds);
     for (const id of ids) next.add(id);
-    try { localStorage.setItem('wf-hidden-ids', JSON.stringify([...next])); } catch { /* ignore */ }
+    // F-17014243: same one-time write-failure warning as toggleHidden (ED-A-005).
+    try {
+      localStorage.setItem('wf-hidden-ids', JSON.stringify([...next]));
+    } catch (err) {
+      if (!_warnedHiddenWrite) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[editor] could not persist hidden-ids to localStorage: ${msg}`);
+        _warnedHiddenWrite = true;
+      }
+    }
     return { hiddenIds: next };
   }),
 

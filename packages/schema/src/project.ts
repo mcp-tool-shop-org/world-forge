@@ -30,6 +30,15 @@ export interface WorldProject {
   tones: string[];
   difficulty: string;
   narratorTone: string;
+  /**
+   * Schema generation that authored this document. Additive; omitted means a
+   * pre-stamp v4.x file. create-empty / editor save should stamp SCHEMA_VERSION
+   * via stampProjectSchemaVersion(). validateProject does not mutate this field;
+   * it records the *producing validator* on ValidationResult.schemaVersion.
+   * Exporters should read project.schemaVersion first and
+   * ValidationResult.schemaVersion second.
+   */
+  schemaVersion?: string;
   /** Scale/scope of the world (dungeon, ocean, space, etc.). Optional for backward compat. */
   mode?: AuthoringMode;
 
@@ -107,3 +116,83 @@ export interface WorldProject {
    */
   transitions?: TransitionEntity[];
 }
+
+/**
+ * Required WorldProject array fields. validateProject's structural guard, createEmptyProject,
+ * and normalizeProjectShape all iterate this list so a new required array cannot land on
+ * the type without also joining the guard and the v4.x backfill.
+ */
+export const WORLD_PROJECT_REQUIRED_ARRAY_FIELDS = [
+  'zones',
+  'connections',
+  'districts',
+  'entityPlacements',
+  'itemPlacements',
+  'spawnPoints',
+  'landmarks',
+  'dialogues',
+  'progressionTrees',
+  'encounterAnchors',
+  'factionPresences',
+  'pressureHotspots',
+  'assets',
+  'assetPacks',
+  'craftingStations',
+  'marketNodes',
+  'tilesets',
+  'tileLayers',
+  'props',
+  'propPlacements',
+  'ambientLayers',
+  'tones',
+] as const satisfies readonly (keyof WorldProject)[];
+
+export type WorldProjectRequiredArrayField = typeof WORLD_PROJECT_REQUIRED_ARRAY_FIELDS[number];
+
+/**
+ * Optional WorldProject array fields. Omitted (undefined) stays valid; present-but-not-an-array
+ * is a structural error. The shape normalizer leaves omitted optionals undefined.
+ */
+export const WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS = [
+  'buildings',
+  'hubs',
+  'strongholds',
+  'lootTables',
+  'transitions',
+  'strata',
+  'stratumLinks',
+  'hazardDefinitions',
+  'projectTags',
+] as const satisfies readonly (keyof WorldProject)[];
+
+export type WorldProjectOptionalArrayField = typeof WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS[number];
+
+/** Required `T[]` keys on WorldProject (not `T[] | undefined`). */
+type RequiredArrayKeys = {
+  [K in keyof WorldProject]-?: WorldProject[K] extends readonly unknown[]
+    ? (undefined extends WorldProject[K] ? never : K)
+    : never
+}[keyof WorldProject];
+
+/** Optional `T[] | undefined` keys on WorldProject. */
+type OptionalArrayKeys = {
+  [K in keyof WorldProject]-?: undefined extends WorldProject[K]
+    ? (NonNullable<WorldProject[K]> extends readonly unknown[] ? K : never)
+    : never
+}[keyof WorldProject];
+
+type _AssertRequiredArraysCovered = Exclude<RequiredArrayKeys, WorldProjectRequiredArrayField> extends never
+  ? Exclude<WorldProjectRequiredArrayField, RequiredArrayKeys> extends never
+    ? true
+    : WorldProjectRequiredArrayField
+  : RequiredArrayKeys;
+const _assertRequiredArraysCovered: _AssertRequiredArraysCovered = true;
+void _assertRequiredArraysCovered;
+
+type _AssertOptionalArraysCovered = Exclude<OptionalArrayKeys, WorldProjectOptionalArrayField> extends never
+  ? Exclude<WorldProjectOptionalArrayField, OptionalArrayKeys> extends never
+    ? true
+    : WorldProjectOptionalArrayField
+  : OptionalArrayKeys;
+const _assertOptionalArraysCovered: _AssertOptionalArraysCovered = true;
+void _assertOptionalArraysCovered;

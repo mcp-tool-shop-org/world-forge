@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "4.5.0",
+  "schemaVersion": "4.7.0",
   "entities": [
     {
       "id": "npc-quartermaster",
@@ -9,7 +9,8 @@
         "merchant",
         "trader",
         "named",
-        "faction:tidewardens"
+        "faction:tidewardens",
+        "dialogue:dlg-quartermaster"
       ],
       "aiProfile": "cautious",
       "baseStats": {
@@ -78,6 +79,7 @@
     {
       "entityId": "npc-quartermaster",
       "zoneId": "zone-surface-yard",
+      "dialogueId": "dlg-quartermaster",
       "spawnCondition": {
         "type": "time-of-day",
         "params": {
@@ -319,6 +321,35 @@
       }
     }
   ],
+  "connections": [
+    {
+      "fromZoneId": "zone-surface-yard",
+      "toZoneId": "zone-under-vault",
+      "kind": "stairs",
+      "bidirectional": true,
+      "label": "vault stair",
+      "condition": {
+        "type": "has-item",
+        "params": {
+          "id": "rope"
+        }
+      }
+    },
+    {
+      "fromZoneId": "zone-under-vault",
+      "toZoneId": "zone-sky-gantry",
+      "kind": "secret",
+      "bidirectional": false,
+      "label": "shaft ladder",
+      "condition": {
+        "type": "party-level",
+        "params": {
+          "op": ">=",
+          "value": 10
+        }
+      }
+    }
+  ],
   "districts": [
     {
       "id": "district-harbourside",
@@ -337,6 +368,21 @@
         "morale": 35,
         "stability": 45,
         "surveillance": 40
+      },
+      "economyProfile": {
+        "supplyCategories": [
+          "food",
+          "rope",
+          "salvage"
+        ],
+        "scarcityDefaults": {
+          "food": 0.4,
+          "rope": 0.2,
+          "salvage": 0.7
+        },
+        "baseline": {
+          "food": 0.4
+        }
       }
     },
     {
@@ -355,6 +401,17 @@
         "morale": 60,
         "stability": 65,
         "surveillance": 75
+      },
+      "economyProfile": {
+        "supplyCategories": [
+          "iron",
+          "tools"
+        ],
+        "scarcityDefaults": {
+          "iron": 0.15,
+          "tools": 0.3
+        },
+        "baseline": {}
       }
     }
   ],
@@ -482,6 +539,37 @@
       }
     }
   ],
+  "itemPlacements": [
+    {
+      "itemId": "item-rope",
+      "zoneId": "zone-surface-yard",
+      "hidden": false,
+      "container": "stall crate",
+      "lootTableId": "loot-vault-silt",
+      "gridX": 7,
+      "gridY": 3
+    },
+    {
+      "itemId": "item-lantern",
+      "zoneId": "zone-under-vault",
+      "hidden": true,
+      "container": "silt",
+      "gridX": 3,
+      "gridY": 19,
+      "spawnCondition": {
+        "type": "never",
+        "params": {}
+      }
+    },
+    {
+      "itemId": "item-tide-ration",
+      "zoneId": "zone-sky-gantry",
+      "hidden": false,
+      "container": "gantry locker",
+      "gridX": 19,
+      "gridY": 5
+    }
+  ],
   "playerTemplate": {
     "name": "Surveyor",
     "defaultArchetypeId": "arch-delver",
@@ -513,6 +601,22 @@
       "house": "tidewardens"
     }
   },
+  "spawnPoints": [
+    {
+      "id": "sp-yard",
+      "zoneId": "zone-surface-yard",
+      "isDefault": true,
+      "gridX": 2,
+      "gridY": 2
+    },
+    {
+      "id": "sp-gantry",
+      "zoneId": "zone-sky-gantry",
+      "isDefault": false,
+      "gridX": 18,
+      "gridY": 2
+    }
+  ],
   "buildCatalog": {
     "packId": "c0-vocabulary-coverage",
     "statBudget": 12,
@@ -907,6 +1011,57 @@
       ],
       "priceModifier": 1.15,
       "contrabandAvailable": true
+    }
+  ],
+  "buildings": [
+    {
+      "id": "bld-harbour-office",
+      "name": "Harbour Office",
+      "buildingType": "office",
+      "gridX": 2,
+      "gridY": 8,
+      "width": 4,
+      "height": 3,
+      "zoneId": "zone-surface-yard",
+      "interiorZoneId": "zone-under-vault",
+      "tags": [
+        "civic",
+        "enterable"
+      ]
+    }
+  ],
+  "hubs": [
+    {
+      "id": "hub-yard-square",
+      "name": "Yard Square",
+      "zoneId": "zone-surface-yard",
+      "hubType": "market-square",
+      "serviceTypes": [
+        "market",
+        "tavern"
+      ],
+      "connectedZoneIds": [
+        "zone-under-vault"
+      ],
+      "tags": [
+        "hub",
+        "busy"
+      ]
+    }
+  ],
+  "strongholds": [
+    {
+      "id": "hold-gantry-keep",
+      "name": "Gantry Keep",
+      "zoneId": "zone-sky-gantry",
+      "factionId": "gantry-guild",
+      "defenseLevel": 4,
+      "garrisonEntityIds": [
+        "npc-gantry-runner"
+      ],
+      "tags": [
+        "fortified"
+      ]
     }
   ]
 }

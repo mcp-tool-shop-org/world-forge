@@ -5,9 +5,9 @@
  * Positions are in pixel coordinates (grid × tileSize), matching Godot 2D.
  */
 
-import type { WorldProject, Zone } from '@world-forge/schema';
+import type { WorldProject, Zone, ParallaxLayer } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
-import { gridToGodot2D, extentToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { gridToGodot2D, extentToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotZoneResource {
@@ -36,6 +36,18 @@ export interface GodotZoneResource {
     tilesetId?: string;
     elevation?: number;
     elevationRange?: { floor: number; ceiling: number };
+    /**
+     * Collision channel from Zone.collisionType. Walkable interiors must not
+     * get a filled AABB hull (tile walls own collision); void/hazard stay solid.
+     */
+    collisionType?: 'walkable' | 'water' | 'hazard' | 'void' | 'custom';
+    /** Ordered parallax layers (copied onto the resource + scene metadata). */
+    parallaxLayers?: ParallaxLayer[];
+    skylineRef?: string;
+    gravityOverride?: number;
+    gravityDirection?: 'down' | 'up' | 'none';
+    physicsMode?: 'normal' | 'platformer' | 'zero-g' | 'aquatic';
+    timeOfDay?: string;
     /** Suggested Godot node name (sanitized for scene tree). */
     nodeName: string;
 }
@@ -46,7 +58,7 @@ export interface ConvertZonesResult {
 }
 
 export function convertZones(project: WorldProject): ConvertZonesResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
 
     // Zone nodes are top-level siblings directly under the scene root (unlike
@@ -115,9 +127,8 @@ function convertZone(
         });
     }
 
-    // Parallax layers round-trip in the JSON pack but are NOT yet emitted as
-    // ParallaxBackground/ParallaxLayer scene nodes — report that honestly
-    // rather than claiming a lossless mapping that doesn't happen.
+    // Parallax/sky/physics copy onto the zone resource and scene metadata, but
+    // are NOT emitted as ParallaxBackground/ParallaxLayer scene nodes.
     if (z.parallaxLayers && z.parallaxLayers.length > 0) {
         fidelity.push({
             level: 'approximated',
@@ -125,8 +136,8 @@ function convertZone(
             severity: 'info',
             entityId: z.id,
             fieldPath: `zones.${z.id}.parallaxLayers`,
-            message: `Zone "${z.id}" has ${z.parallaxLayers.length} parallax layer(s) preserved as metadata; ParallaxBackground scene-node emission is not yet implemented.`,
-            reason: 'Parallax data round-trips in the pack; .tscn ParallaxBackground nodes are a planned enhancement.',
+            message: `Zone "${z.id}" has ${z.parallaxLayers.length} parallax layer(s) copied onto the zone resource and scene metadata; ParallaxBackground scene-node emission is not yet implemented.`,
+            reason: 'Parallax data lives on GodotZoneResource.parallaxLayers and zone-node metadata; .tscn ParallaxBackground nodes are a planned enhancement.',
         });
     }
 
@@ -159,6 +170,18 @@ function convertZone(
         tilesetId: z.tilesetId,
         elevation: z.elevation,
         elevationRange: z.elevationRange ? { floor: z.elevationRange.floor, ceiling: z.elevationRange.ceiling } : undefined,
+        collisionType: z.collisionType,
+        parallaxLayers: z.parallaxLayers?.map((p) => ({
+            id: p.id,
+            depth: p.depth,
+            assetRef: p.assetRef,
+            scrollFactor: p.scrollFactor,
+        })),
+        skylineRef: z.skylineRef,
+        gravityOverride: z.gravityOverride,
+        gravityDirection: z.gravityDirection,
+        physicsMode: z.physicsMode,
+        timeOfDay: z.timeOfDay,
         nodeName: uniqueZoneNodeName(z.id, z.name),
     };
 }

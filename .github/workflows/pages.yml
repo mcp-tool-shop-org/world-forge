@@ -5,15 +5,40 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      # F-96633795 / INF-B-001: site-config.ts stamps the landing hero from
+      # root package.json. A version-only bump must rebuild the CDN artifact.
+      - 'package.json'
       - '.github/workflows/**'
+  # F-96633795: gh release create publishes six packages via release.yml and
+  # used to leave Pages on whatever site/ tree last changed.
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # F-96633795: was ${{ github.workflow }}-${{ github.ref }}. A release-tag
+  # deploy (refs/tags/v*) and a main push could race two production CDN
+  # cutovers. Single production key serializes every deploy onto the live
+  # Pages site.
+  group: pages
+  # F-1b8b3bf8: was `true`. Same class as release.yml F-f4cbf9e9 — an in-flight
+  # Pages deploy is irreversible-ish (artifact wired to the CDN, then the
+  # curl-200 verifier). GitHub's Pages starter uses false so production
+  # deploys finish. A second push to main (or a workflow-path change, which
+  # is in this file's on.paths) used to cancel deploy-pages / verify, so a
+  # partial CDN cutover had no health check. `false` queues the new run
+  # behind the in-flight deploy. Keep a single group so only one deploy is
+  # live; do not kill it.
+  cancel-in-progress: false
 
 jobs:
   build:
+    # F-4a5efc2f: job id stays build. Display name so a handbook-build
+    # failure is not the generic 'build' under this workflow.
+    name: Build handbook (Pages artifact)
+    # F-96633795: pin with deploy so a feature-branch workflow_dispatch does
+    # not occupy the `pages` concurrency slot for a 20-minute build.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # INF-B-006: cap wall time so a hung build can't burn the 6-hour default.
     timeout-minutes: 20
@@ -24,13 +49,24 @@ jobs:
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 22
+          # F-9a301370: must match ci.yml site-build (Node 24, a required
+          # check). Deploying a Node-22 artifact while CI built on 24 let
+          # Node-22-only Astro/Starlight/Tailwind failures show up only after
+          # merge, on Pages. The curl-200 verifier catches a total outage,
+          # not a silent render/runtime difference.
+          node-version: 24
           cache: npm
           cache-dependency-path: site/package-lock.json
 
       - name: Install site dependencies
         working-directory: site
         run: npm ci
+
+      # F-df8375e8: Pages deploys the handbook graph. Root CI audit cannot
+      # see site/package-lock.json. No continue-on-error.
+      - name: Dependency audit
+        working-directory: site
+        run: npm audit --audit-level=high
 
       - name: Build site
         working-directory: site
@@ -41,6 +77,12 @@ jobs:
           path: site/dist
 
   deploy:
+    # F-4a5efc2f: job id stays deploy. The verify step name was already
+    # operator-facing; the job title in the run list was not.
+    name: Deploy to GitHub Pages + verify 200
+    # F-96633795: workflow_dispatch can target any ref; only main and v*
+    # tags may cut over production Pages.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     # INF-B-006: deploy is normally <1 min; 20 minutes leaves generous headroom.
@@ -60,22 +102,34 @@ jobs:
       # but occasionally the CDN lags or a redirect misfires and the site goes
       # stale silently. Curl the deployed URL and fail the job on non-200.
       # Retries 5x with backoff because CDN propagation can take a few seconds.
+      # F-97ca7b28: operator-facing half — per-attempt ::warning, no sleep
+      # after the last miss, curl write-out without concatenating the
+      # fallback, final ::error names last status + attempt count + Next.
       - name: Verify deployed site returns 200
         run: |
           url="${{ steps.deployment.outputs.page_url }}"
           if [ -z "$url" ]; then
-            echo "::error::deploy-pages did not emit a page_url output"
+            echo "::error::deploy-pages emitted no page_url — check environment github-pages, permissions pages:write + id-token:write. Next: re-run after Pages is enabled."
             exit 1
           fi
           echo "Probing $url"
-          for attempt in 1 2 3 4 5; do
-            status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url" || echo "000")
-            echo "attempt $attempt: HTTP $status"
+          max=5
+          status=""
+          for attempt in $(seq 1 "$max"); do
+            status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
+            if [ -z "$status" ] || [ "$status" = "000" ]; then
+              status="curl-failed"
+            fi
+            echo "attempt $attempt/$max: HTTP $status"
             if [ "$status" = "200" ]; then
               echo "::notice::Pages deploy verified ($url returned 200)"
               exit 0
             fi
-            sleep $((attempt * 5))
+            if [ "$attempt" -lt "$max" ]; then
+              wait_s=$((attempt * 5))
+              echo "::warning::Pages probe attempt $attempt/$max got HTTP $status for $url — sleeping ${wait_s}s (CDN lag)"
+              sleep "$wait_s"
+            fi
           done
-          echo "::error::Pages deploy verification failed — $url never returned 200"
+          echo "::error::Pages deploy verification failed after $max attempts — last HTTP $status for $url. Next: wait for CDN and re-run the workflow, or open $url"
           exit 1

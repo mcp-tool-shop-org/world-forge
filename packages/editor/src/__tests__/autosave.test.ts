@@ -7,6 +7,8 @@ import {
   clearAutoSave,
   startAutoSave,
   stopAutoSave,
+  flushAutoSaveIfDirty,
+  writeAutoSave,
 } from '../store/project-store.js';
 
 // Mock localStorage
@@ -129,6 +131,29 @@ describe('Auto-save + Crash Recovery (FT-001)', () => {
 
     expect(hasAutoSaveRecovery()).toBe(false);
   });
+
+  it('F-e6f1b71a: flushAutoSaveIfDirty writes immediately when dirty and is a no-op when clean', () => {
+    useProjectStore.getState().loadProject(createEmptyProject());
+    expect(flushAutoSaveIfDirty()).toBe(false);
+    expect(hasAutoSaveRecovery()).toBe(false);
+
+    useProjectStore.getState().updateProject((p) => ({ ...p, name: 'Flushed' }));
+    expect(useProjectStore.getState().dirty).toBe(true);
+    expect(flushAutoSaveIfDirty()).toBe(true);
+    expect(hasAutoSaveRecovery()).toBe(true);
+    expect(recoverAutoSave()?.name).toBe('Flushed');
+  });
+
+  it('F-e6f1b71a: flushAutoSaveIfDirty calls writeAutoSave', () => {
+    useProjectStore.getState().loadProject(createEmptyProject());
+    useProjectStore.getState().updateProject((p) => ({ ...p, name: 'Spy' }));
+    const spy = vi.spyOn({ writeAutoSave }, 'writeAutoSave');
+    // The named export is the same function the flush helper calls; asserting
+    // the slot is the observable consequence.
+    flushAutoSaveIfDirty();
+    expect(hasAutoSaveRecovery()).toBe(true);
+    spy.mockRestore();
+  });
 });
 
 // --- Phase 17: markClean + persistence regression ---
@@ -159,3 +184,57 @@ describe('Phase 17: markClean resets dirty flag', () => {
     expect(useProjectStore.getState().dirty).toBe(true);
   });
 });
+
+// F-9e54f408: clearAutoSave existed but production lifecycle never called it
+// except inside attemptCrashRecovery after a successful boot recover. Load /
+// New / Save left the slot in place, so abandoning A (autosaved) then loading
+// B resurrected A as "crash recovery" on next boot.
+describe('F-9e54f408: loadProject / newProject / markClean drop the crash-recovery slot', () => {
+  beforeEach(() => {
+    store.clear();
+    stopAutoSave();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    stopAutoSave();
+    vi.useRealTimers();
+  });
+
+  function seedDirtyAutosave(name: string): void {
+    useProjectStore.getState().loadProject(createEmptyProject());
+    useProjectStore.getState().updateProject((p) => ({ ...p, name }));
+    startAutoSave();
+    vi.advanceTimersByTime(30_000);
+    expect(hasAutoSaveRecovery()).toBe(true);
+  }
+
+  it('loadProject after a dirty autosave slot makes hasAutoSaveRecovery() false', () => {
+    seedDirtyAutosave('Abandoned A');
+    const b = { ...createEmptyProject(), name: 'Project B' };
+    const ok = useProjectStore.getState().loadProject(b);
+    expect(ok).toBe(true);
+    expect(hasAutoSaveRecovery()).toBe(false);
+  });
+
+  it('newProject after a dirty autosave slot makes hasAutoSaveRecovery() false', () => {
+    seedDirtyAutosave('Abandoned A');
+    useProjectStore.getState().newProject();
+    expect(hasAutoSaveRecovery()).toBe(false);
+  });
+
+  it('markClean (successful Save) after a dirty autosave slot makes hasAutoSaveRecovery() false', () => {
+    seedDirtyAutosave('Saved A');
+    useProjectStore.getState().markClean();
+    expect(hasAutoSaveRecovery()).toBe(false);
+    expect(useProjectStore.getState().dirty).toBe(false);
+  });
+
+  it('a rejected loadProject does NOT clear the autosave slot', () => {
+    seedDirtyAutosave('Still Recoverable');
+    const ok = useProjectStore.getState().loadProject('not a project' as never);
+    expect(ok).toBe(false);
+    expect(hasAutoSaveRecovery()).toBe(true);
+  });
+});
+

@@ -63,7 +63,7 @@ describe('ZoneConnection.condition validation (F-007)', () => {
     const result = validateProject(bad);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) =>
-      e.path === 'connections' && e.message.includes('nonsense:foo'),
+      e.path.startsWith('connections[') && e.message.includes('nonsense:foo'),
     )).toBe(true);
   });
 

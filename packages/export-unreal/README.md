@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="./logo.png" alt="World Forge" width="400">
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@world-forge/export-unreal"><img src="https://img.shields.io/npm/v/@world-forge/export-unreal.svg" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
+
 # @world-forge/export-unreal
 
 Export pipeline for [World Forge](https://github.com/mcp-tool-shop-org/world-forge) — converts a `WorldProject` into an **Unreal Engine 5** content pack tuned for 2.5D games.
@@ -10,7 +19,7 @@ npm install @world-forge/export-unreal
 
 ## API
 
-Choose this exporter for Unreal Engine 5 2.5D projects. For the AI RPG Engine, use `@world-forge/export-ai-rpg`. For Godot (planned), see `@world-forge/export-godot`.
+Choose this exporter for Unreal Engine 5 2.5D projects. For the AI RPG Engine, use `@world-forge/export-ai-rpg`. For Godot 4, see `@world-forge/export-godot`.
 
 ```typescript
 import { exportToUnreal } from '@world-forge/export-unreal';
@@ -30,6 +39,7 @@ npx world-forge-export-unreal project.json --out ./UnrealPack
 npx world-forge-export-unreal project.json --validate-only
 npx world-forge-export-unreal project.json --out ./UnrealPack --sign
 npx world-forge-export-unreal --summary ./UnrealPack
+npx world-forge-export-unreal --verify ./UnrealPack
 npx world-forge-export-unreal --diff ./prev ./new [--detailed]
 ```
 
@@ -47,11 +57,11 @@ Attaches an optional integrity hash to `pack.json` under `Meta.Signature`:
 }
 ```
 
-The signature is an integrity check, not a MAC — anyone with the pack can re-hash it. The UE5 loader or a CI step calls `verifyPackSignature(meta)` (exported from this package) to detect tampering between export and import. Omit `--sign` for unsigned packs (default, backward compatible).
+The signature is an integrity check, not a MAC — anyone with the pack can re-hash it. The UE5 loader or a CI step calls `verifyPackSignature(meta)` from `@world-forge/export-unreal/signing` (Node-only; the package root is browser-safe and does not load `node:crypto`) to detect tampering between export and import. CLI `--verify` exits non-zero on mismatch. Omit `--sign` for unsigned packs (default, backward compatible).
 
-### `--summary <pack-dir>` / `--diff <prev> <new>` (UE-FT-005)
+### `--summary <pack-dir>` / `--verify <pack-dir>` / `--diff <prev> <new>` (UE-FT-005)
 
-Human-readable change review over exported packs. `--summary` prints counts + FormatVersion + signed-or-not. `--diff` compares two pack directories and reports added / removed / changed zones, districts, actors, plus FormatVersion and Signature changes. Add `--detailed` to list the ids.
+Human-readable change review over exported packs. `--summary` prints counts + FormatVersion + signed-or-not (and valid/INVALID when a Signature is present). `--verify` re-hashes Meta and exits non-zero on mismatch or an unsigned pack. `--diff` compares two pack directories and reports added / removed / changed zones, districts, actors, parallax layers, and transitions, plus FormatVersion and Signature changes. Add `--detailed` to list the ids.
 
 ## Pack format versioning (UE-FT-008)
 
@@ -61,7 +71,7 @@ Human-readable change review over exported packs. `--summary` prints counts + Fo
 - **Minor bump** — optional field added (additive, back-compatible). Old loaders ignore new fields.
 - **Patch bump** — doc-only.
 
-The current format is `1.1.0` (v1.0.0 → v1.1.0 added the optional `Signature` field). A migration framework (`migratePack` + `MIGRATIONS` chain) walks older packs forward on import; unknown majors are rejected with a clear error naming the version, and newer minors load with a forward-compat warning.
+The current format is `1.2.0` (v1.0.0 → v1.1.0 added the optional `Signature` field; v1.1.0 → v1.2.0 added strata / tile cells / props / typed hazards). A migration framework (`migratePack` + `MIGRATIONS` chain) walks older packs forward on import; unknown majors are rejected with a clear error naming the version, and newer minors load with a forward-compat warning.
 
 ## Output layout
 
@@ -69,16 +79,22 @@ Writing to `--out ./UnrealPack` produces:
 
 ```
 UnrealPack/
-  pack.json                  — manifest (id, name, version, FormatVersion, optional Signature)
-  zones/<id>.json            — one Primary Data Asset JSON per zone
-  districts/<id>.json        — one per district
-  actors/manifest.json       — entity placements grouped by zone, BP-class tag per role
-  connections.json           — ZoneConnection → LevelStreamingHint
-  world-partition.json       — grid cell hints (gridWidth/gridHeight → UE cells)
-  fidelity.json              — what was lossless / approximated / dropped
+  pack.json                       — manifest (id, name, version, FormatVersion, optional Signature)
+  zones/<id>.json                 — one Primary Data Asset JSON per zone (includes ParallaxLayers)
+  districts/<id>.json             — one per district
+  actors/manifest.json            — entity placements grouped by zone, BP-class tag per role
+  actors/parallax-manifest.json   — one parallax actor per ParallaxLayer across all zones
+  actors/transitions.json         — placed transition entities (elevators, warps, lifts)
+  actors/strata.json              — discrete vertical strata + stratum links (ZBand, VisibleStrata)
+  actors/tiles.json               — per-layer cells (GridX/Y, TileId, AtlasCol/Row, Walkable) + CollisionBoxes + HISM hints
+  actors/props.json               — placed props with walkable collision
+  actors/hazards.json             — typed hazard definitions + zone-covering volume actors
+  connections.json                — ZoneConnection → LevelStreamingHint
+  world-partition.json            — grid cell hints (gridWidth/gridHeight → UE cells)
+  fidelity.json                   — what was lossless / approximated / dropped
 ```
 
-Each zone file carries transformed coordinates in Unreal units (centimetres, Z-up, Y-flipped) and 2.5D-specific fields (elevation, parallax layers, skyline ref).
+Each zone file carries transformed coordinates in Unreal units (centimetres, Z-up, Y-flipped) and 2.5D-specific fields (elevation, parallax layers, skyline ref, StratumId/ZBand, EntryGate, HazardRefs). `TilesetAssetId` is kept; the cell grid and walkable collision live in `actors/tiles.json` so a loader can reconstruct the gameplay plane. ParallaxLayers also live on each zone asset, so loaders can pick the zone files **or** `actors/parallax-manifest.json` — not both, or backdrops spawn twice.
 
 ## Coordinate transform
 
@@ -106,14 +122,20 @@ Projects without 2.5D fields still export cleanly — elevation defaults to 0 an
 Expected loader contract:
 
 1. Read `pack.json` once to pin the source project id, `TileSizeCm`, and `FormatVersion`. Bail early if `FormatVersion` is past the loader's supported major.
-2. Iterate `zones/<id>.json` — each file is a UE5 Primary Data Asset payload with zone extent in UE cm (Z-up, Y-flipped), elevation in cm, parallax layers, and the tileset/background/skyline asset ids.
+2. Iterate `zones/<id>.json` — each file is a UE5 Primary Data Asset payload with zone extent in UE cm (Z-up, Y-flipped), elevation in cm, parallax layers, StratumId/ZBand, EntryGate, HazardRefs, and the tileset/background/skyline asset ids.
 3. Consult `world-partition.json` to size the streaming grid (`CellsX`, `CellsY`, `CellSizeCm`) and pick a loader strategy (always-loaded for small maps, streaming cells for open worlds).
 4. Read `connections.json` to wire LevelStreaming edges and set up teleport/load volumes per `StreamMode`.
 5. Iterate `actors/manifest.json` — entities are grouped by zone, each with a role tag (`npc`, `enemy`, `merchant`, `quest-giver`, `companion`, `boss`) the loader maps to a Blueprint class. `LocationCm` is already in UE space.
-6. Surface `fidelity.json` to content authors — the `dropped` / `approximated` entries tell them what didn't round-trip and why.
+6. Read `actors/parallax-manifest.json` — one actor per parallax layer keyed by `ZoneId` + `LayerId`. ParallaxLayers also live on each zone asset; pick one source so backdrops are not spawned twice.
+7. Read `actors/transitions.json` — elevators, warps, and lifts with `LocationCm` already in UE space.
+8. Read `actors/strata.json` — discrete vertical layers + stair/ladder/elevator links. Stamp `StratumId`/`ZBand` from each zone asset for draw/PVS order.
+9. Read `actors/tiles.json` — per-layer cells (atlas coords or Color/Opacity), CollisionBoxes from `!walkable` tiles, HISM instance transforms when a zone exceeds 50 tiles.
+10. Read `actors/props.json` — placed props with footprint + CollisionBoxes from `!walkable` definitions.
+11. Read `actors/hazards.json` — typed definitions + zone-covering volume actors (trigger, effects, passability, vision, weather).
+12. Surface `fidelity.json` to content authors — the `dropped` / `approximated` entries tell them what didn't round-trip and why.
 
 A reference UE5 loader will be published alongside the Star Freight UE5 project when it lands.
 
 ## Peer packages
 
-`@world-forge/export-ai-rpg` targets the `ai-rpg-engine` ContentPack format. Both exporters consume the same `WorldProject` — pick the one that matches your engine.
+`@world-forge/export-ai-rpg` targets the `ai-rpg-engine` ContentPack format. `@world-forge/export-godot` is the Godot 4 target. All three exporters consume the same `WorldProject` — pick the one that matches your engine.

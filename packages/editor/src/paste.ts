@@ -1,7 +1,8 @@
 // paste.ts — pure function for pasting clipboard contents into a project
 
-import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor } from '@world-forge/schema';
+import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
 import type { ClipboardData, SelectionSet } from './store/editor-store.js';
+import { remapZoneAttached, applyAttachedToProject } from './zone-attached.js';
 
 export interface PasteResult {
   project: WorldProject;
@@ -93,13 +94,15 @@ export function pasteFromClipboard(
     gridY: l.gridY + dy,
   }));
 
-  // Remap spawns
+  // Remap spawns. F-f0d45cfb: never paste a second isDefault spawn —
+  // duplicateSelected already forces isDefault: false.
   const newSpawns: SpawnPoint[] = clipboard.spawns.map((s) => ({
     ...structuredClone(s),
     id: idMap.get(s.id)!,
     zoneId: idMap.get(s.zoneId) ?? s.zoneId,
     gridX: s.gridX + dx,
     gridY: s.gridY + dy,
+    isDefault: false,
   }));
 
   // Remap encounters
@@ -109,14 +112,39 @@ export function pasteFromClipboard(
     zoneId: idMap.get(enc.zoneId) ?? enc.zoneId,
   }));
 
-  const newProject: WorldProject = {
+  // F-923c690c: remap connections whose both ends are in this paste batch
+  // (same two-pass as duplicateSelected). Canvas draws lines exclusively
+  // from project.connections, so dropping them left pasted rooms isolated.
+  const newConnections: ZoneConnection[] = (clipboard.connections ?? [])
+    .filter((c) => idMap.has(c.fromZoneId) && idMap.has(c.toZoneId))
+    .map((c) => ({
+      ...structuredClone(c),
+      fromZoneId: idMap.get(c.fromZoneId)!,
+      toZoneId: idMap.get(c.toZoneId)!,
+    }));
+
+  // F-923c690c: append pasted zone ids to any district that contained the
+  // originals — otherwise parentDistrictId points at a district whose
+  // zoneIds list does not contain the new room.
+  const originalZoneIds = clipboard.zones.map((z) => z.id);
+  const districts = project.districts.map((d) => {
+    const pastedInDistrict = originalZoneIds.filter((zid) => d.zoneIds.includes(zid));
+    if (pastedInDistrict.length === 0) return d;
+    return { ...d, zoneIds: [...d.zoneIds, ...pastedInDistrict.map((zid) => idMap.get(zid)!)] };
+  });
+
+  const remappedAttached = remapZoneAttached(clipboard, idMap, dx, dy);
+
+  const newProject: WorldProject = applyAttachedToProject({
     ...project,
     zones: [...project.zones, ...newZones],
+    connections: [...project.connections, ...newConnections],
+    districts,
     entityPlacements: [...project.entityPlacements, ...newEntities],
     landmarks: [...project.landmarks, ...newLandmarks],
     spawnPoints: [...project.spawnPoints, ...newSpawns],
     encounterAnchors: [...project.encounterAnchors, ...newEncounters],
-  };
+  }, remappedAttached);
 
   return {
     project: newProject,

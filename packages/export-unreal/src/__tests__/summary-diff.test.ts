@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { exportToUnreal } from '../export.js';
+import { composeSignedMeta } from '../signing.js';
 import { summarizePack, formatSummary } from '../summary.js';
 import { diffPacks, formatDiff } from '../diff.js';
 import type { UnrealContentPack } from '../export.js';
@@ -46,12 +47,13 @@ async function writePack(root: string, name: string, pack: UnrealContentPack): P
 }
 
 async function buildPack(signing = false): Promise<WrittenPack['pack']> {
-  const result = exportToUnreal(
-    minimalProject,
-    signing ? { signing: { algorithm: 'sha256' } } : undefined,
-  );
+  const result = exportToUnreal(minimalProject);
   if (!result.success) throw new Error('export failed');
-  return result.contentPack;
+  if (!signing) return result.contentPack;
+  return {
+    ...result.contentPack,
+    Meta: composeSignedMeta(result.contentPack.Meta),
+  };
 }
 
 let root: string;
@@ -74,7 +76,7 @@ describe('summarizePack', () => {
     expect(result.counts.districts).toBe(pack.Districts.length);
     expect(result.counts.actors).toBe(pack.Actors.All.length);
     expect(result.counts.connections).toBe(pack.Connections.length);
-    expect(result.meta.formatVersion).toBe('1.1.0');
+    expect(result.meta.formatVersion).toBe('1.2.0');
     expect(result.meta.signed).toBe(false);
     expect(result.sizeBytes).toBeGreaterThan(0);
   });
@@ -86,6 +88,23 @@ describe('summarizePack', () => {
     if ('error' in result) throw new Error(result.error);
     expect(result.meta.signed).toBe(true);
     expect(result.meta.signatureAlgorithm).toBe('sha256');
+    expect(result.meta.signatureValid).toBe(true);
+  });
+
+  it('F-38fa7a71: reports INVALID when a signed pack.json is tampered', async () => {
+    const pack = await buildPack(true);
+    const tampered: UnrealContentPack = {
+      ...pack,
+      Meta: { ...pack.Meta, Name: 'TAMPERED NAME' },
+    };
+    const dir = await writePack(root, 'signed-tampered', tampered);
+    const result = await summarizePack(dir);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.meta.signed).toBe(true);
+    expect(result.meta.signatureValid).toBe(false);
+    expect(result.meta.signatureReason).toMatch(/mismatch/i);
+    const text = formatSummary(result);
+    expect(text).toMatch(/INVALID/);
   });
 
   it('formatSummary produces the expected labeled lines', async () => {
@@ -95,7 +114,7 @@ describe('summarizePack', () => {
     if ('error' in result) throw new Error(result.error);
     const text = formatSummary(result);
     expect(text).toContain('Pack:');
-    expect(text).toContain('FormatVersion: 1.1.0');
+    expect(text).toContain('FormatVersion: 1.2.0');
     expect(text).toContain('Zones:');
     expect(text).toContain('Signed:');
   });
@@ -132,6 +151,8 @@ describe('diffPacks', () => {
     expect(result.zones).toEqual({ added: [], removed: [], changed: [] });
     expect(result.districts).toEqual({ added: [], removed: [], changed: [] });
     expect(result.actors).toEqual({ added: [], removed: [], changed: [] });
+    expect(result.parallax).toEqual({ added: [], removed: [], changed: [] });
+    expect(result.transitions).toEqual({ added: [], removed: [], changed: [] });
     expect(result.formatVersion.changed).toBe(false);
     expect(result.signature.changed).toBe(false);
   });
@@ -201,7 +222,7 @@ describe('diffPacks', () => {
     const result = await diffPacks(a, b);
     if ('error' in result) throw new Error(result.error);
     expect(result.formatVersion.changed).toBe(true);
-    expect(result.formatVersion.prev).toBe('1.1.0');
+    expect(result.formatVersion.prev).toBe('1.2.0');
     expect(result.formatVersion.next).toBe('1.0.0');
     const formatted = formatDiff(result);
     expect(formatted).toContain('FormatVersion');
@@ -231,6 +252,57 @@ describe('diffPacks', () => {
     if ('error' in result) throw new Error(result.error);
     const formatted = formatDiff(result, true);
     expect(formatted).toContain('+ zone-detailed-extra');
+  });
+
+  it('F-b76b7269: reports a changed parallax layer (ZoneId+LayerId)', async () => {
+    const packA = await buildPack();
+    const extra = {
+      ZoneId: 'zone-entrance',
+      LayerId: 'sky-diff',
+      Depth: 10,
+      AssetRef: 'asset-sky',
+      ScrollFactor: 0.1,
+      SuggestedScale: { X: 100, Y: 100 },
+      ParentZoneOriginCm: { X: 0, Y: 0, Z: 0 },
+    };
+    const packB: UnrealContentPack = {
+      ...packA,
+      Parallax: { Actors: [...(packA.Parallax?.Actors ?? []), extra] },
+    };
+    const a = await writePack(root, 'diff-par-a', packA);
+    const b = await writePack(root, 'diff-par-b', packB);
+    const result = await diffPacks(a, b);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.parallax.added).toContain('zone-entrance+sky-diff');
+    expect(result.parallax.added.length).toBe(1);
+    const formatted = formatDiff(result);
+    expect(formatted).toMatch(/Parallax:/);
+    expect(formatted).toMatch(/1 added/);
+  });
+
+  it('F-b76b7269: reports a removed/changed transition by Id', async () => {
+    const packA = await buildPack();
+    const lift = {
+      Id: 't-lift-diff',
+      ZoneId: 'zone-entrance',
+      TargetZoneId: 'zone-cellar',
+      Type: 'elevator' as const,
+      LocationCm: { X: 0, Y: 0, Z: 0 },
+    };
+    const packWith: UnrealContentPack = {
+      ...packA,
+      Transitions: [...(packA.Transitions ?? []), lift],
+    };
+    const packEdited: UnrealContentPack = {
+      ...packA,
+      Transitions: [{ ...lift, Label: 'EDITED' }],
+    };
+    const a = await writePack(root, 'diff-tr-a', packWith);
+    const b = await writePack(root, 'diff-tr-b', packEdited);
+    const result = await diffPacks(a, b);
+    if ('error' in result) throw new Error(result.error);
+    expect(result.transitions.changed).toContain('t-lift-diff');
+    expect(result.transitions.changed.length).toBe(1);
   });
 
   it('returns an actionable error for a missing pack dir', async () => {

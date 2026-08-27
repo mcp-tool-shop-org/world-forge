@@ -7,7 +7,7 @@ sidebar:
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 22 or later (`engines.node` in the root package.json)
 - npm 10 or later
 
 ## Install
@@ -57,7 +57,14 @@ This runs `npm run build && npm run test` — the same command CI uses.
 If you want to use World Forge types or the export pipeline in your own project:
 
 ```bash
-npm install @world-forge/schema @world-forge/export-ai-rpg
+npm install @world-forge/schema @world-forge/export-ai-rpg @world-forge/export-unreal @world-forge/export-godot
+```
+
+```bash
+npx world-forge-export project.json --out ./pack
+npx world-forge-export --import ./pack --out ./round-trip
+npx world-forge-export-unreal project.json --out ./UnrealPack
+npx world-forge-export-godot project.json --out ./GodotPack
 ```
 
 ```typescript

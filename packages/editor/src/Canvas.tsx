@@ -2,18 +2,34 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useProjectStore } from './store/project-store.js';
-import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel } from './store/editor-store.js';
+import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnection, isSelected as isSel, type SelectionKind } from './store/editor-store.js';
 import { useModalStore } from './store/modal-store.js';
 import { getConnectionEndpoints, findConnectionAt, getKindStyle, connectionMidpoint } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
-import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
-import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
+import { findHitAt, findAllHitsAt, findAllInRect, type HitResult } from './hit-testing.js';
+import { computeSnap, getNonSelectedEdges, computeResizeSnap, SNAP_GUIDE_COLOR, type SnapGuide } from './snap.js';
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
-import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
+import { dispatchHotkey, shouldArmSpacePan, type HotkeyContext } from './hotkeys.js';
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
+import { executeContextMenuAction } from './speed-panel-execute.js';
 import { fallbackTileColor } from './tile-render.js';
+import { nextId, generateZoneId } from './ids.js';
+import { pushToast } from './ui/Toast.js';
+import { readCssVar, resolveCssColor } from './ui/css-var.js';
+import { applyPlacementClick } from './canvas-placement.js';
+import { collectTownMarkers } from './town-markers.js';
+
+export { generateZoneId };
+
+/** F-fa0b8bf5: one-line fix-its for placement tools that fail closed. */
+export const CANVAS_PLACEMENT_HINTS = {
+  needZone: 'Click inside a zone',
+  needTile: 'Pick a tile in the left palette first',
+  needProp: 'Pick a prop in the left palette first',
+  zonePaintSize: 'Drag to at least 2×2',
+} as const;
 
 const ZOOM_STEP = 0.1;
 const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
@@ -31,27 +47,13 @@ export const LARGE_SELECTION_THRESHOLD = 50;
 const DBL_RIGHT_INTERVAL = 300; // ms between right-clicks for speed panel
 const DBL_RIGHT_RADIUS = 5;     // px proximity for double-right-click
 
-// EU-012: nextZoneId is a monotonic counter used only for generating unique zone IDs
-// within a session. It does not need resetting on project load because zone IDs are
-// prefixed with a timestamp (Date.now()), making collisions effectively impossible.
-let nextZoneId = 1;
-
-/**
- * EUB-012: Generate a unique zone ID using timestamp + monotonic counter.
- * Contract: each call returns a globally unique string within this session.
- * Format: "zone-{timestamp}-{counter}" — collision-free because counter is monotonic.
- */
-export function generateZoneId(): string {
-  return `zone-${Date.now()}-${nextZoneId++}`;
-}
-
 export function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
+  const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, addLandmark, addItemPlacement, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
     activeTool, showGrid, selection, hoveredZoneId,
-    showConnections, showEntities, showLandmarks, showSpawns, showTiles, showProps, showAmbient, snapToObjects,
-    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
+    showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, snapToObjects,
+    selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectKind, selectConnection,
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart,
@@ -99,8 +101,16 @@ export function Canvas() {
   const panButton = useRef(-1);
   const panStartScreen = useRef<{ sx: number; sy: number } | null>(null);
 
-  // FT-005: Right-click context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; actions: { id: string; label: string; icon: string }[] } | null>(null);
+  // FT-005: Right-click context menu state. Hit is stored so a later menu-item
+  // click can execute against the object that was under the cursor (F-ef5cce21).
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    actions: { id: string; label: string; icon: string; description?: string }[];
+    hit: HitResult | null;
+  } | null>(null);
+  const contextMenuElRef = useRef<HTMLDivElement>(null);
+  const lastPointerRef = useRef({ sx: 0, sy: 0 });
 
   // FT-007: Connection preview — track cursor position during connection tool
   const connectionCursor = useRef<{ sx: number; sy: number } | null>(null);
@@ -216,9 +226,32 @@ export function Canvas() {
 
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = readCssVar('--wf-bg-app', '#0d1117');
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const { panX, panY, zoom } = viewport;
+    const tokenAccent = readCssVar('--wf-accent', '#58a6ff');
+    const tokenTextPrimary = readCssVar('--wf-text-primary', '#c9d1d9');
+    const tokenTextMuted = readCssVar('--wf-text-muted', '#8b949e');
+    const tokenElevated = readCssVar('--wf-bg-elevated', '#1c2128');
+    const tokenOverlay = readCssVar('--wf-bg-overlay', 'rgba(0, 0, 0, 0.7)');
+    const tokenAccentText = readCssVar('--wf-accent-text', '#58a6ff');
+    const fillLabelPill = (text: string, tx: number, ty: number, fg: string, align: CanvasTextAlign = 'start') => {
+      ctx.save();
+      ctx.textAlign = align;
+      ctx.textBaseline = 'alphabetic';
+      const tw = ctx.measureText(text).width;
+      const fontPx = Number.parseFloat(ctx.font) || 10;
+      const pad = 2 / zoom;
+      const pillX = align === 'center' ? tx - tw / 2 - pad : tx - pad;
+      const pillY = ty - fontPx + pad;
+      ctx.fillStyle = tokenElevated;
+      ctx.fillRect(pillX, pillY, tw + pad * 2, fontPx + pad * 2);
+      ctx.fillStyle = fg;
+      ctx.fillText(text, tx, ty);
+      ctx.restore();
+    };
     ctx.setTransform(zoom, 0, 0, zoom, -panX * zoom, -panY * zoom);
 
     // FT-010: Viewport culling bounds (world coordinates with margin)
@@ -256,7 +289,7 @@ export function Canvas() {
 
     // Grid
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.strokeStyle = readCssVar('--wf-grid-line', '#5c636b');
       ctx.lineWidth = 1 / zoom;
       for (let x = 0; x <= project.map.gridWidth; x++) {
         ctx.beginPath();
@@ -370,13 +403,13 @@ export function Canvas() {
 
         // Visual state
         if (isSelConn) {
-          ctx.strokeStyle = '#58a6ff';
+          ctx.strokeStyle = readCssVar('--wf-accent', '#58a6ff');
           ctx.lineWidth = 3 / zoom;
         } else if (isHovered) {
-          ctx.strokeStyle = kindStyle.hoverColor;
+          ctx.strokeStyle = resolveCssColor(kindStyle.hoverColor, '#8b949e');
           ctx.lineWidth = 2 / zoom;
         } else {
-          ctx.strokeStyle = kindStyle.color;
+          ctx.strokeStyle = resolveCssColor(kindStyle.color, '#8b949e');
           ctx.lineWidth = 1 / zoom;
         }
 
@@ -422,9 +455,9 @@ export function Canvas() {
           ctx.font = `${fontSize / zoom}px 'Segoe UI', system-ui, sans-serif`;
           const textW = ctx.measureText(conn.label).width;
           const pad = 3 / zoom;
-          ctx.fillStyle = 'rgba(13,17,23,0.85)';
+          ctx.fillStyle = readCssVar('--wf-bg-elevated', '#1c2128');
           ctx.fillRect(mid.mx - textW / 2 - pad, mid.my - fontSize / zoom / 2 - pad, textW + pad * 2, fontSize / zoom + pad * 2);
-          ctx.fillStyle = '#c9d1d9';
+          ctx.fillStyle = readCssVar('--wf-text-primary', '#c9d1d9');
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(conn.label, mid.mx, mid.my);
@@ -465,7 +498,7 @@ export function Canvas() {
       if (selected && simplifiedSelection) {
         ctx.fillStyle = color + '10';
         ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#58a6ff';
+        ctx.strokeStyle = tokenAccent;
         ctx.lineWidth = 2 / zoom;
         ctx.strokeRect(x, y, w, h);
       } else {
@@ -476,23 +509,15 @@ export function Canvas() {
         ctx.strokeRect(x, y, w, h);
       }
 
-      // Zone label with dark background pill
+      // Zone label on elevated pill (F-407b7c74: leftover of F-ce49d7e0)
       const fontSize = Math.max(9, Math.min(14, 11 / zoom));
       ctx.font = `${fontSize}px monospace`;
       const labelX = x + 4 / zoom;
       const labelY = y + (fontSize + 3) / zoom;
-      const textWidth = ctx.measureText(zone.name).width;
-      const labelPad = 2 / zoom;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(labelX - labelPad, labelY - fontSize + labelPad, textWidth + labelPad * 2, fontSize + labelPad);
-      ctx.fillStyle = selected ? '#fff' : '#ccc';
-      ctx.fillText(zone.name, labelX, labelY);
+      fillLabelPill(zone.name, labelX, labelY, selected ? tokenTextPrimary : tokenTextMuted);
 
-      // ED-FT-003: elevation badge (e.g. "+12m" or "-4m..+8m"). Shown only when
-      // the layer toggle is on and the zone carries elevation data. The renderer
-      // agent will extend ZoneOverlayRenderer with fuller visualization (tint,
-      // dashed outline, drop-shadow) in Wave 2; this gives authors an immediate
-      // cue today.
+      // ED-FT-003: elevation badge (e.g. "+12m" or "-4m..+8m") on the same
+      // elevated pill as zone names (F-b42da805 leftover of F-407b7c74).
       if (showElevation && (zone.elevation != null || zone.elevationRange != null)) {
         let text = '';
         if (zone.elevationRange) {
@@ -506,13 +531,9 @@ export function Canvas() {
           const badgeFont = Math.max(8, Math.min(12, 10 / zoom));
           ctx.font = `${badgeFont}px monospace`;
           const tw = ctx.measureText(text).width;
-          const bpad = 3 / zoom;
-          const bx = x + w - tw - bpad * 2 - 2 / zoom;
-          const by = y + 2 / zoom;
-          ctx.fillStyle = 'rgba(88, 166, 255, 0.35)';
-          ctx.fillRect(bx, by, tw + bpad * 2, badgeFont + bpad);
-          ctx.fillStyle = '#e6f0ff';
-          ctx.fillText(text, bx + bpad, by + badgeFont);
+          const tx = x + w - tw - 5 / zoom;
+          const ty = y + 2 / zoom + badgeFont;
+          fillLabelPill(text, tx, ty, tokenAccentText);
         }
       }
     }
@@ -536,6 +557,70 @@ export function Canvas() {
         ctx.fillStyle = 'rgba(200,200,200,0.15)';
         ctx.fillText(d.name, cx, cy);
         ctx.textAlign = 'start';
+      }
+    }
+
+    // Town markers — under the props layer (F-5515c044). Distinct glyph/color per kind.
+    if (showTown) {
+      const townDrag = (id: string, kind: SelectionKind) =>
+        isSel(selection, kind, id) && isDragging;
+      for (const m of collectTownMarkers(project, tileSize)) {
+        totalCount++;
+        if (hiddenIds.has(m.id)) continue;
+        const dx = townDrag(m.id, m.type) ? dragDX * tileSize : 0;
+        const dy = townDrag(m.id, m.type) ? dragDY * tileSize : 0;
+        const x = m.x + dx;
+        const y = m.y + dy;
+        const selected = isSel(selection, m.type, m.id);
+        if (m.w != null && m.h != null) {
+          if (!inViewport(x, y, m.w, m.h)) continue;
+          visibleCount++;
+          ctx.fillStyle = m.color;
+          ctx.globalAlpha = 0.55;
+          ctx.fillRect(x, y, m.w, m.h);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = selected ? tokenAccent : 'rgba(255,255,255,0.45)';
+          ctx.lineWidth = (selected ? 2 : 1) / zoom;
+          ctx.strokeRect(x, y, m.w, m.h);
+          if (zoom > 0.35) {
+            ctx.font = `${8 / zoom}px monospace`;
+            fillLabelPill(m.label, x + 4 / zoom, y + 10 / zoom, tokenTextMuted);
+          }
+        } else {
+          if (!pointInViewport(x, y)) continue;
+          visibleCount++;
+          const s = 5 / zoom;
+          ctx.fillStyle = m.color;
+          ctx.beginPath();
+          if (m.type === 'market') {
+            ctx.arc(x, y, s, 0, Math.PI * 2);
+          } else if (m.type === 'station') {
+            ctx.moveTo(x, y - s);
+            ctx.lineTo(x + s, y + s);
+            ctx.lineTo(x - s, y + s);
+            ctx.closePath();
+          } else if (m.type === 'hub') {
+            ctx.moveTo(x, y - s);
+            ctx.lineTo(x + s * 0.7, y - s * 0.2);
+            ctx.lineTo(x + s * 0.7, y + s * 0.7);
+            ctx.lineTo(x, y + s);
+            ctx.lineTo(x - s * 0.7, y + s * 0.7);
+            ctx.lineTo(x - s * 0.7, y - s * 0.2);
+            ctx.closePath();
+          } else {
+            ctx.rect(x - s, y - s, s * 2, s * 2);
+          }
+          ctx.fill();
+          if (selected) {
+            ctx.strokeStyle = tokenAccent;
+            ctx.lineWidth = 2 / zoom;
+            ctx.stroke();
+          }
+          if (zoom > 0.4) {
+            ctx.font = `${8 / zoom}px monospace`;
+            fillLabelPill(m.label, x + 8 / zoom, y + 3 / zoom, tokenTextMuted);
+          }
+        }
       }
     }
 
@@ -596,21 +681,20 @@ export function Canvas() {
         // Selection ring (FT-021: simplified = outline rect instead of ring for large selections)
         if (selected) {
           if (simplifiedSelection) {
-            ctx.strokeStyle = '#58a6ff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 1.5 / zoom;
             const r2 = radius + 3 / zoom;
             ctx.strokeRect(x - r2, y - r2, r2 * 2, r2 * 2);
           } else {
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 2 / zoom;
             ctx.beginPath();
             ctx.arc(x, y, radius + 3 / zoom, 0, Math.PI * 2);
             ctx.stroke();
           }
         }
-        ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
-        ctx.fillText(ep.entityId, x + 10 / zoom, y + 3 / zoom);
+        fillLabelPill(ep.entityId, x + 10 / zoom, y + 3 / zoom, tokenTextMuted);
       }
     }
 
@@ -638,12 +722,12 @@ export function Canvas() {
         // Selection ring (FT-021: simplified = outline rect for large selections)
         if (selected) {
           if (simplifiedSelection) {
-            ctx.strokeStyle = '#58a6ff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 1.5 / zoom;
             const r2 = s + 2 / zoom;
             ctx.strokeRect(x - r2, y - r2, r2 * 2, r2 * 2);
           } else {
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 2 / zoom;
             ctx.beginPath();
             ctx.arc(x, y, s + 2 / zoom, 0, Math.PI * 2);
@@ -653,6 +737,38 @@ export function Canvas() {
         ctx.fillStyle = '#ffd700';
         ctx.font = `${9 / zoom}px monospace`;
         ctx.fillText(lm.name, x + 8 / zoom, y + 3 / zoom);
+      }
+    }
+
+    // Items — small cyan marker (F-df71e70a)
+    for (const ip of project.itemPlacements ?? []) {
+      totalCount++;
+      if (hiddenIds.has(ip.itemId)) continue;
+      const zone = zoneMap.get(ip.zoneId);
+      if (!zone) continue;
+      const selected = isSel(selection, 'item', ip.itemId);
+      const canDrag = selected && isDragging && ip.gridX != null && ip.gridY != null;
+      const x = ((ip.gridX ?? zone.gridX + 2) + (canDrag ? dragDX : 0)) * tileSize;
+      const y = ((ip.gridY ?? zone.gridY + 2) + (canDrag ? dragDY : 0)) * tileSize;
+      if (!pointInViewport(x, y)) continue;
+      visibleCount++;
+      const s = 4 / zoom;
+      ctx.fillStyle = '#5eead4';
+      ctx.beginPath();
+      ctx.moveTo(x, y - s);
+      ctx.lineTo(x + s, y);
+      ctx.lineTo(x, y + s);
+      ctx.lineTo(x - s, y);
+      ctx.closePath();
+      ctx.fill();
+      if (selected) {
+        ctx.strokeStyle = tokenAccent;
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+      }
+      if (zoom > 0.4) {
+        ctx.font = `${8 / zoom}px monospace`;
+        fillLabelPill(ip.name ?? ip.itemId, x + 8 / zoom, y + 3 / zoom, tokenTextMuted);
       }
     }
 
@@ -671,13 +787,12 @@ export function Canvas() {
         ctx.fillRect(x - s, y - s, s * 2, s * 2);
         // Selection ring (FT-021: simplified = thin outline for large selections)
         if (selected) {
-          ctx.strokeStyle = simplifiedSelection ? '#58a6ff' : '#fff';
+          ctx.strokeStyle = tokenAccent;
           ctx.lineWidth = (simplifiedSelection ? 1.5 : 2) / zoom;
           ctx.strokeRect(x - s - 2 / zoom, y - s - 2 / zoom, s * 2 + 4 / zoom, s * 2 + 4 / zoom);
         }
-        ctx.fillStyle = '#aaa';
         ctx.font = `${9 / zoom}px monospace`;
-        ctx.fillText('SPAWN', x + 8 / zoom, y + 3 / zoom);
+        fillLabelPill('SPAWN', x + 8 / zoom, y + 3 / zoom, tokenTextMuted);
       }
     }
 
@@ -712,17 +827,14 @@ export function Canvas() {
       ctx.fill();
       // Selection ring
       if (selected) {
-        ctx.strokeStyle = '#58a6ff';
+        ctx.strokeStyle = tokenAccent;
         ctx.lineWidth = 2 / zoom;
         ctx.stroke();
       }
       // Type label at zoom > 0.4
       if (zoom > 0.4) {
-        ctx.fillStyle = '#ccc';
         ctx.font = `${8 / zoom}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillText(enc.encounterType, cx + ox, cy + s + 10 / zoom);
-        ctx.textAlign = 'start';
+        fillLabelPill(enc.encounterType, cx + ox, cy + s + 10 / zoom, tokenTextMuted, 'center');
       }
     }
 
@@ -762,9 +874,9 @@ export function Canvas() {
             const hy = h.gy * tileSize;
             ctx.beginPath();
             ctx.arc(hx, hy, hRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = tokenTextPrimary;
             ctx.fill();
-            ctx.strokeStyle = '#4a9eff';
+            ctx.strokeStyle = tokenAccent;
             ctx.lineWidth = 2 / zoom;
             ctx.stroke();
           }
@@ -774,7 +886,7 @@ export function Canvas() {
 
     // Snap guide lines (world-space) — drag and resize
     if ((isDragging || isResizing) && activeGuides.current.length > 0) {
-      ctx.strokeStyle = 'rgba(0, 180, 255, 0.7)';
+      ctx.strokeStyle = resolveCssColor(SNAP_GUIDE_COLOR, '#22d3ee');
       ctx.lineWidth = 1 / zoom;
       ctx.setLineDash([4 / zoom, 4 / zoom]);
       for (const guide of activeGuides.current) {
@@ -801,7 +913,7 @@ export function Canvas() {
           x: connectionCursor.current.sx / zoom + panX,
           y: connectionCursor.current.sy / zoom + panY,
         };
-        ctx.strokeStyle = '#22d3ee';
+        ctx.strokeStyle = readCssVar('--wf-snap-guide', '#22d3ee');
         ctx.lineWidth = 2 / zoom;
         ctx.setLineDash([6 / zoom, 4 / zoom]);
         ctx.beginPath();
@@ -835,9 +947,9 @@ export function Canvas() {
       const label = `${selCount} selected`;
       ctx.font = '11px monospace';
       const tw = ctx.measureText(label).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillStyle = tokenOverlay;
       ctx.fillRect(8, 8, tw + 12, 20);
-      ctx.fillStyle = '#58a6ff';
+      ctx.fillStyle = tokenAccentText;
       ctx.fillText(label, 14, 22);
     }
 
@@ -853,9 +965,9 @@ export function Canvas() {
       const statsY = selCount > 1 ? 36 : 8;
       const lineH = 14;
       const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillStyle = tokenOverlay;
       ctx.fillRect(8, statsY, maxW + 12, lines.length * lineH + 6);
-      ctx.fillStyle = '#8b949e';
+      ctx.fillStyle = tokenAccentText;
       for (let i = 0; i < lines.length; i++) {
         ctx.fillText(lines[i], 14, statsY + 14 + i * lineH);
       }
@@ -863,7 +975,7 @@ export function Canvas() {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
 
   useEffect(() => {
     draw();
@@ -902,7 +1014,7 @@ export function Canvas() {
   // churn, and dispatchHotkey() always sees current values.
   hotkeyCtxRef.current = {
     selection, selectedConnection, project,
-    showEntities, showLandmarks, showSpawns,
+    showEntities, showLandmarks, showSpawns, showTown,
     // F-340b4aff: defense-in-depth — dispatchHotkey itself refuses to act
     // while a modal/search overlay is open. The primary guard (below, in
     // onKeyDown) reads live store state at event time so it can never be
@@ -913,7 +1025,10 @@ export function Canvas() {
     clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
     duplicateSelected, setShowSearch, setRightTab, setTool,
     showSpeedPanel, closeSpeedPanel,
+    undo: () => useProjectStore.getState().undo(),
+    redo: () => useProjectStore.getState().redo(),
     copySelection: useEditorStore.getState().copySelection,
+    setConnectionStart,
     // F-6c8800aa: this used to be a hardcoded no-op ("paste handled by
     // project-store when available") — project-store's pasteClipboard action
     // never arrived, so Ctrl+V did nothing while README/CHANGELOG/SCORECARD
@@ -933,8 +1048,11 @@ export function Canvas() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
       if (e.code === 'Space' && !e.repeat) {
-        e.preventDefault();
-        spaceHeld.current = true;
+        // F-6c1fa8ce: do not steal Space from focused buttons / tabs / links.
+        if (shouldArmSpacePan(e.target, document.activeElement, canvasRef.current)) {
+          e.preventDefault();
+          spaceHeld.current = true;
+        }
         return;
       }
 
@@ -1000,13 +1118,35 @@ export function Canvas() {
       gy >= z.gridY && gy < z.gridY + z.gridHeight,
     );
 
-  const visibility = { showEntities, showLandmarks, showSpawns, showConnections };
+  const visibility = { showEntities, showLandmarks, showSpawns, showConnections, showTown, showItems: true };
 
   // FT-009: Filter hidden objects from hit test results
   const filterHidden = useCallback((hits: import('./hit-testing.js').HitResult[]): import('./hit-testing.js').HitResult[] =>
     hits.filter((h) => !hiddenIds.has(h.id)), [hiddenIds]);
   const filterHitSingle = useCallback((hit: import('./hit-testing.js').HitResult | null): import('./hit-testing.js').HitResult | null =>
     hit && !hiddenIds.has(hit.id) ? hit : null, [hiddenIds]);
+
+  /** F-77c70524: shared open path for mouse right-click and keyboard contextmenu. */
+  const openObjectContextMenu = (sx: number, sy: number) => {
+    const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
+    const actions = SPEED_PANEL_ACTIONS
+      .filter((a) => a.contextFilter(hit))
+      .slice(0, 7)
+      .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
+    if (actions.length > 0) {
+      setContextMenu({ x: sx, y: sy, actions, hit });
+    }
+  };
+
+  const runContextMenuAction = (actionId: string) => {
+    if (!contextMenu) return;
+    executeContextMenuAction(actionId, contextMenu.hit, {
+      w: canvasRef.current?.clientWidth ?? 800,
+      h: canvasRef.current?.clientHeight ?? 600,
+    });
+    setContextMenu(null);
+    canvasRef.current?.focus();
+  };
 
   // --- Check if a hit result is already selected ---
   const hitIsSelected = (hit: { type: string; id: string } | null) => {
@@ -1015,8 +1155,11 @@ export function Canvas() {
       const [from, to] = hit.id.split('::');
       return selectedConnection?.from === from && selectedConnection?.to === to;
     }
-    const t = hit.type as 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter';
-    return isSel(selection, t, hit.id);
+    if (hit.type === 'zone' || hit.type === 'entity' || hit.type === 'landmark' || hit.type === 'spawn' || hit.type === 'encounter'
+      || hit.type === 'item' || hit.type === 'market' || hit.type === 'station' || hit.type === 'building' || hit.type === 'hub' || hit.type === 'stronghold') {
+      return isSel(selection, hit.type, hit.id);
+    }
+    return false;
   };
 
   // --- Dispatch selection for a hit result ---
@@ -1029,6 +1172,7 @@ export function Canvas() {
     else if (hit.type === 'landmark') selectLandmark(hit.id, additive);
     else if (hit.type === 'spawn') selectSpawn(hit.id, additive);
     else if (hit.type === 'encounter') selectEncounter(hit.id, additive);
+    else selectKind(hit.type as SelectionKind, hit.id, additive);
   };
 
   // --- Mouse handlers ---
@@ -1119,26 +1263,34 @@ export function Canvas() {
         } else {
           setConnectionStart(zone.id);
         }
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
     } else if (activeTool === 'entity-place') {
       const zone = findZoneAt(gx, gy);
       if (zone) {
         addEntity({
-          entityId: `entity-${Date.now()}`,
+          entityId: nextId('entity'),
           zoneId: zone.id,
           gridX: gx, gridY: gy,
           role: getModeProfile(project.mode).defaultEntityRole as 'npc' | 'enemy' | 'merchant' | 'boss' | 'companion',
         });
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
+    } else if (activeTool === 'landmark' || activeTool === 'item-place') {
+      const result = applyPlacementClick(activeTool, gx, gy, project, { addLandmark, addItemPlacement });
+      if (result === 'need-zone') pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
     } else if (activeTool === 'spawn') {
       // EUB-011: reject spawn creation if no zone found at click position
       const spawnZone = findZoneAt(gx, gy);
       if (!spawnZone) {
         console.warn('[Canvas] Spawn rejected: no zone at click position', { gx, gy });
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
         return;
       }
       addSpawnPoint({
-        id: `spawn-${Date.now()}`,
+        id: nextId('spawn'),
         zoneId: spawnZone.id,
         gridX: gx, gridY: gy,
         isDefault: project.spawnPoints.length === 0,
@@ -1147,7 +1299,7 @@ export function Canvas() {
       const zone = findZoneAt(gx, gy);
       if (zone) {
         addEncounter({
-          id: `enc-${Date.now()}`,
+          id: nextId('enc'),
           zoneId: zone.id,
           encounterType: getModeProfile(project.mode).encounterTypes[0],
           enemyIds: [],
@@ -1155,12 +1307,17 @@ export function Canvas() {
           cooldownTurns: 3,
           tags: [],
         });
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
     } else if (activeTool === 'tile-paint') {
       // Read fresh selection state — a drag must not use a stale closure.
       const ed = useEditorStore.getState();
       const erasing = ed.tileEraseMode || e.altKey;
-      if (!erasing && !ed.activeTileId) return; // no tile selected to paint
+      if (!erasing && !ed.activeTileId) {
+        pushToast(CANVAS_PLACEMENT_HINTS.needTile, 'info');
+        return;
+      }
       const proj = useProjectStore.getState();
       // Resolve target layer: active, else first existing, else auto-create one.
       let layerId = ed.activeTileLayerId;
@@ -1169,7 +1326,7 @@ export function Canvas() {
         if (existing) {
           layerId = existing.id;
         } else {
-          layerId = `tile-layer-${Date.now()}`;
+          layerId = nextId('tile-layer');
           proj.addTileLayer({ id: layerId, name: 'Tiles', zIndex: 0, tiles: [] });
         }
         ed.setActiveTileLayer(layerId);
@@ -1178,10 +1335,13 @@ export function Canvas() {
       addTilePaintCell(gx, gy);
     } else if (activeTool === 'prop-place') {
       const propId = useEditorStore.getState().activePropId;
-      if (!propId) return; // no prop selected to place
+      if (!propId) {
+        pushToast(CANVAS_PLACEMENT_HINTS.needProp, 'info');
+        return;
+      }
       const zone = findZoneAt(gx, gy);
       useProjectStore.getState().addPropPlacement({
-        id: `prop-${Date.now()}`,
+        id: nextId('prop'),
         propId,
         gridX: gx, gridY: gy,
         zoneId: zone?.id,
@@ -1230,14 +1390,7 @@ export function Canvas() {
             setTimeout(() => {
               // Only show if not consumed by a double-right-click
               if (rightClickTracker.current && rightClickTracker.current.time === now) {
-                const hit = filterHitSingle(findHitAt(clickSx, clickSy, viewport, project, tileSize, visibility));
-                const actions = SPEED_PANEL_ACTIONS
-                  .filter((a) => a.contextFilter(hit))
-                  .slice(0, 7)
-                  .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
-                if (actions.length > 0) {
-                  setContextMenu({ x: clickSx, y: clickSy, actions });
-                }
+                openObjectContextMenu(clickSx, clickSy);
               }
             }, DBL_RIGHT_INTERVAL + 20);
           }
@@ -1317,6 +1470,8 @@ export function Canvas() {
           light: 5, noise: 0, hazards: [], interactables: [],
         });
         setSelectedZone(id);
+      } else {
+        pushToast(CANVAS_PLACEMENT_HINTS.zonePaintSize, 'info');
       }
       zonePaintStart.current = null;
     }
@@ -1350,6 +1505,13 @@ export function Canvas() {
     return () => window.removeEventListener('mouseup', onWindowMouseUp);
   }, []);
 
+  // F-77c70524: focus the first menuitem when the object-actions menu opens.
+  useEffect(() => {
+    if (!contextMenu) return;
+    const first = contextMenuElRef.current?.querySelector('[role="menuitem"]') as HTMLElement | null;
+    first?.focus();
+  }, [contextMenu]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isPanning.current && panStart.current) {
       const dx = (e.clientX - panStart.current.x) / viewport.zoom;
@@ -1362,6 +1524,7 @@ export function Canvas() {
     }
 
     const { sx, sy } = getScreenXY(e);
+    lastPointerRef.current = { sx, sy };
 
     // Tile brush drag: extend the active stroke with the cell under the cursor.
     if (tilePaint.current) {
@@ -1496,6 +1659,26 @@ export function Canvas() {
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
+  // F-77c70524: Shift+F10 / ContextMenu key fire a contextmenu event with
+  // button !== 2. Mouse right-click still uses the delayed mouseup path so
+  // double-right-click can open the speed panel without a flash.
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (e.button === 2) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    let sx = e.clientX - rect.left;
+    let sy = e.clientY - rect.top;
+    const offCanvas = (e.clientX === 0 && e.clientY === 0)
+      || sx < 0 || sy < 0 || sx > rect.width || sy > rect.height;
+    if (offCanvas) {
+      sx = lastPointerRef.current.sx;
+      sy = lastPointerRef.current.sy;
+    }
+    openObjectContextMenu(sx, sy);
+  };
+
   // --- Double-click to open details for clicked object ---
   const handleDoubleClick = (e: React.MouseEvent) => {
     const { sx, sy } = getScreenXY(e);
@@ -1554,9 +1737,9 @@ export function Canvas() {
   else if (hoveredConnection.current) cursor = 'pointer';
   else if (activeTool === 'select') cursor = 'default';
 
-  // FT-014: Minimap rendering
-  const minimapWidth = 200;
-  const minimapHeight = 150;
+  // FT-014: Minimap rendering — F-69a1f39b: size/inset from tokens, not 200×150/8.
+  const minimapWidth = parseFloat(readCssVar('--wf-minimap-width', '200px')) || 200;
+  const minimapHeight = parseFloat(readCssVar('--wf-minimap-height', '150px')) || 150;
   const renderMinimap = () => {
     if (!showMinimap || project.zones.length === 0) return null;
     const canvas = canvasRef.current;
@@ -1603,10 +1786,13 @@ export function Canvas() {
       <div
         onClick={handleMinimapClick}
         style={{
-          position: 'absolute', bottom: 8, right: 8,
-          width: minimapWidth, height: minimapHeight,
-          background: 'rgba(13,17,23,0.85)',
-          border: '1px solid #30363d', borderRadius: 4,
+          position: 'absolute',
+          bottom: 'var(--wf-space-2)',
+          right: 'var(--wf-space-2)',
+          width: 'var(--wf-minimap-width)',
+          height: 'var(--wf-minimap-height)',
+          background: 'var(--wf-bg-elevated)',
+          border: '1px solid var(--wf-border-default)', borderRadius: 4,
           cursor: 'pointer', overflow: 'hidden',
         }}
       >
@@ -1632,8 +1818,8 @@ export function Canvas() {
           top: (vpTop - minY) * scale,
           width: vpW * scale,
           height: vpH * scale,
-          border: '1.5px solid rgba(255,255,255,0.6)',
-          background: 'rgba(255,255,255,0.08)',
+          border: '1.5px solid var(--wf-accent)',
+          background: 'color-mix(in srgb, var(--wf-accent) 12%, transparent)',
           pointerEvents: 'none',
         }} />
       </div>
@@ -1647,54 +1833,95 @@ export function Canvas() {
         role="img"
         aria-label="World map canvas"
         tabIndex={0}
-        style={{ width: '100%', height: '100%', cursor }}
+        style={{ width: '100%', height: '100%', cursor, background: 'var(--wf-bg-app)' }}
         onDoubleClick={handleDoubleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={handleContextMenu}
       />
 
-      {/* FT-005: Right-click context menu */}
+      {/* FT-005: Right-click context menu — F-77c70524: keyboard-operable. */}
       {contextMenu && (
         <div
+          ref={contextMenuElRef}
+          role="menu"
+          aria-label="Object actions"
           style={{
             position: 'absolute',
             left: contextMenu.x,
             top: contextMenu.y,
-            background: '#1c2128',
-            border: '1px solid #30363d',
+            background: 'var(--wf-bg-elevated)',
+            border: '1px solid var(--wf-border-default)',
             borderRadius: 6,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            boxShadow: 'var(--wf-shadow-panel)',
             padding: '4px 0',
             zIndex: 100,
             minWidth: 160,
           }}
           onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            const items = Array.from(e.currentTarget.querySelectorAll('[role="menuitem"]')) as HTMLElement[];
+            const idx = items.indexOf(document.activeElement as HTMLElement);
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              items[(idx + 1 + items.length) % items.length]?.focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              items[(idx - 1 + items.length) % items.length]?.focus();
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              items[0]?.focus();
+            } else if (e.key === 'End') {
+              e.preventDefault();
+              items[items.length - 1]?.focus();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setContextMenu(null);
+              canvasRef.current?.focus();
+            }
+          }}
         >
           {contextMenu.actions.map((action) => (
-            <div
+            <button
               key={action.id}
+              type="button"
+              role="menuitem"
               onClick={() => {
-                setContextMenu(null);
-                // Dispatch action via speed panel execute if available
-                // For now, just close. The speed-panel-execute module handles execution.
+                // F-ef5cce21: this used to be a hardcoded close-only no-op
+                // ("For now, just close. The speed-panel-execute module handles
+                // execution.") — executeAction was never imported. Same defect
+                // class as the old Ctrl+V empty body. Mirrors SpeedPanel's bag
+                // (including mergeZones + selection). Tests reconstruct this
+                // closure in context-menu-wiring.test.ts.
+                runContextMenuAction(action.id);
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#30363d'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wf-bg-hover)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               style={{
                 padding: '6px 12px',
                 fontSize: 12,
-                color: '#c9d1d9',
+                color: 'var(--wf-text-primary)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                textAlign: 'left',
+                font: 'inherit',
               }}
             >
-              <span style={{ fontSize: 11, width: 20, textAlign: 'center', color: '#8b949e' }}>{action.icon}</span>
-              <span>{action.label}</span>
-            </div>
+              <span style={{ fontSize: 16, width: 16, textAlign: 'center', color: 'var(--wf-text-muted)', lineHeight: 1 }}>{action.icon}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                <span>{action.label}</span>
+                {action.description && (
+                  <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{action.description}</span>
+                )}
+              </span>
+            </button>
           ))}
         </div>
       )}

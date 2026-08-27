@@ -7,6 +7,8 @@ sidebar:
 
 World Forge is a 2D / 2.5D world authoring studio that produces complete content packs for [ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine), [Unreal Engine 5](https://www.unrealengine.com/), and [Godot 4](https://godotengine.org/). You paint zones on a canvas, define districts and factions, place entities with stats and AI profiles, author branching dialogue trees, then export everything as a validated content pack ready for your engine of choice.
 
+![World Forge canvas — zones, connections, and a painted island world](/world-forge/screenshots/editor-canvas.jpg)
+
 ## The Ecosystem
 
 World Forge is the authoring end of a three-layer authoring-to-play pipeline:

@@ -21,6 +21,7 @@ describe('SPEED_PANEL_ACTIONS contextFilter', () => {
     expect(ids).toContain('duplicate');
     expect(ids).toContain('assign-district');
     expect(ids).toContain('place-entity');
+    expect(ids).toContain('place-encounter');
     expect(ids).toContain('connect-from');
     expect(ids).not.toContain('swap-direction');
   });

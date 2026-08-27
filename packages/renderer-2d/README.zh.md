@@ -19,11 +19,12 @@ npm install @world-forge/renderer-2d
 ## 组件
 
 - **WorldViewport**：PixiJS 应用的封装，包含平移、缩放和网格叠加功能。
-- **ZoneOverlayRenderer**：区域边界渲染器，带有区域颜色区分，支持选择和悬停。
+- **ZoneOverlayRenderer**：区域边界渲染器，带有区域颜色区分，支持选择和悬停；`setShowElevation` 可切换 2.5D 高程提示（投影、下沉色调、多层虚线轮廓）。
 - **ConnectionRenderer**：区域之间的连接线，单向连接使用箭头，条件连接使用虚线。
 - **EntityRenderer**：基于角色的实体图标（NPC、敌人、商人、Boss）。
 - **TileLayerRenderer**：分层渲染的瓦片，支持基于标签的颜色设置。
 - **MinimapRenderer**：缩略图，包含视口指示器。
+- **DiagnosticsOverlay**：开发者 HUD，列出每个渲染器的 `className`、`childCount` 和 `destroyed` 标志。
 
 ## 许可证
 

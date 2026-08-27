@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { useKitStore } from '../kits/index.js';
+import { StoragePersistError, useKitStore } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import type { AuthoringMode } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
@@ -35,25 +36,35 @@ export function SaveKitModal({ onClose }: Props) {
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
-    saveKit({
-      name: name.trim(),
-      description: description.trim(),
-      icon,
-      modes,
-      tags,
-      project: JSON.parse(JSON.stringify(project)),
-      presetRefs: { region: [], encounter: [] },
-      guideHints: {},
-    });
-    onClose();
+    try {
+      saveKit({
+        name: name.trim(),
+        description: description.trim(),
+        icon,
+        modes,
+        tags,
+        project: JSON.parse(JSON.stringify(project)),
+        presetRefs: { region: [], encounter: [] },
+        guideHints: {},
+      });
+      onClose();
+    } catch (err) {
+      // F-9d2f6dae: quota/security persist failure used to close the modal
+      // as success while the kit vanished on refresh.
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save kit — browser storage is full or blocked. The kit was not kept.'
+        : (err instanceof Error ? err.message : 'Could not save kit.');
+      pushToast(msg, 'error', 4000);
+    }
   }, [name, description, icon, modes, tagsInput, project, saveKit, onClose]);
 
   return (
     <ModalFrame title="Save as Starter Kit" width={440} onClose={onClose}>
 
         {/* Name */}
-        <label style={labelStyle}>Name</label>
+        <label style={labelStyle} htmlFor="wf-save-kit-name">Name</label>
         <input
+          id="wf-save-kit-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           style={inputStyle}
@@ -61,8 +72,9 @@ export function SaveKitModal({ onClose }: Props) {
         />
 
         {/* Description */}
-        <label style={labelStyle}>Description</label>
+        <label style={labelStyle} htmlFor="wf-save-kit-desc">Description</label>
         <textarea
+          id="wf-save-kit-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
@@ -70,39 +82,45 @@ export function SaveKitModal({ onClose }: Props) {
         />
 
         {/* Icon */}
-        <label style={labelStyle}>Icon</label>
+        <label style={labelStyle} htmlFor="wf-save-kit-icon">Icon</label>
         <input
+          id="wf-save-kit-icon"
           value={icon}
           onChange={(e) => setIcon(e.target.value)}
           style={{ ...inputStyle, width: 60 }}
           maxLength={2}
         />
 
-        {/* Modes */}
-        <label style={labelStyle}>Modes</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-          {AUTHORING_MODES.map((m) => {
-            const active = modes.includes(m);
-            return (
-              <button
-                key={m}
-                onClick={() => toggleMode(m)}
-                style={{
-                  background: active ? '#0d1d30' : '#0d1117',
-                  border: active ? '2px solid #58a6ff' : '1px solid #30363d',
-                  borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-                  color: active ? '#58a6ff' : '#8b949e', fontSize: 10,
-                }}
-              >
-                {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Modes — fieldset so the group has an accessible name without wrapping buttons in <label> */}
+        <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend style={labelStyle}>Modes</legend>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+            {AUTHORING_MODES.map((m) => {
+              const active = modes.includes(m);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => toggleMode(m)}
+                  aria-pressed={active}
+                  style={{
+                    background: active ? 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))' : 'var(--wf-bg-app)',
+                    border: active ? '2px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
+                    borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+                    color: active ? 'var(--wf-accent)' : 'var(--wf-text-muted)', fontSize: 10,
+                  }}
+                >
+                  {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
 
         {/* Tags */}
-        <label style={labelStyle}>Tags (comma-separated)</label>
+        <label style={labelStyle} htmlFor="wf-save-kit-tags">Tags (comma-separated)</label>
         <input
+          id="wf-save-kit-tags"
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           style={inputStyle}
@@ -110,7 +128,7 @@ export function SaveKitModal({ onClose }: Props) {
         />
 
         {/* Content summary */}
-        <div style={{ fontSize: 11, color: '#8b949e', marginTop: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 8, marginBottom: 16 }}>
           This kit will include: {project.zones.length} zones, {project.entityPlacements.length} entities,
           {' '}{project.dialogues.length} dialogues, {project.itemPlacements.length} items
         </div>

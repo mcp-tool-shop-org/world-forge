@@ -177,8 +177,10 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     const withDesc = pack.items.find((i) => i.id === 'item-rope')!;
     const withoutDesc = pack.items.find((i) => i.id === 'item-tide-ration')!;
     expect(withDesc.description).toBe('Forty feet, tarred against the wet.');
-    expect(withDesc.description).not.toContain('stall crate'); // container lost
+    expect(withDesc.description).not.toContain('stall crate'); // container lost from catalog description
     expect(withoutDesc.description).toBe('Found in gantry locker'); // container folded in
+    // F-42772fc9: the placement channel carries container regardless.
+    expect(pack.itemPlacements.find((p) => p.itemId === 'item-rope')?.container).toBe('stall crate');
   });
 
   it('item hidden re-encodes as the economic flag `contraband`, and only when true', () => {
@@ -186,7 +188,9 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     const visible = pack.items.find((i) => i.id === 'item-rope')!;
     expect((hidden as { provenance?: { flags?: string[] } }).provenance?.flags).toEqual(['contraband']);
     expect((visible as { provenance?: unknown }).provenance).toBeUndefined();
-    expect(allExportKeyNames(artifacts).has('hidden')).toBe(false);
+    // F-42772fc9: the placement channel now carries the boolean too.
+    expect(pack.itemPlacements.find((p) => p.itemId === 'item-lantern')?.hidden).toBe(true);
+    expect(pack.itemPlacements.find((p) => p.itemId === 'item-rope')?.hidden).toBe(false);
   });
 
   it('authoring mode is encoded as a `mode:` tag prefix, not a field', () => {

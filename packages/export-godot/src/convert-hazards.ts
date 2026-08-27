@@ -11,8 +11,8 @@
  */
 
 import type { WorldProject, HazardEffect } from '@world-forge/schema';
-import type { FidelityEntry } from './fidelity.js';
-import { DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { formatDroppedIdentities, type FidelityEntry } from './fidelity.js';
+import { resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotHazardPlacement {
@@ -27,9 +27,14 @@ export interface GodotHazardPlacement {
     moveCostDelta: number;
     passable: string;
     blocksVision: boolean;
-    /** Compact effect encoding for metadata, e.g. "damage:5@turn-end;status:poison@0.5". */
+    /** Compact effect encoding for metadata, e.g. "damage:5@turn-end:3t;status:poison@0.5:refresh". */
     effects: string;
     effectCount: number;
+    /** Authored display name. */
+    name?: string;
+    tags?: string[];
+    weatherConditions?: string[];
+    immuneTags?: string[];
 }
 
 export interface ConvertHazardsResult {
@@ -40,15 +45,19 @@ export interface ConvertHazardsResult {
 /** Compact, human-readable encoding of one effect for Godot metadata. */
 function encodeEffect(e: HazardEffect): string {
     switch (e.kind) {
-        case 'damage': return `damage:${e.amount}${e.amountIsPercentMaxHp ? '%' : ''}@${e.tickOn}`;
-        case 'status': return `status:${e.statusId}@${e.chance}`;
+        case 'damage': {
+            const pct = e.amountIsPercentMaxHp ? '%' : '';
+            const duration = e.durationTicks !== undefined ? `:${e.durationTicks}t` : '';
+            return `damage:${e.amount}${pct}@${e.tickOn}${duration}`;
+        }
+        case 'status': return `status:${e.statusId}@${e.chance}:${e.stacking}`;
         case 'instakill': return 'instakill';
         case 'ignite': return `ignite@${e.igniteChance}`;
     }
 }
 
 export function convertHazards(project: WorldProject): ConvertHazardsResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
 
     const hazardById = new Map((project.hazardDefinitions ?? []).map((h) => [h.id, h]));
@@ -62,7 +71,7 @@ export function convertHazards(project: WorldProject): ConvertHazardsResult {
     };
 
     const placements: GodotHazardPlacement[] = [];
-    let dropped = 0;
+    const droppedRefs: string[] = [];
 
     for (const z of project.zones) {
         const refs = z.hazardRefs ?? [];
@@ -75,7 +84,7 @@ export function convertHazards(project: WorldProject): ConvertHazardsResult {
         for (const ref of refs) {
             const def = hazardById.get(ref);
             if (!def) {
-                dropped++;
+                droppedRefs.push(`zone "${z.id}" hazardId "${ref}"`);
                 continue;
             }
             placements.push({
@@ -90,17 +99,21 @@ export function convertHazards(project: WorldProject): ConvertHazardsResult {
                 blocksVision: def.blocksVision ?? false,
                 effects: def.effects.map(encodeEffect).join(';'),
                 effectCount: def.effects.length,
+                name: def.name,
+                tags: def.tags.slice(),
+                weatherConditions: def.weatherConditions?.slice(),
+                immuneTags: def.immuneTags?.slice(),
             });
         }
     }
 
-    if (dropped > 0) {
+    if (droppedRefs.length > 0) {
         fidelity.push({
             level: 'dropped',
             domain: 'structures',
             severity: 'warning',
             fieldPath: 'zones.hazardRefs',
-            message: `${dropped} zone hazard ref(s) point to a hazardId with no matching definition — dropped.`,
+            message: `${droppedRefs.length} zone hazard ref(s) point to a hazardId with no matching definition — dropped: ${formatDroppedIdentities(droppedRefs)}.`,
             reason: 'A zone referenced a hazard that is not defined in hazardDefinitions.',
         });
     }

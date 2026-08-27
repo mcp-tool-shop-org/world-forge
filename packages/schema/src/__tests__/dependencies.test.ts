@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scanDependencies } from '../dependencies.js';
+import { buildReviewSnapshot } from '../review.js';
 import type { WorldProject } from '../project.js';
 import { minimalProject } from './fixtures/minimal.js';
 import { chapelProject } from './fixtures/chapel-authored.js';
@@ -505,5 +506,32 @@ describe('scanDependencies', () => {
     const report = scanDependencies(proj);
     const orphans = report.edges.filter((e) => e.domain === 'orphan-asset');
     expect(orphans).toHaveLength(0);
+  });
+});
+
+describe('parallaxLayers non-array (F-4945ef30)', () => {
+  it('parallaxLayers={} does not throw from scanDependencies or buildReviewSnapshot', () => {
+    const proj = withOverrides({
+      zones: [
+        { ...minimalProject.zones[0], parallaxLayers: {} as unknown as [] },
+        minimalProject.zones[1],
+      ],
+    });
+    let report: ReturnType<typeof scanDependencies> | undefined;
+    expect(() => {
+      report = scanDependencies(proj);
+    }).not.toThrow();
+    expect(report).toBeDefined();
+    expect(() => buildReviewSnapshot(proj)).not.toThrow();
+  });
+
+  it('parallaxLayers=1 does not throw from scanDependencies', () => {
+    const proj = withOverrides({
+      zones: [
+        { ...minimalProject.zones[0], parallaxLayers: 1 as unknown as [] },
+        minimalProject.zones[1],
+      ],
+    });
+    expect(() => scanDependencies(proj)).not.toThrow();
   });
 });

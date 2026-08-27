@@ -28,6 +28,12 @@ export interface ZoneEntryGate {
   reason?: string;
 }
 
+/** Physics runtime the engine should apply in a zone. */
+export type PhysicsMode = 'normal' | 'platformer' | 'zero-g' | 'aquatic';
+
+/** Gravity direction override. Default is 'down' (negative Z). */
+export type GravityDirection = 'down' | 'up' | 'none';
+
 /** A named area on the map occupying a rectangular tile region. */
 export interface Zone {
   id: string;
@@ -75,15 +81,18 @@ export interface Zone {
   /** Gravity magnitude override (m/s²). Leave undefined to inherit project/engine default. */
   gravityOverride?: number;
   /** Gravity direction. Default is 'down' (negative Z). */
-  gravityDirection?: 'down' | 'up' | 'none';
+  gravityDirection?: GravityDirection;
   /** Physics mode that the engine should apply in this zone. */
-  physicsMode?: 'normal' | 'platformer' | 'zero-g' | 'aquatic';
+  physicsMode?: PhysicsMode;
 
   // ── Sky + lighting (UE-FT-002 schema half) ──────────────────
   // Hints for exporters (UE5 Sky Atmosphere / Godot WorldEnvironment). The
   // 2D editor may not have UI for these yet — they flow through the schema
   // so downstream exporters in Wave 2 can consume them.
-  /** Asset id for UE5 Sky Atmosphere preset / Godot equivalent. */
+  /**
+   * AssetEntry id (kind = background) for a UE5 Sky Atmosphere preset / Godot
+   * equivalent. When set, validateProject requires the id to exist in assets[].
+   */
   skyAtmosphereRef?: string;
   /** Directional light yaw in degrees (sun direction). */
   directionalLightYaw?: number;

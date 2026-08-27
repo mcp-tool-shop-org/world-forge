@@ -19,11 +19,12 @@ npm install @world-forge/renderer-2d
 ## Componentes
 
 - **WorldViewport**: Envoltorio de la aplicación PixiJS con funciones de desplazamiento, zoom y superposición de cuadrícula.
-- **ZoneOverlayRenderer**: Límites de zonas con coloración por distrito, selección/hover.
+- **ZoneOverlayRenderer**: Límites de zonas con coloración por distrito, selección/hover; `setShowElevation` activa las pistas de elevación 2.5D (sombra, tinte hundido, contorno discontinuo multinivel).
 - **ConnectionRenderer**: Líneas entre zonas, flechas para conexiones unidireccionales, líneas discontinuas para conexiones condicionales.
 - **EntityRenderer**: Iconos de entidades basados en roles (NPC, enemigo, comerciante, jefe).
 - **TileLayerRenderer**: Capas de mosaicos ordenadas por profundidad con coloración basada en etiquetas.
 - **MinimapRenderer**: Vista general a escala con indicador de la ventana de visualización.
+- **DiagnosticsOverlay**: HUD de desarrollo que lista `className`, `childCount` y el flag `destroyed` de cada renderer.
 
 ## Licencia
 

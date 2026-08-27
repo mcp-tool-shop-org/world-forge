@@ -20,13 +20,19 @@ export interface PlayerTemplate {
   /** Starting resources (hp, stamina, etc.). */
   baseResources: Record<string, number>;
 
-  /** Starting inventory — item IDs from itemPlacements or build catalog. */
+  /**
+   * Starting inventory — item IDs that must exist in itemPlacements
+   * (catalog-only ids are not accepted; add a placement or pick an existing id).
+   */
   startingInventory: string[];
 
-  /** Starting equipment — slot → item ID mapping. */
+  /**
+   * Starting equipment — slot → item ID mapping. Each id must exist in
+   * itemPlacements (catalog-only ids are not accepted).
+   */
   startingEquipment: Record<string, string>;
 
-  /** Spawn point ID — where the player starts. */
+  /** Spawn point ID — must match an id in spawnPoints[]. */
   spawnPointId: string;
 
   /** Starting tags. */

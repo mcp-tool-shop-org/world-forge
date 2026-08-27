@@ -66,9 +66,9 @@ export function BuildCatalogPanel() {
         {subTabs.map((t) => (
           <button key={t.id} onClick={() => setBuildsSubTab(t.id)} style={{
             fontSize: 10, padding: '3px 8px', cursor: 'pointer', borderRadius: 3,
-            background: buildsSubTab === t.id ? ACTIVE_TAB_BG : '#21262d',
-            color: buildsSubTab === t.id ? '#fff' : '#8b949e',
-            border: '1px solid #30363d',
+            background: buildsSubTab === t.id ? ACTIVE_TAB_BG : 'var(--wf-bg-control)',
+            color: buildsSubTab === t.id ? '#fff' : 'var(--wf-text-muted)',
+            border: '1px solid var(--wf-border-default)',
           }}>{t.label}</button>
         ))}
       </div>
@@ -164,13 +164,13 @@ function ArchetypeSection({ cat, trees, onAdd, onUpdate, onRemove }: {
               </label>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
-                <button onClick={() => { onRemove(a.id); setEditing(null); }} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete</button>
+                <button onClick={() => { onRemove(a.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
               </div>
             </>
           ) : (
             <div onClick={() => setEditing(a.id)} style={{ cursor: 'pointer' }}>
-              <div style={{ fontSize: 12, color: '#c9d1d9' }}>{a.name}</div>
-              <div style={{ fontSize: 10, color: '#8b949e' }}>{a.id}</div>
+              <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{a.name}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{a.id}</div>
             </div>
           )}
         </div>
@@ -214,13 +214,13 @@ function BackgroundSection({ cat, onAdd, onUpdate, onRemove }: {
               </label>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
-                <button onClick={() => { onRemove(b.id); setEditing(null); }} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete</button>
+                <button onClick={() => { onRemove(b.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
               </div>
             </>
           ) : (
             <div onClick={() => setEditing(b.id)} style={{ cursor: 'pointer' }}>
-              <div style={{ fontSize: 12, color: '#c9d1d9' }}>{b.name}</div>
-              <div style={{ fontSize: 10, color: '#8b949e' }}>{b.id}</div>
+              <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{b.name}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{b.id}</div>
             </div>
           )}
         </div>
@@ -273,15 +273,15 @@ function TraitSection({ cat, onAdd, onUpdate, onRemove }: {
                 onChange={(effects) => onUpdate(t.id, { effects })} />
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
-                <button onClick={() => { onRemove(t.id); setEditing(null); }} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete</button>
+                <button onClick={() => { onRemove(t.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
               </div>
             </>
           ) : (
             <div onClick={() => setEditing(t.id)} style={{ cursor: 'pointer' }}>
-              <div style={{ fontSize: 12, color: '#c9d1d9' }}>
-                {t.name} <span style={{ fontSize: 10, color: t.category === 'flaw' ? '#f85149' : '#3fb950' }}>({t.category})</span>
+              <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>
+                {t.name} <span style={{ fontSize: 10, color: t.category === 'flaw' ? 'var(--wf-danger-text)' : 'var(--wf-success-text)' }}>({t.category})</span>
               </div>
-              <div style={{ fontSize: 10, color: '#8b949e' }}>{t.effects.length} effect(s)</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{t.effects.length} effect(s)</div>
             </div>
           )}
         </div>
@@ -331,13 +331,13 @@ function DisciplineSection({ cat, onAdd, onUpdate, onRemove }: {
               </label>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
-                <button onClick={() => { onRemove(d.id); setEditing(null); }} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete</button>
+                <button onClick={() => { onRemove(d.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
               </div>
             </>
           ) : (
             <div onClick={() => setEditing(d.id)} style={{ cursor: 'pointer' }}>
-              <div style={{ fontSize: 12, color: '#c9d1d9' }}>{d.name}</div>
-              <div style={{ fontSize: 10, color: '#8b949e' }}>verb: {d.grantedVerb || '(none)'}</div>
+              <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{d.name}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>verb: {d.grantedVerb || '(none)'}</div>
             </div>
           )}
         </div>
@@ -362,8 +362,8 @@ function CombosSection({ cat, onAddCT, onRemoveCT, onAddEnt, onRemoveEnt }: {
       {needsBoth && <div style={hintStyle}>Requires at least one archetype and one discipline.</div>}
       {cat.crossTitles.map((ct, i) => (
         <div key={i} style={itemStyle}>
-          <div style={{ fontSize: 12, color: '#c9d1d9' }}>{ct.title}</div>
-          <div style={{ fontSize: 10, color: '#8b949e' }}>{ct.archetypeId} + {ct.disciplineId}</div>
+          <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{ct.title}</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{ct.archetypeId} + {ct.disciplineId}</div>
           <button onClick={() => onRemoveCT(ct.archetypeId, ct.disciplineId)} style={{ ...xBtnStyle, fontSize: 10 }}>remove</button>
         </div>
       ))}
@@ -376,8 +376,8 @@ function CombosSection({ cat, onAddCT, onRemoveCT, onAddEnt, onRemoveEnt }: {
       {needsBoth && <div style={hintStyle}>Requires at least one archetype and one discipline.</div>}
       {cat.entanglements.map((e) => (
         <div key={e.id} style={itemStyle}>
-          <div style={{ fontSize: 12, color: '#c9d1d9' }}>{e.description || e.id}</div>
-          <div style={{ fontSize: 10, color: '#8b949e' }}>{e.archetypeId} + {e.disciplineId}</div>
+          <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{e.description || e.id}</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{e.archetypeId} + {e.disciplineId}</div>
           <button onClick={() => onRemoveEnt(e.id)} style={{ ...xBtnStyle, fontSize: 10 }}>remove</button>
         </div>
       ))}
@@ -396,7 +396,7 @@ function EffectListEditor({ effects, onChange }: {
 }) {
   return (
     <div style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Effects</div>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Effects</div>
       {effects.length === 0 && <div style={hintStyle}>No effects. Add one below.</div>}
       {effects.map((eff, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center' }}>

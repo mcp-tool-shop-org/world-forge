@@ -12,12 +12,14 @@ Types TypeScript de base pour [World Forge](https://github.com/mcp-tool-shop-org
 
 ## Types
 
-- **Spatial (Spatial):** `WorldMap` (Carte du monde), `Zone` (Zone), `ZoneExit` (Sortie de zone), `ZoneConnection` (Connexion de zone), `Landmark` (Point d'intérêt), `Interactable` (Interactif)
+- **Spatial (Spatial):** `WorldMap` (Carte du monde), `Zone` (Zone), `ZoneExit` (Sortie de zone), `ZoneConnection` (Connexion de zone), `Landmark` (Point d'intérêt), `Interactable` (Interactif), `ZoneEntryGate`
 - **Districts (Quartiers):** `District` (Quartier), `DistrictMetrics` (Métriques du quartier), `EconomyProfile` (Profil économique), `FactionPresence` (Présence de faction), `PressureHotspot` (Point chaud de pression)
 - **Entities (Entités):** `EntityPlacement` (Placement d'entité) (avec `EntityStats` (Statistiques de l'entité), `EntityResources` (Ressources de l'entité), `EntityAI` (IA de l'entité)), `ItemPlacement` (Placement d'objet) (avec `ItemSlot` (Emplacement d'objet), `ItemRarity` (Rareté de l'objet)), `SpawnPoint` (Point de spawn), `EncounterAnchor` (Ancre de rencontre), `CraftingStation` (Station de fabrication), `MarketNode` (Nœud de marché)
+- **Town & structures (Ville et structures):** `Building`, `Hub`, `Stronghold`
+- **World modeling (Modélisation du monde):** `Stratum`, `StratumLink` (couches verticales), `HazardDefinition` (union d'effets typés), plus les opérandes `SpawnCondition` d'état de groupe qui alimentent `ZoneEntryGate`
 - **Visual (Visuel):** `Tileset` (Jeu de tuiles), `TileDefinition` (Définition de tuile), `TileLayer` (Couche de tuiles), `PropDefinition` (Définition d'objet), `PropPlacement` (Placement d'objet), `AmbientLayer` (Couche d'ambiance)
 - **Project (Projet):** `WorldProject` — le conteneur complet du monde créé.
-- **Validation (Validation):** `validateProject()` avec 54 vérifications structurelles.
+- **Validation (Validation):** `validateProject()` — les vérifications structurelles numérotées se trouvent dans `src/validate.ts` (ne pas traiter un décompte publié comme le contrat).
 
 ## Installation
 

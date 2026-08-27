@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="World Forge">
+  <!-- 16px favicon: same disc+sword mark, no studio backdrop. -->
+  <circle cx="7.2" cy="8.2" r="5.6" fill="#1b4332"/>
+  <circle cx="7.2" cy="8.2" r="4.5" fill="#2d6a4f"/>
+  <ellipse cx="8.1" cy="7.1" rx="2.5" ry="1.6" fill="#52b788"/>
+  <ellipse cx="6" cy="9" rx="1.7" ry="1.1" fill="#40916c"/>
+  <ellipse cx="8.6" cy="9.4" rx="1.5" ry="1" fill="#1d3557"/>
+  <g transform="rotate(28 11 8)">
+    <rect x="10.35" y="2.1" width="1.1" height="8.8" rx="0.4" fill="#c9d1d9"/>
+    <rect x="9.2" y="9.5" width="3.4" height="1.1" rx="0.25" fill="#d4a017"/>
+  </g>
+</svg>

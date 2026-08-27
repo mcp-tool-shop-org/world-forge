@@ -2,6 +2,7 @@
 
 import type { WorldProject } from '@world-forge/schema';
 import { validateProject, scanDependencies } from '@world-forge/schema';
+import { normalizeProjectShape } from '../store/project-store.js';
 
 /** Current project bundle format version. Increment on breaking changes. */
 export const PROJECT_BUNDLE_VERSION = 1;
@@ -88,14 +89,14 @@ export function serializeProject(
     connections: project.connections.length,
     encounters: project.encounterAnchors.length,
     assets: project.assets.length,
-    assetPacks: project.assetPacks.length,
+    assetPacks: (project.assetPacks ?? []).length,
   };
 
   const depReport = scanDependencies(project);
   const dependencies: ProjectBundleDependencies = {
     kitName: activeKit?.name,
     kitSource: activeKit?.source,
-    assetPackIds: project.assetPacks.map((p) => p.id),
+    assetPackIds: (project.assetPacks ?? []).map((p) => p.id),
     dependencyHealth: {
       broken: depReport.summary.broken,
       mismatched: depReport.summary.mismatched,
@@ -127,11 +128,12 @@ export function parseProjectBundle(data: unknown): ParseProjectResult | ParsePro
   }
   const obj = data as Record<string, unknown>;
 
-  if (typeof obj.bundleVersion !== 'number') {
+  if (typeof obj.bundleVersion !== 'number' || !Number.isFinite(obj.bundleVersion)) {
     return { ok: false, error: 'Invalid project bundle: missing bundleVersion' };
   }
-  if (obj.bundleVersion !== PROJECT_BUNDLE_VERSION) {
-    return { ok: false, error: `Unsupported bundle version: ${obj.bundleVersion} (expected ${PROJECT_BUNDLE_VERSION})` };
+  // F-c138d326: accept older versions (migrate), reject newer than this editor knows.
+  if (obj.bundleVersion > PROJECT_BUNDLE_VERSION || obj.bundleVersion < 1) {
+    return { ok: false, error: `Unsupported bundle version: ${obj.bundleVersion} (expected <= ${PROJECT_BUNDLE_VERSION})` };
   }
   if (typeof obj.name !== 'string' || !obj.name.trim()) {
     return { ok: false, error: 'Invalid project bundle: name is required' };
@@ -146,15 +148,21 @@ export function parseProjectBundle(data: unknown): ParseProjectResult | ParsePro
   if (typeof obj.version !== 'string') warnings.push('Missing version');
   if (typeof obj.genre !== 'string') warnings.push('Missing genre');
 
-  const bundle: ProjectBundle = {
-    bundleVersion: PROJECT_BUNDLE_VERSION,
+  // F-08fe80b7 / F-c138d326: never return a nested project that omitted arrays.
+  const normalized = normalizeProjectShape(obj.project);
+  if (!normalized) {
+    return { ok: false, error: 'Invalid project bundle: project is not a loadable WorldProject' };
+  }
+
+  const bundle: ProjectBundle = migrateBundle({
+    bundleVersion: obj.bundleVersion,
     exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : new Date().toISOString(),
     name: obj.name as string,
     description: typeof obj.description === 'string' ? obj.description : '',
     version: typeof obj.version === 'string' ? obj.version : '',
     genre: typeof obj.genre === 'string' ? obj.genre : '',
     mode: typeof obj.mode === 'string' ? obj.mode : undefined,
-    project: obj.project as WorldProject,
+    project: normalized,
     summary: obj.summary && typeof obj.summary === 'object'
       ? obj.summary as ProjectBundleSummary
       : {
@@ -164,9 +172,24 @@ export function parseProjectBundle(data: unknown): ParseProjectResult | ParsePro
     dependencies: obj.dependencies && typeof obj.dependencies === 'object'
       ? obj.dependencies as ProjectBundleDependencies
       : { assetPackIds: [] },
-  };
+  }, obj.bundleVersion);
 
   return { ok: true, bundle, warnings };
+}
+
+/**
+ * F-c138d326: versioned bundle migration. v1 is identity today (plus
+ * normalizeProjectShape, applied by the caller). Chain future vN→vN+1
+ * steps here; always rewrite bundleVersion to PROJECT_BUNDLE_VERSION.
+ */
+export function migrateBundle(bundle: ProjectBundle, fromVersion: number): ProjectBundle {
+  let current = bundle;
+  let v = fromVersion;
+  while (v < PROJECT_BUNDLE_VERSION) {
+    // No breaking migrations yet — v1 identity.
+    v += 1;
+  }
+  return { ...current, bundleVersion: PROJECT_BUNDLE_VERSION };
 }
 
 /** Generate a sanitized filename from a project name. */
@@ -221,6 +244,6 @@ export function extractDependencies(bundle: ProjectBundle): DependencyReport {
     kitRef: bundle.dependencies.kitName
       ? { name: bundle.dependencies.kitName, source: bundle.dependencies.kitSource }
       : undefined,
-    assetPacks: bundle.project.assetPacks.map((p) => ({ id: p.id, label: p.label })),
+    assetPacks: (bundle.project.assetPacks ?? []).map((p) => ({ id: p.id, label: p.label })),
   };
 }

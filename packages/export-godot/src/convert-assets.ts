@@ -12,7 +12,7 @@
  * file system paths Godot will load at runtime.
  */
 
-import type { WorldProject, AssetEntry, AssetKind } from '@world-forge/schema';
+import type { WorldProject, AssetKind, AssetProvenance } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 
 const KIND_TO_DIR: Record<AssetKind, string> = {
@@ -22,6 +22,9 @@ const KIND_TO_DIR: Record<AssetKind, string> = {
     tileset: 'res://assets/tilesets',
     icon: 'res://assets/icons',
 };
+
+/** Directory used when AssetEntry.kind is not in KIND_TO_DIR (runtime-unknown). */
+export const FALLBACK_ASSET_DIR = 'res://assets/misc';
 
 export interface GodotAssetBinding {
     /** World Forge asset ID (stable key). */
@@ -38,6 +41,10 @@ export interface GodotAssetBinding {
     tags: string[];
     /** Optional pack membership. */
     packId?: string;
+    /** Authored asset version, copied through when present. */
+    version?: string;
+    /** Authored provenance (source/author/license/createdAt), copied through when present. */
+    provenance?: AssetProvenance;
 }
 
 export interface ConvertAssetsResult {
@@ -45,17 +52,32 @@ export interface ConvertAssetsResult {
     fidelity: FidelityEntry[];
 }
 
+/**
+ * Derive a Godot filename from a source path's basename, falling back to
+ * `${id}.png` when the path has no extension. Shared with convert-tile-layers
+ * so atlas ExtResource paths and asset-manifest godotPath agree.
+ */
+export function deriveGodotFilename(id: string, sourcePath: string): string {
+    const parts = sourcePath.replace(/\\/g, '/').split('/');
+    const lastPart = parts[parts.length - 1];
+    if (lastPart && lastPart.includes('.')) {
+        return lastPart;
+    }
+    return `${id}.png`;
+}
+
 export function convertAssets(project: WorldProject): ConvertAssetsResult {
     const fidelity: FidelityEntry[] = [];
     const assets: GodotAssetBinding[] = [];
 
     for (const entry of project.assets) {
-        const dir = KIND_TO_DIR[entry.kind];
-        // Derive filename from the original path or use the asset ID.
-        const filename = deriveFilename(entry);
+        const knownDir = KIND_TO_DIR[entry.kind];
+        const unknownKind = knownDir === undefined;
+        const dir = knownDir ?? FALLBACK_ASSET_DIR;
+        const filename = deriveGodotFilename(entry.id, entry.path);
         const godotPath = `${dir}/${filename}`;
 
-        assets.push({
+        const binding: GodotAssetBinding = {
             id: entry.id,
             kind: entry.kind,
             label: entry.label,
@@ -63,29 +85,34 @@ export function convertAssets(project: WorldProject): ConvertAssetsResult {
             godotPath,
             tags: entry.tags.slice(),
             packId: entry.packId,
-        });
+        };
+        if (entry.version !== undefined) binding.version = entry.version;
+        if (entry.provenance) binding.provenance = { ...entry.provenance };
 
-        fidelity.push({
-            level: 'lossless',
-            domain: 'assets',
-            severity: 'info',
-            entityId: entry.id,
-            fieldPath: `assets.${entry.id}`,
-            message: `Asset "${entry.id}" (${entry.kind}) mapped to ${godotPath}.`,
-            reason: 'Direct path mapping with kind-based directory.',
-        });
+        assets.push(binding);
+
+        if (unknownKind) {
+            fidelity.push({
+                level: 'approximated',
+                domain: 'assets',
+                severity: 'warning',
+                entityId: entry.id,
+                fieldPath: `assets.${entry.id}.kind`,
+                message: `Asset "${entry.id}" has unknown kind "${String(entry.kind)}" — mapped to ${godotPath}.`,
+                reason: `KIND_TO_DIR has no entry for "${String(entry.kind)}"; used fallback directory ${FALLBACK_ASSET_DIR}.`,
+            });
+        } else {
+            fidelity.push({
+                level: 'lossless',
+                domain: 'assets',
+                severity: 'info',
+                entityId: entry.id,
+                fieldPath: `assets.${entry.id}`,
+                message: `Asset "${entry.id}" (${entry.kind}) mapped to ${godotPath}.`,
+                reason: 'Direct path mapping with kind-based directory; version and provenance copied when authored.',
+            });
+        }
     }
 
     return { assets, fidelity };
-}
-
-function deriveFilename(entry: AssetEntry): string {
-    // Try to extract filename from the source path.
-    const parts = entry.path.replace(/\\/g, '/').split('/');
-    const lastPart = parts[parts.length - 1];
-    if (lastPart && lastPart.includes('.')) {
-        return lastPart;
-    }
-    // Fallback: use asset ID with a generic extension.
-    return `${entry.id}.png`;
 }

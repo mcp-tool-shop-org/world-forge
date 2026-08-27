@@ -63,8 +63,9 @@ function splitComparator(s: string): { op: string; rest: string } | null {
  * SpawnConditionNode. See module docstring for supported forms.
  * Returns null for unrecognized strings (callers treat as opaque or warn).
  */
-export function parseSpawnCondition(s: string | undefined): SpawnConditionNode | null {
+export function parseSpawnCondition(s: unknown): SpawnConditionNode | null {
   if (s === undefined || s === null) return null;
+  if (typeof s !== 'string') return null;
   const trimmed = s.trim();
   if (trimmed.length === 0) return null;
 
@@ -306,10 +307,14 @@ export function formatConditionSpec(
 /**
  * Validation helper used by validateProject. Returns an error string or
  * null if valid. Undefined / empty strings are treated as valid (the field
- * is optional).
+ * is optional). Non-strings (imported JSON can send a number) are rejected
+ * without throwing — `s.trim` is not safe on a number.
  */
-export function validateSpawnCondition(s: string | undefined): string | null {
+export function validateSpawnCondition(s: unknown): string | null {
   if (s === undefined || s === null) return null;
+  if (typeof s !== 'string') {
+    return `Spawn condition must be a string (got ${typeof s}).`;
+  }
   const trimmed = s.trim();
   if (trimmed.length === 0) return null;
   const parsed = parseSpawnCondition(trimmed);

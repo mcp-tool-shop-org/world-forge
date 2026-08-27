@@ -5,21 +5,32 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { useTemplateStore, type UserTemplate } from '../store/template-store.js';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
-import { useKitStore, filterKitsByMode, serializeKit, kitFilename } from '../kits/index.js';
+import { useKitStore, filterKitsByMode, serializeKit, kitFilename, StoragePersistError } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
+import { defaultDownloadJson } from './export-handlers.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
 import { confirmDiscard } from '../modal-guards.js';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
-import { buttonBase, modalFooter } from '../ui/styles.js';
+import { buttonBase, badgePill, modalFooter } from '../ui/styles.js';
+import { EmptyState } from './shared.js';
+import { useModalStore } from '../store/modal-store.js';
 
 interface Props { onClose: () => void }
 
 type Tab = 'genres' | 'starters' | 'samples' | 'templates';
+
+/** Pending tab applied the next time TemplateManager mounts (Ctrl+K starter-kit). */
+let pendingTab: Tab | null = null;
+
+export function requestTemplateManagerTab(tab: Tab): void {
+  pendingTab = tab;
+}
 
 export function countContent(p: WorldProject) {
   return {
@@ -47,7 +58,11 @@ export function TemplateManager({ onClose }: Props) {
   const { templates, loadTemplates, duplicateTemplate, deleteTemplate } = useTemplateStore();
   const { kits, loadKits, duplicateKit: duplicateKitAction, deleteKit: deleteKitAction } = useKitStore();
 
-  const [tab, setTab] = useState<Tab>('genres');
+  const [tab, setTab] = useState<Tab>(() => {
+    const next = pendingTab ?? 'genres';
+    pendingTab = null;
+    return next;
+  });
 
   // Wizard state (genres tab)
   const [step, setStep] = useState<1 | 2>(1);
@@ -66,9 +81,23 @@ export function TemplateManager({ onClose }: Props) {
   const [filterMode, setFilterMode] = useState<AuthoringMode | undefined>(undefined);
   const [editingKit, setEditingKit] = useState<StarterKit | null>(null);
   const [showImportKit, setShowImportKit] = useState(false);
+  // F-c28f6fa5: keep the kit-export object URL; revoke on unmount / replace only.
+  const [kitFallback, setKitFallback] = useState<{ href: string; filename: string } | null>(null);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
-  useEffect(() => { loadKits(); }, [loadKits]);
+  useEffect(() => {
+    const result = loadKits();
+    if (result?.reset) {
+      pushToast('Saved kits could not be read and were reset.', 'warning', 4000);
+    }
+  }, [loadKits]);
+  useEffect(() => {
+    return () => {
+      if (kitFallback?.href) {
+        try { URL.revokeObjectURL(kitFallback.href); } catch { /* ignore */ }
+      }
+    };
+  }, [kitFallback]);
 
   // Samples mode filter
   const [sampleModeFilter, setSampleModeFilter] = useState<AuthoringMode | undefined>(undefined);
@@ -145,24 +174,36 @@ export function TemplateManager({ onClose }: Props) {
   }, [confirmDelete, deleteTemplate]);
 
   const handleDuplicateKit = useCallback((id: string) => {
-    duplicateKitAction(id);
+    try {
+      duplicateKitAction(id);
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not duplicate kit — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not duplicate kit.');
+      pushToast(msg, 'error', 4000);
+    }
   }, [duplicateKitAction]);
 
   const handleExportKit = useCallback((kit: StarterKit) => {
-    const bundle = serializeKit(kit);
-    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = kitFilename(kit.name);
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
+    if (kitFallback?.href) {
+      try { URL.revokeObjectURL(kitFallback.href); } catch { /* ignore */ }
+    }
+    const filename = kitFilename(kit.name);
+    const url = defaultDownloadJson(filename, serializeKit(kit));
+    if (url) setKitFallback({ href: url, filename });
+  }, [kitFallback]);
 
   const handleDeleteKit = useCallback((id: string) => {
     if (confirmDeleteKit === id) {
-      deleteKitAction(id);
-      setConfirmDeleteKit(null);
+      try {
+        deleteKitAction(id);
+        setConfirmDeleteKit(null);
+      } catch (err) {
+        const msg = err instanceof StoragePersistError
+          ? 'Could not delete kit — browser storage is full or blocked.'
+          : (err instanceof Error ? err.message : 'Could not delete kit.');
+        pushToast(msg, 'error', 4000);
+      }
     } else {
       setConfirmDeleteKit(id);
     }
@@ -172,7 +213,7 @@ export function TemplateManager({ onClose }: Props) {
     <ModalFrame title="New Project" width={520} onClose={onClose}>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #30363d', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--wf-border-default)', marginBottom: 16 }}>
           {(['genres', 'starters', 'samples', 'templates'] as Tab[]).map((t) => {
             const labels: Record<Tab, string> = {
               genres: 'Genres',
@@ -185,8 +226,8 @@ export function TemplateManager({ onClose }: Props) {
                 key={t}
                 onClick={() => { setTab(t); setStep(1); }}
                 style={{
-                  background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #58a6ff' : '2px solid transparent',
-                  color: tab === t ? '#58a6ff' : '#8b949e', padding: '8px 14px', cursor: 'pointer', fontSize: 12,
+                  background: 'none', border: 'none', borderBottom: tab === t ? '2px solid var(--wf-accent)' : '2px solid transparent',
+                  color: tab === t ? 'var(--wf-accent)' : 'var(--wf-text-muted)', padding: '8px 14px', cursor: 'pointer', fontSize: 12,
                 }}
               >
                 {labels[t]}
@@ -198,8 +239,9 @@ export function TemplateManager({ onClose }: Props) {
         {/* Genres tab */}
         {tab === 'genres' && step === 1 && (
           <>
-            <label style={labelStyle}>Project Name</label>
+            <label style={labelStyle} htmlFor="wf-tm-genre-name">Project Name</label>
             <input
+              id="wf-tm-genre-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. My First World"
@@ -216,9 +258,9 @@ export function TemplateManager({ onClose }: Props) {
                     key={m}
                     onClick={() => setMode(m)}
                     style={{
-                      background: mode === m ? '#0d1d30' : '#0d1117',
-                      border: mode === m ? '2px solid #58a6ff' : '1px solid #30363d',
-                      borderRadius: 4, padding: '4px 8px', cursor: 'pointer', color: '#c9d1d9',
+                      background: mode === m ? 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))' : 'var(--wf-bg-app)',
+                      border: mode === m ? '2px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
+                      borderRadius: 4, padding: '4px 8px', cursor: 'pointer', color: 'var(--wf-text-primary)',
                       fontSize: 11, display: 'flex', alignItems: 'center', gap: 4,
                     }}
                     title={p.description}
@@ -230,7 +272,7 @@ export function TemplateManager({ onClose }: Props) {
               })}
             </div>
 
-            <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 12, fontStyle: 'italic' }}>
+            <div style={{ fontSize: 10, color: 'var(--wf-accent)', marginBottom: 12, fontStyle: 'italic' }}>
               {MODE_PROFILES[mode].icon} {MODE_PROFILES[mode].description}
             </div>
 
@@ -242,7 +284,7 @@ export function TemplateManager({ onClose }: Props) {
               >
                 <div style={{ fontSize: 18 }}>{'\u2B1C'}</div>
                 <div style={{ fontSize: 12, fontWeight: 'bold' }}>Blank</div>
-                <div style={{ fontSize: 10, color: '#8b949e' }}>Empty canvas</div>
+                <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Empty canvas</div>
               </button>
               {GENRE_TEMPLATES.map((t) => (
                 <button
@@ -252,7 +294,7 @@ export function TemplateManager({ onClose }: Props) {
                 >
                   <div style={{ fontSize: 18 }}>{t.icon}</div>
                   <div style={{ fontSize: 12, fontWeight: 'bold' }}>{t.name}</div>
-                  <div style={{ fontSize: 10, color: '#8b949e' }}>{t.description}</div>
+                  <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{t.description}</div>
                 </button>
               ))}
             </div>
@@ -261,7 +303,7 @@ export function TemplateManager({ onClose }: Props) {
 
         {tab === 'genres' && step === 2 && (
           <>
-            <div style={{ fontSize: 12, color: '#c9d1d9', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: 'var(--wf-text-primary)', marginBottom: 8 }}>
               Template: <strong>{genre === 'blank' ? 'Blank' : GENRE_TEMPLATES.find((t) => t.id === genre)?.name}</strong>
             </div>
             <label style={labelStyle}>Include in project:</label>
@@ -278,11 +320,12 @@ export function TemplateManager({ onClose }: Props) {
         {/* Starter Kits tab */}
         {tab === 'starters' && (
           <>
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 12 }}>
               Browse starter kits to begin a new project. Built-in kits ship with World Forge; custom kits are ones you&apos;ve saved.
             </div>
-            <label style={labelStyle}>Project Name</label>
+            <label style={labelStyle} htmlFor="wf-tm-kit-name">Project Name</label>
             <input
+              id="wf-tm-kit-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Leave blank to use kit name"
@@ -292,10 +335,10 @@ export function TemplateManager({ onClose }: Props) {
               <button
                 onClick={() => setFilterMode(undefined)}
                 style={{
-                  background: filterMode === undefined ? '#0d1d30' : '#0d1117',
-                  border: filterMode === undefined ? '2px solid #58a6ff' : '1px solid #30363d',
+                  background: filterMode === undefined ? 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))' : 'var(--wf-bg-app)',
+                  border: filterMode === undefined ? '2px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
                   borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-                  color: filterMode === undefined ? '#58a6ff' : '#8b949e', fontSize: 10,
+                  color: filterMode === undefined ? 'var(--wf-accent)' : 'var(--wf-text-muted)', fontSize: 10,
                 }}
               >
                 All
@@ -305,10 +348,10 @@ export function TemplateManager({ onClose }: Props) {
                   key={m}
                   onClick={() => setFilterMode(m)}
                   style={{
-                    background: filterMode === m ? '#0d1d30' : '#0d1117',
-                    border: filterMode === m ? '2px solid #58a6ff' : '1px solid #30363d',
+                    background: filterMode === m ? 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))' : 'var(--wf-bg-app)',
+                    border: filterMode === m ? '2px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
                     borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-                    color: filterMode === m ? '#58a6ff' : '#8b949e', fontSize: 10,
+                    color: filterMode === m ? 'var(--wf-accent)' : 'var(--wf-text-muted)', fontSize: 10,
                   }}
                 >
                   {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
@@ -317,8 +360,28 @@ export function TemplateManager({ onClose }: Props) {
             </div>
             <div style={{ marginBottom: 12 }}>
               <button onClick={() => setShowImportKit(true)} style={smallBtnStyle}>Import Kit</button>
+              {kitFallback && (
+                <a
+                  href={kitFallback.href}
+                  download={kitFallback.filename}
+                  data-testid="wf-kit-export-fallback-link"
+                  style={{ fontSize: 11, color: 'var(--wf-accent)', marginLeft: 8, textDecoration: 'underline' }}
+                >
+                  If nothing appears, click here
+                </a>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {filterKitsByMode(kits, filterMode).length === 0 && (
+                <EmptyState
+                  title="No starter kits"
+                  description={filterMode
+                    ? 'No kits match this mode. Clear the filter or import a kit.'
+                    : 'Import a kit or save one from the current project.'}
+                  icon={'\u25A8'}
+                  actions={[{ label: 'Import Kit', onClick: () => setShowImportKit(true) }]}
+                />
+              )}
               {filterKitsByMode(kits, filterMode).map((kit) => {
                 const c = countContent(kit.project);
                 const presetCount = kit.presetRefs.region.length + kit.presetRefs.encounter.length;
@@ -326,8 +389,8 @@ export function TemplateManager({ onClose }: Props) {
                   <div key={kit.id} style={sampleCardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 16 }}>{kit.icon}</span>
-                      <span style={{ fontSize: 14, fontWeight: 'bold', color: '#c9d1d9' }}>{kit.name}</span>
-                      {kit.builtIn && <span style={{ fontSize: 10, color: '#8b949e' }} title="Built-in kit">{'\uD83D\uDD12'}</span>}
+                      <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--wf-text-primary)' }}>{kit.name}</span>
+                      {kit.builtIn && <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }} title="Built-in kit">{'\uD83D\uDD12'}</span>}
                       {!kit.builtIn && kit.source === 'imported' && (
                         <span style={importedBadgeStyle} title="Imported kit">imported</span>
                       )}
@@ -335,22 +398,20 @@ export function TemplateManager({ onClose }: Props) {
                         <span style={customBadgeStyle} title="Custom kit">custom</span>
                       )}
                       {kit.modes.map((m) => (
-                        <span key={m} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#21262d', color: '#8b949e' }}>
+                        <span key={m} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)' }}>
                           {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
                         </span>
                       ))}
                     </div>
-                    <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>{kit.description}</div>
+                    <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>{kit.description}</div>
                     {kit.tags.length > 0 && (
                       <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
                         {kit.tags.map((tag) => (
-                          <span key={tag} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#21262d', color: '#484f58' }}>
-                            {tag}
-                          </span>
+                          <span key={tag} style={badgePill}>{tag}</span>
                         ))}
                       </div>
                     )}
-                    <div style={{ fontSize: 10, color: '#484f58', marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 8 }}>
                       {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
                       {presetCount > 0 && <> &middot; {presetCount} presets</>}
                     </div>
@@ -363,7 +424,7 @@ export function TemplateManager({ onClose }: Props) {
                           <button onClick={() => setEditingKit(kit)} style={smallBtnStyle}>Edit</button>
                           <button
                             onClick={() => handleDeleteKit(kit.id)}
-                            style={{ ...smallBtnStyle, color: confirmDeleteKit === kit.id ? '#f85149' : '#8b949e' }}
+                            style={{ ...smallBtnStyle, color: confirmDeleteKit === kit.id ? 'var(--wf-danger-text)' : 'var(--wf-text-muted)' }}
                           >
                             {confirmDeleteKit === kit.id ? 'Confirm?' : 'Delete'}
                           </button>
@@ -380,7 +441,7 @@ export function TemplateManager({ onClose }: Props) {
         {/* Samples tab */}
         {tab === 'samples' && (
           <>
-            <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 8 }}>
               Open a sample to explore, learn from, or build on. Each opens as an editable copy.
             </div>
             {/* Mode filter pills */}
@@ -389,9 +450,9 @@ export function TemplateManager({ onClose }: Props) {
                 onClick={() => setSampleModeFilter(undefined)}
                 style={{
                   fontSize: 10, padding: '3px 8px', cursor: 'pointer', borderRadius: 3,
-                  background: sampleModeFilter === undefined ? '#58a6ff' : '#21262d',
-                  color: sampleModeFilter === undefined ? '#fff' : '#8b949e',
-                  border: '1px solid #30363d',
+                  background: sampleModeFilter === undefined ? 'var(--wf-accent)' : 'var(--wf-bg-control)',
+                  color: sampleModeFilter === undefined ? '#fff' : 'var(--wf-text-muted)',
+                  border: '1px solid var(--wf-border-default)',
                 }}
               >All</button>
               {AUTHORING_MODES.map((m) => (
@@ -400,9 +461,9 @@ export function TemplateManager({ onClose }: Props) {
                   onClick={() => setSampleModeFilter(sampleModeFilter === m ? undefined : m)}
                   style={{
                     fontSize: 10, padding: '3px 8px', cursor: 'pointer', borderRadius: 3,
-                    background: sampleModeFilter === m ? '#58a6ff' : '#21262d',
-                    color: sampleModeFilter === m ? '#fff' : '#8b949e',
-                    border: '1px solid #30363d',
+                    background: sampleModeFilter === m ? 'var(--wf-accent)' : 'var(--wf-bg-control)',
+                    color: sampleModeFilter === m ? '#fff' : 'var(--wf-text-muted)',
+                    border: '1px solid var(--wf-border-default)',
                   }}
                 >{MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}</button>
               ))}
@@ -413,18 +474,18 @@ export function TemplateManager({ onClose }: Props) {
                 return (
                   <div key={sample.id} style={sampleCardStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 'bold', color: '#c9d1d9' }}>{sample.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--wf-text-primary)' }}>{sample.name}</span>
                       <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 'bold', ...badgeColors[sample.complexity] }}>
                         {sample.complexity}
                       </span>
                       {sample.mode && (
-                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#21262d', color: '#8b949e' }}>
+                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)' }}>
                           {MODE_PROFILES[sample.mode].icon} {MODE_PROFILES[sample.mode].label}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{sample.description}</div>
-                    <div style={{ fontSize: 10, color: '#484f58', marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 6 }}>{sample.description}</div>
+                    <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 8 }}>
                       {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
                     </div>
                     <button onClick={() => handleOpenSample(sample.project)} style={openBtnStyle}>Open as Copy</button>
@@ -439,12 +500,15 @@ export function TemplateManager({ onClose }: Props) {
         {tab === 'templates' && (
           <>
             {templates.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-                <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 8 }}>No templates yet.</div>
-                <div style={{ fontSize: 11, color: '#484f58' }}>
-                  Save your current project as a template to see it here.
-                </div>
-              </div>
+              <EmptyState
+                title="No templates yet"
+                description="Save your current project as a template to see it here."
+                icon={'\u25A2'}
+                actions={[{
+                  label: 'Save as Template',
+                  onClick: () => { onClose(); useModalStore.getState().openModal('save-template'); },
+                }]}
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {templates.map((t) => {
@@ -453,13 +517,13 @@ export function TemplateManager({ onClose }: Props) {
                     <div key={t.id} style={sampleCardStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 16 }}>{t.icon}</span>
-                        <span style={{ fontSize: 14, fontWeight: 'bold', color: '#c9d1d9' }}>{t.name}</span>
-                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 'bold', background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
+                        <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--wf-text-primary)' }}>{t.name}</span>
+                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, fontWeight: 'bold', background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)' }}>
                           {t.genre}
                         </span>
                       </div>
-                      {t.description && <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{t.description}</div>}
-                      <div style={{ fontSize: 10, color: '#484f58', marginBottom: 8 }}>
+                      {t.description && <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 6 }}>{t.description}</div>}
+                      <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 8 }}>
                         {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.items} items
                       </div>
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -467,7 +531,7 @@ export function TemplateManager({ onClose }: Props) {
                         <button onClick={() => handleDuplicate(t.id)} style={smallBtnStyle}>Duplicate</button>
                         <button
                           onClick={() => handleDelete(t.id)}
-                          style={{ ...smallBtnStyle, color: confirmDelete === t.id ? '#f85149' : '#8b949e' }}
+                          style={{ ...smallBtnStyle, color: confirmDelete === t.id ? 'var(--wf-danger-text)' : 'var(--wf-text-muted)' }}
                         >
                           {confirmDelete === t.id ? 'Confirm?' : 'Delete'}
                         </button>
@@ -502,53 +566,53 @@ export function TemplateManager({ onClose }: Props) {
 
 function CheckItem({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#c9d1d9', cursor: 'pointer' }}>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--wf-text-primary)', cursor: 'pointer' }}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span>
         {label}
-        <span style={{ fontSize: 10, color: '#8b949e', marginLeft: 6 }}>{hint}</span>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginLeft: 6 }}>{hint}</span>
       </span>
     </label>
   );
 }
 
 const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4,
+  display: 'block', fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4,
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 4,
-  background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d',
+  background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)',
   boxSizing: 'border-box',
 };
 
 const cardBtnStyle: React.CSSProperties = {
-  background: '#0d1117', border: '1px solid #30363d', borderRadius: 6,
-  padding: '8px 6px', cursor: 'pointer', textAlign: 'center', color: '#c9d1d9',
+  background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 6,
+  padding: '8px 6px', cursor: 'pointer', textAlign: 'center', color: 'var(--wf-text-primary)',
 };
 
 const selectedCardBtnStyle: React.CSSProperties = {
   ...cardBtnStyle,
-  border: '2px solid #58a6ff', background: '#0d1d30',
+  border: '2px solid var(--wf-accent)', background: 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))',
 };
 
 const sampleCardStyle: React.CSSProperties = {
-  background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, padding: 12,
+  background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 6, padding: 12,
 };
 
 const badgeColors: Record<string, React.CSSProperties> = {
-  minimal: { background: '#0d2818', color: '#3fb950', border: '1px solid #238636' },
-  intermediate: { background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}` },
-  rich: { background: '#2a1c08', color: '#d29922', border: '1px solid #9e6a03' },
+  minimal: { background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))', color: 'var(--wf-success-text)', border: '1px solid var(--wf-success)' },
+  intermediate: { background: 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))', color: 'var(--wf-accent)', border: `1px solid ${ACTIVE_TAB_BG}` },
+  rich: { background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', color: 'var(--wf-warning)', border: '1px solid var(--wf-warning)' },
 };
 
 const openBtnStyle: React.CSSProperties = {
-  background: '#238636', color: '#fff', border: 'none', borderRadius: 4,
+  background: 'var(--wf-success)', color: '#fff', border: 'none', borderRadius: 4,
   padding: '5px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 'bold',
 };
 
 const smallBtnStyle: React.CSSProperties = {
-  background: 'none', color: '#8b949e', border: '1px solid #30363d', borderRadius: 4,
+  background: 'none', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)', borderRadius: 4,
   padding: '4px 10px', cursor: 'pointer', fontSize: 10,
 };
 
@@ -556,10 +620,10 @@ const smallBtnStyle: React.CSSProperties = {
 
 const importedBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,
-  background: '#0d1d30', color: '#58a6ff', border: `1px solid ${ACTIVE_TAB_BG}`,
+  background: 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))', color: 'var(--wf-accent)', border: `1px solid ${ACTIVE_TAB_BG}`,
 };
 
 const customBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,
-  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+  background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)',
 };

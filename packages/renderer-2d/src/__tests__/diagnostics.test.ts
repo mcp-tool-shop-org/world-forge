@@ -7,6 +7,8 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('pixi.js', () => {
   class MockContainer {
     children: unknown[] = [];
+    x = 0;
+    y = 0;
     position = { set: vi.fn() };
     scale = { set: vi.fn() };
     addChild(child: unknown) { this.children.push(child); }
@@ -40,6 +42,12 @@ vi.mock('pixi.js', () => {
     }
     destroy() {}
   }
+  class MockSprite {
+    width = 0;
+    height = 0;
+    static from() { return new MockSprite(); }
+    destroy() {}
+  }
   class MockApplication {
     stage = new MockContainer();
     canvas = {} as HTMLCanvasElement;
@@ -52,6 +60,7 @@ vi.mock('pixi.js', () => {
     Container: MockContainer,
     Graphics: MockGraphics,
     Text: MockText,
+    Sprite: MockSprite,
   };
 });
 
@@ -60,6 +69,8 @@ import { EntityRenderer } from '../entity-renderer.js';
 import { ConnectionRenderer } from '../connection-renderer.js';
 import { MinimapRenderer } from '../minimap.js';
 import { ZoneOverlayRenderer } from '../zone-renderer.js';
+import { ParallaxRenderer } from '../parallax-renderer.js';
+import { WorldViewport } from '../viewport.js';
 
 describe('DiagnosticInfo shape (INF-B-008)', () => {
   it('TileLayerRenderer.getDiagnostics()', () => {
@@ -114,13 +125,45 @@ describe('DiagnosticInfo shape (INF-B-008)', () => {
     expect(r.getDiagnostics().destroyed).toBe(true);
   });
 
+  it('ParallaxRenderer.getDiagnostics()', () => {
+    const r = new ParallaxRenderer({ tileSize: 32 });
+    const d = r.getDiagnostics();
+    expect(d.className).toBe('ParallaxRenderer');
+    expect(d.destroyed).toBe(false);
+    expect(d.childCount).toBe(0);
+    r.destroy();
+    expect(r.getDiagnostics().destroyed).toBe(true);
+  });
+
   it('childCount reflects current container.children length', () => {
     const r = new EntityRenderer(32);
     r.update(
       [{ entityId: 'e1', zoneId: 'z1', role: 'npc' }],
       new Map([['z1', { x: 0, y: 0 }]]),
     );
-    // 1 entity = 1 graphic + 1 label = 2 children
-    expect(r.getDiagnostics().childCount).toBe(2);
+    // F-9347649b: rest state is 1 graphic, no id label
+    expect(r.getDiagnostics().childCount).toBe(1);
+  });
+
+  it('WorldViewport.getDiagnostics() before init, after init, and after destroy (F-0f41f51a)', async () => {
+    const vp = new WorldViewport({
+      width: 800, height: 600, gridWidth: 10, gridHeight: 10, tileSize: 32,
+    });
+    const before = vp.getDiagnostics();
+    expect(before.className).toBe('WorldViewport');
+    expect(before.destroyed).toBe(false);
+    expect(before.childCount).toBe(0);
+
+    const el = { appendChild: vi.fn() } as unknown as HTMLElement;
+    await vp.init(el);
+    const mounted = vp.getDiagnostics();
+    expect(mounted.className).toBe('WorldViewport');
+    expect(mounted.destroyed).toBe(false);
+    expect(mounted.childCount).toBeGreaterThanOrEqual(0);
+
+    vp.destroy();
+    const after = vp.getDiagnostics();
+    expect(after.destroyed).toBe(true);
+    expect(after.className).toBe('WorldViewport');
   });
 });

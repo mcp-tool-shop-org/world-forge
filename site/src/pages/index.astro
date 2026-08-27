@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import BaseLayout from '@mcptoolshop/site-theme/components/BaseLayout.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
 import Hero from '@mcptoolshop/site-theme/components/Hero.astro';
 import Section from '@mcptoolshop/site-theme/components/Section.astro';
 import FeatureGrid from '@mcptoolshop/site-theme/components/FeatureGrid.astro';
@@ -10,7 +10,7 @@ import ApiList from '@mcptoolshop/site-theme/components/ApiList.astro';
 import { config } from '../site-config';
 ---
 
-<BaseLayout
+<MarketingLayout
   title={config.title}
   description={config.description}
   logoBadge={config.logoBadge}
@@ -30,4 +30,4 @@ import { config } from '../site-config';
       {s.kind === 'api' && <ApiList apis={s.apis} />}
     </Section>
   ))}
-</BaseLayout>
+</MarketingLayout>

@@ -6,7 +6,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
 import { classifyError, navigationForError, isRefError, type Domain } from './validation-helpers.js';
 import { scanDependencies } from '@world-forge/schema';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, onEnter } from './shared.js';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 
 const domainLabels: Record<Domain, string> = {
@@ -22,11 +22,14 @@ const domainLabels: Record<Domain, string> = {
   deps: 'Dependencies',
   strata: 'Strata',
   hazards: 'Hazards',
+  town: 'Town Structures',
+  loot: 'Loot Tables',
+  transitions: 'Transitions',
 };
 
 // EUB-006: domainOrder must stay exhaustive — when adding a new Domain variant to
 // validation-helpers.ts, add a corresponding entry here and in domainLabels above.
-const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'strata', 'hazards', 'deps'];
+const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'strata', 'hazards', 'town', 'loot', 'transitions', 'deps'];
 
 export function ValidationPanel() {
   const { project } = useProjectStore();
@@ -44,7 +47,7 @@ export function ValidationPanel() {
     const map: Record<Domain, ValidationError[]> = {
       world: [], entities: [], items: [], dialogue: [],
       player: [], builds: [], progression: [], assets: [], packs: [], deps: [],
-      strata: [], hazards: [],
+      strata: [], hazards: [], town: [], loot: [], transitions: [],
     };
     for (const err of result.errors) {
       map[classifyError(err)].push(err);
@@ -56,7 +59,7 @@ export function ValidationPanel() {
   // helper (validation-helpers.ts) instead of being duplicated here.
   const handleClick = (err: ValidationError) => {
     const focus = { domain: classifyError(err), subPath: err.path, timestamp: Date.now() };
-    const nav = navigationForError(err);
+    const nav = navigationForError(err, project);
     if (nav.selectZoneId) setSelectedZone(nav.selectZoneId);
     else if (nav.clearZone) setSelectedZone(null);
     setRightTab(nav.tab);
@@ -72,7 +75,7 @@ export function ValidationPanel() {
     return (
       <div>
         <PanelHeader title="Validation" />
-        <div style={{ color: '#3fb950', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
+        <div style={{ color: 'var(--wf-success-text)', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>
           No issues found — ready to export.
         </div>
         {advisory.items.length > 0 && (
@@ -92,9 +95,12 @@ export function ValidationPanel() {
         return (
           <div key={domain} style={{ marginBottom: 8 }}>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => toggle(domain)}
+              onKeyDown={onEnter(() => toggle(domain))}
               style={{
-                fontSize: 12, fontWeight: 600, color: '#f85149',
+                fontSize: 12, fontWeight: 600, color: 'var(--wf-danger-text)',
                 cursor: 'pointer', padding: '4px 0', userSelect: 'none',
               }}
             >
@@ -103,30 +109,33 @@ export function ValidationPanel() {
             {!isCollapsed && errors.map((err, i) => (
               <div
                 key={i}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleClick(err)}
+                onKeyDown={onEnter(() => handleClick(err))}
+                title={`Jump to: ${err.path}`}
                 style={{
-                  fontSize: 11, color: '#f0883e', padding: '3px 0 3px 14px',
-                  cursor: 'pointer', borderLeft: '2px solid #30363d',
+                  fontSize: 11, color: 'var(--wf-warning)', padding: '3px 0 3px 14px',
+                  cursor: 'pointer', borderLeft: '2px solid var(--wf-border-default)',
                   transition: 'background 0.15s',
                   display: 'flex', alignItems: 'baseline', gap: 6,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#1c2128'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wf-bg-elevated)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
-                <span
-                  onClick={() => handleClick(err)}
-                  title={`Click to jump to: ${err.path}`}
-                  style={{ flex: 1 }}
-                >
+                <span style={{ flex: 1 }}>
                   {err.message}
                 </span>
                 {isRefError(err) && depIssueCount > 0 && (
-                  <span
+                  <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); setRightTab('deps'); }}
+                    onKeyDown={(e) => e.stopPropagation()}
                     title="Open Dependency Manager to repair"
-                    style={{ fontSize: 10, color: '#d29922', whiteSpace: 'nowrap', textDecoration: 'underline' }}
+                    style={{ fontSize: 10, color: 'var(--wf-warning)', whiteSpace: 'nowrap', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     Open Deps
-                  </span>
+                  </button>
                 )}
               </div>
             ))}
@@ -152,7 +161,7 @@ function AdvisorySuggestions({ items, collapsed, toggle }: {
         data-testid="wf-suggestions-toggle"
         onClick={() => toggle('advisory')}
         style={{
-          fontSize: 12, fontWeight: 600, color: '#58a6ff',
+          fontSize: 12, fontWeight: 600, color: 'var(--wf-accent)',
           cursor: 'pointer', padding: '4px 8px', userSelect: 'none',
           background: 'none', border: 'none', width: '100%', textAlign: 'left',
         }}
@@ -163,7 +172,7 @@ function AdvisorySuggestions({ items, collapsed, toggle }: {
         <div
           key={i}
           style={{
-            fontSize: 11, color: '#58a6ff', padding: '3px 0 3px 14px',
+            fontSize: 11, color: 'var(--wf-accent)', padding: '3px 0 3px 14px',
             borderLeft: `2px solid ${ACTIVE_TAB_BG}`,
           }}
         >

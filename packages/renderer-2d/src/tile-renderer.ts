@@ -50,7 +50,16 @@ export class TileLayerRenderer {
 
     // Build tile lookup
     const tileDefs = new Map<string, TileDefinition>();
+    // F-4cfcd60a: a truncated/hand-edited tileset may omit `tiles` or set it
+    // to a non-array. Iterating that throws TypeError and aborts the whole
+    // update — including sibling tilesets that would have rendered. Skip the
+    // bad tileset and emit one aggregated warning, matching missing-tileId.
+    const malformedTilesets: Array<{ id: string; type: string }> = [];
     for (const ts of tilesets) {
+      if (!Array.isArray(ts.tiles)) {
+        malformedTilesets.push({ id: ts.id, type: describeNonArray(ts.tiles) });
+        continue;
+      }
       for (const t of ts.tiles) {
         tileDefs.set(t.id, t);
       }
@@ -65,8 +74,17 @@ export class TileLayerRenderer {
     // Key is `${layerId}::${tileId}` so we can attribute each missing id back
     // to its layer in the summary.
     const missingCounts = new Map<string, number>();
+    // F-c95fe6c0: sibling of F-4cfcd60a. tileset.tiles is skip+warn; a
+    // layer whose tiles is omitted or {} used to TypeError and abort every
+    // remaining layer. Skip the bad layer and keep walking siblings.
+    const malformedLayers: Array<{ id: string; type: string }> = [];
 
     for (const layer of sorted) {
+      if (!Array.isArray(layer.tiles)) {
+        malformedLayers.push({ id: layer.id, type: describeNonArray(layer.tiles) });
+        continue;
+      }
+
       const layerContainer = new Container();
 
       for (const placement of layer.tiles) {
@@ -83,15 +101,25 @@ export class TileLayerRenderer {
         const y = placement.gridY * this.tileSize;
 
         let color = 0x333333; // default floor
-        if (def.tags.includes('wall')) color = 0x555555;
-        else if (def.tags.includes('water')) color = 0x2244aa;
-        else if (def.tags.includes('door')) color = 0x886622;
+        // F-4cfcd60a: omitted/non-array tags must not throw; treat as [].
+        const tags = Array.isArray(def.tags) ? def.tags : [];
+        if (tags.includes('wall')) color = 0x555555;
+        else if (tags.includes('water')) color = 0x2244aa;
+        else if (tags.includes('door')) color = 0x886622;
 
         g.rect(x, y, this.tileSize, this.tileSize).fill({ color, alpha: def.opacity });
         layerContainer.addChild(g);
       }
 
       this.container.addChild(layerContainer);
+    }
+
+    if (malformedTilesets.length > 0) {
+      console.warn(formatNotArrayTilesWarn('tilesets', malformedTilesets));
+    }
+
+    if (malformedLayers.length > 0) {
+      console.warn(formatNotArrayTilesWarn('layers', malformedLayers));
     }
 
     // R2D-B-003: emit a single consolidated warning covering every missing
@@ -110,4 +138,21 @@ export class TileLayerRenderer {
       );
     }
   }
+}
+
+/** F-4daec731: name the runtime type — the field is often present as `{}`, not omitted. */
+function describeNonArray(value: unknown): string {
+  if (value === null) return 'null';
+  return typeof value;
+}
+
+function formatNotArrayTilesWarn(
+  sibling: 'tilesets' | 'layers',
+  items: Array<{ id: string; type: string }>,
+): string {
+  if (items.length === 1) {
+    return `TileLayerRenderer.update: tiles is not an array (got ${items[0].type}) — skipping "${items[0].id}". Sibling ${sibling} still render.`;
+  }
+  const details = items.map((m) => `"${m.id}" (got ${m.type})`).join(', ');
+  return `TileLayerRenderer.update: tiles is not an array — skipping ${details}. Sibling ${sibling} still render.`;
 }

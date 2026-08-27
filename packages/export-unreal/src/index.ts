@@ -4,13 +4,16 @@ export { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from './export.js';
 export type {
   UnrealContentPack, UnrealPackMeta,
   UnrealExportOptions, UnrealExportResult, UnrealExportError,
+  PackSignature, SigningAlgorithm,
 } from './export.js';
 
 export { importFromUnreal } from './import.js';
 export type { UnrealImportResult, UnrealImportError } from './import.js';
 
 export { convertZones } from './convert-zones.js';
-export type { UnrealZoneDataAsset, UnrealParallaxLayer, ConvertZonesResult } from './convert-zones.js';
+export type {
+  UnrealZoneDataAsset, UnrealParallaxLayer, UnrealEntryGate, ConvertZonesResult,
+} from './convert-zones.js';
 
 export { convertDistricts } from './convert-districts.js';
 export type { UnrealDistrictDataAsset, ConvertDistrictsResult } from './convert-districts.js';
@@ -35,8 +38,30 @@ export type {
 
 export { convertTransitions } from './convert-transitions.js';
 export type {
-  UnrealTransitionEntity, ConvertTransitionsResult,
+  UnrealTransitionEntity, UnrealDroppedTransition, ConvertTransitionsResult,
 } from './convert-transitions.js';
+
+export { convertStrata, STRATUM_Z_BAND } from './convert-strata.js';
+export type {
+  UnrealStratum, UnrealStratumLink, UnrealStrataManifest, ConvertStrataResult,
+} from './convert-strata.js';
+
+export { convertTileLayers, fallbackTileColor, HISM_TILE_THRESHOLD } from './convert-tile-layers.js';
+export type {
+  UnrealTileCell, UnrealCollisionBox, UnrealHismCluster,
+  UnrealTileLayer, UnrealTileManifest, ConvertTileLayersResult,
+} from './convert-tile-layers.js';
+
+export { convertProps } from './convert-props.js';
+export type {
+  UnrealPropActor, UnrealPropManifest, ConvertPropsResult,
+} from './convert-props.js';
+
+export { convertHazards, encodeHazardEffect } from './convert-hazards.js';
+export type {
+  UnrealHazardEffect, UnrealHazardDefinition, UnrealHazardVolume,
+  UnrealHazardManifest, ConvertHazardsResult,
+} from './convert-hazards.js';
 
 export {
   pixelsToUnrealCm, elevationToZ, worldForgeToUnrealAxis, gridToUnrealAxis,
@@ -44,7 +69,7 @@ export {
 } from './coordinate-transform.js';
 export type { UnrealVec3, WorldForgePoint } from './coordinate-transform.js';
 
-export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
+export { summarizeFidelity, buildFidelityReport, formatDroppedIdentities } from './fidelity.js';
 export type {
   FidelityLevel, FidelitySeverity, FidelityDomain,
   FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,
@@ -58,15 +83,10 @@ export type {
   SemVer, Migration, MigrationResult, MigrationError, MigrationWarning,
 } from './migrations.js';
 
-// ── Node-only APIs (require node:crypto / node:fs) ────────────
-// These functions are NOT browser-safe. Import them only in Node.js contexts.
-
-// UE-FT-007: pack signing (node:crypto)
-export { signMeta, composeSignedMeta, verifyPackSignature } from './signing.js';
-export type { PackSignature, SigningAlgorithm, VerifyResult } from './signing.js';
-
-// UE-FT-005: CLI summary + diff helpers (node:fs)
-export { summarizePack, formatSummary } from './summary.js';
-export type { PackSummary, SummaryError } from './summary.js';
-export { diffPacks, formatDiff } from './diff.js';
-export type { PackDiff, CategoryDiff, DiffError } from './diff.js';
+// F-36785d5f: Node-only APIs (node:crypto / node:fs) are NOT re-exported from
+// this browser-safe barrel. Import them from the dedicated subpaths:
+//   @world-forge/export-unreal/signing
+//   @world-forge/export-unreal/summary
+//   @world-forge/export-unreal/diff
+// PackSignature / SigningAlgorithm types live on UnrealPackMeta (export.ts)
+// as type-only imports, so they do not pull node:crypto into this graph.

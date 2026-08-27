@@ -2,10 +2,17 @@
 
 export { convertZones } from './convert-zones.js';
 export { convertDistricts } from './convert-districts.js';
+export type { ExportedDistrict, ExportedDistrictEconomy } from './convert-districts.js';
 export { convertEntities } from './convert-entities.js';
 export { convertPlacements } from './convert-placements.js';
 export type { ExportedPlacement } from './convert-placements.js';
 export { convertItems } from './convert-items.js';
+export { convertItemPlacements } from './convert-item-placements.js';
+export type { ExportedItemPlacement } from './convert-item-placements.js';
+export { convertConnections } from './convert-connections.js';
+export type { ExportedConnection } from './convert-connections.js';
+export { convertSpawnPoints } from './convert-spawn-points.js';
+export type { ExportedSpawnPoint } from './convert-spawn-points.js';
 export { convertDialogues } from './convert-dialogues.js';
 export { convertPlayerTemplate } from './convert-player-template.js';
 export type { ExportedPlayerTemplate } from './convert-player-template.js';

@@ -122,6 +122,24 @@ export function convertItems(
 ): ItemDefinition[] {
   return project.itemPlacements.map((ip) => {
     const label = ip.name || ip.itemId;
+    // F-06fd0fb3: when both description and container are authored, the
+    // description wins and container is dropped (it is only folded in on the
+    // empty-description branch). Report that drop instead of staying silent.
+    if (ip.description && ip.container) {
+      const msg = `Item "${ip.itemId}" (${label}) has both description and container authored — container '${ip.container}' was dropped rather than folded into the description.`;
+      console.warn(`[convert-items] ${msg}`);
+      warnings?.push(msg);
+      fidelity?.push({
+        domain: 'items',
+        level: 'dropped',
+        severity: 'warning',
+        entityId: ip.itemId,
+        fieldPath: 'container',
+        message: msg,
+        reason: 'item-container-dropped-when-description-present',
+      });
+    }
+
     const item: ItemDefinition = {
       id: ip.itemId,
       name: ip.name || ip.itemId,
@@ -150,9 +168,25 @@ export function convertItems(
       item.grantedVerbs = [...ip.grantedVerbs];
     }
 
-    // Provenance for hidden/contraband items
+    // Provenance for hidden/contraband items.
+    // F-06fd0fb3: map-visibility (`hidden`) is re-encoded as the engine's
+    // ECONOMIC legality flag `contraband`. Report that meaning-shift instead
+    // of staying silent — only the true case is written, and a hidden lantern
+    // becomes illegal goods at runtime.
     if (ip.hidden) {
       item.provenance = { flags: ['contraband' as const] };
+      const msg = `Item "${ip.itemId}" (${label}) has hidden:true, re-encoded as provenance flag 'contraband'. Map-visibility became an economic legality flag; the engine will treat this item as illegal goods.`;
+      console.warn(`[convert-items] ${msg}`);
+      warnings?.push(msg);
+      fidelity?.push({
+        domain: 'items',
+        level: 'approximated',
+        severity: 'warning',
+        entityId: ip.itemId,
+        fieldPath: 'hidden',
+        message: msg,
+        reason: 'hidden-reencoded-as-contraband',
+      });
     }
 
     return item;

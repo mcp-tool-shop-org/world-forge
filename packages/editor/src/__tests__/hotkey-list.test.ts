@@ -34,4 +34,11 @@ describe('Keyboard Shortcut Registry (FT-017)', () => {
     const list = getHotkeyList();
     expect(list.some((h) => h.label === 'Del')).toBe(true);
   });
+
+  it('F-f2564ffa: includes Ctrl+Z undo and Ctrl+Shift+Z / Ctrl+Y redo', () => {
+    const list = getHotkeyList();
+    expect(list.some((h) => h.label === 'Ctrl+Z' && h.description.toLowerCase().includes('undo'))).toBe(true);
+    expect(list.some((h) => h.label === 'Ctrl+Shift+Z')).toBe(true);
+    expect(list.some((h) => h.label === 'Ctrl+Y')).toBe(true);
+  });
 });

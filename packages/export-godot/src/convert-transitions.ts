@@ -5,9 +5,10 @@
  * in the Godot scene that fire a signal when the player enters.
  */
 
-import type { WorldProject, TransitionEntity, TransitionEntityType, Zone } from '@world-forge/schema';
+import type { WorldProject, TransitionEntityType, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
-import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { gridToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
+import { uniqueSiblingName } from './node-naming.js';
 
 /** Godot scene template by transition type. */
 const TYPE_TO_SCENE: Record<TransitionEntityType, string> = {
@@ -40,20 +41,59 @@ export interface ConvertTransitionsResult {
 }
 
 export function convertTransitions(project: WorldProject): ConvertTransitionsResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
     const transitions: GodotTransitionNode[] = [];
     const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));
     const src = project.transitions ?? [];
 
+    // Sibling names are unique within a zone's Transitions container, so
+    // de-dup is scoped per zone. Hyphen/underscore ids (`a-b` vs `a_b`)
+    // sanitize to the same token and must not silently collide.
+    const seenByZone = new Map<string, Map<string, number>>();
+    const uniqueNodeName = (zoneId: string, id: string): string => {
+        let seen = seenByZone.get(zoneId);
+        if (!seen) {
+            seen = new Map<string, number>();
+            seenByZone.set(zoneId, seen);
+        }
+        return uniqueSiblingName(seen, `Transition_${id}`, 'Transition');
+    };
+
     for (const t of src) {
         const zone = zonesById.get(t.zoneId);
+        if (!zone) {
+            fidelity.push({
+                level: 'dropped',
+                domain: 'transitions',
+                severity: 'error',
+                entityId: t.id,
+                fieldPath: `transitions.${t.id}.zoneId`,
+                message: `Transition "${t.id}" dropped — zone "${t.zoneId}" not found.`,
+                reason: 'Orphan zone reference.',
+            });
+            continue;
+        }
+
+        if (!zonesById.has(t.targetZoneId)) {
+            fidelity.push({
+                level: 'dropped',
+                domain: 'transitions',
+                severity: 'error',
+                entityId: t.id,
+                fieldPath: `transitions.${t.id}.targetZoneId`,
+                message: `Transition "${t.id}" dropped — target zone "${t.targetZoneId}" not found.`,
+                reason: 'Orphan target zone reference.',
+            });
+            continue;
+        }
+
         let gridX = t.gridX;
         let gridY = t.gridY;
 
         if (gridX === undefined || gridY === undefined) {
-            gridX = zone?.gridX ?? 0;
-            gridY = zone?.gridY ?? 0;
+            gridX = zone.gridX;
+            gridY = zone.gridY;
             fidelity.push({
                 level: 'approximated',
                 domain: 'transitions',
@@ -75,9 +115,7 @@ export function convertTransitions(project: WorldProject): ConvertTransitionsRes
             });
         }
 
-        const zoneOriginX = zone?.gridX ?? 0;
-        const zoneOriginY = zone?.gridY ?? 0;
-        const localPosition = gridToGodot2D(gridX - zoneOriginX, gridY - zoneOriginY, tileSize);
+        const localPosition = gridToGodot2D(gridX - zone.gridX, gridY - zone.gridY, tileSize);
 
         transitions.push({
             id: t.id,
@@ -90,7 +128,7 @@ export function convertTransitions(project: WorldProject): ConvertTransitionsRes
             animation: t.animation,
             durationSeconds: t.durationSeconds,
             tags: t.tags?.slice(),
-            nodeName: `Transition_${t.id.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+            nodeName: uniqueNodeName(t.zoneId, t.id),
         });
     }
 

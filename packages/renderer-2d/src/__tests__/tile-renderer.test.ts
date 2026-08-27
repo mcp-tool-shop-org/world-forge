@@ -118,6 +118,81 @@ describe('TileLayerRenderer', () => {
     warnSpy.mockRestore();
   });
 
+  it('skips tilesets whose tiles is not an array and still renders sibling tilesets (F-4cfcd60a)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const renderer = new TileLayerRenderer(32);
+    const good = makeTileset([{ id: 'floor-1', tags: [] }]);
+    const bad = {
+      id: 'ts-truncated',
+      name: 'Truncated',
+      tileWidth: 32,
+      tileHeight: 32,
+      tiles: {} as unknown as Tileset['tiles'],
+    };
+    const layers: TileLayer[] = [{
+      id: 'layer-1', name: 'Ground', zIndex: 0,
+      tiles: [{ tileId: 'floor-1', gridX: 0, gridY: 0 }],
+    }];
+    expect(() => renderer.update(layers, [bad, good])).not.toThrow();
+    expect(renderer.container.children.length).toBe(1);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/ts-truncated/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/not an array/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/got object/);
+    warnSpy.mockRestore();
+  });
+
+  it('skips layers whose tiles is not an array and still renders sibling layers (F-c95fe6c0)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'floor-1', tags: [] }])];
+    const layers: TileLayer[] = [
+      {
+        id: 'layer-truncated',
+        name: 'Truncated',
+        zIndex: 0,
+        tiles: {} as unknown as TileLayer['tiles'],
+      },
+      {
+        id: 'layer-good',
+        name: 'Ground',
+        zIndex: 1,
+        tiles: [{ tileId: 'floor-1', gridX: 0, gridY: 0 }],
+      },
+    ];
+    expect(() => renderer.update(layers, tilesets)).not.toThrow();
+    expect(renderer.container.children.length).toBe(1);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/layer-truncated/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/not an array/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/got object/);
+    warnSpy.mockRestore();
+  });
+
+  it('treats omitted/non-array tags as empty so a truncated tile still renders (F-4cfcd60a)', () => {
+    const renderer = new TileLayerRenderer(32);
+    const tilesets: Tileset[] = [{
+      id: 'ts-1',
+      name: 'No Tags',
+      tileWidth: 32,
+      tileHeight: 32,
+      tiles: [{
+        id: 'floor-1',
+        tilesetId: 'ts-1',
+        row: 0,
+        col: 0,
+        walkable: true,
+        opacity: 1,
+      } as Tileset['tiles'][number]],
+    }];
+    const layers: TileLayer[] = [{
+      id: 'layer-1', name: 'Ground', zIndex: 0,
+      tiles: [{ tileId: 'floor-1', gridX: 0, gridY: 0 }],
+    }];
+    expect(() => renderer.update(layers, tilesets)).not.toThrow();
+    expect(renderer.container.children.length).toBe(1);
+  });
+
   it('handles empty layers without errors', () => {
     const renderer = new TileLayerRenderer(32);
     expect(() => renderer.update([], [])).not.toThrow();

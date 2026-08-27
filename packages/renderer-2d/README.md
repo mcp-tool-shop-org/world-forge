@@ -19,11 +19,13 @@ npm install @world-forge/renderer-2d
 ## Components
 
 - **WorldViewport** — PixiJS Application wrapper with pan, zoom, grid overlay
-- **ZoneOverlayRenderer** — zone boundaries with district coloring, selection/hover
+- **ZoneOverlayRenderer** — zone boundaries with district coloring, selection/hover; `setShowElevation` toggles 2.5D elevation cues (drop shadow, sunken tint, dashed multi-level outline)
+- **ParallaxRenderer** — depth-sorted backdrop sprites (tinted rects when `imagePath` is missing) behind the gameplay container; `setShowParallax` toggles them, `applyPan` scrolls each layer by its `scrollFactor` relative to `WorldViewport` pan
 - **ConnectionRenderer** — lines between zones, arrows for one-way, dashed for conditional
 - **EntityRenderer** — role-based entity icons (NPC, enemy, merchant, boss)
 - **TileLayerRenderer** — z-ordered tile layers with tag-based coloring
 - **MinimapRenderer** — scaled overview with viewport indicator
+- **DiagnosticsOverlay** — developer HUD listing each renderer's `className`, `childCount`, and `destroyed` flag
 
 ## License
 

@@ -12,12 +12,14 @@
 
 ## 型定義
 
-- **空間:** `WorldMap`（世界地図）、`Zone`（エリア）、`ZoneExit`（エリアの出口）、`ZoneConnection`（エリア間の接続）、`Landmark`（ランドマーク）、`Interactable`（インタラクト可能なオブジェクト）
+- **空間:** `WorldMap`（世界地図）、`Zone`（エリア）、`ZoneExit`（エリアの出口）、`ZoneConnection`（エリア間の接続）、`Landmark`（ランドマーク）、`Interactable`（インタラクト可能なオブジェクト）、`ZoneEntryGate`
 - **地区:** `District`（地区）、`DistrictMetrics`（地区の指標）、`EconomyProfile`（経済プロファイル）、`FactionPresence`（派閥の存在）、`PressureHotspot`（プレッシャーのホットスポット）
 - **エンティティ:** `EntityPlacement`（エンティティの配置、`EntityStats`（エンティティのステータス）、`EntityResources`（エンティティのリソース）、`EntityAI`（エンティティのAI）を含む）、`ItemPlacement`（アイテムの配置、`ItemSlot`（アイテムの装着場所）、`ItemRarity`（アイテムのレアリティ）を含む）、`SpawnPoint`（スポーンポイント）、`EncounterAnchor`（遭遇ポイント）、`CraftingStation`（クラフトステーション）、`MarketNode`（マーケットノード）
+- **街と構造物:** `Building`、`Hub`、`Stronghold`
+- **ワールドモデリング:** `Stratum`、`StratumLink`（垂直レイヤー）、`HazardDefinition`（型付き効果ユニオン）、および `ZoneEntryGate` を駆動するパーティ状態 `SpawnCondition` オペランド
 - **ビジュアル:** `Tileset`（タイルセット）、`TileDefinition`（タイルの定義）、`TileLayer`（タイルレイヤー）、`PropDefinition`（プロップの定義）、`PropPlacement`（プロップの配置）、`AmbientLayer`（アンビエントレイヤー）
 - **プロジェクト:** `WorldProject`（作成された世界のコンテナ）
-- **検証:** `validateProject()`（54 の構造チェックを含む）
+- **検証:** `validateProject()` — 番号付きの構造チェックは `src/validate.ts` にあります（公開された件数を契約として扱わないでください）
 
 ## インストール
 

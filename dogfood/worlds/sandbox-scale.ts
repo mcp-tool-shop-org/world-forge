@@ -37,27 +37,31 @@ export const SANDBOX_TILE_SIZE = 48;
 
 const s = (n: number): number => Math.round(n * SANDBOX_SCALE);
 
+/** Grid / footprint keys scaled on every array element (F-4fd2946a). */
+const GRID_KEYS = ['gridX', 'gridY', 'gridWidth', 'gridHeight', 'width', 'height'] as const;
+
 /**
  * Grow a world's geometry to buildable size.
  *
  * Pure: returns a new project and mutates nothing, so the authored module stays
  * the single source of the composition and any caller can still export the
  * original for comparison.
+ *
+ * F-4fd2946a: walk every WorldProject array value with the grid helper so a
+ * new array of placed objects (transitions, a future layer) cannot drift off a
+ * closed list. `width`/`height` scale Building (and prop) footprints with the
+ * town. Tile layers still replicate cells rather than multiplying coordinates.
  */
 export function scaleForSandbox(project: WorldProject): WorldProject {
-    // Structural rather than per-type: every one of these domains carries the
-    // same four optional grid fields, and enumerating them per interface would
-    // be six near-identical functions that drift apart the first time one of the
-    // schemas grows a field.
     const grid = <T extends object>(o: T): T => {
         const out: Record<string, unknown> = { ...(o as Record<string, unknown>) };
-        for (const key of ['gridX', 'gridY', 'gridWidth', 'gridHeight']) {
+        for (const key of GRID_KEYS) {
             if (typeof out[key] === 'number') out[key] = s(out[key] as number);
         }
         return out as T;
     };
 
-    return {
+    const scaled: Record<string, unknown> = {
         ...project,
         map: {
             ...project.map,
@@ -65,30 +69,36 @@ export function scaleForSandbox(project: WorldProject): WorldProject {
             gridHeight: s(project.map.gridHeight),
             tileSize: SANDBOX_TILE_SIZE,
         },
-        zones: project.zones.map(grid),
-        landmarks: project.landmarks.map(grid),
-        entityPlacements: project.entityPlacements.map(grid),
-        itemPlacements: project.itemPlacements.map(grid),
-        spawnPoints: project.spawnPoints.map(grid),
-        craftingStations: project.craftingStations.map(grid),
-        marketNodes: project.marketNodes.map(grid),
-        buildings: (project.buildings ?? []).map(grid),
-        propPlacements: project.propPlacements.map(grid),
-        tileLayers: project.tileLayers.map((layer) => ({
-            ...layer,
-            // Tile placements are grid CELLS, so they scale by replication, not
-            // by multiplication: each authored cell becomes an S×S block.
-            // Multiplying the coordinate alone would spread a painted quay into a
-            // scatter of lonely tiles in a floor nine times its old area.
-            tiles: layer.tiles.flatMap((p) => {
-                const cells: typeof p[] = [];
-                for (let dx = 0; dx < SANDBOX_SCALE; dx++) {
-                    for (let dy = 0; dy < SANDBOX_SCALE; dy++) {
-                        cells.push({ ...p, gridX: s(p.gridX) + dx, gridY: s(p.gridY) + dy });
-                    }
-                }
-                return cells;
-            }),
-        })),
     };
+
+    for (const [key, value] of Object.entries(project)) {
+        if (key === 'map') continue;
+        if (!Array.isArray(value)) continue;
+
+        if (key === 'tileLayers') {
+            scaled.tileLayers = project.tileLayers.map((layer) => ({
+                ...grid(layer),
+                // Tile placements are grid CELLS, so they scale by replication, not
+                // by multiplication: each authored cell becomes an S×S block.
+                // Multiplying the coordinate alone would spread a painted quay into a
+                // scatter of lonely tiles in a floor nine times its old area.
+                tiles: layer.tiles.flatMap((p) => {
+                    const cells: typeof p[] = [];
+                    for (let dx = 0; dx < SANDBOX_SCALE; dx++) {
+                        for (let dy = 0; dy < SANDBOX_SCALE; dy++) {
+                            cells.push({ ...p, gridX: s(p.gridX) + dx, gridY: s(p.gridY) + dy });
+                        }
+                    }
+                    return cells;
+                }),
+            }));
+            continue;
+        }
+
+        scaled[key] = value.map((item) =>
+            item !== null && typeof item === 'object' && !Array.isArray(item) ? grid(item) : item,
+        );
+    }
+
+    return scaled as WorldProject;
 }

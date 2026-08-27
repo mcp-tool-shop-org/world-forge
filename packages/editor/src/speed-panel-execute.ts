@@ -5,10 +5,15 @@ import type { SpeedPanelMacro, MacroExecutionResult } from './speed-panel-action
 import type { WorldProject, ZoneConnection, Zone } from '@world-forge/schema';
 import { buildReviewSnapshot } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
-import type { RightTab, EditorTool, SelectionSet } from './store/editor-store.js';
+import type { RightTab, EditorTool, SelectionSet, SelectionKind } from './store/editor-store.js';
+import { emptySelection, SELECTION_KIND_KEY } from './store/editor-store.js';
 import type { EnrichedReviewSnapshot } from './panels/ReviewPanel.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
 import { frameBounds } from './viewport.js';
+import { useEditorStore } from './store/editor-store.js';
+import { useProjectStore } from './store/project-store.js';
+import { pushToast } from './ui/Toast.js';
+import { defaultDownloadViaAnchor } from './save-project.js';
 
 /** Bag of store methods needed by execute — keeps the function testable */
 export interface ExecuteStores {
@@ -19,6 +24,8 @@ export interface ExecuteStores {
   selectSpawn: (id: string, additive: boolean) => void;
   selectEncounter: (id: string, additive: boolean) => void;
   selectConnection: (fromId: string, toId: string) => void;
+  /** F-df71e70a / F-5515c044: optional so older test bags still type-check. */
+  selectKind?: (type: SelectionKind, id: string, additive: boolean) => void;
   clearSelection: () => void;
 
   // UI
@@ -28,10 +35,12 @@ export interface ExecuteStores {
   setViewport: (vp: ViewportState) => void;
 
   // Project mutations
-  removeSelected: (sel: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => void;
+  removeSelected: (sel: SelectionSet) => void;
   duplicateSelected: (sel: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => unknown;
   removeConnection: (fromId: string, toId: string) => void;
   addConnection: (conn: ZoneConnection) => void;
+  /** F-c8fa9fb6: atomic reverse. Optional so older test bags still type-check. */
+  swapConnection?: (fromId: string, toId: string) => void;
   /** ED-FT-005: update a single zone (used by the set-elevation speed action). */
   updateZone?: (zoneId: string, updates: Partial<Zone>) => void;
   /** ED-FT-005: optional prompt shim so tests can inject a deterministic value. */
@@ -49,7 +58,8 @@ export interface ExecuteStores {
   /**
    * F-bdf856bf: the app's current multi-select, needed by merge-zones to
    * know WHICH zones to merge — a single right-click context is only ever
-   * one zone. Optional for the same reason as mergeZones above.
+   * one zone. Optional so unit tests can omit it (fails closed). Production
+   * bags from `buildExecuteStores()` always include both this and mergeZones.
    */
   selection?: SelectionSet;
   /**
@@ -60,20 +70,54 @@ export interface ExecuteStores {
    * from the caller and works end-to-end today.
    */
   downloadFile?: (filename: string, content: string, mimeType: string) => void;
+  /**
+   * F-69d97784: live canvas size for fit-content. Falls back to 800×600 when
+   * omitted (unit tests / callers that don't thread a canvas ref).
+   */
+  canvasSize?: { w: number; h: number };
 
   // Project data (read-only)
   project: WorldProject;
 }
 
-/** Real browser download — the default for `downloadFile` when a caller doesn't override it. */
+/**
+ * F-8912e227: reuse save-project's held-URL downloader. Never revoke in the
+ * same tick as click (Safari cancels). Toast if the click is blocked.
+ */
 function browserDownload(filename: string, content: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  void defaultDownloadViaAnchor(content, filename, 1000, mimeType).then((ok) => {
+    if (!ok) {
+      pushToast('Download was blocked or aborted. Click Export in the top bar to try again.', 'error');
+    }
+  });
+}
+
+/**
+ * F-dd0278b5: map ExecuteResult.reason tokens to a fix-it sentence.
+ * Returns null for 'cancelled' so the caller skips the toast.
+ * The token itself stays on ExecuteResult.reason for macros/tests.
+ */
+export function failReasonToUserMessage(actionId: string, reason: string): string | null {
+  if (reason === 'cancelled') return null;
+  if (reason === 'need at least 2 zones' || (actionId === 'merge-zones' && reason.startsWith('need'))) {
+    return 'Select at least two zones, then Merge Zones again.';
+  }
+  switch (reason) {
+    case 'context mismatch':
+      return 'That action does not apply to the current selection.';
+    case 'unknown action':
+      return 'That action is not available.';
+    case 'mergeZones not available':
+      return 'Merge Zones is not available right now.';
+    case 'invalid elevation':
+      return 'Enter a number for elevation, or leave blank to clear.';
+    case 'merge failed':
+      return 'Could not merge those zones.';
+    case 'updateZone not available':
+      return 'Could not update the zone.';
+    default:
+      return `Could not run that action. ${reason}`;
+  }
 }
 
 function parseConnectionId(id: string): [string, string] | null {
@@ -92,39 +136,82 @@ function selectFromContext(ctx: HitResult, stores: ExecuteStores): boolean {
   else if (ctx.type === 'landmark') stores.selectLandmark(ctx.id, false);
   else if (ctx.type === 'spawn') stores.selectSpawn(ctx.id, false);
   else if (ctx.type === 'encounter') stores.selectEncounter(ctx.id, false);
+  else if (stores.selectKind) stores.selectKind(ctx.type as SelectionKind, ctx.id, false);
+  else return false;
   return true;
 }
 
-function emptySelection() {
-  return { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
+/**
+ * F-ef5cce21: production ExecuteStores bag used by the canvas context menu
+ * (and the same shape SpeedPanel should build). Reads live store state at
+ * call time so mergeZones + selection are never a stale render snapshot.
+ */
+export function buildExecuteStores(canvasSize?: { w: number; h: number }): ExecuteStores {
+  const editor = useEditorStore.getState();
+  const proj = useProjectStore.getState();
+  return {
+    selectZone: editor.selectZone,
+    selectEntity: editor.selectEntity,
+    selectLandmark: editor.selectLandmark,
+    selectSpawn: editor.selectSpawn,
+    selectEncounter: editor.selectEncounter,
+    selectKind: editor.selectKind,
+    selectConnection: editor.selectConnection,
+    clearSelection: editor.clearSelection,
+    setRightTab: editor.setRightTab,
+    setTool: editor.setTool,
+    setConnectionStart: (id) => editor.setConnectionStart(id),
+    setViewport: (vp) => editor.setViewport(vp),
+    removeSelected: proj.removeSelected,
+    duplicateSelected: proj.duplicateSelected,
+    removeConnection: proj.removeConnection,
+    addConnection: proj.addConnection,
+    swapConnection: proj.swapConnection,
+    updateZone: proj.updateZone,
+    mergeZones: proj.mergeZones,
+    selection: editor.selection,
+    canvasSize,
+    project: proj.project,
+  };
+}
+
+export interface ExecuteResult {
+  executed: boolean;
+  /** F-e57095f8: actual fail class ('unknown action', 'cancelled', …), not always 'context mismatch'. */
+  reason?: string;
+}
+
+function fail(reason: string): ExecuteResult {
+  return { executed: false, reason };
 }
 
 /**
  * Execute a single speed-panel action.
- * Returns { executed: true } if the action ran, { executed: false } if context mismatch.
+ * Returns { executed: true } if the action ran, { executed: false, reason } otherwise.
  */
 export function executeAction(
   actionId: string,
   context: HitResult | null,
   stores: ExecuteStores,
-): { executed: boolean } {
+): ExecuteResult {
   switch (actionId) {
     case 'edit-props':
-      if (!context) return { executed: false };
-      if (!selectFromContext(context, stores)) return { executed: false };
+      if (!context) return fail('context mismatch');
+      if (!selectFromContext(context, stores)) return fail('context mismatch');
       stores.setRightTab('map');
       return { executed: true };
 
     case 'delete':
-      if (!context) return { executed: false };
+      if (!context) return fail('context mismatch');
       if (context.type === 'connection') {
         const parsed = parseConnectionId(context.id);
-        if (!parsed) return { executed: false };
+        if (!parsed) return fail('context mismatch');
         stores.removeConnection(parsed[0], parsed[1]);
       } else {
         selectFromContext(context, stores);
         const sel = emptySelection();
-        const key = context.type === 'zone' ? 'zones' : context.type === 'entity' ? 'entities' : context.type === 'landmark' ? 'landmarks' : context.type === 'spawn' ? 'spawns' : 'encounters';
+        const key = SELECTION_KIND_KEY[context.type as SelectionKind];
+        if (!key) return fail('context mismatch');
         sel[key] = [context.id];
         stores.removeSelected(sel);
       }
@@ -133,9 +220,9 @@ export function executeAction(
 
     case 'duplicate':
       if (!context || (context.type !== 'zone' && context.type !== 'entity' && context.type !== 'landmark')) {
-        return { executed: false };
+        return fail('context mismatch');
       }
-      if (!selectFromContext(context, stores)) return { executed: false };
+      if (!selectFromContext(context, stores)) return fail('context mismatch');
       {
         const sel = emptySelection();
         const key = context.type === 'zone' ? 'zones' : context.type === 'entity' ? 'entities' : 'landmarks';
@@ -153,60 +240,68 @@ export function executeAction(
       const items = stores.project.zones.map((z) => ({
         gridX: z.gridX, gridY: z.gridY, gridWidth: z.gridWidth, gridHeight: z.gridHeight,
       }));
-      // TODO: 800x600 is a hardcoded fallback canvas size. Ideally this should
-      // read the actual canvas element dimensions (e.g. from a canvasSize field
-      // in ExecuteStores) so fit-content adapts to the user's window size.
-      const vp = frameBounds(items, tileSize, 800, 600);
+      const cw = stores.canvasSize?.w ?? 800;
+      const ch = stores.canvasSize?.h ?? 600;
+      const vp = frameBounds(items, tileSize, cw, ch);
       if (vp) stores.setViewport(vp);
       return { executed: true };
     }
 
     case 'assign-district':
-      if (context?.type !== 'zone') return { executed: false };
+      if (context?.type !== 'zone') return fail('context mismatch');
       stores.selectZone(context.id, false);
       stores.setRightTab('map');
       return { executed: true };
 
     case 'place-entity':
-      if (context?.type !== 'zone') return { executed: false };
+      if (context?.type !== 'zone') return fail('context mismatch');
       stores.setTool('entity-place');
       return { executed: true };
 
+    case 'place-encounter':
+      if (context?.type !== 'zone') return fail('context mismatch');
+      stores.setTool('encounter-place');
+      return { executed: true };
+
     case 'connect-from':
-      if (context?.type !== 'zone') return { executed: false };
+      if (context?.type !== 'zone') return fail('context mismatch');
       stores.setTool('connection');
       stores.setConnectionStart(context.id);
       return { executed: true };
 
     case 'swap-direction':
-      if (context?.type !== 'connection') return { executed: false };
+      if (context?.type !== 'connection') return fail('context mismatch');
       {
         const parsed = parseConnectionId(context.id);
-        if (!parsed) return { executed: false };
+        if (!parsed) return fail('context mismatch');
         const [from, to] = parsed;
-        const conn = stores.project.connections.find(
-          (c) => c.fromZoneId === from && c.toZoneId === to,
-        );
-        if (conn) {
-          stores.removeConnection(from, to);
-          stores.addConnection({ ...conn, fromZoneId: to, toZoneId: from });
+        if (stores.swapConnection) {
+          stores.swapConnection(from, to);
+        } else {
+          const conn = stores.project.connections.find(
+            (c) => c.fromZoneId === from && c.toZoneId === to,
+          );
+          if (conn) {
+            stores.removeConnection(from, to);
+            stores.addConnection({ ...conn, fromZoneId: to, toZoneId: from });
+          }
         }
       }
       return { executed: true };
 
     case 'set-elevation': {
-      if (context?.type !== 'zone') return { executed: false };
-      if (!stores.updateZone) return { executed: false };
+      if (context?.type !== 'zone') return fail('context mismatch');
+      if (!stores.updateZone) return fail('updateZone not available');
       const ask = stores.promptFn ?? ((msg) => (typeof globalThis.prompt === 'function' ? globalThis.prompt(msg) : null));
       const raw = ask(`Set elevation (meters) for zone ${context.id}. Leave blank to clear.`);
-      if (raw == null) return { executed: false };
+      if (raw == null) return fail('cancelled');
       const trimmed = raw.trim();
       let elevation: number | undefined;
       if (trimmed === '') {
         elevation = undefined;
       } else {
         const n = Number(trimmed);
-        if (!Number.isFinite(n)) return { executed: false };
+        if (!Number.isFinite(n)) return fail('invalid elevation');
         elevation = n;
       }
       stores.updateZone(context.id, { elevation });
@@ -220,11 +315,11 @@ export function executeAction(
       // optional on ExecuteStores until SpeedPanel.tsx threads them through
       // (see the interface doc comment above); until then this fails closed
       // instead of pretending to succeed.
-      if (!stores.mergeZones) return { executed: false };
+      if (!stores.mergeZones) return fail('mergeZones not available');
       const zoneIds = stores.selection?.zones ?? (context?.type === 'zone' ? [context.id] : []);
-      if (zoneIds.length < 2) return { executed: false };
+      if (zoneIds.length < 2) return fail('need at least 2 zones');
       const mergedId = stores.mergeZones(zoneIds);
-      if (!mergedId) return { executed: false };
+      if (!mergedId) return fail('merge failed');
       return { executed: true };
     }
 
@@ -252,8 +347,27 @@ export function executeAction(
     }
 
     default:
-      return { executed: false };
+      return fail('unknown action');
   }
+}
+
+/**
+ * F-96d567c8: production canvas context-menu click. Toasts + console.warns
+ * when executeAction returns executed:false so a no-op is observable.
+ */
+export function executeContextMenuAction(
+  actionId: string,
+  hit: HitResult | null,
+  canvasSize?: { w: number; h: number },
+): ExecuteResult {
+  const result = executeAction(actionId, hit, buildExecuteStores(canvasSize));
+  if (!result.executed) {
+    const reason = result.reason ?? `Action "${actionId}" did not run`;
+    console.warn(`[context-menu] action "${actionId}" did not execute (${reason}) for hit type ${hit?.type ?? 'none'}`);
+    const message = failReasonToUserMessage(actionId, reason);
+    if (message) pushToast(message, 'warning', 4000);
+  }
+  return result;
 }
 
 /**
@@ -276,7 +390,7 @@ export function executeMacro(
       return {
         completed: i, total,
         abortedAt: i,
-        reason: `Step ${i + 1} (${macro.steps[i].actionId}) failed — context mismatch`,
+        reason: `Step ${i + 1} (${macro.steps[i].actionId}) failed — ${result.reason ?? 'context mismatch'}`,
         steps,
         totalSteps: total,
         completedSteps: i,

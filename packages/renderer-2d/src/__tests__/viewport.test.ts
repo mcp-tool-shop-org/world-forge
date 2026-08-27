@@ -8,15 +8,29 @@ vi.mock('pixi.js', () => {
     children: unknown[] = [];
     position = { set: vi.fn() };
     scale = { set: vi.fn() };
-    addChild() {}
-    addChildAt() {}
-    removeChild() {}
+    addChild(child: unknown) { this.children.push(child); return child; }
+    addChildAt(child: unknown, index: number) {
+      this.children.splice(index, 0, child);
+      return child;
+    }
+    removeChild(child: unknown) {
+      const i = this.children.indexOf(child);
+      if (i >= 0) this.children.splice(i, 1);
+      return child;
+    }
   }
   class MockGraphics {
-    setStrokeStyle() { return this; }
+    strokes: Array<{ width?: number; color?: number; alpha?: number }> = [];
+    setStrokeStyle(s?: { width?: number; color?: number; alpha?: number }) {
+      if (s) this.strokes.push(s);
+      return this;
+    }
     moveTo() { return this; }
     lineTo() { return this; }
-    stroke() { return this; }
+    stroke(s?: { width?: number; color?: number; alpha?: number }) {
+      if (s) this.strokes.push(s);
+      return this;
+    }
     destroy() {}
   }
   class MockApplication {
@@ -36,7 +50,7 @@ vi.mock('pixi.js', () => {
   };
 });
 
-import { WorldViewport } from '../viewport.js';
+import { WorldViewport, DEFAULT_GRID_COLOR, DEFAULT_GRID_ALPHA } from '../viewport.js';
 
 function makeContainer(): HTMLElement {
   return {
@@ -59,14 +73,16 @@ describe('WorldViewport', () => {
     await expect(vp.init(el)).resolves.toBeUndefined();
   });
 
-  it('wraps PixiJS init errors with context (I-005)', async () => {
+  it('wraps PixiJS init errors with context (I-005 / F-fd76f08c)', async () => {
     const vp = new WorldViewport(defaultOpts);
     // Force the underlying app.init to reject
     (vp.app as unknown as { _initFn: () => Promise<void> })._initFn = () =>
       Promise.reject(new Error('WebGL not supported'));
 
     const el = makeContainer();
-    await expect(vp.init(el)).rejects.toThrow(/WorldViewport failed to initialize/);
+    await expect(vp.init(el)).rejects.toThrow(
+      /WorldViewport failed to initialize PixiJS Application \(800x600\): WebGL not supported\. Check WebGL\/GPU availability/,
+    );
   });
 
   it('preserves original error as cause (I-005)', async () => {
@@ -81,6 +97,7 @@ describe('WorldViewport', () => {
       expect.unreachable('should have thrown');
     } catch (err) {
       expect((err as Error).cause).toBe(original);
+      expect((err as Error).message).toContain('GPU context lost');
     }
   });
 
@@ -111,6 +128,36 @@ describe('WorldViewport', () => {
     );
   });
 
+  it('F-99bd3aa5: failed mount destroys the Application and leaves isMounted() false', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const spy = vi.spyOn(vp.app, 'destroy');
+    const original = new Error('Node is not connected');
+    const badContainer = {
+      appendChild: () => { throw original; },
+    } as unknown as HTMLElement;
+    await expect(vp.init(badContainer)).rejects.toThrow(/Failed to mount World Forge viewport/);
+    expect(spy).toHaveBeenCalled();
+    const [rendererDestroyOptions, stageDestroyOptions] = spy.mock.calls[0];
+    expect(rendererDestroyOptions).toBe(true);
+    if (typeof stageDestroyOptions === 'object' && stageDestroyOptions !== null) {
+      expect((stageDestroyOptions as { children?: boolean }).children).toBe(true);
+    } else {
+      expect(stageDestroyOptions).toBe(true);
+    }
+    expect(vp.isMounted()).toBe(false);
+  });
+
+  it('F-99bd3aa5: subsequent init() after a failed mount can recover', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    const badContainer = {
+      appendChild: () => { throw new Error('detached node'); },
+    } as unknown as HTMLElement;
+    await expect(vp.init(badContainer)).rejects.toThrow(/Failed to mount/);
+    expect(vp.isMounted()).toBe(false);
+    await expect(vp.init(makeContainer())).resolves.toBeUndefined();
+    expect(vp.isMounted()).toBe(true);
+  });
+
   it('preserves original DOM error as cause when mount fails (IB-004)', async () => {
     const vp = new WorldViewport(defaultOpts);
     const original = new Error('detached node');
@@ -130,6 +177,30 @@ describe('WorldViewport', () => {
     expect(vp.showGrid).toBe(true);
     vp.showGrid = false;
     expect(vp.showGrid).toBe(false);
+  });
+
+  it('F-87de2dd9: default grid stroke color/alpha pair is visible on navy', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    await vp.init(makeContainer());
+    const grid = vp.world.children[0] as unknown as { strokes: Array<{ width?: number; color?: number; alpha?: number }> };
+    expect(grid.strokes.length).toBeGreaterThan(0);
+    expect(grid.strokes.every((s) => s.color === DEFAULT_GRID_COLOR)).toBe(true);
+    expect(grid.strokes.every((s) => (s.alpha ?? 0) >= DEFAULT_GRID_ALPHA)).toBe(true);
+    expect(grid.strokes[0].width).toBeCloseTo(1, 5);
+  });
+
+  it('F-87de2dd9: grid hairline is 1/zoom and gridColor setter redraws', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    await vp.init(makeContainer());
+    vp.zoom(2);
+    expect(vp.zoomLevel).toBeCloseTo(2, 5);
+    const afterZoom = vp.world.children[0] as unknown as { strokes: Array<{ width?: number; color?: number }> };
+    expect(afterZoom.strokes[0].width).toBeCloseTo(0.5, 5);
+
+    vp.gridColor = 0x8b949e;
+    expect(vp.gridColor).toBe(0x8b949e);
+    const afterSet = vp.world.children[0] as unknown as { strokes: Array<{ color?: number }> };
+    expect(afterSet.strokes.every((s) => s.color === 0x8b949e)).toBe(true);
   });
 
   describe('double-init guard (INF-B-002)', () => {
@@ -162,6 +233,29 @@ describe('WorldViewport', () => {
         Promise.reject(new Error('boom'));
       await expect(vp.init(makeContainer())).rejects.toThrow();
       expect(vp.isMounted()).toBe(false);
+    });
+  });
+
+  describe('re-init after destroy (F-03dd3ea3)', () => {
+    it('init() after destroy() (post-init) throws the construct-new message and does not re-init Pixi', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      await vp.init(makeContainer());
+      vp.destroy();
+      const initSpy = vi.spyOn(vp.app, 'init');
+      await expect(vp.init(makeContainer())).rejects.toThrow(
+        'WorldViewport has been destroyed — construct a new WorldViewport to continue.',
+      );
+      expect(initSpy).not.toHaveBeenCalled();
+    });
+
+    it('init() after destroy() (never inited) throws the construct-new message and does not call Pixi init', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      vp.destroy();
+      const initSpy = vi.spyOn(vp.app, 'init');
+      await expect(vp.init(makeContainer())).rejects.toThrow(
+        'WorldViewport has been destroyed — construct a new WorldViewport to continue.',
+      );
+      expect(initSpy).not.toHaveBeenCalled();
     });
   });
 

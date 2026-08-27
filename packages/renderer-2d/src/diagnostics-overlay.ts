@@ -1,12 +1,8 @@
 // diagnostics-overlay.ts — INF-FT-003
-// A minimal PixiJS overlay that displays a table of DiagnosticInfo rows for
-// the world-forge 2D renderers. Intended as a developer/debug HUD: drop it
-// into any stage, call setDiagnostics() with the latest snapshot, and it
-// paints a semi-transparent info box listing each renderer's class name,
-// child count, and destroyed flag.
-//
-// Kept deliberately simple — no zoom, no interactivity, no theming knobs.
-// The editor can layer its own polish on top if needed.
+// Developer/debug HUD for world-forge 2D renderers. Drop it into any stage,
+// call setDiagnostics() with the latest snapshot, and it paints a
+// semi-transparent info box listing each renderer's class name, child count,
+// and destroyed flag. Palette matches the viewport (0x4a9eff / 0xcccccc).
 
 import { Container, Graphics, Text } from 'pixi.js';
 import type { DiagnosticInfo } from './diagnostics.js';
@@ -15,9 +11,18 @@ export interface DiagnosticsOverlayOptions {
   /** Top-left anchor in screen pixels (default 8, 8). */
   x?: number;
   y?: number;
-  /** Width of the info box in pixels (default 240). */
+  /** Width of the info box in pixels (default 280). Grows if a row is wider. */
   width?: number;
 }
+
+const DEFAULT_WIDTH = 280;
+const PAD = 8;
+const LINE_H = 18;
+const TITLE_H = 20;
+const CLASS_COL = 22;
+const CH_COL = 8;
+/** 10px monospace advance used when measuring / growing the box. */
+const MONO_ADVANCE = 6;
 
 /**
  * INF-FT-003: Renderer diagnostics overlay.
@@ -39,7 +44,7 @@ export class DiagnosticsOverlay {
     this.opts = {
       x: opts.x ?? 8,
       y: opts.y ?? 8,
-      width: opts.width ?? 240,
+      width: opts.width ?? DEFAULT_WIDTH,
     };
     this.container = new Container();
   }
@@ -81,49 +86,84 @@ export class DiagnosticsOverlay {
     const removed = this.container.removeChildren();
     for (const child of removed) (child as { destroy: (opts: { children: boolean }) => void }).destroy({ children: true });
 
-    const { x, y, width } = this.opts;
-    const lineH = 14;
-    const pad = 6;
-    const titleH = 16;
+    const { x, y } = this.opts;
+    const pad = PAD;
+    const lineH = LINE_H;
+    const titleH = TITLE_H;
     const rows = this.diagnostics.length;
-    const boxH = titleH + pad + (rows === 0 ? lineH : rows * lineH) + pad;
+    const innerW = Math.max(1, this.opts.width - 2 * pad);
 
-    // Background box.
+    const title = new Text({
+      text: `Renderer Diagnostics (${rows})`,
+      style: {
+        fontSize: 11,
+        fill: 0x4a9eff,
+        fontFamily: 'monospace',
+        wordWrap: true,
+        wordWrapWidth: innerW,
+      },
+    });
+
+    const rowTexts: Text[] = [];
+    if (rows === 0) {
+      rowTexts.push(new Text({
+        text: '(no renderers)',
+        style: {
+          fontSize: 10,
+          fill: 0x8b949e,
+          fontFamily: 'monospace',
+          wordWrap: true,
+          wordWrapWidth: innerW,
+        },
+      }));
+    } else {
+      for (let i = 0; i < rows; i++) {
+        const d = this.diagnostics[i];
+        const color = d.destroyed ? 0xf85149 : 0xcccccc;
+        const destroyedTag = d.destroyed ? '[destroyed]' : '';
+        const row = `${padRight(d.className, CLASS_COL)}${padRight(`ch:${d.childCount}`, CH_COL)}${destroyedTag}`.trimEnd();
+        rowTexts.push(new Text({
+          text: row,
+          style: {
+            fontSize: 10,
+            fill: color,
+            fontFamily: 'monospace',
+            wordWrap: true,
+            wordWrapWidth: innerW,
+          },
+        }));
+      }
+    }
+
+    const measured = Math.max(
+      textWidth(title, innerW),
+      ...rowTexts.map((t) => textWidth(t, innerW)),
+    );
+    const width = Math.max(this.opts.width, measured + 2 * pad);
+    const boxH = titleH + pad + (rowTexts.length * lineH) + pad;
+
     const bg = new Graphics();
     bg.rect(x, y, width, boxH).fill({ color: 0x000000, alpha: 0.75 });
     bg.rect(x, y, width, boxH).stroke({ width: 1, color: 0x30363d, alpha: 1 });
     this.container.addChild(bg);
 
-    // Title.
-    const title = new Text({
-      text: `Renderer Diagnostics (${rows})`,
-      style: { fontSize: 11, fill: 0x58a6ff, fontFamily: 'monospace' },
-    });
     title.position.set(x + pad, y + pad);
     this.container.addChild(title);
 
-    if (rows === 0) {
-      const empty = new Text({
-        text: '(no renderers)',
-        style: { fontSize: 10, fill: 0x8b949e, fontFamily: 'monospace' },
-      });
-      empty.position.set(x + pad, y + titleH + pad);
-      this.container.addChild(empty);
-      return;
-    }
-
-    // One row per diagnostic. Layout: "ClassName  ch:N  [destroyed]"
-    for (let i = 0; i < rows; i++) {
-      const d = this.diagnostics[i];
-      const rowY = y + titleH + pad + i * lineH;
-      const color = d.destroyed ? 0xf85149 : 0xc9d1d9;
-      const destroyedTag = d.destroyed ? '  [destroyed]' : '';
-      const rowText = new Text({
-        text: `${d.className}  ch:${d.childCount}${destroyedTag}`,
-        style: { fontSize: 10, fill: color, fontFamily: 'monospace' },
-      });
-      rowText.position.set(x + pad, rowY);
-      this.container.addChild(rowText);
+    for (let i = 0; i < rowTexts.length; i++) {
+      rowTexts[i].position.set(x + pad, y + titleH + pad + i * lineH);
+      this.container.addChild(rowTexts[i]);
     }
   }
+}
+
+function padRight(s: string, n: number): string {
+  return s.length >= n ? `${s} ` : s + ' '.repeat(n - s.length);
+}
+
+function textWidth(t: Text, cap: number): number {
+  const measured = typeof t.width === 'number' && t.width > 0
+    ? t.width
+    : t.text.length * MONO_ADVANCE;
+  return Math.min(measured, cap);
 }

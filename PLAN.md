@@ -20,12 +20,12 @@
 
 **v4.3.0 — 2.5D-focused feature wave (2026-04-23).** Dogfood-swarm release shipping the 2.5D surface end-to-end. Schema gained `LootTable`, `SpawnCondition` grammar, `TransitionEntity`, Zone physics/sky/collision fields. Editor shipped the full Zone 2.5D authoring UI, canvas elevation badges, parallax preview, multi-zone batch ops. Renderer shipped 2.5D visualization + `DiagnosticsOverlay`. `export-unreal` gained sky/lighting metadata, collision channels, `actors/parallax-manifest.json`, gravity/transition passthrough. `export-ai-rpg` gained debug/release profiles + `--dry-run`. Before the feature pass, the swarm closed 110 health-pass items (56 Stage A + 54 Stage B/C) across three commits. 1959 tests (1692 → 1959, +267).
 
-**v4.2.0 — UE5 alignment wave (2026-04-22).** Added `@world-forge/export-unreal` as a peer lane to `export-ai-rpg`. Schema gained 2.5D fields on `Zone` (`elevation`, `elevationRange`, `parallaxLayers`, `skylineRef`) with matching validation + advisories. Reserved `@world-forge/export-godot` stub for the planned Fractured Road lane. Introduced `CanonAdapter` interface stub (no implementation). Editor Export modal exposes a new "Export Unreal Engine 5" button. 1692 tests total (1660 → 1692).
+**v4.2.0 — UE5 alignment wave (2026-04-22).** Added `@world-forge/export-unreal` as a peer lane to `export-ai-rpg`. Schema gained 2.5D fields on `Zone` (`elevation`, `elevationRange`, `parallaxLayers`, `skylineRef`) with matching validation + advisories. Reserved `@world-forge/export-godot` as a workspace slot for the planned Fractured Road lane (the lane later shipped as a playable `.tscn` exporter in v4.5.0). Introduced `CanonAdapter` interface stub (no implementation). Editor Export modal exposes a new "Export Unreal Engine 5" button. 1692 tests total (1660 → 1692).
 
 All prior releases shipped. See CHANGELOG.md for full history.
 
-Highlights:
-- Schema + validation (54 checks) + advisory validation (mode-specific)
+Shipped-state Highlights through v4.3.0 (historical — current numbers live in README.md / CHANGELOG.md):
+- Schema + validation (54 checks at that tag; 89 on v4.6.0) + advisory validation (mode-specific)
 - Full authoring surface (zones, connections, districts, entities, items, dialogues, player, builds, trees, assets, packs, encounters, factions)
 - Canvas viewport with pan/zoom/fit, selection, multi-edit, snapping, resize handles
 - 7 authoring modes (dungeon, district, world, ocean, space, interior, wilderness)
@@ -34,21 +34,23 @@ Highlights:
 - Project bundles (.wfproject.json) with provenance
 - Dependency scanner with inline repair
 - Review mode with health classification
-- Export to ai-rpg-engine ContentPack (zero engine gaps)
+- Export to ai-rpg-engine ContentPack; UE5 and Godot 4 lanes shipped later (v4.2 / v4.5)
 - Design system token layer (theme.css + styles.ts + ModalFrame)
-- 7-page Starlight handbook
+- Starlight handbook (7 pages at v4.3; 10 pages on v4.6.0)
 
 ---
 
-## v4.4 Roadmap (deferred from v4.3.0 swarm)
+## Historical park list (v4.3.0 swarm leftovers, titled v4.4 at the time)
 
-The v4.3.0 dogfood swarm audited 51 features and approved a 2.5D-focused wave of 15. The remaining 36 features + 3 large-effort deferrals are parked here. Priorities are the auditor's — re-triage before picking up.
+This is **not** a live roadmap. v4.4.0, v4.5.0, and v4.6.0 have since shipped. Current product state is README.md + CHANGELOG.md. The list below is the v4.3.0 auditor's leftover park — re-triage against HEAD before picking anything up.
+
+The v4.3.0 dogfood swarm audited 51 features and approved a 2.5D-focused wave of 15. The remaining 36 features + 3 large-effort deferrals were parked here.
 
 ### Gates to decide at v4.4 kickoff
 
 | Decision | Trigger | Impact |
 |---|---|---|
-| **Godot exporter scope** | Fractured Road timing | Blocks whenever Mike starts production Godot authoring. Stubs in `packages/export-godot/` are inert; no work begins until decided. `export-unreal` is the reference shape to mirror. |
+| **Godot exporter depth** | Fractured Road production needs | The lane shipped in v4.5.0 as a playable `.tscn` exporter (`@world-forge/export-godot`), wired into the editor. Remaining work is production-depth (fidelity / parity), not a stub. `export-unreal` remains the 2.5D reference shape. |
 | **Canon adapter v1** | When Mike wants starter-kit browsing in the editor | SCH-FT-007. Concrete implementation outside schema (editor package, wired to `style-dataset-lab/projects/<game>/canon/` + `motif/packages/<game>/`). |
 | **Quest system scope** | When a dogfooded game surfaces concrete requirements | SCH-FT-002. Today's dialogue trees are flat. Design cost is real; don't over-build ahead of a game's actual need. |
 | **UE5 reference loader timing** | When Star Freight UE5 is ready to consume the pack | UE-FT-001. Lives in `F:/AI/star-freight-ue5/`, NOT in this repo. world-forge ships the contract; loader lives with the game. |
@@ -119,4 +121,4 @@ Kept here for reference; re-triage if any become real needs:
 
 - **Swarm the remaining HIGH items** — a 10-phase dogfood pointed at the 5 HIGH deferrals above ships a clean v4.4.0. Protocol: `F:\AI\dogfood-labs\swarms\PROTOCOL.md`. Save-point tag from v4.3.0: `swarm-save-1776912469`.
 - **Feature-specific sessions** — e.g. "implement SCH-FT-002 Quest system end-to-end" — a single agent scoped to schema + exporters + editor for one feature. Cheaper than a full swarm for one feature.
-- **Strategic gate first** — don't start Godot exporter without Fractured Road signal; don't start Quest system without a dogfooded game asking for it.
+- **Strategic gate first** — Godot export already ships (v4.5.0 playable `.tscn` lane); further depth follows Fractured Road production needs. Don't start Quest system without a dogfooded game asking for it.

@@ -20,29 +20,62 @@ function nextKitId(prefix: string): string {
   return `${prefix}-${Date.now()}-${_kitIdCounter}`;
 }
 
+/**
+ * F-76d031d9: save/duplicate used `kit-${Date.now()}` which collides in the
+ * same millisecond. Digit-only suffix keeps the existing `/^kit-\d+$/` shape
+ * that kit-store tests lock, while the counter makes two same-ms writes unique.
+ */
+function nextSavedKitId(): string {
+  _kitIdCounter += 1;
+  return `kit-${Date.now()}${String(_kitIdCounter).padStart(4, '0')}`;
+}
+
 interface StoredKits {
   kits: StarterKit[];
 }
 
-function persist(allKits: StarterKit[]): void {
+/** Thrown when localStorage persist fails after an in-memory write is rolled back. */
+export class StoragePersistError extends Error {
+  constructor(message = 'Failed to save kits to localStorage') {
+    super(message);
+    this.name = 'StoragePersistError';
+  }
+}
+
+function persist(allKits: StarterKit[]): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       kits: allKits.filter((k) => !k.builtIn),
     }));
+    return true;
   } catch (e) {
     console.warn('Failed to save kits to localStorage:', e);
+    return false;
   }
 }
 
-function loadFromStorage(): StoredKits {
+export interface StorageLoadResult<T> {
+  data: T;
+  reset: boolean;
+}
+
+function loadFromStorage(): StorageLoadResult<StoredKits> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { kits: [] };
-    return JSON.parse(raw) as StoredKits;
+    if (!raw) return { data: { kits: [] }, reset: false };
+    const parsed: unknown = JSON.parse(raw);
+    // F-6cf2e4a4: valid JSON missing `kits` (or kits: null) used to crash
+    // loadKits via `[...stored.kits]` on boot. Reset like the corrupt-JSON path.
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as StoredKits).kits)) {
+      console.warn('Corrupted kit data in localStorage — resetting');
+      localStorage.removeItem(STORAGE_KEY);
+      return { data: { kits: [] }, reset: true };
+    }
+    return { data: { kits: (parsed as StoredKits).kits }, reset: false };
   } catch {
     console.warn('Corrupted kit data in localStorage — resetting');
     localStorage.removeItem(STORAGE_KEY);
-    return { kits: [] };
+    return { data: { kits: [] }, reset: true };
   }
 }
 
@@ -50,7 +83,8 @@ interface KitState {
   /** All starter kits: built-in + custom. */
   kits: StarterKit[];
 
-  loadKits: () => void;
+  /** Load custom kits from localStorage. `reset` is true when stored data was unreadable and wiped. */
+  loadKits: () => { reset: boolean };
 
   // Kit CRUD (custom kits only)
   saveKit: (kit: Omit<StarterKit, 'id' | 'builtIn' | 'createdAt' | 'updatedAt'>) => StarterKit;
@@ -70,39 +104,52 @@ export const useKitStore = create<KitState>((set, get) => ({
 
   loadKits: () => {
     const stored = loadFromStorage();
-    set({ kits: [...BUILTIN_KITS, ...stored.kits] });
+    set({ kits: [...BUILTIN_KITS, ...stored.data.kits] });
+    return { reset: stored.reset };
   },
 
   saveKit: (input) => {
     const now = new Date().toISOString();
     const kit: StarterKit = {
       ...structuredClone(input),
-      id: `kit-${Date.now()}`,
+      id: nextSavedKitId(),
       builtIn: false,
       source: input.source ?? 'local',
       createdAt: now,
       updatedAt: now,
     };
-    const kits = [...get().kits, kit];
+    const prev = get().kits;
+    const kits = [...prev, kit];
     set({ kits });
-    persist(kits);
+    if (!persist(kits)) {
+      set({ kits: prev });
+      throw new StoragePersistError();
+    }
     return kit;
   },
 
   updateKit: (id, updates) => {
-    const kits = get().kits.map((k) =>
+    const prev = get().kits;
+    const kits = prev.map((k) =>
       k.id === id && !k.builtIn
         ? { ...k, ...updates, updatedAt: new Date().toISOString() }
         : k,
     );
     set({ kits });
-    persist(kits);
+    if (!persist(kits)) {
+      set({ kits: prev });
+      throw new StoragePersistError();
+    }
   },
 
   deleteKit: (id) => {
-    const kits = get().kits.filter((k) => !(k.id === id && !k.builtIn));
+    const prev = get().kits;
+    const kits = prev.filter((k) => !(k.id === id && !k.builtIn));
     set({ kits });
-    persist(kits);
+    if (!persist(kits)) {
+      set({ kits: prev });
+      throw new StoragePersistError();
+    }
   },
 
   duplicateKit: (id) => {
@@ -111,16 +158,20 @@ export const useKitStore = create<KitState>((set, get) => ({
     const now = new Date().toISOString();
     const copy: StarterKit = {
       ...structuredClone(original),
-      id: `kit-${Date.now()}`,
+      id: nextSavedKitId(),
       name: `${original.name} (copy)`,
       builtIn: false,
       source: original.builtIn ? undefined : original.source,
       createdAt: now,
       updatedAt: now,
     };
-    const kits = [...get().kits, copy];
+    const prev = get().kits;
+    const kits = [...prev, copy];
     set({ kits });
-    persist(kits);
+    if (!persist(kits)) {
+      set({ kits: prev });
+      throw new StoragePersistError();
+    }
     return copy;
   },
 
@@ -138,9 +189,13 @@ export const useKitStore = create<KitState>((set, get) => ({
           createdAt: existing.createdAt,
           updatedAt: now,
         };
-        const kits = get().kits.map((k) => (k.id === replaceId ? updated : k));
+        const prev = get().kits;
+        const kits = prev.map((k) => (k.id === replaceId ? updated : k));
         set({ kits });
-        persist(kits);
+        if (!persist(kits)) {
+          set({ kits: prev });
+          throw new StoragePersistError();
+        }
         return updated;
       }
     }
@@ -154,9 +209,13 @@ export const useKitStore = create<KitState>((set, get) => ({
       createdAt: now,
       updatedAt: now,
     };
-    const kits = [...get().kits, kit];
+    const prev = get().kits;
+    const kits = [...prev, kit];
     set({ kits });
-    persist(kits);
+    if (!persist(kits)) {
+      set({ kits: prev });
+      throw new StoragePersistError();
+    }
     return kit;
   },
 }));

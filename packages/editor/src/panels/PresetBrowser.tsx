@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
-import { usePresetStore } from '../presets/preset-store.js';
+import { usePresetStore, StoragePersistError } from '../presets/preset-store.js';
+import { pushToast } from '../ui/Toast.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import type { AuthoringMode } from '@world-forge/schema';
 import { buttonBase, buttonAccent } from '../ui/styles.js';
@@ -27,10 +28,17 @@ export function PresetBrowser() {
   const { selection } = useEditorStore();
   const { selectEncounter } = useEditorStore();
   const {
-    regionPresets, encounterPresets,
+    regionPresets, encounterPresets, loadPresets,
     saveRegionPreset, deleteRegionPreset, duplicateRegionPreset,
     saveEncounterPreset, deleteEncounterPreset, duplicateEncounterPreset,
   } = usePresetStore();
+
+  useEffect(() => {
+    const result = loadPresets();
+    if (result?.reset) {
+      pushToast('Saved presets could not be read and were reset.', 'warning', 4000);
+    }
+  }, [loadPresets]);
 
   const selectedZoneId = getSelectedZoneId(selection);
 
@@ -73,31 +81,45 @@ export function PresetBrowser() {
     const hotspots = project.pressureHotspots
       .filter((h) => d.zoneIds.includes(h.zoneId))
       .map(({ id: _, zoneId: _z, ...rest }) => rest);
-    saveRegionPreset({
-      name: `${d.name} Preset`,
-      description: `Saved from ${d.name}`,
-      tags: [...d.tags],
-      regionTags: [...d.tags],
-      controllingFaction: d.controllingFaction,
-      baseMetrics: { ...d.baseMetrics },
-      economyProfile: { ...d.economyProfile },
-      factionPresences: factions,
-      pressureHotspots: hotspots,
-    });
+    try {
+      saveRegionPreset({
+        name: `${d.name} Preset`,
+        description: `Saved from ${d.name}`,
+        tags: [...d.tags],
+        regionTags: [...d.tags],
+        controllingFaction: d.controllingFaction,
+        baseMetrics: { ...d.baseMetrics },
+        economyProfile: { ...d.economyProfile },
+        factionPresences: factions,
+        pressureHotspots: hotspots,
+      });
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save region preset — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not save region preset.');
+      pushToast(msg, 'error', 4000);
+    }
   };
 
   const handleSaveEncounterFromCurrent = () => {
     if (!selectedEnc) return;
-    saveEncounterPreset({
-      name: `${selectedEnc.encounterType} Preset`,
-      description: `Saved from ${selectedEnc.id}`,
-      tags: [...selectedEnc.tags],
-      encounterType: selectedEnc.encounterType,
-      enemyIds: [...selectedEnc.enemyIds],
-      probability: selectedEnc.probability,
-      cooldownTurns: selectedEnc.cooldownTurns,
-      encounterTags: [...selectedEnc.tags],
-    });
+    try {
+      saveEncounterPreset({
+        name: `${selectedEnc.encounterType} Preset`,
+        description: `Saved from ${selectedEnc.id}`,
+        tags: [...selectedEnc.tags],
+        encounterType: selectedEnc.encounterType,
+        enemyIds: [...selectedEnc.enemyIds],
+        probability: selectedEnc.probability,
+        cooldownTurns: selectedEnc.cooldownTurns,
+        encounterTags: [...selectedEnc.tags],
+      });
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save encounter preset — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not save encounter preset.');
+      pushToast(msg, 'error', 4000);
+    }
   };
 
   return (
@@ -107,9 +129,9 @@ export function PresetBrowser() {
         {(['region', 'encounter'] as SubTab[]).map((t) => (
           <button key={t} onClick={() => setSubTab(t)} style={{
             flex: 1, padding: '4px 0', fontSize: 11, cursor: 'pointer',
-            background: subTab === t ? '#21262d' : 'transparent',
-            color: subTab === t ? '#58a6ff' : '#8b949e',
-            border: subTab === t ? '1px solid #30363d' : '1px solid transparent',
+            background: subTab === t ? 'var(--wf-bg-control)' : 'transparent',
+            color: subTab === t ? 'var(--wf-accent)' : 'var(--wf-text-muted)',
+            border: subTab === t ? '1px solid var(--wf-border-default)' : '1px solid transparent',
             borderRadius: 3,
           }}>
             {t === 'region' ? 'Region' : 'Encounter'}
@@ -120,13 +142,13 @@ export function PresetBrowser() {
       {/* Mode toggle */}
       {subTab === 'region' && (
         <div style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#8b949e' }}>Mode:</span>
+          <span style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>Mode:</span>
           {(['merge', 'overwrite'] as const).map((m) => (
             <button key={m} onClick={() => setApplyMode(m)} style={{
               fontSize: 10, padding: '2px 6px', cursor: 'pointer',
-              background: applyMode === m ? '#238636' : '#21262d',
-              color: applyMode === m ? '#fff' : '#8b949e',
-              border: '1px solid #30363d', borderRadius: 3,
+              background: applyMode === m ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+              color: applyMode === m ? '#fff' : 'var(--wf-text-muted)',
+              border: '1px solid var(--wf-border-default)', borderRadius: 3,
             }}>
               {m}
             </button>
@@ -148,12 +170,12 @@ export function PresetBrowser() {
 
       {/* Hidden by mode count */}
       {subTab === 'region' && hiddenRegionCount > 0 && (
-        <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 6 }}>
           {hiddenRegionCount} hidden by mode
         </div>
       )}
       {subTab === 'encounter' && hiddenEncounterCount > 0 && (
-        <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 6 }}>
           {hiddenEncounterCount} hidden by mode
         </div>
       )}
@@ -176,8 +198,22 @@ export function PresetBrowser() {
             }
           }}
           isConfirming={confirmTarget?.preset.id === p.id}
-          onDuplicate={() => duplicateRegionPreset(p.id)}
-          onDelete={!p.builtIn ? () => deleteRegionPreset(p.id) : undefined}
+          onDuplicate={() => {
+            try { duplicateRegionPreset(p.id); }
+            catch (err) {
+              pushToast(err instanceof StoragePersistError
+                ? 'Could not duplicate preset — browser storage is full or blocked.'
+                : 'Could not duplicate preset.', 'error', 4000);
+            }
+          }}
+          onDelete={!p.builtIn ? () => {
+            try { deleteRegionPreset(p.id); }
+            catch (err) {
+              pushToast(err instanceof StoragePersistError
+                ? 'Could not delete preset — browser storage is full or blocked.'
+                : 'Could not delete preset.', 'error', 4000);
+            }
+          } : undefined}
           previewLines={[
             p.controllingFaction ? `Faction: ${p.controllingFaction}` : '',
             p.baseMetrics.commerce != null ? `Commerce: ${p.baseMetrics.commerce}` : '',
@@ -198,8 +234,18 @@ export function PresetBrowser() {
           applyLabel={selectedZoneId ? 'Place in zone' : 'Select a zone'}
           onApply={() => handleApplyEncounter(p)}
           isConfirming={false}
-          onDuplicate={() => duplicateEncounterPreset(p.id)}
-          onDelete={!p.builtIn ? () => deleteEncounterPreset(p.id) : undefined}
+          onDuplicate={() => {
+            try { duplicateEncounterPreset(p.id); }
+            catch {
+              pushToast('Could not duplicate preset — browser storage is full or blocked.', 'error', 4000);
+            }
+          }}
+          onDelete={!p.builtIn ? () => {
+            try { deleteEncounterPreset(p.id); }
+            catch {
+              pushToast('Could not delete preset — browser storage is full or blocked.', 'error', 4000);
+            }
+          } : undefined}
           previewLines={[
             `Type: ${p.encounterType}`,
             `Probability: ${p.probability}`,
@@ -230,10 +276,10 @@ function PresetCard({ name, description, tags, builtIn, canApply, applyLabel, on
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-        {builtIn && <span style={{ fontSize: 10, color: '#8b949e' }} title="Built-in preset">&#128274;</span>}
-        <strong style={{ fontSize: 12, color: '#c9d1d9' }}>{name}</strong>
+        {builtIn && <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }} title="Built-in preset">&#128274;</span>}
+        <strong style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{name}</strong>
       </div>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>{description}</div>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>{description}</div>
       {tags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
           {tags.map((t) => (
@@ -242,7 +288,7 @@ function PresetCard({ name, description, tags, builtIn, canApply, applyLabel, on
         </div>
       )}
       {/* Preview */}
-      <div style={{ fontSize: 10, color: '#6e7681', marginBottom: 6 }}>
+      <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 6 }}>
         {previewLines.map((line, i) => <div key={i}>{line}</div>)}
       </div>
       {/* Actions */}
@@ -252,8 +298,8 @@ function PresetCard({ name, description, tags, builtIn, canApply, applyLabel, on
           disabled={!canApply}
           style={{
             ...smallBtn,
-            background: isConfirming ? '#238636' : '#21262d',
-            color: isConfirming ? '#fff' : canApply ? '#58a6ff' : '#484f58',
+            background: isConfirming ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+            color: isConfirming ? '#fff' : canApply ? 'var(--wf-accent)' : 'var(--wf-text-muted)',
             cursor: canApply ? 'pointer' : 'not-allowed',
           }}
         >
@@ -280,11 +326,11 @@ function PresetCard({ name, description, tags, builtIn, canApply, applyLabel, on
 }
 
 const cardStyle: React.CSSProperties = {
-  background: '#161b22', border: '1px solid #30363d', borderRadius: 4,
+  background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)', borderRadius: 4,
   padding: 8, marginBottom: 6,
 };
 const tagChip: React.CSSProperties = {
-  fontSize: 10, color: '#c9d1d9', background: '#30363d',
+  fontSize: 10, color: 'var(--wf-text-primary)', background: 'var(--wf-bg-hover)',
   borderRadius: 8, padding: '1px 6px',
 };
 const smallBtn: React.CSSProperties = {

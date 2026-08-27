@@ -7,6 +7,10 @@
 // erase the user's work. Instead we surface them as first-class, selectable,
 // repairable rows so the user decides whether to move them to a new zone or
 // delete them with an undoable action.
+//
+// F-7002ff8c: the original scan only covered encounterAnchors. Every other
+// zoneId-bearing collection is now in the same table; encounters stay the
+// first row so findOrphanedEncounters remains a compatible wrapper.
 
 import type { WorldProject, EncounterAnchor } from '@world-forge/schema';
 
@@ -15,6 +19,106 @@ export interface OrphanedEncounter {
   encounter: EncounterAnchor;
   /** The missing zone id the encounter still references — shown in the UI hint. */
   missingZoneId: string;
+}
+
+export type ZoneAttachedCollection =
+  | 'encounterAnchors'
+  | 'entityPlacements'
+  | 'landmarks'
+  | 'spawnPoints'
+  | 'itemPlacements'
+  | 'marketNodes'
+  | 'craftingStations'
+  | 'buildings'
+  | 'hubs'
+  | 'strongholds'
+  | 'propPlacements'
+  | 'pressureHotspots';
+
+export interface OrphanedByZone {
+  collection: ZoneAttachedCollection;
+  id: string;
+  missingZoneId: string;
+}
+
+interface CollectionRow {
+  collection: ZoneAttachedCollection;
+  idField: string;
+}
+
+/** Encounters first — Object List and findOrphanedEncounters depend on that order. */
+const ZONE_ID_TABLE: CollectionRow[] = [
+  { collection: 'encounterAnchors', idField: 'id' },
+  { collection: 'entityPlacements', idField: 'entityId' },
+  { collection: 'landmarks', idField: 'id' },
+  { collection: 'spawnPoints', idField: 'id' },
+  { collection: 'itemPlacements', idField: 'itemId' },
+  { collection: 'marketNodes', idField: 'id' },
+  { collection: 'craftingStations', idField: 'id' },
+  { collection: 'buildings', idField: 'id' },
+  { collection: 'hubs', idField: 'id' },
+  { collection: 'strongholds', idField: 'id' },
+  { collection: 'propPlacements', idField: 'id' },
+  { collection: 'pressureHotspots', idField: 'id' },
+];
+
+function rowsOf(project: WorldProject, collection: ZoneAttachedCollection): Array<Record<string, unknown>> {
+  const arr = project[collection];
+  return Array.isArray(arr) ? (arr as unknown as Array<Record<string, unknown>>) : [];
+}
+
+/** Pure scan. Returns orphans in table order (encounters first). */
+export function findOrphanedByZone(project: WorldProject): OrphanedByZone[] {
+  const zoneIds = new Set(project.zones.map((z) => z.id));
+  const out: OrphanedByZone[] = [];
+  for (const row of ZONE_ID_TABLE) {
+    for (const obj of rowsOf(project, row.collection)) {
+      const zoneId = obj.zoneId;
+      if (typeof zoneId === 'string' && zoneId.length > 0 && !zoneIds.has(zoneId)) {
+        out.push({
+          collection: row.collection,
+          id: String(obj[row.idField] ?? ''),
+          missingZoneId: zoneId,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** Reassign any zone-attached orphan to an existing zone. No-op if target is missing. */
+export function reassignOrphanZone(
+  project: WorldProject,
+  collection: ZoneAttachedCollection,
+  id: string,
+  newZoneId: string,
+): WorldProject {
+  const zoneExists = project.zones.some((z) => z.id === newZoneId);
+  if (!zoneExists) return project;
+  const row = ZONE_ID_TABLE.find((r) => r.collection === collection);
+  if (!row) return project;
+  const current = rowsOf(project, collection);
+  return {
+    ...project,
+    [collection]: current.map((obj) =>
+      String(obj[row.idField]) === id ? { ...obj, zoneId: newZoneId } : obj,
+    ),
+  } as WorldProject;
+}
+
+/** Delete a zone-attached object by collection + id. */
+export function deleteOrphan(
+  project: WorldProject,
+  collection: ZoneAttachedCollection,
+  id: string,
+): WorldProject {
+  const row = ZONE_ID_TABLE.find((r) => r.collection === collection);
+  if (!row) return project;
+  const current = rowsOf(project, collection);
+  return {
+    ...project,
+    [collection]: current.filter((obj) => String(obj[row.idField]) !== id),
+  } as WorldProject;
 }
 
 /** Pure scan. Returns the orphans in the order they appear in the project. */
@@ -35,20 +139,10 @@ export function reassignEncounterZone(
   encounterId: string,
   newZoneId: string,
 ): WorldProject {
-  const zoneExists = project.zones.some((z) => z.id === newZoneId);
-  if (!zoneExists) return project;
-  return {
-    ...project,
-    encounterAnchors: project.encounterAnchors.map((e) =>
-      e.id === encounterId ? { ...e, zoneId: newZoneId } : e,
-    ),
-  };
+  return reassignOrphanZone(project, 'encounterAnchors', encounterId, newZoneId);
 }
 
 /** Delete an orphaned encounter by id. Single-encounter variant for per-row repair. */
 export function deleteEncounter(project: WorldProject, encounterId: string): WorldProject {
-  return {
-    ...project,
-    encounterAnchors: project.encounterAnchors.filter((e) => e.id !== encounterId),
-  };
+  return deleteOrphan(project, 'encounterAnchors', encounterId);
 }

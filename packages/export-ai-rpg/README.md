@@ -34,7 +34,29 @@ if (!result.success) {
 ```bash
 npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
+npx world-forge-export --import ./my-pack --out ./imported
+npx world-forge-export --from-pack ./my-pack --out ./imported
 ```
+
+Put `<project.json>` first, or as the first non-option token (`world-forge-export --validate-only project.json` is accepted). Unknown flags are errors and exit 1.
+
+`--out` produces `content-pack.json`, `manifest.json`, `pack-meta.json`, `fidelity.json`, and when present `assets.json` / `asset-bindings.json` / `asset-packs.json`.
+
+| Option | Meaning |
+|--------|---------|
+| `--out <dir>` | Output directory (default: `./export`; created if missing). Mutually exclusive with `--validate-only` and `--dry-run`. `<dir>` must not start with `-`. |
+| `--import <file>` | Import a WorldProject, ContentPack, ExportResult JSON, or a pack directory. Writes `world-project.json` to `--out`, or stdout if `--out` is omitted. |
+| `--from-pack <dir>` | Import a pack directory (`content-pack.json` + `pack-meta.json` + `manifest.json`) via `importFromExportResult`. Reads sidecar `fidelity.json` / `assets.json` / `asset-bindings.json` / `asset-packs.json` when present. |
+| `--validate-only` | Validate without writing files. Mutually exclusive with `--out`. |
+| `--profile release\|debug` | Export profile. `debug` adds a `_debug` block (timestamp, schemaVersion, sourceProjectId, fidelityVerbose). Default: `release`. |
+| `--dry-run` | Validate and report sizes without writing files. Mutually exclusive with `--out`. |
+| `--verbose` | Detailed diagnostics on every path (success, `--validate-only`, `--dry-run`, and failure). Includes `err.stack` on failure. |
+| `--emit-schema-version` | Force-on `ContentPack.schemaVersion`. Wins over `--no-emit-schema-version` and over `WORLD_FORGE_EMIT_SCHEMA_VERSION`. |
+| `--no-emit-schema-version` | Strip `ContentPack.schemaVersion`. |
+| `WORLD_FORGE_EMIT_SCHEMA_VERSION` | Env: `0` / `false` / `off` disables schemaVersion unless `--emit-schema-version` is set. Default is emit-on. |
+| `--help` | Print usage. |
+
+Exit codes: `0` success (including `--validate-only` / `--dry-run` passed); `1` any error (bad args, unreadable input, invalid JSON, validation failure, write failure).
 
 ## Which exporter?
 

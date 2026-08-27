@@ -1,13 +1,15 @@
 // ImportKitModal.tsx — import a .wfkit.json kit bundle
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useKitStore } from '../kits/index.js';
+import { useKitStore, StoragePersistError } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import { prepareKitImport } from '../kits/bundle.js';
 import type { ImportKitResult } from '../kits/bundle.js';
 import { countContent } from './TemplateManager.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, buttonPrimary, modalFooter } from '../ui/styles.js';
 import { readerOutcomeMessage } from './import-kit-modal-helpers.js';
+import { jsonFileParseError } from './import-modal-helpers.js';
 
 interface Props { onClose: () => void }
 
@@ -16,6 +18,7 @@ export function ImportKitModal({ onClose }: Props) {
   const { kits, importKit } = useKitStore();
 
   const [fileName, setFileName] = useState('');
+  const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportKitResult | null>(null);
   const [collision, setCollision] = useState<{ existingId: string; isBuiltIn: boolean } | null>(null);
@@ -32,12 +35,15 @@ export function ImportKitModal({ onClose }: Props) {
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // F-ca164509: reset so the same path can be re-picked after an edit/error.
+    e.target.value = '';
     if (!file) return;
     if (activeReaderRef.current) {
       try { activeReaderRef.current.abort(); } catch { /* ignore */ }
       activeReaderRef.current = null;
     }
     setFileName(file.name);
+    setReading(true);
     setError(null);
     setResult(null);
     setCollision(null);
@@ -49,6 +55,7 @@ export function ImportKitModal({ onClose }: Props) {
     };
     reader.onload = () => {
       clearActive();
+      setReading(false);
       try {
         const data = JSON.parse(reader.result as string);
         const res = prepareKitImport(data);
@@ -62,43 +69,54 @@ export function ImportKitModal({ onClose }: Props) {
         if (existing) {
           setCollision({ existingId: existing.id, isBuiltIn: existing.builtIn });
         }
-      } catch {
-        setError('Invalid JSON file');
+      } catch (err) {
+        setError(jsonFileParseError(err, file.name));
       }
     };
     // F-005: surface read errors/aborts instead of leaving the modal looking
     // stuck (fileName updates but result/error never populate).
     reader.onerror = () => {
       clearActive();
+      setReading(false);
       setError(readerOutcomeMessage('error', false, reader.error?.message));
     };
     reader.onabort = () => {
       const supplanted = activeReaderRef.current !== reader;
       clearActive();
+      if (!supplanted) setReading(false);
       const message = readerOutcomeMessage('abort', supplanted);
       if (message) setError(message);
     };
     reader.readAsText(file);
   }, [kits]);
 
+  const persistImport = useCallback((run: () => void) => {
+    try {
+      run();
+      onClose();
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not import kit — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not import kit.');
+      pushToast(msg, 'error', 4000);
+    }
+  }, [onClose]);
+
   const handleImportAsCopy = useCallback(() => {
     if (!result) return;
     const kit = { ...result.kit, name: `${result.kit.name} (imported)` };
-    importKit(kit);
-    onClose();
-  }, [result, importKit, onClose]);
+    persistImport(() => { importKit(kit); });
+  }, [result, importKit, persistImport]);
 
   const handleReplace = useCallback(() => {
     if (!result || !collision) return;
-    importKit(result.kit, collision.existingId);
-    onClose();
-  }, [result, collision, importKit, onClose]);
+    persistImport(() => { importKit(result.kit, collision.existingId); });
+  }, [result, collision, importKit, persistImport]);
 
   const handleImport = useCallback(() => {
     if (!result) return;
-    importKit(result.kit);
-    onClose();
-  }, [result, importKit, onClose]);
+    persistImport(() => { importKit(result.kit); });
+  }, [result, importKit, persistImport]);
 
   const c = result ? countContent(result.kit.project) : null;
   const allWarnings = result
@@ -107,23 +125,24 @@ export function ImportKitModal({ onClose }: Props) {
 
   return (
     <ModalFrame title="Import Starter Kit" width={480} onClose={onClose}>
+      <div aria-busy={reading || undefined}>
 
         {/* File picker */}
-        <input ref={fileInput} type="file" accept=".wfkit.json,.json" onChange={handleFile} style={{ display: 'none' }} />
-        <button onClick={() => fileInput.current?.click()} style={buttonBase}>
-          {fileName || 'Choose .wfkit.json file\u2026'}
+        <input ref={fileInput} type="file" accept=".wfkit.json,.json" onChange={handleFile} style={{ display: 'none' }} disabled={reading} />
+        <button onClick={() => fileInput.current?.click()} style={buttonBase} disabled={reading}>
+          {reading ? `Reading ${fileName}…` : (fileName || 'Choose .wfkit.json file\u2026')}
         </button>
 
         {/* Error */}
         {error && (
-          <div style={{ marginTop: 12, padding: 8, background: '#3d1418', border: '1px solid #f85149', borderRadius: 4, color: '#f85149', fontSize: 12 }}>
+          <div role="alert" aria-live="assertive" style={{ marginTop: 12, padding: 8, background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', border: '1px solid var(--wf-danger-text)', borderRadius: 4, color: 'var(--wf-danger-text)', fontSize: 12 }}>
             {error}
           </div>
         )}
 
         {/* Validation errors */}
         {result && result.validationErrors.length > 0 && (
-          <div style={{ marginTop: 12, padding: 8, background: '#3d1418', border: '1px solid #f85149', borderRadius: 4, color: '#f85149', fontSize: 12 }}>
+          <div style={{ marginTop: 12, padding: 8, background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', border: '1px solid var(--wf-danger-text)', borderRadius: 4, color: 'var(--wf-danger-text)', fontSize: 12 }}>
             <strong>Validation errors:</strong>
             <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
               {result.validationErrors.map((e, i) => <li key={i}>{e}</li>)}
@@ -133,19 +152,19 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Preview */}
         {result && result.isValid && c && (
-          <div style={{ marginTop: 12, padding: 10, background: '#0d1117', border: '1px solid #30363d', borderRadius: 4 }}>
-            <div style={{ fontWeight: 600, color: '#e6edf3', marginBottom: 4 }}>
+          <div style={{ marginTop: 12, padding: 10, background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 4 }}>
+            <div style={{ fontWeight: 600, color: 'var(--wf-text-primary)', marginBottom: 4 }}>
               {result.kit.icon} {result.kit.name}
             </div>
             {result.kit.description && (
-              <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{result.kit.description}</div>
+              <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 6 }}>{result.kit.description}</div>
             )}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
               {result.kit.modes.map((m) => (
                 <span key={m} style={modeBadgeStyle}>{m}</span>
               ))}
             </div>
-            <div style={{ fontSize: 10, color: '#484f58' }}>
+            <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>
               {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
             </div>
           </div>
@@ -153,7 +172,7 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Warnings */}
         {allWarnings.length > 0 && (
-          <div style={{ marginTop: 8, padding: 8, background: '#2a1c08', border: '1px solid #9e6a03', borderRadius: 4, color: '#d29922', fontSize: 11 }}>
+          <div style={{ marginTop: 8, padding: 8, background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-warning)', borderRadius: 4, color: 'var(--wf-warning)', fontSize: 11 }}>
             <strong>Warnings:</strong>
             <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
               {allWarnings.map((w, i) => <li key={i}>{w}</li>)}
@@ -163,7 +182,7 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Collision UI */}
         {result && result.isValid && collision && (
-          <div style={{ marginTop: 12, padding: 10, background: '#1c1917', border: '1px solid #9e6a03', borderRadius: 4, color: '#d29922', fontSize: 12 }}>
+          <div style={{ marginTop: 12, padding: 10, background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-warning)', borderRadius: 4, color: 'var(--wf-warning)', fontSize: 12 }}>
             A kit named &ldquo;{result.kit.name}&rdquo; already exists.
           </div>
         )}
@@ -172,22 +191,23 @@ export function ImportKitModal({ onClose }: Props) {
         <div style={modalFooter}>
           {result && result.isValid && collision && (
             <>
-              <button onClick={handleImportAsCopy} style={buttonPrimary}>Import as Copy</button>
+              <button onClick={handleImportAsCopy} style={buttonPrimary} disabled={reading}>Import as Copy</button>
               {!collision.isBuiltIn && (
-                <button onClick={handleReplace} style={{ ...buttonBase, color: 'var(--wf-warning)' }}>Replace Existing</button>
+                <button onClick={handleReplace} style={{ ...buttonBase, color: 'var(--wf-warning)' }} disabled={reading}>Replace Existing</button>
               )}
             </>
           )}
           {result && result.isValid && !collision && (
-            <button onClick={handleImport} style={buttonPrimary}>Import</button>
+            <button onClick={handleImport} style={buttonPrimary} disabled={reading}>Import</button>
           )}
           <button onClick={onClose} style={buttonBase}>Cancel</button>
         </div>
+      </div>
     </ModalFrame>
   );
 }
 
 const modeBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,
-  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+  background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)',
 };

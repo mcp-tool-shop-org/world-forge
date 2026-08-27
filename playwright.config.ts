@@ -4,9 +4,21 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
   retries: 0,
+  // F-861ff80c: Playwright 1.59 defaults to 'dot' when CI is set and 'list'
+  // otherwise — never 'html'. CI uploads playwright-report/ on failure; the
+  // HTML reporter is what materializes that directory. Screenshot + trace
+  // already capture the PNG/zip; without this reporter the gallery is empty.
+  reporter: [['html', { open: 'never' }], process.env.CI ? ['dot'] : ['list']],
+  // Materialize chapel-project.json from the schema fixture so e2e does not
+  // depend on a tracked file sitting under gitignored dogfood/output/.
+  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: 'http://localhost:5200',
     headless: true,
+    // F-03e207f6: retries is 0, so 'on-first-retry' traces never fire.
+    // Capture a picture + trace of a failed editor boot for CI.
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
@@ -14,7 +26,12 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev --workspace=@world-forge/editor -- --port 5200',
     port: 5200,
-    reuseExistingServer: true,
-    timeout: 15_000,
+    // F-b48f68c3: never trust a leftover :5200 process in CI.
+    reuseExistingServer: !process.env.CI,
+    // F-06cc860c: 15s is below Playwright's 60s default and fails a cold CI
+    // Vite compile before any spec runs. 120s on CI, 60s locally.
+    timeout: process.env.CI ? 120_000 : 60_000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

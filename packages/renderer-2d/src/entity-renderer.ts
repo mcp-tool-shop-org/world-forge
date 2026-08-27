@@ -4,6 +4,11 @@ import { Container, Graphics, Text } from 'pixi.js';
 import type { EntityPlacement, EntityRole } from '@world-forge/schema';
 import type { DiagnosticInfo } from './diagnostics.js';
 
+export interface EntityRenderOptions {
+  hoveredEntityId?: string;
+  selectedEntityId?: string;
+}
+
 const ROLE_COLORS: Record<EntityRole, number> = {
   'npc': 0x4a9eff,
   'enemy': 0xff4444,
@@ -13,11 +18,11 @@ const ROLE_COLORS: Record<EntityRole, number> = {
   'boss': 0xff2222,
 };
 
-const ROLE_SHAPES: Record<EntityRole, 'circle' | 'diamond' | 'square'> = {
+const ROLE_SHAPES: Record<EntityRole, 'circle' | 'diamond' | 'square' | 'triangle'> = {
   'npc': 'circle',
   'enemy': 'diamond',
   'merchant': 'square',
-  'quest-giver': 'circle',
+  'quest-giver': 'triangle',
   'companion': 'circle',
   'boss': 'diamond',
 };
@@ -26,6 +31,7 @@ export class EntityRenderer {
   container: Container;
   private tileSize: number;
   private destroyed = false;
+  private opts: EntityRenderOptions = {};
 
   constructor(tileSize: number) {
     this.tileSize = tileSize;
@@ -56,11 +62,16 @@ export class EntityRenderer {
     };
   }
 
-  update(entities: EntityPlacement[], zonePositions: Map<string, { x: number; y: number }>): void {
+  update(
+    entities: EntityPlacement[],
+    zonePositions: Map<string, { x: number; y: number }>,
+    opts?: Partial<EntityRenderOptions>,
+  ): void {
     if (this.destroyed) {
       console.warn('EntityRenderer.update: renderer has been destroyed — skipping. Create a new EntityRenderer instance to continue rendering.');
       return;
     }
+    if (opts) Object.assign(this.opts, opts);
     // INF-A-002: destroy removed children so Graphics + Text objects don't leak.
     const removed = this.container.removeChildren();
     for (const child of removed) child.destroy({ children: true });
@@ -70,6 +81,7 @@ export class EntityRenderer {
     // the same orphan zone, and a high-churn scene no longer drowns
     // diagnostics.
     const missingByZone = new Map<string, string[]>();
+    const { hoveredEntityId, selectedEntityId } = this.opts;
 
     for (const ep of entities) {
       const zonePos = zonePositions.get(ep.zoneId);
@@ -100,19 +112,28 @@ export class EntityRenderer {
         g.lineTo(x - size, y);
         g.closePath();
         g.fill(color);
+      } else if (shape === 'triangle') {
+        // F-9347649b: quest-giver vs companion by shape, not only hue.
+        g.moveTo(x, y - size);
+        g.lineTo(x + size, y + size);
+        g.lineTo(x - size, y + size);
+        g.closePath();
+        g.fill(color);
       } else {
         g.rect(x - size, y - size, size * 2, size * 2).fill(color);
       }
 
       this.container.addChild(g);
 
-      // TODO: Show name label only on hover instead of always-visible
-      const label = new Text({
-        text: ep.entityId,
-        style: { fontSize: 9, fill: 0xaaaaaa, fontFamily: 'monospace' },
-      });
-      label.position.set(x + size + 2, y - 4);
-      this.container.addChild(label);
+      const showLabel = ep.entityId === hoveredEntityId || ep.entityId === selectedEntityId;
+      if (showLabel) {
+        const label = new Text({
+          text: ep.name ?? ep.entityId,
+          style: { fontSize: 9, fill: 0xaaaaaa, fontFamily: 'monospace' },
+        });
+        label.position.set(x + size + 2, y - 4);
+        this.container.addChild(label);
+      }
     }
 
     // R2D-B-002: emit one consolidated warning summarising all orphan entities.

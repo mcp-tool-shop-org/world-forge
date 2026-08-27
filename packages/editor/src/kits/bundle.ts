@@ -7,6 +7,38 @@ import { validateKit } from './validate-kit.js';
 /** Current bundle format version. Increment on breaking changes. */
 export const BUNDLE_VERSION = 1;
 
+/** Oldest version we still accept (best-effort migrate). */
+export const MIN_SUPPORTED_BUNDLE_VERSION = 1;
+
+/**
+ * Per-from-version migrators. Key is the version being migrated *from*.
+ * v1 is the original format; there are no field rewrites yet — the table
+ * exists so bumping BUNDLE_VERSION to 2 does not hard-reject existing files.
+ */
+const KIT_BUNDLE_MIGRATORS: Record<number, (obj: Record<string, unknown>) => Record<string, unknown>> = {
+  // 1 → 2: identity until a breaking field lands.
+};
+
+export function migrateKitBundle(
+  obj: Record<string, unknown>,
+  fromVersion: number,
+  toVersion: number = BUNDLE_VERSION,
+): { data: Record<string, unknown>; warnings: string[] } {
+  const warnings: string[] = [];
+  let data = obj;
+  let version = fromVersion;
+  while (version < toVersion) {
+    const step = KIT_BUNDLE_MIGRATORS[version];
+    if (step) {
+      data = step(data);
+    } else {
+      warnings.push(`No explicit migrator for kit bundle v${version} → v${version + 1}; reading best-effort.`);
+    }
+    version += 1;
+  }
+  return { data, warnings };
+}
+
 /** Portable on-disk format for a starter kit. No runtime ID, no builtIn flag. */
 export interface KitBundle {
   bundleVersion: number;
@@ -59,62 +91,75 @@ export function serializeKit(kit: StarterKit): KitBundle {
 /**
  * Parse raw JSON data into a validated KitBundle.
  * Returns errors for structural problems, warnings for missing optional fields.
+ *
+ * F-b81060ec: accept version <= current (run migrators); reject only unknown
+ * *future* versions. `currentVersion` is overridable so tests can prove a v1
+ * file still parses after BUNDLE_VERSION becomes 2.
  */
-export function parseKitBundle(data: unknown): ParseBundleResult | ParseBundleError {
+export function parseKitBundle(
+  data: unknown,
+  opts?: { currentVersion?: number },
+): ParseBundleResult | ParseBundleError {
   if (!data || typeof data !== 'object') {
     return { ok: false, error: 'Invalid kit bundle: not an object' };
   }
   const obj = data as Record<string, unknown>;
+  const currentVersion = opts?.currentVersion ?? BUNDLE_VERSION;
 
   if (typeof obj.bundleVersion !== 'number') {
     return { ok: false, error: 'Invalid kit bundle: missing bundleVersion' };
   }
-  if (obj.bundleVersion !== BUNDLE_VERSION) {
-    return { ok: false, error: `Unsupported bundle version: ${obj.bundleVersion} (expected ${BUNDLE_VERSION})` };
+  if (obj.bundleVersion > currentVersion) {
+    return { ok: false, error: `Unsupported bundle version: ${obj.bundleVersion} (expected <= ${currentVersion})` };
   }
-  if (typeof obj.name !== 'string' || !obj.name.trim()) {
+  if (obj.bundleVersion < MIN_SUPPORTED_BUNDLE_VERSION) {
+    return { ok: false, error: `Unsupported bundle version: ${obj.bundleVersion} (expected >= ${MIN_SUPPORTED_BUNDLE_VERSION})` };
+  }
+  const migrated = migrateKitBundle(obj, obj.bundleVersion, currentVersion);
+  const parsedObj = migrated.data;
+  if (typeof parsedObj.name !== 'string' || !parsedObj.name.trim()) {
     return { ok: false, error: 'Invalid kit bundle: name is required' };
   }
-  if (!Array.isArray(obj.modes) || obj.modes.length === 0) {
+  if (!Array.isArray(parsedObj.modes) || parsedObj.modes.length === 0) {
     return { ok: false, error: 'Invalid kit bundle: at least one mode is required' };
   }
-  if (!obj.project || typeof obj.project !== 'object') {
+  if (!parsedObj.project || typeof parsedObj.project !== 'object') {
     return { ok: false, error: 'Invalid kit bundle: project is required' };
   }
 
-  const warnings: string[] = [];
-  if (typeof obj.description !== 'string') warnings.push('Missing description');
-  if (typeof obj.icon !== 'string') warnings.push('Missing icon');
-  if (!Array.isArray(obj.tags)) warnings.push('Missing tags array');
+  const warnings: string[] = [...migrated.warnings];
+  if (typeof parsedObj.description !== 'string') warnings.push('Missing description');
+  if (typeof parsedObj.icon !== 'string') warnings.push('Missing icon');
+  if (!Array.isArray(parsedObj.tags)) warnings.push('Missing tags array');
 
   const bundle: KitBundle = {
-    bundleVersion: BUNDLE_VERSION,
-    name: obj.name as string,
-    description: typeof obj.description === 'string' ? obj.description : '',
-    icon: typeof obj.icon === 'string' ? obj.icon : '',
-    modes: obj.modes as AuthoringMode[],
-    tags: Array.isArray(obj.tags)
-      ? obj.tags.filter((t): t is string => typeof t === 'string')
+    bundleVersion: currentVersion,
+    name: parsedObj.name as string,
+    description: typeof parsedObj.description === 'string' ? parsedObj.description : '',
+    icon: typeof parsedObj.icon === 'string' ? parsedObj.icon : '',
+    modes: parsedObj.modes as AuthoringMode[],
+    tags: Array.isArray(parsedObj.tags)
+      ? parsedObj.tags.filter((t): t is string => typeof t === 'string')
       : [],
-    project: obj.project as WorldProject,
+    project: parsedObj.project as WorldProject,
     presetRefs:
-      obj.presetRefs && typeof obj.presetRefs === 'object'
+      parsedObj.presetRefs && typeof parsedObj.presetRefs === 'object'
         ? {
-            region: Array.isArray((obj.presetRefs as Record<string, unknown>).region)
-              ? ((obj.presetRefs as Record<string, unknown>).region as string[])
+            region: Array.isArray((parsedObj.presetRefs as Record<string, unknown>).region)
+              ? ((parsedObj.presetRefs as Record<string, unknown>).region as string[])
               : [],
-            encounter: Array.isArray((obj.presetRefs as Record<string, unknown>).encounter)
-              ? ((obj.presetRefs as Record<string, unknown>).encounter as string[])
+            encounter: Array.isArray((parsedObj.presetRefs as Record<string, unknown>).encounter)
+              ? ((parsedObj.presetRefs as Record<string, unknown>).encounter as string[])
               : [],
           }
         : { region: [], encounter: [] },
     guideHints:
-      obj.guideHints && typeof obj.guideHints === 'object'
-        ? (obj.guideHints as KitBundle['guideHints'])
+      parsedObj.guideHints && typeof parsedObj.guideHints === 'object'
+        ? (parsedObj.guideHints as KitBundle['guideHints'])
         : {},
-    version: typeof obj.version === 'string' ? obj.version : undefined,
+    version: typeof parsedObj.version === 'string' ? parsedObj.version : undefined,
     exportedAt:
-      typeof obj.exportedAt === 'string' ? obj.exportedAt : new Date().toISOString(),
+      typeof parsedObj.exportedAt === 'string' ? parsedObj.exportedAt : new Date().toISOString(),
   };
 
   return { ok: true, bundle, warnings };

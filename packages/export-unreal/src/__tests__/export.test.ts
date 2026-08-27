@@ -3,6 +3,9 @@ import { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from '../export.js';
 import { importFromUnreal } from '../import.js';
 import { convertEntities } from '../convert-entities.js';
 import { convertParallax } from '../convert-parallax.js';
+import { convertTransitions } from '../convert-transitions.js';
+import { convertWorldPartition } from '../convert-world-partition.js';
+import { KNOWN_DROPPED } from '../field-coverage.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import type { WorldProject, TransitionEntity } from '@world-forge/schema';
 
@@ -164,38 +167,26 @@ describe('exportToUnreal', () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it('emits a dropped world-partition fidelity entry for zero-width map', () => {
-    // UE-A-005 / UE-A-006: gridWidth=0 should emit a "dropped" world-partition
-    // entry but still produce a structurally valid pack with clamped extent.
+  it('fail-closes on zero-width map (schema gridWidth must be finite and > 0)', () => {
     const bad: WorldProject = {
       ...minimalProject,
       map: { ...minimalProject.map, gridWidth: 0 },
     };
     const result = exportToUnreal(bad);
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-    const entry = result.fidelity.entries.find(
-      (e) => e.domain === 'world-partition' && e.level === 'dropped',
-    );
-    expect(entry).toBeDefined();
-    expect(entry?.severity).toBe('warning');
-    // Clamped output: extent must still be structurally valid.
-    expect(result.contentPack.WorldPartition.CellsX).toBeGreaterThanOrEqual(1);
-    expect(result.contentPack.WorldPartition.CellsY).toBeGreaterThanOrEqual(1);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors.some((e) => e.path.includes('gridWidth') || e.message.toLowerCase().includes('grid'))).toBe(true);
   });
 
-  it('emits a dropped world-partition fidelity entry for zero-height map', () => {
+  it('fail-closes on zero-height map (schema gridHeight must be finite and > 0)', () => {
     const bad: WorldProject = {
       ...minimalProject,
       map: { ...minimalProject.map, gridHeight: 0 },
     };
     const result = exportToUnreal(bad);
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-    const entry = result.fidelity.entries.find(
-      (e) => e.domain === 'world-partition' && e.level === 'dropped',
-    );
-    expect(entry).toBeDefined();
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors.some((e) => e.path.includes('gridHeight') || e.message.toLowerCase().includes('grid'))).toBe(true);
   });
 
   it('drops an entity placement referencing a non-existent zone (convertEntities direct)', () => {
@@ -245,6 +236,92 @@ describe('exportToUnreal', () => {
     const result = convertEntities(minimalProject);
     expect(result.manifest.Dropped).toEqual([]);
     expect(result.manifest.Incomplete).toBe(false);
+  });
+
+  it('F-221939a1: convertTransitions drops a dangling zoneId instead of emitting a lift at world origin', () => {
+    const orphan: WorldProject = {
+      ...minimalProject,
+      transitions: [
+        {
+          id: 't-ghost',
+          zoneId: 'zone-does-not-exist',
+          targetZoneId: 'zone-cellar',
+          type: 'elevator',
+        },
+      ],
+    };
+    const result = convertTransitions(orphan);
+    expect(result.transitions.find((t) => t.Id === 't-ghost')).toBeUndefined();
+    expect(result.dropped).toHaveLength(1);
+    expect(result.incomplete).toBe(true);
+    expect(result.dropped[0].ZoneId).toBe('zone-does-not-exist');
+    const entry = result.fidelity.find(
+      (e) => e.entityId === 't-ghost' && e.level === 'dropped' && e.domain === 'transitions',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.severity).toBe('error');
+    expect(entry?.message).toContain('zone-does-not-exist');
+  });
+
+  it('F-221939a1: convertTransitions still falls back to parent zone origin when grid coords are missing', () => {
+    const result = convertTransitions({
+      ...minimalProject,
+      transitions: [{
+        id: 't-lift',
+        zoneId: 'zone-entrance',
+        targetZoneId: 'zone-cellar',
+        type: 'elevator',
+      }],
+    });
+    expect(result.transitions).toHaveLength(1);
+    expect(result.dropped).toEqual([]);
+    expect(result.incomplete).toBe(false);
+    expect(result.fidelity.some((e) => e.level === 'lossless' && e.entityId === 't-lift')).toBe(true);
+  });
+
+  it('F-56fbfdb5: convertTransitions drops a ghost targetZoneId instead of claiming lossless', () => {
+    const orphan: WorldProject = {
+      ...minimalProject,
+      transitions: [
+        {
+          id: 't-ghost-target',
+          zoneId: 'zone-entrance',
+          targetZoneId: 'zone-does-not-exist',
+          type: 'elevator',
+        },
+      ],
+    };
+    const result = convertTransitions(orphan);
+    expect(result.transitions.find((t) => t.Id === 't-ghost-target')).toBeUndefined();
+    expect(result.transitions).toHaveLength(0);
+    expect(result.dropped).toHaveLength(1);
+    expect(result.incomplete).toBe(true);
+    expect(result.dropped[0].Reason).toContain('zone-does-not-exist');
+    const entry = result.fidelity.find(
+      (e) => e.entityId === 't-ghost-target' && e.level === 'dropped' && e.domain === 'transitions',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.severity).toBe('error');
+    expect(entry?.fieldPath).toBe('transitions.t-ghost-target.targetZoneId');
+    expect(entry?.message).toContain('zone-does-not-exist');
+    expect(result.fidelity.some((e) => e.entityId === 't-ghost-target' && e.level === 'lossless')).toBe(false);
+  });
+
+  it('F-8360c1fb: convertWorldPartition falls back on an unknown mode instead of emitting NaN cells', () => {
+    const result = convertWorldPartition({
+      ...minimalProject,
+      mode: 'narnia' as WorldProject['mode'],
+    });
+    expect(Number.isFinite(result.hint.CellSizeCm)).toBe(true);
+    expect(Number.isFinite(result.hint.CellsX)).toBe(true);
+    expect(Number.isFinite(result.hint.CellsY)).toBe(true);
+    expect(result.hint.SourceMode).toBe('dungeon');
+    expect(result.hint.CellSizeCm).toBe(12800);
+    const entry = result.fidelity.find(
+      (e) => e.domain === 'world-partition' && e.fieldPath === 'mode',
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.message).toContain('narnia');
   });
 
   it('UE-B-005: composeBaseMeta is a pure composition step (future-proofing seam)', async () => {
@@ -479,6 +556,117 @@ describe('exportToUnreal: Wave 2 — sky / lighting / collision / parallax / phy
     expect(entry).toBeDefined();
   });
 
+  it('F-a05c69b8 / F-9615478f / F-c1f4acbd: strata, tiles, props, gates, hazards land on the pack and round-trip', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      strata: [
+        { id: 'strat-surface', name: 'Surface', order: 0, tags: [] },
+        { id: 'strat-cellar', name: 'Cellar Level', order: -1, zRange: { floor: -8, ceiling: 0 }, tags: [] },
+      ],
+      stratumLinks: [
+        {
+          id: 'link-stairs',
+          fromStratumId: 'strat-surface',
+          toStratumId: 'strat-cellar',
+          fromZoneId: 'zone-entrance',
+          toZoneId: 'zone-cellar',
+          bidirectional: true,
+          linkType: 'stairs',
+        },
+      ],
+      hazardDefinitions: [
+        {
+          id: 'hz-lava',
+          name: 'Lava',
+          effects: [{ kind: 'damage', amount: 5, tickOn: 'turn-end' }],
+          trigger: 'on-enter',
+          tags: ['fire'],
+        },
+      ],
+      tilesets: [
+        {
+          id: 'ts-dungeon',
+          name: 'Dungeon',
+          tileWidth: 32,
+          tileHeight: 32,
+          tiles: [
+            { id: 't-floor', tilesetId: 'ts-dungeon', row: 0, col: 0, tags: ['floor'], walkable: true, opacity: 1 },
+            { id: 't-wall', tilesetId: 'ts-dungeon', row: 0, col: 1, tags: ['wall'], walkable: false, opacity: 1 },
+          ],
+        },
+      ],
+      tileLayers: [
+        {
+          id: 'layer-ground',
+          name: 'Ground',
+          zIndex: 0,
+          tiles: [
+            { tileId: 't-floor', gridX: 1, gridY: 1 },
+            { tileId: 't-wall', gridX: 2, gridY: 1 },
+          ],
+        },
+      ],
+      props: [
+        { id: 'prop-barrel', name: 'Barrel', width: 1, height: 1, tags: [], walkable: false, interactable: true },
+      ],
+      propPlacements: [
+        { id: 'pp-1', propId: 'prop-barrel', gridX: 3, gridY: 3, zoneId: 'zone-entrance' },
+      ],
+      zones: minimalProject.zones.map((z, i) =>
+        i === 0
+          ? {
+              ...z,
+              stratumId: 'strat-surface',
+              entryGate: { conditions: ['item:iron-key'], mode: 'hard', reason: 'Locked.' },
+              hazardRefs: ['hz-lava'],
+            }
+          : { ...z, stratumId: 'strat-cellar' },
+      ),
+    };
+
+    const result = exportToUnreal(project);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const entrance = result.contentPack.Zones.find((z) => z.Id === 'zone-entrance');
+    expect(entrance?.StratumId).toBe('strat-surface');
+    expect(entrance?.ZBand).toBe(0);
+    expect(entrance?.EntryGate).toEqual({
+      Mode: 'hard', Conditions: ['item:iron-key'], Reason: 'Locked.',
+    });
+    expect(entrance?.HazardRefs).toEqual(['hz-lava']);
+
+    expect(result.contentPack.Strata.Strata.map((s) => s.Id)).toEqual(['strat-surface', 'strat-cellar']);
+    expect(result.contentPack.Strata.Links).toHaveLength(1);
+    expect(result.contentPack.Tiles.Layers[0].Cells).toHaveLength(2);
+    expect(result.contentPack.Tiles.CollisionBoxes).toHaveLength(1);
+    expect(result.contentPack.Tiles.CollisionBoxes[0].TileId).toBe('t-wall');
+    expect(result.contentPack.Props.Actors).toHaveLength(1);
+    expect(result.contentPack.Props.CollisionBoxes).toHaveLength(1);
+    expect(result.contentPack.Hazards.Volumes).toHaveLength(1);
+    expect(result.contentPack.Hazards.Definitions[0].Id).toBe('hz-lava');
+
+    // TilesetAssetId is kept; cells exist so we no longer claim bake-on-UE5-side.
+    expect(result.fidelity.entries.some((e) => e.level === 'dropped' && e.fieldPath === 'tileLayers')).toBe(false);
+    expect(result.fidelity.entries.some((e) => e.level === 'dropped' && e.fieldPath === 'strata')).toBe(false);
+    expect(result.fidelity.entries.some((e) => e.level === 'dropped' && e.fieldPath === 'hazardDefinitions')).toBe(false);
+
+    const back = importFromUnreal(result.contentPack);
+    expect(back.success).toBe(true);
+    if (!back.success) return;
+    expect(back.project.strata?.map((s) => s.id)).toEqual(['strat-surface', 'strat-cellar']);
+    expect(back.project.stratumLinks?.[0].id).toBe('link-stairs');
+    expect(back.project.zones.find((z) => z.id === 'zone-entrance')?.stratumId).toBe('strat-surface');
+    expect(back.project.zones.find((z) => z.id === 'zone-entrance')?.entryGate).toEqual({
+      conditions: ['item:iron-key'], mode: 'hard', reason: 'Locked.',
+    });
+    expect(back.project.zones.find((z) => z.id === 'zone-entrance')?.hazardRefs).toEqual(['hz-lava']);
+    expect(back.project.hazardDefinitions?.[0].id).toBe('hz-lava');
+    expect(back.project.tileLayers[0].tiles).toHaveLength(2);
+    expect(back.project.propPlacements[0].id).toBe('pp-1');
+    expect(back.project.props[0].walkable).toBe(false);
+  });
+
   it('passes TransitionEntity through to UnrealContentPack.Transitions', () => {
     const transition: TransitionEntity = {
       id: 't-lift',
@@ -615,6 +803,47 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     expect(zone?.physicsMode).toBe('platformer');
   });
 
+  it('round-trips TransitionEntity through export → import (F-c6b6426f)', () => {
+    // convertTransitions maps each TransitionEntity 1:1 into pack.Transitions
+    // and stamps a lossless fidelity entry, but deserializeV1 used to never
+    // read that array — elevators/warps/lifts vanished on import. Inverse of
+    // convertTransition: LocationCm → gridX/gridY via unrealAxisToGrid;
+    // Type/Label/Animation/DurationSeconds/Tags passthrough.
+    const transition: TransitionEntity = {
+      id: 't-lift',
+      zoneId: 'zone-entrance',
+      targetZoneId: 'zone-cellar',
+      type: 'elevator',
+      gridX: 3,
+      gridY: 4,
+      label: 'Entrance → Cellar Lift',
+      animation: 'elevator_descend',
+      durationSeconds: 2.5,
+      tags: ['vertical'],
+    };
+    const project: WorldProject = { ...minimalProject, transitions: [transition] };
+    const exported = exportToUnreal(project);
+    if (!exported.success) throw new Error('export failed');
+    expect(exported.contentPack.Transitions.length).toBe(1);
+
+    const imported = importFromUnreal(exported.contentPack);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+
+    expect(imported.project.transitions).toHaveLength(1);
+    const recovered = imported.project.transitions![0];
+    expect(recovered.id).toBe(transition.id);
+    expect(recovered.zoneId).toBe(transition.zoneId);
+    expect(recovered.targetZoneId).toBe(transition.targetZoneId);
+    expect(recovered.type).toBe(transition.type);
+    expect(recovered.gridX).toBe(transition.gridX);
+    expect(recovered.gridY).toBe(transition.gridY);
+    expect(recovered.label).toBe(transition.label);
+    expect(recovered.animation).toBe(transition.animation);
+    expect(recovered.durationSeconds).toBe(transition.durationSeconds);
+    expect(recovered.tags).toEqual(transition.tags);
+  });
+
   it('drops an unrecognized PhysicsMode on import with an approximated fidelity entry instead of guessing', () => {
     const exported = exportToUnreal(minimalProject);
     if (!exported.success) throw new Error('export failed');
@@ -637,6 +866,60 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     );
     expect(entry).toBeDefined();
     expect(entry?.message).toContain('bogus-mode');
+  });
+
+  it('F-1353de33: drops an unrecognized Interactable Type on import with an approximated fidelity entry', () => {
+    const exported = exportToUnreal(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+    const tamperedPack = {
+      ...exported.contentPack,
+      Zones: exported.contentPack.Zones.map((z) =>
+        z.Id === 'zone-entrance'
+          ? { ...z, Interactables: [{ Name: 'weird lever', Type: 'yeet', Description: 'nope' }] }
+          : z,
+      ),
+    };
+    const imported = importFromUnreal(tamperedPack);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+    const zone = imported.project.zones.find((z) => z.id === 'zone-entrance');
+    expect(zone?.interactables.some((i) => (i.type as string) === 'yeet')).toBe(false);
+    const entry = imported.fidelity.entries.find(
+      (e) => e.entityId === 'zone-entrance' && e.message.includes('yeet'),
+    );
+    expect(entry).toBeDefined();
+    expect(entry?.level).toBe('approximated');
+  });
+
+  it('F-dce08380: drops unrecognized Connection Kind, CollisionChannel, GravityDirection, and SourceMode', () => {
+    const exported = exportToUnreal(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+    const tamperedPack = {
+      ...exported.contentPack,
+      Connections: exported.contentPack.Connections.map((c) => ({ ...c, Kind: 'teleport-beam' })),
+      Zones: exported.contentPack.Zones.map((z) =>
+        z.Id === 'zone-entrance'
+          ? { ...z, CollisionChannel: 'lava', GravityDirection: 'sideways' }
+          : z,
+      ),
+      WorldPartition: { ...exported.contentPack.WorldPartition, SourceMode: 'narnia' },
+    } as unknown as typeof exported.contentPack;
+    const imported = importFromUnreal(tamperedPack);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+
+    expect(imported.fidelity.entries.some((e) => e.domain === 'connections' && e.message.includes('teleport-beam'))).toBe(true);
+
+    const zone = imported.project.zones.find((z) => z.id === 'zone-entrance');
+    expect(zone?.collisionType).toBeUndefined();
+    expect(zone?.gravityDirection).toBeUndefined();
+    expect(imported.fidelity.entries.some((e) => e.domain === 'collision' && e.message.includes('lava'))).toBe(true);
+    expect(imported.fidelity.entries.some((e) => e.domain === 'physics' && e.message.includes('sideways'))).toBe(true);
+
+    expect(imported.project.mode).toBe('dungeon');
+    expect(imported.fidelity.entries.some(
+      (e) => e.fieldPath === 'WorldPartition.SourceMode' && e.message.includes('narnia'),
+    )).toBe(true);
   });
 
   it('round-trips a non-default pixel tileSize (48) through SourceTileSizePx', () => {
@@ -697,17 +980,16 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
         && e.message.includes('not recoverable'),
     );
     expect(consolidated.length).toBe(1);
-    // Must name each unrecoverable field in the message.
+    // Must name each unrecoverable field in the message — derived from
+    // KNOWN_DROPPED so this gate goes red when FIELD_COVERAGE grows
+    // (F-a9c3a595). Transitions are covered and must not appear.
     const msg = consolidated[0].message;
-    for (const field of [
-      'dialogues', 'progressionTrees', 'playerTemplate', 'buildCatalog',
-      'itemPlacements', 'encounterAnchors', 'spawnPoints', 'craftingStations',
-      'marketNodes', 'landmarks', 'factionPresences', 'pressureHotspots',
-      'tilesets', 'tileLayers', 'props', 'propPlacements', 'ambientLayers',
-      'assets', 'assetPacks', 'genre', 'tones', 'difficulty', 'narratorTone',
-    ]) {
+    for (const field of Object.keys(KNOWN_DROPPED)) {
       expect(msg).toContain(field);
     }
+    expect(Object.keys(KNOWN_DROPPED)).toContain('buildings');
+    expect(Object.keys(KNOWN_DROPPED)).toContain('lootTables');
+    expect(msg).not.toMatch(/(?:^|,\s)transitions(?:,|\.$)/);
   });
 
   it('safely handles a hand-edited Meta with a non-numeric SourceTileSizePx (UE-A-001)', () => {
@@ -735,32 +1017,38 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
     }
   });
 
-  it('tolerates a completely non-object Meta without throwing (UE-A-001)', () => {
-    // UE-A-001: prior cast would crash if pack.Meta was somehow primitive.
-    // Type guard returns undefined cleanly and we still fall through to default.
+  it('tolerates a completely non-object Meta without throwing (UE-A-001 / F-e21cd428)', () => {
     const exported = exportToUnreal(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    // Simulate a badly-malformed pack. Cast via unknown because we're deliberately
-    // violating UnrealContentPack shape.
     const malformedPack = {
       ...exported.contentPack,
       Meta: null as unknown as typeof exported.contentPack.Meta,
     };
-    // Wrap in try/catch-equivalent: the function should NOT throw on a primitive
-    // Meta — other downstream code will fail but the type guard itself is safe.
-    expect(() => {
-      // We only care that the type guard in import.ts doesn't throw on a
-      // non-object Meta. Later reads of pack.Meta.Id will still fail because
-      // that's outside this finding's scope; we catch that here.
-      try {
-        importFromUnreal(malformedPack);
-      } catch (err) {
-        // Acceptable — downstream reads of Meta.Id will throw; this finding
-        // only requires the type guard itself to be safe.
-        if (err instanceof TypeError && err.message.includes('null')) return;
-        throw err;
-      }
-    }).not.toThrow();
+    expect(() => importFromUnreal(malformedPack)).not.toThrow();
+    const imported = importFromUnreal(malformedPack);
+    expect(imported.success).toBe(false);
+    if (imported.success) return;
+    expect(imported.errors.length).toBeGreaterThan(0);
+    expect(imported.errors[0].path).toBe('pack');
+  });
+
+  it('F-e21cd428: truncated zone (Tags omitted) does not TypeError', () => {
+    const exported = exportToUnreal(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+    const truncated = {
+      ...exported.contentPack,
+      Zones: exported.contentPack.Zones.map((z) => {
+        const { Tags: _tags, ...rest } = z;
+        return rest as typeof z;
+      }),
+    };
+    expect(() => importFromUnreal(truncated)).not.toThrow();
+    const imported = importFromUnreal(truncated);
+    expect(imported.success).toBe(true);
+    if (!imported.success) return;
+    for (const zone of imported.project.zones) {
+      expect(Array.isArray(zone.tags)).toBe(true);
+    }
   });
 
   it('emits a dropped "world" fidelity entry when pack TileSizeCm is invalid', () => {
@@ -816,6 +1104,20 @@ describe('backward compat: old Unreal pack shapes', () => {
     expect(imported.success).toBe(true);
     if (imported.success) {
       expect(imported.project.entityPlacements).toEqual([]);
+    }
+  });
+
+  it('imports a pack missing Transitions without crashing', () => {
+    const result = exportToUnreal(minimalProject);
+    if (!result.success) throw new Error('export failed');
+
+    const oldPack = { ...result.contentPack } as Record<string, unknown>;
+    delete oldPack.Transitions;
+
+    const imported = importFromUnreal(oldPack as unknown as typeof result.contentPack);
+    expect(imported.success).toBe(true);
+    if (imported.success) {
+      expect(imported.project.transitions).toEqual([]);
     }
   });
 });

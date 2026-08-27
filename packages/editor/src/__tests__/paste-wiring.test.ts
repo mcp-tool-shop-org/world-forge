@@ -64,6 +64,8 @@ function makeWiredCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
     removeSelected: () => {},
     removeConnection: () => {},
     duplicateSelected: () => emptySel,
+    undo: () => useProjectStore.getState().undo(),
+    redo: () => useProjectStore.getState().redo(),
     copySelection: useEditorStore.getState().copySelection,
     pasteClipboard: () => {
       const newSel = useProjectStore.getState().pasteClipboard();
@@ -225,3 +227,133 @@ describe('F-6c8800aa (paste.ts internals): neighbor/exit remapping is order-inde
     expect(result.newSelection.zones).toEqual(result.newIds.filter((id) => id.startsWith('zone-')));
   });
 });
+
+describe('F-923c690c: copy/paste preserves the zone graph (connections + districts)', () => {
+  beforeEach(() => {
+    useProjectStore.getState().loadProject(structuredClone(chapelProject));
+    useEditorStore.getState().clearSelection();
+    useEditorStore.setState({ clipboard: null });
+  });
+
+  it('copying chapel-entrance + chapel-nave includes the connection between them', () => {
+    useEditorStore.getState().selectZone('chapel-entrance', false);
+    useEditorStore.getState().selectZone('chapel-nave', true);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+
+    const clip = useEditorStore.getState().getClipboard();
+    expect(clip).not.toBeNull();
+    expect(clip!.connections).toHaveLength(1);
+    expect(clip!.connections![0]).toEqual(
+      expect.objectContaining({
+        fromZoneId: 'chapel-entrance',
+        toZoneId: 'chapel-nave',
+        bidirectional: true,
+      }),
+    );
+  });
+
+  // Mirrors duplicate.test.ts case 4.
+  it('remaps connections between pasted chapel-entrance and chapel-nave and drops connections to non-pasted zones', () => {
+    useEditorStore.getState().selectZone('chapel-entrance', false);
+    useEditorStore.getState().selectZone('chapel-nave', true);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+    const clip = useEditorStore.getState().getClipboard()!;
+    const result = pasteFromClipboard(clip, useProjectStore.getState().project);
+
+    // Original connections are unchanged
+    expect(result.project.connections.filter((c) =>
+      c.fromZoneId === 'chapel-entrance' || c.toZoneId === 'chapel-entrance',
+    ).length).toBeGreaterThan(0);
+
+    const [newEntrance, newNave] = result.newSelection.zones;
+    const newConns = result.project.connections.filter((c) =>
+      (c.fromZoneId === newEntrance && c.toZoneId === newNave) ||
+      (c.fromZoneId === newNave && c.toZoneId === newEntrance),
+    );
+    expect(newConns).toHaveLength(1);
+    expect(newConns[0].bidirectional).toBe(true);
+
+    const crossConns = result.project.connections.filter((c) =>
+      (result.newSelection.zones.includes(c.fromZoneId) && !result.newSelection.zones.includes(c.toZoneId)) ||
+      (!result.newSelection.zones.includes(c.fromZoneId) && result.newSelection.zones.includes(c.toZoneId)),
+    );
+    expect(crossConns).toHaveLength(0);
+  });
+
+  // Mirrors duplicate.test.ts case 6.
+  it('adds pasted chapel-entrance to the same district zoneIds', () => {
+    useEditorStore.getState().selectZone('chapel-entrance', false);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+    const clip = useEditorStore.getState().getClipboard()!;
+    const result = pasteFromClipboard(clip, useProjectStore.getState().project);
+
+    const district = result.project.districts.find((d) => d.id === 'chapel-grounds');
+    expect(district).toBeDefined();
+    expect(district!.zoneIds).toContain('chapel-entrance');
+    expect(district!.zoneIds).toContain(result.newSelection.zones[0]);
+  });
+
+  it('F-00a578f0: copying chapel-nave includes rusted-mace; paste remaps itemId + zoneId', () => {
+    useEditorStore.getState().selectZone('chapel-nave', false);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+    const clip = useEditorStore.getState().getClipboard()!;
+    expect(clip.itemPlacements?.some((i) => i.itemId === 'rusted-mace')).toBe(true);
+
+    const beforeItems = useProjectStore.getState().project.itemPlacements.length;
+    const result = pasteFromClipboard(clip, useProjectStore.getState().project);
+    expect(result.project.itemPlacements.length).toBe(beforeItems + 1);
+    const pasted = result.project.itemPlacements.find((i) => i.itemId !== 'rusted-mace' && i.name === 'Rusted Mace');
+    expect(pasted).toBeDefined();
+    expect(pasted!.zoneId).toBe(result.newSelection.zones[0]);
+    expect(pasted!.zoneId).not.toBe('chapel-nave');
+  });
+
+  it('F-00a578f0: a prop on chapel-nave survives paste with remapped zoneId', () => {
+    const project = structuredClone(useProjectStore.getState().project);
+    project.propPlacements = [{ id: 'prop-pew', propId: 'pew', gridX: 22, gridY: 16, zoneId: 'chapel-nave' }];
+    useProjectStore.getState().loadProject(project);
+    useEditorStore.getState().selectZone('chapel-nave', false);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+    const clip = useEditorStore.getState().getClipboard()!;
+    expect(clip.propPlacements).toHaveLength(1);
+
+    const result = pasteFromClipboard(clip, useProjectStore.getState().project);
+    const pasted = result.project.propPlacements.find((p) => p.id !== 'prop-pew' && p.propId === 'pew');
+    expect(pasted).toBeDefined();
+    expect(pasted!.zoneId).toBe(result.newSelection.zones[0]);
+    expect(pasted!.gridX).toBe(24);
+    expect(pasted!.gridY).toBe(18);
+  });
+
+  it('F-f0d45cfb: pasted chapel-spawn is not isDefault', () => {
+    useEditorStore.getState().selectSpawn('chapel-spawn', false);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+    const clip = useEditorStore.getState().getClipboard()!;
+    expect(clip.spawns[0].isDefault).toBe(true); // clipboard preserves the original
+    const result = pasteFromClipboard(clip, useProjectStore.getState().project);
+    const pasted = result.project.spawnPoints.find((s) => s.id === result.newSelection.spawns[0]);
+    expect(pasted).toBeDefined();
+    expect(pasted!.isDefault).toBe(false);
+    expect(result.project.spawnPoints.find((s) => s.id === 'chapel-spawn')!.isDefault).toBe(true);
+  });
+
+  it('Ctrl+V paste of chapel-entrance+chapel-nave actually appends the remapped connection', () => {
+    useEditorStore.getState().selectZone('chapel-entrance', false);
+    useEditorStore.getState().selectZone('chapel-nave', true);
+    useEditorStore.getState().copySelection(useProjectStore.getState().project);
+    const beforeConns = useProjectStore.getState().project.connections.length;
+
+    dispatchHotkey(ctrlV(), makeWiredCtx());
+
+    const after = useProjectStore.getState().project;
+    expect(after.connections.length).toBe(beforeConns + 1);
+    const pastedIds = useEditorStore.getState().selection.zones;
+    expect(pastedIds).toHaveLength(2);
+    const newConns = after.connections.filter((c) =>
+      (c.fromZoneId === pastedIds[0] && c.toZoneId === pastedIds[1]) ||
+      (c.fromZoneId === pastedIds[1] && c.toZoneId === pastedIds[0]),
+    );
+    expect(newConns).toHaveLength(1);
+  });
+});
+

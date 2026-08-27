@@ -11,23 +11,60 @@ interface StoredPresets {
   encounterPresets: EncounterPreset[];
 }
 
-function persist(data: StoredPresets): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Failed to save presets to localStorage:', e);
+export class StoragePersistError extends Error {
+  constructor(message = 'Failed to save presets to localStorage') {
+    super(message);
+    this.name = 'StoragePersistError';
   }
 }
 
-function loadFromStorage(): StoredPresets {
+let _presetIdCounter = 0;
+function nextPresetId(prefix: string): string {
+  _presetIdCounter += 1;
+  return `${prefix}-${Date.now()}-${_presetIdCounter}`;
+}
+
+function persist(data: StoredPresets): boolean {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    console.warn('Failed to save presets to localStorage:', e);
+    return false;
+  }
+}
+
+export interface StorageLoadResult<T> {
+  data: T;
+  reset: boolean;
+}
+
+function loadFromStorage(): StorageLoadResult<StoredPresets> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { regionPresets: [], encounterPresets: [] };
-    return JSON.parse(raw) as StoredPresets;
+    if (!raw) return { data: { regionPresets: [], encounterPresets: [] }, reset: false };
+    const parsed: unknown = JSON.parse(raw);
+    // F-6cf2e4a4: valid JSON missing arrays (or null) used to crash loadPresets.
+    if (
+      !parsed || typeof parsed !== 'object'
+      || !Array.isArray((parsed as StoredPresets).regionPresets)
+      || !Array.isArray((parsed as StoredPresets).encounterPresets)
+    ) {
+      console.warn('Corrupted preset data in localStorage — resetting');
+      localStorage.removeItem(STORAGE_KEY);
+      return { data: { regionPresets: [], encounterPresets: [] }, reset: true };
+    }
+    return {
+      data: {
+        regionPresets: (parsed as StoredPresets).regionPresets,
+        encounterPresets: (parsed as StoredPresets).encounterPresets,
+      },
+      reset: false,
+    };
   } catch {
     console.warn('Corrupted preset data in localStorage — resetting');
     localStorage.removeItem(STORAGE_KEY);
-    return { regionPresets: [], encounterPresets: [] };
+    return { data: { regionPresets: [], encounterPresets: [] }, reset: true };
   }
 }
 
@@ -37,7 +74,8 @@ interface PresetState {
   /** All encounter presets: built-in + user. */
   encounterPresets: EncounterPreset[];
 
-  loadPresets: () => void;
+  /** Load custom presets from localStorage. `reset` is true when stored data was unreadable and wiped. */
+  loadPresets: () => { reset: boolean };
 
   // Region preset CRUD (user presets only)
   saveRegionPreset: (preset: Omit<RegionPreset, 'id' | 'builtIn'>) => RegionPreset;
@@ -61,8 +99,8 @@ function userEncounterPresets(all: EncounterPreset[]): EncounterPreset[] {
 }
 
 /** Persist user-created presets (excluding built-ins) to localStorage. */
-function persistUserPresets(regionPresets: RegionPreset[], encounterPresets: EncounterPreset[]): void {
-  persist({
+function persistUserPresets(regionPresets: RegionPreset[], encounterPresets: EncounterPreset[]): boolean {
+  return persist({
     regionPresets: userRegionPresets(regionPresets),
     encounterPresets: userEncounterPresets(encounterPresets),
   });
@@ -75,9 +113,10 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   loadPresets: () => {
     const stored = loadFromStorage();
     set({
-      regionPresets: [...BUILTIN_REGION_PRESETS, ...stored.regionPresets],
-      encounterPresets: [...BUILTIN_ENCOUNTER_PRESETS, ...stored.encounterPresets],
+      regionPresets: [...BUILTIN_REGION_PRESETS, ...stored.data.regionPresets],
+      encounterPresets: [...BUILTIN_ENCOUNTER_PRESETS, ...stored.data.encounterPresets],
     });
+    return { reset: stored.reset };
   },
 
   // ── Region preset CRUD ──────────────────────────────────────
@@ -85,27 +124,39 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   saveRegionPreset: (input) => {
     const preset: RegionPreset = {
       ...structuredClone(input),
-      id: `region-preset-${Date.now()}`,
+      id: nextPresetId('region-preset'),
       builtIn: false,
     };
-    const regionPresets = [...get().regionPresets, preset];
+    const prev = get().regionPresets;
+    const regionPresets = [...prev, preset];
     set({ regionPresets });
-    persistUserPresets(regionPresets, get().encounterPresets);
+    if (!persistUserPresets(regionPresets, get().encounterPresets)) {
+      set({ regionPresets: prev });
+      throw new StoragePersistError();
+    }
     return preset;
   },
 
   updateRegionPreset: (id, updates) => {
-    const regionPresets = get().regionPresets.map((p) =>
+    const prev = get().regionPresets;
+    const regionPresets = prev.map((p) =>
       p.id === id && !p.builtIn ? { ...p, ...updates } : p,
     );
     set({ regionPresets });
-    persistUserPresets(regionPresets, get().encounterPresets);
+    if (!persistUserPresets(regionPresets, get().encounterPresets)) {
+      set({ regionPresets: prev });
+      throw new StoragePersistError();
+    }
   },
 
   deleteRegionPreset: (id) => {
-    const regionPresets = get().regionPresets.filter((p) => !(p.id === id && !p.builtIn));
+    const prev = get().regionPresets;
+    const regionPresets = prev.filter((p) => !(p.id === id && !p.builtIn));
     set({ regionPresets });
-    persistUserPresets(regionPresets, get().encounterPresets);
+    if (!persistUserPresets(regionPresets, get().encounterPresets)) {
+      set({ regionPresets: prev });
+      throw new StoragePersistError();
+    }
   },
 
   duplicateRegionPreset: (id) => {
@@ -113,13 +164,17 @@ export const usePresetStore = create<PresetState>((set, get) => ({
     if (!original) return undefined;
     const copy: RegionPreset = {
       ...structuredClone(original),
-      id: `region-preset-${Date.now()}`,
+      id: nextPresetId('region-preset'),
       name: `${original.name} (copy)`,
       builtIn: false,
     };
-    const regionPresets = [...get().regionPresets, copy];
+    const prev = get().regionPresets;
+    const regionPresets = [...prev, copy];
     set({ regionPresets });
-    persistUserPresets(regionPresets, get().encounterPresets);
+    if (!persistUserPresets(regionPresets, get().encounterPresets)) {
+      set({ regionPresets: prev });
+      throw new StoragePersistError();
+    }
     return copy;
   },
 
@@ -128,27 +183,39 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   saveEncounterPreset: (input) => {
     const preset: EncounterPreset = {
       ...structuredClone(input),
-      id: `encounter-preset-${Date.now()}`,
+      id: nextPresetId('encounter-preset'),
       builtIn: false,
     };
-    const encounterPresets = [...get().encounterPresets, preset];
+    const prev = get().encounterPresets;
+    const encounterPresets = [...prev, preset];
     set({ encounterPresets });
-    persistUserPresets(get().regionPresets, encounterPresets);
+    if (!persistUserPresets(get().regionPresets, encounterPresets)) {
+      set({ encounterPresets: prev });
+      throw new StoragePersistError();
+    }
     return preset;
   },
 
   updateEncounterPreset: (id, updates) => {
-    const encounterPresets = get().encounterPresets.map((p) =>
+    const prev = get().encounterPresets;
+    const encounterPresets = prev.map((p) =>
       p.id === id && !p.builtIn ? { ...p, ...updates } : p,
     );
     set({ encounterPresets });
-    persistUserPresets(get().regionPresets, encounterPresets);
+    if (!persistUserPresets(get().regionPresets, encounterPresets)) {
+      set({ encounterPresets: prev });
+      throw new StoragePersistError();
+    }
   },
 
   deleteEncounterPreset: (id) => {
-    const encounterPresets = get().encounterPresets.filter((p) => !(p.id === id && !p.builtIn));
+    const prev = get().encounterPresets;
+    const encounterPresets = prev.filter((p) => !(p.id === id && !p.builtIn));
     set({ encounterPresets });
-    persistUserPresets(get().regionPresets, encounterPresets);
+    if (!persistUserPresets(get().regionPresets, encounterPresets)) {
+      set({ encounterPresets: prev });
+      throw new StoragePersistError();
+    }
   },
 
   duplicateEncounterPreset: (id) => {
@@ -156,13 +223,17 @@ export const usePresetStore = create<PresetState>((set, get) => ({
     if (!original) return undefined;
     const copy: EncounterPreset = {
       ...structuredClone(original),
-      id: `encounter-preset-${Date.now()}`,
+      id: nextPresetId('encounter-preset'),
       name: `${original.name} (copy)`,
       builtIn: false,
     };
-    const encounterPresets = [...get().encounterPresets, copy];
+    const prev = get().encounterPresets;
+    const encounterPresets = [...prev, copy];
     set({ encounterPresets });
-    persistUserPresets(get().regionPresets, encounterPresets);
+    if (!persistUserPresets(get().regionPresets, encounterPresets)) {
+      set({ encounterPresets: prev });
+      throw new StoragePersistError();
+    }
     return copy;
   },
 }));

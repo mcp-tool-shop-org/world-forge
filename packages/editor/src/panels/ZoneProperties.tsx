@@ -11,6 +11,7 @@ import { validateSpawnCondition } from '@world-forge/schema';
 import {
   validateElevationRange,
   parseElevation,
+  nextElevationRange,
   createDefaultLayer,
   filterParallaxAssets,
   filterSkylineAssets,
@@ -25,7 +26,7 @@ export function ZoneProperties() {
   const zone = project.zones.find((z) => z.id === selectedZoneId);
   const suggestedTags = useMemo(() => getModeProfile(project.mode).suggestedZoneTags, [project.mode]);
   if (!zone) return (
-    <div style={{ fontSize: 12, color: '#d29922', padding: '8px 0' }}>
+    <div style={{ fontSize: 12, color: 'var(--wf-warning)', padding: '8px 0' }}>
       This zone was deleted. Select another zone to see its properties.
     </div>
   );
@@ -50,7 +51,7 @@ export function ZoneProperties() {
       )}
       {(project.hazardDefinitions ?? []).length > 0 && (
         <div style={{ marginBottom: 6 }} data-testid="wf-zone-hazards">
-          <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 2 }}>Hazards</div>
+          <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 2 }}>Hazards</div>
           {(project.hazardDefinitions ?? []).map((h) => {
             const refs = zone.hazardRefs ?? [];
             const on = refs.includes(h.id);
@@ -66,20 +67,20 @@ export function ZoneProperties() {
       )}
       <div style={{ marginBottom: 6 }} data-testid="wf-zone-entry-gate">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-          <span style={{ fontSize: 11, color: '#8b949e' }}>Entry gate</span>
+          <span style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>Entry gate</span>
           {zone.entryGate && (
-            <button style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 12 }}
+            <button style={{ background: 'none', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 12 }}
               title="Remove entry gate" onClick={() => setZoneEntryGate(zone.id, undefined)}>×</button>
           )}
         </div>
         {!zone.entryGate ? (
           <button data-testid="wf-add-entry-gate"
-            style={{ fontSize: 11, padding: '3px 8px', borderRadius: 3, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', cursor: 'pointer' }}
+            style={{ fontSize: 11, padding: '3px 8px', borderRadius: 3, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', cursor: 'pointer' }}
             onClick={() => setZoneEntryGate(zone.id, { conditions: ['party-level:>=5'], mode: 'hard' })}>
             + Add entry gate
           </button>
         ) : (
-          <div style={{ border: '1px solid #30363d', borderRadius: 4, padding: 6, background: '#161b22' }}>
+          <div style={{ border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, background: 'var(--wf-bg-panel)' }}>
             <label style={labelStyle}>Mode
               <select style={inputStyle} value={zone.entryGate.mode}
                 onChange={(e) => setZoneEntryGate(zone.id, { ...zone.entryGate!, mode: e.target.value as 'hard' | 'soft' })}>
@@ -91,23 +92,23 @@ export function ZoneProperties() {
               <input style={inputStyle} value={zone.entryGate.reason ?? ''}
                 onChange={(e) => setZoneEntryGate(zone.id, { ...zone.entryGate!, reason: e.target.value || undefined })} />
             </label>
-            <div style={{ fontSize: 11, color: '#8b949e', margin: '4px 0 2px' }}>Conditions — all must pass (AND)</div>
+            <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', margin: '4px 0 2px' }}>Conditions — all must pass (AND)</div>
             {zone.entryGate.conditions.map((cond, i) => {
               const err = validateSpawnCondition(cond);
               return (
                 <div key={i} style={{ marginBottom: 3 }}>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <input style={{ ...inputStyle, marginTop: 0, borderColor: err ? '#f85149' : undefined }} value={cond}
+                    <input style={{ ...inputStyle, marginTop: 0, borderColor: err ? 'var(--wf-danger-text)' : undefined }} value={cond}
                       onChange={(e) => setZoneEntryGate(zone.id, { ...zone.entryGate!, conditions: zone.entryGate!.conditions.map((c, ci) => ci === i ? e.target.value : c) })} />
-                    <button style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 12 }}
+                    <button style={{ background: 'none', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 12 }}
                       title="Remove condition" onClick={() => setZoneEntryGate(zone.id, { ...zone.entryGate!, conditions: zone.entryGate!.conditions.filter((_, ci) => ci !== i) })}>×</button>
                   </div>
-                  {err && <div style={{ fontSize: 10, color: '#f85149' }} title={err}>⚠ unrecognized condition</div>}
+                  {err && <div style={{ fontSize: 10, color: 'var(--wf-danger-text)' }} title={err}>⚠ unrecognized condition</div>}
                 </div>
               );
             })}
             <button data-testid="wf-add-gate-condition"
-              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 3, background: '#21262d', color: '#c9d1d9', border: '1px solid #30363d', cursor: 'pointer' }}
+              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 3, background: 'var(--wf-bg-control)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', cursor: 'pointer' }}
               onClick={() => setZoneEntryGate(zone.id, { ...zone.entryGate!, conditions: [...zone.entryGate!.conditions, 'party-level:>=5'] })}>
               + Add condition
             </button>
@@ -155,7 +156,7 @@ export function ZoneProperties() {
           ))}
         </select>
         {zone.backgroundId && !project.assets.some((a) => a.id === zone.backgroundId) && (
-          <span style={{ color: '#f85149', fontSize: 11 }}>Missing asset: {zone.backgroundId}</span>
+          <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Missing asset: {zone.backgroundId}</span>
         )}
       </label>
       <label style={labelStyle}>Tileset
@@ -167,7 +168,7 @@ export function ZoneProperties() {
           ))}
         </select>
         {zone.tilesetId && !project.assets.some((a) => a.id === zone.tilesetId) && (
-          <span style={{ color: '#f85149', fontSize: 11 }}>Missing asset: {zone.tilesetId}</span>
+          <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Missing asset: {zone.tilesetId}</span>
         )}
       </label>
       {/* ED-FT-001: full edit surface for the 2.5D fields. */}
@@ -207,18 +208,10 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
     const parsed = parseElevation(raw);
     const current = zone.elevationRange;
     if (parsed == null && current == null) return;
-    const nextFloor = side === 'floor' ? parsed : current?.floor;
-    const nextCeiling = side === 'ceiling' ? parsed : current?.ceiling;
-    // Clear only when both sides are undefined.
-    if (nextFloor == null && nextCeiling == null) {
-      updateZone(zone.id, { elevationRange: undefined });
-      return;
-    }
+    // F-2f33dcb9: empty sides stay undefined — never coerce to 0.
+    const next = nextElevationRange(current, side, parsed);
     updateZone(zone.id, {
-      elevationRange: {
-        floor: nextFloor ?? 0,
-        ceiling: nextCeiling ?? 0,
-      },
+      elevationRange: next as { floor: number; ceiling: number } | undefined,
     });
   };
 
@@ -335,7 +328,7 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
           {rangeError && (
             <div
               data-testid="elevation-range-error"
-              style={{ fontSize: 11, color: '#f85149', marginTop: 2 }}
+              style={{ fontSize: 11, color: 'var(--wf-danger-text)', marginTop: 2 }}
             >
               {rangeError.message}
             </div>
@@ -395,7 +388,7 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
                   placeholder="id"
                   style={{
                     ...inputStyle,
-                    borderColor: !idUnique ? '#f85149' : undefined,
+                    borderColor: !idUnique ? 'var(--wf-danger-text)' : undefined,
                   }}
                   title={!idUnique ? 'Layer ids must be unique' : 'Layer id'}
                 />
@@ -413,7 +406,7 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
                   onChange={(e) => handleLayerField(idx, 'assetRef', e.target.value)}
                   style={{
                     ...inputStyle,
-                    borderColor: !assetValid ? '#f85149' : undefined,
+                    borderColor: !assetValid ? 'var(--wf-danger-text)' : undefined,
                   }}
                 >
                   <option value="">— pick asset —</option>
@@ -447,7 +440,7 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
                   data-testid={`parallax-remove-${idx}`}
                   onClick={() => handleRemoveLayer(idx)}
                   title="Remove layer"
-                  style={{ ...chipStyle, color: '#f85149' }}
+                  style={{ ...chipStyle, color: 'var(--wf-danger-text)' }}
                 >
                   ×
                 </button>
@@ -479,7 +472,7 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
             ))}
           </select>
           {zone.skylineRef && !project.assets.some((a) => a.id === zone.skylineRef) && (
-            <span style={{ color: '#f85149', fontSize: 11 }}>Missing asset: {zone.skylineRef}</span>
+            <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Missing asset: {zone.skylineRef}</span>
           )}
         </label>
       </div>
@@ -503,7 +496,12 @@ function ParallaxPreviewStack({
 }) {
   const sorted = sortLayersForPreview(layers);
   // Neutral color palette for placeholder tiles, cycled by index for variety.
-  const placeholderPalette = ['#2e333d', '#3b4150', '#4a5263', '#5b6576'];
+  const placeholderPalette = [
+    'var(--wf-bg-control)',
+    'var(--wf-bg-hover)',
+    'var(--wf-border-default)',
+    'var(--wf-text-hint)',
+  ];
 
   return (
     <div
@@ -555,7 +553,8 @@ function ParallaxPreviewStack({
             }}
           >
             <span style={{
-              background: 'rgba(0,0,0,0.55)', padding: '1px 4px', borderRadius: 2,
+              background: 'var(--wf-bg-elevated)', color: 'var(--wf-text-primary)',
+              padding: '1px 4px', borderRadius: 2,
             }}>
               {layer.id} · sf {layer.scrollFactor.toFixed(2)}
             </span>
@@ -575,6 +574,6 @@ function safeUrl(path: string): string {
 const labelStyle: React.CSSProperties = labelText;
 const inputStyle: React.CSSProperties = inputCompact;
 const chipStyle: React.CSSProperties = {
-  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+  background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)',
   borderRadius: 12, padding: '1px 8px', fontSize: 11, cursor: 'pointer',
 };

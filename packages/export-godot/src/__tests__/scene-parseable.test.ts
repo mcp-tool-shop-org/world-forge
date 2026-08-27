@@ -291,9 +291,9 @@ describe('an empty name="" / parent="" is refused, not silently emitted (F-00cf7
         } catch (err) {
             message = err instanceof Error ? err.message : String(err);
         }
-        // Collision/Navigation are always emitted for every zone (collectSubResources
-        // runs unconditionally), so an empty zone nodeName is sufficient on its own
-        // to produce a `parent=""` line — no entities/items/etc. required.
+        // Walkable zones still emit Navigation (collectSubResources), so an empty
+        // zone nodeName is sufficient on its own to produce a `parent=""` line —
+        // no entities/items/etc. required.
         expect(message).toContain('parent=""');
         expect(message).toContain('Godot');
     });
@@ -342,5 +342,32 @@ describe('an empty name="" / parent="" is refused, not silently emitted (F-00cf7
     it('CONTROL: a normal project name is unaffected by the root-name fallback', () => {
         const scene = buildWorldScene({ ...minimalInput(), projectName: 'Dustwalk' });
         expect(scene).toContain('[node name="Dustwalk" type="Node2D"]');
+    });
+});
+
+describe('quoted property values must be well-formed string literals (F-2d6bede0)', () => {
+    it('RED: spawnCondition with an embedded quote is escaped, not raw, so assertParseable accepts it', () => {
+        const input = minimalInput();
+        input.entities = {
+            byZone: {
+                z: [{
+                    nodeName: 'Npc1',
+                    sceneTemplate: 'res://entities/npc/npc_generic.tscn',
+                    entityId: 'e1',
+                    zoneId: 'z',
+                    localPosition: { x: 8, y: 8 },
+                    role: 'npc',
+                    tags: [],
+                    spawnCondition: 'item:the "seal"',
+                }],
+            },
+            all: [],
+            dropped: [],
+            incomplete: false,
+        };
+        expect(() => buildWorldScene(input)).not.toThrow();
+        const scene = buildWorldScene(input);
+        const line = scene.split('\n').find((l) => l.startsWith('metadata/spawn_condition'));
+        expect(line).toMatch(/^metadata\/spawn_condition = "(?:[^"\\]|\\.)*"$/);
     });
 });

@@ -1,15 +1,15 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { PanelHeader, useFocusHighlight } from './shared.js';
+import { PanelHeader, EmptyState, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 
-const card: CSSProperties = { border: '1px solid #30363d', borderRadius: 4, padding: 6, marginBottom: 6, background: '#161b22' };
+const card: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, marginBottom: 6, background: 'var(--wf-bg-panel)' };
 const rowHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 };
-const lbl: CSSProperties = { display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4 };
-const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3, marginTop: 2 };
+const lbl: CSSProperties = { display: 'block', fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 };
+const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 3, marginTop: 2 };
 const addBtn: CSSProperties = { ...buttonBase, padding: '3px 8px', fontSize: 11, borderRadius: 3 };
 const delBtn: CSSProperties = { ...buttonBase, padding: '0 6px', fontSize: 12 };
-const section: CSSProperties = { fontSize: 11, color: '#8b949e', margin: '10px 0 4px' };
+const section: CSSProperties = { fontSize: 11, color: 'var(--wf-text-muted)', margin: '10px 0 4px' };
 const grid2: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 };
 
 /**
@@ -38,10 +38,17 @@ export function StrataPanel() {
       <PanelHeader title="Strata" />
 
       <div style={{ ...section, marginTop: 0 }}>Vertical layers ({strata.length})</div>
+      {strata.length === 0 && (
+        <EmptyState
+          title="No strata"
+          description="Add vertical layers (surface, under, sky) to structure this world."
+          icon={'\u2261'}
+        />
+      )}
       {strata.map((s) => (
         <div key={s.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{s.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{s.id}</span>
             <button title="Remove stratum" style={delBtn} onClick={() => removeStratum(s.id)}>×</button>
           </div>
           <label style={lbl}>Name
@@ -76,7 +83,7 @@ export function StrataPanel() {
       {links.map((l) => (
         <div key={l.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{l.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{l.id}</span>
             <button title="Remove link" style={delBtn} onClick={() => removeStratumLink(l.id)}>×</button>
           </div>
           <div style={grid2}>

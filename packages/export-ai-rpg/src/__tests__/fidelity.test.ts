@@ -3,6 +3,12 @@ import { summarizeFidelity, buildFidelityReport } from '../fidelity.js';
 import type { FidelityEntry } from '../fidelity.js';
 import { exportToEngine } from '../export.js';
 import { importFromExportResult, importFromContentPack, importProject } from '../import.js';
+import type { ImportResult, ImportError } from '../import.js';
+
+function requireImport(r: ImportResult | ImportError): ImportResult {
+  if (!r.success) throw new Error(r.message);
+  return r;
+}
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 
@@ -82,7 +88,7 @@ describe('Round-trip fidelity: Minimal', () => {
   function getMinimalImport() {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    return importFromExportResult(exported);
+    return requireImport(importFromExportResult(exported));
   }
 
   it('fidelity report is present and structured', () => {
@@ -95,7 +101,7 @@ describe('Round-trip fidelity: Minimal', () => {
   it('zone names, descriptions, tags are lossless', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     for (const origZone of minimalProject.zones) {
       const importedZone = imported.project.zones.find((z) => z.id === origZone.id);
       expect(importedZone).toBeDefined();
@@ -134,7 +140,7 @@ describe('Round-trip fidelity: Minimal', () => {
   it('dialogue nodes match', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     for (const origDlg of minimalProject.dialogues) {
       const importedDlg = imported.project.dialogues.find((d) => d.id === origDlg.id);
       expect(importedDlg).toBeDefined();
@@ -145,7 +151,7 @@ describe('Round-trip fidelity: Minimal', () => {
   it('player template fields match', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.playerTemplate?.name).toBe(minimalProject.playerTemplate?.name);
     expect(imported.project.playerTemplate?.baseStats).toEqual(minimalProject.playerTemplate?.baseStats);
     expect(imported.project.playerTemplate?.startingInventory).toEqual(minimalProject.playerTemplate?.startingInventory);
@@ -158,7 +164,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
   function getChapelImport() {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
-    return importFromExportResult(exported);
+    return requireImport(importFromExportResult(exported));
   }
 
   it('fidelity report lossless% is reasonable', () => {
@@ -207,7 +213,7 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
   it('entity roles reverse-mapped with fidelity entries per entity', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     const report = imported.fidelityReport;
     const roleMapped = report.entries.filter((e) => e.reason === 'role-reverse-mapped');
     expect(roleMapped.length).toBe(chapelProject.entityPlacements.length);
@@ -248,13 +254,16 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
     }
   });
 
-  it('district fidelity: surveillance-to-safety + economy-data-lost per district', () => {
+  it('district fidelity: surveillance-to-safety + economy-from-pack per district', () => {
     const imported = getChapelImport();
     const report = imported.fidelityReport;
     const survEntries = report.entries.filter((e) => e.reason === 'surveillance-to-safety');
-    const econEntries = report.entries.filter((e) => e.reason === 'economy-data-lost');
+    const econEntries = report.entries.filter((e) => e.reason === 'economy-from-pack');
+    const lostEntries = report.entries.filter((e) => e.reason === 'economy-data-lost');
     expect(survEntries.length).toBe(chapelProject.districts.length);
+    // F-229409a8: chapel districts export economyProfile, so import restores it.
     expect(econEntries.length).toBe(chapelProject.districts.length);
+    expect(lostEntries.length).toBe(0);
   });
 
   it('visual-layers-dropped entry present', () => {
@@ -281,7 +290,7 @@ describe('FidelityReport accuracy', () => {
   it('report claims match actual data differences', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     const report = imported.fidelityReport;
 
     // Count actual grid differences
@@ -307,11 +316,11 @@ describe('FidelityReport accuracy', () => {
     expect(result.fidelityReport.summary.observed).toBe(false);
   });
 
-  it('connections-reconstructed entry present when zones have neighbors', () => {
+  it('connections-from-pack entry present when the pack carries typed connections', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
-    const connEntry = imported.fidelityReport.entries.find((e) => e.reason === 'connections-reconstructed');
+    const imported = requireImport(importFromExportResult(exported));
+    const connEntry = imported.fidelityReport.entries.find((e) => e.reason === 'connections-from-pack');
     if (chapelProject.connections.length > 0) {
       expect(connEntry).toBeDefined();
       expect(connEntry!.level).toBe('lossless');
@@ -332,7 +341,7 @@ describe('FidelityReport accuracy', () => {
   it('ContentPack import has asset-packs-dropped fidelity entry', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
   });
 
@@ -340,7 +349,7 @@ describe('FidelityReport accuracy', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
     for (const orig of chapelProject.encounterAnchors) {
       const imp = imported.project.encounterAnchors.find((e) => e.id === orig.id);
@@ -354,7 +363,7 @@ describe('FidelityReport accuracy', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.factionPresences).toHaveLength(chapelProject.factionPresences.length);
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.factionPresences).toHaveLength(chapelProject.factionPresences.length);
     for (const orig of chapelProject.factionPresences) {
       const imp = imported.project.factionPresences.find((f) => f.factionId === orig.factionId);
@@ -367,7 +376,7 @@ describe('FidelityReport accuracy', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.pressureHotspots).toHaveLength(chapelProject.pressureHotspots.length);
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.pressureHotspots).toHaveLength(chapelProject.pressureHotspots.length);
     for (const orig of chapelProject.pressureHotspots) {
       const imp = imported.project.pressureHotspots.find((h) => h.id === orig.id);

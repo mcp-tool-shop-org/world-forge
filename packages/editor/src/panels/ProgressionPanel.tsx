@@ -114,15 +114,15 @@ export function ProgressionPanel() {
       {trees.map((t) => (
         <div key={t.id}
           onClick={() => { setSelectedTreeId(t.id); setEditingNodeId(null); }}
-          style={{ ...itemStyle, borderColor: selectedTreeId === t.id ? '#58a6ff' : '#30363d', cursor: 'pointer' }}>
-          <div style={{ fontSize: 12, color: '#c9d1d9' }}>{t.name}</div>
-          <div style={{ fontSize: 10, color: '#8b949e' }}>{t.nodes.length} node(s) | currency: {t.currency}</div>
+          style={{ ...itemStyle, borderColor: selectedTreeId === t.id ? 'var(--wf-accent)' : 'var(--wf-border-default)', cursor: 'pointer' }}>
+          <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{t.name}</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{t.nodes.length} node(s) | currency: {t.currency}</div>
         </div>
       ))}
       <button onClick={handleAddTree} style={addBtnStyle}>+ Add Tree</button>
 
       {selectedTree && (
-        <div style={{ marginTop: 12, borderTop: '1px solid #21262d', paddingTop: 8 }}>
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--wf-bg-control)', paddingTop: 8 }}>
           <div style={sectionTitle}>Tree Settings</div>
           <label style={labelStyle}>Name
             <input style={inputStyle} value={selectedTree.name}
@@ -133,7 +133,7 @@ export function ProgressionPanel() {
               onChange={(e) => updateProgressionTree(selectedTree.id, { currency: e.target.value })} />
           </label>
           <button onClick={() => { removeProgressionTree(selectedTree.id); setSelectedTreeId(null); }}
-            style={{ ...smallBtnStyle, color: '#f85149', marginBottom: 8 }}>Delete Tree</button>
+            style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)', marginBottom: 8 }}>Delete Tree</button>
 
           <div style={sectionTitle}>Nodes ({selectedTree.nodes.length})</div>
           {selectedTree.nodes.length === 0 && <div style={hintStyle}>No nodes yet. Add one below.</div>}
@@ -146,8 +146,8 @@ export function ProgressionPanel() {
                   onDone={() => setEditingNodeId(null)} />
               ) : (
                 <div onClick={() => setEditingNodeId(node.id)} style={{ cursor: 'pointer' }}>
-                  <div style={{ fontSize: 12, color: '#c9d1d9', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {node.name} <span style={{ fontSize: 10, color: '#d29922' }}>({node.cost} {selectedTree.currency})</span>
+                  <div style={{ fontSize: 12, color: 'var(--wf-text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {node.name} <span style={{ fontSize: 10, color: 'var(--wf-warning)' }}>({node.cost} {selectedTree.currency})</span>
                     {/* FT-025: cross-link hint */}
                     {(nodeEntityRefs.get(node.id)?.length ?? 0) > 0 && (
                       <span
@@ -157,7 +157,7 @@ export function ProgressionPanel() {
                           const first = nodeEntityRefs.get(node.id)?.[0];
                           if (first) { selectEntity(first.entityId, false); setRightTab('map'); }
                         }}
-                        style={{ fontSize: 10, color: '#58a6ff', cursor: 'pointer' }}
+                        style={{ fontSize: 10, color: 'var(--wf-accent)', cursor: 'pointer' }}
                         title={`Referenced by: ${nodeEntityRefs.get(node.id)!.map((r) => r.name).join(', ')}`}
                       >
                         (used by {nodeEntityRefs.get(node.id)!.length} entit{nodeEntityRefs.get(node.id)!.length === 1 ? 'y' : 'ies'})
@@ -165,9 +165,9 @@ export function ProgressionPanel() {
                     )}
                   </div>
                   {node.requires && node.requires.length > 0 && (
-                    <div style={{ fontSize: 10, color: '#8b949e' }}>requires: {node.requires.join(', ')}</div>
+                    <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>requires: {node.requires.join(', ')}</div>
                   )}
-                  <div style={{ fontSize: 10, color: '#8b949e' }}>{node.effects.length} effect(s)</div>
+                  <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{node.effects.length} effect(s)</div>
                 </div>
               )}
             </div>
@@ -213,7 +213,7 @@ function NodeEditor({ node, treeId, allNodes, onUpdate, onRemove, onDone }: {
         onChange={(effects) => onUpdate(treeId, node.id, { effects })} />
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
         <button onClick={onDone} style={smallBtnStyle}>Done</button>
-        <button onClick={() => onRemove(node.id)} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete</button>
+        <button onClick={() => onRemove(node.id)} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
       </div>
     </>
   );
@@ -224,7 +224,7 @@ function ProgressionEffectEditor({ effects, onChange }: {
 }) {
   return (
     <div style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 4 }}>Effects</div>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Effects</div>
       {effects.length === 0 && <div style={hintStyle}>No effects. Add one below.</div>}
       {effects.map((eff, i) => (
         <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 3, alignItems: 'center' }}>

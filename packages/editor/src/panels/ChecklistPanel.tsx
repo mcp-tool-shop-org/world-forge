@@ -9,6 +9,7 @@ import { useKitStore } from '../kits/index.js';
 import { scanDependencies } from '@world-forge/schema';
 import { buttonBase } from '../ui/styles.js';
 import { computeChecklistProgress } from './checklist-helpers.js';
+import { onEnter } from './shared.js';
 
 interface Step {
   id: string;
@@ -148,7 +149,10 @@ export function ChecklistPanel() {
         {steps.map((step) => (
           <div
             key={step.id}
+            role="button"
+            tabIndex={0}
             onClick={() => handleClick(step)}
+            onKeyDown={onEnter(() => handleClick(step))}
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 8px',
               borderRadius: 4, cursor: 'pointer',
@@ -169,7 +173,7 @@ export function ChecklistPanel() {
               }}>
                 {step.label}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--wf-text-hint)' }}>{step.description}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{step.description}</div>
             </div>
           </div>
         ))}
@@ -224,13 +228,13 @@ const headerStyle: React.CSSProperties = {
 
 const kbdStyle: React.CSSProperties = {
   display: 'inline-block',
-  background: 'var(--wf-bg-control, #21262d)',
-  border: '1px solid var(--wf-border-default, #30363d)',
+  background: 'var(--wf-bg-control)',
+  border: '1px solid var(--wf-border-default)',
   borderRadius: 3,
   padding: '1px 5px',
   fontFamily: 'monospace',
   fontSize: 10,
-  color: 'var(--wf-accent, #58a6ff)',
+  color: 'var(--wf-accent)',
   lineHeight: '16px',
   minWidth: 20,
   textAlign: 'center',
@@ -254,7 +258,10 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
     <>
       {issues > 0 && (
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setRightTab('deps')}
+          onKeyDown={onEnter(() => setRightTab('deps'))}
           style={{ fontSize: 10, color: 'var(--wf-warning)', marginBottom: 4, cursor: 'pointer' }}
         >
           {issues} broken reference{issues !== 1 ? 's' : ''} — open Deps tab to repair
@@ -262,8 +269,11 @@ function DependencyHealthStep({ project, setRightTab }: { project: import('@worl
       )}
       {orphaned > 0 && (
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setRightTab('deps')}
-          style={{ fontSize: 10, color: '#8b949e', marginBottom: 4, cursor: 'pointer' }}
+          onKeyDown={onEnter(() => setRightTab('deps'))}
+          style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginBottom: 4, cursor: 'pointer' }}
         >
           {orphaned} orphaned asset{orphaned !== 1 ? 's' : ''} — review in Deps tab
         </div>

@@ -8,9 +8,18 @@
  * variants) ship as minor or patch releases.
  *
  *   - v4.x is backward-compatible with all v4.0+ projects.
- *   - Runtime will accept a v4.0 JSON under v4.2 without modification; new
- *     optional fields (e.g. 2.5D parallax layers, skylineRef) simply default
- *     to undefined.
+ *   - New optional fields (e.g. 2.5D parallax layers, skylineRef) default to
+ *     undefined. Arrays added after v4.0 (craftingStations, marketNodes,
+ *     tilesets, tileLayers, props, propPlacements, ambientLayers, tones) are
+ *     required on WorldProject; a legally authored v4.0 JSON that omits them
+ *     must be run through stampProjectSchemaVersion() or normalizeProjectShape()
+ *     so they default to [] before validateProject. validateProject stays honest
+ *     for present-but-wrong types; stamp only backfills omitted arrays.
+ *   - WorldProject.schemaVersion (optional) records which generation authored
+ *     the JSON. Omitted = pre-stamp v4.x. Exporters should read
+ *     `project.schemaVersion` first and `ValidationResult.schemaVersion`
+ *     (the producing validator) second. Stamp new documents with
+ *     stampProjectSchemaVersion() (also backfills omitted required arrays).
  *   - v5.0+ will ship with a migration tool that reads earlier major projects
  *     and writes a v5 JSON. Do not rely on hand-editing to cross a major.
  *
@@ -22,6 +31,7 @@ export type {
   WorldMap, Zone, ZoneExit, ZoneElevationRange, ZoneEntryGate, Interactable,
   ZoneConnection, ConnectionKind, Landmark,
   TransitionEntity, TransitionEntityType,
+  PhysicsMode, GravityDirection,
 } from './spatial.js';
 
 export type {
@@ -85,13 +95,26 @@ export type { CanonAdapter, CanonStarterKit, CanonMotifSceneRef } from './canon-
 
 export type { AssetKind, AssetProvenance, AssetEntry, PackCompatibility, AssetPack } from './assets.js';
 
-export type { WorldProject } from './project.js';
+export type { WorldProject, WorldProjectRequiredArrayField, WorldProjectOptionalArrayField } from './project.js';
+export {
+  WORLD_PROJECT_REQUIRED_ARRAY_FIELDS,
+  WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS,
+} from './project.js';
+export { createEmptyProject, normalizeProjectShape, backfillOmittedRequiredArrays } from './project-shape.js';
 
 export type { AuthoringMode } from './authoring-mode.js';
-export { AUTHORING_MODES, isValidMode, DEFAULT_MODE } from './authoring-mode.js';
+export { AUTHORING_MODES, isValidMode, DEFAULT_MODE, MODE_GRID_DEFAULTS } from './authoring-mode.js';
 
-export type { ValidationError, ValidationResult, ValidateOptions } from './validate.js';
-export { validateProject, VALID_CONNECTION_KINDS, VALID_ASSET_KINDS, SCHEMA_VERSION } from './validate.js';
+export type { ValidationError, ValidationResult, ValidateOptions, ClosedUnionSet } from './validate.js';
+export {
+  validateProject, stampProjectSchemaVersion,
+  VALID_CONNECTION_KINDS, VALID_ASSET_KINDS,
+  VALID_TRANSITION_TYPES, VALID_ENTITY_ROLES, VALID_ITEM_SLOTS,
+  VALID_ITEM_RARITIES, VALID_INTERACTABLE_TYPES,
+  VALID_LANDMARK_INTERACTION_TYPES, VALID_AMBIENT_LAYER_TYPES,
+  VALID_PHYSICS_MODES, VALID_GRAVITY_DIRECTIONS,
+  SCHEMA_VERSION,
+} from './validate.js';
 
 export type { CanonAdapterErrorCode } from './canon-adapter.js';
 export { CanonAdapterError } from './canon-adapter.js';

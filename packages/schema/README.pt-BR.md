@@ -12,12 +12,14 @@ Tipos principais em TypeScript para [World Forge](https://github.com/mcp-tool-sh
 
 ## Tipos
 
-- **Espaciais:** `WorldMap` (Mapa do Mundo), `Zone` (Zona), `ZoneExit` (Saída da Zona), `ZoneConnection` (Conexão da Zona), `Landmark` (Marco), `Interactable` (Interagível)
+- **Espaciais:** `WorldMap` (Mapa do Mundo), `Zone` (Zona), `ZoneExit` (Saída da Zona), `ZoneConnection` (Conexão da Zona), `Landmark` (Marco), `Interactable` (Interagível), `ZoneEntryGate`
 - **Distritos:** `District` (Distrito), `DistrictMetrics` (Métricas do Distrito), `EconomyProfile` (Perfil Econômico), `FactionPresence` (Presença de Facção), `PressureHotspot` (Ponto de Pressão)
 - **Entidades:** `EntityPlacement` (Posicionamento de Entidade) (com `EntityStats` (Estatísticas da Entidade), `EntityResources` (Recursos da Entidade), `EntityAI` (IA da Entidade)), `ItemPlacement` (Posicionamento de Item) (com `ItemSlot` (Slot do Item), `ItemRarity` (Raridade do Item)), `SpawnPoint` (Ponto de Geração), `EncounterAnchor` (Ponto de Encontro), `CraftingStation` (Estação de Criação), `MarketNode` (Nó de Mercado)
+- **Cidade e estruturas:** `Building`, `Hub`, `Stronghold`
+- **Modelagem do mundo:** `Stratum`, `StratumLink` (camadas verticais), `HazardDefinition` (união de efeitos tipados), mais operandos `SpawnCondition` de estado do grupo que alimentam `ZoneEntryGate`
 - **Visuais:** `Tileset` (Conjunto de Tiles), `TileDefinition` (Definição de Tile), `TileLayer` (Camada de Tiles), `PropDefinition` (Definição de Propriedade), `PropPlacement` (Posicionamento de Propriedade), `AmbientLayer` (Camada Ambiental)
 - **Projeto:** `WorldProject` — o contêiner completo do mundo criado.
-- **Validação:** `validateProject()` com 54 verificações estruturais.
+- **Validação:** `validateProject()` — as verificações estruturais numeradas ficam em `src/validate.ts` (não trate uma contagem publicada como o contrato).
 
 ## Instalação
 

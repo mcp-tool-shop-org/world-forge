@@ -86,7 +86,11 @@ export interface ItemPlacement {
  * EntityPlacement.spawnCondition — see spawn-condition.ts).
  */
 export interface LootTableEntry {
-  /** Reference to an ItemPlacement.itemId OR a free-form item id the engine resolves. */
+  /**
+   * Reference to an ItemPlacement.itemId OR a free-form item id the engine
+   * resolves. validateProject does not require the id to exist in
+   * itemPlacements — loot tables exist to drop items that are not world-placed.
+   */
   itemId: string;
   /** Relative weight for weighted pick. Must be > 0 and finite. */
   weight: number;
@@ -117,6 +121,11 @@ export interface EncounterAnchor {
   id: string;
   zoneId: string;
   encounterType: string;
+  /**
+   * Free-form engine catalog ids for spawn participants. These are NOT
+   * WorldProject entityPlacement ids — the engine resolves them against its
+   * own entity registry, so validateProject does not require a matching placement.
+   */
   enemyIds: string[];
   probability: number;
   cooldownTurns: number;

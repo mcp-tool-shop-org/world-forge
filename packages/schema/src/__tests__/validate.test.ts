@@ -49,7 +49,7 @@ describe('validateProject', () => {
   it('rejects connection referencing nonexistent zone', () => {
     const result = validateProject(invalidOrphanProject);
     expect(result.errors.some((e) =>
-      e.path === 'connections' && e.message.includes('zone-ghost'),
+      e.path.startsWith('connections[') && e.message.includes('zone-ghost'),
     )).toBe(true);
   });
 
@@ -78,7 +78,7 @@ describe('validateProject', () => {
     };
     const result = validateProject(proj);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.path === 'connections' && e.message.includes('unsupported kind'))).toBe(true);
+    expect(result.errors.some((e) => e.path.startsWith('connections[') && e.message.includes('unsupported kind'))).toBe(true);
   });
 
   it('rejects landmark in nonexistent zone', () => {
@@ -726,11 +726,23 @@ describe('validateProject', () => {
     expect(result.warningCount).toBeGreaterThan(0);
   });
 
-  it('accepts verbose option without changing result shape', () => {
+  it('verbose option attaches diagnostics without changing core result fields', () => {
     const normal = validateProject(minimalProject);
     const verbose = validateProject(minimalProject, { verbose: true });
     expect(normal.valid).toBe(verbose.valid);
     expect(normal.errors.length).toBe(verbose.errors.length);
+    expect(normal.errorCount).toBe(verbose.errorCount);
+    expect(verbose.diagnostics).toEqual([]);
+    expect(normal.diagnostics).toBeUndefined();
+  });
+
+  it('verbose diagnostics list each error as path: message', () => {
+    const bad: WorldProject = { ...minimalProject, spawnPoints: [] };
+    const verbose = validateProject(bad, { verbose: true });
+    expect(verbose.valid).toBe(false);
+    expect(verbose.diagnostics).toBeDefined();
+    expect(verbose.diagnostics!.length).toBe(verbose.errors.length);
+    expect(verbose.diagnostics![0]).toMatch(/^.+: .+$/);
   });
 
   // --- SB-006: VALID_CONNECTION_KINDS derived from ConnectionKind ---

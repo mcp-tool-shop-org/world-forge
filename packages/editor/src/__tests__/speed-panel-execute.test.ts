@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { executeAction, executeMacro, type ExecuteStores } from '../speed-panel-execute.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { executeAction, executeMacro, failReasonToUserMessage, type ExecuteStores } from '../speed-panel-execute.js';
 import type { HitResult } from '../hit-testing.js';
 import type { WorldProject } from '@world-forge/schema';
 import { createEmptyProject } from '../store/project-store.js';
@@ -31,6 +31,20 @@ function makeStores(overrides: Partial<ExecuteStores> = {}): ExecuteStores {
 }
 
 describe('executeAction', () => {
+  it('place-encounter sets the encounter-place tool on a zone', () => {
+    const stores = makeStores();
+    const ctx: HitResult = { type: 'zone', id: 'z1' };
+    const result = executeAction('place-encounter', ctx, stores);
+    expect(result.executed).toBe(true);
+    expect(stores.setTool).toHaveBeenCalledWith('encounter-place');
+  });
+
+  it('place-encounter returns false for null context', () => {
+    const stores = makeStores();
+    const result = executeAction('place-encounter', null, stores);
+    expect(result.executed).toBe(false);
+  });
+
   it('edit-props selects context and opens map tab', () => {
     const stores = makeStores();
     const ctx: HitResult = { type: 'zone', id: 'z1' };
@@ -83,10 +97,36 @@ describe('executeAction', () => {
     );
   });
 
-  it('unknown action returns false', () => {
+  it('unknown action returns false with reason "unknown action" (not context mismatch)', () => {
     const stores = makeStores();
     const result = executeAction('unknown-action', null, stores);
     expect(result.executed).toBe(false);
+    expect(result.reason).toBe('unknown action');
+  });
+
+  it('F-e57095f8: executeMacro passes the actual fail reason through', () => {
+    const stores = makeStores();
+    const result = executeMacro(
+      { id: 'm', name: 'Bad', steps: [{ actionId: 'not-a-real-action' }] },
+      null,
+      stores,
+    );
+    expect(result.abortedAt).toBe(0);
+    expect(result.reason).toContain('unknown action');
+    expect(result.reason).not.toContain('context mismatch');
+  });
+
+  it('F-69d97784: fit-content uses canvasSize when provided (not hardcoded 800×600)', () => {
+    const stores800 = makeStores();
+    const stores1440 = makeStores({ canvasSize: { w: 1440, h: 900 } });
+    const ctx = null;
+    executeAction('fit-content', ctx, stores800);
+    executeAction('fit-content', ctx, stores1440);
+    const vp800 = (stores800.setViewport as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const vp1440 = (stores1440.setViewport as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(vp800).toBeDefined();
+    expect(vp1440).toBeDefined();
+    expect(vp1440).not.toEqual(vp800);
   });
 
   it('edit-props returns false for malformed connection ID (no ::)', () => {
@@ -187,6 +227,53 @@ describe('executeAction — previously-unwired actions (F-bdf856bf)', () => {
     expect(typeof content).toBe('string');
     expect(content).toContain('My World');
     expect(mimeType).toBe('text/markdown');
+  });
+
+  it('F-8912e227: export-summary default does not call revokeObjectURL synchronously', () => {
+    vi.useFakeTimers();
+    const revoke = vi.fn();
+    const create = vi.fn(() => 'blob:export-summary');
+    const click = vi.fn();
+    vi.stubGlobal('Blob', class FakeBlob {
+      constructor(public parts: unknown[], public options?: unknown) {}
+    });
+    vi.stubGlobal('URL', { createObjectURL: create, revokeObjectURL: revoke });
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        href: '', download: '', rel: '', style: { display: '' },
+        click, addEventListener: vi.fn(), remove: vi.fn(),
+      }),
+      body: { appendChild: vi.fn() },
+    });
+    try {
+      const project = { ...createEmptyProject(), name: 'My World' };
+      const stores = makeStores({ project });
+      const result = executeAction('export-summary', null, stores);
+      expect(result.executed).toBe(true);
+      expect(create).toHaveBeenCalled();
+      expect(click).toHaveBeenCalled();
+      expect(revoke).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('F-dd0278b5: failReasonToUserMessage', () => {
+  it('skips toast copy for cancelled', () => {
+    expect(failReasonToUserMessage('set-elevation', 'cancelled')).toBeNull();
+  });
+
+  it('maps merge-zones to a fix-it sentence and keeps the token distinct', () => {
+    const msg = failReasonToUserMessage('merge-zones', 'need at least 2 zones');
+    expect(msg).toBe('Select at least two zones, then Merge Zones again.');
+    expect(msg).not.toBe('need at least 2 zones');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 });
 

@@ -1,13 +1,15 @@
 /**
  * convert-spawn-points.ts — SpawnPoint → Godot marker nodes.
  *
- * Spawn points become Marker2D nodes in the zone scene. The default spawn
- * is marked with metadata so the runtime knows where to place the player.
+ * Extra spawn points become Marker2D gizmos in the zone scene. The default
+ * spawn's coordinates are consumed by the player CharacterBody2D pawn
+ * (scene-builder); extras stay as Marker2D with metadata/is_default.
  */
 
-import type { WorldProject, SpawnPoint, Zone } from '@world-forge/schema';
+import type { WorldProject, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
-import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { gridToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
+import { uniqueSiblingName } from './node-naming.js';
 
 export interface GodotSpawnMarker {
     /** Godot node name: Marker2D. */
@@ -27,10 +29,20 @@ export interface ConvertSpawnPointsResult {
 }
 
 export function convertSpawnPoints(project: WorldProject): ConvertSpawnPointsResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
     const spawnMarkers: GodotSpawnMarker[] = [];
     const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));
+
+    const seenByZone = new Map<string, Map<string, number>>();
+    const uniqueNodeName = (zoneId: string, id: string): string => {
+        let seen = seenByZone.get(zoneId);
+        if (!seen) {
+            seen = new Map<string, number>();
+            seenByZone.set(zoneId, seen);
+        }
+        return uniqueSiblingName(seen, `Spawn_${id}`, 'Spawn');
+    };
 
     for (const sp of project.spawnPoints) {
         const zone = zonesById.get(sp.zoneId);
@@ -51,7 +63,7 @@ export function convertSpawnPoints(project: WorldProject): ConvertSpawnPointsRes
         const localPosition = gridToGodot2D(sp.gridX - zone.gridX, sp.gridY - zone.gridY, tileSize);
 
         spawnMarkers.push({
-            nodeName: `Spawn_${sp.id.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+            nodeName: uniqueNodeName(sp.zoneId, sp.id),
             id: sp.id,
             zoneId: sp.zoneId,
             localPosition,

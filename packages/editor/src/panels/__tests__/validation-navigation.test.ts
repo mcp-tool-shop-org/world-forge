@@ -73,3 +73,60 @@ describe('navigationForError (F-001)', () => {
     expect(nav.tab).toBe('map');
   });
 });
+
+describe('F-ac5cee50: town structures / loot / transitions', () => {
+  it('classifies buildings/hubs/strongholds as town, not world', () => {
+    expect(classifyError(err('buildings.b1.zoneId'))).toBe('town');
+    expect(classifyError(err('hubs.h1.zoneId'))).toBe('town');
+    expect(classifyError(err('strongholds.s1.defenseLevel'))).toBe('town');
+  });
+
+  it('classifies lootTables and transitions as their own domains', () => {
+    expect(classifyError(err('lootTables.lt1.entries'))).toBe('loot');
+    expect(classifyError(err('transitions.t1.zoneId'))).toBe('transitions');
+  });
+
+  it('does not clearZone for town-structure errors and selects the owning zone', () => {
+    const lookup = {
+      buildings: [{ id: 'b1', zoneId: 'town-square' }],
+      hubs: [{ id: 'h1', zoneId: 'market' }],
+      strongholds: [{ id: 's1', zoneId: 'keep' }],
+    };
+    const buildingNav = navigationForError(err('buildings.b1.interiorZoneId'), lookup);
+    expect(buildingNav.tab).toBe('map');
+    expect(buildingNav.clearZone).toBeUndefined();
+    expect(buildingNav.selectZoneId).toBe('town-square');
+
+    const hubNav = navigationForError(err('hubs.h1.zoneId'), lookup);
+    expect(hubNav.selectZoneId).toBe('market');
+    expect(hubNav.clearZone).toBeUndefined();
+  });
+
+  it('stays on map without clearZone when the lookup has no zone', () => {
+    const nav = navigationForError(err('buildings.unknown.zoneId'));
+    expect(nav.tab).toBe('map');
+    expect(nav.clearZone).toBeUndefined();
+    expect(nav.selectZoneId).toBeUndefined();
+  });
+
+  it('routes lootTables errors to the map tab and clears the selected zone (F-b483eb22)', () => {
+    const nav = navigationForError(err('lootTables.lt1.entries'));
+    expect(nav.tab).toBe('map');
+    expect(nav.clearZone).toBe(true);
+    expect(nav.selectZoneId).toBeUndefined();
+  });
+
+  it('routes itemPlacements errors to the owning zone (F-a3e545f9)', () => {
+    const lookup = { itemPlacements: [{ itemId: 'torch', zoneId: 'chapel-entrance' }] };
+    const nav = navigationForError(err('itemPlacements.torch.lootTableId'), lookup);
+    expect(nav.tab).toBe('map');
+    expect(nav.selectZoneId).toBe('chapel-entrance');
+    expect(nav.clearZone).toBeUndefined();
+  });
+
+  it('stays on map without a zone when the item lookup misses', () => {
+    const nav = navigationForError(err('itemPlacements.unknown.slot'));
+    expect(nav.tab).toBe('map');
+    expect(nav.selectZoneId).toBeUndefined();
+  });
+});

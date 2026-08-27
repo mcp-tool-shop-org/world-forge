@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <img src="./site/public/screenshots/editor-canvas.jpg" alt="World Forge editor canvas with painted zones" width="720">
+</p>
+
+<p align="center">
   <a href="https://github.com/mcp-tool-shop-org/world-forge/actions/workflows/ci.yml"><img src="https://github.com/mcp-tool-shop-org/world-forge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/@world-forge/schema"><img src="https://img.shields.io/npm/v/@world-forge/schema?label=npm" alt="npm"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
@@ -16,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.6.0</strong> — 2747 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.7.0</strong> — 3385 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
 <!-- version:end -->
 
 ## Architettura
@@ -56,10 +60,15 @@ Apri `http://localhost:5173` per avviare l'editor.
 # AI RPG Engine
 npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
+npx world-forge-export --import ./my-pack --out ./round-trip
 
 # Unreal Engine 5
 npx world-forge-export-unreal project.json --out ./UnrealPack --sign
 npx world-forge-export-unreal --summary ./UnrealPack
+
+# Godot 4 — writes a loadable project root (project.godot + world.tscn)
+npx world-forge-export-godot project.json --out ./GodotPack
+npx world-forge-export-godot project.json --validate-only
 ```
 
 ## Pacchetti
@@ -68,14 +77,15 @@ npx world-forge-export-unreal --summary ./UnrealPack
 
 Tipi TypeScript principali e convalida per la creazione di mondi.
 
-- **Tipi spaziali:** `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
-- **Tipi di contenuto:** `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
-- **Livelli visivi:** `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
-- **Città + strutture:** `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
-- **Modellazione del mondo:** `Stratum` + `StratumLink` (livelli verticali), `HazardDefinition` (unione di effetti tipizzati), `ZoneEntryGate` + operandi dello stato della squadra `SpawnCondition` (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
-- **Sistema di modalità:** `AuthoringMode` (7 modalità), profili specifici per la modalità per griglia/connessione/convalida.
-- **Convalida:** `validateProject()` (89 controlli strutturali con ricerche O(n) basate su mappa, `warningCount`), `advisoryValidation()` (suggerimenti specifici per la modalità, completezza dei metadati, denominazione delle risorse).
-- **Utilità:** `assembleSceneData()` (collegamenti visivi con rilevamento di risorse mancanti), `scanDependencies()` (analisi del grafico di riferimento), `buildReviewSnapshot()` (classificazione dello stato di salute).
+- **Tipi spaziali** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
+- **Tipi di contenuto** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
+- **Livelli visivi** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
+- **Città + strutture** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
+- **Modellazione del mondo** — `Stratum` + `StratumLink` (livelli verticali), `HazardDefinition` (unione di effetti tipizzati), `ZoneEntryGate` + operandi dello stato della partita `SpawnCondition` (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
+- **Sistema di modalità** — `AuthoringMode` (7 modalità), profili specifici per modalità relativi a griglia/connessione/validazione
+- **Validazione** — `validateProject()` (89 controlli strutturali con ricerche O(n) basate su Map, `warningCount`), `advisoryValidation()` (suggerimenti specifici per modalità, completezza dei metadati, denominazione delle risorse). La versione JSON v4.0 che omette gli array richiesti in seguito è accettata dopo `normalizeProjectShape()` / `stampProjectSchemaVersion()`.
+- **Unioni chiuse sul "barrel"** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS` e il resto dei set `VALID_*` vengono esportati da `@world-forge/schema`.
+- **Utilità** — `assembleSceneData()` (collegamenti visivi con rilevamento di risorse mancanti), `scanDependencies()` (analisi del grafico di riferimento), `buildReviewSnapshot()` (classificazione dello stato)
 
 ### @world-forge/export-unreal
 
@@ -91,23 +101,24 @@ Converte un `WorldProject` in un pacchetto di contenuti Unreal Engine 5 ottimizz
 
 Converte un `WorldProject` in un pacchetto di contenuti Godot 4 con testo della scena `.tscn`.
 
-- **Output:** `pack.json`, risorse per zona, manifesto delle entità, collegamenti di navigazione, tabelle di bottino, marcatori di generazione, nodi di transizione, risorse di dialogo, collegamenti alle risorse e una scena del mondo `.tscn`.
-- **Scena giocabile:** `buildWorldScene()` emette una scena `.tscn` navigabile: collisione `StaticBody2D` per zona + `NavigationRegion2D`, un `Camera2D` incorniciato e profondità di ordinamento y / `z_index`.
-- **Tile + interni:** `TileMapLayer` + `TileSet` (texture `tile_map_data` precalcolate per set di tile immagine), collisione delle pareti per cella `StaticBody2D` e posizionamenti degli oggetti `Node2D`.
-- **Città:** mercati + stazioni di creazione ed edifici (impronte `StaticBody2D`) / hub / roccaforti come segnaposto `Node2D`, tutti contenenti i loro dati come metadati.
-- **Modellazione del mondo:** strati verticali (banding per zona `z_index` + connettori `StratumLink`), pericoli tipizzati come regioni `Area2D` e metadati della porta di ingresso alla zona.
-- **Rapporto sulla fedeltà:** tracciamento strutturato dei dati senza perdite, approssimati o eliminati, verificato rispetto al motore Godot 4 reale (rendering in modalità headless, 36 asserzioni).
-- **Versione del formato:** `GODOT_PACK_FORMAT_VERSION` 1.0.0
+- **Output** — una cartella principale del progetto Godot 4: `project.godot`, `world.tscn` (ExtResource `.tres`), texture copiate in `assets/`, `scripts/player.gd`, più `pack.json` e `fidelity.json`
+- **CLI** — `world-forge-export-godot` con `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
+- **Scena giocabile** — `buildWorldScene()` emette un `.tscn` navigabile: collisione per zona `StaticBody2D` + `NavigationRegion2D`, un `Camera2D` incorniciato, un personaggio giocatore `CharacterBody2D` e ordinamento y / profondità `z_index`
+- **Tessere + interni** — `TileMapLayer` + `TileSet` (`tile_map_data` precalcolate per le immagini delle tessere), collisione a parete per cella `StaticBody2D` e posizionamenti di oggetti di scena `Node2D`
+- **Città** — mercati + stazioni di creazione e edifici (impronte `StaticBody2D`) / hub / roccaforti come segnaposto `Node2D`, tutti contenenti i loro dati come metadati
+- **Modellazione del mondo** — strati verticali (raggruppamento per zona `z_index` + connettori `StratumLink`), pericoli tipizzati come regioni `Area2D` e metadati della porta di ingresso alla zona
+- **Report sulla fedeltà** — tracciamento strutturato dei dati senza perdita, approssimati o eliminati, verificato rispetto al motore Godot 4 reale (fumo headless, 36 asserzioni)
+- **Versione del formato** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 
 Converte un `WorldProject` nel formato `ContentPack` di ai-rpg-engine.
 
-- **Esportazione:** zone, distretti, entità, oggetti, dialoghi, modello del giocatore, catalogo delle build, alberi di progressione, incontri, fazioni, punti caldi, manifesto e metadati del pacchetto.
-- **Importazione:** 8 convertitori inversi ricostruiscono un WorldProject dai JSON esportati.
-- **Rapporto sulla fedeltà:** tracciamento strutturato di ciò che è stato senza perdite, approssimato o eliminato durante la conversione.
-- **Rilevamento del formato:** rileva automaticamente i formati WorldProject, ExportResult, ContentPack e ProjectBundle.
-- **CLI:** comando `world-forge-export` con flag `--out`, `--validate-only` e `--verbose`.
+- **Esportazione** — zone, distretti, entità, oggetti, dialoghi, modello giocatore, catalogo di costruzione, alberi di progressione, incontri, fazioni, punti caldi, manifesto e metadati del pacchetto
+- **Importazione** — 8 convertitori inversi ricostruiscono un WorldProject dai dati JSON esportati; CLI `--import` / `--from-pack` scrive `world-project.json` (o stdout)
+- **Report sulla fedeltà** — tracciamento strutturato di ciò che è stato senza perdita, approssimato o eliminato durante la conversione; `--out` scrive `fidelity.json` accanto al pacchetto
+- **Rilevamento del formato** — rileva automaticamente i formati WorldProject, ExportResult, ContentPack e ProjectBundle
+- **CLI** — `world-forge-export` con `--out`, `--import`, `--from-pack`, `--validate-only`, `--dry-run` e `--verbose`
 
 ### @world-forge/renderer-2d
 

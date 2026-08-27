@@ -31,7 +31,7 @@ export function ObjectListPanel() {
   const { project, updateProject } = useProjectStore();
   const {
     selection, selectedConnection, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection,
-    setSelection, setViewport, setRightTab, hiddenIds,
+    setSelection, setViewport, setRightTab, setFocusTarget, hiddenIds,
   } = useEditorStore();
 
   // ED-B-002: orphaned encounters surface as a dedicated group so the user
@@ -123,6 +123,12 @@ export function ObjectListPanel() {
     }
   };
 
+  const handleSelectItem = (itemId: string, zoneId: string) => {
+    selectZone(zoneId, false);
+    setFocusTarget({ domain: 'items', subPath: `itemPlacements.${itemId}`, timestamp: Date.now() });
+    setRightTab('map');
+  };
+
   const handleSelectEncounter = (id: string, zoneId: string) => {
     selectEncounter(id, false);
     const size = getCanvasSize();
@@ -193,8 +199,8 @@ export function ObjectListPanel() {
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Filter objects..."
         style={{
-          width: '100%', background: '#0d1117', border: '1px solid #30363d',
-          borderRadius: 4, padding: '6px 8px', color: '#c9d1d9', fontSize: 12,
+          width: '100%', background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)',
+          borderRadius: 4, padding: '6px 8px', color: 'var(--wf-text-primary)', fontSize: 12,
           outline: 'none', marginBottom: 6, boxSizing: 'border-box',
         }}
       />
@@ -218,6 +224,8 @@ export function ObjectListPanel() {
             if (spawns.some((s) => matchesFilter(s.id, s.id))) return true;
             const encs = project.encounterAnchors.filter((e) => e.zoneId === zid);
             if (encs.some((e) => matchesFilter(e.encounterType, e.id))) return true;
+            const items = project.itemPlacements.filter((i) => i.zoneId === zid);
+            if (items.some((i) => matchesFilter(i.name ?? i.itemId, i.itemId))) return true;
             return false;
           });
 
@@ -234,16 +242,16 @@ export function ObjectListPanel() {
                 onDoubleClick={() => toggleDistrict(key)}
                 style={{
                   padding: '3px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                  background: '#161b22', borderRadius: 3, fontWeight: 'bold', color: '#79c0ff',
+                  background: 'var(--wf-bg-panel)', borderRadius: 3, fontWeight: 'bold', color: 'var(--wf-accent)',
                 }}
               >
-                <span style={{ fontSize: 10, width: 12, textAlign: 'center', color: '#8b949e' }}>
+                <span style={{ fontSize: 10, width: 12, textAlign: 'center', color: 'var(--wf-text-muted)' }}>
                   {expanded ? '\u25BC' : '\u25B6'}
                 </span>
                 <span onClick={(e) => { e.stopPropagation(); toggleDistrict(key); }} style={{ cursor: 'pointer' }}>
                   {group.districtName}
                 </span>
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>
                   {visibleZones.length} zones
                 </span>
               </div>
@@ -257,13 +265,15 @@ export function ObjectListPanel() {
                 const landmarks = project.landmarks.filter((l) => l.zoneId === zid);
                 const spawns = project.spawnPoints.filter((s) => s.zoneId === zid);
                 const encounters = project.encounterAnchors.filter((e) => e.zoneId === zid);
-                const childCount = entities.length + landmarks.length + spawns.length + encounters.length;
+                const items = project.itemPlacements.filter((i) => i.zoneId === zid);
+                const childCount = entities.length + landmarks.length + spawns.length + encounters.length + items.length;
 
                 // Filter children
                 const visEntities = q ? entities.filter((e) => matchesFilter(e.name ?? e.entityId, e.entityId)) : entities;
                 const visLandmarks = q ? landmarks.filter((l) => matchesFilter(l.name, l.id)) : landmarks;
                 const visSpawns = q ? spawns.filter((s) => matchesFilter(s.id, s.id)) : spawns;
                 const visEncounters = q ? encounters.filter((e) => matchesFilter(e.encounterType, e.id)) : encounters;
+                const visItems = q ? items.filter((i) => matchesFilter(i.name ?? i.itemId, i.itemId)) : items;
 
                 return (
                   <div key={zid} style={{ marginLeft: 12 }}>
@@ -277,7 +287,7 @@ export function ObjectListPanel() {
                       onDoubleClick={() => toggleZone(zid)}
                       style={{
                         padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                        borderLeft: zoneSelected ? '2px solid #58a6ff' : '2px solid transparent',
+                        borderLeft: zoneSelected ? '2px solid var(--wf-accent)' : '2px solid transparent',
                         opacity: hiddenIds.has(zid) ? 0.4 : 1,
                       }}
                     >
@@ -285,16 +295,16 @@ export function ObjectListPanel() {
                       {childCount > 0 && (
                         <span
                           onClick={(e) => { e.stopPropagation(); toggleZone(zid); }}
-                          style={{ fontSize: 10, width: 12, textAlign: 'center', color: '#8b949e', cursor: 'pointer' }}
+                          style={{ fontSize: 10, width: 12, textAlign: 'center', color: 'var(--wf-text-muted)', cursor: 'pointer' }}
                         >
                           {zoneExpanded ? '\u25BC' : '\u25B6'}
                         </span>
                       )}
                       {childCount === 0 && <span style={{ width: 12 }} />}
-                      <span style={{ color: '#58a6ff', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>Z</span>
-                      <span style={{ color: zoneSelected ? '#fff' : '#c9d1d9' }}>{zone.name}</span>
+                      <span style={{ color: 'var(--wf-accent)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>Z</span>
+                      <span style={{ color: 'var(--wf-text-primary)', fontWeight: zoneSelected ? 600 : 400 }}>{zone.name}</span>
                       {childCount > 0 && (
-                        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{childCount}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>{childCount}</span>
                       )}
                     </div>
 
@@ -313,14 +323,14 @@ export function ObjectListPanel() {
                               onKeyDown={onEnter(() => handleSelectEntity(ep.entityId))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                borderLeft: sel ? '2px solid #3fb950' : '2px solid transparent',
+                                borderLeft: sel ? '2px solid var(--wf-success-text)' : '2px solid transparent',
                                 opacity: hiddenIds.has(ep.entityId) ? 0.4 : 1,
                               }}
                             >
                               <VisibilityToggle id={ep.entityId} />
-                              <span style={{ color: '#3fb950', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>E</span>
-                              <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{ep.name ?? ep.entityId}</span>
-                              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{ep.role}</span>
+                              <span style={{ color: 'var(--wf-success-text)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>E</span>
+                              <span style={{ color: 'var(--wf-text-primary)', fontWeight: sel ? 600 : 400 }}>{ep.name ?? ep.entityId}</span>
+                              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>{ep.role}</span>
                             </div>
                           );
                         })}
@@ -336,13 +346,13 @@ export function ObjectListPanel() {
                               onKeyDown={onEnter(() => handleSelectLandmark(lm.id))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                borderLeft: sel ? '2px solid #d2a8ff' : '2px solid transparent',
+                                borderLeft: sel ? '2px solid var(--wf-accent)' : '2px solid transparent',
                                 opacity: hiddenIds.has(lm.id) ? 0.4 : 1,
                               }}
                             >
                               <VisibilityToggle id={lm.id} />
-                              <span style={{ color: '#d2a8ff', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>L</span>
-                              <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{lm.name}</span>
+                              <span style={{ color: 'var(--wf-accent)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>L</span>
+                              <span style={{ color: 'var(--wf-text-primary)', fontWeight: sel ? 600 : 400 }}>{lm.name}</span>
                             </div>
                           );
                         })}
@@ -358,17 +368,36 @@ export function ObjectListPanel() {
                               onKeyDown={onEnter(() => handleSelectSpawn(sp.id))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                borderLeft: sel ? '2px solid #f0883e' : '2px solid transparent',
+                                borderLeft: sel ? '2px solid var(--wf-warning)' : '2px solid transparent',
                                 opacity: hiddenIds.has(sp.id) ? 0.4 : 1,
                               }}
                             >
                               <VisibilityToggle id={sp.id} />
-                              <span style={{ color: '#f0883e', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>S</span>
-                              <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{sp.id}</span>
-                              {sp.isDefault && <span style={{ fontSize: 9, color: '#8b949e' }}>(default)</span>}
+                              <span style={{ color: 'var(--wf-warning)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>S</span>
+                              <span style={{ color: 'var(--wf-text-primary)', fontWeight: sel ? 600 : 400 }}>{sp.id}</span>
+                              {sp.isDefault && <span style={{ fontSize: 9, color: 'var(--wf-text-muted)' }}>(default)</span>}
                             </div>
                           );
                         })}
+                        {visItems.map((it) => (
+                            <div
+                              key={it.itemId}
+                              role="button"
+                              tabIndex={0}
+                              data-testid={`wf-object-item-${it.itemId}`}
+                              onClick={() => handleSelectItem(it.itemId, it.zoneId)}
+                              onKeyDown={onEnter(() => handleSelectItem(it.itemId, it.zoneId))}
+                              style={{
+                                padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                borderLeft: '2px solid transparent',
+                                opacity: hiddenIds.has(it.itemId) ? 0.4 : 1,
+                              }}
+                            >
+                              <span style={{ color: 'var(--wf-warning)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>I</span>
+                              <span style={{ color: 'var(--wf-text-primary)' }}>{it.name ?? it.itemId}</span>
+                              {it.slot && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>{it.slot}</span>}
+                            </div>
+                        ))}
                         {visEncounters.map((enc) => {
                           const sel = isSel(selection, 'encounter', enc.id);
                           return (
@@ -381,14 +410,14 @@ export function ObjectListPanel() {
                               onKeyDown={onEnter(() => handleSelectEncounter(enc.id, enc.zoneId))}
                               style={{
                                 padding: '1px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                borderLeft: sel ? '2px solid #da3633' : '2px solid transparent',
+                                borderLeft: sel ? '2px solid var(--wf-danger)' : '2px solid transparent',
                                 opacity: hiddenIds.has(enc.id) ? 0.4 : 1,
                               }}
                             >
                               <VisibilityToggle id={enc.id} />
-                              <span style={{ color: '#da3633', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>Enc</span>
-                              <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{enc.id}</span>
-                              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{enc.encounterType}</span>
+                              <span style={{ color: 'var(--wf-danger)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>Enc</span>
+                              <span style={{ color: 'var(--wf-text-primary)', fontWeight: sel ? 600 : 400 }}>{enc.id}</span>
+                              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>{enc.encounterType}</span>
                             </div>
                           );
                         })}
@@ -414,7 +443,7 @@ export function ObjectListPanel() {
           if (visConns.length === 0) return null;
           return (
             <div style={{ marginTop: 8, marginBottom: 4 }}>
-              <div style={{ padding: '3px 4px', background: '#161b22', borderRadius: 3, fontWeight: 'bold', color: '#8b949e', fontSize: 11 }}>
+              <div style={{ padding: '3px 4px', background: 'var(--wf-bg-panel)', borderRadius: 3, fontWeight: 'bold', color: 'var(--wf-text-muted)', fontSize: 11 }}>
                 Connections ({visConns.length})
               </div>
               {visConns.map((c) => {
@@ -428,15 +457,15 @@ export function ObjectListPanel() {
                     onKeyDown={onEnter(() => handleSelectConnection(c.fromZoneId, c.toZoneId))}
                     style={{
                       padding: '2px 4px', marginLeft: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                      borderLeft: isSel ? '2px solid #58a6ff' : '2px solid transparent',
+                      borderLeft: isSel ? '2px solid var(--wf-accent)' : '2px solid transparent',
                     }}
                   >
-                    <span style={{ color: '#8b949e', fontSize: 9, fontWeight: 'bold', background: '#0d1117', borderRadius: 2, padding: '0 3px' }}>C</span>
+                    <span style={{ color: 'var(--wf-text-muted)', fontSize: 9, fontWeight: 'bold', background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px' }}>C</span>
                     {c.kind && c.kind !== 'passage' && (
-                      <span style={{ fontSize: 9, color: '#8b949e', background: '#21262d', borderRadius: 2, padding: '0 3px' }}>{c.kind}</span>
+                      <span style={{ fontSize: 9, color: 'var(--wf-text-muted)', background: 'var(--wf-bg-control)', borderRadius: 2, padding: '0 3px' }}>{c.kind}</span>
                     )}
-                    <span style={{ color: isSel ? '#fff' : '#c9d1d9' }}>{connectionLabel(c, project.zones)}</span>
-                    {c.condition && <span style={{ fontSize: 9, color: '#ffa657' }} title={c.condition}>&#9679;</span>}
+                    <span style={{ color: 'var(--wf-text-primary)', fontWeight: isSel ? 600 : 400 }}>{connectionLabel(c, project.zones)}</span>
+                    {c.condition && <span style={{ fontSize: 9, color: 'var(--wf-warning)' }} title={c.condition}>&#9679;</span>}
                   </div>
                 );
               })}
@@ -451,14 +480,14 @@ export function ObjectListPanel() {
           <div data-testid="orphaned-encounters" style={{ marginTop: 12, marginBottom: 4 }}>
             <div
               style={{
-                padding: '3px 4px', background: '#3a1d1d', borderRadius: 3, fontWeight: 'bold',
-                color: '#ffa198', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6,
+                padding: '3px 4px', background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', borderRadius: 3, fontWeight: 'bold',
+                color: 'var(--wf-danger-text)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6,
               }}
               title="These encounters reference a zone that has been deleted. Reassign or delete them below."
             >
               <span>Orphaned encounters ({orphanedEncounters.length})</span>
             </div>
-            <div style={{ marginLeft: 12, fontSize: 11, color: '#8b949e', padding: '3px 4px' }}>
+            <div style={{ marginLeft: 12, fontSize: 11, color: 'var(--wf-text-muted)', padding: '3px 4px' }}>
               Their zone was deleted. Reassign or delete — either action can be undone.
             </div>
             {orphanedEncounters.map(({ encounter, missingZoneId }) => {
@@ -475,20 +504,20 @@ export function ObjectListPanel() {
                   style={{
                     padding: '3px 4px', marginLeft: 12, cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', gap: 3,
-                    borderLeft: sel ? '2px solid #da3633' : '2px solid transparent',
+                    borderLeft: sel ? '2px solid var(--wf-danger)' : '2px solid transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{
-                      color: '#ffa198', fontSize: 9, fontWeight: 'bold',
-                      background: '#0d1117', borderRadius: 2, padding: '0 3px',
+                      color: 'var(--wf-danger-text)', fontSize: 9, fontWeight: 'bold',
+                      background: 'var(--wf-bg-app)', borderRadius: 2, padding: '0 3px',
                     }}>Orphan</span>
-                    <span style={{ color: sel ? '#fff' : '#c9d1d9' }}>{encounter.id}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>
+                    <span style={{ color: 'var(--wf-text-primary)', fontWeight: sel ? 600 : 400 }}>{encounter.id}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--wf-text-muted)' }}>
                       {encounter.encounterType}
                     </span>
                   </div>
-                  <div style={{ fontSize: 10, color: '#8b949e', marginLeft: 2 }}>
+                  <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', marginLeft: 2 }}>
                     was in zone "{missingZoneId}" (missing)
                   </div>
                   <div style={{ display: 'flex', gap: 6, marginLeft: 2 }}>
@@ -501,8 +530,8 @@ export function ObjectListPanel() {
                         if (target) handleReassignOrphan(encounter.id, target);
                       }}
                       style={{
-                        background: '#0d1117', border: '1px solid #30363d', borderRadius: 3,
-                        color: '#c9d1d9', fontSize: 11, padding: '2px 4px', flex: 1,
+                        background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 3,
+                        color: 'var(--wf-text-primary)', fontSize: 11, padding: '2px 4px', flex: 1,
                       }}
                     >
                       <option value="">Reassign to zone…</option>
@@ -513,8 +542,8 @@ export function ObjectListPanel() {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteOrphan(encounter.id); }}
                       style={{
-                        background: '#21262d', border: '1px solid #30363d', borderRadius: 3,
-                        color: '#ffa198', fontSize: 11, padding: '2px 8px', cursor: 'pointer',
+                        background: 'var(--wf-bg-control)', border: '1px solid var(--wf-border-default)', borderRadius: 3,
+                        color: 'var(--wf-danger-text)', fontSize: 11, padding: '2px 8px', cursor: 'pointer',
                       }}
                       title="Remove this orphaned encounter. Use Undo to restore."
                     >

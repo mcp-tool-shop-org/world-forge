@@ -2,14 +2,16 @@
 
 export type { StarterKit } from './types.js';
 export { BUILTIN_KITS } from './built-ins.js';
-export { useKitStore, filterKitsByMode } from './kit-store.js';
+export { useKitStore, filterKitsByMode, StoragePersistError } from './kit-store.js';
 export { validateKit, type KitValidationResult } from './validate-kit.js';
 export {
   serializeKit,
   parseKitBundle,
   prepareKitImport,
   kitFilename,
+  migrateKitBundle,
   BUNDLE_VERSION,
+  MIN_SUPPORTED_BUNDLE_VERSION,
 } from './bundle.js';
 export type {
   KitBundle,

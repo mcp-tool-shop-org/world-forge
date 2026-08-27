@@ -8,6 +8,12 @@ import { describe, it, expect } from 'vitest';
 import { exportToEngine } from '../export.js';
 import { convertManifest } from '../convert-pack.js';
 import { importFromContentPack } from '../import.js';
+import type { ImportResult, ImportError } from '../import.js';
+
+function requireImport(r: ImportResult | ImportError): ImportResult {
+  if (!r.success) throw new Error(r.message);
+  return r;
+}
 import { SIM_AFFECTING_KEYS } from '../content-hash.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import type { WorldProject } from '@world-forge/schema';
@@ -169,7 +175,7 @@ describe('F-f216da1a: craftingStations/marketNodes cross into the ContentPack in
     const exported = exportToEngine(project);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.craftingStations).toEqual(project.craftingStations);
     expect(imported.project.marketNodes).toEqual(project.marketNodes);
   });
@@ -192,7 +198,7 @@ describe('F-f216da1a: craftingStations/marketNodes cross into the ContentPack in
       // older or hand-authored ContentPack predating this fix.
     } as unknown as ContentPack;
 
-    const imported = importFromContentPack(bareMinimumPack);
+    const imported = requireImport(importFromContentPack(bareMinimumPack));
     expect(imported.project.craftingStations).toEqual([]);
     expect(imported.project.marketNodes).toEqual([]);
   });

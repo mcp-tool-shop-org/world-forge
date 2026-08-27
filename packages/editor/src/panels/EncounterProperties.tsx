@@ -25,7 +25,7 @@ export function EncounterProperties() {
       <label style={labelStyle}>Zone
         <input style={inputStyle} value={zone?.name ?? enc.zoneId} readOnly />
         {/* EUB-017: show zone-deleted indicator for orphaned encounters */}
-        {!zone && <span style={{ color: '#f85149', fontSize: 11 }}>Zone deleted</span>}
+        {!zone && <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Zone deleted</span>}
       </label>
       <label style={labelStyle}>Encounter Type
         <input style={inputStyle} value={enc.encounterType} list="encounter-type-suggestions"

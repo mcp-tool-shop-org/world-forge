@@ -333,7 +333,7 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Ctrl+V | Paste from clipboard (with ID remapping and offset) |
 | Ctrl+D | Duplicate selection |
 | Ctrl+K | Open search overlay |
-| Ctrl+Z | Undo |
+| Ctrl+Z | Undo (bound in HOTKEY_BINDINGS; KeyZ without Ctrl is the zone tool) |
 | Ctrl+Shift+Z | Redo |
 | Arrow keys | Nudge selected objects by 1 grid cell (Shift = 5×) |
 | Enter | Open details panel for selected object |
@@ -345,6 +345,8 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | E | Switch to Entity tool |
 | L | Switch to Landmark tool |
 | S | Switch to Spawn tool |
+| T | Switch to Tile paint tool |
+| O | Switch to Prop place tool |
 | Double-click | Select object and open its details panel |
 | Double-right-click | Open Speed Panel (floating command palette at cursor) |
 

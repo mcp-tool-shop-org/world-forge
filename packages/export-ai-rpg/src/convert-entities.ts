@@ -39,11 +39,12 @@ const ROLE_AI_PROFILE: Record<EntityRole, string> = {
  * not guard against missing nested properties and will throw if input is
  * malformed. (AIR-B-006)
  *
- * **AIR-B-004:** Pass a `fidelity` array to collect structured entries when a
- * `custom` field value cannot be JSON-serialized (e.g. circular reference).
- * The console.warn is still emitted for legacy consumers; the fidelity entry
- * is the programmatic signal that mirrors the pattern used by the import-side
- * converters.
+ * **AIR-B-004 / F-cd05e76f:** Pass a `fidelity` array to collect structured
+ * entries when a `custom` field value cannot be JSON-serialized (e.g. circular
+ * reference). The same loss is pushed onto `warnings` so the CLI `Warnings:`
+ * block (and `Fidelity:` dump) can print it — `console.warn` alone is not a
+ * diagnostic channel when the consumer is not a TTY. The console.warn is still
+ * emitted for legacy consumers.
  */
 export function convertEntities(
   project: WorldProject,
@@ -53,6 +54,7 @@ export function convertEntities(
   // AIR-B-003: Collect known faction ids so we can flag dangling references.
   // Factions in WorldProject are identified by `factionPresences[].factionId`.
   const knownFactionIds = new Set(project.factionPresences.map((fp) => fp.factionId));
+  const knownDialogueIds = new Set(project.dialogues.map((d) => d.id));
 
   return project.entityPlacements.map((ep) => {
     // ep.role is typed as the closed EntityRole union, but at runtime it is
@@ -103,6 +105,37 @@ export function convertEntities(
       }
     }
 
+    // F-c2cdc36d: EntityBlueprint has no dialogue field, so the binding is
+    // encoded as a `dialogue:<id>` tag (same pattern as factionId) AND carried
+    // on ExportedPlacement.dialogueId. Warn when the id does not resolve.
+    if (ep.dialogueId) {
+      tags.push(`dialogue:${ep.dialogueId}`);
+      if (!knownDialogueIds.has(ep.dialogueId)) {
+        const entityLabel = ep.name || ep.entityId;
+        const msg = `Entity "${ep.entityId}" (${entityLabel}) references dialogueId "${ep.dialogueId}" which is not in project.dialogues[] — tagged as dialogue:${ep.dialogueId} anyway so a pack consumer can still start the tree if the dialogue is supplied later.`;
+        warnings?.push(msg);
+        fidelity?.push({
+          domain: 'entities',
+          level: 'approximated',
+          severity: 'warning',
+          entityId: ep.entityId,
+          fieldPath: 'dialogueId',
+          message: msg,
+          reason: 'dialogue-id-unresolved',
+        });
+      } else {
+        fidelity?.push({
+          domain: 'entities',
+          level: 'lossless',
+          severity: 'info',
+          entityId: ep.entityId,
+          fieldPath: 'dialogueId',
+          message: `Entity '${ep.entityId}' dialogueId '${ep.dialogueId}' encoded as tag dialogue:${ep.dialogueId} and on placements[].dialogueId.`,
+          reason: 'dialogue-id-as-tag',
+        });
+      }
+    }
+
     const blueprint: EntityBlueprint = {
       id: ep.entityId,
       type: roleType ?? 'npc',
@@ -130,14 +163,16 @@ export function convertEntities(
           sanitized[k] = v;
         } catch {
           const entityLabel = ep.name || ep.entityId;
-          console.warn(`[convert-entities] Entity '${entityLabel}': custom field '${k}' has a non-JSON-serializable value (${typeof v}) — skipping this field.`);
+          const msg = `Entity '${entityLabel}' custom field '${k}' has a non-JSON-serializable value (likely circular reference) and was dropped from the export.`;
+          console.warn(`[convert-entities] ${msg}`);
+          warnings?.push(msg);
           fidelity?.push({
             domain: 'entities',
             level: 'approximated',
             severity: 'warning',
             entityId: ep.entityId,
             fieldPath: `custom.${k}`,
-            message: `Entity '${entityLabel}' custom field '${k}' could not be JSON-serialized (likely circular reference) and was dropped from the export.`,
+            message: msg,
             reason: 'custom-field-not-json-serializable',
           });
         }

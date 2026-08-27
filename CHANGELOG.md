@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-08-27
+
+Advertised authoring and export surfaces that the store already named are now
+connected. Dogfood swarm Pick A closed 32 HIGH leftovers after a four-stage
+health pass (283 closed, 27 MED/LOW still deferred). 3385 tests.
+
+### Added
+
+- **Canvas place + inspect.** Landmark, item, town-marker, and encounter-place
+  tools actually place; items have canvas CRUD; town markers render; entity,
+  item, loot, transition, landmark, and spawn inspectors author the fields the
+  handbook already listed.
+- **AI RPG Engine lane.** Typed connections converter; `dialogueId` survives;
+  item placements keep zone/grid; town, economy, and spawn points export;
+  CLI `--out` keeps fidelity sidecars; `world-forge-export --import` round-trips
+  a pack directory back to WorldProject JSON.
+- **Godot 4 lane.** `world-forge-export-godot --out` writes a loadable Godot 4
+  project (`project.godot`, `world.tscn` ExtResource `.tres`, player pawn,
+  copied authored textures, `scripts/player.gd`).
+- **Unreal 2.5D lane.** Strata converter; tiles and props emit; `entryGate` and
+  `hazardRefs` survive; `ParallaxRenderer` in `@world-forge/renderer-2d`.
+- **Schema.** v4.0 JSON is accepted at runtime via normalize/stamp; closed
+  unions (`VALID_*`) export from the `@world-forge/schema` barrel.
+- **Harness + CI.** e2e load→export; AI RPG smoke is a happy-path proof; import
+  round-trip receipt is current; Pages is on the release path; provenance
+  write-back is readable.
+
+### Docs
+
+- Root README CLI now names `world-forge-export-godot` alongside the engine and
+  Unreal CLIs. Handbook export pages cover `--import` and the Godot project root.
+
 ## [4.6.0] - 2026-08-04
 
 The Forge↔Engine content contract, plus a two-stage health pass. Where v4.5.0

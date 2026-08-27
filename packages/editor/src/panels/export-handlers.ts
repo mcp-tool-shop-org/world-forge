@@ -7,7 +7,7 @@
 
 import type { WorldProject } from '@world-forge/schema';
 
-export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported';
+export type ExportStatus = 'idle' | 'valid' | 'invalid' | 'exported' | 'exporting';
 
 export type ExportTarget = 'ai-rpg' | 'unreal' | 'godot';
 
@@ -117,6 +117,126 @@ export function defaultDownloadJson(filename: string, data: unknown): string | n
   return url;
 }
 
+function failExport(cb: ExportCallbacks, message: string): void {
+  cb.setStatus('invalid');
+  cb.setErrors([message]);
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function rewritePrefix(path: string, fromPrefix: string, toPrefix: string): string {
+  if (!fromPrefix || path.startsWith(toPrefix)) return path;
+  if (path.startsWith(fromPrefix)) return toPrefix + path.slice(fromPrefix.length);
+  return path;
+}
+
+function normalizePrefix(prefix: string, fallback: string): string {
+  const trimmed = prefix.trim() || fallback;
+  return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+}
+
+/**
+ * F-6fa18661: apply Godot Target Options to the content pack itself, not only
+ * the sidecar exportSettings. includeWorldTscn:false drops worldSceneTscn;
+ * scene prefixes rewrite entity/transition sceneTemplate paths.
+ */
+export function applyGodotUiOptions(
+  contentPack: Record<string, unknown>,
+  opts: GodotExportUIOptions,
+): Record<string, unknown> {
+  const pack: Record<string, unknown> = { ...contentPack };
+  if (!opts.includeWorldTscn) {
+    delete pack.worldSceneTscn;
+  }
+  const entityPrefix = normalizePrefix(opts.entityScenePrefix, DEFAULT_GODOT_OPTIONS.entityScenePrefix);
+  const transitionPrefix = normalizePrefix(opts.transitionScenePrefix, DEFAULT_GODOT_OPTIONS.transitionScenePrefix);
+
+  const entities = pack.entities as {
+    all?: Array<Record<string, unknown>>;
+    byZone?: Record<string, Array<Record<string, unknown>>>;
+  } | undefined;
+  if (entities) {
+    const rewriteEntity = (e: Record<string, unknown>) => ({
+      ...e,
+      sceneTemplate: typeof e.sceneTemplate === 'string'
+        ? rewritePrefix(e.sceneTemplate, 'res://entities/', entityPrefix)
+        : e.sceneTemplate,
+    });
+    pack.entities = {
+      ...entities,
+      all: Array.isArray(entities.all) ? entities.all.map(rewriteEntity) : entities.all,
+      byZone: entities.byZone
+        ? Object.fromEntries(
+          Object.entries(entities.byZone).map(([k, arr]) => [
+            k,
+            Array.isArray(arr) ? arr.map(rewriteEntity) : arr,
+          ]),
+        )
+        : entities.byZone,
+    };
+  }
+
+  if (Array.isArray(pack.transitions)) {
+    pack.transitions = (pack.transitions as Array<Record<string, unknown>>).map((t) => ({
+      ...t,
+      sceneTemplate: typeof t.sceneTemplate === 'string'
+        ? rewritePrefix(t.sceneTemplate, 'res://transitions/', transitionPrefix)
+        : t.sceneTemplate,
+    }));
+  }
+
+  pack.assetBindingMode = opts.assetBindingMode;
+  return pack;
+}
+
+/**
+ * F-6fa18661: apply Unreal Target Options to the pack. includeStreamingHints:false
+ * drops Connections (the streaming-hint channel). blueprintPathPrefix is stamped
+ * onto Meta and each actor so it is not sidecar-only.
+ */
+export function applyUnrealUiOptions(
+  contentPack: Record<string, unknown>,
+  opts: UnrealExportOptions,
+): Record<string, unknown> {
+  const pack: Record<string, unknown> = { ...contentPack };
+  const meta = (pack.Meta && typeof pack.Meta === 'object')
+    ? { ...(pack.Meta as Record<string, unknown>) }
+    : {};
+  meta.BlueprintPathPrefix = opts.blueprintPathPrefix;
+  pack.Meta = meta;
+
+  if (!opts.includeStreamingHints) {
+    pack.Connections = [];
+  }
+
+  const actors = pack.Actors as {
+    All?: Array<Record<string, unknown>>;
+    ByZone?: Record<string, Array<Record<string, unknown>>>;
+  } | undefined;
+  if (actors) {
+    const prefix = normalizePrefix(opts.blueprintPathPrefix, DEFAULT_UNREAL_OPTIONS.blueprintPathPrefix);
+    const stamp = (a: Record<string, unknown>) => ({
+      ...a,
+      BlueprintPath: typeof a.BlueprintTag === 'string' ? `${prefix}${a.BlueprintTag}` : a.BlueprintPath,
+    });
+    pack.Actors = {
+      ...actors,
+      All: Array.isArray(actors.All) ? actors.All.map(stamp) : actors.All,
+      ByZone: actors.ByZone
+        ? Object.fromEntries(
+          Object.entries(actors.ByZone).map(([k, arr]) => [
+            k,
+            Array.isArray(arr) ? arr.map(stamp) : arr,
+          ]),
+        )
+        : actors.ByZone,
+    };
+  }
+  return pack;
+}
+
 /**
  * Run the AI-RPG engine export flow.
  *
@@ -128,73 +248,81 @@ export async function runEngineExport(
   env: ExportEnv = { downloadJson: defaultDownloadJson },
   opts: AiRpgExportOptions = DEFAULT_AI_RPG_OPTIONS,
 ): Promise<void> {
-  // ED-A-001: clear stale errors/warnings/status before a new attempt
+  // ED-A-001: clear stale errors/warnings/status before a new attempt.
+  // F-3f598c61: 'idle' stays in the history so existing reset tests still
+  // observe a wipe; 'exporting' is the in-flight status the modal renders.
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
+  cb.setStatus('exporting');
 
-  const { exportToEngine } = await import('@world-forge/export-ai-rpg');
-  const result = exportToEngine(project);
-  if (!result.success) {
-    cb.setStatus('invalid');
-    cb.setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
-    return;
-  }
-
-  cb.setWarnings(result.warnings);
-
+  // F-38ec48e4: wrap the whole body (dynamic import + exporter + serialize)
+  // so a chunk-load failure becomes setStatus('invalid') instead of an
+  // unhandled rejection. This function never rejects.
   try {
-    const filename = `${project.id}-engine-pack.json`;
-    // 10B: Apply AI RPG options to the bundle
-    const contentPack = { ...result.contentPack };
-    if (!opts.includeBuildCatalog) {
-      delete (contentPack as Record<string, unknown>).buildCatalog;
+    const { exportToEngine } = await import('@world-forge/export-ai-rpg');
+    const result = exportToEngine(project);
+    if (!result.success) {
+      cb.setStatus('invalid');
+      cb.setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
+      return;
     }
-    if (!opts.includeDialogueProgression) {
-      delete (contentPack as Record<string, unknown>).dialogues;
-      delete (contentPack as Record<string, unknown>).progressionTrees;
-    }
-    const bundle: Record<string, unknown> = {
-      contentPack,
-      manifest: result.manifest,
-      packMeta: result.packMeta,
-    };
-    if (result.assets) bundle.assets = result.assets;
-    if (result.assetBindings) bundle.assetBindings = result.assetBindings;
-    if (result.assetPacks) bundle.assetPacks = result.assetPacks;
-    if (opts.includeFidelityReport) {
-      bundle.fidelityReport = result.fidelity;
-    }
-    const url = env.downloadJson(filename, bundle);
-    cb.setStatus('exported');
-    cb.markExported();
-    // ED-B-002: stash a manual-download URL so the modal can render a visible
-    // "If nothing appears, click here" anchor. The browser popup-blocker can
-    // swallow synthetic clicks silently.
-    if (url && cb.setFallback) cb.setFallback({ href: url, filename });
-    // 10A: emit structured receipt
-    if (cb.addReceipt) {
-      const s = result.fidelity.summary;
-      const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
-      cb.addReceipt({
-        target: 'ai-rpg',
-        filename,
-        timestamp: Date.now(),
-        zones: project.zones.length,
-        entities: project.entityPlacements.length,
-        items: project.itemPlacements.length,
-        dialogues: project.dialogues.length,
-        trees: project.progressionTrees.length,
-        assets: project.assets.length,
-        warnings: result.warnings.length,
-        fidelity: level,
-        sizeEstimate: JSON.stringify(bundle).length,
-      });
+
+    cb.setWarnings(result.warnings);
+
+    try {
+      const filename = `${project.id}-engine-pack.json`;
+      // 10B: Apply AI RPG options to the bundle
+      const contentPack = { ...result.contentPack };
+      if (!opts.includeBuildCatalog) {
+        delete (contentPack as Record<string, unknown>).buildCatalog;
+      }
+      if (!opts.includeDialogueProgression) {
+        delete (contentPack as Record<string, unknown>).dialogues;
+        delete (contentPack as Record<string, unknown>).progressionTrees;
+      }
+      const bundle: Record<string, unknown> = {
+        contentPack,
+        manifest: result.manifest,
+        packMeta: result.packMeta,
+      };
+      if (result.assets) bundle.assets = result.assets;
+      if (result.assetBindings) bundle.assetBindings = result.assetBindings;
+      if (result.assetPacks) bundle.assetPacks = result.assetPacks;
+      if (opts.includeFidelityReport) {
+        bundle.fidelityReport = result.fidelity;
+      }
+      const url = env.downloadJson(filename, bundle);
+      cb.setStatus('exported');
+      cb.markExported();
+      // ED-B-002: stash a manual-download URL so the modal can render a visible
+      // "If nothing appears, click here" anchor. The browser popup-blocker can
+      // swallow synthetic clicks silently.
+      if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+      // 10A: emit structured receipt
+      if (cb.addReceipt) {
+        const s = result.fidelity.summary;
+        const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
+        cb.addReceipt({
+          target: 'ai-rpg',
+          filename,
+          timestamp: Date.now(),
+          zones: project.zones.length,
+          entities: project.entityPlacements.length,
+          items: project.itemPlacements.length,
+          dialogues: project.dialogues.length,
+          trees: project.progressionTrees.length,
+          assets: project.assets.length,
+          warnings: result.warnings.length,
+          fidelity: level,
+          sizeEstimate: JSON.stringify(bundle).length,
+        });
+      }
+    } catch (err) {
+      failExport(cb, `Failed to serialize export bundle: ${errorMessage(err)}`);
     }
   } catch (err) {
-    cb.setStatus('invalid');
-    const msg = err instanceof Error ? err.message : String(err);
-    cb.setErrors([`Failed to serialize export bundle: ${msg}`]);
+    failExport(cb, `Failed to export: ${errorMessage(err)}`);
   }
 }
 
@@ -214,63 +342,70 @@ export async function runUnrealExport(
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
-
-  const { exportToUnreal } = await import('@world-forge/export-unreal');
-  const result = exportToUnreal(project, {
-    tileSizeCm: opts.tileSizeCm,
-  });
-  if (!result.success) {
-    cb.setStatus('invalid');
-    cb.setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
-    return;
-  }
-
-  cb.setWarnings(result.warnings);
-
-  // ED-A-006: `UnrealExportResult.fidelity` is always present on success by
-  // type contract (@world-forge/export-unreal/src/export.ts). No runtime
-  // guard required once the discriminant has narrowed.
+  cb.setStatus('exporting');
 
   try {
-    const filename = `${project.id}-unreal-pack.json`;
-    const bundle: Record<string, unknown> = {
-      contentPack: result.contentPack,
-      fidelity: result.fidelity,
-      exportSettings: {
-        tileSizeCm: opts.tileSizeCm,
-        blueprintPathPrefix: opts.blueprintPathPrefix,
-        streamingHints: opts.includeStreamingHints,
-        signing: 'disabled (CLI-only)',
-      },
-    };
-    const url = env.downloadJson(filename, bundle);
-    cb.setStatus('exported');
-    cb.markExported();
-    // ED-B-002: manual-download fallback — see runEngineExport for rationale.
-    if (url && cb.setFallback) cb.setFallback({ href: url, filename });
-    // 10A: emit structured receipt with fidelity summary
-    if (cb.addReceipt) {
-      const s = result.fidelity.summary;
-      const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
-      cb.addReceipt({
-        target: 'unreal',
-        filename,
-        timestamp: Date.now(),
-        zones: project.zones.length,
-        entities: project.entityPlacements.length,
-        items: project.itemPlacements.length,
-        dialogues: project.dialogues.length,
-        trees: project.progressionTrees.length,
-        assets: project.assets.length,
-        warnings: result.warnings.length,
-        fidelity: level,
-        sizeEstimate: JSON.stringify(bundle).length,
-      });
+    const { exportToUnreal } = await import('@world-forge/export-unreal');
+    const result = exportToUnreal(project, {
+      tileSizeCm: opts.tileSizeCm,
+    });
+    if (!result.success) {
+      cb.setStatus('invalid');
+      cb.setErrors(result.errors.map((e) => `[${e.path}] ${e.message}`));
+      return;
+    }
+
+    cb.setWarnings(result.warnings);
+
+    // ED-A-006: `UnrealExportResult.fidelity` is always present on success by
+    // type contract (@world-forge/export-unreal/src/export.ts). No runtime
+    // guard required once the discriminant has narrowed.
+
+    try {
+      const filename = `${project.id}-unreal-pack.json`;
+      const contentPack = applyUnrealUiOptions(
+        result.contentPack as unknown as Record<string, unknown>,
+        opts,
+      );
+      const bundle: Record<string, unknown> = {
+        contentPack,
+        fidelity: result.fidelity,
+        exportSettings: {
+          tileSizeCm: opts.tileSizeCm,
+          blueprintPathPrefix: opts.blueprintPathPrefix,
+          streamingHints: opts.includeStreamingHints,
+          signing: 'disabled (CLI-only)',
+        },
+      };
+      const url = env.downloadJson(filename, bundle);
+      cb.setStatus('exported');
+      cb.markExported();
+      // ED-B-002: manual-download fallback — see runEngineExport for rationale.
+      if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+      // 10A: emit structured receipt with fidelity summary
+      if (cb.addReceipt) {
+        const s = result.fidelity.summary;
+        const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
+        cb.addReceipt({
+          target: 'unreal',
+          filename,
+          timestamp: Date.now(),
+          zones: project.zones.length,
+          entities: project.entityPlacements.length,
+          items: project.itemPlacements.length,
+          dialogues: project.dialogues.length,
+          trees: project.progressionTrees.length,
+          assets: project.assets.length,
+          warnings: result.warnings.length,
+          fidelity: level,
+          sizeEstimate: JSON.stringify(bundle).length,
+        });
+      }
+    } catch (err) {
+      failExport(cb, `Failed to serialize Unreal export bundle: ${errorMessage(err)}`);
     }
   } catch (err) {
-    cb.setStatus('invalid');
-    const msg = err instanceof Error ? err.message : String(err);
-    cb.setErrors([`Failed to serialize Unreal export bundle: ${msg}`]);
+    failExport(cb, `Failed to export: ${errorMessage(err)}`);
   }
 }
 
@@ -286,55 +421,62 @@ export async function runGodotExport(
   cb.setErrors([]);
   cb.setWarnings([]);
   cb.setStatus('idle');
-
-  const { exportToGodot } = await import('@world-forge/export-godot');
-  const result = exportToGodot(project);
-  if (!result.success) {
-    cb.setStatus('invalid');
-    cb.setErrors(result.errors.map((e: { path: string; message: string }) => `[${e.path}] ${e.message}`));
-    return;
-  }
-
-  cb.setWarnings(result.warnings);
+  cb.setStatus('exporting');
 
   try {
-    const filename = `${project.id}-godot-pack.json`;
-    const bundle: Record<string, unknown> = {
-      contentPack: result.contentPack,
-      fidelity: result.fidelity,
-      exportSettings: {
-        entityScenePrefix: opts.entityScenePrefix,
-        transitionScenePrefix: opts.transitionScenePrefix,
-        includeWorldTscn: opts.includeWorldTscn,
-        assetBindingMode: opts.assetBindingMode,
-      },
-    };
-    const url = env.downloadJson(filename, bundle);
-    cb.setStatus('exported');
-    cb.markExported();
-    if (url && cb.setFallback) cb.setFallback({ href: url, filename });
-    // 10A: emit structured receipt with fidelity summary
-    if (cb.addReceipt) {
-      const s = result.fidelity.summary;
-      const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
-      cb.addReceipt({
-        target: 'godot',
-        filename,
-        timestamp: Date.now(),
-        zones: project.zones.length,
-        entities: project.entityPlacements.length,
-        items: project.itemPlacements.length,
-        dialogues: project.dialogues.length,
-        trees: project.progressionTrees.length,
-        assets: project.assets.length,
-        warnings: result.warnings.length,
-        fidelity: level,
-        sizeEstimate: JSON.stringify(bundle).length,
-      });
+    const { exportToGodot } = await import('@world-forge/export-godot');
+    const result = exportToGodot(project);
+    if (!result.success) {
+      cb.setStatus('invalid');
+      cb.setErrors(result.errors.map((e: { path: string; message: string }) => `[${e.path}] ${e.message}`));
+      return;
+    }
+
+    cb.setWarnings(result.warnings);
+
+    try {
+      const filename = `${project.id}-godot-pack.json`;
+      const contentPack = applyGodotUiOptions(
+        result.contentPack as unknown as Record<string, unknown>,
+        opts,
+      );
+      const bundle: Record<string, unknown> = {
+        contentPack,
+        fidelity: result.fidelity,
+        exportSettings: {
+          entityScenePrefix: opts.entityScenePrefix,
+          transitionScenePrefix: opts.transitionScenePrefix,
+          includeWorldTscn: opts.includeWorldTscn,
+          assetBindingMode: opts.assetBindingMode,
+        },
+      };
+      const url = env.downloadJson(filename, bundle);
+      cb.setStatus('exported');
+      cb.markExported();
+      if (url && cb.setFallback) cb.setFallback({ href: url, filename });
+      // 10A: emit structured receipt with fidelity summary
+      if (cb.addReceipt) {
+        const s = result.fidelity.summary;
+        const level = s.dropped > 0 ? 'dropped' : s.approximated > 0 ? 'approximated' : 'preserved';
+        cb.addReceipt({
+          target: 'godot',
+          filename,
+          timestamp: Date.now(),
+          zones: project.zones.length,
+          entities: project.entityPlacements.length,
+          items: project.itemPlacements.length,
+          dialogues: project.dialogues.length,
+          trees: project.progressionTrees.length,
+          assets: project.assets.length,
+          warnings: result.warnings.length,
+          fidelity: level,
+          sizeEstimate: JSON.stringify(bundle).length,
+        });
+      }
+    } catch (err) {
+      failExport(cb, `Failed to serialize Godot export bundle: ${errorMessage(err)}`);
     }
   } catch (err) {
-    cb.setStatus('invalid');
-    const msg = err instanceof Error ? err.message : String(err);
-    cb.setErrors([`Failed to serialize Godot export bundle: ${msg}`]);
+    failExport(cb, `Failed to export: ${errorMessage(err)}`);
   }
 }

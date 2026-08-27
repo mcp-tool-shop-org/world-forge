@@ -5,13 +5,16 @@
  * resources that a GDScript/C# loot manager can consume.
  */
 
-import type { WorldProject, LootTable } from '@world-forge/schema';
+import type { WorldProject, ItemRarity } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 
 export interface GodotLootEntry {
     itemId: string;
     weight: number;
     quantity?: { min: number; max: number };
+    /** Spawn-condition grammar that gates eligibility (same as EntityPlacement.spawnCondition). */
+    condition?: string;
+    rarity?: ItemRarity;
 }
 
 export interface GodotLootTableResource {
@@ -22,6 +25,8 @@ export interface GodotLootTableResource {
     entries: GodotLootEntry[];
     /** Total weight for quick normalization. */
     totalWeight: number;
+    /** Tags for filtering / discovery. */
+    tags: string[];
 }
 
 export interface ConvertLootTablesResult {
@@ -45,8 +50,11 @@ export function convertLootTables(project: WorldProject): ConvertLootTablesResul
                 itemId: e.itemId,
                 weight: e.weight,
                 quantity: e.quantity ? { min: e.quantity.min, max: e.quantity.max } : undefined,
+                condition: e.condition,
+                rarity: e.rarity,
             })),
             totalWeight,
+            tags: table.tags?.slice() ?? [],
         });
 
         fidelity.push({
@@ -55,8 +63,8 @@ export function convertLootTables(project: WorldProject): ConvertLootTablesResul
             severity: 'info',
             entityId: table.id,
             fieldPath: `lootTables.${table.id}`,
-            message: `Loot table "${table.id}" (${table.entries.length} entries, ${table.rolls} rolls) preserved.`,
-            reason: 'Direct structural mapping to Godot resource.',
+            message: `Loot table "${table.id}" (${table.entries.length} entries, ${table.rolls ?? 1} rolls) preserved.`,
+            reason: 'Direct structural mapping to Godot resource — entries keep condition/rarity; table keeps tags.',
         });
     }
 

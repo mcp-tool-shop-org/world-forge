@@ -3,8 +3,13 @@
 export { exportToGodot, GODOT_PACK_FORMAT_VERSION } from './export.js';
 export type {
     GodotContentPack, GodotPackMeta,
-    GodotExportOptions, GodotExportResult, GodotExportError,
+    GodotExportOptions, GodotExportResult, GodotExportError, GodotAssetCopy,
 } from './export.js';
+
+export { buildProjectGodot, PLAYER_SCRIPT_PATH, PLAYER_MOVE_SCRIPT } from './godot-project.js';
+export type { ProjectGodotOptions } from './godot-project.js';
+
+export { planAuthoredAssetCopies, resourcePathToRel, isRemoteAssetUri } from './copy-assets.js';
 
 export { convertZones } from './convert-zones.js';
 export type { GodotZoneResource, ConvertZonesResult } from './convert-zones.js';
@@ -26,7 +31,7 @@ export type { GodotNavigationLink, GodotTransitionMode, ConvertConnectionsResult
 export { convertDialogues } from './convert-dialogues.js';
 export type { GodotDialogueResource, GodotDialogueNode, GodotDialogueChoice, ConvertDialoguesResult } from './convert-dialogues.js';
 
-export { convertAssets } from './convert-assets.js';
+export { convertAssets, deriveGodotFilename, FALLBACK_ASSET_DIR } from './convert-assets.js';
 export type { GodotAssetBinding, ConvertAssetsResult } from './convert-assets.js';
 
 export { convertLootTables } from './convert-loot-tables.js';
@@ -38,12 +43,12 @@ export type { GodotSpawnMarker, ConvertSpawnPointsResult } from './convert-spawn
 export { convertTransitions } from './convert-transitions.js';
 export type { GodotTransitionNode, ConvertTransitionsResult } from './convert-transitions.js';
 
-export { convertTileLayers, encodeTileMapData } from './convert-tile-layers.js';
+export { convertTileLayers, encodeTileMapData, fallbackTileColor, cssHexToGodotColor, tilesetTexturePath } from './convert-tile-layers.js';
 export type {
     GodotTileLayer, GodotTileCell, GodotTileAtlasSource, ConvertTileLayersResult,
 } from './convert-tile-layers.js';
 
-export { convertProps } from './convert-props.js';
+export { convertProps, propTexturePath } from './convert-props.js';
 export type { GodotPropNode, ConvertPropsResult } from './convert-props.js';
 
 export { convertEconomy } from './convert-economy.js';
@@ -61,18 +66,29 @@ export type { GodotHazardPlacement, ConvertHazardsResult } from './convert-hazar
 export { convertGates } from './convert-gates.js';
 export type { GodotZoneGate, ConvertGatesResult } from './convert-gates.js';
 
-export { buildWorldScene } from './scene-builder.js';
+export { buildWorldScene, uniquifyRootNodeNames, RESERVED_ROOT_NODE_NAMES } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 
-export { serializeTres, objectToTresFields } from './tres-serializer.js';
+export { serializeTres, objectToTresFields, serializeResource } from './tres-serializer.js';
 export type { TresField, TresValue } from './tres-serializer.js';
 
 export {
-    gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX,
+    collectDroppedFieldFidelity, COVERED_FIELDS, KNOWN_DROPPED, ALL_WORLD_PROJECT_FIELDS,
+} from './field-coverage.js';
+
+export {
+    migrateGodotPack, parseSemVer, compareSemVer, isMigrationError, MIGRATIONS,
+} from './migrations.js';
+export type { MigrationResult, MigrationError, SemVer } from './migrations.js';
+
+export { uniqueSiblingName, sanitizeNodeName } from './node-naming.js';
+
+export {
+    gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX, resolveTileSize,
 } from './coordinate-transform.js';
 export type { GodotVec2, GodotVec3 } from './coordinate-transform.js';
 
-export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
+export { summarizeFidelity, buildFidelityReport, formatDroppedIdentities } from './fidelity.js';
 export type {
     FidelityLevel, FidelitySeverity, FidelityDomain,
     FidelityEntry, DomainSummary, FidelitySummary, FidelityReport,

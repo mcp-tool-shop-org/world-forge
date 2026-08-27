@@ -6,7 +6,11 @@ import {
   getLastAutoSaveError, clearLastAutoSaveError, getAutoSaveHealth,
   attemptCrashRecovery,
   startAutoSave, stopAutoSave,
+  flushAutoSaveIfDirty,
+  AUTOSAVE_SAVE_HINT,
 } from './store/project-store.js';
+import { saveProjectFile } from './save-project.js';
+import { resetFileInput } from './file-load.js';
 import { validateProject } from '@world-forge/schema';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
 import { ToastHost, pushToast } from './ui/Toast.js';
@@ -24,6 +28,8 @@ import { EntityProperties } from './panels/EntityProperties.js';
 import { SelectionActionsPanel } from './panels/SelectionActionsPanel.js';
 import { ConnectionProperties } from './panels/ConnectionProperties.js';
 import { EncounterProperties } from './panels/EncounterProperties.js';
+import { LandmarkProperties } from './LandmarkProperties.js';
+import { SpawnProperties } from './SpawnProperties.js';
 import { ValidationPanel, useIssueCount } from './panels/ValidationPanel.js';
 import { PlayerTemplatePanel } from './panels/PlayerTemplatePanel.js';
 import { BuildCatalogPanel } from './panels/BuildCatalogPanel.js';
@@ -42,39 +48,26 @@ import { ModalLayer } from './panels/ModalLayer.js';
 import { Canvas } from './Canvas.js';
 import { getModeProfile } from './mode-profiles.js';
 import { confirmDiscard } from './modal-guards.js';
-import { buttonBase, buttonPrimary } from './ui/styles.js';
+import { buttonBase, buttonPrimary, toolbarRow } from './ui/styles.js';
+import { SAMPLE_WORLDS } from './templates/samples.js';
 
-// FT-030: Light mode CSS variables injected when theme === 'light'
-const LIGHT_THEME_STYLE = `
-  body.light {
-    --wf-bg-app: #f5f5f5;
-    --wf-bg-panel: #e8e8e8;
-    --wf-bg-control: #ddd;
-    --wf-text-primary: #1a1a2e;
-    --wf-text-muted: #444;
-    --wf-text-hint: #666;
-    --wf-border-default: #bbb;
-    --wf-accent: #0366d6;
-    --wf-success: #22863a;
-    --wf-danger: #cb2431;
-    --wf-danger-bg: #fce4e4;
-    --wf-warning: #b08800;
-    color-scheme: light;
-  }
-`;
-
-/** FT-030: Read persisted theme, defaulting to 'dark' */
+/** FT-030: persisted theme, else prefers-color-scheme, else dark. */
 export function getInitialTheme(): 'dark' | 'light' {
   try {
     const stored = localStorage.getItem('wf-theme');
-    if (stored === 'light') return 'light';
+    if (stored === 'light' || stored === 'dark') return stored;
   } catch { /* ignore */ }
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    try {
+      if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    } catch { /* ignore */ }
+  }
   return 'dark';
 }
 
 export function App() {
   const { project, dirty, loadProject, markClean, undo, redo, getUndoCount, getRedoCount, getUndoLabel, getRedoLabel } = useProjectStore();
-  const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSearch, showSpeedPanel } = useEditorStore();
+  const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSpeedPanel, showMinimap } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
@@ -83,6 +76,10 @@ export function App() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const savingRef = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const issueCount = useIssueCount();
   const depsCount = useDependencyCount();
@@ -92,18 +89,16 @@ export function App() {
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light');
     document.body.classList.toggle('dark', theme === 'dark');
+    document.documentElement.classList.toggle('light', theme === 'light');
+    document.documentElement.classList.toggle('dark', theme === 'dark');
     try { localStorage.setItem('wf-theme', theme); } catch { /* ignore */ }
   }, [theme]);
 
-  // FT-022: Validation toast notification when issues are resolved
+  // FT-022: Validation toast when issues are resolved — F-2fc5e0ad: one live region.
   const prevIssueCount = useRef(issueCount);
-  const [showResolvedToast, setShowResolvedToast] = useState(false);
   useEffect(() => {
     if (prevIssueCount.current > 0 && issueCount < prevIssueCount.current) {
-      setShowResolvedToast(true);
-      const timer = setTimeout(() => setShowResolvedToast(false), 2000);
-      prevIssueCount.current = issueCount;
-      return () => clearTimeout(timer);
+      pushToast('Issue resolved \u2713', 'success', 2000);
     }
     prevIssueCount.current = issueCount;
   }, [issueCount]);
@@ -143,6 +138,19 @@ export function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  // F-e6f1b71a: flush the crash-recovery slot on hide/quit. Timers freeze
+  // when a mobile browser backgrounds; beforeunload is only a prompt.
+  useEffect(() => {
+    const onPageHide = () => { flushAutoSaveIfDirty(); };
+    const onVisibility = () => { if (document.hidden) flushAutoSaveIfDirty(); };
+    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
   // ED-B-001 + ED-B-008: poll the auto-save health + error getters each tick so the
   // non-intrusive banner below can surface silent quota failures and oversize
   // auto-save suspensions. A 3-second poll keeps the banner responsive without
@@ -159,7 +167,7 @@ export function App() {
 
   const losslessPct = importFidelity?.summary.losslessPercent;
 
-  const tabs: { id: RightTab; label: string; badge?: string; badgeColor?: string }[] = [
+  const tabs: { id: RightTab; label: string; badge?: string; badgeColor?: string; badgeFg?: string }[] = [
     { id: 'map', label: 'Map' },
     { id: 'player', label: 'Player' },
     { id: 'builds', label: 'Builds' },
@@ -169,10 +177,10 @@ export function App() {
     { id: 'presets', label: 'Presets' },
     { id: 'assets', label: 'Assets', badge: (project.assets?.length ?? 0) > 0 ? `${project.assets!.length}` : undefined },
     { id: 'issues', label: 'Issues' },
-    { id: 'deps', label: 'Deps', badge: depsCount > 0 ? `${depsCount}` : undefined, badgeColor: '#d29922' },
+    { id: 'deps', label: 'Deps', badge: depsCount > 0 ? `${depsCount}` : undefined, badgeColor: 'var(--wf-warning)', badgeFg: 'var(--wf-on-warning)' },
     { id: 'review', label: 'Review' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
-    ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? '#3fb950' : '#d29922' }] : []),
+    ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? 'var(--wf-success)' : 'var(--wf-warning)', badgeFg: losslessPct === 100 ? 'var(--wf-on-success)' : 'var(--wf-on-warning)' }] : []),
     ...(importSnapshot ? [{ id: 'diff' as RightTab, label: 'Diff' }] : []),
   ];
 
@@ -183,10 +191,17 @@ export function App() {
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // F-5c713675: always clear so choosing the same .json again fires onChange
+    // (success, parse error, and empty-file paths).
+    resetFileInput(e.target);
     if (!file) return;
     setFileError(null);
+    setFileLoading(`Reading ${file.name}\u2026`);
     const reader = new FileReader();
+    const clearLoading = () => setFileLoading(null);
+    reader.onloadstart = () => setFileLoading(`Reading ${file.name}\u2026`);
     reader.onload = () => {
+      clearLoading();
       const raw = reader.result;
       try {
         const p = JSON.parse(raw as string);
@@ -223,42 +238,45 @@ export function App() {
     reader.onerror = () => {
       // EUB-002: log full reader.error for debugging
       console.error('[WorldForge] FileReader error:', reader.error);
+      clearLoading();
       setFileError(`Failed to read file: ${reader.error?.message ?? 'unknown error'}`);
     };
     reader.onabort = () => {
+      clearLoading();
       setFileError('File reading was aborted.');
     };
     reader.readAsText(file);
   }, [loadProject]);
 
   const handleSave = useCallback(() => {
-    const filename = `${project.id}.json`;
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    // Mark project as clean after save — clears dirty dot and beforeunload warning.
-    markClean();
-    // ED-B-013: confirm the save actually triggered. The download itself is
-    // opaque (browser may drop it into a downloads tray), so a short toast
-    // closes the loop.
-    pushToast(`Saved as ${filename}`, 'success', 2000);
+    // F-579225c9: ignore a second click while a picker/download is in flight.
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    // F-95295187: never markClean/clearAutoSave until the write is confirmed.
+    void saveProjectFile(project, { markClean, toast: pushToast }).finally(() => {
+      savingRef.current = false;
+      setSaving(false);
+    });
   }, [project, markClean]);
+
+  const handleOpenSample = useCallback(() => {
+    if (dirty && !confirmDiscard()) return;
+    loadProject(SAMPLE_WORLDS[0].project);
+  }, [dirty, loadProject]);
+
+  useEffect(() => {
+    if (!saveMenuOpen) return;
+    const close = () => setSaveMenuOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [saveMenuOpen]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* FT-030: Light theme CSS variables */}
-      <style>{LIGHT_THEME_STYLE}</style>
-
-      {/* Top bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-        background: 'var(--wf-bg-panel)', borderBottom: '1px solid var(--wf-border-default)',
-      }}>
-        <img src="/logo.png" alt="World Forge" style={{ height: 24, borderRadius: 4 }} />
+      {/* Top bar — F-4ba7e396: toolbarRow + layout tokens; Save menu; wrap; pin Export. */}
+      <div style={toolbarRow}>
+        <img src="/mark.svg" alt="World Forge" width={24} height={24} style={{ height: 24, width: 24 }} />
         <strong style={{ color: 'var(--wf-accent)' }}>World Forge</strong>
         <span style={{ color: 'var(--wf-text-muted)', fontSize: 12 }}>
           {project.name}
@@ -269,15 +287,15 @@ export function App() {
               role="status"
               style={{
                 display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
-                background: 'var(--wf-warning, #d29922)', marginLeft: 6, verticalAlign: 'middle',
+                background: 'var(--wf-warning-text)', marginLeft: 6, verticalAlign: 'middle',
               }}
             />
           )}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--wf-text-hint)', background: 'var(--wf-bg-control)', borderRadius: 8, padding: '1px 6px' }}>
+        <span style={{ fontSize: 11, color: 'var(--wf-text-muted)', background: 'var(--wf-bg-control)', borderRadius: 8, padding: '1px 6px' }}>
           {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}
         </span>
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: 8 }} />
         {/* FT-030: Theme toggle button */}
         <button
           onClick={() => setTheme((t) => t === 'dark' ? 'light' : 'dark')}
@@ -295,14 +313,59 @@ export function App() {
           aria-label="Search (Ctrl+K)"
         >
           <span style={{ fontSize: 13 }}>{'\uD83D\uDD0D'}</span>
-          <span style={{ fontSize: 10, color: 'var(--wf-text-hint)' }}>Ctrl+K</span>
+          <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Ctrl+K</span>
         </button>
         <button onClick={() => openModal('template-manager')} style={buttonBase}>New</button>
         <button onClick={() => openModal('import')} style={buttonBase}>Import</button>
         <button onClick={handleLoad} style={buttonBase}>Load</button>
-        <button onClick={handleSave} style={buttonBase}>Save</button>
-        <button onClick={() => openModal('save-template')} style={buttonBase}>Save as Template</button>
-        <button onClick={() => openModal('save-kit')} style={buttonBase}>Save as Kit</button>
+        <div style={{ display: 'flex', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={handleSave}
+            style={{ ...buttonBase, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+            disabled={saving}
+            aria-busy={saving}
+            aria-label={saving ? 'Saving' : 'Save'}
+          >
+            {saving ? 'Saving\u2026' : 'Save'}
+          </button>
+          <button
+            type="button"
+            aria-label="More save options"
+            aria-haspopup="menu"
+            aria-expanded={saveMenuOpen}
+            data-testid="wf-save-menu-toggle"
+            onClick={() => setSaveMenuOpen((o) => !o)}
+            style={{ ...buttonBase, borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: 'none', padding: '4px 6px' }}
+          >
+            {'\u25BE'}
+          </button>
+          {saveMenuOpen && (
+            <div
+              role="menu"
+              data-testid="wf-save-menu"
+              style={{
+                position: 'absolute', top: '100%', right: 0, zIndex: 20, marginTop: 4,
+                background: 'var(--wf-bg-elevated)', border: '1px solid var(--wf-border-default)',
+                borderRadius: 'var(--wf-radius-md)', boxShadow: 'var(--wf-shadow-panel)', minWidth: 160,
+              }}
+            >
+              <button
+                role="menuitem"
+                onClick={() => { setSaveMenuOpen(false); openModal('save-template'); }}
+                style={{ ...buttonBase, display: 'block', width: '100%', border: 'none', borderRadius: 0, textAlign: 'left' }}
+              >
+                Save as Template
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => { setSaveMenuOpen(false); openModal('save-kit'); }}
+                style={{ ...buttonBase, display: 'block', width: '100%', border: 'none', borderRadius: 0, textAlign: 'left' }}
+              >
+                Save as Kit
+              </button>
+            </div>
+          )}
+        </div>
         <button
           onClick={undo}
           style={{ ...buttonBase, opacity: getUndoCount() > 0 ? 1 : 0.4 }}
@@ -319,7 +382,7 @@ export function App() {
         >
           Redo{getRedoCount() > 0 ? ` (${getRedoCount()})` : ''}
         </button>
-        <button onClick={() => openModal('export')} style={buttonPrimary}>Export</button>
+        <button onClick={() => openModal('export')} style={{ ...buttonPrimary, marginLeft: 'auto' }}>Export</button>
         <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileChange} />
       </div>
 
@@ -328,6 +391,8 @@ export function App() {
       {autoSaveHealth.oversize && (
         <div
           data-testid="wf-autosave-oversize-banner"
+          role="alert"
+          aria-live="assertive"
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
             background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-warning, #d29922)',
@@ -335,7 +400,7 @@ export function App() {
           }}
         >
           <span style={{ flex: 1 }}>
-            Project too large for auto-save — use File {'\u2192'} Save manually. Auto-save will resume if the project shrinks.
+            Project too large for auto-save — {AUTOSAVE_SAVE_HINT}. Auto-save will resume if the project shrinks.
             {autoSaveHealth.lastBytes > 0 && (
               <span style={{ color: 'var(--wf-text-hint)', marginLeft: 6 }}>
                 ({Math.round(autoSaveHealth.lastBytes / 1024 / 1024 * 10) / 10} MB /
@@ -352,6 +417,8 @@ export function App() {
       {autoSaveErr && !autoSaveHealth.oversize && (
         <div
           data-testid="wf-autosave-error-banner"
+          role="alert"
+          aria-live="assertive"
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
             background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-danger, #f85149)',
@@ -370,8 +437,27 @@ export function App() {
       )}
 
       {/* EU-004: File error banner */}
+      {fileLoading && (
+        <div
+          data-testid="wf-file-reading-banner"
+          role="status"
+          aria-live="polite"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
+            background: 'var(--wf-bg-panel)', borderBottom: '1px solid var(--wf-border-default)',
+            color: 'var(--wf-text-muted)', fontSize: 12,
+          }}
+        >
+          {fileLoading}
+        </div>
+      )}
+
       {fileError && (
-        <div style={{
+        <div
+          role="alert"
+          aria-live="assertive"
+          data-testid="wf-file-error-banner"
+          style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
           background: 'var(--wf-danger-bg, #3d1214)', borderBottom: '1px solid var(--wf-danger, #f85149)',
           color: 'var(--wf-danger, #f85149)', fontSize: 12,
@@ -391,7 +477,7 @@ export function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left sidebar */}
         <div style={{
-          width: leftCollapsed ? 36 : 200,
+          width: leftCollapsed ? 36 : 'var(--wf-sidebar-width)',
           background: 'var(--wf-bg-app)', borderRight: '1px solid var(--wf-border-default)',
           overflow: 'hidden', display: 'flex', flexDirection: 'column',
           transition: 'width 0.15s ease',
@@ -422,12 +508,50 @@ export function App() {
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', minWidth: 0, overflow: 'hidden' }}>
           <Canvas />
+          {project.zones.length === 0 && (
+            <div
+              data-testid="wf-first-run-welcome"
+              style={{
+                position: 'absolute', inset: 0, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none', zIndex: 2,
+              }}
+            >
+              <div
+                style={{
+                  pointerEvents: 'auto', textAlign: 'center',
+                  background: 'var(--wf-bg-elevated)',
+                  border: '1px solid var(--wf-border-default)',
+                  borderRadius: 'var(--wf-radius-lg)',
+                  boxShadow: 'var(--wf-shadow-panel)',
+                  padding: 'var(--wf-space-6) var(--wf-space-5)',
+                  maxWidth: 360,
+                }}
+              >
+                <img src="/mark.svg" alt="" width={32} height={32} style={{ display: 'block', margin: '0 auto 12px' }} />
+                <div style={{ fontSize: 'var(--wf-font-2xl)', fontWeight: 600, color: 'var(--wf-text-primary)', marginBottom: 6 }}>
+                  World Forge
+                </div>
+                <p style={{ margin: '0 0 16px', fontSize: 'var(--wf-font-md)', color: 'var(--wf-text-muted)' }}>
+                  Author a world, then export it to a game engine.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  <button type="button" onClick={() => openModal('template-manager')} style={buttonPrimary}>New template</button>
+                  <button type="button" onClick={handleLoad} style={buttonBase}>Load</button>
+                  <button type="button" onClick={() => openModal('import')} style={buttonBase}>Import</button>
+                  <button type="button" onClick={handleOpenSample} style={buttonBase} data-testid="wf-open-sample">Open sample</button>
+                </div>
+              </div>
+            </div>
+          )}
           {showSpeedPanel && <SpeedPanel />}
+          {/* F-69a1f39b: same containing block as the minimap (canvas well), not viewport-fixed. */}
+          <ToastHost shiftForMinimap={showMinimap && project.zones.length > 0} />
         </div>
 
         {/* Right sidebar */}
         <div style={{
-          width: rightCollapsed ? 36 : 300,
+          width: rightCollapsed ? 36 : 'var(--wf-inspector-width)',
           background: 'var(--wf-bg-app)', borderLeft: '1px solid var(--wf-border-default)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transition: 'width 0.15s ease',
@@ -452,11 +576,35 @@ export function App() {
               <div style={{ position: 'relative' }}>
               <div
                 data-testid="wf-tab-bar"
+                role="tablist"
+                aria-label="Editor panels"
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+                  e.preventDefault();
+                  const ids = tabs.map((t) => t.id);
+                  const idx = Math.max(0, ids.indexOf(rightTab));
+                  let next = idx;
+                  if (e.key === 'ArrowRight') next = (idx + 1) % ids.length;
+                  else if (e.key === 'ArrowLeft') next = (idx - 1 + ids.length) % ids.length;
+                  else if (e.key === 'Home') next = 0;
+                  else if (e.key === 'End') next = ids.length - 1;
+                  const nextId = ids[next];
+                  setRightTab(nextId);
+                  const btn = e.currentTarget.querySelector(`[data-tab-id="${nextId}"]`) as HTMLButtonElement | null;
+                  btn?.focus();
+                }}
                 style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)', background: 'var(--wf-bg-panel)', overflowX: 'auto' }}
               >
                 {tabs.map((t) => (
                   <button
                     key={t.id}
+                    type="button"
+                    role="tab"
+                    id={`wf-tab-${t.id}`}
+                    data-tab-id={t.id}
+                    aria-selected={rightTab === t.id}
+                    aria-controls={`wf-tab-panel-${t.id}`}
+                    tabIndex={rightTab === t.id ? 0 : -1}
                     onClick={() => setRightTab(t.id)}
                     style={{
                       flexShrink: 0, padding: '6px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
@@ -469,7 +617,7 @@ export function App() {
                     {t.label}
                     {t.id === 'issues' && issueCount > 0 && (
                       <span style={{
-                        marginLeft: 4, fontSize: 9, background: 'var(--wf-danger)', color: '#fff',
+                        marginLeft: 4, fontSize: 9, background: 'var(--wf-danger)', color: 'var(--wf-on-danger)',
                         borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
                       }}>
                         {issueCount}
@@ -477,7 +625,7 @@ export function App() {
                     )}
                     {t.badge && (
                       <span style={{
-                        marginLeft: 4, fontSize: 9, background: t.badgeColor ?? '#8b949e', color: '#fff',
+                        marginLeft: 4, fontSize: 9, background: t.badgeColor ?? 'var(--wf-text-muted)', color: t.badgeFg ?? 'var(--wf-on-accent)',
                         borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
                       }}>
                         {t.badge}
@@ -500,19 +648,26 @@ export function App() {
               </div>
 
               {/* Tab content */}
-              <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+              <div
+                role="tabpanel"
+                id={`wf-tab-panel-${rightTab}`}
+                aria-labelledby={`wf-tab-${rightTab}`}
+                style={{ flex: 1, overflow: 'auto', padding: 8 }}
+              >
                 {rightTab === 'map' && (
                   <>
                     {getSelectionCount(selection) >= 2 && <SelectionActionsPanel />}
                     {selectedConnection && <ConnectionProperties />}
                     {selection.encounters.length === 1 && <EncounterProperties />}
+                    {selection.landmarks.length === 1 && <LandmarkProperties />}
+                    {selection.spawns.length === 1 && <SpawnProperties />}
                     {selectedZoneId && <ZoneProperties />}
                     {selectedZoneId && <EconomyPanel />}
                     {selectedZoneId && <TownStructuresPanel />}
                     {activeTool === 'entity-place' && <EntityProperties />}
-                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && <StrataPanel />}
-                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && <HazardLibraryPanel />}
-                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && (
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <StrataPanel />}
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <HazardLibraryPanel />}
+                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && (
                       <div style={{ fontSize: 12, color: 'var(--wf-text-muted)', padding: '8px 0' }}>
                         Select a zone or use a tool to see properties.
                       </div>
@@ -539,8 +694,11 @@ export function App() {
       </div>
 
       {/* Bottom bar */}
-      <div style={{
+      <div
+        data-testid="wf-status-line"
+        style={{
         display: 'flex', alignItems: 'center', gap: 12, padding: '4px 12px',
+        height: 'var(--wf-bottombar-height)', boxSizing: 'border-box',
         background: 'var(--wf-bg-panel)', borderTop: '1px solid var(--wf-border-default)', fontSize: 11, color: 'var(--wf-text-muted)',
       }}>
         <span>Mode: {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}</span>
@@ -552,35 +710,23 @@ export function App() {
         {selectionCount > 0 && <span>Selected: {selectionCount}</span>}
         <div style={{ flex: 1 }} />
         {issueCount > 0 ? (
-          <span
+          <button
+            type="button"
             onClick={() => setRightTab('issues')}
-            style={{ color: 'var(--wf-danger)', cursor: 'pointer' }}
+            aria-label={`${issueCount} issue${issueCount !== 1 ? 's' : ''} — open Issues tab`}
+            style={{
+              background: 'none', border: 'none', padding: 0, font: 'inherit',
+              color: 'var(--wf-danger-text)', cursor: 'pointer',
+            }}
           >
             {issueCount} issue{issueCount !== 1 ? 's' : ''}
-          </span>
+          </button>
         ) : (
-          <span style={{ color: 'var(--wf-success)' }}>Valid</span>
+          <span style={{ color: 'var(--wf-success-text)' }}>Valid</span>
         )}
       </div>
 
-      {/* FT-022: Validation resolved toast */}
-      {showResolvedToast && (
-        <div style={{
-          position: 'fixed', bottom: 16, right: 16, zIndex: 9999,
-          background: '#238636', color: '#fff', padding: '8px 16px',
-          borderRadius: 6, fontSize: 13, fontWeight: 500,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-          animation: 'wf-toast-fade 2s ease-in-out',
-          pointerEvents: 'none',
-        }}>
-          Issue resolved {'\u2713'}
-        </div>
-      )}
-
       <ModalLayer />
-
-      {/* ED-B-*: shared toast host for transient feedback (save, stale search, etc.) */}
-      <ToastHost />
     </div>
   );
 }

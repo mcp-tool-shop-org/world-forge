@@ -1,8 +1,13 @@
 // shared.tsx — reusable panel components and hooks
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { buttonDangerFull, buttonFullWidth } from '../ui/styles.js';
+
+/** Keyboard handler — fires callback on Enter or Space, matching button semantics. */
+export const onEnter = (fn: () => void) => (e: KeyboardEvent) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+};
 
 // ── Panel Header ─────────────────────────────────────────────
 
@@ -64,23 +69,120 @@ export function ConfirmButton({ label, onConfirm, style: extraStyle }: {
 
 // ── Empty State ────────────────────────────────────────────────
 
-export function EmptyState({ title, description, actions }: {
+/** Centered empty-panel primitive. Icon is decorative; actions are optional. */
+export function EmptyState({ title, description, actions, icon }: {
   title: string;
   description: string;
-  actions: { label: string; onClick: () => void }[];
+  actions?: { label: string; onClick: () => void; testId?: string }[];
+  icon?: string;
 }) {
+  const items = actions ?? [];
   return (
-    <div style={{ padding: '8px 0' }}>
+    <div style={{ padding: 'var(--wf-space-2) 0', textAlign: 'center' }}>
+      <div
+        aria-hidden
+        style={{
+          fontSize: 22, lineHeight: 1, marginBottom: 6,
+          color: 'var(--wf-text-muted)',
+        }}
+      >
+        {icon ?? '\u25A2'}
+      </div>
       <div style={{ fontSize: 13, color: 'var(--wf-text-primary)', fontWeight: 600, marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', lineHeight: 1.5, marginBottom: 10 }}>{description}</div>
-      {actions.map((a, i) => (
-        <button key={i} onClick={a.onClick} style={{ ...buttonFullWidth, marginTop: i > 0 ? 4 : 0 }}>
+      <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', lineHeight: 1.5, marginBottom: items.length > 0 ? 10 : 0 }}>{description}</div>
+      {items.map((a, i) => (
+        <button
+          key={i}
+          onClick={a.onClick}
+          data-testid={a.testId}
+          style={{ ...buttonFullWidth, marginTop: i > 0 ? 4 : 0 }}
+        >
           {a.label}
         </button>
       ))}
     </div>
   );
 }
+
+/** Pressed-chip used by ToolPalette layer/snap toggles (replaces native checkboxes). */
+export function LayerChip({ label, pressed, onToggle }: {
+  label: string;
+  pressed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onToggle}
+      style={{
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        fontSize: 'var(--wf-font-md)',
+        padding: 'var(--wf-space-1) var(--wf-space-2)',
+        marginBottom: 2,
+        cursor: 'pointer',
+        borderRadius: 'var(--wf-radius-sm)',
+        border: `1px solid ${pressed ? 'var(--wf-accent)' : 'var(--wf-border-default)'}`,
+        background: pressed ? 'var(--wf-bg-hover)' : 'var(--wf-bg-control)',
+        color: pressed ? 'var(--wf-text-primary)' : 'var(--wf-text-muted)',
+      }}
+    >
+      {pressed ? '\u25C9' : '\u25CE'} {label}
+    </button>
+  );
+}
+
+/** Semantic / status palettes as named tokens (light-mode remaps with --wf-*). */
+export const STATUS_TOKEN = {
+  unchanged: 'var(--wf-text-muted)',
+  modified: 'var(--wf-accent)',
+  added: 'var(--wf-success-text)',
+  removed: 'var(--wf-danger-text)',
+} as const;
+
+export const HEALTH_TOKEN = {
+  ready: 'var(--wf-success-text)',
+  healthy: 'var(--wf-success-text)',
+  degraded: 'var(--wf-warning)',
+  blocked: 'var(--wf-danger-text)',
+} as const;
+
+export const KIND_TOKEN: Record<string, string> = {
+  portrait: 'var(--wf-accent)',
+  sprite: 'var(--wf-success-text)',
+  background: 'var(--wf-text-faint)',
+  icon: 'var(--wf-warning)',
+  tileset: 'var(--wf-accent)',
+};
+
+export const ROLE_TOKEN: Record<string, string> = {
+  npc: 'var(--wf-accent)',
+  enemy: 'var(--wf-danger-text)',
+  merchant: 'var(--wf-warning)',
+  'quest-giver': 'var(--wf-success-text)',
+  companion: 'var(--wf-success-text)',
+  boss: 'var(--wf-danger)',
+};
+
+export const BANNER_OK: CSSProperties = {
+  background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))',
+  border: '1px solid var(--wf-success)',
+  color: 'var(--wf-success-text)',
+};
+
+export const BANNER_WARN: CSSProperties = {
+  background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))',
+  border: '1px solid var(--wf-warning)',
+  color: 'var(--wf-warning)',
+};
+
+export const BANNER_DANGER: CSSProperties = {
+  background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))',
+  border: '1px solid var(--wf-danger-text)',
+  color: 'var(--wf-danger-text)',
+};
 
 // ── Visibility Toggle (FT-009) ────────────────────────────────
 
@@ -101,7 +203,7 @@ export function VisibilityToggle({ id }: { id: string }) {
       tabIndex={0}
       style={{
         background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px',
-        fontSize: 12, color: hidden ? '#484f58' : '#8b949e', lineHeight: 1,
+        fontSize: 12, color: hidden ? 'var(--wf-text-muted)' : 'var(--wf-text-primary)', lineHeight: 1,
       }}
     >
       {hidden ? '\u25C9' : '\u25CE'}

@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type {
-  WorldProject, Zone, ZoneEntryGate, ZoneConnection, District, EntityPlacement, Landmark, SpawnPoint,
+  WorldProject, Zone, ZoneEntryGate, ZoneConnection, District, EntityPlacement, ItemPlacement, Landmark, SpawnPoint,
   EncounterAnchor, FactionPresence, PressureHotspot, MarketNode, CraftingStation,
   Building, Hub, Stronghold,
   Stratum, StratumLink, HazardDefinition,
@@ -19,10 +19,16 @@ import { DEFAULT_MODE } from '@world-forge/schema';
 import { duplicateSelected as doDuplicate } from '../duplicate.js';
 import { pasteFromClipboard as doPaste } from '../paste.js';
 import { alignSelected as doAlign, distributeSelected as doDistribute, type AlignAxis, type DistributeAxis } from '../layout.js';
-import { useEditorStore } from './editor-store.js';
+import { useEditorStore, type SelectionSet } from './editor-store.js';
 import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
+import { nextId } from '../ids.js';
+import { reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
+
+/** F-d94458a6: name the visible top-bar controls (there is no File menu). */
+export const AUTOSAVE_SAVE_HINT = 'Click Save in the top bar';
+export const AUTOSAVE_EXPORT_HINT = 'Click Export, then Export Project Bundle';
 
 export function createEmptyProject(mode?: AuthoringMode): WorldProject {
   const profile = getModeProfile(mode);
@@ -118,6 +124,26 @@ export function normalizeProjectShape(raw: unknown): WorldProject | null {
   function str(v: unknown, fallback: string): string {
     return typeof v === 'string' ? v : fallback;
   }
+  function finitePositive(v: unknown): number | null {
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+  }
+  // F-d3c285f0: a truncated map object `{id:'m'}` used to be trusted, then
+  // Canvas divided by tileSize and painted NaN. Require finite positives;
+  // merge missing numerics from empty.map.
+  function normalizeMap(rawMap: unknown): WorldProject['map'] {
+    if (!rawMap || typeof rawMap !== 'object' || Array.isArray(rawMap)) return empty.map;
+    const m = rawMap as Record<string, unknown>;
+    const tileSize = finitePositive(m.tileSize) ?? empty.map.tileSize;
+    const gridWidth = finitePositive(m.gridWidth) ?? empty.map.gridWidth;
+    const gridHeight = finitePositive(m.gridHeight) ?? empty.map.gridHeight;
+    return {
+      ...empty.map,
+      ...(m as unknown as WorldProject['map']),
+      tileSize,
+      gridWidth,
+      gridHeight,
+    };
+  }
 
   return {
     ...empty,
@@ -129,7 +155,7 @@ export function normalizeProjectShape(raw: unknown): WorldProject | null {
     genre: str(r.genre, empty.genre),
     difficulty: str(r.difficulty, empty.difficulty),
     narratorTone: str(r.narratorTone, empty.narratorTone),
-    map: r.map && typeof r.map === 'object' && !Array.isArray(r.map) ? (r.map as WorldProject['map']) : empty.map,
+    map: normalizeMap(r.map),
     tones: arr(r.tones, empty.tones),
     zones: arr(r.zones, empty.zones),
     connections: arr(r.connections, empty.connections),
@@ -190,7 +216,7 @@ interface ProjectState {
   loadProject: (p: WorldProject) => boolean;
   newProject: () => void;
   updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
-  /** Mark the project as clean (not dirty). Called after successful save. */
+  /** Mark the project as clean (not dirty). Called after successful save. Also drops the crash-recovery autosave slot. */
   markClean: () => void;
   undo: () => void;
   redo: () => void;
@@ -211,6 +237,8 @@ interface ProjectState {
   addConnection: (c: ZoneConnection) => void;
   updateConnection: (fromId: string, toId: string, updates: Partial<Pick<ZoneConnection, 'label' | 'kind' | 'bidirectional' | 'condition'>>) => void;
   removeConnection: (fromId: string, toId: string) => void;
+  /** F-c8fa9fb6: reverse from/to in a single undoable mutation. */
+  swapConnection: (fromId: string, toId: string) => void;
 
   // District helpers
   addDistrict: (d: District) => void;
@@ -237,6 +265,11 @@ interface ProjectState {
   updateEntity: (entityId: string, updates: Partial<EntityPlacement>) => void;
   removeEntity: (entityId: string) => void;
 
+  // Item placement helpers
+  addItemPlacement: (i: ItemPlacement) => void;
+  updateItemPlacement: (itemId: string, updates: Partial<ItemPlacement>) => void;
+  removeItemPlacement: (itemId: string) => void;
+
   // Landmark helpers
   addLandmark: (l: Landmark) => void;
   updateLandmark: (id: string, updates: Partial<Landmark>) => void;
@@ -246,6 +279,8 @@ interface ProjectState {
   addSpawnPoint: (s: SpawnPoint) => void;
   updateSpawnPoint: (id: string, updates: Partial<SpawnPoint>) => void;
   removeSpawnPoint: (id: string) => void;
+  /** Mark one spawn as default and clear isDefault on every other spawn. */
+  setDefaultSpawnPoint: (id: string) => void;
 
   // Tile helpers
   addTileset: (t: Tileset) => void;
@@ -315,8 +350,8 @@ interface ProjectState {
   applyTileEdits: (layerId: string, edits: { gridX: number; gridY: number; tileId: string | null }[]) => void;
 
   // Batch helpers (multi-select operations)
-  moveSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }, dx: number, dy: number) => void;
-  removeSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => void;
+  moveSelected: (selection: SelectionSet, dx: number, dy: number) => void;
+  removeSelected: (selection: SelectionSet) => void;
   duplicateSelected: (selection: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] };
   /**
    * F-6c8800aa: paste the current clipboard (from useEditorStore) into the
@@ -571,7 +606,8 @@ export function attemptCrashRecovery(): CrashRecoveryOutcome {
  * ED-A-014: If the serialized project size exceeds the practical per-origin
  * limit, we skip the setItem call entirely (and warn once).
  */
-function writeAutoSave(project: WorldProject): void {
+/** Exposed so lifecycle-flush tests can spy the writer (F-e6f1b71a). */
+export function writeAutoSave(project: WorldProject): void {
   const now = Date.now();
   const entry: AutoSaveEntry = { project, timestamp: now };
   let serialized: string;
@@ -592,20 +628,21 @@ function writeAutoSave(project: WorldProject): void {
       console.warn(
         `[auto-save] project exceeds ${Math.round(AUTOSAVE_MAX_BYTES / 1024 / 1024)} MB ` +
         `(${Math.round(serialized.length / 1024 / 1024 * 10) / 10} MB); skipping auto-save. ` +
-        `Use Export Project Bundle to preserve work.`,
+        `${AUTOSAVE_SAVE_HINT}.`,
       );
       _warnedOversize = true;
     }
-    _lastAutoSaveError = 'Auto-save skipped: project is too large for local storage.';
+    _lastAutoSaveError = `Auto-save skipped: project is too large for local storage. ${AUTOSAVE_SAVE_HINT}.`;
     _oversize = true;
     return;
   }
 
   // ED-B-001: Transactional write. Snapshot the prior values of BOTH keys before
   // touching anything, so if either setItem throws (quota / disabled storage)
-  // we can roll the pair back to a consistent state. Otherwise the project
-  // could land while history stays stale — the user recovers a snapshot whose
-  // undo stack doesn't match its canvas.
+  // we can roll the pair back to a consistent state. wf-autosave-history stores
+  // the last N autosave snapshots (not the in-memory undo stack, which is never
+  // persisted). A failed history write would otherwise leave the crash-recovery
+  // slot pointing at a snapshot whose previous-snapshot ring doesn't match.
   let priorProject: string | null = null;
   let priorHistoryRaw: string | null = null;
   try {
@@ -631,7 +668,7 @@ function writeAutoSave(project: WorldProject): void {
     serializedHistory = JSON.stringify(history);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    _lastAutoSaveError = `Auto-save skipped — could not serialize undo history (${msg}). Your canvas is safe; use File → Export Project Bundle to back up.`;
+    _lastAutoSaveError = `Auto-save skipped — could not serialize autosave history (${msg}). Your canvas is safe; ${AUTOSAVE_EXPORT_HINT}.`;
     return;
   }
 
@@ -655,7 +692,7 @@ function writeAutoSave(project: WorldProject): void {
     localStorage.setItem(AUTOSAVE_HISTORY_KEY, serializedHistory);
   } catch (err) {
     rollbackProject();
-    surfaceAutoSaveFailure(err, 'undo history', /* afterRollback */ true);
+    surfaceAutoSaveFailure(err, 'autosave history', /* afterRollback */ true);
     return;
   }
 
@@ -669,7 +706,7 @@ function writeAutoSave(project: WorldProject): void {
 
 /**
  * ED-B-001: shared error surface for the two-phase auto-save. `stage` names the
- * specific write that failed ("project snapshot" vs "undo history") so the
+ * specific write that failed ("project snapshot" vs "autosave history") so the
  * user-facing message can be specific rather than "something failed." When
  * `afterRollback` is true we add a line confirming the previous save is still
  * intact — that's the user's safety net after a mid-transaction failure.
@@ -683,7 +720,7 @@ function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = fal
     console.warn(
       `[auto-save] localStorage quota exceeded while writing ${stage}; ` +
       'auto-save suspended until space is freed. ' +
-      'Use File → Export Project Bundle to preserve your work.',
+      `${AUTOSAVE_EXPORT_HINT}.`,
     );
     _warnedQuota = true;
   } else if (!isQuota) {
@@ -693,8 +730,8 @@ function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = fal
     ? ' Your previous auto-save is still intact.'
     : '';
   _lastAutoSaveError = isQuota
-    ? `Auto-save paused — local storage is full (${stage}). Free space or export the project to keep saving.${rollbackNote}`
-    : `Auto-save failed on ${stage}: ${msg}.${rollbackNote}`;
+    ? `Auto-save paused — local storage is full (${stage}). ${AUTOSAVE_EXPORT_HINT}.${rollbackNote}`
+    : `Auto-save failed on ${stage}: ${msg}. ${AUTOSAVE_EXPORT_HINT}.${rollbackNote}`;
 }
 
 /**
@@ -708,7 +745,9 @@ function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = fal
  *   - Calling `loadProject` / `newProject` resets the in-memory project but
  *     does NOT touch the timer; callers that reinitialize the store in-place
  *     should pair that with `stopAutoSave()` + `startAutoSave()` if they want
- *     a clean tick cadence.
+ *     a clean tick cadence. They DO clear the crash-recovery autosave slot
+ *     after a successful commit (F-9e54f408) so an abandoned project does
+ *     not resurrect on next boot.
  */
 let _autoSaveTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -729,6 +768,18 @@ export function stopAutoSave(): void {
     clearInterval(_autoSaveTimer);
     _autoSaveTimer = null;
   }
+}
+
+/**
+ * F-e6f1b71a: synchronous crash-recovery flush for pagehide / visibilitychange.
+ * beforeunload stays the unsaved-changes prompt and does not write.
+ * Returns true when a write was attempted.
+ */
+export function flushAutoSaveIfDirty(): boolean {
+  const state = useProjectStore.getState();
+  if (!state.dirty) return false;
+  writeAutoSave(state.project);
+  return true;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -754,20 +805,39 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dirty: false, undoStack: [], redoStack: [],
     });
     useEditorStore.getState().clearSelection();
+    // F-17014243: hidden ids are a global localStorage set; chapel-style
+    // projects reuse stable ids, so hiding in A then loading B hid B's objects.
+    useEditorStore.getState().clearHiddenIds();
+    // F-9e54f408: the user explicitly loaded a project — drop the crash-recovery
+    // slot so abandoned project A cannot resurrect after loading B. Failed loads
+    // return false above without reaching here.
+    clearAutoSave();
     return true;
   },
   newProject: () => {
     set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] });
     useEditorStore.getState().clearSelection();
+    useEditorStore.getState().clearHiddenIds();
+    // F-9e54f408: New abandons the previous in-memory project; drop its slot.
+    clearAutoSave();
   },
 
-  markClean: () => set({ dirty: false }),
+  markClean: () => {
+    // F-9e54f408: successful Save — the disk copy is the source of truth, so
+    // the crash-recovery slot for this (now-saved) project must not linger.
+    clearAutoSave();
+    set({ dirty: false });
+  },
 
   updateProject: (updater, label) => {
     const { project, undoStack } = get();
+    const next = updater(project);
+    // F-1f67a7ce: applyRegionPreset / align / distribute return the same
+    // reference when they no-op — don't push an undo entry or flip dirty.
+    if (next === project) return;
     const entry: UndoEntry = { project, label: label ?? 'Edit' };
     const newStack = [...undoStack.slice(-UNDO_DEPTH_LIMIT), entry];
-    set({ project: updater(project), dirty: true, undoStack: newStack, redoStack: [] });
+    set({ project: next, dirty: true, undoStack: newStack, redoStack: [] });
   },
 
   undo: () => {
@@ -816,7 +886,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }), 'Update zone'),
   removeZone: (id) => get().updateProject((p) => ({
     ...p,
-    zones: p.zones.filter((z) => z.id !== id),
+    zones: p.zones
+      .filter((z) => z.id !== id)
+      .map((z) => ({
+        ...z,
+        neighbors: z.neighbors.filter((n) => n !== id),
+        exits: z.exits.filter((e) => e.targetZoneId !== id),
+      })),
     connections: p.connections.filter((c) => c.fromZoneId !== id && c.toZoneId !== id),
   }), 'Delete zone'),
   resizeZone: (zoneId, result) => get().updateProject((p) => ({
@@ -841,9 +917,45 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...p, connections: p.connections.map((c) =>
       c.fromZoneId === fromId && c.toZoneId === toId ? { ...c, ...updates } : c),
   }), 'Update connection'),
-  removeConnection: (fromId, toId) => get().updateProject((p) => ({
-    ...p, connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
-  }), 'Delete connection'),
+  removeConnection: (fromId, toId) => get().updateProject((p) => {
+    // F-9ed42a51: inverse of addConnection — strip neighbor entries on both
+    // ends when the connection was bidirectional.
+    const conn = p.connections.find((c) => c.fromZoneId === fromId && c.toZoneId === toId);
+    return {
+      ...p,
+      connections: p.connections.filter((c) => !(c.fromZoneId === fromId && c.toZoneId === toId)),
+      zones: p.zones.map((z) => {
+        if (z.id === fromId) {
+          return { ...z, neighbors: z.neighbors.filter((n) => n !== toId) };
+        }
+        if (conn?.bidirectional && z.id === toId) {
+          return { ...z, neighbors: z.neighbors.filter((n) => n !== fromId) };
+        }
+        return z;
+      }),
+    };
+  }, 'Delete connection'),
+  swapConnection: (fromId, toId) => get().updateProject((p) => {
+    // F-c8fa9fb6: one undo entry labeled for the swap, not delete+add.
+    const conn = p.connections.find((c) => c.fromZoneId === fromId && c.toZoneId === toId);
+    if (!conn) return p;
+    const connections = p.connections.map((c) =>
+      c.fromZoneId === fromId && c.toZoneId === toId
+        ? { ...c, fromZoneId: toId, toZoneId: fromId }
+        : c,
+    );
+    if (conn.bidirectional) return { ...p, connections };
+    const zones = p.zones.map((z) => {
+      if (z.id === fromId) {
+        return { ...z, neighbors: z.neighbors.filter((n) => n !== toId) };
+      }
+      if (z.id === toId && !z.neighbors.includes(fromId)) {
+        return { ...z, neighbors: [...z.neighbors, fromId] };
+      }
+      return z;
+    });
+    return { ...p, connections, zones };
+  }, 'Swap connection direction'),
 
   // District helpers
   addDistrict: (d) => get().updateProject((p) => ({ ...p, districts: [...p.districts, d] }), 'Add district'),
@@ -892,6 +1004,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...p, entityPlacements: p.entityPlacements.filter((e) => e.entityId !== entityId),
   }), 'Delete entity'),
 
+  addItemPlacement: (i) => get().updateProject((p) => ({ ...p, itemPlacements: [...(p.itemPlacements ?? []), i] }), 'Add item'),
+  updateItemPlacement: (itemId, updates) => get().updateProject((p) => ({
+    ...p, itemPlacements: (p.itemPlacements ?? []).map((it) => it.itemId === itemId ? { ...it, ...updates } : it),
+  }), 'Update item'),
+  removeItemPlacement: (itemId) => get().updateProject((p) => ({
+    ...p, itemPlacements: (p.itemPlacements ?? []).filter((it) => it.itemId !== itemId),
+  }), 'Delete item'),
+
   // Landmark helpers
   addLandmark: (l) => get().updateProject((p) => ({ ...p, landmarks: [...p.landmarks, l] }), 'Add landmark'),
   updateLandmark: (id, updates) => get().updateProject((p) => ({
@@ -909,6 +1029,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   removeSpawnPoint: (id) => get().updateProject((p) => ({
     ...p, spawnPoints: p.spawnPoints.filter((s) => s.id !== id),
   }), 'Delete spawn point'),
+  setDefaultSpawnPoint: (id) => get().updateProject((p) => ({
+    ...p, spawnPoints: p.spawnPoints.map((s) => ({ ...s, isDefault: s.id === id })),
+  }), 'Set default spawn'),
 
   // Tile helpers — tilesets, layers, and placements. The `?? []` guards keep
   // these robust against projects saved before these arrays existed (the type
@@ -1063,25 +1186,64 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   // Batch helpers — single updateProject call for atomic undo
   moveSelected: (sel, dx, dy) => {
-    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const iSet = new Set(sel.items ?? []);
+    const bSet = new Set(sel.buildings ?? []);
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
+      + iSet.size + bSet.size;
     const label = `Move ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
       const eSet = new Set(sel.entities);
       const lSet = new Set(sel.landmarks);
       const sSet = new Set(sel.spawns);
+      // Translate zones first conceptually; attached children use original
+      // zone bounds (translateAttachedByZones reads p.zones before we replace).
+      const attached = zSet.size > 0
+        ? translateAttachedByZones(p, zSet, dx, dy, { entities: eSet, landmarks: lSet, spawns: sSet })
+        : null;
+      const shiftItems = (list: typeof p.itemPlacements, skipZoneMoved: boolean) =>
+        (list ?? []).map((it) => {
+          if (!iSet.has(it.itemId) || it.gridX == null || it.gridY == null) return it;
+          if (skipZoneMoved && zSet.has(it.zoneId)) return it;
+          return { ...it, gridX: it.gridX + dx, gridY: it.gridY + dy };
+        });
+      const shiftBuildings = (list: typeof p.buildings, skipZoneMoved: boolean) =>
+        (list ?? []).map((b) => {
+          if (!bSet.has(b.id)) return b;
+          if (skipZoneMoved && b.zoneId && zSet.has(b.zoneId)) return b;
+          return { ...b, gridX: b.gridX + dx, gridY: b.gridY + dy };
+        });
       return {
         ...p,
         zones: p.zones.map((z) => zSet.has(z.id) ? { ...z, gridX: z.gridX + dx, gridY: z.gridY + dy } : z),
-        entityPlacements: p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
-          ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
-        landmarks: p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
-        spawnPoints: p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+        entityPlacements: attached
+          ? attached.entityPlacements
+          : p.entityPlacements.map((e) => eSet.has(e.entityId) && e.gridX != null && e.gridY != null
+            ? { ...e, gridX: e.gridX + dx, gridY: e.gridY + dy } : e),
+        landmarks: attached
+          ? attached.landmarks
+          : p.landmarks.map((l) => lSet.has(l.id) ? { ...l, gridX: l.gridX + dx, gridY: l.gridY + dy } : l),
+        spawnPoints: attached
+          ? attached.spawnPoints
+          : p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
+        itemPlacements: attached ? shiftItems(attached.itemPlacements, true) : shiftItems(p.itemPlacements, false),
+        buildings: attached ? shiftBuildings(attached.buildings, true) : shiftBuildings(p.buildings, false),
+        ...(attached ? {
+          propPlacements: attached.propPlacements,
+          tileLayers: attached.tileLayers,
+        } : {}),
       };
     }, label);
   },
   removeSelected: (sel) => {
-    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length;
+    const iSet = new Set(sel.items ?? []);
+    const mSet = new Set(sel.markets ?? []);
+    const stSet = new Set(sel.stations ?? []);
+    const bSet = new Set(sel.buildings ?? []);
+    const hSet = new Set(sel.hubs ?? []);
+    const shSet = new Set(sel.strongholds ?? []);
+    const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
+      + iSet.size + mSet.size + stSet.size + bSet.size + hSet.size + shSet.size;
     const label = `Delete ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
@@ -1091,7 +1253,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const encSet = new Set(sel.encounters);
       return {
         ...p,
-        zones: p.zones.filter((z) => !zSet.has(z.id)),
+        zones: p.zones
+          .filter((z) => !zSet.has(z.id))
+          .map((z) => ({
+            ...z,
+            neighbors: z.neighbors.filter((n) => !zSet.has(n)),
+            exits: z.exits.filter((e) => !zSet.has(e.targetZoneId)),
+          })),
         connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
         districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
         // F-df80d913: deleting a zone here must NOT cascade-delete its
@@ -1110,6 +1278,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         landmarks: p.landmarks.filter((l) => !lSet.has(l.id)),
         spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id)),
         encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id)),
+        itemPlacements: (p.itemPlacements ?? []).filter((it) => !iSet.has(it.itemId)),
+        marketNodes: (p.marketNodes ?? []).filter((m) => !mSet.has(m.id)),
+        craftingStations: (p.craftingStations ?? []).filter((c) => !stSet.has(c.id)),
+        buildings: (p.buildings ?? []).filter((b) => !bSet.has(b.id)),
+        hubs: (p.hubs ?? []).filter((h) => !hSet.has(h.id)),
+        strongholds: (p.strongholds ?? []).filter((s) => !shSet.has(s.id)),
       };
     }, label);
   },
@@ -1391,7 +1565,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       );
       if (targetZone) {
         pressureHotspots.push({
-          id: `hotspot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id: nextId('hotspot'),
           zoneId: targetZone,
           pressureType: ph.pressureType,
           baseProbability: ph.baseProbability,
@@ -1404,7 +1578,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }, 'Apply region preset'),
 
   createEncounterFromPreset: (zoneId, preset) => {
-    const id = `enc-${Date.now()}`;
+    const id = nextId('enc');
     get().updateProject((p) => ({
       ...p,
       encounterAnchors: [...p.encounterAnchors, {
@@ -1427,7 +1601,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const zones = project.zones.filter((z) => zoneIds.includes(z.id));
     if (zones.length < 2) return null;
 
-    const mergedId = `zone-merged-${Date.now()}`;
+    const mergedId = nextId('zone-merged');
     const idSet = new Set(zoneIds);
 
     // Compute bounding box
@@ -1495,7 +1669,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return { ...d, zoneIds: [...filtered, mergedId] };
       });
 
-      return { ...p, zones: newZones, entityPlacements, landmarks, spawnPoints, encounterAnchors, connections, districts };
+      const attached = reassignAttachedZoneIds(p, idSet, mergedId);
+
+      return {
+        ...p,
+        zones: newZones,
+        entityPlacements,
+        landmarks,
+        spawnPoints,
+        encounterAnchors,
+        connections,
+        districts,
+        ...attached,
+      };
     }, `Merge ${zoneIds.length} zones`);
 
     return mergedId;
@@ -1531,7 +1717,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
 
       entities.push({
-        entityId: `entity-batch-${Date.now()}-${i}`,
+        entityId: nextId('entity-batch'),
         name: `${config.role} ${i + 1}`,
         zoneId: config.zoneId,
         gridX: gx,

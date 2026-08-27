@@ -16,10 +16,16 @@ vi.mock('pixi.js', () => {
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
+    commands: Array<{ op: string; x?: number; y?: number }> = [];
     setStrokeStyle() { return this; }
-    moveTo() { return this; }
-    lineTo() { return this; }
-    stroke() { return this; }
+    moveTo(x?: number, y?: number) { this.commands.push({ op: 'moveTo', x, y }); return this; }
+    lineTo(x?: number, y?: number) { this.commands.push({ op: 'lineTo', x, y }); return this; }
+    lastStroke: { width?: number; color?: number; alpha?: number } | undefined;
+    stroke(style?: { width?: number; color?: number; alpha?: number }) {
+      this.lastStroke = style;
+      this.commands.push({ op: 'stroke' });
+      return this;
+    }
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Graphics', opts }); }
   }
   return { Container: MockContainer, Graphics: MockGraphics };
@@ -59,15 +65,44 @@ describe('ConnectionRenderer', () => {
     renderer.update(zones, conns);
     // 1 Graphics per connection
     expect(renderer.container.children.length).toBe(2);
+    const solid = renderer.container.children[0] as unknown as {
+      lastStroke?: { color?: number; alpha?: number };
+    };
+    expect(solid.lastStroke?.color).toBe(0xb0b0b0);
+    expect(solid.lastStroke?.alpha).toBe(0.9);
   });
 
   it('skips connections when from or to zone is missing', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const conns: ZoneConnection[] = [
       { fromZoneId: 'ghost', toZoneId: 'a', bidirectional: true } as unknown as ZoneConnection,
       { fromZoneId: 'a', toZoneId: 'ghost', bidirectional: true } as unknown as ZoneConnection,
     ];
     renderer.update(zones, conns);
     expect(renderer.container.children.length).toBe(0);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const msg = String(warnSpy.mock.calls[0][0]);
+    expect(msg).toMatch(/ghost/);
+    expect(msg).toMatch(/missing zone/);
+    warnSpy.mockRestore();
+  });
+
+  it('draws a dashed segment (multiple moveTo/lineTo) when condition is set (F-7f5f8d32)', () => {
+    const conns: ZoneConnection[] = [
+      { fromZoneId: 'a', toZoneId: 'b', bidirectional: true, condition: 'flag:open' } as unknown as ZoneConnection,
+    ];
+    renderer.update(zones, conns);
+    expect(renderer.container.children.length).toBe(1);
+    const g = renderer.container.children[0] as unknown as { commands: Array<{ op: string }> };
+    const moveToCount = g.commands.filter((c) => c.op === 'moveTo').length;
+    const lineToCount = g.commands.filter((c) => c.op === 'lineTo').length;
+    const strokeCount = g.commands.filter((c) => c.op === 'stroke').length;
+    // A solid line would be 1 moveTo + 1 lineTo + 1 stroke. Dashed path
+    // emits one moveTo/lineTo/stroke triple per dash along the segment.
+    expect(moveToCount).toBeGreaterThan(1);
+    expect(lineToCount).toBeGreaterThan(1);
+    expect(strokeCount).toBeGreaterThan(1);
+    expect(moveToCount).toBe(lineToCount);
   });
 
   it('destroys previous Graphics on re-update to prevent leaks (INF-A-003)', () => {

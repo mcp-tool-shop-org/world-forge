@@ -47,7 +47,10 @@ describe('convertStrata — zone banding', () => {
   it('warns + skips a zone referencing a nonexistent stratum', () => {
     const { zoneStrata, fidelity } = convertStrata(proj([zone('z1', 0, 0, 2, 2, 'ghost')], [stratum('surface')]));
     expect(zoneStrata['z1']).toBeUndefined();
-    expect(fidelity.some((f) => f.level === 'dropped' && f.fieldPath === 'zones.stratumId')).toBe(true);
+    const dropped = fidelity.find((f) => f.level === 'dropped' && f.fieldPath === 'zones.stratumId');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('z1');
   });
 });
 
@@ -62,7 +65,7 @@ describe('convertStrata — links', () => {
     expect(links[0].position).toEqual({ x: 192, y: 192 });
   });
 
-  it('falls back to the single anchor zone center, else origin', () => {
+  it('falls back to the single anchor zone center, else origin with approximated fidelity', () => {
     const single = convertStrata(proj(
       [zone('za', 0, 0, 4, 4)],
       [stratum('surface'), stratum('under', { order: -1 })],
@@ -71,6 +74,17 @@ describe('convertStrata — links', () => {
     expect(single.links[0].position).toEqual({ x: 64, y: 64 });
     const none = convertStrata(proj([], [stratum('surface'), stratum('under', { order: -1 })], [link('l2')]));
     expect(none.links[0].position).toEqual({ x: 0, y: 0 });
+    expect(none.fidelity.some((f) => f.level === 'approximated' && f.entityId === 'l2' && f.message.includes('origin'))).toBe(true);
+  });
+
+  it('drops a link whose authored fromZoneId does not resolve (F-10e466b8)', () => {
+    const { links, fidelity } = convertStrata(proj(
+      [zone('za', 0, 0, 4, 4)],
+      [stratum('surface'), stratum('under', { order: -1 })],
+      [link('l1', { fromZoneId: 'ghost' })],
+    ));
+    expect(links).toHaveLength(0);
+    expect(fidelity.some((f) => f.level === 'dropped' && f.message.includes('ghost'))).toBe(true);
   });
 });
 

@@ -60,6 +60,27 @@ Every node is a textureless, self-contained engine primitive — the export load
 clean in **real Godot 4.7 headless** (the dogfood smoke asserts 36 facts about the
 generated scene, from zone collision to the cellar's underground `z_index` band).
 
+## CLI
+
+```bash
+npx world-forge-export-godot project.json --out ./GodotPack
+npx world-forge-export-godot project.json --validate-only
+npx world-forge-export-godot project.json --out ./GodotPack --no-world-tscn
+```
+
+`--out` writes a **loadable Godot 4 project root** (File → Open Project):
+
+| Path | What |
+|------|------|
+| `project.godot` | `config_version=5`, features `4.x`, `run/main_scene="res://world.tscn"` |
+| `world.tscn` | playable scene; ExtResource entries point at `.tres` under `res://world_data/` |
+| `world_data/` | stamped `.tres` bodies (zones, items, dialogues, …) |
+| `assets/` | copied authored textures (tilesets / sprites / props); URI paths warn and are skipped |
+| `scripts/player.gd` | `CharacterBody2D` move script for the player pawn |
+| `pack.json` / `fidelity.json` | data pack + lossless / approximated / dropped report |
+
+`--out` requires a path that does not start with `-`. Exit 1 on validation or write failure, with path + message + a fix hint.
+
 ## Programmatic Usage
 
 ```typescript
@@ -67,9 +88,15 @@ import { exportToGodot } from '@world-forge/export-godot';
 
 const result = exportToGodot(project);
 
-// result.pack — full GodotContentPack
-// result.scenes — .tscn scene text per zone
-// result.fidelity — structured fidelity report
+if (!result.success) {
+  // GodotExportError — validation or conversion failed
+  console.error(result.errors);
+} else {
+  // GodotExportResult
+  const pack = result.contentPack;          // GodotContentPack
+  const scene = pack.worldSceneTscn;        // single playable .tscn, not per-zone
+  const { warnings, fidelity } = result;
+}
 ```
 
 ## Editor Export Options
@@ -107,4 +134,12 @@ contributed.
 
 ## Format Version
 
-`GODOT_PACK_FORMAT_VERSION` — currently `1.0.0`.
+`GODOT_PACK_FORMAT_VERSION` — currently `1.1.0`.
+
+Bump rules (keep in sync with `packages/export-godot/src/migrations.ts`):
+
+- **Major** — required field added/removed, or field semantics change in a way a loader must see.
+- **Minor** — optional field added. Old loaders ignore it; new loaders may read it.
+- **Patch** — clarifications, doc-only changes.
+
+`migrateGodotPack()` walks that chain. 1.1.0 added `files` (each stamped `resourcePath` → `.tres` body) and `zoneGates` on the JSON pack so a data-driven loader does not need to parse the `.tscn`.

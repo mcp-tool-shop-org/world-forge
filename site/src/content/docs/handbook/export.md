@@ -34,8 +34,11 @@ The export produces a `ContentPack` with all authored domains plus manifest and 
 
 ```typescript
 type ContentPack = {
+  _debug?: ExportDebugBlock;          // only with --profile debug
+  schemaVersion?: string;             // default-on; --no-emit-schema-version strips it
   entities: EntityBlueprint[];
-  zones: ZoneDefinition[];
+  placements: ExportedPlacement[];    // where entities stand (not on the blueprint)
+  zones: ExportedZone[];              // includes entryGate, not bare ZoneDefinition
   districts: DistrictDefinition[];
   dialogues: DialogueDefinition[];
   items: ItemDefinition[];
@@ -45,6 +48,10 @@ type ContentPack = {
   encounterAnchors: EncounterAnchor[];
   factionPresences: FactionPresence[];
   pressureHotspots: PressureHotspot[];
+  hazardDefinitions: HazardDefinition[];
+  lootTables: LootTable[];
+  craftingStations: CraftingStation[];
+  marketNodes: MarketNode[];
 };
 ```
 
@@ -57,8 +64,23 @@ npx world-forge-export project.json --out ./my-pack
 # Validate only (no output files)
 npx world-forge-export project.json --validate-only
 
+# Dry-run: validate + report sizes, never write (--out is mutually exclusive)
+npx world-forge-export project.json --dry-run
+
+# Debug profile (adds _debug block, keeps every fidelity entry)
+npx world-forge-export project.json --out ./my-pack --profile debug
+
+# Strip ContentPack.schemaVersion (default is to emit it)
+npx world-forge-export project.json --out ./my-pack --no-emit-schema-version
+
 # Verbose output (detailed conversion log)
 npx world-forge-export project.json --out ./my-pack --verbose
+
+# Import a pack directory back to WorldProject JSON
+npx world-forge-export --import ./my-pack --out ./round-trip
+
+# Import content-pack.json + pack-meta.json + manifest.json (and sidecars)
+npx world-forge-export --from-pack ./my-pack --out ./round-trip
 ```
 
 ## Programmatic Usage

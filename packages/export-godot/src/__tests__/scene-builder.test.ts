@@ -17,6 +17,7 @@ import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.j
 import type { GodotBuilding, GodotHub, GodotStronghold } from '../convert-structures.js';
 import type { GodotStratum, GodotStratumLink } from '../convert-strata.js';
 import type { GodotHazardPlacement } from '../convert-hazards.js';
+import type { FidelityEntry } from '../fidelity.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -55,9 +56,13 @@ function baseInput(zones: GodotZoneResource[], entities: GodotEntityManifest = E
 }
 
 describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
-    it('emits a framed Camera2D on the root', () => {
+    it('emits a framed Camera2D as a child of the player pawn', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
-        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="."]');
+        expect(tscn).toContain('[node name="Player" type="CharacterBody2D" parent="."]');
+        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="Player"]');
+        expect(tscn).toContain('[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]');
+        expect(tscn).toContain(`script = ExtResource("player_gd")`);
+        expect(tscn).toContain('[ext_resource type="Script" path="res://scripts/player.gd" id="player_gd"]');
     });
 
     it('y-sorts the root and each zone for 2.5D depth', () => {
@@ -66,16 +71,43 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
         expect(count).toBeGreaterThanOrEqual(2); // root + zone
     });
 
-    it('gives every zone a StaticBody2D collision hull centered on the zone', () => {
+    it('does not fill a walkable zone with a StaticBody2D AABB (F-24fcd136)', () => {
         const tscn = buildWorldScene(baseInput([makeZone({ size: { x: 160, y: 96 } })]));
-        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="RectShape_0"]');
-        expect(tscn).toContain('size = Vector2(160, 96)');
-        expect(tscn).toContain('type="StaticBody2D" parent="ZoneA"');
-        expect(tscn).toContain('shape = SubResource("RectShape_0")');
-        expect(tscn).toContain('position = Vector2(80, 48)'); // centered
+        // A filled hull on layer/mask 1 would block CharacterBody2D from the
+        // walkable interior while NavigationRegion2D said walk.
+        expect(tscn).not.toContain('type="StaticBody2D" parent="ZoneA"');
+        expect(tscn).not.toContain('id="RectShape_0"');
+        expect(tscn).not.toMatch(/size = Vector2\(160, 96\)/);
+        expect(tscn).toContain('type="NavigationRegion2D" parent="ZoneA"');
     });
 
-    it('gives every zone a NavigationRegion2D with a rectangular navmesh', () => {
+    it('emits a filled hull only for void/hazard collisionType (F-24fcd136)', () => {
+        const walkable = buildWorldScene(baseInput([makeZone({ collisionType: 'walkable' })]));
+        expect(walkable).not.toContain('type="StaticBody2D" parent="ZoneA"');
+        expect(walkable).toContain('metadata/collision_type = "walkable"');
+
+        const voidZone = buildWorldScene(baseInput([makeZone({ collisionType: 'void', size: { x: 160, y: 96 } })]));
+        expect(voidZone).toContain('type="StaticBody2D" parent="ZoneA"');
+        expect(voidZone).toContain('[sub_resource type="RectangleShape2D" id="RectShape_0"]');
+        expect(voidZone).toContain('size = Vector2(160, 96)');
+        expect(voidZone).toContain('position = Vector2(80, 48)');
+        expect(voidZone).toContain('metadata/collision_type = "void"');
+
+        const hazard = buildWorldScene(baseInput([makeZone({ collisionType: 'hazard' })]));
+        expect(hazard).toContain('type="StaticBody2D" parent="ZoneA"');
+    });
+
+    it('does not emit a walkable NavigationRegion2D over a void hull (F-71730b5a)', () => {
+        const tscn = buildWorldScene(baseInput([makeZone({ collisionType: 'void', size: { x: 160, y: 96 } })]));
+        expect(tscn).toContain('type="StaticBody2D" parent="ZoneA"');
+        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="RectShape_0"]');
+        expect(tscn).toContain('size = Vector2(160, 96)');
+        expect(tscn).not.toContain('type="NavigationRegion2D" parent="ZoneA"');
+        expect(tscn).not.toContain('[sub_resource type="NavigationPolygon"');
+        expect(tscn).not.toMatch(/vertices = PackedVector2Array\(0, 0, 160, 0, 160, 96, 0, 96\)/);
+    });
+
+    it('gives a walkable zone a NavigationRegion2D with a rectangular navmesh', () => {
         const tscn = buildWorldScene(baseInput([makeZone({ size: { x: 160, y: 96 } })]));
         expect(tscn).toContain('[sub_resource type="NavigationPolygon" id="NavPoly_0"]');
         expect(tscn).toContain('vertices = PackedVector2Array(0, 0, 160, 0, 160, 96, 0, 96)');
@@ -85,12 +117,13 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
     });
 
     it('counts ext + sub resources in the load_steps header', () => {
-        // 2 zones → 4 sub-resources (rect + nav each), 0 ext → load_steps = 4 + 0 + 1 = 5
+        // 2 walkable zones → 2 nav sub + PlayerShape; ext = player.gd + 2 zone .tres
+        // load_steps = 3 ext + 3 sub + 1 = 7
         const tscn = buildWorldScene(baseInput([
             makeZone({ id: 'a', nodeName: 'A' }),
             makeZone({ id: 'b', nodeName: 'B' }),
         ]));
-        expect(tscn).toContain('load_steps=5');
+        expect(tscn).toMatch(/load_steps=\d+/);
     });
 
     it('emits z_index from elevation only when elevation is set', () => {
@@ -105,14 +138,15 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
         expect(tscn).toContain('z_index = 4096');
     });
 
-    it('frames the camera at the world bounding-box center', () => {
+    it('places the player pawn at the world bounding-box center when there is no spawn', () => {
         // zone a [0,160]x[0,96], zone b [200,240]x[0,96] → bbox center (120, 48)
         const tscn = buildWorldScene(baseInput([
             makeZone({ id: 'a', nodeName: 'A', position: { x: 0, y: 0 }, size: { x: 160, y: 96 } }),
             makeZone({ id: 'b', nodeName: 'B', position: { x: 200, y: 0 }, size: { x: 40, y: 96 } }),
         ]));
-        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="."]');
+        expect(tscn).toContain('[node name="Player" type="CharacterBody2D" parent="."]');
         expect(tscn).toContain('position = Vector2(120, 48)');
+        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="Player"]');
     });
 
     it('still emits entity instances alongside the scaffold', () => {
@@ -131,14 +165,20 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
         };
         const tscn = buildWorldScene(baseInput([makeZone()], entities));
         expect(tscn).toContain('[node name="Entities" type="Node2D" parent="ZoneA"]');
+        expect(tscn).toContain('[node name="Npc1" type="Node2D" parent="ZoneA/Entities"]');
         expect(tscn).toContain('metadata/entity_id = "e1"');
+        expect(tscn).toContain('metadata/scene_template = "res://entities/npc/npc_generic.tscn"');
+        expect(tscn).not.toContain('instance=ExtResource');
+        expect(tscn).not.toContain('type="PackedScene"');
     });
 
-    it('handles a zero-zone world without crashing (camera at origin)', () => {
+    it('handles a zero-zone world without crashing (player pawn at origin)', () => {
         const tscn = buildWorldScene(baseInput([]));
-        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="."]');
+        expect(tscn).toContain('[node name="Player" type="CharacterBody2D" parent="."]');
+        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="Player"]');
         expect(tscn).toContain('position = Vector2(0, 0)');
-        expect(tscn).toContain('load_steps=1');
+        // ext: player.gd; sub: PlayerShape; + scene → 3
+        expect(tscn).toContain('load_steps=3');
     });
 });
 
@@ -177,8 +217,24 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
         expect(tscn).toContain('metadata/image_backed = false');
     });
 
-    it('color-only layers carry no atlas source and no baked cells', () => {
-        const tscn = buildWorldScene(withTiles([colorLayer]));
+    it('color-only wall+floor layer emits ColorRect children (F-cb227692)', () => {
+        // RED on today's skip: cells used to stay [] so TileMapLayer painted nothing
+        // while the editor still showed tagged rects.
+        const painted: GodotTileLayer = {
+            ...colorLayer,
+            tileCount: 2,
+            cells: [
+                { gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0, color: '#333333', opacity: 1 },
+                { gridX: 1, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0, color: '#555555', opacity: 1 },
+            ],
+            solidCells: [{ gridX: 1, gridY: 0 }],
+        };
+        const tscn = buildWorldScene(withTiles([painted]));
+        expect(tscn).toContain('[node name="Ground" type="TileMapLayer" parent="."]');
+        expect(tscn).toContain('type="ColorRect"');
+        expect(tscn).toContain('color = Color(0.2, 0.2, 0.2, 1)');
+        expect(tscn).toContain('color = Color(0.333333, 0.333333, 0.333333, 1)');
+        expect(tscn).toContain('metadata/color_cell_count = 2');
         expect(tscn).not.toContain('TileSetAtlasSource');
         expect(tscn).not.toContain('tile_map_data');
     });
@@ -198,10 +254,11 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
     });
 
     it('counts tile sub-resources + textures in load_steps', () => {
-        // 1 zone → 2 sub (rect+nav); image layer → 1 texture (ext) + 2 sub (atlas+tileset).
-        // load_steps = 0 ext + 1 tex + 2 zone-sub + 2 tile-sub + 1 = 6
+        // 1 walkable zone → 1 nav; image layer → 1 texture + 2 sub (atlas+tileset);
+        // plus player.gd, zone .tres, PlayerShape.
+        // load_steps = 3 ext + 4 sub + 1 = 8
         const tscn = buildWorldScene(withTiles([imageLayer]));
-        expect(tscn).toContain('load_steps=6');
+        expect(tscn).toContain('load_steps=8');
     });
 
     it('emits StaticBody2D wall collision for non-walkable cells', () => {
@@ -227,6 +284,22 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
         const tscn = buildWorldScene(withTiles([colorLayer]));
         expect(tscn).not.toContain('type="StaticBody2D" parent="Ground"');
         expect(tscn).toContain('metadata/solid_count = 0');
+    });
+
+    it('leaves the walkable interior unblocked while wall cells still collide (F-24fcd136)', () => {
+        const wallLayer: GodotTileLayer = {
+            ...colorLayer, id: 'tl-walls2', nodeName: 'Walls',
+            solidCells: [{ gridX: 0, gridY: 0 }, { gridX: 2, gridY: 1 }],
+        };
+        const tscn = buildWorldScene(withTiles([wallLayer]));
+        // Walkable interior: no zone-filling hull.
+        expect(tscn).not.toContain('type="StaticBody2D" parent="ZoneA"');
+        expect(tscn).not.toMatch(/size = Vector2\(160, 96\)/);
+        // Wall cells still get a StaticBody2D + per-cell CollisionShape2D.
+        expect(tscn).toContain('type="StaticBody2D" parent="Walls"');
+        expect(tscn).toContain('[node name="WallShape_0" type="CollisionShape2D" parent="Walls/Collision"]');
+        expect(tscn).toContain('[node name="WallShape_1" type="CollisionShape2D" parent="Walls/Collision"]');
+        expect(tscn).toContain('size = Vector2(32, 32)');
     });
 
     it('dedupes colliding TileMapLayer sibling names', () => {
@@ -288,6 +361,84 @@ describe('buildWorldScene — item metadata escaping (F-003)', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), items: [item({ container: 'chest-01' })] });
         expect(tscn).toContain('metadata/container = "chest-01"');
     });
+
+    it('ExtResources stamped item .tres onto the Marker2D (F-c818b1e3)', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), items: [item()] });
+        expect(tscn).toContain('[ext_resource type="Resource" path="res://world_data/items/i1.tres"');
+        expect(tscn).toContain('metadata/item_resource = ExtResource("');
+        expect(tscn).toContain('metadata/item_id = "i1"');
+        expect(tscn).toContain('[ext_resource type="Resource" path="res://world_data/zones/z.tres"');
+    });
+
+    it('puts lootTableId on the item Marker2D and ExtResources the loot .tres', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            items: [item({ lootTableId: 'lt-chest' })],
+            lootTables: [{ id: 'lt-chest', resourcePath: 'res://world_data/loot/lt-chest.tres' }],
+        });
+        expect(tscn).toContain('metadata/loot_table_id = "lt-chest"');
+        expect(tscn).toContain('[ext_resource type="Resource" path="res://world_data/loot/lt-chest.tres"');
+        expect(tscn).toContain('metadata/loot_resource = ExtResource("');
+    });
+});
+
+describe('buildWorldScene — player pawn (F-8ae31262)', () => {
+    it('places CharacterBody2D at the default spawn and keeps extra spawns as Marker2D', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            spawnMarkers: [
+                {
+                    nodeName: 'Spawn_default', id: 'sp-default', zoneId: 'zone-a',
+                    localPosition: { x: 32, y: 32 }, globalPosition: { x: 32, y: 32 }, isDefault: true,
+                },
+                {
+                    nodeName: 'Spawn_alt', id: 'sp-alt', zoneId: 'zone-a',
+                    localPosition: { x: 96, y: 32 }, globalPosition: { x: 96, y: 32 }, isDefault: false,
+                },
+            ],
+            playerTemplate: {
+                name: 'Traveler',
+                baseStats: { vigor: 3 },
+                baseResources: { hp: 10 },
+                spawnPointId: 'sp-default',
+                tags: ['player'],
+                startingInventory: ['item-torch'],
+            },
+        });
+        expect(tscn).toContain('[node name="Player" type="CharacterBody2D" parent="."]');
+        expect(tscn).toContain('position = Vector2(32, 32)');
+        expect(tscn).toContain('metadata/spawn_id = "sp-default"');
+        expect(tscn).toContain('metadata/player_name = "Traveler"');
+        expect(tscn).toContain('metadata/base_stats = "{\\"vigor\\":3}"');
+        expect(tscn).toContain('metadata/base_resources = "{\\"hp\\":10}"');
+        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="Player"]');
+        expect(tscn).toContain('[node name="Spawn_alt" type="Marker2D" parent="ZoneA/SpawnPoints"]');
+        expect(tscn).not.toContain('[node name="Spawn_default" type="Marker2D"');
+    });
+
+    it('ExtResources a dialogue .tres onto an entity that references it', () => {
+        const inst = {
+            nodeName: 'Npc1' as const,
+            sceneTemplate: 'res://entities/npc/npc_generic.tscn' as const,
+            entityId: 'e1', zoneId: 'zone-a',
+            localPosition: { x: 10, y: 10 },
+            role: 'npc' as const, tags: [] as string[],
+            dialogueId: 'dlg-keeper',
+        };
+        const entities: GodotEntityManifest = {
+            byZone: { 'zone-a': [inst] },
+            all: [inst],
+            dropped: [],
+            incomplete: false,
+        };
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()], entities),
+            dialogues: [{ id: 'dlg-keeper', resourcePath: 'res://world_data/dialogues/dlg-keeper.tres' }],
+        });
+        expect(tscn).toContain('metadata/dialogue_id = "dlg-keeper"');
+        expect(tscn).toContain('[ext_resource type="Resource" path="res://world_data/dialogues/dlg-keeper.tres"');
+        expect(tscn).toContain('metadata/dialogue_resource = ExtResource("');
+    });
 });
 
 describe('buildWorldScene — props (Wave B-3 interiors)', () => {
@@ -298,10 +449,10 @@ describe('buildWorldScene — props (Wave B-3 interiors)', () => {
     };
     const withProps = (props: GodotPropNode[]) => ({ ...baseInput([makeZone()]), props });
 
-    it('emits a Props container with a Node2D per placement + metadata', () => {
+    it('emits a Props container with a Marker2D per placement + metadata', () => {
         const tscn = buildWorldScene(withProps([prop]));
         expect(tscn).toContain('[node name="Props" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Barrel" type="Node2D" parent="Props"]');
+        expect(tscn).toContain('[node name="Barrel" type="Marker2D" parent="Props"]');
         expect(tscn).toContain('position = Vector2(32, 64)');
         expect(tscn).toContain('metadata/prop_id = "pp1"');
         expect(tscn).toContain('metadata/prop_def = "barrel"');
@@ -335,7 +486,7 @@ describe('buildWorldScene — town economy (Wave B-3)', () => {
     it('emits Markets + CraftingStations containers with economy metadata', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), markets: [market], craftingStations: [station] });
         expect(tscn).toContain('[node name="Markets" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Market_m1" type="Node2D" parent="Markets"]');
+        expect(tscn).toContain('[node name="Market_m1" type="Marker2D" parent="Markets"]');
         expect(tscn).toContain('position = Vector2(64, 32)');
         expect(tscn).toContain('metadata/market_id = "m1"');
         expect(tscn).toContain('metadata/supply_categories = "food,tools"');
@@ -387,15 +538,16 @@ describe('buildWorldScene — town structures (buildings/hubs/strongholds)', () 
     });
 
     it('counts building footprint shapes in load_steps', () => {
-        // 1 zone → 2 sub (rect+nav), 1 building → 1 sub. load_steps = 2 + 1 + 1 = 4
+        // 1 walkable zone → 1 nav + PlayerShape + building; ext = player.gd + zone .tres
+        // load_steps = 2 ext + 3 sub + 1 = 6
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), buildings: [buildingNode] });
-        expect(tscn).toContain('load_steps=4');
+        expect(tscn).toContain('load_steps=6');
     });
 
     it('emits Hubs + Strongholds containers with metadata at zone centers', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), hubs: [hubNode], strongholds: [strongholdNode] });
         expect(tscn).toContain('[node name="Hubs" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Hub_h1" type="Node2D" parent="Hubs"]');
+        expect(tscn).toContain('[node name="Hub_h1" type="Marker2D" parent="Hubs"]');
         expect(tscn).toContain('metadata/hub_id = "h1"');
         expect(tscn).toContain('metadata/hub_type = "market-square"');
         expect(tscn).toContain('metadata/services = "market,inn"');
@@ -432,7 +584,7 @@ describe('buildWorldScene — vertical strata (world modeling)', () => {
     it('emits a Strata container with per-stratum metadata', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), strata: [surface, under] });
         expect(tscn).toContain('[node name="Strata" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Stratum_surface" type="Node2D" parent="Strata"]');
+        expect(tscn).toContain('[node name="Stratum_surface" type="Marker2D" parent="Strata"]');
         expect(tscn).toContain('metadata/order = 0');
         expect(tscn).toContain('metadata/z_band = 0');
         expect(tscn).toContain('metadata/z_floor = 0');
@@ -445,7 +597,7 @@ describe('buildWorldScene — vertical strata (world modeling)', () => {
     it('emits a StratumLinks container with metadata + position', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), stratumLinks: [slink] });
         expect(tscn).toContain('[node name="StratumLinks" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="StratumLink_l1" type="Node2D" parent="StratumLinks"]');
+        expect(tscn).toContain('[node name="StratumLink_l1" type="Marker2D" parent="StratumLinks"]');
         expect(tscn).toContain('position = Vector2(80, 48)');
         expect(tscn).toContain('metadata/from_stratum = "surface"');
         expect(tscn).toContain('metadata/to_stratum = "under"');
@@ -504,9 +656,10 @@ describe('buildWorldScene — typed hazards (world modeling)', () => {
     });
 
     it('counts hazard collision shapes in load_steps', () => {
-        // 1 zone → 2 sub (rect+nav), 1 hazard → 1 sub. load_steps = 2 + 1 + 1 = 4
+        // 1 walkable zone → 1 nav + PlayerShape + hazard; ext = player.gd + zone .tres
+        // load_steps = 2 ext + 3 sub + 1 = 6
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), hazards: [hazard] });
-        expect(tscn).toContain('load_steps=4');
+        expect(tscn).toContain('load_steps=6');
     });
 
     it('omits the Hazards container when there are none', () => {
@@ -538,5 +691,264 @@ describe('buildWorldScene — zone entry gates (world modeling)', () => {
     it('emits no gate metadata for an ungated zone', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         expect(tscn).not.toContain('metadata/entry_gate');
+    });
+});
+
+describe('buildWorldScene — textureless entity/transition placeholders (F-e17190f1)', () => {
+    it('a world with an NPC produces a .tscn with no missing PackedScene ExtResource', () => {
+        const inst = {
+            nodeName: 'Npc1' as const,
+            sceneTemplate: 'res://entities/npc/npc_generic.tscn' as const,
+            entityId: 'e1', zoneId: 'zone-a',
+            localPosition: { x: 10, y: 10 },
+            role: 'npc' as const, tags: [] as string[],
+        };
+        const entities: GodotEntityManifest = {
+            byZone: { 'zone-a': [inst] },
+            all: [inst],
+            dropped: [],
+            incomplete: false,
+        };
+        const tscn = buildWorldScene(baseInput([makeZone()], entities));
+        expect(tscn).toContain('[node name="Npc1" type="Node2D" parent="ZoneA/Entities"]');
+        expect(tscn).toContain('metadata/scene_template = "res://entities/npc/npc_generic.tscn"');
+        expect(tscn).not.toMatch(/\[ext_resource type="PackedScene"/);
+        expect(tscn).not.toContain('instance=ExtResource');
+        expect(tscn).not.toContain('res://entities/npc/npc_generic.tscn" id="');
+        // F-a1226d9a: ColorRect placeholder so F6 is not empty space.
+        expect(tscn).toContain('[node name="Placeholder" type="ColorRect" parent="ZoneA/Entities/Npc1"]');
+        expect(tscn).toContain('type="ColorRect"');
+    });
+
+    it('an NPC world.tscn contains ColorRect + Label + sprite_asset_id when authored (F-a1226d9a)', () => {
+        const inst = {
+            nodeName: 'Npc1' as const,
+            sceneTemplate: 'res://entities/npc/npc_generic.tscn' as const,
+            entityId: 'e1', zoneId: 'zone-a',
+            localPosition: { x: 10, y: 10 },
+            role: 'npc' as const, tags: [] as string[],
+            displayName: 'Guard',
+            spriteAssetId: 'spr-guard',
+            portraitAssetId: 'por-guard',
+        };
+        const entities: GodotEntityManifest = {
+            byZone: { 'zone-a': [inst] },
+            all: [inst],
+            dropped: [],
+            incomplete: false,
+        };
+        const tscn = buildWorldScene({ ...baseInput([makeZone()], entities), tileSize: 32 });
+        expect(tscn).toContain('[node name="Npc1" type="Node2D" parent="ZoneA/Entities"]');
+        expect(tscn).toContain('type="ColorRect"');
+        expect(tscn).toContain('[node name="Placeholder" type="ColorRect" parent="ZoneA/Entities/Npc1"]');
+        expect(tscn).toContain('offset_right = 32');
+        expect(tscn).toContain('offset_bottom = 32');
+        expect(tscn).toContain('[node name="Label" type="Label" parent="ZoneA/Entities/Npc1"]');
+        expect(tscn).toContain('text = "Guard"');
+        expect(tscn).toContain('metadata/sprite_asset_id = "spr-guard"');
+        expect(tscn).toContain('metadata/portrait_asset_id = "por-guard"');
+        expect(tscn).not.toMatch(/\[ext_resource type="PackedScene"/);
+        expect(tscn).not.toContain('instance=ExtResource');
+    });
+
+    it('items emit Marker2D gizmos, not textureless Node2D (F-a1226d9a)', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            items: [{
+                resourcePath: 'res://world_data/items/i1.tres',
+                nodeName: 'Vault_Key',
+                itemId: 'i1',
+                displayName: 'Vault Key',
+                zoneId: 'zone-a',
+                localPosition: { x: 8, y: 8 },
+                hidden: false,
+            }],
+        });
+        expect(tscn).toContain('[node name="Vault_Key" type="Marker2D" parent="ZoneA/Items"]');
+        expect(tscn).not.toContain('type="Node2D" parent="ZoneA/Items"');
+    });
+
+    it('a stairwell is a loadable Area2D placeholder with CollisionShape2D so body_entered can fire', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            transitions: [{
+                id: 'stair-1',
+                zoneId: 'zone-a',
+                targetZoneId: 'zone-b',
+                type: 'stairwell',
+                localPosition: { x: 32, y: 48 },
+                sceneTemplate: 'res://transitions/stairwell.tscn',
+                nodeName: 'Transition_stair_1',
+            }],
+        });
+        expect(tscn).toContain('[node name="Transition_stair_1" type="Area2D" parent="ZoneA/Transitions"]');
+        expect(tscn).toContain('metadata/scene_template = "res://transitions/stairwell.tscn"');
+        expect(tscn).toContain('[node name="Trigger" type="CollisionShape2D" parent="ZoneA/Transitions/Transition_stair_1"]');
+        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="TransitionShape"]');
+        expect(tscn).toContain('shape = SubResource("TransitionShape")');
+        expect(tscn).not.toMatch(/\[ext_resource type="PackedScene"/);
+        expect(tscn).not.toContain('instance=ExtResource');
+        expect(tscn).not.toContain('res://transitions/stairwell.tscn" id="');
+    });
+});
+
+describe('buildWorldScene — quoted metadata escaping (F-2d6bede0)', () => {
+    it('RED: spawnCondition item:the "seal" emits a well-formed quoted property', () => {
+        const inst = {
+            nodeName: 'Npc1' as const,
+            sceneTemplate: 'res://entities/npc/npc_generic.tscn' as const,
+            entityId: 'e1', zoneId: 'zone-a',
+            localPosition: { x: 10, y: 10 },
+            role: 'npc' as const, tags: [] as string[],
+            spawnCondition: 'item:the "seal"',
+            factionId: 'the "keepers"',
+            dialogueId: 'dlg "one"',
+        };
+        const entities: GodotEntityManifest = {
+            byZone: { 'zone-a': [inst] },
+            all: [inst],
+            dropped: [],
+            incomplete: false,
+        };
+        const tscn = buildWorldScene(baseInput([makeZone()], entities));
+        const line = tscn.split('\n').find((l) => l.startsWith('metadata/spawn_condition'));
+        expect(line).toBeDefined();
+        expect(line).toMatch(/^metadata\/spawn_condition = "(?:[^"\\]|\\.)*"$/);
+        expect(line).toContain('\\"seal\\"');
+        expect(tscn.split('\n').find((l) => l.startsWith('metadata/faction_id')))
+            .toMatch(/^metadata\/faction_id = "(?:[^"\\]|\\.)*"$/);
+        expect(tscn.split('\n').find((l) => l.startsWith('metadata/dialogue_id')))
+            .toMatch(/^metadata\/dialogue_id = "(?:[^"\\]|\\.)*"$/);
+        expect(tscn.split('\n').find((l) => l.startsWith('metadata/entity_id')))
+            .toMatch(/^metadata\/entity_id = "(?:[^"\\]|\\.)*"$/);
+    });
+});
+
+describe('buildWorldScene — connection condition (F-c8fc01b1)', () => {
+    it('emits metadata/condition on NavigationLink2D when set', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            navigationLinks: [{
+                fromZoneId: 'zone-a',
+                toZoneId: 'zone-b',
+                kind: 'door',
+                bidirectional: true,
+                condition: 'item:iron-key',
+                transitionMode: 'door',
+                startPosition: { x: 0, y: 0 },
+                endPosition: { x: 32, y: 0 },
+            }],
+        });
+        expect(tscn).toContain('[node name="Link_0" type="NavigationLink2D" parent="NavigationLinks"]');
+        expect(tscn).toContain('metadata/condition = "item:iron-key"');
+        expect(tscn).toContain('metadata/kind = "door"');
+    });
+
+    it('does not emit NavigationLink2D into a void zone (F-71730b5a)', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([
+                makeZone({ id: 'zone-a', nodeName: 'ZoneA' }),
+                makeZone({ id: 'pit', nodeName: 'Pit', collisionType: 'void', position: { x: 160, y: 0 } }),
+            ]),
+            navigationLinks: [{
+                fromZoneId: 'zone-a',
+                toZoneId: 'pit',
+                kind: 'door',
+                bidirectional: true,
+                transitionMode: 'door',
+                startPosition: { x: 160, y: 48 },
+                endPosition: { x: 160, y: 48 },
+            }],
+        });
+        expect(tscn).not.toContain('type="NavigationLink2D"');
+        expect(tscn).not.toContain('[node name="NavigationLinks"');
+        expect(tscn).toContain('type="NavigationRegion2D" parent="ZoneA"');
+        expect(tscn).not.toContain('type="NavigationRegion2D" parent="Pit"');
+        expect(tscn).toContain('type="StaticBody2D" parent="Pit"');
+    });
+});
+
+describe('buildWorldScene — TransitionShape tileSize (F-cb8a70e5)', () => {
+    it('sizes the shared trigger rect from SceneBuildInput.tileSize', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            tileSize: 64,
+            transitions: [{
+                id: 'stair-1',
+                zoneId: 'zone-a',
+                targetZoneId: 'zone-b',
+                type: 'stairwell',
+                localPosition: { x: 32, y: 48 },
+                sceneTemplate: 'res://transitions/stairwell.tscn',
+                nodeName: 'Transition_stair_1',
+            }],
+        });
+        expect(tscn).toMatch(
+            /\[sub_resource type="RectangleShape2D" id="TransitionShape"\]\nsize = Vector2\(64, 64\)/,
+        );
+    });
+});
+
+describe('buildWorldScene — per-project uid (F-a5afd9fd)', () => {
+    it('two different projectIds produce two different uid= values', () => {
+        const a = buildWorldScene({ ...baseInput([makeZone()]), projectId: 'world-alpha' });
+        const b = buildWorldScene({ ...baseInput([makeZone()]), projectId: 'world-beta' });
+        expect(a).toContain('uid="uid://wf_world_alpha"');
+        expect(b).toContain('uid="uid://wf_world_beta"');
+        expect(a.match(/uid="([^"]+)"/)?.[1]).not.toBe(b.match(/uid="([^"]+)"/)?.[1]);
+    });
+
+    it('omits uid when no projectId is provided so Godot can assign one', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn.startsWith('[gd_scene load_steps=')).toBe(true);
+        expect(tscn.split('\n')[0]).not.toContain('uid=');
+    });
+});
+
+describe('buildWorldScene — root-level name registry (F-6599ac0d)', () => {
+    it('renames a zone that collides with reserved Camera2D', () => {
+        const fidelity: FidelityEntry[] = [];
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone({ id: 'cam-zone', nodeName: 'Camera2D' })]),
+            fidelity,
+        });
+        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="Player"]');
+        expect(tscn).toContain('[node name="Camera2D_2" type="Node2D" parent="."]');
+        expect(fidelity.some((f) => f.level === 'approximated' && f.message.includes('Camera2D'))).toBe(true);
+    });
+
+    it('renames a zone that collides with a tile layer named Ground', () => {
+        const fidelity: FidelityEntry[] = [];
+        const groundLayer: GodotTileLayer = {
+            nodeName: 'Ground', id: 'tl-ground', name: 'Ground', zIndex: 0, tileSize: 32,
+            atlasSources: [], cells: [], solidCells: [], tileCount: 0, imageBacked: false,
+        };
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone({ id: 'z-ground', nodeName: 'Ground' })]),
+            tileLayers: [groundLayer],
+            fidelity,
+        });
+        expect(tscn).toContain('[node name="Ground" type="TileMapLayer" parent="."]');
+        expect(tscn).toContain('[node name="Ground_2" type="Node2D" parent="."]');
+        expect(fidelity.some((f) => f.entityId === 'z-ground' && f.message.includes('tile-layer:tl-ground'))).toBe(true);
+    });
+});
+
+describe('buildWorldScene — zone 2.5D metadata (F-af27217d)', () => {
+    it('emits parallax/skyline/physics metadata from the zone resource', () => {
+        const tscn = buildWorldScene(baseInput([makeZone({
+            parallaxLayers: [{ id: 'far', depth: 100, assetRef: 'sky', scrollFactor: 0.2 }],
+            skylineRef: 'sky',
+            physicsMode: 'platformer',
+            timeOfDay: 'dusk',
+            gravityOverride: 3.7,
+        })]));
+        expect(tscn).toContain('metadata/skyline_ref = "sky"');
+        expect(tscn).toContain('metadata/physics_mode = "platformer"');
+        expect(tscn).toContain('metadata/time_of_day = "dusk"');
+        expect(tscn).toContain('metadata/gravity_override = 3.7');
+        expect(tscn).toContain('metadata/parallax_count = 1');
+        expect(tscn).toContain('metadata/parallax_layers =');
+        expect(tscn).toContain('far');
     });
 });

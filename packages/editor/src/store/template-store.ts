@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import type { WorldProject } from '@world-forge/schema';
+import { nextId } from '../ids.js';
 
 export interface UserTemplate {
   id: string;
@@ -28,10 +29,18 @@ function loadFromStorage(): UserTemplate[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as UserTemplate[];
+    const parsed: unknown = JSON.parse(raw);
+    // F-c27c9e7e: valid JSON that is not an array (null, {}, "x") used to be
+    // stored as templates; saveTemplate then threw on [...].map.
+    if (!Array.isArray(parsed)) {
+      console.warn('Corrupted template data in localStorage — resetting');
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+      return [];
+    }
+    return parsed as UserTemplate[];
   } catch {
     console.warn('Corrupted template data in localStorage — resetting');
-    localStorage.removeItem(STORAGE_KEY);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     return [];
   }
 }
@@ -55,7 +64,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   saveTemplate: (input) => {
     const now = new Date().toISOString();
     const template: UserTemplate = {
-      id: `template-${Date.now()}`,
+      id: nextId('template'),
       name: input.name,
       description: input.description,
       genre: input.genre,
@@ -89,7 +98,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     if (!original) return undefined;
     const now = new Date().toISOString();
     const copy: UserTemplate = {
-      id: `template-${Date.now()}`,
+      id: nextId('template'),
       name: `${original.name} (copy)`,
       description: original.description,
       genre: original.genre,

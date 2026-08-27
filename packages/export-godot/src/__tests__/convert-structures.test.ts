@@ -70,7 +70,10 @@ describe('convertStructures — hubs', () => {
   it('drops a hub whose zone is missing and warns', () => {
     const { hubs, fidelity } = convertStructures(proj([], [], [hub('h1', { zoneId: 'ghost' })]));
     expect(hubs).toHaveLength(0);
-    expect(fidelity.some((f) => f.domain === 'structures' && f.level === 'dropped')).toBe(true);
+    const dropped = fidelity.find((f) => f.domain === 'structures' && f.level === 'dropped');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('h1');
   });
 });
 
@@ -90,7 +93,10 @@ describe('convertStructures — strongholds', () => {
   it('drops a stronghold whose zone is missing and warns', () => {
     const { strongholds, fidelity } = convertStructures(proj([], [], [], [stronghold('s1', { zoneId: 'ghost' })]));
     expect(strongholds).toHaveLength(0);
-    expect(fidelity.some((f) => f.domain === 'structures' && f.level === 'dropped')).toBe(true);
+    const dropped = fidelity.find((f) => f.domain === 'structures' && f.level === 'dropped');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('s1');
   });
 });
 

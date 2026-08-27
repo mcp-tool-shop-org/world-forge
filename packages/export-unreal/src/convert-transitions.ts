@@ -2,7 +2,7 @@
 // the Unreal content pack. Richer than a ZoneConnection because it carries
 // presentation metadata (animation key, travel duration, grid anchor).
 
-import type { WorldProject, TransitionEntity, TransitionEntityType } from '@world-forge/schema';
+import type { WorldProject, TransitionEntity, TransitionEntityType, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 import {
   gridToUnrealAxis,
@@ -23,8 +23,21 @@ export interface UnrealTransitionEntity {
   Tags?: string[];
 }
 
+/**
+ * F-221939a1: record of a transition dropped because its parent zone was
+ * missing. Mirrors UnrealDroppedEntity so a loader / test can detect an
+ * incomplete transitions list without walking fidelity entries.
+ */
+export interface UnrealDroppedTransition {
+  Id: string;
+  ZoneId: string;
+  Reason: string;
+}
+
 export interface ConvertTransitionsResult {
   transitions: UnrealTransitionEntity[];
+  dropped: UnrealDroppedTransition[];
+  incomplete: boolean;
   fidelity: FidelityEntry[];
 }
 
@@ -33,11 +46,48 @@ export function convertTransitions(
   tileSizeCm: number = DEFAULT_TILE_SIZE_CM,
 ): ConvertTransitionsResult {
   const transitions: UnrealTransitionEntity[] = [];
+  const dropped: UnrealDroppedTransition[] = [];
   const fidelity: FidelityEntry[] = [];
+  const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));
 
   const src = project.transitions ?? [];
   for (const t of src) {
-    transitions.push(convertTransition(t, project, tileSizeCm));
+    const parent = zonesById.get(t.zoneId);
+    if (!parent) {
+      // F-221939a1: a missing parent used to fall back to grid (0,0) and
+      // still claim lossless — an unknown zone became a lift at world origin.
+      const reason = `Zone "${t.zoneId}" not found in project.zones.`;
+      fidelity.push({
+        level: 'dropped',
+        domain: 'transitions',
+        severity: 'error',
+        entityId: t.id,
+        fieldPath: `transitions.${t.id}.zoneId`,
+        message: `Transition "${t.id}" dropped — zone "${t.zoneId}" not found.`,
+        reason: 'Orphan zone reference.',
+      });
+      dropped.push({ Id: t.id, ZoneId: t.zoneId, Reason: reason });
+      continue;
+    }
+
+    // F-56fbfdb5: source-zone orphans already drop; a missing target used
+    // to still ship as lossless. Mirror convertConnections / Godot.
+    if (!zonesById.has(t.targetZoneId)) {
+      const reason = `Target zone "${t.targetZoneId}" not found in project.zones.`;
+      fidelity.push({
+        level: 'dropped',
+        domain: 'transitions',
+        severity: 'error',
+        entityId: t.id,
+        fieldPath: `transitions.${t.id}.targetZoneId`,
+        message: `Transition "${t.id}" dropped — target zone "${t.targetZoneId}" not found.`,
+        reason: 'Orphan target zone reference.',
+      });
+      dropped.push({ Id: t.id, ZoneId: t.zoneId, Reason: reason });
+      continue;
+    }
+
+    transitions.push(convertTransition(t, parent, tileSizeCm));
     fidelity.push({
       level: 'lossless',
       domain: 'transitions',
@@ -49,28 +99,19 @@ export function convertTransitions(
     });
   }
 
-  return { transitions, fidelity };
+  return { transitions, dropped, incomplete: dropped.length > 0, fidelity };
 }
 
 function convertTransition(
   t: TransitionEntity,
-  project: WorldProject,
+  parent: Zone,
   tileSizeCm: number,
 ): UnrealTransitionEntity {
   // Resolve an origin: prefer the placed (gridX, gridY) if authored, otherwise
-  // fall back to the parent zone's origin. Either way, promote to Unreal cm.
-  let gridX = t.gridX;
-  let gridY = t.gridY;
-  let elevationMeters = 0;
-  if (gridX === undefined || gridY === undefined) {
-    const parent = project.zones.find((z) => z.id === t.zoneId);
-    gridX = parent?.gridX ?? 0;
-    gridY = parent?.gridY ?? 0;
-    elevationMeters = parent?.elevation ?? 0;
-  } else {
-    const parent = project.zones.find((z) => z.id === t.zoneId);
-    elevationMeters = parent?.elevation ?? 0;
-  }
+  // fall back to the parent zone's origin. Parent is guaranteed present.
+  const gridX = t.gridX ?? parent.gridX;
+  const gridY = t.gridY ?? parent.gridY;
+  const elevationMeters = parent.elevation ?? 0;
 
   const locationCm = gridToUnrealAxis(gridX, gridY, tileSizeCm, elevationMeters);
 

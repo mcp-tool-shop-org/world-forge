@@ -31,7 +31,10 @@ describe('convertProps', () => {
       { id: 'p2', propId: 'ghost', gridX: 1, gridY: 0 },
     ]));
     expect(props.map((p) => p.id)).toEqual(['p1']);
-    expect(fidelity.some((f) => f.domain === 'props' && f.level === 'dropped')).toBe(true);
+    const dropped = fidelity.find((f) => f.domain === 'props' && f.level === 'dropped');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('p2');
   });
 
   it('reports an approximated fidelity entry when props export', () => {
@@ -50,7 +53,10 @@ describe('convertProps', () => {
   it('carries multi-tile footprint + imagePath through', () => {
     const withImg: PropDefinition = { ...rug, imagePath: 'props/rug.png' };
     const { props } = convertProps(proj([withImg], [{ id: 'p1', propId: 'rug', gridX: 0, gridY: 0 }]));
-    expect(props[0]).toMatchObject({ width: 2, height: 1, imagePath: 'props/rug.png' });
+    expect(props[0]).toMatchObject({
+      width: 2, height: 1, imagePath: 'props/rug.png',
+      godotPath: 'res://assets/props/rug.png',
+    });
   });
 
   it('returns nothing for a propless project', () => {

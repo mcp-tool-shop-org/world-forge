@@ -77,7 +77,7 @@ export function summarizeFidelity(
         dropped,
         losslessPercent: total > 0 ? Math.round((lossless / total) * 100) : 100,
         byDomain,
-        incomplete: droppedEntityCount > 0,
+        incomplete: dropped > 0 || droppedEntityCount > 0,
         droppedEntityCount,
     };
 }
@@ -87,4 +87,13 @@ export function buildFidelityReport(entries: FidelityEntry[], options?: { droppe
         entries,
         summary: summarizeFidelity(entries, options),
     };
+}
+
+/**
+ * Format unresolved identities for drop messages. Caps at `cap` then
+ * `…and N more` so a 200-orphan world does not dump a wall of ids.
+ */
+export function formatDroppedIdentities(identities: string[], cap = 8): string {
+    if (identities.length <= cap) return identities.join(', ');
+    return `${identities.slice(0, cap).join(', ')}, …and ${identities.length - cap} more`;
 }

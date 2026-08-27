@@ -19,6 +19,9 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyC', ctrl: true, action: 'copy', label: 'Ctrl+C', description: 'Copy selected objects' },
   { key: 'KeyV', ctrl: true, action: 'paste', label: 'Ctrl+V', description: 'Paste from clipboard' },
   { key: 'KeyD', ctrl: true, action: 'duplicate', label: 'Ctrl+D', description: 'Duplicate selected objects' },
+  { key: 'KeyZ', ctrl: true, action: 'undo', label: 'Ctrl+Z', description: 'Undo last action' },
+  { key: 'KeyZ', ctrl: true, shift: true, action: 'redo', label: 'Ctrl+Shift+Z', description: 'Redo last undone action' },
+  { key: 'KeyY', ctrl: true, action: 'redo', label: 'Ctrl+Y', description: 'Redo last undone action' },
   { key: 'KeyA', ctrl: true, action: 'select-all', label: 'Ctrl+A', description: 'Select all visible objects' },
   { key: 'Delete', action: 'delete', label: 'Del', description: 'Delete selected objects' },
   { key: 'Backspace', action: 'delete', label: 'Backspace', description: 'Delete selected objects' },
@@ -39,6 +42,8 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyS', action: 'tool-spawn', label: 'S', description: 'Switch to Spawn tool' },
   { key: 'KeyT', action: 'tool-tile', label: 'T', description: 'Switch to Tile Paint tool' },
   { key: 'KeyO', action: 'tool-prop', label: 'O', description: 'Switch to Prop Place tool' },
+  { key: 'KeyN', action: 'tool-encounter', label: 'N', description: 'Switch to Encounter Place tool' },
+  { key: 'KeyI', action: 'tool-item', label: 'I', description: 'Switch to Item Place tool' },
 ];
 
 /** Return a flat list of all registered hotkeys for display in a guide panel. */
@@ -54,6 +59,8 @@ export interface HotkeyContext {
   showEntities: boolean;
   showLandmarks: boolean;
   showSpawns: boolean;
+  /** F-5515c044: optional so older test bags still type-check. Default true. */
+  showTown?: boolean;
   /**
    * F-340b4aff: id of the currently-open modal (Export/Import/Template
    * Manager/Save Template/Save Kit), or `null` when none is open. Mirrors
@@ -74,11 +81,19 @@ export interface HotkeyContext {
   duplicateSelected: (sel: SelectionSet) => SelectionSet;
   copySelection?: (project: WorldProject) => void;
   pasteClipboard?: () => void;
+  /** F-f2564ffa: undo/redo — optional so existing test bags still type-check. */
+  undo?: () => void;
+  redo?: () => void;
   setShowSearch: (show: boolean) => void;
   setRightTab: (tab: RightTab) => void;
   setTool: (tool: EditorTool) => void;
   showSpeedPanel: boolean;
   closeSpeedPanel: () => void;
+  /**
+   * F-eb7fc5ef: Escape must drop an in-progress connection, not only the
+   * SelectionSet. Optional so older test bags still type-check.
+   */
+  setConnectionStart?: (zoneId: string | null) => void;
 }
 
 export type HotkeyResult =
@@ -136,10 +151,11 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       return { handled: true, action };
 
     case 'copy': {
+      // F-ef6c82dc: only swallow Ctrl+C when there is something to copy;
+      // otherwise let the browser copy selected non-input text (e.g. project name).
+      if (getSelectionCount(ctx.selection) === 0) return { handled: false };
       e.preventDefault();
-      if (getSelectionCount(ctx.selection) > 0 && ctx.copySelection) {
-        ctx.copySelection(ctx.project);
-      }
+      if (ctx.copySelection) ctx.copySelection(ctx.project);
       return { handled: true, action };
     }
 
@@ -165,7 +181,14 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       const landmarks = ctx.showLandmarks ? ctx.project.landmarks.map((l) => l.id) : [];
       const spawns = ctx.showSpawns ? ctx.project.spawnPoints.map((s) => s.id) : [];
       const encounters = ctx.project.encounterAnchors.map((enc) => enc.id);
-      ctx.selectAll({ zones, entities, landmarks, spawns, encounters }, false);
+      const items = (ctx.project.itemPlacements ?? []).map((i) => i.itemId);
+      const showTown = ctx.showTown !== false;
+      const markets = showTown ? (ctx.project.marketNodes ?? []).map((m) => m.id) : [];
+      const stations = showTown ? (ctx.project.craftingStations ?? []).map((s) => s.id) : [];
+      const buildings = showTown ? (ctx.project.buildings ?? []).map((b) => b.id) : [];
+      const hubs = showTown ? (ctx.project.hubs ?? []).map((h) => h.id) : [];
+      const strongholds = showTown ? (ctx.project.strongholds ?? []).map((s) => s.id) : [];
+      ctx.selectAll({ zones, entities, landmarks, spawns, encounters, items, markets, stations, buildings, hubs, strongholds }, false);
       return { handled: true, action };
     }
 
@@ -188,6 +211,10 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     case 'escape':
       if (ctx.showSpeedPanel) { ctx.closeSpeedPanel(); }
       else { ctx.clearSelection(); }
+      // F-eb7fc5ef: connectionStart is store state (not a Canvas drag ref),
+      // so the advertised Esc-to-cancel must clear it even when a speed panel
+      // was closed. setTool() is otherwise the only production clear.
+      ctx.setConnectionStart?.(null);
       return { handled: true, action };
 
     case 'nudge-up':
@@ -225,6 +252,18 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       return { handled: true, action };
     }
 
+    case 'undo': {
+      e.preventDefault();
+      ctx.undo?.();
+      return { handled: true, action };
+    }
+
+    case 'redo': {
+      e.preventDefault();
+      ctx.redo?.();
+      return { handled: true, action };
+    }
+
     case 'tool-select':    { ctx.setTool('select');       return { handled: true, action }; }
     case 'tool-zone':      { ctx.setTool('zone-paint');   return { handled: true, action }; }
     case 'tool-connection':{ ctx.setTool('connection');    return { handled: true, action }; }
@@ -233,8 +272,59 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     case 'tool-spawn':     { ctx.setTool('spawn');        return { handled: true, action }; }
     case 'tool-tile':      { ctx.setTool('tile-paint');   return { handled: true, action }; }
     case 'tool-prop':      { ctx.setTool('prop-place');   return { handled: true, action }; }
+    case 'tool-encounter': { ctx.setTool('encounter-place'); return { handled: true, action }; }
+    case 'tool-item':      { ctx.setTool('item-place');    return { handled: true, action }; }
 
     default:
       return { handled: false };
   }
+}
+
+/**
+ * F-6c1fa8ce: Space is the standard activation key for focused buttons /
+ * links / menuitems. The canvas pan-on-Space chord is only legal when the
+ * event is not targeting an activating control.
+ */
+export function isActivatingControl(target: EventTarget | object | null): boolean {
+  if (!target || typeof target !== 'object') return false;
+  const el = target as {
+    tagName?: string;
+    isContentEditable?: boolean;
+    getAttribute?: (name: string) => string | null;
+    closest?: (selector: string) => { tagName?: string } | null;
+  };
+  const tag = el.tagName;
+  if (tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY') return true;
+  if (el.isContentEditable) return true;
+  const role = typeof el.getAttribute === 'function' ? el.getAttribute('role') : null;
+  if (role === 'button' || role === 'menuitem' || role === 'tab' || role === 'link') return true;
+  try {
+    if (typeof el.closest === 'function' && el.closest('button, [role="button"], a[href], [role="menuitem"], [role="tab"]')) {
+      return true;
+    }
+  } catch { /* closest may throw on non-Element test doubles */ }
+  return false;
+}
+
+/**
+ * F-6c1fa8ce: only arm Space-to-pan when focus is on the canvas (or body/root
+ * with nothing else focused). Never preventDefault Space for INPUT/TEXTAREA/
+ * SELECT (existing skip) or for buttons / [role=button] / links / contentEditable.
+ */
+export function shouldArmSpacePan(
+  target: EventTarget | object | null,
+  activeElement: EventTarget | object | null,
+  canvas: object | null,
+): boolean {
+  const tag = (target as { tagName?: string } | null)?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false;
+  if (isActivatingControl(target)) return false;
+  if (isActivatingControl(activeElement as EventTarget | null)) return false;
+  if (!activeElement) return true;
+  const activeTag = (activeElement as { tagName?: string }).tagName;
+  if (!activeTag || activeTag === 'BODY' || activeTag === 'HTML') return true;
+  if (canvas && activeElement === canvas) return true;
+  const contains = (canvas as { contains?: (node: unknown) => boolean } | null)?.contains;
+  if (typeof contains === 'function' && contains.call(canvas, activeElement)) return true;
+  return false;
 }

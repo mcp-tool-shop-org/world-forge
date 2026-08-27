@@ -47,10 +47,10 @@ reader does not assume they are:
   imports. `convert-build-catalog.ts` builds `ExportedBuildCatalog` from
   `@world-forge/schema` instead. Left in place — dropping a dependency from a
   published package is a consumer-visible change, not errand scope.
-- `convert-pack.ts:5` imports `VALID_GENRES`, `VALID_TONES` and
-  `VALID_DIFFICULTIES` in a type-only position and never uses them. They are
-  runtime arrays; imported as values they are the ready-made handle for the
-  genre drift guard item 4 wants.
+- `convert-pack.ts` imports `VALID_GENRES`, `VALID_TONES` and
+  `VALID_DIFFICULTIES` as **values**. GENRE_MAP / TONE_MAP / DIFFICULTY_MAP
+  identity targets are derived from those arrays (F-0fdda22c), so a newly
+  added engine genre cannot sit unmapped.
 
 ## Checklist status — the 2.x → 3.x bump
 
@@ -62,7 +62,7 @@ Worked as findings by C0 (`ai-rpg-engine/docs/c0-alignment/version-skew.json`,
 | 1 | Bump the six `@ai-rpg-engine/*` dep ranges | **CLOSED** (errand, 2026-07-29) |
 | 2 | Update hard-coded `engineVersion: '2.0.0'` | **CLOSED** (C1) |
 | 3 | Re-verify `DEFAULT_MODULES` against the 3.x registry | **CLOSED** (C1 + errand) |
-| 4 | Re-verify `TONE_MAP` / `GENRE_MAP` / `DIFFICULTY_MAP` | **OPEN — genre only.** ⚠ ANDON, see below |
+| 4 | Re-verify `TONE_MAP` / `GENRE_MAP` / `DIFFICULTY_MAP` | **CLOSED** (F-0fdda22c, swarm wave-9) |
 | 5 | Re-verify `VALID_ITEM_SLOTS` / `VALID_ITEM_RARITIES` | **CLOSED** (verified 5/5 and 4/4) |
 | 6 | Re-verify `ROLE_TO_TYPE` / `ROLE_TAGS` / `ROLE_AI_PROFILE` | **CLOSED as far as it can be** |
 | 7 | Run the full suite; update fixtures if shapes changed | **CLOSED** — zero fixture churn |
@@ -88,22 +88,15 @@ comment asking a human to keep two repos in sync; it is now two live checks —
 against its `ModuleManager`, and the engine repo's `c1-gate.test.ts` does the
 same against its own `main`. Keep both: they are different engines.
 
-**4 — ⚠ OPEN, and an ANDON rather than an oversight.** `TONE_MAP` (8 targets)
-and `DIFFICULTY_MAP` (3) match `VALID_TONES` and `VALID_DIFFICULTIES` exactly
-at 3.8.0. `GENRE_MAP` does not: 3.x added `mercantile` and `pursuit` to
-`VALID_GENRES` — the genres of the two newest starters — and no `GENRE_MAP`
-entry targets either, so `convert-pack.ts:147` silently falls back to
-`'fantasy'`.
-
-Adding two identity entries looks mechanical and is not, because the forge
-has **three genre vocabularies that already disagree**: `project.genre` is a
-free `string` in the schema; the editor's picker offers six fixed options
-(`SaveTemplateModal.tsx:12` — `fantasy`, `cyberpunk`, `detective`, `pirate`,
-`zombie`, `custom`, which is neither the engine's list nor `GENRE_MAP`'s
-keys); and `GENRE_MAP` has eleven keys onto nine targets. Mapping two more
-strings the editor cannot author reaches them only by hand-editing a project
-file. Which layer owns the genre vocabulary is a design question, and it is
-C3's — see `[[2p5d-c3-space-vocabulary-kickoff]]`.
+**4 — CLOSED by F-0fdda22c (swarm wave-9).** `TONE_MAP` and `DIFFICULTY_MAP`
+already matched `VALID_TONES` / `VALID_DIFFICULTIES`. `GENRE_MAP` identity
+targets are now **derived from `VALID_GENRES`**, so `mercantile` and `pursuit`
+(and any later 3.x addition) identity-map instead of silently becoming
+`'fantasy'`. Unmapped authored genre/difficulty warn the same way tones
+already did. The three-vocabulary disagreement (schema free-string vs editor
+picker vs engine enum) is unchanged and still a C3 design question — see
+`[[2p5d-c3-space-vocabulary-kickoff]]` — but it is no longer a silent
+fallback.
 
 **5 — item slots and rarities.** Verified against the 3.8.0 exports:
 `EQUIPMENT_SLOTS` 5/5 and `ITEM_RARITIES` 4/4, unchanged across the major —

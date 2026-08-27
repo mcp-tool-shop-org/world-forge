@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,7 +8,10 @@ const ROOT = join(__dirname, "..", "..", "..", "..");
 
 const rootPkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 const changelog = readFileSync(join(ROOT, "CHANGELOG.md"), "utf-8");
-const workspaces = ["editor", "export-ai-rpg", "export-unreal", "renderer-2d", "schema"];
+const packagesDir = join(ROOT, "packages");
+const workspaces = readdirSync(packagesDir).filter((name) =>
+  existsSync(join(packagesDir, name, "package.json")),
+);
 
 describe("version consistency", () => {
   it("root version is valid semver", () => {

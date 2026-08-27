@@ -35,7 +35,9 @@
  *   node scripts/sync-version.mjs
  *     Rewrite the vX.Y.Z token if it has drifted. Fast (no test execution) —
  *     this is the mode wired to npm `prebuild`, so it runs on every
- *     `npm run build` without taxing it.
+ *     `npm run build` without taxing it. In CI / GITHUB_ACTIONS this write
+ *     is a no-op (F-adf9c645) so prebuild cannot stamp the runner workspace
+ *     and hide committed README drift from a later `--check`.
  *
  *   node scripts/sync-version.mjs --check
  *     Exit non-zero if ANY of the following has drifted: the version token,
@@ -78,8 +80,55 @@ const repoRoot = resolve(here, '..');
 const pkgPath = resolve(repoRoot, 'package.json');
 const readmePath = resolve(repoRoot, 'README.md');
 
-const CHECK = process.argv.includes('--check');
-const SYNC_TESTS = process.argv.includes('--sync-tests');
+const argv = process.argv.slice(2);
+const CHECK = argv.includes('--check');
+const SYNC_TESTS = argv.includes('--sync-tests');
+const KNOWN_FLAGS = new Set(['--check', '--sync-tests', '--help', '-h']);
+
+// F-2c5673a7: --help/-h used to fall through to WRITE mode (and locally stamp
+// README.md). Unknown flags did the same. Print the three modes and leave
+// the tree untouched.
+const USAGE = `Usage:
+  node scripts/sync-version.mjs
+    Rewrite the vX.Y.Z token if it has drifted. Fast (no test execution) —
+    this is the mode wired to npm \`prebuild\`, so it runs on every
+    \`npm run build\` without taxing it. In CI / GITHUB_ACTIONS this write
+    is a no-op (F-adf9c645) so prebuild cannot stamp the runner workspace
+    and hide committed README drift from a later --check.
+
+  node scripts/sync-version.mjs --check
+    Exit non-zero if ANY of the following has drifted: the version token,
+    the "N tests" figure (checked against a REAL measurement, not a
+    literal), or any packages/*/package.json version no longer matching
+    root. This is the CI gate — run it as its own explicit step, not via
+    prebuild.
+
+  node scripts/sync-version.mjs --sync-tests
+    Re-measure the real vitest test count (runs the full suite) and stamp
+    BOTH the version token and the "N tests" figure. This is the manual,
+    deliberate "make the README honest before a release" step — the write
+    side the coordinator asked to keep manual rather than wiring into
+    prebuild.
+
+  node scripts/sync-version.mjs --help
+    Print this help and exit 0.`;
+
+if (argv.includes('--help') || argv.includes('-h')) {
+  console.log(USAGE);
+  process.exit(0);
+}
+
+const unknownFlags = argv.filter((a) => a.startsWith('-') && !KNOWN_FLAGS.has(a));
+if (unknownFlags.length > 0) {
+  console.error(`[sync-version] unknown flag: ${unknownFlags.join(', ')}`);
+  console.error(USAGE);
+  process.exit(2);
+}
+
+// F-adf9c645: default (write) mode used to stamp README during `npm prebuild`,
+// which CI runs before `npm run check-version`. --check then compared against
+// the already-rewritten file and could not see committed README drift.
+const IN_CI = process.env.CI === 'true' || process.env.CI === '1' || Boolean(process.env.GITHUB_ACTIONS);
 
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const version = pkg.version;
@@ -172,6 +221,17 @@ if (CHECK) {
       : ''
   );
   process.exit(1);
+}
+
+if (IN_CI) {
+  // Refuse every write path in CI (default stamp and --sync-tests). --check
+  // above is the only CI-safe mode: a read-only comparison against the
+  // committed README.
+  console.log(
+    `[sync-version] CI/GITHUB_ACTIONS set — refusing to write README.md. ` +
+      `Use --check to compare the committed README against package.json v${version}.`
+  );
+  process.exit(0);
 }
 
 if (nextInner === inner) {

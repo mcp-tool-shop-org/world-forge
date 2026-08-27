@@ -3,11 +3,7 @@
 import { Container, Graphics } from 'pixi.js';
 import type { Zone, District } from '@world-forge/schema';
 import type { DiagnosticInfo } from './diagnostics.js';
-
-const DISTRICT_COLORS = [
-  0x4a9eff, 0xff6b6b, 0x51cf66, 0xffd43b,
-  0xcc5de8, 0x20c997, 0xff922b, 0x748ffc,
-];
+import { DISTRICT_COLORS } from './district-colors.js';
 
 export interface MinimapOptions {
   size: number;
@@ -66,8 +62,11 @@ export class MinimapRenderer {
       return;
     }
 
-    const scaleX = size / gridWidth;
-    const scaleY = size / gridHeight;
+    // F-6e1482bc: uniform scale + center so a non-square grid is letterboxed,
+    // not stretched. scaleX === scaleY keeps zone w/h similar to the map.
+    const scale = Math.min(size / gridWidth, size / gridHeight);
+    const offsetX = (size - gridWidth * scale) / 2;
+    const offsetY = (size - gridHeight * scale) / 2;
 
     // Background
     const bg = new Graphics();
@@ -78,10 +77,10 @@ export class MinimapRenderer {
     // Zone blocks
     for (const zone of zones) {
       const g = new Graphics();
-      const x = zone.gridX * scaleX;
-      const y = zone.gridY * scaleY;
-      const w = zone.gridWidth * scaleX;
-      const h = zone.gridHeight * scaleY;
+      const x = offsetX + zone.gridX * scale;
+      const y = offsetY + zone.gridY * scale;
+      const w = zone.gridWidth * scale;
+      const h = zone.gridHeight * scale;
 
       let color = 0x888888;
       if (zone.parentDistrictId) {
@@ -90,19 +89,20 @@ export class MinimapRenderer {
       }
 
       g.rect(x, y, w, h).fill({ color, alpha: 0.5 });
-      g.rect(x, y, w, h).stroke({ width: 0.5, color: 0xcccccc, alpha: 0.3 });
+      g.rect(x, y, w, h).stroke({ width: 1, color: 0xcccccc, alpha: 0.8 });
       this.container.addChild(g);
     }
 
-    // Viewport indicator
+    // Viewport indicator — filled hairline so it reads on mid-luminance fills.
     if (viewportRect) {
       const vg = new Graphics();
-      vg.rect(
-        viewportRect.x * scaleX,
-        viewportRect.y * scaleY,
-        viewportRect.w * scaleX,
-        viewportRect.h * scaleY,
-      ).stroke({ width: 1, color: 0xffffff, alpha: 0.7 });
+      vg.label = 'viewportRect';
+      const vx = offsetX + viewportRect.x * scale;
+      const vy = offsetY + viewportRect.y * scale;
+      const vw = viewportRect.w * scale;
+      const vh = viewportRect.h * scale;
+      vg.rect(vx, vy, vw, vh).fill({ color: 0xffffff, alpha: 0.12 });
+      vg.rect(vx, vy, vw, vh).stroke({ width: 1, color: 0x4a9eff, alpha: 1 });
       this.container.addChild(vg);
     }
   }

@@ -1,33 +1,59 @@
 // SearchOverlay.tsx — Ctrl+K command-jump modal
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { usePresetStore } from '../presets/preset-store.js';
 import { computeFrameViewport, getCanvasSize } from '../frame-helpers.js';
 import { frameBounds } from '../viewport.js';
-import { type WorldProject, scanDependencies } from '@world-forge/schema';
+import { type WorldProject, scanDependencies, buildReviewSnapshot } from '@world-forge/schema';
 import { connectionLabel } from '../connection-lines.js';
-import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { useKitStore } from '../kits/index.js';
 import { pushToast } from '../ui/Toast.js';
+import { useModalStore } from '../store/modal-store.js';
+import { requestTemplateManagerTab } from './TemplateManager.js';
+import { reviewSnapshotToMarkdown, summaryFilename } from '../review/export-summary.js';
 
 export interface SearchResult {
-  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
+  type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'district' | 'dialogue' | 'tree' | 'connection' | 'encounter' | 'item' | 'loot' | 'transition' | 'region-preset' | 'encounter-preset' | 'starter-kit' | 'dependency' | 'review';
   id: string;
   label: string;
   detail: string;
 }
 
+const TYPE_CATEGORY: Record<SearchResult['type'], string> = {
+  zone: 'Places', entity: 'People', landmark: 'Places', spawn: 'Places',
+  district: 'Places', dialogue: 'People', tree: 'Review', connection: 'Places',
+  encounter: 'People', item: 'Places', loot: 'Places', transition: 'Places',
+  'region-preset': 'Kits', 'encounter-preset': 'Kits',
+  'starter-kit': 'Kits', dependency: 'Review', review: 'Review',
+};
+
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
-  zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
-  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit', dependency: 'Dep', review: 'Rev',
+  zone: '\u25A6',
+  entity: '\u25C9',
+  landmark: '\u25B2',
+  spawn: '\u2605',
+  district: '\u25A3',
+  dialogue: '\u201C',
+  tree: '\u22A4',
+  connection: '\u2194',
+  encounter: '\u2694',
+  item: '\u25CE',
+  loot: '\u25C8',
+  transition: '\u2195',
+  'region-preset': '\u25EB',
+  'encounter-preset': '\u25CE',
+  'starter-kit': '\u25A8',
+  dependency: '\u26A0',
+  review: '\u2630',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
-  zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
-  district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
-  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e', dependency: '#d29922', review: '#bc8cff',
+  zone: 'var(--wf-accent)', entity: 'var(--wf-success-text)', landmark: 'var(--wf-accent)', spawn: 'var(--wf-warning)',
+  district: 'var(--wf-accent)', dialogue: 'var(--wf-warning)', tree: 'var(--wf-accent)', connection: 'var(--wf-text-muted)', encounter: 'var(--wf-danger)',
+  item: 'var(--wf-warning)', loot: 'var(--wf-accent)', transition: 'var(--wf-text-muted)',
+  'region-preset': 'var(--wf-accent)', 'encounter-preset': 'var(--wf-danger)', 'starter-kit': 'var(--wf-warning)', dependency: 'var(--wf-warning)', review: 'var(--wf-accent)',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -74,6 +100,25 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
     results.push({ type: 'encounter', id: enc.id, label: enc.id, detail: `${enc.encounterType} in ${zone?.name ?? 'unknown'}, prob ${enc.probability}` });
   }
 
+  // Items
+  for (const it of project.itemPlacements) {
+    const zone = project.zones.find((z) => z.id === it.zoneId);
+    if (!zone) console.warn(`[SearchOverlay] Item "${it.itemId}" references missing zone "${it.zoneId}"`);
+    results.push({ type: 'item', id: it.itemId, label: it.name ?? it.itemId, detail: `${it.slot ?? 'item'} in ${zone?.name ?? 'unknown'}` });
+  }
+
+  // Loot tables
+  for (const lt of project.lootTables ?? []) {
+    results.push({ type: 'loot', id: lt.id, label: lt.id, detail: `${lt.entries.length} entries, ${lt.rolls ?? 1} rolls` });
+  }
+
+  // Transitions
+  for (const tr of project.transitions ?? []) {
+    const zone = project.zones.find((z) => z.id === tr.zoneId);
+    const target = project.zones.find((z) => z.id === tr.targetZoneId);
+    results.push({ type: 'transition', id: tr.id, label: tr.label ?? tr.id, detail: `${tr.type} ${zone?.name ?? tr.zoneId} → ${target?.name ?? tr.targetZoneId}` });
+  }
+
   // Connections
   for (const c of project.connections) {
     const label = connectionLabel(c, project.zones);
@@ -104,7 +149,7 @@ export function buildSearchIndex(project: WorldProject): SearchResult[] {
 
   // Review actions
   results.push({ type: 'review', id: 'open-review', label: 'Project Review', detail: 'Open review panel' });
-  results.push({ type: 'review', id: 'export-summary', label: 'Export Summary', detail: 'Export review summary' });
+  results.push({ type: 'review', id: 'export-summary', label: 'Export Summary', detail: 'Download review summary (Markdown)' });
 
   return results;
 }
@@ -136,7 +181,11 @@ function saveRecentSearch(query: string): void {
   if (!q) return;
   const recent = loadRecentSearches().filter((s) => s !== q);
   recent.unshift(q);
-  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+  // F-5c35446e: ED-B-006 quota guard was on prune/click but not this write.
+  // QuotaExceededError here used to abort handleSelect before navigation.
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+  } catch { /* ignore quota / private-mode — caller still navigates */ }
 }
 
 /**
@@ -154,6 +203,31 @@ export function pruneRecentSearches(index: SearchResult[], recent: string[]): st
 
 export { loadRecentSearches, saveRecentSearch, RECENT_SEARCHES_KEY };
 
+const SEARCH_LISTBOX_ID = 'wf-search-listbox';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+type NavItem =
+  | { kind: 'recent'; term: string }
+  | { kind: 'result'; result: SearchResult };
+
+function navCategory(item: NavItem): string {
+  return item.kind === 'recent' ? 'Recent' : TYPE_CATEGORY[item.result.type];
+}
+
+function downloadReviewMarkdown(project: WorldProject): string {
+  const snapshot = { ...buildReviewSnapshot(project), hasExported: false };
+  const markdown = reviewSnapshotToMarkdown(snapshot);
+  const filename = summaryFilename(project.name, 'md');
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  return filename;
+}
+
 export function SearchOverlay() {
   const { project } = useProjectStore();
   const {
@@ -165,6 +239,8 @@ export function SearchOverlay() {
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches);
 
   const { regionPresets, encounterPresets } = usePresetStore();
@@ -199,11 +275,25 @@ export function SearchOverlay() {
   }, [project, regionPresets, encounterPresets, kits]);
   const results = useMemo(() => filterResults(searchIndex, query), [searchIndex, query]);
 
-  // Reset active index when results change
-  useEffect(() => { setActiveIdx(0); }, [results.length]);
+  const navItems: NavItem[] = useMemo(() => {
+    if (query.trim()) return results.map((result) => ({ kind: 'result' as const, result }));
+    const recents: NavItem[] = recentSearches.map((term) => ({ kind: 'recent' as const, term }));
+    const catalog: NavItem[] = searchIndex
+      .filter((r) => r.type === 'review' || r.type === 'starter-kit')
+      .slice(0, 10)
+      .map((result) => ({ kind: 'result' as const, result }));
+    return [...recents, ...catalog];
+  }, [query, results, recentSearches, searchIndex]);
 
-  // Auto-focus input
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Reset active index when the navigable list changes
+  useEffect(() => { setActiveIdx(0); }, [navItems.length, query]);
+
+  // Auto-focus input; restore opener on unmount
+  useEffect(() => {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    inputRef.current?.focus();
+    return () => { openerRef.current?.focus(); };
+  }, []);
 
   const dismiss = useCallback(() => { setShowSearch(false); }, [setShowSearch]);
 
@@ -264,6 +354,20 @@ export function SearchOverlay() {
         if (vp) setViewport(vp);
       }
       setRightTab('map');
+    } else if (result.type === 'item') {
+      const item = project.itemPlacements.find((i) => i.itemId === result.id);
+      if (item) selectZone(item.zoneId, false);
+      setFocusTarget({ domain: 'items', subPath: `itemPlacements.${result.id}`, timestamp: Date.now() });
+      setRightTab('map');
+    } else if (result.type === 'loot') {
+      setSelection({ zones: [], entities: [], landmarks: [], spawns: [], encounters: [] });
+      setFocusTarget({ domain: 'loot', subPath: `lootTables.${result.id}`, timestamp: Date.now() });
+      setRightTab('map');
+    } else if (result.type === 'transition') {
+      const tr = (project.transitions ?? []).find((t) => t.id === result.id);
+      if (tr) selectZone(tr.zoneId, false);
+      setFocusTarget({ domain: 'transitions', subPath: `transitions.${result.id}`, timestamp: Date.now() });
+      setRightTab('map');
     } else if (result.type === 'district') {
       const district = project.districts.find((d) => d.id === result.id);
       if (district && district.zoneIds.length > 0) {
@@ -287,42 +391,113 @@ export function SearchOverlay() {
     } else if (result.type === 'region-preset' || result.type === 'encounter-preset') {
       setRightTab('presets');
     } else if (result.type === 'starter-kit') {
-      // No specific navigation — kit is informational in search
+      requestTemplateManagerTab('starters');
+      useModalStore.getState().openModal('template-manager');
     } else if (result.type === 'dependency') {
       setRightTab('deps');
     } else if (result.type === 'review') {
-      setRightTab('review');
+      if (result.id === 'export-summary') {
+        const filename = downloadReviewMarkdown(project);
+        pushToast(`Downloading ${filename}`, 'success', 3000);
+      } else {
+        setRightTab('review');
+      }
     }
-  }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
+  }, [query, project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
+
+  const activateNavItem = useCallback((item: NavItem) => {
+    if (item.kind === 'recent') {
+      const hits = filterResults(searchIndex, item.term);
+      if (hits.length === 0) {
+        pushToast(`'${item.term}' no longer matches any object.`, 'warning', 3000);
+        const pruned = recentSearches.filter((s) => s !== item.term);
+        try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(pruned)); } catch { /* ignore */ }
+        setRecentSearches(pruned);
+        return;
+      }
+      setQuery(item.term);
+      return;
+    }
+    handleSelect(item.result);
+  }, [searchIndex, recentSearches, handleSelect]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { dismiss(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, results.length - 1)); return; }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); return; }
-    if (e.key === 'Enter' && results[activeIdx]) { handleSelect(results[activeIdx]); return; }
+    if (e.key === 'Escape') { e.stopPropagation(); dismiss(); return; }
+    if (e.key === 'Tab') {
+      // Trap Tab inside the dialog so it cannot walk into the editor behind the dimmer.
+      e.preventDefault();
+      e.stopPropagation();
+      const card = dialogRef.current;
+      if (!card) return;
+      const focusable = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) { inputRef.current?.focus(); return; }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) last.focus();
+        else {
+          const i = focusable.indexOf(document.activeElement as HTMLElement);
+          (focusable[i > 0 ? i - 1 : focusable.length - 1] ?? first).focus();
+        }
+      } else {
+        if (document.activeElement === last) first.focus();
+        else {
+          const i = focusable.indexOf(document.activeElement as HTMLElement);
+          (focusable[i >= 0 && i < focusable.length - 1 ? i + 1 : 0] ?? first).focus();
+        }
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIdx((i) => Math.min(i + 1, Math.max(navItems.length - 1, 0)));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+      return;
+    }
+    if (e.key === 'Enter' && navItems[activeIdx]) {
+      e.preventDefault();
+      e.stopPropagation();
+      activateNavItem(navItems[activeIdx]);
+      return;
+    }
   };
 
   // Scroll active item into view
   useEffect(() => {
-    const el = listRef.current?.children[activeIdx] as HTMLElement | undefined;
+    const el = document.getElementById(`wf-search-option-${activeIdx}`);
     el?.scrollIntoView({ block: 'nearest' });
   }, [activeIdx]);
+
+  const activeOptionId = navItems.length > 0 ? `wf-search-option-${activeIdx}` : undefined;
 
   return (
     <div
       onClick={dismiss}
       style={{
         position: 'fixed', inset: 0, background: 'var(--wf-bg-overlay)',
-        zIndex: 9999, display: 'flex', justifyContent: 'center', paddingTop: 80,
+        zIndex: 'var(--wf-z-overlay)' as unknown as number,
+        display: 'flex', justifyContent: 'center',
+        paddingTop: 'calc(var(--wf-topbar-height) * 2 + var(--wf-space-2))',
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Search"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
         style={{
-          width: 480, maxHeight: 420, background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',
+          width: 'min(90vw, calc(var(--wf-inspector-width) + var(--wf-sidebar-width)))',
+          maxHeight: 'min(70vh, calc(100vh - var(--wf-topbar-height) * 4))',
+          background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',
           borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
@@ -333,6 +508,12 @@ export function SearchOverlay() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search zones, entities, districts..."
+            aria-label="Search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={true}
+            aria-controls={SEARCH_LISTBOX_ID}
+            aria-activedescendant={activeOptionId}
             style={{
               width: '100%', background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)',
               borderRadius: 4, padding: '8px 10px', color: 'var(--wf-text-primary)', fontSize: 13,
@@ -340,68 +521,69 @@ export function SearchOverlay() {
             }}
           />
         </div>
-        <div ref={listRef} style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
-          {/* FT-006: Recent searches when query is empty */}
-          {!query.trim() && recentSearches.length > 0 && (
-            <div>
-              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-hint)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                Recent
-              </div>
-              {recentSearches.map((term) => (
-                <div
-                  key={term}
-                  onClick={() => {
-                    // ED-B-006: if the stored term no longer matches anything
-                    // (target was deleted since the search was saved), warn
-                    // the user with a toast rather than silently showing an
-                    // empty result list.
-                    const hits = filterResults(searchIndex, term);
-                    if (hits.length === 0) {
-                      pushToast(`'${term}' no longer matches any object.`, 'warning', 3000);
-                      const pruned = recentSearches.filter((s) => s !== term);
-                      try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(pruned)); } catch { /* ignore */ }
-                      setRecentSearches(pruned);
-                      return;
-                    }
-                    setQuery(term);
-                  }}
-                  style={{
-                    padding: '5px 12px', cursor: 'pointer', fontSize: 12,
-                    color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
-                  }}
-                >
-                  <span style={{ fontSize: 11, color: 'var(--wf-text-hint)' }}>{'\u23F0'}</span>
-                  {term}
-                </div>
-              ))}
-            </div>
-          )}
+        <div ref={listRef} id={SEARCH_LISTBOX_ID} role="listbox" style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
           {results.length === 0 && query.trim() && (
             <div style={{ padding: '16px 12px', color: 'var(--wf-text-muted)', fontSize: 12, textAlign: 'center' }}>
               No results for "{query}"
             </div>
           )}
-          {results.map((r, i) => (
-            <div
-              key={`${r.type}-${r.id}`}
-              onClick={() => handleSelect(r)}
-              style={{
-                padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
-              }}
-            >
-              <span style={{
-                fontSize: 9, fontWeight: 'bold', color: TYPE_COLORS[r.type],
-                background: 'var(--wf-bg-app)', borderRadius: 3, padding: '1px 4px', minWidth: 18, textAlign: 'center',
-              }}>
-                {TYPE_ICONS[r.type]}
-              </span>
-              <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
-              <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
-            </div>
-          ))}
+          {navItems.map((item, i) => {
+            const cat = navCategory(item);
+            const prev = i > 0 ? navCategory(navItems[i - 1]) : null;
+            const header = cat !== prev ? (
+              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                {cat}
+              </div>
+            ) : null;
+            if (item.kind === 'recent') {
+              return (
+                <Fragment key={`recent-${item.term}`}>
+                  {header}
+                  <div
+                    id={`wf-search-option-${i}`}
+                    role="option"
+                    aria-selected={i === activeIdx}
+                    onClick={() => activateNavItem(item)}
+                    style={{
+                      padding: 'var(--wf-space-1) var(--wf-space-3)', cursor: 'pointer', fontSize: 12,
+                      color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
+                      background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
+                    }}
+                  >
+                    <span style={{ fontSize: 14, width: 16, textAlign: 'center', color: 'var(--wf-text-muted)' }}>{'\u23F0'}</span>
+                    {item.term}
+                  </div>
+                </Fragment>
+              );
+            }
+            const r = item.result;
+            return (
+              <Fragment key={`${r.type}-${r.id}`}>
+                {header}
+                <div
+                  id={`wf-search-option-${i}`}
+                  role="option"
+                  aria-selected={i === activeIdx}
+                  onClick={() => handleSelect(r)}
+                  style={{
+                    padding: 'var(--wf-space-2) var(--wf-space-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                    background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
+                  }}
+                >
+                  <span style={{
+                    fontSize: 14, color: TYPE_COLORS[r.type],
+                    width: 16, textAlign: 'center', flexShrink: 0, lineHeight: 1,
+                  }} title={r.type}>
+                    {TYPE_ICONS[r.type]}
+                  </span>
+                  <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
+                  <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
+                </div>
+              </Fragment>
+            );
+          })}
         </div>
-        <div style={{ padding: '6px 12px', borderTop: '1px solid var(--wf-border-default)', fontSize: 10, color: 'var(--wf-text-hint)' }}>
+        <div style={{ padding: '6px 12px', borderTop: '1px solid var(--wf-border-default)', fontSize: 10, color: 'var(--wf-text-muted)' }}>
           <kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>↑↓</kbd> navigate
           {' '}<kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>Enter</kbd> select
           {' '}<kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>Esc</kbd> close

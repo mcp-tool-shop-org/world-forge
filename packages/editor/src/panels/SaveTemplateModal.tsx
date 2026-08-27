@@ -36,8 +36,9 @@ export function SaveTemplateModal({ onClose }: Props) {
     <ModalFrame title="Save as Template" width={400} onClose={onClose}>
 
         {/* Name */}
-        <label style={labelStyle}>Name</label>
+        <label style={labelStyle} htmlFor="wf-save-tpl-name">Name</label>
         <input
+          id="wf-save-tpl-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           style={inputStyle}
@@ -45,8 +46,9 @@ export function SaveTemplateModal({ onClose }: Props) {
         />
 
         {/* Description */}
-        <label style={labelStyle}>Description</label>
+        <label style={labelStyle} htmlFor="wf-save-tpl-desc">Description</label>
         <textarea
+          id="wf-save-tpl-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
@@ -54,16 +56,17 @@ export function SaveTemplateModal({ onClose }: Props) {
         />
 
         {/* Genre */}
-        <label style={labelStyle}>Genre</label>
-        <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
+        <label style={labelStyle} htmlFor="wf-save-tpl-genre">Genre</label>
+        <select id="wf-save-tpl-genre" value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
           {GENRE_OPTIONS.map((g) => (
             <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
           ))}
         </select>
 
         {/* Icon */}
-        <label style={labelStyle}>Icon</label>
+        <label style={labelStyle} htmlFor="wf-save-tpl-icon">Icon</label>
         <input
+          id="wf-save-tpl-icon"
           value={icon}
           onChange={(e) => setIcon(e.target.value)}
           style={{ ...inputStyle, width: 60 }}
@@ -71,7 +74,7 @@ export function SaveTemplateModal({ onClose }: Props) {
         />
 
         {/* Content summary */}
-        <div style={{ fontSize: 11, color: '#8b949e', marginTop: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 8, marginBottom: 16 }}>
           This template will include: {project.zones.length} zones, {project.entityPlacements.length} entities,
           {' '}{project.dialogues.length} dialogues, {project.itemPlacements.length} items
         </div>

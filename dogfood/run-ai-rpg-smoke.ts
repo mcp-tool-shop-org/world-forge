@@ -29,6 +29,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { exportToEngine, type ExportResult } from '../packages/export-ai-rpg/src/index.js';
+import { SCHEMA_VERSION } from '../packages/schema/src/index.js';
 import { proofProject } from './worlds/multi-target-proof.js';
 
 // Engine runtime TYPES — safe to import statically (types are erased, so
@@ -120,9 +121,16 @@ async function main() {
 
     // Step 1: Export
     console.log('── 1. Export proof world ──');
-    const exportResult = exportToEngine(proofProject);
+    // WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL is never set during a normal run.
+    const exportResult = process.env.WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL === '1'
+        ? {
+            success: false as const,
+            errors: [{ path: 'forced-export-fail', message: 'WORLD_FORGE_FORCE_AI_RPG_EXPORT_FAIL' }],
+        }
+        : exportToEngine(proofProject);
     if (!exportResult.success) {
-        console.error('  ✗ Export failed:', (exportResult as { errors: unknown[] }).errors);
+        console.error('  ✗ Export failed:');
+        for (const e of exportResult.errors) console.error(`    ${e.path ?? '(root)'}: ${e.message}`);
         process.exit(1);
     }
     const result = exportResult as ExportResult;
@@ -364,6 +372,10 @@ async function main() {
         assert(false, 'serialize_produces_state', String(err));
     }
 
+    if (process.env.WORLD_FORGE_FORCE_AI_RPG_FAIL === '1') {
+        assert(false, 'test_injected_failure', 'WORLD_FORGE_FORCE_AI_RPG_FAIL');
+    }
+
     // ── Verdict ──────────────────────────────────────────────────
     console.log(`\n═══ VERDICT: ${failed === 0 ? 'PASS' : 'FAIL'} ═══`);
     console.log(`  Assertions: ${passed}/${passed + failed} passed`);
@@ -381,7 +393,7 @@ async function main() {
 
 **Date:** ${ts}
 **Proof world:** Dustwalk — Multi-Target Proof (proof-dustwalk)
-**Schema:** 4.4.0
+**Schema:** ${SCHEMA_VERSION}
 **Engine packages:**
 - @ai-rpg-engine/content-schema
 - @ai-rpg-engine/core

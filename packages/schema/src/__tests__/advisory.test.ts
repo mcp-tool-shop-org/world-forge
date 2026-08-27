@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { advisoryValidation } from '../advisory.js';
 import { validateProject } from '../validate.js';
+import { buildReviewSnapshot } from '../review.js';
 import type { WorldProject } from '../project.js';
 import type { AuthoringMode } from '../authoring-mode.js';
 import { AUTHORING_MODES } from '../authoring-mode.js';
+import { minimalProject } from './fixtures/minimal.js';
 
 /** Minimal empty project factory for advisory testing. */
 function emptyProject(mode?: AuthoringMode): WorldProject {
@@ -249,4 +251,100 @@ describe('advisoryValidation', () => {
     // No trap suggestion since pressureType contains 'trap'
     expect(result.items.filter((i) => i.message.includes('trap'))).toHaveLength(0);
   });
+
+  // --- F-124d264f: omitted label / interior-without-map must not throw ---
+
+  it('omitted asset label returns AdvisoryResult and never throws', () => {
+    const project = emptyProject('dungeon');
+    project.assets = [
+      { id: 'a-nolabel', kind: 'portrait', path: 'a.png', tags: [] } as any,
+    ];
+    let result: ReturnType<typeof advisoryValidation> | undefined;
+    expect(() => {
+      result = advisoryValidation(project);
+    }).not.toThrow();
+    expect(result).toBeDefined();
+    expect(Array.isArray(result!.items)).toBe(true);
+    expect(result!.items.some((i) => i.path.includes('a-nolabel'))).toBe(true);
+  });
+
+  it('interior mode with omitted map returns AdvisoryResult and never throws', () => {
+    const project = emptyProject('interior');
+    delete (project as { map?: unknown }).map;
+    let result: ReturnType<typeof advisoryValidation> | undefined;
+    expect(() => {
+      result = advisoryValidation(project);
+    }).not.toThrow();
+    expect(result).toBeDefined();
+    expect(Array.isArray(result!.items)).toBe(true);
+  });
+
+  it('buildReviewSnapshot with omitted asset label never throws (blocked snapshot)', () => {
+    const project: WorldProject = {
+      ...JSON.parse(JSON.stringify(minimalProject)),
+      assets: [
+        { id: 'a-nolabel', kind: 'portrait', path: 'a.png', tags: [] } as any,
+      ],
+    };
+    let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+    expect(() => {
+      snap = buildReviewSnapshot(project);
+    }).not.toThrow();
+    expect(snap).toBeDefined();
+    expect(snap!.health).toBe('blocked');
+    expect(Array.isArray(snap!.advisory.firstSuggestions)).toBe(true);
+  });
+
+  it('buildReviewSnapshot interior-without-map never throws', () => {
+    const project = JSON.parse(JSON.stringify(minimalProject)) as WorldProject;
+    project.mode = 'interior';
+    delete (project as { map?: unknown }).map;
+    let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+    expect(() => {
+      snap = buildReviewSnapshot(project);
+    }).not.toThrow();
+    expect(snap).toBeDefined();
+    expect(snap!.advisory).toBeDefined();
+  });
+
+  // --- F-df8b561a: non-array tags must not throw ---
+  // validateProject may stay valid:true on these shapes; that is the bug's setup,
+  // not a Stage B reopen. Non-array tags are treated as no tags.
+
+  it.each([
+    { mode: 'dungeon' as const, corrupt: 'hotspot', tags: {}, label: '{}' },
+    { mode: 'dungeon' as const, corrupt: 'hotspot', tags: 123, label: '123' },
+    { mode: 'space' as const, corrupt: 'zone', tags: {}, label: '{}' },
+    { mode: 'space' as const, corrupt: 'zone', tags: 123, label: '123' },
+    { mode: 'ocean' as const, corrupt: 'district', tags: {}, label: '{}' },
+    { mode: 'ocean' as const, corrupt: 'district', tags: 123, label: '123' },
+  ])(
+    '$mode $corrupt tags=$label never throws from advisoryValidation or buildReviewSnapshot',
+    ({ mode, corrupt, tags }) => {
+      const project = JSON.parse(JSON.stringify(minimalProject)) as WorldProject;
+      project.mode = mode;
+      if (corrupt === 'hotspot') {
+        (project.pressureHotspots[0] as { tags: unknown }).tags = tags;
+      } else if (corrupt === 'zone') {
+        (project.zones[0] as { tags: unknown }).tags = tags;
+      } else {
+        (project.districts[0] as { tags: unknown }).tags = tags;
+      }
+
+      let advisory: ReturnType<typeof advisoryValidation> | undefined;
+      expect(() => {
+        advisory = advisoryValidation(project);
+      }).not.toThrow();
+      expect(advisory).toBeDefined();
+      expect(Array.isArray(advisory!.items)).toBe(true);
+
+      let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+      expect(() => {
+        snap = buildReviewSnapshot(project);
+      }).not.toThrow();
+      expect(snap).toBeDefined();
+      expect(snap!.advisory).toBeDefined();
+      expect(Array.isArray(snap!.advisory.firstSuggestions)).toBe(true);
+    },
+  );
 });

@@ -29,8 +29,8 @@ export interface SnapEdge {
 
 export const SNAP_RADIUS = 1; // grid cells
 
-/** Colour for snap guide lines (cyan-400). */
-export const SNAP_GUIDE_COLOR = '#22d3ee';
+/** Colour for snap guide lines — tokenized so it flips with theme. */
+export const SNAP_GUIDE_COLOR = 'var(--wf-snap-guide)';
 
 /** Dash pattern [dash, gap] for snap guide lines. */
 export const SNAP_GUIDE_DASH: readonly [number, number] = [6, 4];

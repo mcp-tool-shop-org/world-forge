@@ -3,10 +3,49 @@
 import type { HitResult } from './hit-testing.js';
 import type { AuthoringMode, WorldProject } from '@world-forge/schema';
 
+/** Closed icon enum so the palette/context menu can style a 16px glyph from tokens. */
+export type SpeedPanelIconId =
+  | 'plus'
+  | 'fit'
+  | 'edit'
+  | 'delete'
+  | 'duplicate'
+  | 'district'
+  | 'entity'
+  | 'connect'
+  | 'swap'
+  | 'merge'
+  | 'elevation'
+  | 'review'
+  | 'summary'
+  | 'encounter';
+
+/** Geometric glyphs — not emoji, not 1–3 letter codes. */
+export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
+  plus: '+',
+  fit: '\u25F1',
+  edit: '\u270E',
+  delete: '\u2715',
+  duplicate: '\u29C9',
+  district: '\u25A6',
+  entity: '\u25C9',
+  connect: '\u2192',
+  swap: '\u21C4',
+  merge: '\u22C8',
+  elevation: '\u25B2',
+  review: '\u2611',
+  summary: '\u25A4',
+  encounter: '\u25C7',
+};
+
 export interface SpeedPanelAction {
   id: string;
   label: string;
+  /** 16px geometric glyph (SPEED_PANEL_ICON_GLYPH[iconId]). */
   icon: string;
+  iconId?: SpeedPanelIconId;
+  /** One-line blurb for the command palette / context menu. */
+  description?: string;
   category: 'context' | 'global';
   /** Return true if this action should appear for the given hit context */
   contextFilter: (hit: HitResult | null) => boolean;
@@ -70,21 +109,22 @@ const hasDuplicate = (h: HitResult | null) =>
 
 export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   // -- Global (empty canvas) --
-  { id: 'new-zone',        label: 'New Zone',           icon: '+',  category: 'global',  contextFilter: (h) => h === null,            macroSafe: false },
-  { id: 'fit-content',     label: 'Fit to Content',     icon: '[]', category: 'global',  contextFilter: (h) => h === null,            macroSafe: true },
+  { id: 'new-zone',        label: 'New Zone',           icon: SPEED_PANEL_ICON_GLYPH.plus,       iconId: 'plus',       description: 'Paint a new zone on the canvas',                    category: 'global',  contextFilter: (h) => h === null,            macroSafe: false },
+  { id: 'fit-content',     label: 'Fit to Content',     icon: SPEED_PANEL_ICON_GLYPH.fit,        iconId: 'fit',        description: 'Zoom the viewport to fit the whole map',            category: 'global',  contextFilter: (h) => h === null,            macroSafe: true },
 
   // -- Any object --
-  { id: 'edit-props',      label: 'Edit Properties',    icon: 'E',  category: 'context', contextFilter: (h) => h !== null,            macroSafe: true },
-  { id: 'delete',          label: 'Delete',             icon: 'X',  category: 'context', contextFilter: (h) => h !== null,            macroSafe: true },
-  { id: 'duplicate',       label: 'Duplicate',          icon: 'D',  category: 'context', contextFilter: hasDuplicate,                 macroSafe: true },
+  { id: 'edit-props',      label: 'Edit Properties',    icon: SPEED_PANEL_ICON_GLYPH.edit,       iconId: 'edit',       description: 'Open properties for the selected object',           category: 'context', contextFilter: (h) => h !== null,            macroSafe: true },
+  { id: 'delete',          label: 'Delete',             icon: SPEED_PANEL_ICON_GLYPH.delete,     iconId: 'delete',     description: 'Remove the selected object',                        category: 'context', contextFilter: (h) => h !== null,            macroSafe: true },
+  { id: 'duplicate',       label: 'Duplicate',          icon: SPEED_PANEL_ICON_GLYPH.duplicate,  iconId: 'duplicate',  description: 'Copy the selected object nearby',                   category: 'context', contextFilter: hasDuplicate,                 macroSafe: true },
 
   // -- Zone-only --
-  { id: 'assign-district',  label: 'Assign District',    icon: 'Dsc', category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: true },
-  { id: 'place-entity',     label: 'Place Entity Here',  icon: 'Ent', category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
-  { id: 'connect-from',     label: 'Connect From Here',  icon: '->', category: 'context', contextFilter: (h) => h?.type === 'zone',    macroSafe: false },
+  { id: 'assign-district',  label: 'Assign District',    icon: SPEED_PANEL_ICON_GLYPH.district,   iconId: 'district',   description: 'Set this zone’s parent district',                   category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: true },
+  { id: 'place-entity',     label: 'Place Entity Here',  icon: SPEED_PANEL_ICON_GLYPH.entity,     iconId: 'entity',     description: 'Drop an entity inside this zone',                   category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
+  { id: 'place-encounter',  label: 'Place Encounter Here', icon: SPEED_PANEL_ICON_GLYPH.encounter, iconId: 'encounter', description: 'Drop an encounter anchor inside this zone',         category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
+  { id: 'connect-from',     label: 'Connect From Here',  icon: SPEED_PANEL_ICON_GLYPH.connect,    iconId: 'connect',    description: 'Start a connection from this zone',                 category: 'context', contextFilter: (h) => h?.type === 'zone',    macroSafe: false },
 
   // -- Connection-only --
-  { id: 'swap-direction',   label: 'Swap Direction',     icon: '<>', category: 'context', contextFilter: (h) => h?.type === 'connection', macroSafe: true },
+  { id: 'swap-direction',   label: 'Swap Direction',     icon: SPEED_PANEL_ICON_GLYPH.swap,       iconId: 'swap',       description: 'Reverse this connection’s direction',               category: 'context', contextFilter: (h) => h?.type === 'connection', macroSafe: true },
 
   // F-bdf856bf: the 4 mode-suggested add-*-conn shortcuts (add-secret-conn,
   // add-channel-conn, add-warp-conn, add-trail-conn) were removed here.
@@ -98,15 +138,15 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   // they're gone from the registry rather than left as dead buttons.
 
   // -- Multi-zone --
-  { id: 'merge-zones',      label: 'Merge Zones',           icon: 'M',  category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },
+  { id: 'merge-zones',      label: 'Merge Zones',           icon: SPEED_PANEL_ICON_GLYPH.merge,      iconId: 'merge',      description: 'Combine this zone with another selected zone',     category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },
 
   // ED-FT-005: single-zone elevation action. Uses native prompt() for speed; the
   // full editor is in ZoneProperties.
-  { id: 'set-elevation',    label: 'Set Elevation',         icon: '^',  category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false },
+  { id: 'set-elevation',    label: 'Set Elevation',         icon: SPEED_PANEL_ICON_GLYPH.elevation,  iconId: 'elevation',  description: 'Set this zone’s elevation',                        category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false },
 
   // -- Review --
-  { id: 'open-review',      label: 'Open Review',           icon: '\uD83D\uDCCB', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
-  { id: 'export-summary',   label: 'Export Summary',        icon: '\uD83D\uDCC4', category: 'global', contextFilter: (h) => h === null, macroSafe: true },
+  { id: 'open-review',      label: 'Open Review',           icon: SPEED_PANEL_ICON_GLYPH.review,     iconId: 'review',     description: 'Open the project review panel',                    category: 'global',  contextFilter: (h) => h === null, macroSafe: true },
+  { id: 'export-summary',   label: 'Export Summary',        icon: SPEED_PANEL_ICON_GLYPH.summary,    iconId: 'summary',    description: 'Show a summary of the last export',                category: 'global',  contextFilter: (h) => h === null, macroSafe: true },
 ];
 
 /**

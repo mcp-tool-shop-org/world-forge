@@ -75,10 +75,9 @@ function collectReferencedAssetIds(project: WorldProject): Set<string> {
     // Mirrors the orphan check in validate.ts — without this, authored 2.5D assets
     // get false-flagged as orphans even though parallax/skyline layers use them.
     if (z.skylineRef) ids.add(z.skylineRef);
-    if (z.parallaxLayers) {
-      for (const layer of z.parallaxLayers) {
-        if (layer.assetRef) ids.add(layer.assetRef);
-      }
+    if (z.skyAtmosphereRef) ids.add(z.skyAtmosphereRef);
+    for (const layer of Array.isArray(z.parallaxLayers) ? z.parallaxLayers : []) {
+      if (layer.assetRef) ids.add(layer.assetRef);
     }
   }
   for (const ep of project.entityPlacements ?? []) {
@@ -187,10 +186,68 @@ export function scanDependencies(
     }
   }
 
+  function checkAssetRefAnyKind(
+    domain: DepDomain,
+    sourceType: string,
+    sourceId: string,
+    sourceLabel: string | undefined,
+    fieldName: string,
+    refId: string | undefined,
+    expectedKinds: readonly string[],
+  ) {
+    if (!refId) return;
+    const expectedKind = expectedKinds.join('|');
+    const asset = assetMap.get(refId);
+    if (!asset) {
+      edges.push({
+        domain, status: 'broken', sourceType, sourceId, sourceLabel, fieldName,
+        targetType: 'asset', targetId: refId, expectedKind,
+        message: `${sourceType} "${sourceLabel || sourceId}" ${fieldName} references nonexistent asset "${refId}"`,
+      });
+    } else if (!expectedKinds.includes(asset.kind)) {
+      edges.push({
+        domain, status: 'mismatched', sourceType, sourceId, sourceLabel, fieldName,
+        targetType: 'asset', targetId: refId, expectedKind, actualKind: asset.kind,
+        message: `${sourceType} "${sourceLabel || sourceId}" ${fieldName} references asset "${refId}" of kind "${asset.kind}", expected ${expectedKind}`,
+      });
+    } else {
+      edges.push({
+        domain, status: 'ok', sourceType, sourceId, sourceLabel, fieldName,
+        targetType: 'asset', targetId: refId, expectedKind, actualKind: asset.kind,
+        message: `${sourceType} "${sourceLabel || sourceId}" ${fieldName} → asset "${asset.label}"`,
+      });
+    }
+  }
+
+  function emitZoneRef(
+    sourceType: string,
+    sourceId: string,
+    sourceLabel: string | undefined,
+    fieldName: string,
+    zoneId: string | undefined,
+  ) {
+    if (!zoneId) return;
+    if (zoneIds.has(zoneId)) return;
+    edges.push({
+      domain: 'zone-ref', status: 'broken',
+      sourceType, sourceId, sourceLabel, fieldName,
+      targetType: 'zone', targetId: zoneId,
+      message: `${sourceType} "${sourceLabel || sourceId}" ${fieldName} references nonexistent zone "${zoneId}"`,
+    });
+  }
+
   // --- Zone asset refs ---
   for (const z of project.zones ?? []) {
     checkAssetRef('zone-asset', 'zone', z.id, z.name, 'backgroundId', z.backgroundId, 'background');
     checkAssetRef('zone-asset', 'zone', z.id, z.name, 'tilesetId', z.tilesetId, 'tileset');
+    checkAssetRef('zone-asset', 'zone', z.id, z.name, 'skylineRef', z.skylineRef, 'background');
+    checkAssetRef('zone-asset', 'zone', z.id, z.name, 'skyAtmosphereRef', z.skyAtmosphereRef, 'background');
+    for (const layer of Array.isArray(z.parallaxLayers) ? z.parallaxLayers : []) {
+      checkAssetRefAnyKind(
+        'zone-asset', 'zone', z.id, z.name,
+        'parallaxLayers.assetRef', layer.assetRef, ['background', 'sprite'],
+      );
+    }
   }
 
   // --- Entity asset refs ---
@@ -252,7 +309,7 @@ export function scanDependencies(
 
   // --- District zone refs ---
   for (const d of project.districts ?? []) {
-    for (const zid of d.zoneIds) {
+    for (const zid of Array.isArray(d.zoneIds) ? d.zoneIds : []) {
       if (!zoneIds.has(zid)) {
         edges.push({
           domain: 'zone-ref', status: 'broken',
@@ -278,14 +335,47 @@ export function scanDependencies(
 
   // --- Encounter zone + dialogue refs ---
   for (const ea of project.encounterAnchors ?? []) {
-    if (!zoneIds.has(ea.zoneId)) {
-      edges.push({
-        domain: 'zone-ref', status: 'broken',
-        sourceType: 'encounterAnchor', sourceId: ea.id,
-        fieldName: 'zoneId', targetType: 'zone', targetId: ea.zoneId,
-        message: `Encounter anchor "${ea.id}" in nonexistent zone "${ea.zoneId}"`,
-      });
+    emitZoneRef('encounterAnchor', ea.id, undefined, 'zoneId', ea.zoneId);
+  }
+
+  // Zone-id fields validateProject already treats as zone refs (rules 8–12 / 79–89).
+  for (const ep of project.entityPlacements ?? []) {
+    emitZoneRef('entityPlacement', ep.entityId, ep.name, 'zoneId', ep.zoneId);
+  }
+  for (const ip of project.itemPlacements ?? []) {
+    emitZoneRef('itemPlacement', ip.itemId, ip.name, 'zoneId', ip.zoneId);
+  }
+  for (const lm of project.landmarks ?? []) {
+    emitZoneRef('landmark', lm.id, lm.name, 'zoneId', lm.zoneId);
+  }
+  for (const cs of project.craftingStations ?? []) {
+    emitZoneRef('craftingStation', cs.id, undefined, 'zoneId', cs.zoneId);
+  }
+  for (const mn of project.marketNodes ?? []) {
+    emitZoneRef('marketNode', mn.id, undefined, 'zoneId', mn.zoneId);
+  }
+  for (const b of project.buildings ?? []) {
+    emitZoneRef('building', b.id, b.name, 'zoneId', b.zoneId);
+    emitZoneRef('building', b.id, b.name, 'interiorZoneId', b.interiorZoneId);
+  }
+  for (const h of project.hubs ?? []) {
+    emitZoneRef('hub', h.id, h.name, 'zoneId', h.zoneId);
+    for (const zid of Array.isArray(h.connectedZoneIds) ? h.connectedZoneIds : []) {
+      emitZoneRef('hub', h.id, h.name, 'connectedZoneIds', zid);
     }
+  }
+  for (const s of project.strongholds ?? []) {
+    emitZoneRef('stronghold', s.id, s.name, 'zoneId', s.zoneId);
+  }
+  for (const t of project.transitions ?? []) {
+    emitZoneRef('transition', t.id, t.label, 'zoneId', t.zoneId);
+    emitZoneRef('transition', t.id, t.label, 'targetZoneId', t.targetZoneId);
+  }
+  for (const pp of project.propPlacements ?? []) {
+    emitZoneRef('propPlacement', pp.id, undefined, 'zoneId', pp.zoneId);
+  }
+  for (const ph of project.pressureHotspots ?? []) {
+    emitZoneRef('pressureHotspot', ph.id, undefined, 'zoneId', ph.zoneId);
   }
 
   // --- Entity dialogue refs ---

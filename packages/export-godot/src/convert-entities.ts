@@ -9,7 +9,7 @@
 
 import type { WorldProject, EntityPlacement, EntityRole, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
-import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { gridToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 /** Godot scene template path pattern by role. */
@@ -77,7 +77,7 @@ export interface ConvertEntitiesResult {
 }
 
 export function convertEntities(project: WorldProject): ConvertEntitiesResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
     const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));
     const byZone: Record<string, GodotEntityInstance[]> = {};

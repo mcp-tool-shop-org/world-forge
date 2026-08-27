@@ -3,6 +3,9 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { Zone, District } from '@world-forge/schema';
 import type { DiagnosticInfo } from './diagnostics.js';
+import { DISTRICT_COLORS } from './district-colors.js';
+
+export { DISTRICT_COLORS };
 
 export interface ZoneRenderOptions {
   tileSize: number;
@@ -10,10 +13,10 @@ export interface ZoneRenderOptions {
   hoveredZoneId?: string;
 }
 
-const DISTRICT_COLORS = [
-  0x4a9eff, 0xff6b6b, 0x51cf66, 0xffd43b,
-  0xcc5de8, 0x20c997, 0xff922b, 0x748ffc,
-];
+const LABEL_FONT_SIZE = 11;
+const LABEL_CHAR_ADVANCE = 0.6;
+const CHIP_PAD_X = 3;
+const CHIP_PAD_Y = 1;
 
 /** INF-FT-002: max shadow offset in pixels (clamped so very tall zones don't break layout). */
 const MAX_ELEVATION_SHADOW_PX = 8;
@@ -167,18 +170,19 @@ export class ZoneOverlayRenderer {
 
       const g = new Graphics();
 
-      // Fill
+      // Fill — hover ≥0.22 so it reads against idle 0.06 even on gray (F-8a7e82c7).
       if (isSelected) {
         g.rect(x, y, w, h).fill({ color, alpha: 0.25 });
       } else if (isHovered) {
-        g.rect(x, y, w, h).fill({ color, alpha: 0.12 });
+        g.rect(x, y, w, h).fill({ color, alpha: 0.22 });
       } else {
         g.rect(x, y, w, h).fill({ color, alpha: 0.06 });
       }
 
       // Border — dashed when zone spans multiple levels (INF-FT-002).
-      const borderWidth = isSelected ? 3 : 1;
-      const borderAlpha = isSelected ? 1 : 0.5;
+      // Hover gets its own 2px high-alpha stroke; selected stays 3px opaque.
+      const borderWidth = isSelected ? 3 : isHovered ? 2 : 1;
+      const borderAlpha = isSelected ? 1 : isHovered ? 0.9 : 0.5;
       if (this.showElevation && isMultiLevel) {
         // Manual dashed outline: PixiJS v8 Graphics doesn't have setLineDash, so
         // we draw dash segments around the perimeter. Dash length scales with tileSize.
@@ -189,15 +193,43 @@ export class ZoneOverlayRenderer {
         g.rect(x, y, w, h).stroke({ width: borderWidth, color, alpha: borderAlpha });
       }
 
-      this.container.addChild(g);
+      // Label chip — hide when the zone is shorter than the text, ellipsize to width.
+      const chipH = LABEL_FONT_SIZE + CHIP_PAD_Y * 2 + 2;
+      const maxTextW = w - 8;
+      const showLabel = h >= chipH + 2 && maxTextW > LABEL_FONT_SIZE * LABEL_CHAR_ADVANCE;
+      if (showLabel) {
+        const display = ellipsizeLabel(zone.name, maxTextW, LABEL_FONT_SIZE);
+        if (display) {
+          const textW = Math.min(display.length * LABEL_FONT_SIZE * LABEL_CHAR_ADVANCE, maxTextW);
+          const chipW = Math.min(textW + CHIP_PAD_X * 2, w - 4);
+          g.rect(x + 2, y + 2, chipW, chipH).fill({ color: 0x000000, alpha: 0.55 });
+          this.container.addChild(g);
+          const label = new Text({
+            text: display,
+            style: {
+              fontSize: LABEL_FONT_SIZE,
+              fill: 0xcccccc,
+              fontFamily: 'monospace',
+              wordWrap: true,
+              wordWrapWidth: maxTextW,
+            },
+          });
+          label.position.set(x + 2 + CHIP_PAD_X, y + 2 + CHIP_PAD_Y);
+          this.container.addChild(label);
+          continue;
+        }
+      }
 
-      // Label
-      const label = new Text({
-        text: zone.name,
-        style: { fontSize: 11, fill: 0xcccccc, fontFamily: 'monospace' },
-      });
-      label.position.set(x + 4, y + 2);
-      this.container.addChild(label);
+      this.container.addChild(g);
     }
   }
+}
+
+function ellipsizeLabel(name: string, maxPx: number, fontSize: number): string {
+  if (maxPx <= 0) return '';
+  const charW = fontSize * LABEL_CHAR_ADVANCE;
+  const maxChars = Math.max(0, Math.floor(maxPx / charW));
+  if (name.length <= maxChars) return name;
+  if (maxChars <= 1) return '…'.slice(0, maxChars);
+  return `${name.slice(0, maxChars - 1)}…`;
 }

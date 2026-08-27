@@ -113,10 +113,39 @@ describe('FT-027: Asset drag-and-drop', () => {
 // ── FT-030: Theme Toggle ─────────────────────────────────────────
 
 describe('FT-030: Theme toggle', () => {
-  it('getInitialTheme returns "dark" when localStorage is empty', () => {
-    // Clear without depending on DOM
+  function mockPrefers(light: boolean): boolean {
+    if (typeof window === 'undefined') return false;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: (query: string) => ({
+        matches: light && query.includes('prefers-color-scheme: light'),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+    return true;
+  }
+
+  it('getInitialTheme returns "dark" when localStorage is empty and OS prefers dark', () => {
     try { localStorage.removeItem('wf-theme'); } catch { /* no-op in non-browser */ }
+    mockPrefers(false);
     expect(getInitialTheme()).toBe('dark');
+  });
+
+  it('getInitialTheme honors prefers-color-scheme when wf-theme is unset', () => {
+    try { localStorage.removeItem('wf-theme'); } catch { /* no-op in non-browser */ }
+    if (!mockPrefers(true)) {
+      expect(getInitialTheme()).toBe('dark');
+      return;
+    }
+    expect(getInitialTheme()).toBe('light');
+    mockPrefers(false);
   });
 
   it('getInitialTheme returns "light" when stored', () => {
@@ -125,8 +154,9 @@ describe('FT-030: Theme toggle', () => {
     localStorage.removeItem('wf-theme');
   });
 
-  it('getInitialTheme returns "dark" for invalid stored value', () => {
+  it('getInitialTheme returns "dark" for invalid stored value when OS prefers dark', () => {
     localStorage.setItem('wf-theme', 'neon');
+    mockPrefers(false);
     expect(getInitialTheme()).toBe('dark');
     localStorage.removeItem('wf-theme');
   });

@@ -112,4 +112,27 @@ describe('hazard validation', () => {
     const result = validateProject(withHazards([hazard('lava', { effects: [{ kind: 'damage', amount: 5, tickOn: 'turn-start' }] })]));
     expect(result.errors.filter((e) => e.path.includes('effects[0]'))).toEqual([]);
   });
+
+  it('rejects a status effect with missing stacking', () => {
+    const result = validateProject(withHazards([hazard('burn', {
+      effects: [{ kind: 'status', statusId: 'burn', chance: 0.5 } as never],
+    })]));
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path.includes('effects[0]') && e.message.includes('stacking'))).toBe(true);
+  });
+
+  it('rejects a status effect with stacking "explode"', () => {
+    const result = validateProject(withHazards([hazard('burn', {
+      effects: [{ kind: 'status', statusId: 'burn', chance: 0.5, stacking: 'explode' as never }],
+    })]));
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path.includes('effects[0]') && e.message.includes('stacking') && e.message.includes('explode'))).toBe(true);
+  });
+
+  it.each(['refresh', 'stack', 'ignore'] as const)('accepts a status effect with stacking "%s" (control)', (stacking) => {
+    const result = validateProject(withHazards([hazard('burn', {
+      effects: [{ kind: 'status', statusId: 'burn', chance: 0.5, stacking }],
+    })]));
+    expect(result.errors.filter((e) => e.path.includes('effects[0]'))).toEqual([]);
+  });
 });
