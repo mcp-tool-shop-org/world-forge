@@ -117,6 +117,8 @@ describe('multi-target-export-proof.ts exit code gate (F-6245cd73)', () => {
     it('exits non-zero when a cross-lane invariant is forced to fail', async () => {
         const { code, stdout } = await runScript({ WORLD_FORGE_FORCE_DOGFOOD_FAIL: '1' });
         expect(stdout).toContain('Test-injected failure');
+        // F-683e8222: a BLOCKED run must not close on the success-shaped `Done.`
+        expect(stdout).not.toContain('Done.');
         expect(code).not.toBe(0);
     }, 60_000);
 

@@ -157,9 +157,13 @@ describe('chapel-threshold.ts gap regression gate (F-239f17d3)', () => {
     }, 60_000);
 
     it('exits non-zero when a gap is forced (regression would have exited 0 before F-239f17d3)', async () => {
-        const { code, stdout } = await runScript({ WORLD_FORGE_FORCE_DOGFOOD_GAP: '1' });
-        expect(stdout).toContain('Found 1 gaps');
-        expect(stdout).toContain('Test-injected gap');
+        const { code, stdout, stderr } = await runScript({ WORLD_FORGE_FORCE_DOGFOOD_GAP: '1' });
+        // F-683e8222: gaps + the fix hint belong on stderr; `=== Done ===` must not print.
+        const err = stderrDiagnostics(stderr).join('\n');
+        expect(err).toContain('Found 1 gaps');
+        expect(err).toContain('Test-injected gap');
+        expect(err).toMatch(/Fix:/);
+        expect(stdout).not.toContain('=== Done ===');
         expect(code).not.toBe(0);
     }, 60_000);
 });

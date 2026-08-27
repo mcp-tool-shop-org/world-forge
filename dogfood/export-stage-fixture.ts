@@ -18,8 +18,8 @@
  * Usage:
  *   npx tsx dogfood/export-stage-fixture.ts --world=coverage --out=E:/AI/ai-rpg-stage/fixtures
  *
- * Options:
- *   --world=<name>  coverage | proof   (default: coverage)
+ * Options (world names are the keys of WORLDS below — --help prints them live):
+ *   --world=<name>  coverage | proof | salt-road   (default: coverage)
  *   --out=<dir>     output directory   (required)
  *   --doctor        additionally write world.doctored.tscn with ONE zone_id
  *                   altered — the RED control for the join proof. A join checker
@@ -29,6 +29,8 @@
  *                   with `--content`. Both lanes from ONE invocation, on purpose: the
  *                   client's scene and the sim's content have to describe the same world,
  *                   and generating them from separate commands is how they drift.
+ *                   Accepts `--engine-out <file>` as well as `--engine-out=<file>`.
+ *   --help, -h      print this contract and exit 0
  */
 
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -42,23 +44,6 @@ import { proofProject } from './worlds/multi-target-proof.js';
 import { saltRoadProject } from './worlds/salt-road.js';
 import { scaleForSandbox } from './worlds/sandbox-scale.js';
 
-// ── Arguments ────────────────────────────────────────────────
-const args = process.argv.slice(2);
-function flag(name: string): string | undefined {
-    const hit = args.find((a) => a.startsWith(`--${name}=`));
-    return hit ? hit.slice(name.length + 3) : undefined;
-}
-const worldName = flag('world') ?? 'coverage';
-const outDir = flag('out');
-const writeDoctored = args.includes('--doctor');
-const engineOut = flag('engine-out');
-
-if (!outDir) {
-    console.error('error: --out=<dir> is required');
-    console.error('usage: npx tsx dogfood/export-stage-fixture.ts --world=coverage --out=<dir> [--doctor]');
-    process.exit(2);
-}
-
 const WORLDS: Record<string, WorldProject> = {
     coverage: vocabularyCoverageProject,
     proof: proofProject,
@@ -67,6 +52,131 @@ const WORLDS: Record<string, WorldProject> = {
     // geometry scales. See worlds/sandbox-scale.ts for the measured basis.
     'salt-road': scaleForSandbox(saltRoadProject),
 };
+
+const VALUE_FLAGS = new Set(['world', 'out', 'engine-out']);
+
+function printUsage(toErr = true): void {
+    const write = toErr ? console.error : console.log;
+    const names = Object.keys(WORLDS).join('|');
+    write(`usage: npx tsx dogfood/export-stage-fixture.ts --world=<name> --out=<dir> [--doctor] [--engine-out=<file>]`);
+    write('options:');
+    write(`  --world=<name>         ${names}  (default: coverage)`);
+    write('  --out=<dir>            output directory (required)');
+    write('  --doctor               additionally write world.doctored.tscn with one zone_id altered');
+    write('  --engine-out=<file>    also write the engine-lane pack (accepts --engine-out <file>)');
+    write('  --help, -h             print this help');
+}
+
+// ── Arguments ────────────────────────────────────────────────
+// F-e430ef33 / F-aa8332da: --help used to be reported as "--out is required";
+// bare `--engine-out` (no =<file>, no following path) used to skip the engine
+// lane and still print `done.`. Parse both `=` and space forms; unknown flags
+// and a valueless --engine-out are usage errors (exit 2).
+const args = process.argv.slice(2);
+
+interface ParsedArgs {
+    help: boolean;
+    doctor: boolean;
+    worldName: string;
+    outDir: string | undefined;
+    engineOut: string | undefined;
+    engineOutMissingValue: boolean;
+    unknown: string[];
+}
+
+function parseArgs(argv: string[]): ParsedArgs {
+    const parsed: ParsedArgs = {
+        help: false,
+        doctor: false,
+        worldName: 'coverage',
+        outDir: undefined,
+        engineOut: undefined,
+        engineOutMissingValue: false,
+        unknown: [],
+    };
+
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i]!;
+        if (a === '--help' || a === '-h') {
+            parsed.help = true;
+            continue;
+        }
+        if (a === '--doctor') {
+            parsed.doctor = true;
+            continue;
+        }
+
+        if (a.startsWith('--') && a.includes('=')) {
+            const eq = a.indexOf('=');
+            const name = a.slice(2, eq);
+            const value = a.slice(eq + 1);
+            if (name === 'world') {
+                parsed.worldName = value;
+            } else if (name === 'out') {
+                parsed.outDir = value === '' ? undefined : value;
+            } else if (name === 'engine-out') {
+                if (value === '') parsed.engineOutMissingValue = true;
+                else parsed.engineOut = value;
+            } else {
+                parsed.unknown.push(a);
+            }
+            continue;
+        }
+
+        if (a.startsWith('--')) {
+            const name = a.slice(2);
+            if (VALUE_FLAGS.has(name)) {
+                const next = argv[i + 1];
+                if (next === undefined || next.startsWith('-')) {
+                    if (name === 'engine-out') parsed.engineOutMissingValue = true;
+                    // --out / --world without a value fall through as missing.
+                    continue;
+                }
+                i++;
+                if (name === 'world') parsed.worldName = next;
+                else if (name === 'out') parsed.outDir = next;
+                else parsed.engineOut = next;
+                continue;
+            }
+            parsed.unknown.push(a);
+            continue;
+        }
+
+        parsed.unknown.push(a);
+    }
+    return parsed;
+}
+
+const parsed = parseArgs(args);
+const worldName = parsed.worldName;
+const outDir = parsed.outDir;
+const writeDoctored = parsed.doctor;
+const engineOut = parsed.engineOut;
+const engineLaneRequested = engineOut !== undefined || parsed.engineOutMissingValue;
+
+if (parsed.help) {
+    printUsage(false);
+    process.exit(0);
+}
+
+if (parsed.unknown.length > 0) {
+    console.error(`error: unknown flag: ${parsed.unknown.join(', ')}`);
+    printUsage(true);
+    process.exit(2);
+}
+
+if (parsed.engineOutMissingValue) {
+    console.error('error: --engine-out requires a file path (--engine-out=<file> or --engine-out <file>)');
+    printUsage(true);
+    process.exit(2);
+}
+
+if (!outDir) {
+    console.error('error: --out=<dir> is required');
+    printUsage(true);
+    process.exit(2);
+}
+
 const project = WORLDS[worldName];
 if (!project) {
     console.error(`error: unknown world '${worldName}'. Known: ${Object.keys(WORLDS).join(', ')}`);
@@ -277,6 +387,7 @@ if (writeDoctored) {
 // Emitted here rather than by a second command because the two halves must describe one
 // world; a CI step that generated them separately is exactly how a scene and a simulation
 // start disagreeing about which zones exist.
+let engineLaneWritten = !engineLaneRequested;
 if (engineOut !== undefined) {
     const engineResult = exportToEngine(project);
     if (!engineResult.success) {
@@ -300,6 +411,13 @@ if (engineOut !== undefined) {
         process.exit(1);
     }
     console.log(`  → ${enginePath}  (engine lane, ${engineZoneIds.length} zones, agrees with the scene)`);
+    engineLaneWritten = true;
+}
+
+// F-aa8332da: never print `done.` until every requested lane has written.
+if (!engineLaneWritten) {
+    console.error('error: --engine-out was requested but the engine lane was not written');
+    process.exit(1);
 }
 
 console.log('done.');

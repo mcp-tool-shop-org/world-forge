@@ -83,8 +83,8 @@ console.log(`  ${(proofProject.transitions ?? []).length} transitions, ${(proofP
 console.log('── 1. Structural Validation ──');
 const validation = validateProject(proofProject);
 if (!validation.valid) {
-    console.log(`  ✗ FAILED (${validation.errors.length} errors):`);
-    for (const e of validation.errors) console.log(`    [${e.path}] ${e.message}`);
+    console.error(`  ✗ FAILED (${validation.errors.length} errors):`);
+    for (const e of validation.errors) console.error(`    [${e.path}] ${e.message}`);
     process.exit(1);
 }
 console.log(`  ✓ Valid (${validation.warningCount} warnings)\n`);
@@ -130,8 +130,8 @@ console.log('══════════════════════�
 
 const aiRpgResult = exportToEngine(proofProject, { profile: 'release', emitSchemaVersion: true });
 if (!aiRpgResult.success) {
-    console.log('  ✗ Export failed:');
-    for (const e of (aiRpgResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
+    console.error('  ✗ Export failed:');
+    for (const e of (aiRpgResult as any).errors) console.error(`    ${e.path}: ${e.message}`);
     process.exit(1);
 }
 const aiRpg = aiRpgResult as ExportResult;
@@ -171,8 +171,8 @@ console.log('══════════════════════�
 
 const godotResult = exportToGodot(proofProject);
 if (!godotResult.success) {
-    console.log('  ✗ Export failed:');
-    for (const e of (godotResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
+    console.error('  ✗ Export failed:');
+    for (const e of (godotResult as any).errors) console.error(`    ${e.path}: ${e.message}`);
     process.exit(1);
 }
 const godot = godotResult as GodotExportResult;
@@ -254,8 +254,8 @@ console.log('══════════════════════�
 
 const unrealResult = exportToUnreal(proofProject);
 if (!unrealResult.success) {
-    console.log('  ✗ Export failed:');
-    for (const e of (unrealResult as any).errors) console.log(`    ${e.path}: ${e.message}`);
+    console.error('  ✗ Export failed:');
+    for (const e of (unrealResult as any).errors) console.error(`    ${e.path}: ${e.message}`);
     process.exit(1);
 }
 const unreal = unrealResult as UnrealExportResult;
@@ -672,7 +672,11 @@ ${productAssessment}
 
 writeFileSync(resolve(outBase, receiptFile), receipt);
 console.log(`Proof receipt: dogfood/output/${receiptFile}`);
-console.log('Done.');
+// F-683e8222: `Done.` on a BLOCKED/NEEDS FOLLOW-UP run made a red CI log
+// look finished-successfully. Only print it when the invariants held.
+if (failCount === 0) {
+    console.log('Done.');
+}
 
 // ═══════════════════════════════════════════════════════════════
 // 9. EXIT CODE — must reflect the verdict, not just the early guards
