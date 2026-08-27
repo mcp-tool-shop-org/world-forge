@@ -5,11 +5,22 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      # F-96633795 / INF-B-001: site-config.ts stamps the landing hero from
+      # root package.json. A version-only bump must rebuild the CDN artifact.
+      - 'package.json'
       - '.github/workflows/**'
+  # F-96633795: gh release create publishes six packages via release.yml and
+  # used to leave Pages on whatever site/ tree last changed.
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # F-96633795: was ${{ github.workflow }}-${{ github.ref }}. A release-tag
+  # deploy (refs/tags/v*) and a main push could race two production CDN
+  # cutovers. Single production key serializes every deploy onto the live
+  # Pages site.
+  group: pages
   # F-1b8b3bf8: was `true`. Same class as release.yml F-f4cbf9e9 — an in-flight
   # Pages deploy is irreversible-ish (artifact wired to the CDN, then the
   # curl-200 verifier). GitHub's Pages starter uses false so production
@@ -25,6 +36,9 @@ jobs:
     # F-4a5efc2f: job id stays build. Display name so a handbook-build
     # failure is not the generic 'build' under this workflow.
     name: Build handbook (Pages artifact)
+    # F-96633795: pin with deploy so a feature-branch workflow_dispatch does
+    # not occupy the `pages` concurrency slot for a 20-minute build.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # INF-B-006: cap wall time so a hung build can't burn the 6-hour default.
     timeout-minutes: 20
@@ -66,6 +80,9 @@ jobs:
     # F-4a5efc2f: job id stays deploy. The verify step name was already
     # operator-facing; the job title in the run list was not.
     name: Deploy to GitHub Pages + verify 200
+    # F-96633795: workflow_dispatch can target any ref; only main and v*
+    # tags may cut over production Pages.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     # INF-B-006: deploy is normally <1 min; 20 minutes leaves generous headroom.

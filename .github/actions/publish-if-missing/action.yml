@@ -45,6 +45,16 @@
 #     ci-tooling output for the exit-code proof, both the safe (no pipe) and
 #     unsafe (piped, exit-code-swallowing) shapes.
 #
+# F-762af11a: the existence check above is write-only. `npm publish
+# --provenance` can still succeed (tarball live) when trusted-publisher /
+# OIDC is misconfigured and no Sigstore attestation lands. A re-run cannot
+# attach provenance to an already-live version (CHANGELOG 4.4.2 explicitly
+# removed --provenance; skip used to treat that unsigned record as done).
+# After a real publish, fail closed unless `npm view --json dist.attestations`
+# reports a provenance predicate; print the attestation URL as ::notice.
+# On skip, ::warning if the live version has no attestations — do not fail
+# the step, or remaining packages in a partial re-run would never publish.
+#
 # Extracted into its own composite action (DECOMPOSE_BY_SECRETS,
 # .claude/rules/workflow-standards.md) rather than repeated inline six
 # times in release.yml: the existence-check strategy is the one thing here
@@ -55,9 +65,12 @@ name: 'Publish package if missing'
 description: >-
   Run `npm publish --provenance --access public` in the given directory,
   unless that exact name@version is already live on the registry, in which
-  case skip it. Makes the release.yml publish sequence safe to re-run after
-  a partial failure. A real publish failure still fails this step (and the
-  job) with npm's own exit code — nothing here treats "npm publish exited
+  case skip it. After a real publish, fail closed unless the registry
+  record has a provenance attestation. Skip of an already-live unsigned
+  version warns rather than treating it as a provenance-bearing release.
+  Makes the release.yml publish sequence safe to re-run after a partial
+  failure. A real publish failure still fails this step (and the job)
+  with npm's own exit code — nothing here treats "npm publish exited
   non-zero" as anything but a hard failure.
 
 inputs:
@@ -80,11 +93,47 @@ runs:
         PKG_VERSION="$(node -p "require('./package.json').version")"
         SPEC="${PKG_NAME}@${PKG_VERSION}"
 
+        # F-762af11a: registry read-back. Empty / missing dist.attestations
+        # (e.g. @world-forge/schema@4.4.2) must not count as provenance.
+        provenance_url() {
+          PROVENANCE_SPEC="$1" node -e '
+            const { execFileSync } = require("child_process");
+            const spec = process.env.PROVENANCE_SPEC;
+            if (!spec) process.exit(1);
+            let raw = "";
+            try {
+              raw = execFileSync("npm", ["view", spec, "--json", "dist.attestations"], {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "pipe"],
+              });
+            } catch {
+              process.exit(1);
+            }
+            raw = String(raw || "").trim();
+            if (!raw || raw === "undefined" || raw === "null") process.exit(1);
+            let v;
+            try { v = JSON.parse(raw); } catch { process.exit(1); }
+            if (!v || typeof v !== "object" || Array.isArray(v)) process.exit(1);
+            const pred = v.provenance && typeof v.provenance.predicateType === "string"
+              ? v.provenance.predicateType
+              : "";
+            if (!pred) process.exit(1);
+            const url = typeof v.url === "string" ? v.url : "";
+            process.stdout.write(url || pred);
+          '
+        }
+
         echo "Checking whether ${SPEC} is already published..."
         VIEW_ERR="$(mktemp)"
         if npm view "${SPEC}" version >"$VIEW_ERR" 2>&1; then
           rm -f "$VIEW_ERR"
           echo "::notice::${SPEC} is already on npm - skipping publish (idempotent re-run)."
+          URL="$(provenance_url "${SPEC}" || true)"
+          if [ -n "$URL" ]; then
+            echo "::notice::${SPEC} provenance attestation: ${URL}"
+          else
+            echo "::warning::${SPEC} is already live without provenance attestations. Skip does not make this a provenance-bearing release; a re-run cannot attach provenance. Next: deprecate ${SPEC} and publish a new version with working OIDC."
+          fi
         else
           echo "npm view ${SPEC} version failed:"
           cat "$VIEW_ERR"
@@ -95,4 +144,22 @@ runs:
           fi
           rm -f "$VIEW_ERR"
           npm publish --provenance --access public
+          max=5
+          URL=""
+          for attempt in $(seq 1 "$max"); do
+            URL="$(provenance_url "${SPEC}" || true)"
+            if [ -n "$URL" ]; then
+              echo "::notice::${SPEC} provenance attestation: ${URL}"
+              break
+            fi
+            if [ "$attempt" -lt "$max" ]; then
+              wait_s=$((attempt * 5))
+              echo "::warning::${SPEC} has no provenance attestation yet (attempt ${attempt}/${max}) — sleeping ${wait_s}s (registry lag)"
+              sleep "$wait_s"
+            fi
+          done
+          if [ -z "$URL" ]; then
+            echo "::error::${SPEC} published but registry has no provenance attestation after ${max} probes. Trusted-publisher/OIDC likely misconfigured; the tarball is live unsigned. Provenance cannot be attached after the fact. Next: npm deprecate ${SPEC} and cut a new version after fixing OIDC."
+            exit 1
+          fi
         fi
