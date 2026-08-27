@@ -19,7 +19,7 @@ Core TypeScript types for [World Forge](https://github.com/mcp-tool-shop-org/wor
 - **World modeling:** `Stratum`, `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), plus party-state `SpawnCondition` operands powering `ZoneEntryGate`
 - **Visual:** `Tileset`, `TileDefinition`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
 - **Project:** `WorldProject` — the complete authored world container
-- **Validation:** `validateProject()` with 78 structural checks
+- **Validation:** `validateProject()` — numbered structural checks live in `src/validate.ts` (do not treat a published count as the contract)
 
 ## Install
 

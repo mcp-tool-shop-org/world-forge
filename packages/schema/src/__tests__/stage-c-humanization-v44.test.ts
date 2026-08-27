@@ -9,7 +9,7 @@ import {
   validateProject,
   SCHEMA_VERSION,
 } from '../validate.js';
-import { buildReviewSnapshot, __resetClassifyDomainWarnings } from '../review.js';
+import { buildReviewSnapshot, __resetClassifyDomainWarnings, __classifyValidationDomain } from '../review.js';
 import { scanDependencies } from '../dependencies.js';
 import { CanonAdapterError } from '../canon-adapter.js';
 import type { WorldProject } from '../project.js';
@@ -41,6 +41,16 @@ describe('SCH-B-001 (v4.4): schema version is observable to downstream tools', (
     const result = validateProject(broken);
     expect(result.valid).toBe(false);
     expect(result.schemaVersion).toBe(SCHEMA_VERSION);
+  });
+
+  it('stamps schemaVersion on the structural-guard early return (required-array type corruption)', () => {
+    const broken = { ...structuredClone(minimalProject), zones: 'not-an-array' } as unknown as WorldProject;
+    const result = validateProject(broken);
+    expect(result.valid).toBe(false);
+    expect(result.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(Object.keys(result).sort()).toEqual(
+      expect.arrayContaining(['valid', 'errors', 'warningCount', 'errorCount', 'schemaVersion']),
+    );
   });
 
   it('propagates schemaVersion into buildReviewSnapshot output', () => {
@@ -222,13 +232,20 @@ describe('SCH-B-005 (v4.4): buildReviewSnapshot honours suppressUnknownPrefixWar
   // The actual behavioural contract: when suppressUnknownPrefixWarnings is
   // true, no new warn is emitted for ANY unknown prefix encountered.
   it('suppresses warn when option is true even if an unknown prefix slips through', () => {
-    // Seed the classifier by feeding it an error with an unknown prefix
-    // through a projected error. We use the suppress option path directly.
+    __classifyValidationDomain('brandNewSection.0.id', true);
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    __resetClassifyDomainWarnings();
+    __classifyValidationDomain('brandNewSection.0.id', false);
+    expect(warnSpy).toHaveBeenCalled();
+    expect(String(warnSpy.mock.calls[0][0])).toContain('brandNewSection');
+
+    __resetClassifyDomainWarnings();
+    warnSpy.mockClear();
     const proj = withOverrides({});
     buildReviewSnapshot(proj, { suppressUnknownPrefixWarnings: true });
-    // A clean snapshot produces no warns either way; the important property
-    // is the option is accepted, typed, and does not throw.
-    expect(warnSpy).not.toHaveBeenCalled();
+    __classifyValidationDomain('anotherUnknownPrefix.field', true);
+    expect(warnSpy.mock.calls.every((c) => !String(c[0]).includes('anotherUnknownPrefix'))).toBe(true);
   });
 
   it('accepts the option without breaking a healthy snapshot', () => {

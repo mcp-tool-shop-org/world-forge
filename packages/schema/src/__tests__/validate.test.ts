@@ -726,11 +726,23 @@ describe('validateProject', () => {
     expect(result.warningCount).toBeGreaterThan(0);
   });
 
-  it('accepts verbose option without changing result shape', () => {
+  it('verbose option attaches diagnostics without changing core result fields', () => {
     const normal = validateProject(minimalProject);
     const verbose = validateProject(minimalProject, { verbose: true });
     expect(normal.valid).toBe(verbose.valid);
     expect(normal.errors.length).toBe(verbose.errors.length);
+    expect(normal.errorCount).toBe(verbose.errorCount);
+    expect(verbose.diagnostics).toEqual([]);
+    expect(normal.diagnostics).toBeUndefined();
+  });
+
+  it('verbose diagnostics list each error as path: message', () => {
+    const bad: WorldProject = { ...minimalProject, spawnPoints: [] };
+    const verbose = validateProject(bad, { verbose: true });
+    expect(verbose.valid).toBe(false);
+    expect(verbose.diagnostics).toBeDefined();
+    expect(verbose.diagnostics!.length).toBe(verbose.errors.length);
+    expect(verbose.diagnostics![0]).toMatch(/^.+: .+$/);
   });
 
   // --- SB-006: VALID_CONNECTION_KINDS derived from ConnectionKind ---

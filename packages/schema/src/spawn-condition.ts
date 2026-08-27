@@ -63,8 +63,9 @@ function splitComparator(s: string): { op: string; rest: string } | null {
  * SpawnConditionNode. See module docstring for supported forms.
  * Returns null for unrecognized strings (callers treat as opaque or warn).
  */
-export function parseSpawnCondition(s: string | undefined): SpawnConditionNode | null {
+export function parseSpawnCondition(s: unknown): SpawnConditionNode | null {
   if (s === undefined || s === null) return null;
+  if (typeof s !== 'string') return null;
   const trimmed = s.trim();
   if (trimmed.length === 0) return null;
 

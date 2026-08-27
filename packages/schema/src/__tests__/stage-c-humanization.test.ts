@@ -27,7 +27,7 @@ describe('SCH-B-001: dependency scanner recognises 2.5D parallax + skyline refs'
         {
           ...minimalProject.zones[0],
           parallaxLayers: [
-            { id: 'pl-1', assetRef: 'bg-parallax-1', depth: 'far', scrollFactor: 0.5 } as any,
+            { id: 'pl-1', assetRef: 'bg-parallax-1', depth: 100, scrollFactor: 0.5 },
           ],
         },
         minimalProject.zones[1],

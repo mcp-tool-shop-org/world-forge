@@ -83,7 +83,10 @@ export interface Zone {
   // Hints for exporters (UE5 Sky Atmosphere / Godot WorldEnvironment). The
   // 2D editor may not have UI for these yet — they flow through the schema
   // so downstream exporters in Wave 2 can consume them.
-  /** Asset id for UE5 Sky Atmosphere preset / Godot equivalent. */
+  /**
+   * AssetEntry id (kind = background) for a UE5 Sky Atmosphere preset / Godot
+   * equivalent. When set, validateProject requires the id to exist in assets[].
+   */
   skyAtmosphereRef?: string;
   /** Directional light yaw in degrees (sun direction). */
   directionalLightYaw?: number;
