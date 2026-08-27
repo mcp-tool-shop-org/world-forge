@@ -193,19 +193,20 @@ export interface KindStyle {
 }
 
 export const CONNECTION_KIND_STYLES: Record<string, KindStyle> = {
-  passage:  { color: 'rgba(139,148,158,0.6)', hoverColor: 'rgba(139,148,158,0.9)', dash: null },
-  door:     { color: 'rgba(210,159,34,0.7)',   hoverColor: 'rgba(210,159,34,1)',    dash: null },
-  stairs:   { color: 'rgba(139,148,158,0.6)', hoverColor: 'rgba(139,148,158,0.9)', dash: [4, 2, 2, 2] },
-  road:     { color: 'rgba(172,182,192,0.7)', hoverColor: 'rgba(172,182,192,1)',    dash: null },
-  portal:   { color: 'rgba(163,113,247,0.7)', hoverColor: 'rgba(163,113,247,1)',    dash: null },
-  secret:   { color: 'rgba(139,148,158,0.3)', hoverColor: 'rgba(139,148,158,0.6)', dash: [3, 5] },
-  hazard:   { color: 'rgba(248,81,73,0.7)',    hoverColor: 'rgba(248,81,73,1)',      dash: null },
-  // v3.3: ocean/space/wilderness kinds
-  channel:  { color: 'rgba(56,154,224,0.7)',   hoverColor: 'rgba(56,154,224,1)',    dash: null },
-  route:    { color: 'rgba(56,154,224,0.5)',   hoverColor: 'rgba(56,154,224,0.8)',  dash: [6, 3] },
-  docking:  { color: 'rgba(163,113,247,0.7)',  hoverColor: 'rgba(163,113,247,1)',   dash: [3, 2] },
-  warp:     { color: 'rgba(163,113,247,0.5)',  hoverColor: 'rgba(163,113,247,0.8)', dash: [2, 4, 2, 4] },
-  trail:    { color: 'rgba(87,166,74,0.6)',    hoverColor: 'rgba(87,166,74,0.9)',   dash: [4, 3] },
+  // F-95e5bb3f: solid (not alpha-washed) tokens, ≥3:1 on the canvas well.
+  // Secret stays dashed rather than transparent.
+  passage:  { color: 'var(--wf-conn-passage)', hoverColor: 'var(--wf-conn-passage)', dash: null },
+  door:     { color: 'var(--wf-conn-door)',    hoverColor: 'var(--wf-conn-door)',    dash: null },
+  stairs:   { color: 'var(--wf-conn-stairs)',  hoverColor: 'var(--wf-conn-stairs)',  dash: [4, 2, 2, 2] },
+  road:     { color: 'var(--wf-conn-road)',    hoverColor: 'var(--wf-conn-road)',    dash: null },
+  portal:   { color: 'var(--wf-conn-portal)',  hoverColor: 'var(--wf-conn-portal)',  dash: null },
+  secret:   { color: 'var(--wf-conn-secret)',  hoverColor: 'var(--wf-conn-secret)',  dash: [3, 5] },
+  hazard:   { color: 'var(--wf-conn-hazard)',  hoverColor: 'var(--wf-conn-hazard)',  dash: null },
+  channel:  { color: 'var(--wf-conn-channel)', hoverColor: 'var(--wf-conn-channel)', dash: null },
+  route:    { color: 'var(--wf-conn-route)',   hoverColor: 'var(--wf-conn-route)',   dash: [6, 3] },
+  docking:  { color: 'var(--wf-conn-docking)', hoverColor: 'var(--wf-conn-docking)', dash: [3, 2] },
+  warp:     { color: 'var(--wf-conn-warp)',    hoverColor: 'var(--wf-conn-warp)',    dash: [2, 4, 2, 4] },
+  trail:    { color: 'var(--wf-conn-trail)',   hoverColor: 'var(--wf-conn-trail)',   dash: [4, 3] },
 };
 
 /** Get the visual style for a connection kind, defaulting to passage. */

@@ -75,14 +75,15 @@ export function _getToastsForTest(): ToastEntry[] {
   return [..._toasts];
 }
 
-const KIND_COLORS: Record<ToastKind, { bg: string; fg: string }> = {
-  info: { bg: '#1f6feb', fg: '#fff' },
-  success: { bg: '#238636', fg: '#fff' },
-  warning: { bg: '#9e6a03', fg: '#fff' },
-  error: { bg: '#da3633', fg: '#fff' },
+/** F-43ee22ef: kind fill as a bar; --wf-*-text foregrounds meet 4.5:1 on elevated. */
+export const KIND_COLORS: Record<ToastKind, { bg: string; fg: string; bar: string }> = {
+  info: { bg: 'var(--wf-bg-elevated)', fg: 'var(--wf-accent-text)', bar: 'var(--wf-accent)' },
+  success: { bg: 'var(--wf-bg-elevated)', fg: 'var(--wf-success-text)', bar: 'var(--wf-success)' },
+  warning: { bg: 'var(--wf-bg-elevated)', fg: 'var(--wf-warning-text)', bar: 'var(--wf-warning)' },
+  error: { bg: 'var(--wf-bg-elevated)', fg: 'var(--wf-danger-text)', bar: 'var(--wf-danger)' },
 };
 
-export function ToastHost() {
+export function ToastHost({ shiftForMinimap = false }: { shiftForMinimap?: boolean }) {
   const [toasts, setToasts] = useState<ToastEntry[]>(_toasts);
   useEffect(() => {
     _listeners.add(setToasts);
@@ -91,11 +92,20 @@ export function ToastHost() {
 
   if (toasts.length === 0) return null;
 
+  // Sit above the 24px status line. When the minimap occupies bottom-right,
+  // shift left by minimap width + its inset so Valid / Issues stay visible.
+  const right = shiftForMinimap
+    ? 'calc(var(--wf-minimap-width) + var(--wf-space-2) + var(--wf-space-2))'
+    : 'var(--wf-space-4)';
+
   return (
     <div
       data-testid="wf-toast-host"
       style={{
-        position: 'fixed', bottom: 16, right: 16, zIndex: 10000,
+        position: 'fixed',
+        bottom: 'calc(var(--wf-bottombar-height) + var(--wf-space-2))',
+        right,
+        zIndex: 'var(--wf-z-toast)' as unknown as number,
         display: 'flex', flexDirection: 'column', gap: 6,
         pointerEvents: 'none',
       }}
@@ -113,7 +123,8 @@ export function ToastHost() {
             style={{
               background: c.bg, color: c.fg, padding: '6px 12px',
               borderRadius: 6, fontSize: 12, fontWeight: 500,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.4)', pointerEvents: 'auto',
+              borderLeft: `3px solid ${c.bar}`,
+              boxShadow: 'var(--wf-shadow-panel)', pointerEvents: 'auto',
               maxWidth: 360, display: 'flex', alignItems: 'center', gap: 8,
             }}
           >

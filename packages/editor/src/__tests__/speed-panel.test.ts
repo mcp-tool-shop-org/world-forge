@@ -289,7 +289,7 @@ describe('mode-aware speed panel', () => {
     // production actions happen to be mode-suggested today.
     const actions: SpeedPanelAction[] = [
       ...SPEED_PANEL_ACTIONS,
-      { id: 'synthetic-mode-action', label: 'Synthetic', icon: '*', category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['dungeon'] },
+      { id: 'synthetic-mode-action', label: 'Synthetic', icon: '*', description: 'Synthetic test action', category: 'global', contextFilter: (h) => h === null, macroSafe: false, modeSuggested: ['dungeon'] },
     ];
     const result = filterActions(actions, null, '', ['fit-content'], ['new-zone'], [], [], 'dungeon');
     expect(result.pinned.length).toBeGreaterThan(0);

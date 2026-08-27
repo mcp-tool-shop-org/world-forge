@@ -3,13 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" href="/logo.png" />
   <title>World Forge</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { width: 100%; height: 100%; overflow: hidden; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; }
+    html.light, html.light body { background: #f5f5f5; color: #1a1a2e; }
   </style>
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('wf-theme');
+        var theme = (stored === 'light' || stored === 'dark')
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.classList.add(theme);
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>

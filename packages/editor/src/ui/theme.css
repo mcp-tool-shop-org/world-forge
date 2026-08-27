@@ -5,9 +5,14 @@
  *
  * To change the editor look-and-feel, edit values here.
  * No component files need to move.
+ *
+ * F-ce49d7e0: :root / html.dark / body.dark and html.light / body.light each
+ * define the full color table so light mode is not a partial overlay.
  */
 
-:root {
+:root, html.dark, body.dark {
+  color-scheme: dark;
+
   /* ── Colors: backgrounds ──────────────────────────── */
   --wf-bg-app:       #0d1117;
   --wf-bg-panel:     #161b22;
@@ -16,6 +21,7 @@
   --wf-bg-control:   #21262d;
   --wf-bg-hover:     #30363d;
   --wf-bg-overlay:   rgba(0, 0, 0, 0.7);
+  --wf-danger-bg:    #3d1214;
 
   /* ── Colors: text ─────────────────────────────────── */
   --wf-text-primary: #c9d1d9;
@@ -23,18 +29,110 @@
   --wf-text-faint:   #6e7681;
   --wf-text-hint:    #484f58;
 
-  /* ── Colors: accent / semantic ────────────────────── */
+  /* ── Colors: accent / semantic (fills) ────────────── */
   --wf-accent:       #58a6ff;
   --wf-success:      #238636;
-  --wf-success-text: #3fb950;
   --wf-danger:       #da3633;
+  --wf-warning:      #9e6a03;
+
+  /* ── Colors: semantic text (4.5:1 on --wf-bg-panel) ─ */
+  --wf-accent-text:  #58a6ff;
+  --wf-success-text: #3fb950;
   --wf-danger-text:  #f85149;
-  --wf-warning:      #d29922;
+  --wf-warning-text: #d29922;
+
+  /* ── Colors: on-fill foregrounds (4.5:1 on fills) ─── */
+  --wf-on-accent:    #ffffff;
+  --wf-on-success:   #ffffff;
+  --wf-on-warning:   #ffffff;
+  --wf-on-danger:    #ffffff;
 
   /* ── Borders ──────────────────────────────────────── */
   --wf-border-default: #30363d;
   --wf-border-subtle:  #21262d;
 
+  /* ── Shadows ──────────────────────────────────────── */
+  --wf-shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* ── Canvas overlays (3:1 vs --wf-bg-app) ─────────── */
+  --wf-grid-line:    #5c636b;
+  --wf-snap-guide:   #22d3ee;
+  --wf-conn-passage: #8b949e;
+  --wf-conn-door:    #d29922;
+  --wf-conn-stairs:  #8b949e;
+  --wf-conn-road:    #c9d1d9;
+  --wf-conn-portal:  #bc8cff;
+  --wf-conn-secret:  #8b949e;
+  --wf-conn-hazard:  #f85149;
+  --wf-conn-channel: #58a6ff;
+  --wf-conn-route:   #58a6ff;
+  --wf-conn-docking: #bc8cff;
+  --wf-conn-warp:    #bc8cff;
+  --wf-conn-trail:   #3fb950;
+}
+
+html.light, body.light {
+  color-scheme: light;
+
+  /* ── Colors: backgrounds ──────────────────────────── */
+  --wf-bg-app:       #f5f5f5;
+  --wf-bg-panel:     #e8e8e8;
+  --wf-bg-elevated:  #ffffff;
+  --wf-bg-input:     #ffffff;
+  --wf-bg-control:   #dddddd;
+  --wf-bg-hover:     #d0d0d0;
+  --wf-bg-overlay:   rgba(27, 31, 35, 0.45);
+  --wf-danger-bg:    #fce4e4;
+
+  /* ── Colors: text ─────────────────────────────────── */
+  --wf-text-primary: #1a1a2e;
+  --wf-text-muted:   #444444;
+  --wf-text-faint:   #6e7781;
+  --wf-text-hint:    #6e7781;
+
+  /* ── Colors: accent / semantic (fills, white-on-fill) */
+  --wf-accent:       #0366d6;
+  --wf-success:      #1a7f37;
+  --wf-danger:       #cf222e;
+  --wf-warning:      #9a6700;
+
+  /* ── Colors: semantic text (4.5:1 on --wf-bg-panel) ─ */
+  --wf-accent-text:  #0550ae;
+  --wf-success-text: #0f6d31;
+  --wf-danger-text:  #a40e26;
+  --wf-warning-text: #7d5600;
+
+  /* ── Colors: on-fill foregrounds (4.5:1 on fills) ─── */
+  --wf-on-accent:    #ffffff;
+  --wf-on-success:   #ffffff;
+  --wf-on-warning:   #ffffff;
+  --wf-on-danger:    #ffffff;
+
+  /* ── Borders ──────────────────────────────────────── */
+  --wf-border-default: #bbbbbb;
+  --wf-border-subtle:  #d0d7de;
+
+  /* ── Shadows ──────────────────────────────────────── */
+  --wf-shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+  /* ── Canvas overlays (3:1 vs --wf-bg-app) ─────────── */
+  --wf-grid-line:    #6e7681;
+  --wf-snap-guide:   #0e7490;
+  --wf-conn-passage: #57606a;
+  --wf-conn-door:    #9a6700;
+  --wf-conn-stairs:  #57606a;
+  --wf-conn-road:    #424a53;
+  --wf-conn-portal:  #8250df;
+  --wf-conn-secret:  #57606a;
+  --wf-conn-hazard:  #cf222e;
+  --wf-conn-channel: #0969da;
+  --wf-conn-route:   #0969da;
+  --wf-conn-docking: #8250df;
+  --wf-conn-warp:    #8250df;
+  --wf-conn-trail:   #1a7f37;
+}
+
+:root {
   /* ── Spacing scale (4-px grid) ────────────────────── */
   --wf-space-1: 4px;
   --wf-space-2: 8px;
@@ -48,9 +146,6 @@
   --wf-radius-md:  4px;
   --wf-radius-lg:  8px;
   --wf-radius-pill: 20px;
-
-  /* ── Shadows ──────────────────────────────────────── */
-  --wf-shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.4);
 
   /* ── Typography ───────────────────────────────────── */
   --wf-font-family: 'Segoe UI', system-ui, sans-serif;
@@ -68,14 +163,22 @@
   --wf-z-modal:   100;
   --wf-z-overlay: 200;
   --wf-z-drag:    1000;
+  --wf-z-toast:   10000;
 
   /* ── Layout dimensions ────────────────────────────── */
   --wf-sidebar-width:  220px;
   --wf-inspector-width: 280px;
   --wf-topbar-height:  36px;
   --wf-bottombar-height: 24px;
+  --wf-minimap-width:  200px;
+  --wf-minimap-height: 150px;
 
   /* ── Transitions ──────────────────────────────────── */
   --wf-transition-fast: 120ms ease;
   --wf-transition-normal: 200ms ease;
+}
+
+html, body {
+  background: var(--wf-bg-app);
+  color: var(--wf-text-primary);
 }
