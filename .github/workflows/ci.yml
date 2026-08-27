@@ -72,14 +72,22 @@ jobs:
         run: npm run check-version
       # INF-B-004: Coverage runs every matrix leg so artifacts are uploaded
       # unconditionally, not gated to a single Node version.
+      # F-6a9332cf: id so Upload can tell skipped (tests already failed,
+      # coverage/ never written) from ran-but-empty. success() || failure()
+      # still collects an artifact on a red test leg; cancelled jobs skip.
       - name: Coverage
+        id: coverage
+        if: success() || failure()
         run: npx vitest run --coverage
       # INF-B-004: Upload coverage artifacts every run so failing runs on older
       # Node versions still yield debuggable artifacts. Vitest does not produce a
       # separate "test output" directory by default — only the coverage/ directory
       # is authoritative, so that's what we upload.
+      # F-6a9332cf: do not treat a skipped Coverage as missing files — that
+      # overwrites the test-failure Andon with 'No files were found'. Keep
+      # if-no-files-found: error for the Coverage-ran-but-wrote-nothing case.
       - name: Upload coverage artifacts
-        if: always()
+        if: always() && steps.coverage.conclusion != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-node-${{ matrix.node-version }}
@@ -152,6 +160,12 @@ jobs:
       - name: Install site deps
         working-directory: site
         run: npm ci
+      # F-df8375e8: site/ has its own lockfile; root build-and-test audit
+      # cannot see Astro/Starlight/Tailwind. No continue-on-error — high/
+      # critical advisories fail this required check.
+      - name: Dependency audit
+        working-directory: site
+        run: npm audit --audit-level=high
       - name: Build handbook
         working-directory: site
         run: npm run build
