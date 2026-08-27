@@ -130,6 +130,16 @@ jobs:
       - name: Test
         run: npm test
 
+      # F-2ed74a5c: same Playwright gate as ci.yml, before any publish.
+      # reuseExistingServer is disabled by CI=true. No continue-on-error.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright e2e
+        env:
+          CI: true
+        run: npm run test:e2e
+
       # Publish in dependency order with Sigstore provenance (OIDC — NO token):
       #   1. schema (no deps)
       #   2. export-ai-rpg, export-unreal, export-godot, renderer-2d (depend on schema)

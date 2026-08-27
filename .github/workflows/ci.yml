@@ -1,48 +1,16 @@
 name: CI
 
+# F-e2bd0af6: no paths filter. Branch protection on main requires
+# build-and-test (22), build-and-test (24), and site-build (strict: true).
+# A paths filter on the workflow `on:` block means a missed glob produces
+# ZERO of those contexts, which blocks the PR rather than failing it — the
+# same deadlock v4.6.0 paid for with dogfood/**. CI is ~3 min
+# (timeout-minutes: 20); running it on every PR is cheaper than another
+# glob-list hole. Spec-only PRs (e2e/**) still start this workflow
+# (F-2ed74a5c).
 on:
   push:
-    paths:
-      - 'packages/**'
-      - 'site/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/**'
-      # Added v4.6.0. These four were missing, so a change touching ONLY them ran
-      # no CI at all — and the required checks never appeared, which blocks the PR
-      # rather than failing it. Found the hard way: the fix for the release-blocking
-      # stderr assertion touched only dogfood/ and produced zero checks.
-      #   dogfood/**        — its tests are part of `vitest run`; they count toward
-      #                       the suite total and can fail it
-      #   e2e/**            — Playwright specs
-      #   scripts/**        — holds sync-version.mjs, which IS a CI gate now
-      #   vitest.config.ts  — decides which tests run at all
-      - 'dogfood/**'
-      - 'e2e/**'
-      - 'scripts/**'
-      - 'vitest.config.ts'
-      - 'tsconfig*.json'
   pull_request:
-    paths:
-      - 'packages/**'
-      - 'site/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/**'
-      # Added v4.6.0. These four were missing, so a change touching ONLY them ran
-      # no CI at all — and the required checks never appeared, which blocks the PR
-      # rather than failing it. Found the hard way: the fix for the release-blocking
-      # stderr assertion touched only dogfood/ and produced zero checks.
-      #   dogfood/**        — its tests are part of `vitest run`; they count toward
-      #                       the suite total and can fail it
-      #   e2e/**            — Playwright specs
-      #   scripts/**        — holds sync-version.mjs, which IS a CI gate now
-      #   vitest.config.ts  — decides which tests run at all
-      - 'dogfood/**'
-      - 'e2e/**'
-      - 'scripts/**'
-      - 'vitest.config.ts'
-      - 'tsconfig*.json'
   workflow_dispatch:
 
 permissions:
@@ -73,6 +41,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      # F-1256813c class-fix (swept with F-2ed74a5c): typecheck:dogfood already
+      # exists as an npm script; CI never invoked it. Same class as Playwright —
+      # gate exists, no consequence. Node 24 only; tsc does not differ by Node.
+      - name: Dogfood typecheck
+        if: matrix.node-version == 24
+        run: npm run typecheck:dogfood
       # DOCS-B-003: scripts/sync-version.mjs --check has always been able to fail
       # on a drifted version token, a stale "N tests" figure, or a packages/*
       # version that no longer matches root — and nothing ever ran it. The gate
@@ -109,9 +83,32 @@ jobs:
       # artifacts above are the authoritative record. To restore external
       # reporting, add the secret first, then re-add the step.
 
-  # INF-B-010: Type-check and build the Starlight handbook on site/** changes.
+  # F-2ed74a5c: Playwright was in the paths filter; CI never ran test:e2e.
+  # Node 24 only. reuseExistingServer is disabled by CI=true (harness owns
+  # playwright.config.ts). No continue-on-error. Build is required because
+  # the editor vite aliases point at export-unreal/export-godot dist/.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Playwright e2e
+        env:
+          CI: true
+        run: npm run test:e2e
+
+  # INF-B-010: Type-check and build the Starlight handbook.
   # Keeps handbook drift (e.g. stale Package Map) from landing silently.
   # Kept intentionally minimal — only Node 24, single job, ~30s runtime target.
+  # Always runs: site-build is a required check on main (F-e2bd0af6).
   site-build:
     runs-on: ubuntu-latest
     # INF-B-006: same budget cap as build-and-test. Handbook build is ~30s today.
