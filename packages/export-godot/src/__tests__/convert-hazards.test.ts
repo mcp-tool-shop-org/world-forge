@@ -58,7 +58,10 @@ describe('convertHazards', () => {
   it('drops a hazardRef with no matching definition and warns', () => {
     const { placements, fidelity } = convertHazards(proj([zone('z1', 0, 0, 2, 2, ['ghost'])], [hazard('lava')]));
     expect(placements).toHaveLength(0);
-    expect(fidelity.some((f) => f.level === 'dropped' && f.fieldPath === 'zones.hazardRefs')).toBe(true);
+    const dropped = fidelity.find((f) => f.level === 'dropped' && f.fieldPath === 'zones.hazardRefs');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('z1');
   });
 
   it('reports an approximated entry when hazards export', () => {

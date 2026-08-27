@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX } from '../coordinate-transform.js';
+import { gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX, resolveTileSize } from '../coordinate-transform.js';
 
 describe('gridToGodot2D', () => {
     it('scales grid coordinates by tileSize with no axis flip', () => {
@@ -30,5 +30,23 @@ describe('gridToGodot3D', () => {
 describe('extentToGodot2D', () => {
     it('scales a tile extent to pixels', () => {
         expect(extentToGodot2D(10, 5, 32)).toEqual({ x: 320, y: 160 });
+    });
+
+    it('throws when tileSize is not positive', () => {
+        expect(() => extentToGodot2D(10, 5, 0)).toThrow(RangeError);
+        expect(() => extentToGodot2D(10, 5, -16)).toThrow(/tileSize must be > 0 \(got -16\)/);
+    });
+});
+
+describe('resolveTileSize', () => {
+    it('defaults only when tileSize is undefined', () => {
+        expect(resolveTileSize({ map: {} })).toBe(DEFAULT_TILE_SIZE_PX);
+        expect(resolveTileSize({ map: { tileSize: 64 } })).toBe(64);
+    });
+
+    it('throws when tileSize is 0 / negative / NaN (F-16d6c2b2)', () => {
+        expect(() => resolveTileSize({ map: { tileSize: 0 } })).toThrow(/tileSize must be > 0 \(got 0\)/);
+        expect(() => resolveTileSize({ map: { tileSize: -8 } })).toThrow(/got -8/);
+        expect(() => resolveTileSize({ map: { tileSize: Number.NaN } })).toThrow(/tileSize must be > 0/);
     });
 });

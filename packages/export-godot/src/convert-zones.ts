@@ -7,7 +7,7 @@
 
 import type { WorldProject, Zone, ParallaxLayer } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
-import { gridToGodot2D, extentToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { gridToGodot2D, extentToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 
 export interface GodotZoneResource {
@@ -58,7 +58,7 @@ export interface ConvertZonesResult {
 }
 
 export function convertZones(project: WorldProject): ConvertZonesResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
 
     // Zone nodes are top-level siblings directly under the scene root (unlike

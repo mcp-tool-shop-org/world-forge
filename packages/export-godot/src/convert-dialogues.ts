@@ -48,21 +48,18 @@ export function convertDialogues(project: WorldProject): ConvertDialoguesResult 
 
     for (const dlg of project.dialogues) {
         const converted = convertDialogue(dlg, fidelity);
-        dialogues.push(converted);
+        if (converted) dialogues.push(converted);
     }
 
     return { dialogues, fidelity };
 }
 
-function convertDialogue(dlg: DialogueDefinition, fidelity: FidelityEntry[]): GodotDialogueResource {
-    const nodes: Record<string, GodotDialogueNode> = {};
-
-    for (const [nodeId, node] of Object.entries(dlg.nodes)) {
-        nodes[nodeId] = convertNode(node);
-    }
-
-    // Validate entry node exists.
-    if (!nodes[dlg.entryNodeId]) {
+function convertDialogue(dlg: DialogueDefinition, fidelity: FidelityEntry[]): GodotDialogueResource | null {
+    // Fail closed: a missing entry node makes the tree unreachable. Do not
+    // emit the resource (and therefore do not stamp files[resourcePath]) —
+    // callers that treat success:true as "dialogues can start" must not load
+    // a .tres whose entry node does not exist.
+    if (!dlg.nodes[dlg.entryNodeId]) {
         fidelity.push({
             level: 'dropped',
             domain: 'dialogues',
@@ -72,17 +69,23 @@ function convertDialogue(dlg: DialogueDefinition, fidelity: FidelityEntry[]): Go
             message: `Dialogue "${dlg.id}" entry node "${dlg.entryNodeId}" not found in nodes.`,
             reason: 'Broken entry reference — dialogue tree is unreachable.',
         });
-    } else {
-        fidelity.push({
-            level: 'lossless',
-            domain: 'dialogues',
-            severity: 'info',
-            entityId: dlg.id,
-            fieldPath: `dialogues.${dlg.id}`,
-            message: `Dialogue "${dlg.id}" (${Object.keys(nodes).length} nodes) preserved.`,
-            reason: 'Full dialogue tree mapped 1:1 to Godot resource.',
-        });
+        return null;
     }
+
+    const nodes: Record<string, GodotDialogueNode> = {};
+    for (const [nodeId, node] of Object.entries(dlg.nodes)) {
+        nodes[nodeId] = convertNode(node);
+    }
+
+    fidelity.push({
+        level: 'lossless',
+        domain: 'dialogues',
+        severity: 'info',
+        entityId: dlg.id,
+        fieldPath: `dialogues.${dlg.id}`,
+        message: `Dialogue "${dlg.id}" (${Object.keys(nodes).length} nodes) preserved.`,
+        reason: 'Full dialogue tree mapped 1:1 to Godot resource.',
+    });
 
     return {
         resourcePath: `res://world_data/dialogues/${dlg.id}.tres`,

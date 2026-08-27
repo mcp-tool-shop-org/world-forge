@@ -161,4 +161,21 @@ describe('exportToGodot', () => {
         expect(result.contentPack.worldSceneTscn).toBe('');
         expect(Object.keys(result.contentPack.files).length).toBeGreaterThan(0);
     });
+
+    it('promotes dropped fidelity onto warnings[] (item loss + authored landmarks) (F-344ebd6f)', () => {
+        // Schema validation rejects missing-zone item placements, so the
+        // convertItems orphan-drop cannot reach exportToGodot. item-torch in
+        // minimalProject has no gridX/gridY → approximated/warning, which is
+        // the item-loss channel that still returns success:true. Landmarks
+        // are KNOWN_DROPPED. A warnings-only consumer must see both.
+        const result = exportToGodot(minimalProject);
+        expect(result.success).toBe(true);
+        if (!result.success) return;
+        expect(result.warnings.some((w) => w.includes('WorldProject.landmarks is authored but not carried'))).toBe(true);
+        expect(result.warnings.some((w) => w.includes('item-torch'))).toBe(true);
+        for (const e of result.fidelity.entries.filter((e) => e.level === 'dropped')) {
+            expect(result.warnings).toContain(e.message);
+        }
+        expect(result.warnings.some((w) => w.includes(`${result.fidelity.summary.dropped}`))).toBe(true);
+    });
 });

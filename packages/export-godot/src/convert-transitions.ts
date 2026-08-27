@@ -7,7 +7,7 @@
 
 import type { WorldProject, TransitionEntityType, Zone } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
-import { gridToGodot2D, DEFAULT_TILE_SIZE_PX, type GodotVec2 } from './coordinate-transform.js';
+import { gridToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { uniqueSiblingName } from './node-naming.js';
 
 /** Godot scene template by transition type. */
@@ -41,7 +41,7 @@ export interface ConvertTransitionsResult {
 }
 
 export function convertTransitions(project: WorldProject): ConvertTransitionsResult {
-    const tileSize = project.map.tileSize || DEFAULT_TILE_SIZE_PX;
+    const tileSize = resolveTileSize(project);
     const fidelity: FidelityEntry[] = [];
     const transitions: GodotTransitionNode[] = [];
     const zonesById = new Map<string, Zone>(project.zones.map((z) => [z.id, z]));

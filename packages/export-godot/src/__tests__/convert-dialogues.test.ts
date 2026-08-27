@@ -32,13 +32,14 @@ describe('convertDialogues', () => {
         expect(fidelity[0].level).toBe('lossless');
     });
 
-    it('reports dropped when the entry node is missing', () => {
-        const { fidelity } = convertDialogues(proj([{
+    it('reports dropped when the entry node is missing and does not emit the resource (F-16409655)', () => {
+        const { dialogues, fidelity } = convertDialogues(proj([{
             id: 'broken',
             speakers: ['x'],
             entryNodeId: 'missing',
             nodes: { greet: { id: 'greet', speaker: 'X', text: 'Hi' } },
         }]));
-        expect(fidelity.some((f) => f.level === 'dropped' && f.fieldPath?.includes('entryNodeId'))).toBe(true);
+        expect(dialogues).toHaveLength(0);
+        expect(fidelity.some((f) => f.level === 'dropped' && f.fieldPath?.includes('entryNodeId') && f.message.includes('broken'))).toBe(true);
     });
 });

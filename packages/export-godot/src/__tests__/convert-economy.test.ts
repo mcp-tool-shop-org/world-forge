@@ -45,7 +45,10 @@ describe('convertEconomy', () => {
       [],
     ));
     expect(markets).toHaveLength(0);
-    expect(fidelity.some((f) => f.domain === 'economy' && f.level === 'dropped')).toBe(true);
+    const dropped = fidelity.find((f) => f.domain === 'economy' && f.level === 'dropped');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('m1');
   });
 
   it('reports an approximated entry when economy nodes export', () => {

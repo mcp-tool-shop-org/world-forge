@@ -47,8 +47,8 @@ function zone(id: string, name: string, over: Partial<Zone> = {}): Zone {
     } as unknown as Zone;
 }
 
-function proj(zones: Zone[]): WorldProject {
-    return { map: { tileSize: 32 }, zones } as unknown as WorldProject;
+function proj(zones: Zone[], tileSize = 32): WorldProject {
+    return { map: { tileSize }, zones } as unknown as WorldProject;
 }
 
 describe('convertZones — basic conversion', () => {
@@ -172,5 +172,11 @@ describe('convertZones — sibling de-dup (F-ea909411)', () => {
         expect(zones).toHaveLength(2);
         expect(new Set(zones.map((z) => z.nodeName)).size).toBe(2); // no silent collision
         expect(zones.map((z) => z.nodeName)).toEqual(['Entrance_Hall', 'Entrance_Hall_2']);
+    });
+});
+
+describe('convertZones — tileSize (F-16d6c2b2)', () => {
+    it('throws when map.tileSize is 0 instead of silently emitting a 32px pack', () => {
+        expect(() => convertZones(proj([zone('z1', 'Hall')], 0))).toThrow(/tileSize must be > 0 \(got 0\)/);
     });
 });

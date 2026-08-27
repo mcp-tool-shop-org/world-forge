@@ -158,7 +158,10 @@ describe('convertTileLayers — dropped tiles', () => {
       { tileId: 'ghost', gridX: 1, gridY: 0 },
     ])]));
     expect(tileLayers[0].tileCount).toBe(1); // only the resolved one
-    expect(fidelity.some((f) => f.domain === 'tiles' && f.level === 'dropped')).toBe(true);
+    const dropped = fidelity.find((f) => f.domain === 'tiles' && f.level === 'dropped');
+    expect(dropped).toBeDefined();
+    expect(dropped!.message).toContain('ghost');
+    expect(dropped!.message).toContain('L');
   });
 });
 
