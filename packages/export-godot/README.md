@@ -1,14 +1,43 @@
+<p align="center">
+  <img src="./logo.png" alt="World Forge" width="400">
+</p>
+
 # @world-forge/export-godot
 
 Godot 4 export pipeline for World Forge — converts a `WorldProject` into a structured content pack with `.tscn` scene generation.
 
 `buildWorldScene()` emits a single **playable** `.tscn` — not a metadata graph —
 that opens navigable in the Godot 4 editor. Walkable interiors are open (walls
-come from per-cell collision); entities and transitions are textureless
-placeholders so a clean project does not need PackedScenes this pack does not
-ship.
+come from per-cell collision); entities are `Node2D` + `ColorRect`/`Label`
+placeholders and items/props are `Marker2D` gizmos so a clean project does not
+need PackedScenes this pack does not ship.
 
 ## What lands in the scene
+
+```
+World (Node2D, y_sort_enabled)
+├── Camera2D — framed on the world bounding box so the scene is visible on open
+├── <TileLayer> (TileMapLayer) — image layers bake tile_map_data; color-only emit ColorRect cells
+├── <ZoneName> (Node2D) — at zone origin, y_sort_enabled, z_index from elevation
+│   ├── Collision (StaticBody2D) — only when collisionType is void/hazard
+│   │   └── CollisionShape2D — RectangleShape2D covering the zone bounds
+│   ├── Navigation (NavigationRegion2D) — walkable interiors only; skipped for void/hazard
+│   ├── Entities/ (Node2D)
+│   │   └── <EntityName> (Node2D) — ColorRect + Label placeholder; sceneTemplate in metadata
+│   ├── Items/ (Node2D)
+│   │   └── <ItemName> (Marker2D)
+│   ├── SpawnPoints/ (Node2D)
+│   │   └── <SpawnName> (Marker2D)
+│   └── Transitions/ (Node2D)
+│       └── <TransitionName> (Area2D + CollisionShape2D trigger)
+└── NavigationLinks/ (Node2D)
+```
+
+Color-only layers (no tileset `imagePath` — the editor/renderer-2d default) emit
+`ColorRect` children from the wall `#555555` / water `#2244aa` / door `#886622` /
+floor `#333333` tag palette (plus `TileDefinition.opacity`); without that
+generated-atlas / ColorRect fallback Godot's `TileMapLayer` would be empty while
+the editor still paints tagged rects.
 
 - **Per zone** — a `Node2D` with a `NavigationRegion2D` navmesh (walkable
   interiors are **not** filled with a `StaticBody2D` — walls come from per-cell
@@ -16,25 +45,28 @@ ship.
   and a `z_index` from its stratum band (+ elevation). A framed `Camera2D` sits
   on the root.
 - **Tiles** — `TileMapLayer` + `TileSet` (image tilesets bake `tile_map_data`
-  cells; color-only layers carry a scaffold + metadata), with per-cell wall
-  `StaticBody2D` collision for non-walkable tiles.
-- **Props** — a `Props` `Node2D` container.
-- **Town** — `Markets` / `CraftingStations`, plus `Buildings` (`StaticBody2D`
-  footprints with a `CollisionShape2D`), `Hubs`, and `Strongholds`.
+  cells; color-only layers emit `ColorRect` children so the map is visible
+  without an atlas), with per-cell wall `StaticBody2D` collision for non-walkable
+  tiles.
+- **Props** — a `Props` container of `Marker2D` gizmos.
+- **Town** — `Markets` / `CraftingStations` (`Marker2D`), plus `Buildings`
+  (`StaticBody2D` footprints with a `CollisionShape2D`), `Hubs`, and
+  `Strongholds`.
 - **World modeling** — `Strata` + `StratumLinks` containers (zones carry
   `stratum_id` + a `z_index` band so layers sort), `Hazards` as `Area2D` regions
   (effects in metadata, read on `body_entered`), and entry-gate metadata on gated
   zones (`entry_gate` / `entry_gate_mode` / `entry_gate_reason`).
-- **Content** — entities, items, navigation links, loot tables, spawn markers,
-  transition nodes, dialogue resources, asset bindings, and district groupings.
+- **Content** — entities (`ColorRect` + `Label`), items (`Marker2D`), navigation
+  links, loot tables, spawn markers, transition nodes, dialogue resources, asset
+  bindings, and district groupings.
 - **Fidelity report** — structured tracking of lossless / approximated / dropped
   data, grouped by domain.
 
-Every node is a textureless, self-contained engine primitive — entities and
-transitions are `Node2D` / `Area2D` placeholders (PackedScene paths live in
-metadata, matching props), so a clean Godot project loads the export with no
-missing PackedScene `ExtResource`s. Image-backed tilesets still declare
-`Texture2D` ext_resources for authored tileset files.
+Every node is a self-contained engine primitive — entities carry a `ColorRect` +
+`Label` (PackedScene paths live in metadata), items and props are `Marker2D`
+gizmos, transitions are `Area2D` placeholders, so a clean Godot project loads
+the export with no missing PackedScene `ExtResource`s. Image-backed tilesets
+still declare `Texture2D` ext_resources for authored tileset files.
 
 ## CLI
 

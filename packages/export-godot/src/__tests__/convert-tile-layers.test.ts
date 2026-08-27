@@ -2,13 +2,16 @@
  * convert-tile-layers.test.ts — Wave B-2 Godot TileMapLayer conversion.
  *
  * Locks the image-backed-vs-color split: image-backed tilesets bake atlas
- * cells; color-only tilesets export metadata only. Also covers the
- * tile_map_data byte encoding the .tscn embeds.
+ * cells; color-only tilesets record {gridX, gridY, color, opacity} on cells
+ * (editor/renderer-2d tag table) so the scene can paint ColorRects. Also
+ * covers the tile_map_data byte encoding the .tscn embeds.
  */
 
 import { describe, it, expect } from 'vitest';
-import { convertTileLayers, encodeTileMapData } from '../convert-tile-layers.js';
+import { convertTileLayers, encodeTileMapData, fallbackTileColor, cssHexToGodotColor } from '../convert-tile-layers.js';
+import { buildWorldScene } from '../scene-builder.js';
 import type { WorldProject, Tileset, TileLayer } from '@world-forge/schema';
+import type { GodotZoneResource } from '../convert-zones.js';
 
 function proj(tilesets: Tileset[], tileLayers: TileLayer[], tileSize = 32): WorldProject {
   return { map: { tileSize }, tilesets, tileLayers } as unknown as WorldProject;
@@ -32,7 +35,7 @@ const layer = (tiles: TileLayer['tiles'], over: Partial<TileLayer> = {}): TileLa
   ({ id: 'L', name: 'Ground', zIndex: 0, tiles, ...over });
 
 describe('convertTileLayers — color-only tilesets', () => {
-  it('exports a scaffold with no atlas cells but a tile count', () => {
+  it('records wall+floor color cells so a loader can reconstruct the grid (F-cb227692)', () => {
     const { tileLayers } = convertTileLayers(proj([colorTs], [layer([
       { tileId: 'c-floor', gridX: 0, gridY: 0 },
       { tileId: 'c-wall', gridX: 1, gridY: 0 },
@@ -41,17 +44,91 @@ describe('convertTileLayers — color-only tilesets', () => {
     const l = tileLayers[0];
     expect(l.imageBacked).toBe(false);
     expect(l.atlasSources).toHaveLength(0);
-    expect(l.cells).toHaveLength(0);
     expect(l.tileCount).toBe(2);
     expect(l.tileSize).toBe(32);
     expect(l.nodeName).toBe('Ground');
+    expect(l.cells).toHaveLength(2);
+    expect(l.cells).toContainEqual({
+      gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0,
+      color: '#333333', opacity: 1,
+    });
+    expect(l.cells).toContainEqual({
+      gridX: 1, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0,
+      color: '#555555', opacity: 1,
+    });
+  });
+
+  it('keeps the editor/renderer-2d tag→color table and opacity', () => {
+    const tagged: Tileset = {
+      id: 'color', name: 'Color', tileWidth: 32, tileHeight: 32,
+      tiles: [
+        { id: 'c-water', tilesetId: 'color', row: 0, col: 0, tags: ['water'], walkable: true, opacity: 0.5 },
+        { id: 'c-door', tilesetId: 'color', row: 0, col: 1, tags: ['door'], walkable: true, opacity: 1 },
+      ],
+    };
+    const { tileLayers } = convertTileLayers(proj([tagged], [layer([
+      { tileId: 'c-water', gridX: 0, gridY: 0 },
+      { tileId: 'c-door', gridX: 1, gridY: 0 },
+    ])]));
+    expect(tileLayers[0].cells).toContainEqual({
+      gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0,
+      color: '#2244aa', opacity: 0.5,
+    });
+    expect(tileLayers[0].cells).toContainEqual({
+      gridX: 1, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0,
+      color: '#886622', opacity: 1,
+    });
   });
 
   it('reports an approximated fidelity entry for color layers', () => {
     const { fidelity } = convertTileLayers(proj([colorTs], [layer([{ tileId: 'c-floor', gridX: 0, gridY: 0 }])]));
     const entry = fidelity.find((f) => f.domain === 'tiles' && f.level === 'approximated');
     expect(entry).toBeDefined();
-    expect(entry!.message).toMatch(/scaffold/i);
+    expect(entry!.message).toMatch(/ColorRect/i);
+  });
+
+  it('pack cells and scene ColorRects agree for a wall+floor color layer (F-cb227692)', () => {
+    const { tileLayers } = convertTileLayers(proj([colorTs], [layer([
+      { tileId: 'c-floor', gridX: 0, gridY: 0 },
+      { tileId: 'c-wall', gridX: 1, gridY: 0 },
+    ])]));
+    const zone: GodotZoneResource = {
+      resourcePath: 'res://world_data/zones/z.tres',
+      id: 'z', displayName: 'Z', description: '', tags: [],
+      position: { x: 0, y: 0 }, size: { x: 64, y: 64 },
+      gridWidth: 2, gridHeight: 2, light: 1, noise: 0,
+      hazards: [], neighbors: [], exits: [], interactables: [],
+      nodeName: 'Z',
+    };
+    const tscn = buildWorldScene({
+      projectName: 'ColorWorld',
+      zones: [zone],
+      entities: { byZone: {}, all: [], dropped: [], incomplete: false },
+      items: [], navigationLinks: [], spawnMarkers: [], transitions: [],
+      tileLayers,
+    });
+    expect(tileLayers[0].cells).toHaveLength(2);
+    expect(tscn).toContain('type="ColorRect"');
+    expect(tscn).toContain('color = Color(0.2, 0.2, 0.2, 1)');
+    expect(tscn).toContain('color = Color(0.333333, 0.333333, 0.333333, 1)');
+    expect(tscn).not.toContain('tile_map_data');
+  });
+});
+
+describe('fallbackTileColor / cssHexToGodotColor', () => {
+  it('matches editor wall/water/door/floor hexes', () => {
+    expect(fallbackTileColor(['wall'])).toBe('#555555');
+    expect(fallbackTileColor(['water'])).toBe('#2244aa');
+    expect(fallbackTileColor(['door'])).toBe('#886622');
+    expect(fallbackTileColor([])).toBe('#333333');
+    expect(fallbackTileColor(['water', 'wall'])).toBe('#555555');
+  });
+
+  it('formats hex + opacity as a Godot Color() literal', () => {
+    expect(cssHexToGodotColor('#333333', 1)).toBe('Color(0.2, 0.2, 0.2, 1)');
+    expect(cssHexToGodotColor('#555555', 1)).toBe('Color(0.333333, 0.333333, 0.333333, 1)');
+    expect(cssHexToGodotColor('#2244aa', 0.5)).toMatch(/^Color\(/);
+    expect(cssHexToGodotColor('#2244aa', 0.5)).toContain('0.5');
   });
 });
 

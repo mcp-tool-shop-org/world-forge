@@ -209,8 +209,24 @@ describe('buildWorldScene — tile layers (Wave B-2)', () => {
         expect(tscn).toContain('metadata/image_backed = false');
     });
 
-    it('color-only layers carry no atlas source and no baked cells', () => {
-        const tscn = buildWorldScene(withTiles([colorLayer]));
+    it('color-only wall+floor layer emits ColorRect children (F-cb227692)', () => {
+        // RED on today's skip: cells used to stay [] so TileMapLayer painted nothing
+        // while the editor still showed tagged rects.
+        const painted: GodotTileLayer = {
+            ...colorLayer,
+            tileCount: 2,
+            cells: [
+                { gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0, color: '#333333', opacity: 1 },
+                { gridX: 1, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0, color: '#555555', opacity: 1 },
+            ],
+            solidCells: [{ gridX: 1, gridY: 0 }],
+        };
+        const tscn = buildWorldScene(withTiles([painted]));
+        expect(tscn).toContain('[node name="Ground" type="TileMapLayer" parent="."]');
+        expect(tscn).toContain('type="ColorRect"');
+        expect(tscn).toContain('color = Color(0.2, 0.2, 0.2, 1)');
+        expect(tscn).toContain('color = Color(0.333333, 0.333333, 0.333333, 1)');
+        expect(tscn).toContain('metadata/color_cell_count = 2');
         expect(tscn).not.toContain('TileSetAtlasSource');
         expect(tscn).not.toContain('tile_map_data');
     });
@@ -346,10 +362,10 @@ describe('buildWorldScene — props (Wave B-3 interiors)', () => {
     };
     const withProps = (props: GodotPropNode[]) => ({ ...baseInput([makeZone()]), props });
 
-    it('emits a Props container with a Node2D per placement + metadata', () => {
+    it('emits a Props container with a Marker2D per placement + metadata', () => {
         const tscn = buildWorldScene(withProps([prop]));
         expect(tscn).toContain('[node name="Props" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Barrel" type="Node2D" parent="Props"]');
+        expect(tscn).toContain('[node name="Barrel" type="Marker2D" parent="Props"]');
         expect(tscn).toContain('position = Vector2(32, 64)');
         expect(tscn).toContain('metadata/prop_id = "pp1"');
         expect(tscn).toContain('metadata/prop_def = "barrel"');
@@ -383,7 +399,7 @@ describe('buildWorldScene — town economy (Wave B-3)', () => {
     it('emits Markets + CraftingStations containers with economy metadata', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), markets: [market], craftingStations: [station] });
         expect(tscn).toContain('[node name="Markets" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Market_m1" type="Node2D" parent="Markets"]');
+        expect(tscn).toContain('[node name="Market_m1" type="Marker2D" parent="Markets"]');
         expect(tscn).toContain('position = Vector2(64, 32)');
         expect(tscn).toContain('metadata/market_id = "m1"');
         expect(tscn).toContain('metadata/supply_categories = "food,tools"');
@@ -443,7 +459,7 @@ describe('buildWorldScene — town structures (buildings/hubs/strongholds)', () 
     it('emits Hubs + Strongholds containers with metadata at zone centers', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), hubs: [hubNode], strongholds: [strongholdNode] });
         expect(tscn).toContain('[node name="Hubs" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Hub_h1" type="Node2D" parent="Hubs"]');
+        expect(tscn).toContain('[node name="Hub_h1" type="Marker2D" parent="Hubs"]');
         expect(tscn).toContain('metadata/hub_id = "h1"');
         expect(tscn).toContain('metadata/hub_type = "market-square"');
         expect(tscn).toContain('metadata/services = "market,inn"');
@@ -480,7 +496,7 @@ describe('buildWorldScene — vertical strata (world modeling)', () => {
     it('emits a Strata container with per-stratum metadata', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), strata: [surface, under] });
         expect(tscn).toContain('[node name="Strata" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="Stratum_surface" type="Node2D" parent="Strata"]');
+        expect(tscn).toContain('[node name="Stratum_surface" type="Marker2D" parent="Strata"]');
         expect(tscn).toContain('metadata/order = 0');
         expect(tscn).toContain('metadata/z_band = 0');
         expect(tscn).toContain('metadata/z_floor = 0');
@@ -493,7 +509,7 @@ describe('buildWorldScene — vertical strata (world modeling)', () => {
     it('emits a StratumLinks container with metadata + position', () => {
         const tscn = buildWorldScene({ ...baseInput([makeZone()]), stratumLinks: [slink] });
         expect(tscn).toContain('[node name="StratumLinks" type="Node2D" parent="."]');
-        expect(tscn).toContain('[node name="StratumLink_l1" type="Node2D" parent="StratumLinks"]');
+        expect(tscn).toContain('[node name="StratumLink_l1" type="Marker2D" parent="StratumLinks"]');
         expect(tscn).toContain('position = Vector2(80, 48)');
         expect(tscn).toContain('metadata/from_stratum = "surface"');
         expect(tscn).toContain('metadata/to_stratum = "under"');
@@ -610,6 +626,57 @@ describe('buildWorldScene — textureless entity/transition placeholders (F-e171
         expect(tscn).not.toMatch(/\[ext_resource type="PackedScene"/);
         expect(tscn).not.toContain('instance=ExtResource');
         expect(tscn).not.toContain('res://entities/npc/npc_generic.tscn" id="');
+        // F-a1226d9a: ColorRect placeholder so F6 is not empty space.
+        expect(tscn).toContain('[node name="Placeholder" type="ColorRect" parent="ZoneA/Entities/Npc1"]');
+        expect(tscn).toContain('type="ColorRect"');
+    });
+
+    it('an NPC world.tscn contains ColorRect + Label + sprite_asset_id when authored (F-a1226d9a)', () => {
+        const inst = {
+            nodeName: 'Npc1' as const,
+            sceneTemplate: 'res://entities/npc/npc_generic.tscn' as const,
+            entityId: 'e1', zoneId: 'zone-a',
+            localPosition: { x: 10, y: 10 },
+            role: 'npc' as const, tags: [] as string[],
+            displayName: 'Guard',
+            spriteAssetId: 'spr-guard',
+            portraitAssetId: 'por-guard',
+        };
+        const entities: GodotEntityManifest = {
+            byZone: { 'zone-a': [inst] },
+            all: [inst],
+            dropped: [],
+            incomplete: false,
+        };
+        const tscn = buildWorldScene({ ...baseInput([makeZone()], entities), tileSize: 32 });
+        expect(tscn).toContain('[node name="Npc1" type="Node2D" parent="ZoneA/Entities"]');
+        expect(tscn).toContain('type="ColorRect"');
+        expect(tscn).toContain('[node name="Placeholder" type="ColorRect" parent="ZoneA/Entities/Npc1"]');
+        expect(tscn).toContain('offset_right = 32');
+        expect(tscn).toContain('offset_bottom = 32');
+        expect(tscn).toContain('[node name="Label" type="Label" parent="ZoneA/Entities/Npc1"]');
+        expect(tscn).toContain('text = "Guard"');
+        expect(tscn).toContain('metadata/sprite_asset_id = "spr-guard"');
+        expect(tscn).toContain('metadata/portrait_asset_id = "por-guard"');
+        expect(tscn).not.toMatch(/\[ext_resource type="PackedScene"/);
+        expect(tscn).not.toContain('instance=ExtResource');
+    });
+
+    it('items emit Marker2D gizmos, not textureless Node2D (F-a1226d9a)', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            items: [{
+                resourcePath: 'res://world_data/items/i1.tres',
+                nodeName: 'Vault_Key',
+                itemId: 'i1',
+                displayName: 'Vault Key',
+                zoneId: 'zone-a',
+                localPosition: { x: 8, y: 8 },
+                hidden: false,
+            }],
+        });
+        expect(tscn).toContain('[node name="Vault_Key" type="Marker2D" parent="ZoneA/Items"]');
+        expect(tscn).not.toContain('type="Node2D" parent="ZoneA/Items"');
     });
 
     it('a stairwell is a loadable Area2D placeholder with CollisionShape2D so body_entered can fire', () => {

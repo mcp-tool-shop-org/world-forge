@@ -38,7 +38,7 @@ export type { GodotSpawnMarker, ConvertSpawnPointsResult } from './convert-spawn
 export { convertTransitions } from './convert-transitions.js';
 export type { GodotTransitionNode, ConvertTransitionsResult } from './convert-transitions.js';
 
-export { convertTileLayers, encodeTileMapData } from './convert-tile-layers.js';
+export { convertTileLayers, encodeTileMapData, fallbackTileColor, cssHexToGodotColor } from './convert-tile-layers.js';
 export type {
     GodotTileLayer, GodotTileCell, GodotTileAtlasSource, ConvertTileLayersResult,
 } from './convert-tile-layers.js';

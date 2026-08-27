@@ -6,9 +6,11 @@
  *    referencing the tileset texture, and the layer's placements are baked into
  *    `tile_map_data` cells (atlas coords from each tile's row/col).
  *  - Color-only tilesets (no image) can't form an atlas source, so the layer
- *    exports a TileSet scaffold (correct tile_size) + placement metadata; the
- *    cells load data-driven from the content pack. This mirrors the editor's
- *    image-vs-colored-fallback rendering.
+ *    records {gridX, gridY, color, opacity} on `cells` (same tag→color table
+ *    as editor `fallbackTileColor` / renderer-2d) and the scene paints those
+ *    as ColorRect children. pack.json cells match the scene so a loader can
+ *    reconstruct the grid. This mirrors the editor's image-vs-colored-fallback
+ *    pixels, not just the branch.
  *
  * Unknown tile ids (not in any tileset) are dropped with a fidelity warning.
  */
@@ -19,15 +21,48 @@ import { resolveTileSize } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
 import { deriveGodotFilename } from './convert-assets.js';
 
-/** A single baked tile cell — references an atlas source within the layer's TileSet. */
+/**
+ * Editor / renderer-2d tag→color table for tilesets with no imagePath.
+ * Precedence: wall > water > door > floor. Keep in lockstep with
+ * packages/editor/src/tile-render.ts `fallbackTileColor`.
+ */
+export function fallbackTileColor(tags: readonly string[]): string {
+    if (tags.includes('wall')) return '#555555';
+    if (tags.includes('water')) return '#2244aa';
+    if (tags.includes('door')) return '#886622';
+    return '#333333'; // default floor
+}
+
+/** Format a CSS hex + opacity as a Godot 4 `Color(r, g, b, a)` literal. */
+export function cssHexToGodotColor(hex: string, opacity: number = 1): string {
+    const raw = hex.trim().replace(/^#/, '');
+    const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+    const n = Number.parseInt(full, 16);
+    const chan = Number.isFinite(n)
+        ? [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff].map((v) => v / 255)
+        : [0.2, 0.2, 0.2];
+    const a = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 1;
+    const fmt = (v: number): string => {
+        if (v === 0) return '0';
+        if (v === 1) return '1';
+        return v.toFixed(6).replace(/\.?0+$/, '');
+    };
+    return `Color(${fmt(chan[0])}, ${fmt(chan[1])}, ${fmt(chan[2])}, ${fmt(a)})`;
+}
+
+/** A single baked tile cell — atlas source coords, or a color-only fallback. */
 export interface GodotTileCell {
     gridX: number;
     gridY: number;
-    /** Index of the atlas source within this layer's TileSet `sources/N`. */
+    /** Index of the atlas source within this layer's TileSet `sources/N`. Unused (0) for color-only. */
     sourceId: number;
-    /** Atlas coordinates (column, row) within the source texture. */
+    /** Atlas coordinates (column, row) within the source texture. Unused (0) for color-only. */
     atlasX: number;
     atlasY: number;
+    /** Tag-derived CSS hex for !imageBacked placements (editor/renderer-2d table). */
+    color?: string;
+    /** TileDefinition.opacity for color-only placements (0–1). */
+    opacity?: number;
 }
 
 /** An atlas source for one image-backed tileset used by a layer. */
@@ -54,7 +89,7 @@ export interface GodotTileLayer {
     tileSize: number;
     /** Atlas sources (one per image-backed tileset referenced by this layer). */
     atlasSources: GodotTileAtlasSource[];
-    /** Cells baked into tile_map_data (image-backed placements only). */
+    /** Cells: atlas-backed (tile_map_data) and/or color-only ({color, opacity} → ColorRect). */
     cells: GodotTileCell[];
     /** Grid coords of non-walkable cells — exported as StaticBody2D collision. */
     solidCells: Array<{ gridX: number; gridY: number }>;
@@ -79,12 +114,23 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
     const fidelity: FidelityEntry[] = [];
 
     const tilesets = project.tilesets ?? [];
-    // tileId -> { tilesetId, atlasX(col), atlasY(row), imageBacked, walkable }
-    const tileIndex = new Map<string, { tilesetId: string; atlasX: number; atlasY: number; imageBacked: boolean; walkable: boolean }>();
+    // tileId -> { tilesetId, atlasX(col), atlasY(row), imageBacked, walkable, tags, opacity }
+    const tileIndex = new Map<string, {
+        tilesetId: string; atlasX: number; atlasY: number; imageBacked: boolean;
+        walkable: boolean; tags: string[]; opacity: number;
+    }>();
     for (const ts of tilesets) {
         const imageBacked = !!ts.imagePath;
         for (const t of ts.tiles) {
-            tileIndex.set(t.id, { tilesetId: ts.id, atlasX: t.col, atlasY: t.row, imageBacked, walkable: t.walkable });
+            tileIndex.set(t.id, {
+                tilesetId: ts.id,
+                atlasX: t.col,
+                atlasY: t.row,
+                imageBacked,
+                walkable: t.walkable,
+                tags: Array.isArray(t.tags) ? t.tags : [],
+                opacity: Number.isFinite(t.opacity) ? t.opacity : 1,
+            });
         }
     }
     const tilesetById = new Map(tilesets.map((ts) => [ts.id, ts]));
@@ -111,7 +157,21 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
             // whether it renders as an image or a colored placeholder.
             if (!def.walkable) solidCells.push({ gridX: placement.gridX, gridY: placement.gridY });
 
-            if (!def.imageBacked) continue; // color-only: counted, no atlas cell
+            if (!def.imageBacked) {
+                // Color-only: keep the editor/renderer-2d pixels on the pack
+                // cell so the scene can paint ColorRects and a loader can
+                // reconstruct the grid. Do not invent atlas coords.
+                cells.push({
+                    gridX: placement.gridX,
+                    gridY: placement.gridY,
+                    sourceId: 0,
+                    atlasX: 0,
+                    atlasY: 0,
+                    color: fallbackTileColor(def.tags),
+                    opacity: def.opacity,
+                });
+                continue;
+            }
 
             const ts = tilesetById.get(def.tilesetId);
             if (!ts) continue;
@@ -199,8 +259,8 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
                 severity: 'info',
                 entityId: layer.id,
                 fieldPath: `tileLayers.${layer.id}`,
-                message: `Layer "${layer.id}" (${tileCount} tile(s)) exported as a TileMapLayer scaffold + placement metadata; cells are not baked because its tileset(s) have no texture.`,
-                reason: 'A Godot TileSetAtlasSource requires a texture; color-only tilesets load cells data-driven from the content pack.',
+                message: `Layer "${layer.id}" (${tileCount} tile(s)) exported as a TileMapLayer with ${cells.length} ColorRect fallback cell(s); tileset(s) have no texture so an atlas is not baked.`,
+                reason: 'A Godot TileSetAtlasSource requires a texture; color-only tilesets paint via ColorRect children using the editor/renderer-2d tag→color table, and the same cells land on the JSON pack.',
             });
         }
     }

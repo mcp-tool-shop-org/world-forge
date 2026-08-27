@@ -7,13 +7,15 @@
  * Scene tree structure:
  *   World (Node2D, y_sort_enabled)
  *   ├── Camera2D — framed on the world bounding box so the scene is visible on open
+ *   ├── <TileLayer> (TileMapLayer) — image layers bake tile_map_data; color-only emit ColorRect cells
  *   ├── <ZoneName> (Node2D) — at zone origin, y_sort_enabled, z_index from elevation
  *   │   ├── Collision (StaticBody2D) — only when collisionType is void/hazard
  *   │   │   └── CollisionShape2D — RectangleShape2D covering the zone bounds
  *   │   ├── Navigation (NavigationRegion2D) — walkable interiors only; skipped for void/hazard
  *   │   ├── Entities/ (Node2D)
- *   │   │   └── <EntityName> (Node2D) — textureless placeholder; sceneTemplate in metadata
+ *   │   │   └── <EntityName> (Node2D) — ColorRect + Label placeholder; sceneTemplate in metadata
  *   │   ├── Items/ (Node2D)
+ *   │   │   └── <ItemName> (Marker2D)
  *   │   ├── SpawnPoints/ (Node2D)
  *   │   │   └── <SpawnName> (Marker2D)
  *   │   └── Transitions/ (Node2D)
@@ -33,14 +35,14 @@ import type { GodotItemResource } from './convert-items.js';
 import type { GodotNavigationLink } from './convert-connections.js';
 import type { GodotSpawnMarker } from './convert-spawn-points.js';
 import type { GodotTransitionNode } from './convert-transitions.js';
-import { encodeTileMapData, type GodotTileLayer } from './convert-tile-layers.js';
+import { encodeTileMapData, cssHexToGodotColor, type GodotTileLayer } from './convert-tile-layers.js';
 import type { GodotPropNode } from './convert-props.js';
 import type { GodotMarketNode, GodotCraftingStation } from './convert-economy.js';
 import type { GodotBuilding, GodotHub, GodotStronghold } from './convert-structures.js';
 import type { GodotStratum, GodotStratumLink } from './convert-strata.js';
 import type { GodotHazardPlacement } from './convert-hazards.js';
 import type { GodotZoneGate } from './convert-gates.js';
-import { sanitizeNodeName } from './node-naming.js';
+import { sanitizeNodeName, uniqueSiblingName } from './node-naming.js';
 import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
 import type { FidelityEntry } from './fidelity.js';
 
@@ -114,9 +116,9 @@ export function buildWorldScene(input: SceneBuildInput): string {
     const tileLayers = input.tileLayers ?? [];
     uniquifyRootNodeNames(input.zones, tileLayers, input.fidelity);
     // Tile resources — TileSet/TileSetAtlasSource sub-resources + tileset textures.
-    // Entities/transitions are textureless Node2D / Area2D placeholders (scene
-    // templates live in metadata) so a clean Godot project does not need the
-    // PackedScenes this pack does not ship.
+    // Entities are Node2D + ColorRect/Label; items/props are Marker2D; transitions
+    // are Area2D placeholders (scene templates live in metadata) so a clean Godot
+    // project does not need the PackedScenes this pack does not ship.
     const tileResources = collectTileResources(tileLayers);
     // Sub-resources (per-zone navigation polygons + optional void/hazard hulls).
     const subResources = collectSubResources(input.zones);
@@ -182,8 +184,8 @@ export function buildWorldScene(input: SceneBuildInput): string {
     lines.push('');
 
     // Tile layers — TileMapLayer nodes (ground art) parented to the root. Image-
-    // backed layers carry baked tile_map_data cells; color-only layers carry a
-    // TileSet scaffold + placement metadata (cells load data-driven).
+    // backed layers carry baked tile_map_data cells; color-only layers emit
+    // ColorRect children from the same cells that land on pack.json.
     lines.push(...emitTileMapLayers(tileLayers, tileResources.tileSetIdByLayer, tileResources.wallRectIdByLayer));
 
     // Zone nodes
@@ -259,10 +261,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
         if (zoneEntities.length > 0) {
             lines.push(`[node name="Entities" type="Node2D" parent="${zone.nodeName}"]`);
             lines.push('');
+            const entityTileSize = input.tileSize ?? DEFAULT_TILE_SIZE_PX;
             for (const entity of zoneEntities) {
-                // Textureless Node2D placeholder — matching props. sceneTemplate
-                // is metadata, not an ExtResource this pack does not ship.
-                lines.push(`[node name="${entity.nodeName}" type="Node2D" parent="${zone.nodeName}/Entities"]`);
+                // Node2D placeholder — sceneTemplate is metadata, not an
+                // ExtResource this pack does not ship (F-e17190f1). A ColorRect
+                // + Label child make F6 / the 2D editor show the actor.
+                const parentPath = `${zone.nodeName}/Entities`;
+                lines.push(`[node name="${entity.nodeName}" type="Node2D" parent="${parentPath}"]`);
                 lines.push(`position = Vector2(${entity.localPosition.x}, ${entity.localPosition.y})`);
                 lines.push(`metadata/entity_id = ${quoted(entity.entityId)}`);
                 lines.push(`metadata/role = ${quoted(entity.role)}`);
@@ -271,7 +276,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 if (entity.factionId) lines.push(`metadata/faction_id = ${quoted(entity.factionId)}`);
                 if (entity.dialogueId) lines.push(`metadata/dialogue_id = ${quoted(entity.dialogueId)}`);
                 if (entity.spawnCondition) lines.push(`metadata/spawn_condition = ${quoted(entity.spawnCondition)}`);
+                if (entity.spriteAssetId) lines.push(`metadata/sprite_asset_id = ${quoted(entity.spriteAssetId)}`);
+                if (entity.portraitAssetId) lines.push(`metadata/portrait_asset_id = ${quoted(entity.portraitAssetId)}`);
                 lines.push('');
+                emitEntityPlaceholder(lines, `${parentPath}/${entity.nodeName}`, entity.role, entity.displayName, entityTileSize);
             }
         }
 
@@ -281,7 +289,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`[node name="Items" type="Node2D" parent="${zone.nodeName}"]`);
             lines.push('');
             for (const item of zoneItems) {
-                lines.push(`[node name="${item.nodeName}" type="Node2D" parent="${zone.nodeName}/Items"]`);
+                lines.push(`[node name="${item.nodeName}" type="Marker2D" parent="${zone.nodeName}/Items"]`);
                 lines.push(`position = Vector2(${item.localPosition.x}, ${item.localPosition.y})`);
                 lines.push(`metadata/item_id = ${quoted(item.itemId)}`);
                 if (item.displayName) lines.push(`metadata/display_name = ${quoted(item.displayName)}`);
@@ -337,15 +345,15 @@ export function buildWorldScene(input: SceneBuildInput): string {
         }
     }
 
-    // Props — placed furniture/objects as Node2D placeholders under a root
-    // "Props" container, carrying definition data as metadata (textureless, so
-    // the scene loads with no external deps — the runtime binds the sprite).
+    // Props — placed furniture/objects as Marker2D gizmos under a root
+    // "Props" container, carrying definition data as metadata (no PackedScene
+    // ExtResource — the runtime binds the sprite from image_path).
     const props = input.props ?? [];
     if (props.length > 0) {
         lines.push(`[node name="Props" type="Node2D" parent="."]`);
         lines.push('');
         for (const p of props) {
-            lines.push(`[node name="${p.nodeName}" type="Node2D" parent="Props"]`);
+            lines.push(`[node name="${p.nodeName}" type="Marker2D" parent="Props"]`);
             lines.push(`position = Vector2(${p.position.x}, ${p.position.y})`);
             lines.push(`metadata/prop_id = ${quoted(p.id)}`);
             lines.push(`metadata/prop_def = ${quoted(p.propId)}`);
@@ -368,7 +376,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="Markets" type="Node2D" parent="."]`);
         lines.push('');
         for (const m of markets) {
-            lines.push(`[node name="${m.nodeName}" type="Node2D" parent="Markets"]`);
+            lines.push(`[node name="${m.nodeName}" type="Marker2D" parent="Markets"]`);
             lines.push(`position = Vector2(${m.position.x}, ${m.position.y})`);
             lines.push(`metadata/market_id = ${quoted(m.id)}`);
             lines.push(`metadata/zone_id = ${quoted(m.zoneId)}`);
@@ -385,7 +393,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="CraftingStations" type="Node2D" parent="."]`);
         lines.push('');
         for (const c of craftingStations) {
-            lines.push(`[node name="${c.nodeName}" type="Node2D" parent="CraftingStations"]`);
+            lines.push(`[node name="${c.nodeName}" type="Marker2D" parent="CraftingStations"]`);
             lines.push(`position = Vector2(${c.position.x}, ${c.position.y})`);
             lines.push(`metadata/station_id = ${quoted(c.id)}`);
             lines.push(`metadata/zone_id = ${quoted(c.zoneId)}`);
@@ -427,7 +435,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="Hubs" type="Node2D" parent="."]`);
         lines.push('');
         for (const h of hubs) {
-            lines.push(`[node name="${h.nodeName}" type="Node2D" parent="Hubs"]`);
+            lines.push(`[node name="${h.nodeName}" type="Marker2D" parent="Hubs"]`);
             lines.push(`position = Vector2(${h.position.x}, ${h.position.y})`);
             lines.push(`metadata/hub_id = ${quoted(h.id)}`);
             lines.push(`metadata/name = ${quoted(h.name)}`);
@@ -444,7 +452,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="Strongholds" type="Node2D" parent="."]`);
         lines.push('');
         for (const s of strongholds) {
-            lines.push(`[node name="${s.nodeName}" type="Node2D" parent="Strongholds"]`);
+            lines.push(`[node name="${s.nodeName}" type="Marker2D" parent="Strongholds"]`);
             lines.push(`position = Vector2(${s.position.x}, ${s.position.y})`);
             lines.push(`metadata/stronghold_id = ${quoted(s.id)}`);
             lines.push(`metadata/name = ${quoted(s.name)}`);
@@ -464,7 +472,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="Strata" type="Node2D" parent="."]`);
         lines.push('');
         for (const s of strata) {
-            lines.push(`[node name="${s.nodeName}" type="Node2D" parent="Strata"]`);
+            lines.push(`[node name="${s.nodeName}" type="Marker2D" parent="Strata"]`);
             lines.push(`metadata/stratum_id = ${quoted(s.id)}`);
             lines.push(`metadata/name = ${quoted(s.name)}`);
             lines.push(`metadata/order = ${s.order}`);
@@ -483,7 +491,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`[node name="StratumLinks" type="Node2D" parent="."]`);
         lines.push('');
         for (const l of stratumLinks) {
-            lines.push(`[node name="${l.nodeName}" type="Node2D" parent="StratumLinks"]`);
+            lines.push(`[node name="${l.nodeName}" type="Marker2D" parent="StratumLinks"]`);
             lines.push(`position = Vector2(${l.position.x}, ${l.position.y})`);
             lines.push(`metadata/link_id = ${quoted(l.id)}`);
             lines.push(`metadata/from_stratum = ${quoted(l.fromStratumId)}`);
@@ -805,14 +813,35 @@ function emitTileMapLayers(
         const tsId = tileSetIdByLayer.get(layer.id);
         if (tsId) lines.push(`tile_set = SubResource("${tsId}")`);
         lines.push(`z_index = ${clampZ(Math.round(layer.zIndex))}`);
-        if (layer.cells.length > 0) {
-            lines.push(`tile_map_data = PackedByteArray(${encodeTileMapData(layer.cells).join(', ')})`);
+        // Atlas cells bake into tile_map_data. Color-only cells cannot — there
+        // is no TileSetAtlasSource — so they paint as ColorRect children.
+        const atlasCells = layer.cells.filter((c) => c.color === undefined);
+        const colorCells = layer.cells.filter((c) => c.color !== undefined);
+        if (atlasCells.length > 0) {
+            lines.push(`tile_map_data = PackedByteArray(${encodeTileMapData(atlasCells).join(', ')})`);
         }
         lines.push(`metadata/layer_id = ${quoted(layer.id)}`);
         lines.push(`metadata/tile_count = ${layer.tileCount}`);
         lines.push(`metadata/image_backed = ${layer.imageBacked}`);
         lines.push(`metadata/solid_count = ${layer.solidCells.length}`);
+        lines.push(`metadata/color_cell_count = ${colorCells.length}`);
         lines.push('');
+
+        const seenCells = new Map<string, number>();
+        for (const c of colorCells) {
+            const cellName = uniqueSiblingName(seenCells, `Cell_${c.gridX}_${c.gridY}`, 'Cell');
+            const x = c.gridX * layer.tileSize;
+            const y = c.gridY * layer.tileSize;
+            const ts = layer.tileSize;
+            lines.push(`[node name="${cellName}" type="ColorRect" parent="${nodeName}"]`);
+            lines.push(`offset_left = ${x}`);
+            lines.push(`offset_top = ${y}`);
+            lines.push(`offset_right = ${x + ts}`);
+            lines.push(`offset_bottom = ${y + ts}`);
+            lines.push(`color = ${cssHexToGodotColor(c.color ?? '#333333', c.opacity ?? 1)}`);
+            lines.push(`mouse_filter = 2`);
+            lines.push('');
+        }
 
         // Wall collision — a StaticBody2D with one tile-sized CollisionShape2D per
         // non-walkable cell (TileSetAtlasSource physics layers need a texture, so
@@ -967,6 +996,43 @@ function worldCenter(zones: GodotZoneResource[]): { x: number; y: number } {
 
 function clampZ(z: number): number {
     return Math.max(Z_INDEX_MIN, Math.min(Z_INDEX_MAX, z));
+}
+
+/** Role → ColorRect fill. Distinct hues so F6/2D editor can tell NPC from enemy. */
+const ENTITY_ROLE_COLOR: Record<string, string> = {
+    npc: '#4a90d9',
+    enemy: '#c0392b',
+    merchant: '#d4a017',
+    'quest-giver': '#27ae60',
+    companion: '#1abc9c',
+    boss: '#8e44ad',
+};
+
+/**
+ * Visible placeholder under a textureless entity Node2D. ColorRect is tile-sized
+ * and tinted by role; Label carries displayName. No PackedScene ExtResource.
+ */
+function emitEntityPlaceholder(
+    lines: string[],
+    parentPath: string,
+    role: string,
+    displayName: string | undefined,
+    tileSize: number,
+): void {
+    const hex = ENTITY_ROLE_COLOR[role] ?? ENTITY_ROLE_COLOR.npc;
+    const size = tileSize > 0 ? tileSize : DEFAULT_TILE_SIZE_PX;
+    lines.push(`[node name="Placeholder" type="ColorRect" parent="${parentPath}"]`);
+    lines.push(`offset_right = ${size}`);
+    lines.push(`offset_bottom = ${size}`);
+    lines.push(`color = ${cssHexToGodotColor(hex, 1)}`);
+    lines.push('mouse_filter = 2');
+    lines.push('');
+    if (displayName) {
+        lines.push(`[node name="Label" type="Label" parent="${parentPath}"]`);
+        lines.push(`offset_top = ${size}`);
+        lines.push(`text = ${quoted(displayName)}`);
+        lines.push('');
+    }
 }
 
 function escapeGodot(s: string): string {
