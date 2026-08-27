@@ -16,6 +16,7 @@ import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.j
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from '../fidelity.js';
+import type { ContentPack } from '../export.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -268,6 +269,9 @@ describe('F-9f90a607: importZones restores hazardRefs and scene.timeOfDay', () =
     const imported = importFromContentPack(exported.contentPack);
     const zone = imported.project.zones.find((z) => z.id === project.zones[0].id);
     expect(zone?.hazardRefs).toEqual(['hz-spikes']);
+    // F-5442422b: hazardRefs-only is not sufficient — the catalog must survive too,
+    // or schema rule 77 treats the restored refs as dangling.
+    expect(imported.project.hazardDefinitions).toEqual(project.hazardDefinitions);
   });
 });
 
@@ -439,5 +443,88 @@ describe('F-ee46a52c: lootTables cross into the ContentPack instead of being sil
     const without = exportToEngine(minimalProject);
     if (!withTables.success || !without.success) throw new Error('export failed');
     expect(withTables.manifest.contentHash).not.toBe(without.manifest.contentHash);
+  });
+});
+
+// --- F-5442422b: importFromContentPack restores hazardDefinitions + lootTables ---
+
+describe('F-5442422b: hazardDefinitions and lootTables round-trip through importFromContentPack', () => {
+  const catalogProject = (): WorldProject => ({
+    ...minimalProject,
+    hazardDefinitions: [
+      { id: 'hz-spikes', name: 'Spikes', trigger: 'on-enter', effects: [{ kind: 'damage', amount: 5, tickOn: 'turn-start' }], passable: 'yes', tags: [] },
+    ],
+    zones: minimalProject.zones.map((z, i) => (i === 0 ? { ...z, hazardRefs: ['hz-spikes'] } : z)),
+    lootTables: [
+      {
+        id: 'loot-x',
+        rolls: 2,
+        entries: [
+          { itemId: 'item-torch', weight: 5, quantity: { min: 1, max: 2 }, condition: 'never', rarity: 'common' },
+        ],
+        tags: ['test'],
+      },
+    ],
+  });
+
+  it('export → import restores BOTH the hazard catalog AND zone.hazardRefs, plus lootTables', () => {
+    const project = catalogProject();
+    const exported = exportToEngine(project);
+    if (!exported.success) throw new Error('export failed');
+
+    expect(exported.contentPack.hazardDefinitions).toEqual(project.hazardDefinitions);
+    expect(exported.contentPack.zones[0].hazardRefs).toEqual(['hz-spikes']);
+    expect(exported.contentPack.lootTables).toEqual(project.lootTables);
+
+    const imported = importFromContentPack(exported.contentPack);
+    expect(imported.project.hazardDefinitions).toEqual(project.hazardDefinitions);
+    const zone = imported.project.zones.find((z) => z.id === project.zones[0].id);
+    expect(zone?.hazardRefs).toEqual(['hz-spikes']);
+    expect(imported.project.lootTables).toEqual(project.lootTables);
+    // Catalog restore is what makes the refs valid — rule 77 must not fire.
+    expect(imported.warnings.some((w) => /nonexistent hazard/i.test(w))).toBe(false);
+  });
+
+  it('CONTROL: a pack omitting hazardDefinitions/lootTables imports them as []', () => {
+    const exported = exportToEngine(minimalProject);
+    if (!exported.success) throw new Error('export failed');
+    const omitted = { ...exported.contentPack } as unknown as Record<string, unknown>;
+    delete omitted.hazardDefinitions;
+    delete omitted.lootTables;
+    const omittedPack = omitted as unknown as ContentPack;
+
+    expect('hazardDefinitions' in omittedPack).toBe(false);
+    expect('lootTables' in omittedPack).toBe(false);
+
+    const imported = importFromContentPack(omittedPack);
+    expect(imported.project.hazardDefinitions).toEqual([]);
+    expect(imported.project.lootTables).toEqual([]);
+  });
+
+  it('sweep: every remaining ContentPack pass-through catalog is restored (omit → [])', () => {
+    // The five that wave-4 already restored, plus the two this finding closed.
+    const catalogs = [
+      'encounterAnchors',
+      'factionPresences',
+      'pressureHotspots',
+      'craftingStations',
+      'marketNodes',
+      'hazardDefinitions',
+      'lootTables',
+    ] as const;
+    const bare = {
+      entities: [],
+      placements: [],
+      zones: [],
+      districts: [],
+      dialogues: [],
+      items: [],
+      progressionTrees: [],
+    } as unknown as ContentPack;
+
+    const imported = importFromContentPack(bare);
+    for (const key of catalogs) {
+      expect(imported.project[key], `${key} must default to [] when the pack omits it`).toEqual([]);
+    }
   });
 });

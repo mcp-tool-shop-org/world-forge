@@ -401,6 +401,17 @@ export function importFromContentPack(
     // guarantee, so this boundary treats it as untrusted parsed JSON.
     craftingStations: pack.craftingStations ?? [],
     marketNodes: pack.marketNodes ?? [],
+    // F-5442422b (swarm wave-2 health-amend-a): last two ContentPack raw
+    // pass-through catalogs export already wrote and import dropped.
+    // Sweep of pack → project catalogs at this constructor:
+    //   restored: encounterAnchors, factionPresences, pressureHotspots,
+    //             craftingStations, marketNodes
+    //   were dropped: hazardDefinitions, lootTables
+    // Same untrusted-JSON `?? []` as the wave-4 station/node reads above.
+    // Zones' hazardRefs (F-9f90a607) are not sufficient coverage — schema
+    // rule 77 rejects a ref whose definition is missing from the project.
+    hazardDefinitions: pack.hazardDefinitions ?? [],
+    lootTables: pack.lootTables ?? [],
 
     tilesets: [],
     tileLayers: [],
