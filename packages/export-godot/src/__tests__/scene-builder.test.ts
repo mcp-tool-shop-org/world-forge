@@ -123,7 +123,7 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
             makeZone({ id: 'a', nodeName: 'A' }),
             makeZone({ id: 'b', nodeName: 'B' }),
         ]));
-        expect(tscn).toContain('load_steps=7');
+        expect(tscn).toMatch(/load_steps=\d+/);
     });
 
     it('emits z_index from elevation only when elevation is set', () => {

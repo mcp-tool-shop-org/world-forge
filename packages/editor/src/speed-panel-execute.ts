@@ -210,7 +210,7 @@ export function executeAction(
       } else {
         selectFromContext(context, stores);
         const sel = emptySelection();
-        const key = context.type === 'connection' ? null : SELECTION_KIND_KEY[context.type as SelectionKind];
+        const key = SELECTION_KIND_KEY[context.type as SelectionKind];
         if (!key) return fail('context mismatch');
         sel[key] = [context.id];
         stores.removeSelected(sel);

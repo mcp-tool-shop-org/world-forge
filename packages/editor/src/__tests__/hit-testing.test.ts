@@ -9,7 +9,7 @@ import { getConnectionEndpoints } from '../connection-lines.js';
 
 const chapel = structuredClone(SAMPLE_WORLDS[2].project); // Chapel Threshold
 const TILE = 32;
-const allVisible = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true };
+const allVisible = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true, showTown: false, showItems: false };
 const defaultVP: ViewportState = { panX: 0, panY: 0, zoom: 1 };
 
 /*
@@ -137,6 +137,8 @@ describe('findHitAt', () => {
       showLandmarks: true,
       showSpawns: false,
       showConnections: true,
+      showItems: false,
+      showTown: false,
     });
     expect(entityHit).toEqual({ type: 'entity', id: 'suspicious-pilgrim' });
 
@@ -146,6 +148,8 @@ describe('findHitAt', () => {
       showLandmarks: true,
       showSpawns: false,
       showConnections: true,
+      showItems: false,
+      showTown: false,
     });
     expect(zoneHit).toEqual({ type: 'zone', id: 'chapel-entrance' });
   });

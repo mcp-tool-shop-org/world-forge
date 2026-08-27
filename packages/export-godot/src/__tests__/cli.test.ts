@@ -202,6 +202,10 @@ describe('CLI: world-forge-export-godot', () => {
                 path: 'https://example.com/hero.png',
                 tags: [],
             }],
+            // Referenced so validateProject does not reject the asset as orphaned.
+            entityPlacements: minimalProject.entityPlacements.map((ep, i) =>
+                i === 0 ? { ...ep, spriteId: 'remote-sprite' } : ep,
+            ),
         };
         const jsonPath = join(tmpDir, 'uri-world.json');
         await writeFile(jsonPath, JSON.stringify(project));

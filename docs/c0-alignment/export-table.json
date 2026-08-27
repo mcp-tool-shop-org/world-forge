@@ -15,15 +15,15 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 150,
-      "carried-lossless": 209,
-      "carried-approximated": 18
+      "no-channel": 108,
+      "carried-lossless": 252,
+      "carried-approximated": 17
     },
     "byChannel": {
-      "none": 150,
+      "none": 108,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 189,
+      "contentPack": 231,
       "packMeta": 6,
       "assetBindings": 7,
       "manifest": 3
@@ -31,13 +31,31 @@
   },
   "exporterSelfReport": {
     "fidelitySummary": {
-      "total": 13,
-      "lossless": 2,
-      "approximated": 2,
-      "dropped": 9,
-      "losslessPercent": 15,
+      "total": 23,
+      "lossless": 6,
+      "approximated": 11,
+      "dropped": 6,
+      "losslessPercent": 26,
       "observed": true,
       "byDomain": {
+        "zones": {
+          "total": 5,
+          "lossless": 0,
+          "approximated": 5,
+          "dropped": 0
+        },
+        "districts": {
+          "total": 4,
+          "lossless": 0,
+          "approximated": 4,
+          "dropped": 0
+        },
+        "entities": {
+          "total": 1,
+          "lossless": 1,
+          "approximated": 0,
+          "dropped": 0
+        },
         "items": {
           "total": 4,
           "lossless": 0,
@@ -46,14 +64,23 @@
         },
         "world": {
           "total": 9,
-          "lossless": 2,
+          "lossless": 5,
           "approximated": 0,
-          "dropped": 7
+          "dropped": 4
         }
       }
     },
     "warnings": [
+      "Zone \"zone-surface-yard\" interactable \"notice board\" collapsed to a name string — dropped description (engine wire is name-only; import will default type to 'inspect').",
+      "Zone \"zone-surface-yard\" interactable \"well\" collapsed to a name string — dropped type 'use' and description (engine wire is name-only; import will default type to 'inspect').",
+      "Zone \"zone-under-vault\" interactable \"sealed door\" collapsed to a name string — dropped type 'enter' and description (engine wire is name-only; import will default type to 'inspect').",
+      "Zone \"zone-sky-gantry\" interactable \"signal lamp\" collapsed to a name string — dropped type 'talk' and description (engine wire is name-only; import will default type to 'inspect').",
+      "Zone \"zone-sky-gantry\" interactable \"nothing here\" collapsed to a name string — dropped type 'none' (engine wire is name-only; import will default type to 'inspect').",
       "2 district(s) map authored 'safety' directly onto the engine's 'surveillance' metric (convert-districts.ts) — these are NOT synonyms: a heavily-surveilled district is not a safe one, and high surveillance drives heat/pursuit in the engine's own doctrine, which is the OPPOSITE of what a high 'safety' score is meant to convey. This mapping is unverified against the engine's actual district-metrics consumer; treat exported 'surveillance' values with caution until confirmed.",
+      "District 'district-harbourside' (Harbourside) has supplyCategories not in the engine SupplyCategory set (medicine, weapons, ammunition, food, fuel, luxuries, components, contraband): 'rope', 'salvage' — copied onto economyProfile.supplyCategories for round-trip but omitted from DistrictEconomy.baseline.",
+      "District 'district-harbourside' (Harbourside) has scarcityDefaults keys not in the engine SupplyCategory set: 'rope', 'salvage' — copied onto economyProfile.scarcityDefaults for round-trip but omitted from DistrictEconomy.baseline.",
+      "District 'district-upper-works' (Upper Works) has supplyCategories not in the engine SupplyCategory set (medicine, weapons, ammunition, food, fuel, luxuries, components, contraband): 'iron', 'tools' — copied onto economyProfile.supplyCategories for round-trip but omitted from DistrictEconomy.baseline.",
+      "District 'district-upper-works' (Upper Works) has scarcityDefaults keys not in the engine SupplyCategory set: 'iron', 'tools' — copied onto economyProfile.scarcityDefaults for round-trip but omitted from DistrictEconomy.baseline.",
       "Item \"item-rope\" (Tarred Rope) has both description and container authored — container 'stall crate' was dropped rather than folded into the description.",
       "Item \"item-lantern\" (Shuttered Lantern) has both description and container authored — container 'silt' was dropped rather than folded into the description.",
       "Item \"item-lantern\" (Shuttered Lantern) has hidden:true, re-encoded as provenance flag 'contraband'. Map-visibility became an economic legality flag; the engine will treat this item as illegal goods.",
@@ -61,9 +88,9 @@
       "2 landmark(s) authored-and-dropped — only iconId can survive in assetBindings; name/description/zone/position do not reach the engine.",
       "1 crafting station(s) exported as raw pass-through data on ContentPack.craftingStations — this package has no dedicated converter for them yet; verify your engine build's crafting-core module reads this field before shipping.",
       "1 market node(s) exported as raw pass-through data on ContentPack.marketNodes — this package has no dedicated converter for them yet; verify your engine build's economy systems read this field before shipping.",
-      "1 building(s) authored but dropped — ContentPack has no channel for 'buildings'.",
-      "1 hub(s) authored but dropped — ContentPack has no channel for 'hubs'.",
-      "1 stronghold(s) authored but dropped — ContentPack has no channel for 'strongholds'.",
+      "1 building(s) exported as raw pass-through data on ContentPack.buildings — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
+      "1 hub(s) exported as raw pass-through data on ContentPack.hubs — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
+      "1 stronghold(s) exported as raw pass-through data on ContentPack.strongholds — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
       "3 stratum/strata authored but dropped — ContentPack has no channel for 'strata'.",
       "2 stratum link(s) authored but dropped — ContentPack has no channel for 'stratumLinks'.",
       "1 transition(s) authored but dropped — ContentPack has no channel for 'transitions'."
@@ -920,113 +947,113 @@
     },
     {
       "path": "buildings[].buildingType",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].buildingType",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].buildingType exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Free-form kind (house / shop / temple / …)."
     },
     {
       "path": "buildings[].gridX",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].gridX",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].gridX exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Footprint origin X."
     },
     {
       "path": "buildings[].gridY",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].gridY",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].gridY exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Footprint origin Y."
     },
     {
       "path": "buildings[].height",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].height",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].height exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Footprint height in tiles."
     },
     {
       "path": "buildings[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].id exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Building identity."
     },
     {
       "path": "buildings[].interiorZoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].interiorZoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].interiorZoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Interior zone entered from this building."
     },
     {
       "path": "buildings[].name",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].name",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].name exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Player-facing name."
     },
     {
       "path": "buildings[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "2 authored values match contentPack:buildings[].tags[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Free tags."
     },
     {
       "path": "buildings[].width",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].width",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].width exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Footprint width in tiles."
     },
     {
       "path": "buildings[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "buildings[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"buildings\" absent from all six export artifacts",
-      "note": "Placed enterable buildings have no pack field."
+      "evidence": "1 authored values match contentPack:buildings[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Town zone the building sits in."
     },
     {
       "path": "category",
@@ -1041,69 +1068,69 @@
     },
     {
       "path": "connections[].bidirectional",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "connections[].bidirectional",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"connections\" absent from all six export artifacts",
-      "note": "Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses."
+      "evidence": "2 authored values match contentPack:connections[].bidirectional exactly",
+      "note": "CLOSED BY swarm wave-32 (F-2d93b8d0). Whether the edge is two-way."
     },
     {
       "path": "connections[].condition",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
-      "transform": null,
-      "absenceProof": "key-absent",
+      "class": "carried-approximated",
+      "channel": "contentPack",
+      "packPath": "connections[].condition.type",
+      "transform": "compiled-through-parseSpawnCondition",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"connections\" absent from all six export artifacts",
-      "note": "Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:connections[].condition.type (2 values); semantics asserted separately",
+      "note": "CLOSED BY swarm wave-32 (F-2d93b8d0). The grammar string COMPILES into a ConditionSpec ({type, params}) — the same ink pattern as zone exits and entity spawnCondition."
     },
     {
       "path": "connections[].fromZoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "connections[].fromZoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"connections\" absent from all six export artifacts",
-      "note": "Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses."
+      "evidence": "2 authored values match contentPack:connections[].fromZoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-2d93b8d0). Source zone id."
     },
     {
       "path": "connections[].kind",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "connections[].kind",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"connections\" absent from all six export artifacts",
-      "note": "Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses."
+      "evidence": "2 authored values match contentPack:connections[].kind exactly",
+      "note": "CLOSED BY swarm wave-32 (F-2d93b8d0). ConnectionKind (door / warp / secret / …). Missing kind defaults to passage."
     },
     {
       "path": "connections[].label",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "connections[].label",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"connections\" absent from all six export artifacts",
-      "note": "Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses."
+      "evidence": "2 authored values match contentPack:connections[].label exactly",
+      "note": "CLOSED BY swarm wave-32 (F-2d93b8d0). Optional display label."
     },
     {
       "path": "connections[].toZoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "connections[].toZoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"connections\" absent from all six export artifacts",
-      "note": "Typed inter-zone connections (kind / bidirectional / condition) have no pack field. Only the untyped `Zone.neighbors` id list crosses."
+      "evidence": "2 authored values match contentPack:connections[].toZoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-2d93b8d0). Target zone id."
     },
     {
       "path": "craftingStations[].availableRecipes[]",
@@ -1426,25 +1453,25 @@
     },
     {
       "path": "districts[].economyProfile.scarcityDefaults{}",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "districts[].economyProfile.scarcityDefaults{}",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"economyProfile\" absent from all six export artifacts",
-      "note": "See supplyCategories."
+      "evidence": "5 authored values match contentPack:districts[].economyProfile.scarcityDefaults{} exactly",
+      "note": "CLOSED BY swarm wave-32 (F-229409a8). Full authored map copies; recognized SupplyCategory keys also land on economyProfile.baseline for economy-core."
     },
     {
       "path": "districts[].economyProfile.supplyCategories[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "districts[].economyProfile.supplyCategories[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"economyProfile\" absent from all six export artifacts",
-      "note": "Dropped by convert-districts.ts:13-28 while the engine runs live per-district economies — the exact surface the 2.5D charter calls the moat."
+      "evidence": "5 authored values match contentPack:districts[].economyProfile.supplyCategories[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-229409a8). Copied onto the exported district; unrecognized strings warn and are omitted from DistrictEconomy.baseline but kept here for round-trip."
     },
     {
       "path": "districts[].id",
@@ -1613,14 +1640,14 @@
     },
     {
       "path": "entityPlacements[].dialogueId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "placements[].dialogueId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"dialogueId\" absent from all six export artifacts",
-      "note": "The entity→dialogue binding is dropped even though BOTH sides cross: entities are exported and dialogues are exported, but nothing links them."
+      "evidence": "1 authored values match contentPack:placements[].dialogueId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-c2cdc36d). Carried on ExportedPlacement (same channel as zoneId) and encoded as a dialogue:<id> tag on the blueprint."
     },
     {
       "path": "entityPlacements[].entityId",
@@ -1641,7 +1668,7 @@
       "transform": "encoded-as-faction-tag",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"encoded-as-faction-tag\" → contentPack:entities[].tags[] (12 values); semantics asserted separately",
+      "evidence": "transform \"encoded-as-faction-tag\" → contentPack:entities[].tags[] (13 values); semantics asserted separately",
       "note": "A typed faction reference becomes the string `faction:<id>` inside a flat tag list. If the id is not declared in factionPresences it becomes the literal `faction:UNKNOWN` (with a warning) — the reference is destroyed, not just retyped."
     },
     {
@@ -1652,8 +1679,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridX\" absent from all six export artifacts",
-      "note": "No coordinates cross."
+      "evidence": "key \"gridX\" absent from contentPack:placements[]",
+      "note": "No entity coordinates cross on placements[]. Scoped because spawnPoints / itemPlacements / buildings now carry gridX."
     },
     {
       "path": "entityPlacements[].gridY",
@@ -1663,8 +1690,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridY\" absent from all six export artifacts",
-      "note": "No coordinates cross."
+      "evidence": "key \"gridY\" absent from contentPack:placements[]",
+      "note": "No entity coordinates cross on placements[]. Scoped because spawnPoints / itemPlacements / buildings now carry gridY."
     },
     {
       "path": "entityPlacements[].name",
@@ -1751,7 +1778,7 @@
       "transform": "merged-with-ROLE_TAGS-and-faction-tag",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"merged-with-ROLE_TAGS-and-faction-tag\" → contentPack:entities[].tags[] (12 values); semantics asserted separately",
+      "evidence": "transform \"merged-with-ROLE_TAGS-and-faction-tag\" → contentPack:entities[].tags[] (13 values); semantics asserted separately",
       "note": "The exported tag list is authored tags UNION ROLE_TAGS[role] UNION `faction:<id>` — so it is a superset, and an importer cannot tell an authored `boss` tag from a role-derived one."
     },
     {
@@ -2031,80 +2058,80 @@
     },
     {
       "path": "hubs[].connectedZoneIds[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].connectedZoneIds[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "1 authored values match contentPack:hubs[].connectedZoneIds[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Zones this hub serves."
     },
     {
       "path": "hubs[].hubType",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].hubType",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "1 authored values match contentPack:hubs[].hubType exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Free-form kind (market-square / crossroads / …)."
     },
     {
       "path": "hubs[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "1 authored values match contentPack:hubs[].id exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Hub identity."
     },
     {
       "path": "hubs[].name",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].name",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "1 authored values match contentPack:hubs[].name exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Player-facing name."
     },
     {
       "path": "hubs[].serviceTypes[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].serviceTypes[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "2 authored values match contentPack:hubs[].serviceTypes[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Services offered."
     },
     {
       "path": "hubs[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "2 authored values match contentPack:hubs[].tags[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Free tags."
     },
     {
       "path": "hubs[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "hubs[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"hubs\" absent from all six export artifacts",
-      "note": "Service/connectivity hubs have no pack field."
+      "evidence": "1 authored values match contentPack:hubs[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Anchor zone."
     },
     {
       "path": "id",
@@ -2119,14 +2146,14 @@
     },
     {
       "path": "itemPlacements[].container",
-      "class": "carried-approximated",
+      "class": "carried-lossless",
       "channel": "contentPack",
-      "packPath": "items[].description",
-      "transform": "folded-into-synthesised-description",
+      "packPath": "itemPlacements[].container",
+      "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"folded-into-synthesised-description\" → contentPack:items[].description (3 values); semantics asserted separately",
-      "note": "Container survives ONLY as prose inside a synthesised description, and ONLY when `description` is unset (convert-items.ts). Authoring both drops the container WITH a warning and a fidelity entry (reason `item-container-dropped-when-description-present`, F-06fd0fb3). The fixture exercises both branches."
+      "evidence": "3 authored values match contentPack:itemPlacements[].container exactly",
+      "note": "CLOSED BY swarm wave-32 (F-42772fc9). Placement channel. convertItems still folds container into a synthesised description when description is unset, and drops it from the catalog description when both are authored (F-06fd0fb3)."
     },
     {
       "path": "itemPlacements[].description",
@@ -2163,36 +2190,36 @@
     },
     {
       "path": "itemPlacements[].gridX",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "itemPlacements[].gridX",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"gridX\" absent from all six export artifacts",
-      "note": "No coordinates cross."
+      "evidence": "3 authored values match contentPack:itemPlacements[].gridX exactly",
+      "note": "CLOSED BY swarm wave-32 (F-42772fc9)."
     },
     {
       "path": "itemPlacements[].gridY",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "itemPlacements[].gridY",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"gridY\" absent from all six export artifacts",
-      "note": "No coordinates cross."
+      "evidence": "3 authored values match contentPack:itemPlacements[].gridY exactly",
+      "note": "CLOSED BY swarm wave-32 (F-42772fc9)."
     },
     {
       "path": "itemPlacements[].hidden",
-      "class": "carried-approximated",
+      "class": "carried-lossless",
       "channel": "contentPack",
-      "packPath": "items[].provenance.flags[]",
-      "transform": "boolean-reencoded-as-contraband-flag",
+      "packPath": "itemPlacements[].hidden",
+      "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"boolean-reencoded-as-contraband-flag\" → contentPack:items[].provenance.flags[] (1 values); semantics asserted separately",
-      "note": "A boolean \"hidden on the map\" becomes the ECONOMIC flag `contraband` on item provenance. Only the true case is encoded; `hidden: false` writes nothing, so the field is not recoverable, and the meaning shifts from placement to legality. The re-encode is now REPORTED (warning + fidelity reason `hidden-reencoded-as-contraband`, F-06fd0fb3)."
+      "evidence": "3 authored values match contentPack:itemPlacements[].hidden exactly",
+      "note": "CLOSED BY swarm wave-32 (F-42772fc9). The boolean now crosses on the placement channel. convertItems still ALSO re-encodes hidden:true as provenance flag contraband (F-06fd0fb3), reported separately."
     },
     {
       "path": "itemPlacements[].iconId",
@@ -2218,14 +2245,14 @@
     },
     {
       "path": "itemPlacements[].lootTableId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "itemPlacements[].lootTableId",
       "transform": null,
-      "absenceProof": "value-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "all 1 authored string values absent from contentPack:items[]",
-      "note": "The loot-table BACK-reference has no target field on ItemDefinition. The loot tables themselves now cross via ContentPack.lootTables (CLOSED BY swarm wave-2, F-ee46a52c) and reference items by the same itemId convertItems emits, so the FORWARD link (table → item) survives; only this reverse link (item → table) has no channel."
+      "evidence": "1 authored values match contentPack:itemPlacements[].lootTableId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-42772fc9). The reverse item→lootTableId link now lives on the placement channel. The forward table→itemId link already crossed via ContentPack.lootTables (F-ee46a52c)."
     },
     {
       "path": "itemPlacements[].name",
@@ -2284,14 +2311,14 @@
     },
     {
       "path": "itemPlacements[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "itemPlacements[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"zoneId\" absent from contentPack:items[]",
-      "note": "Item PLACEMENT is dropped: `ItemDefinition` is a catalog record with no location. An exported pack knows every item and where none of them are."
+      "evidence": "3 authored values match contentPack:itemPlacements[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-42772fc9). Placement channel; ItemDefinition remains the catalog."
     },
     {
       "path": "landmarks[].description",
@@ -2312,8 +2339,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridX\" absent from all six export artifacts",
-      "note": "No coordinates cross."
+      "evidence": "key \"gridX\" absent from assetBindings:landmarks{}",
+      "note": "No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridX."
     },
     {
       "path": "landmarks[].gridY",
@@ -2323,8 +2350,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridY\" absent from all six export artifacts",
-      "note": "No coordinates cross."
+      "evidence": "key \"gridY\" absent from assetBindings:landmarks{}",
+      "note": "No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridY."
     },
     {
       "path": "landmarks[].iconId",
@@ -3109,58 +3136,58 @@
     },
     {
       "path": "spawnPoints[].gridX",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "spawnPoints[].gridX",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"spawnPoints\" absent from all six export artifacts",
-      "note": "Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string."
+      "evidence": "2 authored values match contentPack:spawnPoints[].gridX exactly",
+      "note": "CLOSED BY swarm wave-32 (F-0e432e10). Tile X. Optional on the wire (charter); schema authors it."
     },
     {
       "path": "spawnPoints[].gridY",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "spawnPoints[].gridY",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"spawnPoints\" absent from all six export artifacts",
-      "note": "Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string."
+      "evidence": "2 authored values match contentPack:spawnPoints[].gridY exactly",
+      "note": "CLOSED BY swarm wave-32 (F-0e432e10). Tile Y."
     },
     {
       "path": "spawnPoints[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "spawnPoints[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"spawnPoints\" absent from all six export artifacts",
-      "note": "Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string."
+      "evidence": "2 authored values match contentPack:spawnPoints[].id exactly",
+      "note": "CLOSED BY swarm wave-32 (F-0e432e10). Spawn identity. playerTemplate.spawnPointId is a pointer into this array."
     },
     {
       "path": "spawnPoints[].isDefault",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "spawnPoints[].isDefault",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"spawnPoints\" absent from all six export artifacts",
-      "note": "Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string."
+      "evidence": "2 authored values match contentPack:spawnPoints[].isDefault exactly",
+      "note": "CLOSED BY swarm wave-32 (F-0e432e10). Whether this is the default start."
     },
     {
       "path": "spawnPoints[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "spawnPoints[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"spawnPoints\" absent from all six export artifacts",
-      "note": "Spawn points are dropped as records; only `playerTemplate.spawnPointId` crosses, as a dangling id string."
+      "evidence": "2 authored values match contentPack:spawnPoints[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-0e432e10). Which zone the player starts in."
     },
     {
       "path": "strata[].id",
@@ -3318,80 +3345,80 @@
     },
     {
       "path": "strongholds[].defenseLevel",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].defenseLevel",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].defenseLevel exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Fortification strength."
     },
     {
       "path": "strongholds[].factionId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].factionId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].factionId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Controlling faction."
     },
     {
       "path": "strongholds[].garrisonEntityIds[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].garrisonEntityIds[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].garrisonEntityIds[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Garrisoned entity ids."
     },
     {
       "path": "strongholds[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].id exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Stronghold identity."
     },
     {
       "path": "strongholds[].name",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].name",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].name exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Player-facing name."
     },
     {
       "path": "strongholds[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].tags[] exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Free tags."
     },
     {
       "path": "strongholds[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strongholds[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strongholds\" absent from all six export artifacts",
-      "note": "Fortified faction seats have no pack field."
+      "evidence": "1 authored values match contentPack:strongholds[].zoneId exactly",
+      "note": "CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. Occupied zone."
     },
     {
       "path": "tileLayers[].id",
@@ -3929,8 +3956,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridHeight\" absent from all six export artifacts",
-      "note": "See gridX."
+      "evidence": "key \"gridHeight\" absent from contentPack:zones[]",
+      "note": "See gridWidth. Scoped because pack meta carries map-level gridHeight."
     },
     {
       "path": "zones[].gridWidth",
@@ -3940,8 +3967,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridWidth\" absent from all six export artifacts",
-      "note": "See gridX."
+      "evidence": "key \"gridWidth\" absent from contentPack:zones[]",
+      "note": "Zone size does not cross onto the engine zone record. Scoped because pack meta carries map-level gridWidth."
     },
     {
       "path": "zones[].gridX",
@@ -3951,8 +3978,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridX\" absent from all six export artifacts",
-      "note": "No coordinates cross. Consistent with the charter's Pillar 2: fine space is client/authoring-owned."
+      "evidence": "key \"gridX\" absent from contentPack:zones[]",
+      "note": "Zone coordinates do not cross onto the engine zone record. Scoped because spawnPoints / itemPlacements / buildings now carry gridX, and a global key-absent proof would read those as zone carriage."
     },
     {
       "path": "zones[].gridY",
@@ -3962,8 +3989,8 @@
       "transform": null,
       "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "key \"gridY\" absent from all six export artifacts",
-      "note": "See gridX."
+      "evidence": "key \"gridY\" absent from contentPack:zones[]",
+      "note": "See gridX. Scoped because spawnPoints / itemPlacements / buildings now carry gridY."
     },
     {
       "path": "zones[].hazardRefs[]",

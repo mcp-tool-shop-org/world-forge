@@ -28,7 +28,7 @@ export function parseNamedNumbers(s: string): Record<string, number> {
   return out;
 }
 
-export function formatNamedNumbers(data?: Record<string, number>): string {
+export function formatNamedNumbers(data?: Record<string, number | undefined>): string {
   if (!data) return '';
   return Object.entries(data)
     .filter((entry): entry is [string, number] => entry[1] !== undefined && Number.isFinite(entry[1]))

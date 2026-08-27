@@ -446,10 +446,10 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].tilesetId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'zones{}.tilesetId', note: 'Same channel caveat as backgroundId.' },
 
   // ── Zones — dropped ─────────────────────────────────────────────────
-  { path: 'zones[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX' }, note: 'No coordinates cross. Consistent with the charter\'s Pillar 2: fine space is client/authoring-owned.' },
-  { path: 'zones[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY' }, note: 'See gridX.' },
-  { path: 'zones[].gridWidth', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridWidth' }, note: 'See gridX.' },
-  { path: 'zones[].gridHeight', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridHeight' }, note: 'See gridX.' },
+  { path: 'zones[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX', scope: [{ channel: 'contentPack', packPath: 'zones[]' }] }, note: 'Zone coordinates do not cross onto the engine zone record. Scoped because spawnPoints / itemPlacements / buildings now carry gridX, and a global key-absent proof would read those as zone carriage.' },
+  { path: 'zones[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY', scope: [{ channel: 'contentPack', packPath: 'zones[]' }] }, note: 'See gridX. Scoped because spawnPoints / itemPlacements / buildings now carry gridY.' },
+  { path: 'zones[].gridWidth', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridWidth', scope: [{ channel: 'contentPack', packPath: 'zones[]' }] }, note: 'Zone size does not cross onto the engine zone record. Scoped because pack meta carries map-level gridWidth.' },
+  { path: 'zones[].gridHeight', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridHeight', scope: [{ channel: 'contentPack', packPath: 'zones[]' }] }, note: 'See gridWidth. Scoped because pack meta carries map-level gridHeight.' },
   { path: 'zones[].parentDistrictId', class: 'no-channel', absence: { kind: 'key-absent', key: 'parentDistrictId' }, note: 'The zone→district back-reference is dropped; only the district\'s own forward `zoneIds[]` list crosses, so the relation survives one-way by accident of the district converter.' },
   { path: 'zones[].elevation', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevation' }, note: 'The 2.5D vertical field the charter\'s Pillar 2 names first. Zero hits for `elevation` in the engine repo.' },
   { path: 'zones[].elevationRange.floor', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },

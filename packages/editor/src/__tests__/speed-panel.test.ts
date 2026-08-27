@@ -48,8 +48,8 @@ describe('SpeedPanel integration', () => {
   it('zone context produces 8 actions', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const { pinned, contextual } = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    // edit, delete, duplicate, assign-district, place-entity, connect-from, merge-zones, set-elevation
-    expect(pinned.length + contextual.length).toBe(8);
+    // edit, delete, duplicate, assign-district, place-entity, place-encounter, connect-from, merge-zones, set-elevation
+    expect(pinned.length + contextual.length).toBe(9);
   });
 
   it('empty context produces 4 global actions (2 core + 2 review) — F-bdf856bf removed the 4 non-functional mode-suggested add-*-conn actions', () => {
@@ -190,7 +190,7 @@ describe('macros in filterActions', () => {
     // had no backing implementation — see the 'mode-aware speed panel'
     // describe block below), so they no longer appear here either.
     expect(unsafe.map((a) => a.id).sort()).toEqual([
-      'connect-from', 'new-zone', 'place-entity', 'set-elevation',
+      'connect-from', 'new-zone', 'place-encounter', 'place-entity', 'set-elevation',
     ]);
     // The rest are safe (6 core + merge-zones + 2 review)
     expect(safe.length).toBe(9);
@@ -277,8 +277,8 @@ describe('mode-aware speed panel', () => {
   it('existing filterActions tests: all non-mode actions still work', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const result = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    // Zone context: edit, delete, duplicate, assign, place-entity, connect-from, merge-zones, set-elevation = 8
-    expect(result.pinned.length + result.contextual.length).toBe(8);
+    // Zone context: + place-encounter
+    expect(result.pinned.length + result.contextual.length).toBe(9);
   });
 
   it('section order: PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL', () => {

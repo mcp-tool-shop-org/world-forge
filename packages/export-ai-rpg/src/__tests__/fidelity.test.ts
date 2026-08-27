@@ -254,13 +254,16 @@ describe('Round-trip fidelity: Chapel Threshold', () => {
     }
   });
 
-  it('district fidelity: surveillance-to-safety + economy-data-lost per district', () => {
+  it('district fidelity: surveillance-to-safety + economy-from-pack per district', () => {
     const imported = getChapelImport();
     const report = imported.fidelityReport;
     const survEntries = report.entries.filter((e) => e.reason === 'surveillance-to-safety');
-    const econEntries = report.entries.filter((e) => e.reason === 'economy-data-lost');
+    const econEntries = report.entries.filter((e) => e.reason === 'economy-from-pack');
+    const lostEntries = report.entries.filter((e) => e.reason === 'economy-data-lost');
     expect(survEntries.length).toBe(chapelProject.districts.length);
+    // F-229409a8: chapel districts export economyProfile, so import restores it.
     expect(econEntries.length).toBe(chapelProject.districts.length);
+    expect(lostEntries.length).toBe(0);
   });
 
   it('visual-layers-dropped entry present', () => {

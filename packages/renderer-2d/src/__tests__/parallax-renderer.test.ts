@@ -96,7 +96,7 @@ describe('ParallaxRenderer', () => {
     renderer.applyPan(100, 50);
     const byId = new Map(
       renderer.container.children.map((c) => {
-        const n = c as { layerId: string; x: number; y: number };
+        const n = c as unknown as { layerId: string; x: number; y: number };
         return [n.layerId, n];
       }),
     );
