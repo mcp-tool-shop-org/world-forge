@@ -30,6 +30,15 @@ export interface WorldProject {
   tones: string[];
   difficulty: string;
   narratorTone: string;
+  /**
+   * Schema generation that authored this document. Additive; omitted means a
+   * pre-stamp v4.x file. create-empty / editor save should stamp SCHEMA_VERSION
+   * via stampProjectSchemaVersion(). validateProject does not mutate this field;
+   * it records the *producing validator* on ValidationResult.schemaVersion.
+   * Exporters should read project.schemaVersion first and
+   * ValidationResult.schemaVersion second.
+   */
+  schemaVersion?: string;
   /** Scale/scope of the world (dungeon, ocean, space, etc.). Optional for backward compat. */
   mode?: AuthoringMode;
 

@@ -4,7 +4,7 @@ import type { WorldProject } from './project.js';
 import type { ValidationResult } from './validate.js';
 import type { DependencySummary } from './dependencies.js';
 import type { AuthoringMode } from './authoring-mode.js';
-import { validateProject, SCHEMA_VERSION } from './validate.js';
+import { validateProject } from './validate.js';
 import { advisoryValidation } from './advisory.js';
 import { scanDependencies } from './dependencies.js';
 import { DEFAULT_MODE } from './authoring-mode.js';
@@ -46,6 +46,14 @@ export interface ContentCounts {
   assetPacks: number;
   factions: number;
   hotspots: number;
+  lootTables: number;
+  transitions: number;
+  buildings: number;
+  hubs: number;
+  strongholds: number;
+  strata: number;
+  hazards: number;
+  tileLayers: number;
 }
 
 export interface SystemCompleteness {
@@ -247,6 +255,8 @@ function classifyValidationDomain(path: string, suppressUnknownPrefixWarnings = 
       'spawnPoints', 'landmarks', 'factionPresences', 'pressureHotspots',
       'craftingStations', 'marketNodes', 'tilesets', 'tileLayers',
       'props', 'propPlacements', 'ambientLayers',
+      'lootTables', 'transitions', 'strata', 'stratumLinks', 'hazardDefinitions',
+      'buildings', 'hubs', 'strongholds', 'projectTags', 'schemaVersion',
       // Top-level metadata fields
       'id', 'name', 'description', 'version', 'genre', 'tones', 'difficulty',
       'narratorTone', 'mode', 'author', 'license', 'category',
@@ -269,6 +279,14 @@ function classifyValidationDomain(path: string, suppressUnknownPrefixWarnings = 
  */
 export function __resetClassifyDomainWarnings(): void {
   WARNED_UNKNOWN_PREFIXES.clear();
+}
+
+/** @internal Test-only export so unknown-prefix behaviour can be induced directly. */
+export function __classifyValidationDomain(
+  path: string,
+  suppressUnknownPrefixWarnings = false,
+): string {
+  return classifyValidationDomain(path, suppressUnknownPrefixWarnings);
 }
 
 function asArray<T>(value: T[] | undefined | null): T[] {
@@ -302,6 +320,14 @@ export function buildReviewSnapshot(
   const assetPacks = asArray(project.assetPacks);
   const factionPresences = asArray(project.factionPresences);
   const pressureHotspots = asArray(project.pressureHotspots);
+  const lootTables = asArray(project.lootTables);
+  const transitions = asArray(project.transitions);
+  const buildings = asArray(project.buildings);
+  const hubs = asArray(project.hubs);
+  const strongholds = asArray(project.strongholds);
+  const strata = asArray(project.strata);
+  const hazards = asArray(project.hazardDefinitions);
+  const tileLayers = asArray(project.tileLayers);
 
   const sharedLookups = {
     assetMap: new Map(assets.map((a) => [a.id, { kind: a.kind, label: a.label }])),
@@ -332,6 +358,14 @@ export function buildReviewSnapshot(
     assetPacks: assetPacks.length,
     factions: factionPresences.length,
     hotspots: pressureHotspots.length,
+    lootTables: lootTables.length,
+    transitions: transitions.length,
+    buildings: buildings.length,
+    hubs: hubs.length,
+    strongholds: strongholds.length,
+    strata: strata.length,
+    hazards: hazards.length,
+    tileLayers: tileLayers.length,
   };
 
   // System completeness
@@ -478,7 +512,7 @@ export function buildReviewSnapshot(
     modeLabel: MODE_LABELS[mode] || mode,
     description: project.description,
     generatedAt: new Date().toISOString(),
-    schemaVersion: validation.schemaVersion ?? SCHEMA_VERSION,
+    schemaVersion: validation.schemaVersion,
 
     health,
     healthLabel: HEALTH_LABELS[health],

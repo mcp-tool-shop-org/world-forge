@@ -165,3 +165,15 @@ describe('C3/P1 — the formatter REFUSES rather than emitting invalid grammar',
     expect(formatConditionSpec({ type: 'has-item', params: 'nope' } as never)).toBeNull();
   });
 });
+
+describe('parseSpawnCondition guards non-strings (F-f4bee3f2)', () => {
+  it('returns null for a number instead of throwing', () => {
+    expect(() => parseSpawnCondition(123)).not.toThrow();
+    expect(parseSpawnCondition(123)).toBeNull();
+  });
+
+  it('returns null for an object instead of throwing', () => {
+    expect(() => parseSpawnCondition({})).not.toThrow();
+    expect(parseSpawnCondition({})).toBeNull();
+  });
+});

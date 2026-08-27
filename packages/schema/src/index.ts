@@ -11,6 +11,11 @@
  *   - Runtime will accept a v4.0 JSON under v4.2 without modification; new
  *     optional fields (e.g. 2.5D parallax layers, skylineRef) simply default
  *     to undefined.
+ *   - WorldProject.schemaVersion (optional) records which generation authored
+ *     the JSON. Omitted = pre-stamp v4.x. Exporters should read
+ *     `project.schemaVersion` first and `ValidationResult.schemaVersion`
+ *     (the producing validator) second. Stamp new documents with
+ *     stampProjectSchemaVersion().
  *   - v5.0+ will ship with a migration tool that reads earlier major projects
  *     and writes a v5 JSON. Do not rely on hand-editing to cross a major.
  *
@@ -91,7 +96,10 @@ export type { AuthoringMode } from './authoring-mode.js';
 export { AUTHORING_MODES, isValidMode, DEFAULT_MODE } from './authoring-mode.js';
 
 export type { ValidationError, ValidationResult, ValidateOptions } from './validate.js';
-export { validateProject, VALID_CONNECTION_KINDS, VALID_ASSET_KINDS, SCHEMA_VERSION } from './validate.js';
+export {
+  validateProject, stampProjectSchemaVersion,
+  VALID_CONNECTION_KINDS, VALID_ASSET_KINDS, SCHEMA_VERSION,
+} from './validate.js';
 
 export type { CanonAdapterErrorCode } from './canon-adapter.js';
 export { CanonAdapterError } from './canon-adapter.js';

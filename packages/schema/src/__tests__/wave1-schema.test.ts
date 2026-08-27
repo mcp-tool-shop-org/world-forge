@@ -76,6 +76,21 @@ describe('Wave 1: LootTable', () => {
     expect(result.errors.some((e) => e.message.includes('must contain at least one entry'))).toBe(true);
   });
 
+  it('rejects entries: {} (present-but-not-an-array)', () => {
+    const p = withLootTables([{ id: 'lt-obj', entries: {} as unknown as LootTableEntry[] }]);
+    const result = validateProject(p);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) =>
+      e.path.includes('lootTables.lt-obj.entries') && e.message.includes('to be an array'),
+    )).toBe(true);
+  });
+
+  it('accepts a free-form engine item id that is not a world placement', () => {
+    const p = withLootTables([{ id: 'lt-engine', entries: [{ itemId: 'engine-only-item', weight: 1 }] }]);
+    const result = validateProject(p);
+    expect(result.valid).toBe(true);
+  });
+
   it('rejects non-positive or non-finite weights (check #57)', () => {
     const p = withLootTables([
       {
@@ -333,6 +348,22 @@ describe('Wave 1: TransitionEntity', () => {
     const result = validateProject(p);
     expect(result.valid).toBe(true);
   });
+
+  it('rejects an unknown transition type "teleporter"', () => {
+    const p = withTransitions([{ ...baseTransition, type: 'teleporter' as never }]);
+    const result = validateProject(p);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path.includes('.type') && e.message.includes('teleporter'))).toBe(true);
+  });
+
+  it('rejects a transition with omitted type', () => {
+    const omitted = { ...baseTransition } as TransitionEntity;
+    delete (omitted as { type?: unknown }).type;
+    const p = withTransitions([omitted]);
+    const result = validateProject(p);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.path.includes('.type'))).toBe(true);
+  });
 });
 
 // ── 4. Zone gravity + physics (SCH-FT-006) ─────────────────────
@@ -381,8 +412,23 @@ describe('Wave 1: Zone gravity + physics overrides', () => {
 
 // ── 5. Sky + lighting metadata (UE-FT-002) ─────────────────────
 describe('Wave 1: Zone sky + lighting metadata', () => {
-  it('accepts valid sky/lighting fields', () => {
+  it('rejects a dangling skyAtmosphereRef (asset id, not a free-form engine key)', () => {
     const p = clone(minimalProject);
+    p.zones[0].skyAtmosphereRef = 'sky-dawn-preset';
+    p.zones[0].directionalLightYaw = 45;
+    p.zones[0].directionalLightPitch = -30;
+    p.zones[0].skyLightIntensity = 1.5;
+    p.zones[0].timeOfDay = 'dawn';
+    const result = validateProject(p);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) =>
+      e.path.includes('skyAtmosphereRef') && e.message.includes('sky-dawn-preset'),
+    )).toBe(true);
+  });
+
+  it('accepts skyAtmosphereRef when it resolves to a background asset', () => {
+    const p = clone(minimalProject);
+    p.assets = [{ id: 'sky-dawn-preset', kind: 'background', label: 'Dawn', path: '/sky.png', tags: [] }];
     p.zones[0].skyAtmosphereRef = 'sky-dawn-preset';
     p.zones[0].directionalLightYaw = 45;
     p.zones[0].directionalLightPitch = -30;
