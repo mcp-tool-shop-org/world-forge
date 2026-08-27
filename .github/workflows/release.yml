@@ -91,25 +91,51 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      # F-8cdb6b66: v6.4.0 + registry-url wrote _authToken=${NODE_AUTH_TOKEN}
+      # and exported a dummy NODE_AUTH_TOKEN, which short-circuits the OIDC
+      # exchange (ENEEDAUTH) — npm/documentation#1960, setup-node#1440.
+      # v7.0.0 dropped that dummy. Official trusted-publishing examples keep
+      # registry-url and set package-manager-cache: false (a poisoned cache
+      # can expose OIDC tokens); do not restore cache: npm on this job.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-          cache: npm
+          package-manager-cache: false
 
-      - name: Install npm >= 11.5 in sandbox for OIDC trusted-publishing auth
+      - name: Strip _authToken from npmrc so OIDC can exchange
+        run: |
+          # F-8cdb6b66: v7 no longer exports a dummy NODE_AUTH_TOKEN (do not
+          # write an empty NODE_AUTH_TOKEN= to GITHUB_ENV — that recreates
+          # "auth is configured" for some npm versions). Strip any leftover
+          # _authToken line from .npmrc so a pin drift back to v6 cannot
+          # short-circuit the OIDC exchange (ENEEDAUTH).
+          unset NODE_AUTH_TOKEN
+          for rc in "${NPM_CONFIG_USERCONFIG:-}" "$HOME/.npmrc" .npmrc; do
+            if [ -n "$rc" ] && [ -f "$rc" ]; then
+              sed -i '/_authToken/d' "$rc"
+            fi
+          done
+
+      - name: Install npm 11.6.2 in sandbox for OIDC trusted-publishing auth
         run: |
           # Node 22 bundles npm 10.x, which cannot do OIDC trusted publishing,
-          # and an in-place `npm i -g npm@latest` races its own arborist rebuild.
-          # Install npm@latest into an isolated sandbox and shadow it via PATH.
+          # and an in-place `npm i -g npm@11.6.2` races its own arborist rebuild.
+          # F-8cdb6b66: pin 11.6.2 (11.5+ required) — never npm@latest.
           SANDBOX="$HOME/.npm-cli-sandbox"
           mkdir -p "$SANDBOX"
           pushd "$SANDBOX" >/dev/null
           echo '{"name":"npm-cli-sandbox","version":"0.0.0","private":true}' > package.json
-          npm install --no-save --no-audit --no-fund --silent npm@latest
+          npm install --no-save --no-audit --no-fund --silent npm@11.6.2
           popd >/dev/null
           echo "$SANDBOX/node_modules/.bin" >> "$GITHUB_PATH"
-          "$SANDBOX/node_modules/.bin/npm" --version
+          SANDBOX_NPM="$SANDBOX/node_modules/.bin/npm"
+          GOT="$("$SANDBOX_NPM" --version)"
+          echo "sandbox npm ${GOT}"
+          if [ "$GOT" != "11.6.2" ]; then
+            echo "::error::pinned npm@11.6.2 but sandbox reports ${GOT}"
+            exit 1
+          fi
 
       - name: Install dependencies
         run: npm ci
@@ -130,6 +156,18 @@ jobs:
       - name: Test
         run: npm test
 
+      # F-cefc8213: ci.yml's Node 24 required leg runs these as explicit
+      # steps, never via prebuild. scripts/sync-version.mjs is a no-op write
+      # under GITHUB_ACTIONS, so a drifted version token or a dogfood type
+      # error that never rode a PR (gh release create on any tagged commit)
+      # could not go red on the publish job. Playwright was mirrored as part
+      # of F-2ed74a5c; these two newer CI gates were not.
+      - name: Dogfood typecheck
+        run: npm run typecheck:dogfood
+
+      - name: Version + documented-count drift gate
+        run: npm run check-version
+
       # F-2ed74a5c: same Playwright gate as ci.yml, before any publish.
       # reuseExistingServer is disabled by CI=true. No continue-on-error.
       - name: Install Playwright Chromium
@@ -139,6 +177,19 @@ jobs:
         env:
           CI: true
         run: npm run test:e2e
+
+      # F-5ff896af: same hole as ci.yml e2e — on failure the only
+      # observability was the job log. Upload even if harness has not yet
+      # enabled retain-on-failure traces (if-no-files-found: ignore).
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-e2e-release
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
 
       # Publish in dependency order with Sigstore provenance (OIDC — NO token):
       #   1. schema (no deps)

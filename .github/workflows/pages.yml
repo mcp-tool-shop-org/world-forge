@@ -10,7 +10,15 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # F-1b8b3bf8: was `true`. Same class as release.yml F-f4cbf9e9 — an in-flight
+  # Pages deploy is irreversible-ish (artifact wired to the CDN, then the
+  # curl-200 verifier). GitHub's Pages starter uses false so production
+  # deploys finish. A second push to main (or a workflow-path change, which
+  # is in this file's on.paths) used to cancel deploy-pages / verify, so a
+  # partial CDN cutover had no health check. `false` queues the new run
+  # behind the in-flight deploy. Keep a single group so only one deploy is
+  # live; do not kill it.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -24,7 +32,12 @@ jobs:
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 22
+          # F-9a301370: must match ci.yml site-build (Node 24, a required
+          # check). Deploying a Node-22 artifact while CI built on 24 let
+          # Node-22-only Astro/Starlight/Tailwind failures show up only after
+          # merge, on Pages. The curl-200 verifier catches a total outage,
+          # not a silent render/runtime difference.
+          node-version: 24
           cache: npm
           cache-dependency-path: site/package-lock.json
 
