@@ -288,8 +288,9 @@ export function exportToEngine(
   let packMeta: ReturnType<typeof convertPackMeta>;
 
   try {
-    // 2. Convert zones (AIR-B-002: forward warnings for broken exit refs)
-    zones = convertZones(project, warnings);
+    // 2. Convert zones (AIR-B-002: forward warnings for broken exit refs;
+    // F-b372b7e0: interactable name-only collapse reports on warnings+fidelity)
+    zones = convertZones(project, warnings, fidelityEntries);
 
     // 3. Convert districts (F-6cd32f2d: warnings report the safety->surveillance approximation)
     districts = convertDistricts(project, warnings);

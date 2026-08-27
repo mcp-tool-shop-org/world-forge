@@ -3,6 +3,7 @@
 import type { WorldProject } from '@world-forge/schema';
 import { parseSpawnCondition } from '@world-forge/schema';
 import type { ZoneDefinition } from '@ai-rpg-engine/content-schema';
+import type { FidelityEntry } from './fidelity.js';
 
 /**
  * A compiled entry gate, as the engine's `EntryGateDefinition` shape.
@@ -89,19 +90,6 @@ function buildScene(z: {
   return Object.keys(scene).length > 0 ? scene : undefined;
 }
 
-/**
- * Convert project zones → engine `ZoneDefinition[]`.
- *
- * **Precondition:** `validateProject(project).valid === true`. Converters do
- * not guard against missing nested properties and will throw if input is
- * malformed. (AIR-B-006)
- *
- * **AIR-B-002:** When `warnings` is provided, every `exit.targetZoneId` that
- * does not resolve to a zone in `project.zones` is reported. The exit is
- * preserved in the output so the engine still sees the raw reference, but the
- * user gets a clear, actionable message identifying the exact zone + exit that
- * is broken.
- */
 /**
  * Compile a zone exit's SpawnCondition-grammar string into a structured
  * `ConditionSpec`.
@@ -207,7 +195,29 @@ function compileEntryGate(
   };
 }
 
-export function convertZones(project: WorldProject, warnings?: string[]): ExportedZone[] {
+/**
+ * Convert project zones → engine `ZoneDefinition[]`.
+ *
+ * **Precondition:** `validateProject(project).valid === true`. Converters do
+ * not guard against missing nested properties and will throw if input is
+ * malformed. (AIR-B-006)
+ *
+ * **AIR-B-002:** When `warnings` is provided, every `exit.targetZoneId` that
+ * does not resolve to a zone in `project.zones` is reported. The exit is
+ * preserved in the output so the engine still sees the raw reference, but the
+ * user gets a clear, actionable message identifying the exact zone + exit that
+ * is broken.
+ *
+ * **F-b372b7e0:** Interactables stay a name-only `string[]` on the wire. When
+ * an interactable has a `type` that a name-only projection cannot recover
+ * (anything other than the import default `'inspect'`) or a `description`,
+ * that drop is reported on `warnings` + `fidelity` (`interactable-collapsed-to-name`).
+ */
+export function convertZones(
+  project: WorldProject,
+  warnings?: string[],
+  fidelity?: FidelityEntry[],
+): ExportedZone[] {
   const zoneIds = new Set(project.zones.map((z) => z.id));
   return project.zones.map((z) => {
     if (warnings && z.exits.length > 0) {
@@ -218,6 +228,33 @@ export function convertZones(project: WorldProject, warnings?: string[]): Export
             `Zone "${z.id}" has an exit${label} whose targetZoneId "${e.targetZoneId}" does not exist — the engine will fail to traverse this exit. Remove the exit or restore the missing zone.`,
           );
         }
+      }
+    }
+    // F-b372b7e0: name-only projection drops type + description. Import
+    // reconstructs `{ name, type: 'inspect' }`, so 'inspect' is recoverable;
+    // any other authored type, or a description, is not.
+    for (const i of z.interactables) {
+      const dropped: string[] = [];
+      if (i.type && i.type !== 'inspect') {
+        dropped.push(`type '${i.type}'`);
+      }
+      if (i.description) {
+        dropped.push('description');
+      }
+      if (dropped.length > 0) {
+        const msg =
+          `Zone "${z.id}" interactable "${i.name}" collapsed to a name string — dropped ${dropped.join(' and ')} ` +
+          `(engine wire is name-only; import will default type to 'inspect').`;
+        warnings?.push(msg);
+        fidelity?.push({
+          domain: 'zones',
+          level: 'approximated',
+          severity: 'warning',
+          entityId: z.id,
+          fieldPath: `interactables.${i.name}`,
+          message: msg,
+          reason: 'interactable-collapsed-to-name',
+        });
       }
     }
     return {
