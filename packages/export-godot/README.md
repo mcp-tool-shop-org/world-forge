@@ -8,15 +8,20 @@ Godot 4 export pipeline for World Forge — converts a `WorldProject` into a str
 
 `buildWorldScene()` emits a single **playable** `.tscn` — not a metadata graph —
 that opens navigable in the Godot 4 editor. Walkable interiors are open (walls
-come from per-cell collision); entities are `Node2D` + `ColorRect`/`Label`
-placeholders and items/props are `Marker2D` gizmos so a clean project does not
-need PackedScenes this pack does not ship.
+come from per-cell collision); a `CharacterBody2D` pawn (with a following
+`Camera2D` and move script) sits at the default spawn; entities are `Node2D` +
+`ColorRect`/`Label` placeholders and items/props are `Marker2D` gizmos so a
+clean project does not need PackedScenes this pack does not ship. CLI `--out`
+is a loadable Godot 4 project (`project.godot` + `res://` layout).
 
 ## What lands in the scene
 
 ```
 World (Node2D, y_sort_enabled)
-├── Camera2D — framed on the world bounding box so the scene is visible on open
+├── Player (CharacterBody2D) — pawn at the default spawn; Camera2D child follows
+│   ├── CollisionShape2D
+│   ├── Camera2D
+│   └── Body (Polygon2D)
 ├── <TileLayer> (TileMapLayer) — image layers bake tile_map_data; color-only emit ColorRect cells
 ├── <ZoneName> (Node2D) — at zone origin, y_sort_enabled, z_index from elevation
 │   ├── Collision (StaticBody2D) — only when collisionType is void/hazard
@@ -25,9 +30,9 @@ World (Node2D, y_sort_enabled)
 │   ├── Entities/ (Node2D)
 │   │   └── <EntityName> (Node2D) — ColorRect + Label placeholder; sceneTemplate in metadata
 │   ├── Items/ (Node2D)
-│   │   └── <ItemName> (Marker2D)
+│   │   └── <ItemName> (Marker2D) — ExtResource item/loot .tres + metadata
 │   ├── SpawnPoints/ (Node2D)
-│   │   └── <SpawnName> (Marker2D)
+│   │   └── <SpawnName> (Marker2D) — extra spawns; default is the pawn
 │   └── Transitions/ (Node2D)
 │       └── <TransitionName> (Area2D + CollisionShape2D trigger)
 └── NavigationLinks/ (Node2D)
@@ -42,8 +47,8 @@ the editor still paints tagged rects.
 - **Per zone** — a `Node2D` with a `NavigationRegion2D` navmesh (walkable
   interiors are **not** filled with a `StaticBody2D` — walls come from per-cell
   collision; `void`/`hazard` zones still get a solid hull), `y_sort_enabled`,
-  and a `z_index` from its stratum band (+ elevation). A framed `Camera2D` sits
-  on the root.
+  and a `z_index` from its stratum band (+ elevation). A `CharacterBody2D`
+  player pawn at the default spawn carries a following `Camera2D`.
 - **Tiles** — `TileMapLayer` + `TileSet` (image tilesets bake `tile_map_data`
   cells; color-only layers emit `ColorRect` children so the map is visible
   without an atlas), with per-cell wall `StaticBody2D` collision for non-walkable
@@ -77,7 +82,12 @@ npx world-forge-export-godot project.json --validate-only
 npx world-forge-export-godot project.json --out ./GodotPack --no-world-tscn
 ```
 
-`--out` requires a path that does not start with `-`. Writes `pack.json`, `world.tscn`, a `files/` tree (`res://` stripped), and `fidelity.json`. Exit 1 on `GodotExportError` or write failure, with path + message + a fix hint.
+`--out` requires a path that does not start with `-`. Writes a Godot 4 project
+root: `project.godot` (`run/main_scene="res://world.tscn"`), `world.tscn`,
+`.tres` files at the `res://`-stripped `resourcePath` (`world_data/…`), copied
+authored textures under `assets/`, `scripts/player.gd`, plus `pack.json` and
+`fidelity.json` alongside. Exit 1 on `GodotExportError` or write failure, with
+path + message + a fix hint.
 
 ## Usage
 

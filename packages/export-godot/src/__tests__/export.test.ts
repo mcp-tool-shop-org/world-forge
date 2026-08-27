@@ -31,6 +31,12 @@ describe('exportToGodot', () => {
         expect(result.contentPack.meta.formatVersion).toBe(GODOT_PACK_FORMAT_VERSION);
         expect(result.contentPack.zones.length).toBe(minimalProject.zones.length);
         expect(result.contentPack.worldSceneTscn).toContain('[gd_scene');
+        expect(result.contentPack.worldSceneTscn).toContain('[node name="Player" type="CharacterBody2D" parent="."]');
+        expect(result.contentPack.worldSceneTscn).toContain('[node name="Camera2D" type="Camera2D" parent="Player"]');
+        expect(result.contentPack.worldSceneTscn).toContain('[ext_resource type="Resource" path="res://world_data/items/item-torch.tres"');
+        expect(result.contentPack.worldSceneTscn).toContain('metadata/player_name = "Traveler"');
+        expect(result.contentPack.files['res://scripts/player.gd']).toContain('extends CharacterBody2D');
+        expect(result.assetCopies).toEqual([]);
     });
 
     it('attaches a .tres body for every stamped resourcePath (F-12eeba99)', () => {
@@ -71,7 +77,7 @@ describe('exportToGodot', () => {
         expect(result.contentPack.worldSceneTscn).toContain('metadata/entry_gate = "item:iron-key"');
     });
 
-    it('reports dropped fidelity (and incomplete) for authored landmarks / playerTemplate (F-14eadaad)', () => {
+    it('reports dropped fidelity (and incomplete) for authored landmarks (F-14eadaad)', () => {
         const result = exportToGodot(minimalProject);
         expect(result.success).toBe(true);
         if (!result.success) return;
@@ -79,8 +85,9 @@ describe('exportToGodot', () => {
             .filter((e) => e.level === 'dropped' && e.domain === 'world')
             .map((e) => e.fieldPath);
         expect(droppedFields).toEqual(expect.arrayContaining([
-            'landmarks', 'playerTemplate', 'encounterAnchors', 'factionPresences', 'pressureHotspots',
+            'landmarks', 'encounterAnchors', 'factionPresences', 'pressureHotspots',
         ]));
+        expect(droppedFields).not.toContain('playerTemplate');
         expect(result.fidelity.summary.incomplete).toBe(true);
         expect(result.fidelity.summary.dropped).toBeGreaterThan(0);
         expect(result.fidelity.summary.losslessPercent).toBeLessThan(100);

@@ -3,8 +3,13 @@
 export { exportToGodot, GODOT_PACK_FORMAT_VERSION } from './export.js';
 export type {
     GodotContentPack, GodotPackMeta,
-    GodotExportOptions, GodotExportResult, GodotExportError,
+    GodotExportOptions, GodotExportResult, GodotExportError, GodotAssetCopy,
 } from './export.js';
+
+export { buildProjectGodot, PLAYER_SCRIPT_PATH, PLAYER_MOVE_SCRIPT } from './godot-project.js';
+export type { ProjectGodotOptions } from './godot-project.js';
+
+export { planAuthoredAssetCopies, resourcePathToRel, isRemoteAssetUri } from './copy-assets.js';
 
 export { convertZones } from './convert-zones.js';
 export type { GodotZoneResource, ConvertZonesResult } from './convert-zones.js';
@@ -38,12 +43,12 @@ export type { GodotSpawnMarker, ConvertSpawnPointsResult } from './convert-spawn
 export { convertTransitions } from './convert-transitions.js';
 export type { GodotTransitionNode, ConvertTransitionsResult } from './convert-transitions.js';
 
-export { convertTileLayers, encodeTileMapData, fallbackTileColor, cssHexToGodotColor } from './convert-tile-layers.js';
+export { convertTileLayers, encodeTileMapData, fallbackTileColor, cssHexToGodotColor, tilesetTexturePath } from './convert-tile-layers.js';
 export type {
     GodotTileLayer, GodotTileCell, GodotTileAtlasSource, ConvertTileLayersResult,
 } from './convert-tile-layers.js';
 
-export { convertProps } from './convert-props.js';
+export { convertProps, propTexturePath } from './convert-props.js';
 export type { GodotPropNode, ConvertPropsResult } from './convert-props.js';
 
 export { convertEconomy } from './convert-economy.js';

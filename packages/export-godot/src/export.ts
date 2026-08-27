@@ -30,6 +30,10 @@ import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { collectDroppedFieldFidelity } from './field-coverage.js';
 import { serializeResource } from './tres-serializer.js';
+import { planAuthoredAssetCopies, type GodotAssetCopy } from './copy-assets.js';
+import { PLAYER_MOVE_SCRIPT, PLAYER_SCRIPT_PATH } from './godot-project.js';
+
+export type { GodotAssetCopy } from './copy-assets.js';
 
 /**
  * Pack format version (semver). Bump rules:
@@ -97,6 +101,12 @@ export interface GodotExportOptions {
     includeWorldTscn?: boolean;
     /** Prefix for the per-project scene uid (default `wf` → uid://wf_<project.id>). */
     sceneUidPrefix?: string;
+    /**
+     * Directory used to resolve authored AssetEntry.path / tileset.imagePath /
+     * prop.imagePath as local files (typically the folder of the project JSON).
+     * When omitted, image-copy planning is skipped.
+     */
+    assetBaseDir?: string;
 }
 
 export interface GodotExportResult {
@@ -104,6 +114,8 @@ export interface GodotExportResult {
     contentPack: GodotContentPack;
     warnings: string[];
     fidelity: FidelityReport;
+    /** Local image files to copy under --out at destRel (res:// stripped). */
+    assetCopies: GodotAssetCopy[];
 }
 
 export interface GodotExportError {
@@ -188,6 +200,18 @@ export function exportToGodot(
     fidelityEntries.push(...gatesResult.fidelity);
     fidelityEntries.push(...collectDroppedFieldFidelity(project));
 
+    let assetCopies: GodotAssetCopy[] = [];
+    if (options?.assetBaseDir) {
+        const planned = planAuthoredAssetCopies({
+            assets: assetsResult.assets,
+            tilesets: project.tilesets ?? [],
+            props: project.props ?? [],
+            baseDir: options.assetBaseDir,
+        });
+        assetCopies = planned.copies;
+        fidelityEntries.push(...planned.fidelity);
+    }
+
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
         warnings.push('No entity placements — the exported world will have no NPCs/enemies.');
@@ -232,6 +256,18 @@ export function exportToGodot(
                 zoneStrata: strataResult.zoneStrata,
                 hazards: hazardsResult.placements,
                 zoneGates: gatesResult.zoneGates,
+                dialogues: dialoguesResult.dialogues.map((d) => ({ id: d.id, resourcePath: d.resourcePath })),
+                lootTables: lootResult.lootTables.map((t) => ({ id: t.id, resourcePath: t.resourcePath })),
+                playerTemplate: project.playerTemplate
+                    ? {
+                        name: project.playerTemplate.name,
+                        baseStats: project.playerTemplate.baseStats,
+                        baseResources: project.playerTemplate.baseResources,
+                        spawnPointId: project.playerTemplate.spawnPointId,
+                        tags: project.playerTemplate.tags,
+                        startingInventory: project.playerTemplate.startingInventory,
+                    }
+                    : undefined,
             });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
@@ -280,13 +316,16 @@ export function exportToGodot(
         stratumLinks: strataResult.links,
         hazards: hazardsResult.placements,
         zoneGates: Object.values(gatesResult.zoneGates),
-        files: collectTresFiles({
-            zones: zonesResult.zones,
-            districts: districtsResult.districts,
-            dialogues: dialoguesResult.dialogues,
-            lootTables: lootResult.lootTables,
-            items: itemsResult.items,
-        }),
+        files: {
+            ...collectTresFiles({
+                zones: zonesResult.zones,
+                districts: districtsResult.districts,
+                dialogues: dialoguesResult.dialogues,
+                lootTables: lootResult.lootTables,
+                items: itemsResult.items,
+            }),
+            [PLAYER_SCRIPT_PATH]: PLAYER_MOVE_SCRIPT,
+        },
         worldSceneTscn,
     };
 
@@ -317,6 +356,7 @@ export function exportToGodot(
         contentPack,
         warnings,
         fidelity: fidelityReport,
+        assetCopies,
     };
 }
 

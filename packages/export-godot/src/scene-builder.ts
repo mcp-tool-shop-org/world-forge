@@ -6,7 +6,10 @@
  *
  * Scene tree structure:
  *   World (Node2D, y_sort_enabled)
- *   ├── Camera2D — framed on the world bounding box so the scene is visible on open
+ *   ├── Player (CharacterBody2D) — pawn at the default spawn; Camera2D child follows
+ *   │   ├── CollisionShape2D
+ *   │   ├── Camera2D
+ *   │   └── Body (Polygon2D)
  *   ├── <TileLayer> (TileMapLayer) — image layers bake tile_map_data; color-only emit ColorRect cells
  *   ├── <ZoneName> (Node2D) — at zone origin, y_sort_enabled, z_index from elevation
  *   │   ├── Collision (StaticBody2D) — only when collisionType is void/hazard
@@ -15,18 +18,19 @@
  *   │   ├── Entities/ (Node2D)
  *   │   │   └── <EntityName> (Node2D) — ColorRect + Label placeholder; sceneTemplate in metadata
  *   │   ├── Items/ (Node2D)
- *   │   │   └── <ItemName> (Marker2D)
+ *   │   │   └── <ItemName> (Marker2D) — ExtResource item/loot .tres + metadata
  *   │   ├── SpawnPoints/ (Node2D)
- *   │   │   └── <SpawnName> (Marker2D)
+ *   │   │   └── <SpawnName> (Marker2D) — extra spawns only; default is the pawn
  *   │   └── Transitions/ (Node2D)
  *   │       └── <TransitionName> (Area2D + CollisionShape2D trigger)
  *   └── NavigationLinks/ (Node2D)
  *
  * Wave B-1: the scene ships a playable scaffold — per-cell wall collision,
- * per-zone navigation regions, a framed Camera2D, and 2.5D y-sort / z-index — so
- * a world-forge export opens in Godot as a navigable, collidable, visible scene
- * rather than a metadata-only graph. Walkable interiors are not filled with a
- * zone AABB StaticBody2D (that blocked CharacterBody2D while navmesh said walk).
+ * per-zone navigation regions, a player CharacterBody2D with a following
+ * Camera2D, and 2.5D y-sort / z-index — so a world-forge export opens in Godot
+ * as a navigable, collidable, visible scene rather than a metadata-only graph.
+ * Walkable interiors are not filled with a zone AABB StaticBody2D (that blocked
+ * CharacterBody2D while navmesh said walk).
  */
 
 import type { GodotZoneResource } from './convert-zones.js';
@@ -45,9 +49,11 @@ import type { GodotZoneGate } from './convert-gates.js';
 import { sanitizeNodeName, uniqueSiblingName } from './node-naming.js';
 import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
 import type { FidelityEntry } from './fidelity.js';
+import { PLAYER_SCRIPT_PATH } from './godot-project.js';
 
 /** Root-level siblings that must not collide with zone / tile-layer node names. */
 export const RESERVED_ROOT_NODE_NAMES = [
+    'Player',
     'Camera2D',
     'Props',
     'Markets',
@@ -101,6 +107,19 @@ export interface SceneBuildInput {
     hazards?: GodotHazardPlacement[];
     /** zoneId → its entry gate, emitted as metadata on the zone node. Optional. */
     zoneGates?: Record<string, GodotZoneGate>;
+    /** Stamped dialogue resources — ExtResource'd onto entities that reference them. */
+    dialogues?: Array<{ id: string; resourcePath: string }>;
+    /** Stamped loot tables — ExtResource'd onto items that reference them. */
+    lootTables?: Array<{ id: string; resourcePath: string }>;
+    /** Authored playerTemplate — copied onto the pawn as metadata when present. */
+    playerTemplate?: {
+        name?: string;
+        baseStats?: Record<string, number>;
+        baseResources?: Record<string, number>;
+        spawnPointId?: string;
+        tags?: string[];
+        startingInventory?: string[];
+    };
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -118,8 +137,12 @@ export function buildWorldScene(input: SceneBuildInput): string {
     // Tile resources — TileSet/TileSetAtlasSource sub-resources + tileset textures.
     // Entities are Node2D + ColorRect/Label; items/props are Marker2D; transitions
     // are Area2D placeholders (scene templates live in metadata) so a clean Godot
-    // project does not need the PackedScenes this pack does not ship.
+    // project does not need the PackedScenes this pack does not ship. Stamped
+    // .tres paths (zones/items/dialogues/loot) ARE ExtResource'd — dual-channel.
     const tileResources = collectTileResources(tileLayers);
+    const dataResources = collectDataExtResources(input);
+    const playerScriptId = 'player_gd';
+    const playerShapeId = 'PlayerShape';
     // Sub-resources (per-zone navigation polygons + optional void/hazard hulls).
     const subResources = collectSubResources(input.zones);
     // Building footprint collision shapes (one RectangleShape2D per building).
@@ -131,22 +154,30 @@ export function buildWorldScene(input: SceneBuildInput): string {
         input.transitions,
         input.tileSize ?? DEFAULT_TILE_SIZE_PX,
     );
+    const playerShape = collectPlayerShape(input.tileSize ?? DEFAULT_TILE_SIZE_PX, playerShapeId);
 
     // Header — load_steps counts every ext + sub resource plus the implicit scene step.
     const loadSteps = tileResources.textures.length
+        + dataResources.ext.length
+        + 1 // player.gd
         + subResources.blocks.length + tileResources.subBlocks.length
         + buildingShapes.blocks.length + hazardShapes.length
-        + transitionShapes.length + 1;
+        + transitionShapes.length
+        + 1 // PlayerShape
+        + 1;
     lines.push(`[gd_scene load_steps=${loadSteps} format=3${sceneUidAttribute(input.projectId, input.sceneUidPrefix)}]`);
     lines.push('');
 
-    // External resource declarations — tileset textures only. PackedScene
-    // templates are stored as metadata, matching props, so the scene loads
-    // without files this pack does not ship.
+    // External resource declarations — player script, stamped .tres Resources,
+    // then tileset textures. PackedScene templates stay metadata (F-e17190f1).
+    lines.push(`[ext_resource type="Script" path=${quoted(PLAYER_SCRIPT_PATH)} id="${playerScriptId}"]`);
+    for (const res of dataResources.ext) {
+        lines.push(`[ext_resource type="Resource" path=${quoted(res.path)} id="${res.id}"]`);
+    }
     for (const tex of tileResources.textures) {
         lines.push(`[ext_resource type="Texture2D" path=${quoted(tex.path)} id="${tex.id}"]`);
     }
-    if (tileResources.textures.length > 0) lines.push('');
+    lines.push('');
 
     // Sub-resource declarations (must precede the nodes that reference them).
     for (const block of subResources.blocks) {
@@ -169,6 +200,8 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(block);
         lines.push('');
     }
+    lines.push(playerShape);
+    lines.push('');
 
     // Root node — y-sort enabled so 2.5D depth ordering works out of the box.
     // F-00cf78db: the identical gap convert-zones.ts:116 had — a project name
@@ -177,11 +210,8 @@ export function buildWorldScene(input: SceneBuildInput): string {
     lines.push('y_sort_enabled = true');
     lines.push('');
 
-    // Framed camera so the exported scene is visible the moment it opens.
-    const camera = worldCenter(input.zones);
-    lines.push(`[node name="Camera2D" type="Camera2D" parent="."]`);
-    lines.push(`position = Vector2(${camera.x}, ${camera.y})`);
-    lines.push('');
+    const defaultSpawn = pickDefaultSpawn(input.spawnMarkers);
+    emitPlayerPawn(lines, input, playerScriptId, playerShapeId, defaultSpawn);
 
     // Tile layers — TileMapLayer nodes (ground art) parented to the root. Image-
     // backed layers carry baked tile_map_data cells; color-only layers emit
@@ -208,6 +238,8 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`z_index = ${clampZ(elevZ)}`);
         }
         lines.push(`metadata/zone_id = ${quoted(zone.id)}`);
+        const zoneResId = dataResources.zoneId.get(zone.id);
+        if (zoneResId) lines.push(`metadata/zone_resource = ExtResource("${zoneResId}")`);
         if (zoneStratum) lines.push(`metadata/stratum_id = ${quoted(zoneStratum.stratumId)}`);
         lines.push(`metadata/description = ${quoted(zone.description)}`);
         lines.push(`metadata/light = ${zone.light}`);
@@ -274,7 +306,11 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 if (entity.sceneTemplate) lines.push(`metadata/scene_template = ${quoted(entity.sceneTemplate)}`);
                 if (entity.displayName) lines.push(`metadata/display_name = ${quoted(entity.displayName)}`);
                 if (entity.factionId) lines.push(`metadata/faction_id = ${quoted(entity.factionId)}`);
-                if (entity.dialogueId) lines.push(`metadata/dialogue_id = ${quoted(entity.dialogueId)}`);
+                if (entity.dialogueId) {
+                    lines.push(`metadata/dialogue_id = ${quoted(entity.dialogueId)}`);
+                    const dlgResId = dataResources.dialogueId.get(entity.dialogueId);
+                    if (dlgResId) lines.push(`metadata/dialogue_resource = ExtResource("${dlgResId}")`);
+                }
                 if (entity.spawnCondition) lines.push(`metadata/spawn_condition = ${quoted(entity.spawnCondition)}`);
                 if (entity.spriteAssetId) lines.push(`metadata/sprite_asset_id = ${quoted(entity.spriteAssetId)}`);
                 if (entity.portraitAssetId) lines.push(`metadata/portrait_asset_id = ${quoted(entity.portraitAssetId)}`);
@@ -292,6 +328,8 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 lines.push(`[node name="${item.nodeName}" type="Marker2D" parent="${zone.nodeName}/Items"]`);
                 lines.push(`position = Vector2(${item.localPosition.x}, ${item.localPosition.y})`);
                 lines.push(`metadata/item_id = ${quoted(item.itemId)}`);
+                const itemResId = dataResources.itemId.get(item.itemId);
+                if (itemResId) lines.push(`metadata/item_resource = ExtResource("${itemResId}")`);
                 if (item.displayName) lines.push(`metadata/display_name = ${quoted(item.displayName)}`);
                 lines.push(`metadata/hidden = ${item.hidden}`);
                 // slot/rarity/container all route through escapeGodot(), matching
@@ -302,12 +340,19 @@ export function buildWorldScene(input: SceneBuildInput): string {
                 if (item.slot) lines.push(`metadata/slot = ${quoted(item.slot)}`);
                 if (item.rarity) lines.push(`metadata/rarity = ${quoted(item.rarity)}`);
                 if (item.container) lines.push(`metadata/container = ${quoted(item.container)}`);
+                if (item.lootTableId) {
+                    lines.push(`metadata/loot_table_id = ${quoted(item.lootTableId)}`);
+                    const lootResId = dataResources.lootId.get(item.lootTableId);
+                    if (lootResId) lines.push(`metadata/loot_resource = ExtResource("${lootResId}")`);
+                }
                 lines.push('');
             }
         }
 
-        // Spawn points
-        const zoneSpawns = input.spawnMarkers.filter((s) => s.zoneId === zone.id);
+        // Spawn points — extra markers only. The default spawn is the player pawn.
+        const zoneSpawns = input.spawnMarkers.filter(
+            (s) => s.zoneId === zone.id && s.id !== defaultSpawn?.id,
+        );
         if (zoneSpawns.length > 0) {
             lines.push(`[node name="SpawnPoints" type="Node2D" parent="${zone.nodeName}"]`);
             lines.push('');
@@ -363,6 +408,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`metadata/width = ${p.width}`);
             lines.push(`metadata/height = ${p.height}`);
             if (p.imagePath) lines.push(`metadata/image_path = ${quoted(p.imagePath)}`);
+            if (p.godotPath) lines.push(`metadata/godot_path = ${quoted(p.godotPath)}`);
             if (p.zoneId) lines.push(`metadata/zone_id = ${quoted(p.zoneId)}`);
             lines.push('');
         }
@@ -980,7 +1026,121 @@ function zoneExtent(zone: GodotZoneResource): { w: number; h: number } {
     };
 }
 
-/** Center of the bounding box over all zones, for a sensible default camera frame. */
+interface DataExtResourceSet {
+    ext: { path: string; id: string }[];
+    zoneId: Map<string, string>;
+    itemId: Map<string, string>;
+    dialogueId: Map<string, string>;
+    lootId: Map<string, string>;
+}
+
+/**
+ * ExtResource every stamped .tres path onto the matching node (zone, item,
+ * dialogue on entities, loot on items that reference a table). Dual-channel:
+ * metadata string copies stay for loaders that do not parse ExtResource.
+ */
+function collectDataExtResources(input: SceneBuildInput): DataExtResourceSet {
+    const ext: { path: string; id: string }[] = [];
+    const byPath = new Map<string, string>();
+    const take = (path: string): string => {
+        let id = byPath.get(path);
+        if (id) return id;
+        id = `data_${ext.length}`;
+        byPath.set(path, id);
+        ext.push({ path, id });
+        return id;
+    };
+
+    const zoneId = new Map<string, string>();
+    for (const z of input.zones) {
+        if (z.resourcePath) zoneId.set(z.id, take(z.resourcePath));
+    }
+    const itemId = new Map<string, string>();
+    for (const i of input.items) {
+        if (i.resourcePath) itemId.set(i.itemId, take(i.resourcePath));
+    }
+    const dialogueById = new Map((input.dialogues ?? []).map((d) => [d.id, d.resourcePath]));
+    const dialogueId = new Map<string, string>();
+    for (const e of input.entities.all) {
+        if (!e.dialogueId) continue;
+        const path = dialogueById.get(e.dialogueId);
+        if (!path) continue;
+        dialogueId.set(e.dialogueId, take(path));
+    }
+    const lootById = new Map((input.lootTables ?? []).map((t) => [t.id, t.resourcePath]));
+    const lootId = new Map<string, string>();
+    for (const i of input.items) {
+        if (!i.lootTableId) continue;
+        const path = lootById.get(i.lootTableId);
+        if (!path) continue;
+        lootId.set(i.lootTableId, take(path));
+    }
+    return { ext, zoneId, itemId, dialogueId, lootId };
+}
+
+function pickDefaultSpawn(markers: GodotSpawnMarker[]): GodotSpawnMarker | undefined {
+    return markers.find((s) => s.isDefault) ?? markers[0];
+}
+
+function collectPlayerShape(tileSize: number, id: string): string {
+    const size = tileSize > 0 ? tileSize : DEFAULT_TILE_SIZE_PX;
+    return `[sub_resource type="RectangleShape2D" id="${id}"]\nsize = Vector2(${size}, ${size})`;
+}
+
+function emitPlayerPawn(
+    lines: string[],
+    input: SceneBuildInput,
+    scriptId: string,
+    shapeId: string,
+    spawn: GodotSpawnMarker | undefined,
+): void {
+    const tileSize = input.tileSize ?? DEFAULT_TILE_SIZE_PX;
+    const size = tileSize > 0 ? tileSize : DEFAULT_TILE_SIZE_PX;
+    const pos = spawn ? spawn.globalPosition : worldCenter(input.zones);
+    const half = size / 2;
+
+    lines.push(`[node name="Player" type="CharacterBody2D" parent="."]`);
+    lines.push(`position = Vector2(${pos.x}, ${pos.y})`);
+    lines.push(`script = ExtResource("${scriptId}")`);
+    lines.push('metadata/is_player = true');
+    if (spawn) {
+        lines.push(`metadata/spawn_id = ${quoted(spawn.id)}`);
+        lines.push(`metadata/zone_id = ${quoted(spawn.zoneId)}`);
+    }
+    const pt = input.playerTemplate;
+    if (pt) {
+        if (pt.name) lines.push(`metadata/player_name = ${quoted(pt.name)}`);
+        if (pt.spawnPointId) lines.push(`metadata/spawn_point_id = ${quoted(pt.spawnPointId)}`);
+        if (pt.baseStats && Object.keys(pt.baseStats).length > 0) {
+            lines.push(`metadata/base_stats = ${quoted(JSON.stringify(pt.baseStats))}`);
+        }
+        if (pt.baseResources && Object.keys(pt.baseResources).length > 0) {
+            lines.push(`metadata/base_resources = ${quoted(JSON.stringify(pt.baseResources))}`);
+        }
+        if (pt.tags && pt.tags.length > 0) {
+            lines.push(`metadata/tags = ${quoted(pt.tags.join(','))}`);
+        }
+        if (pt.startingInventory && pt.startingInventory.length > 0) {
+            lines.push(`metadata/starting_inventory = ${quoted(pt.startingInventory.join(','))}`);
+        }
+    }
+    lines.push('');
+
+    lines.push(`[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]`);
+    lines.push(`shape = SubResource("${shapeId}")`);
+    lines.push('');
+
+    lines.push(`[node name="Camera2D" type="Camera2D" parent="Player"]`);
+    lines.push('enabled = true');
+    lines.push('');
+
+    lines.push(`[node name="Body" type="Polygon2D" parent="Player"]`);
+    lines.push(`polygon = PackedVector2Array(${-half}, ${-half}, ${half}, ${-half}, ${half}, ${half}, ${-half}, ${half})`);
+    lines.push('color = Color(0.2, 0.6, 1, 1)');
+    lines.push('');
+}
+
+/** Center of the bounding box over all zones — fallback pawn position when no spawn. */
 function worldCenter(zones: GodotZoneResource[]): { x: number; y: number } {
     if (zones.length === 0) return { x: 0, y: 0 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

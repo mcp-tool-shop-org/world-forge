@@ -105,7 +105,7 @@ export interface ConvertTileLayersResult {
 }
 
 /** Godot import convention for a tileset texture — same basename rule as convert-assets. */
-function texturePathFor(tilesetId: string, imagePath: string): string {
+export function tilesetTexturePath(tilesetId: string, imagePath: string): string {
     return `res://assets/tilesets/${deriveGodotFilename(tilesetId, imagePath)}`;
 }
 
@@ -182,7 +182,7 @@ export function convertTileLayers(project: WorldProject): ConvertTileLayersResul
                 sourceIndexByTileset.set(def.tilesetId, sourceId);
                 atlasSources.push({
                     tilesetId: def.tilesetId,
-                    texturePath: texturePathFor(def.tilesetId, ts.imagePath ?? ''),
+                    texturePath: tilesetTexturePath(def.tilesetId, ts.imagePath ?? ''),
                     tileWidth: ts.tileWidth,
                     tileHeight: ts.tileHeight,
                     sourceId,
