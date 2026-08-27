@@ -1,6 +1,6 @@
 // paste.ts — pure function for pasting clipboard contents into a project
 
-import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor } from '@world-forge/schema';
+import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
 import type { ClipboardData, SelectionSet } from './store/editor-store.js';
 
 export interface PasteResult {
@@ -109,9 +109,32 @@ export function pasteFromClipboard(
     zoneId: idMap.get(enc.zoneId) ?? enc.zoneId,
   }));
 
+  // F-923c690c: remap connections whose both ends are in this paste batch
+  // (same two-pass as duplicateSelected). Canvas draws lines exclusively
+  // from project.connections, so dropping them left pasted rooms isolated.
+  const newConnections: ZoneConnection[] = (clipboard.connections ?? [])
+    .filter((c) => idMap.has(c.fromZoneId) && idMap.has(c.toZoneId))
+    .map((c) => ({
+      ...structuredClone(c),
+      fromZoneId: idMap.get(c.fromZoneId)!,
+      toZoneId: idMap.get(c.toZoneId)!,
+    }));
+
+  // F-923c690c: append pasted zone ids to any district that contained the
+  // originals — otherwise parentDistrictId points at a district whose
+  // zoneIds list does not contain the new room.
+  const originalZoneIds = clipboard.zones.map((z) => z.id);
+  const districts = project.districts.map((d) => {
+    const pastedInDistrict = originalZoneIds.filter((zid) => d.zoneIds.includes(zid));
+    if (pastedInDistrict.length === 0) return d;
+    return { ...d, zoneIds: [...d.zoneIds, ...pastedInDistrict.map((zid) => idMap.get(zid)!)] };
+  });
+
   const newProject: WorldProject = {
     ...project,
     zones: [...project.zones, ...newZones],
+    connections: [...project.connections, ...newConnections],
+    districts,
     entityPlacements: [...project.entityPlacements, ...newEntities],
     landmarks: [...project.landmarks, ...newLandmarks],
     spawnPoints: [...project.spawnPoints, ...newSpawns],

@@ -190,7 +190,7 @@ interface ProjectState {
   loadProject: (p: WorldProject) => boolean;
   newProject: () => void;
   updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
-  /** Mark the project as clean (not dirty). Called after successful save. */
+  /** Mark the project as clean (not dirty). Called after successful save. Also drops the crash-recovery autosave slot. */
   markClean: () => void;
   undo: () => void;
   redo: () => void;
@@ -708,7 +708,9 @@ function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = fal
  *   - Calling `loadProject` / `newProject` resets the in-memory project but
  *     does NOT touch the timer; callers that reinitialize the store in-place
  *     should pair that with `stopAutoSave()` + `startAutoSave()` if they want
- *     a clean tick cadence.
+ *     a clean tick cadence. They DO clear the crash-recovery autosave slot
+ *     after a successful commit (F-9e54f408) so an abandoned project does
+ *     not resurrect on next boot.
  */
 let _autoSaveTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -754,14 +756,25 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dirty: false, undoStack: [], redoStack: [],
     });
     useEditorStore.getState().clearSelection();
+    // F-9e54f408: the user explicitly loaded a project — drop the crash-recovery
+    // slot so abandoned project A cannot resurrect after loading B. Failed loads
+    // return false above without reaching here.
+    clearAutoSave();
     return true;
   },
   newProject: () => {
     set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] });
     useEditorStore.getState().clearSelection();
+    // F-9e54f408: New abandons the previous in-memory project; drop its slot.
+    clearAutoSave();
   },
 
-  markClean: () => set({ dirty: false }),
+  markClean: () => {
+    // F-9e54f408: successful Save — the disk copy is the source of truth, so
+    // the crash-recovery slot for this (now-saved) project must not linger.
+    clearAutoSave();
+    set({ dirty: false });
+  },
 
   updateProject: (updater, label) => {
     const { project, undoStack } = get();

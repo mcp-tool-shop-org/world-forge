@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
-import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor } from '@world-forge/schema';
+import type { WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection } from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
 import type { ViewportState } from '../viewport.js';
 import type { HitResult } from '../hit-testing.js';
@@ -14,6 +14,11 @@ export interface ClipboardData {
   landmarks: Landmark[];
   spawns: SpawnPoint[];
   encounters: EncounterAnchor[];
+  /**
+   * Connections whose both ends were co-selected at copy time.
+   * Optional so older clipboards / tests that omit it still paste.
+   */
+  connections?: ZoneConnection[];
 }
 
 export type EditorTool = 'select' | 'zone-paint' | 'connection' | 'entity-place' | 'landmark' | 'spawn' | 'encounter-place' | 'tile-paint' | 'prop-place';
@@ -324,8 +329,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const landmarks = project.landmarks.filter((l) => sel.landmarks.includes(l.id)).map((l) => structuredClone(l));
     const spawns = project.spawnPoints.filter((sp) => sel.spawns.includes(sp.id)).map((sp) => structuredClone(sp));
     const encounters = project.encounterAnchors.filter((enc) => sel.encounters.includes(enc.id)).map((enc) => structuredClone(enc));
+    // F-923c690c: copy connections whose both ends are in the selected zone set
+    // (same predicate as duplicateSelected). Canvas draws from project.connections,
+    // so omitting them produced isolated pasted rooms with no door line.
+    const zoneSet = new Set(sel.zones);
+    const connections = project.connections
+      .filter((c) => zoneSet.has(c.fromZoneId) && zoneSet.has(c.toZoneId))
+      .map((c) => structuredClone(c));
     if (zones.length + entities.length + landmarks.length + spawns.length + encounters.length === 0) return {};
-    return { clipboard: { zones, entities, landmarks, spawns, encounters } };
+    return { clipboard: { zones, entities, landmarks, spawns, encounters, connections } };
   }),
   getClipboard: () => get().clipboard,
 
