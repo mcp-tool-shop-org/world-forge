@@ -15,3 +15,14 @@ export function isValidMode(value: string): value is AuthoringMode {
 
 /** Default mode for new or legacy projects without an explicit mode. */
 export const DEFAULT_MODE: AuthoringMode = 'dungeon';
+
+/** Per-mode map grid defaults used by createEmptyProject(). */
+export const MODE_GRID_DEFAULTS: Record<AuthoringMode, { width: number; height: number; tileSize: number }> = {
+  dungeon: { width: 30, height: 25, tileSize: 32 },
+  district: { width: 50, height: 40, tileSize: 32 },
+  world: { width: 80, height: 60, tileSize: 48 },
+  ocean: { width: 60, height: 50, tileSize: 48 },
+  space: { width: 100, height: 80, tileSize: 64 },
+  interior: { width: 20, height: 15, tileSize: 24 },
+  wilderness: { width: 60, height: 50, tileSize: 48 },
+};

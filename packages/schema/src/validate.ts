@@ -1,12 +1,20 @@
 // validate.ts — WorldProject validation
 
 import type { WorldProject } from './project.js';
-import type { ConnectionKind, TransitionEntityType, Interactable, Landmark } from './spatial.js';
+import {
+  WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS,
+  WORLD_PROJECT_REQUIRED_ARRAY_FIELDS,
+} from './project.js';
+import type {
+  ConnectionKind, TransitionEntityType, Interactable, Landmark,
+  PhysicsMode, GravityDirection,
+} from './spatial.js';
 import type { AssetKind } from './assets.js';
 import type { EntityRole, ItemSlot, ItemRarity } from './entities.js';
 import type { AmbientLayer } from './visual.js';
 import { validateSpawnCondition } from './spawn-condition.js';
 import { AUTHORING_MODES, isValidMode } from './authoring-mode.js';
+import { backfillOmittedRequiredArrays } from './project-shape.js';
 
 export type ValidationError = {
   path: string;
@@ -56,16 +64,22 @@ export type ValidationResult = {
 export const SCHEMA_VERSION = '4.6.0';
 
 /**
- * Stamp `SCHEMA_VERSION` onto a WorldProject when missing or blank.
- * create-empty / editor save should call this before writing JSON so exporters
- * can read `project.schemaVersion` without guessing. validateProject does not
- * mutate the document; it records the producing schema on ValidationResult.
+ * Stamp `SCHEMA_VERSION` onto a WorldProject when missing or blank, and
+ * backfill omitted required arrays (craftingStations, tilesets, …) added after
+ * v4.0. Present-but-wrong types are left untouched so validateProject still
+ * reports them. create-empty / editor save / export CLIs should call this
+ * (or normalizeProjectShape) before validateProject so a legally authored
+ * v4.0 JSON is structurally valid under v4.x.
+ *
+ * validateProject itself does not mutate the document; it records the
+ * producing schema on ValidationResult.
  */
 export function stampProjectSchemaVersion(project: WorldProject): WorldProject {
-  if (typeof project.schemaVersion === 'string' && project.schemaVersion.trim().length > 0) {
-    return project;
+  const filled = backfillOmittedRequiredArrays(project);
+  if (typeof filled.schemaVersion === 'string' && filled.schemaVersion.trim().length > 0) {
+    return filled;
   }
-  return { ...project, schemaVersion: SCHEMA_VERSION };
+  return { ...filled, schemaVersion: SCHEMA_VERSION };
 }
 
 /** Options for validateProject. */
@@ -78,12 +92,23 @@ export interface ValidateOptions {
 }
 
 /**
- * All valid connection kinds — the array is DERIVED from a Record<ConnectionKind, true>
+ * Closed-union lookup set. Derived from Record<Union, true> so a missing union
+ * member is a compile error; `.has()` accepts string so JSON importers can
+ * refuse-to-guess without a cast.
+ */
+export type ClosedUnionSet<T extends string> = ReadonlySet<T> & { has(value: string): boolean };
+
+function closedUnionSet<T extends string>(lookup: Record<T, true>): ClosedUnionSet<T> {
+  return new Set(Object.keys(lookup) as T[]) as ClosedUnionSet<T>;
+}
+
+/**
+ * All valid connection kinds — the set is DERIVED from a Record<ConnectionKind, true>
  * lookup so it can never drift from the ConnectionKind union in spatial.ts.
  *
  * SCH-A-002: Adding a new ConnectionKind now produces a compile-time error on the
  * lookup object (missing key) rather than silently allowing invalid kinds through.
- * The array is computed from Object.keys() so it automatically gains the new kind
+ * The set is computed from Object.keys() so it automatically gains the new kind
  * once the lookup is updated — no second manual edit needed.
  */
 const VALID_CONNECTION_KINDS_LOOKUP: Record<ConnectionKind, true> = {
@@ -91,9 +116,9 @@ const VALID_CONNECTION_KINDS_LOOKUP: Record<ConnectionKind, true> = {
   secret: true, hazard: true, channel: true, route: true, docking: true,
   warp: true, trail: true,
 };
-const VALID_CONNECTION_KINDS_ARRAY: ReadonlyArray<ConnectionKind> =
-  Object.keys(VALID_CONNECTION_KINDS_LOOKUP) as ConnectionKind[];
-export const VALID_CONNECTION_KINDS = new Set<string>(VALID_CONNECTION_KINDS_ARRAY);
+export const VALID_CONNECTION_KINDS: ClosedUnionSet<ConnectionKind> =
+  closedUnionSet(VALID_CONNECTION_KINDS_LOOKUP);
+const VALID_CONNECTION_KINDS_ARRAY: ReadonlyArray<ConnectionKind> = [...VALID_CONNECTION_KINDS];
 
 // Bidirectional compile-time exhaustiveness: this assignment fails to type-check
 // if VALID_CONNECTION_KINDS_ARRAY ever loses coverage of a ConnectionKind, so the
@@ -107,14 +132,13 @@ void _assertConnectionKindCoverage;
  *
  * SCH-A-001: Same pattern as VALID_CONNECTION_KINDS above. Adding a new AssetKind
  * in assets.ts forces a compile-time error on this lookup (missing key). The
- * array is derived via Object.keys() so it cannot silently drift from the union.
+ * set is derived via Object.keys() so it cannot silently drift from the union.
  */
 const VALID_ASSET_KINDS_LOOKUP: Record<AssetKind, true> = {
   portrait: true, sprite: true, background: true, icon: true, tileset: true,
 };
-const VALID_ASSET_KINDS_ARRAY: ReadonlyArray<AssetKind> =
-  Object.keys(VALID_ASSET_KINDS_LOOKUP) as AssetKind[];
-export const VALID_ASSET_KINDS = new Set<string>(VALID_ASSET_KINDS_ARRAY);
+export const VALID_ASSET_KINDS: ClosedUnionSet<AssetKind> = closedUnionSet(VALID_ASSET_KINDS_LOOKUP);
+const VALID_ASSET_KINDS_ARRAY: ReadonlyArray<AssetKind> = [...VALID_ASSET_KINDS];
 
 const _assertAssetKindCoverage: AssetKind = VALID_ASSET_KINDS_ARRAY[0] as AssetKind;
 void _assertAssetKindCoverage;
@@ -122,12 +146,20 @@ void _assertAssetKindCoverage;
 const VALID_TRANSITION_TYPES_LOOKUP: Record<TransitionEntityType, true> = {
   elevator: true, warp: true, transporter: true, 'cargo-lift': true, stairwell: true,
 };
-export const VALID_TRANSITION_TYPES = new Set<string>(
-  Object.keys(VALID_TRANSITION_TYPES_LOOKUP) as TransitionEntityType[],
-);
+export const VALID_TRANSITION_TYPES: ClosedUnionSet<TransitionEntityType> =
+  closedUnionSet(VALID_TRANSITION_TYPES_LOOKUP);
 
-const VALID_PHYSICS_MODES = new Set(['normal', 'platformer', 'zero-g', 'aquatic']);
-const VALID_GRAVITY_DIRECTIONS = new Set(['down', 'up', 'none']);
+const VALID_PHYSICS_MODES_LOOKUP: Record<PhysicsMode, true> = {
+  normal: true, platformer: true, 'zero-g': true, aquatic: true,
+};
+export const VALID_PHYSICS_MODES: ClosedUnionSet<PhysicsMode> =
+  closedUnionSet(VALID_PHYSICS_MODES_LOOKUP);
+
+const VALID_GRAVITY_DIRECTIONS_LOOKUP: Record<GravityDirection, true> = {
+  down: true, up: true, none: true,
+};
+export const VALID_GRAVITY_DIRECTIONS: ClosedUnionSet<GravityDirection> =
+  closedUnionSet(VALID_GRAVITY_DIRECTIONS_LOOKUP);
 
 type InteractableType = Interactable['type'];
 type LandmarkInteractionType = Landmark['interactionType'];
@@ -136,36 +168,35 @@ type AmbientLayerType = AmbientLayer['type'];
 const VALID_ENTITY_ROLES_LOOKUP: Record<EntityRole, true> = {
   npc: true, enemy: true, merchant: true, 'quest-giver': true, companion: true, boss: true,
 };
-export const VALID_ENTITY_ROLES = new Set<string>(Object.keys(VALID_ENTITY_ROLES_LOOKUP));
+export const VALID_ENTITY_ROLES: ClosedUnionSet<EntityRole> = closedUnionSet(VALID_ENTITY_ROLES_LOOKUP);
 
 const VALID_ITEM_SLOTS_LOOKUP: Record<ItemSlot, true> = {
   weapon: true, armor: true, trinket: true, tool: true, accessory: true, consumable: true,
 };
-export const VALID_ITEM_SLOTS = new Set<string>(Object.keys(VALID_ITEM_SLOTS_LOOKUP));
+export const VALID_ITEM_SLOTS: ClosedUnionSet<ItemSlot> = closedUnionSet(VALID_ITEM_SLOTS_LOOKUP);
 
 const VALID_ITEM_RARITIES_LOOKUP: Record<ItemRarity, true> = {
   common: true, uncommon: true, rare: true, legendary: true,
 };
-export const VALID_ITEM_RARITIES = new Set<string>(Object.keys(VALID_ITEM_RARITIES_LOOKUP));
+export const VALID_ITEM_RARITIES: ClosedUnionSet<ItemRarity> = closedUnionSet(VALID_ITEM_RARITIES_LOOKUP);
 
 const VALID_INTERACTABLE_TYPES_LOOKUP: Record<InteractableType, true> = {
   inspect: true, use: true, enter: true, talk: true, none: true,
 };
-export const VALID_INTERACTABLE_TYPES = new Set<string>(Object.keys(VALID_INTERACTABLE_TYPES_LOOKUP));
+export const VALID_INTERACTABLE_TYPES: ClosedUnionSet<InteractableType> =
+  closedUnionSet(VALID_INTERACTABLE_TYPES_LOOKUP);
 
 const VALID_LANDMARK_INTERACTION_TYPES_LOOKUP: Record<LandmarkInteractionType, true> = {
   inspect: true, use: true, enter: true, talk: true, none: true,
 };
-export const VALID_LANDMARK_INTERACTION_TYPES = new Set<string>(
-  Object.keys(VALID_LANDMARK_INTERACTION_TYPES_LOOKUP),
-);
+export const VALID_LANDMARK_INTERACTION_TYPES: ClosedUnionSet<LandmarkInteractionType> =
+  closedUnionSet(VALID_LANDMARK_INTERACTION_TYPES_LOOKUP);
 
 const VALID_AMBIENT_LAYER_TYPES_LOOKUP: Record<AmbientLayerType, true> = {
   fog: true, rain: true, dust: true, glow: true, shadow: true, custom: true,
 };
-export const VALID_AMBIENT_LAYER_TYPES = new Set<string>(
-  Object.keys(VALID_AMBIENT_LAYER_TYPES_LOOKUP),
-);
+export const VALID_AMBIENT_LAYER_TYPES: ClosedUnionSet<AmbientLayerType> =
+  closedUnionSet(VALID_AMBIENT_LAYER_TYPES_LOOKUP);
 
 const DISTRICT_METRIC_KEYS = ['commerce', 'morale', 'safety', 'stability'] as const;
 
@@ -232,61 +263,26 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // Structural guards: ensure top-level array fields exist and are arrays.
   // Corrupted/truncated JSON imports may have undefined or wrong types here.
-  const requiredArrays: [unknown, string][] = [
-    [project.zones, 'zones'],
-    [project.connections, 'connections'],
-    [project.districts, 'districts'],
-    [project.entityPlacements, 'entityPlacements'],
-    [project.itemPlacements, 'itemPlacements'],
-    [project.spawnPoints, 'spawnPoints'],
-    [project.landmarks, 'landmarks'],
-    [project.dialogues, 'dialogues'],
-    [project.progressionTrees, 'progressionTrees'],
-    [project.encounterAnchors, 'encounterAnchors'],
-    [project.factionPresences, 'factionPresences'],
-    [project.pressureHotspots, 'pressureHotspots'],
-    [project.assets, 'assets'],
-    [project.assetPacks, 'assetPacks'],
-    // F-001 (CRITICAL): these seven required array fields (project.ts) were
-    // entirely absent from this guard — a project with any of them corrupted
-    // to the wrong type entirely still validated as fully valid. Added here
-    // using the exact same Array.isArray + message pattern as every sibling
-    // above; see the id-uniqueness/cross-reference rules further down for the
-    // deeper checks these fields also lacked.
-    [project.craftingStations, 'craftingStations'],
-    [project.marketNodes, 'marketNodes'],
-    [project.tilesets, 'tilesets'],
-    [project.tileLayers, 'tileLayers'],
-    [project.props, 'props'],
-    [project.propPlacements, 'propPlacements'],
-    [project.ambientLayers, 'ambientLayers'],
-    [project.tones, 'tones'],
-  ];
-  for (const [value, field] of requiredArrays) {
+  // Field lists live on WorldProject so they cannot drift from createEmptyProject
+  // / normalizeProjectShape / stampProjectSchemaVersion. Omitted required arrays
+  // still fail here — call stampProjectSchemaVersion (or normalizeProjectShape)
+  // first so a v4.0 JSON missing post-v4.0 arrays becomes valid.
+  for (const field of WORLD_PROJECT_REQUIRED_ARRAY_FIELDS) {
+    const value = project[field];
     if (!Array.isArray(value)) {
       errors.push({
         path: field,
-        message: `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`,
+        message: expectedArrayMessage(field, value),
       });
     }
   }
 
-  // Optional WorldProject arrays cannot join requiredArrays — a legacy project
+  // Optional WorldProject arrays cannot join the required list — a legacy project
   // that omits them is valid. Present-but-not-an-array (including null) is an
   // error; undefined stays valid. Town arrays (F-4b9345d3) plus leftover
   // loot/transitions/strata/hazardDefinitions (F-7282f981).
-  const optionalArrays: [unknown, string][] = [
-    [project.buildings, 'buildings'],
-    [project.hubs, 'hubs'],
-    [project.strongholds, 'strongholds'],
-    [project.lootTables, 'lootTables'],
-    [project.transitions, 'transitions'],
-    [project.strata, 'strata'],
-    [project.stratumLinks, 'stratumLinks'],
-    [project.hazardDefinitions, 'hazardDefinitions'],
-    [project.projectTags, 'projectTags'],
-  ];
-  for (const [value, field] of optionalArrays) {
+  for (const field of WORLD_PROJECT_OPTIONAL_ARRAY_FIELDS) {
+    const value = project[field];
     if (value !== undefined && !Array.isArray(value)) {
       errors.push({
         path: field,
@@ -1533,13 +1529,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (zone.physicsMode !== undefined && !VALID_PHYSICS_MODES.has(zone.physicsMode)) {
       errors.push({
         path: `zones.${zone.id}.physicsMode`,
-        message: `Zone "${zone.id}" has unsupported physicsMode "${zone.physicsMode}" (expected one of: normal, platformer, zero-g, aquatic)`,
+        message: `Zone "${zone.id}" has unsupported physicsMode "${zone.physicsMode}" (expected one of: ${[...VALID_PHYSICS_MODES].join(', ')})`,
       });
     }
     if (zone.gravityDirection !== undefined && !VALID_GRAVITY_DIRECTIONS.has(zone.gravityDirection)) {
       errors.push({
         path: `zones.${zone.id}.gravityDirection`,
-        message: `Zone "${zone.id}" has unsupported gravityDirection "${zone.gravityDirection}" (expected one of: down, up, none)`,
+        message: `Zone "${zone.id}" has unsupported gravityDirection "${zone.gravityDirection}" (expected one of: ${[...VALID_GRAVITY_DIRECTIONS].join(', ')})`,
       });
     }
   }
