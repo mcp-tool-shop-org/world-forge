@@ -45,7 +45,7 @@
 
 ## D. Shipping Hygiene
 
-- [x] `[all]` `verify` script exists (`npm run build && npm run test`) (2026-08-27)
+- [x] `[all]` `verify` script exists (`npm run build && npm run test && npm run typecheck:dogfood`) (2026-08-27)
 - [x] `[all]` Version in manifest matches git tag (2026-04-22)
 - [x] `[all]` Dependency scanning runs in CI (npm audit in verify) (2026-04-22)
 - [ ] `[all]` SKIP: no dependabot per org rules

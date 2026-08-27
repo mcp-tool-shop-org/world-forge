@@ -50,7 +50,7 @@ This runs Vitest across all packages. The test suite covers schema validation, t
 npm run verify
 ```
 
-This runs `npm run build && npm run test` — the same command CI uses.
+This runs `npm run build && npm run test && npm run typecheck:dogfood` — the same command CI uses.
 
 ## Using the Published Packages
 
