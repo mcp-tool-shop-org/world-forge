@@ -27,9 +27,14 @@ export interface GodotHazardPlacement {
     moveCostDelta: number;
     passable: string;
     blocksVision: boolean;
-    /** Compact effect encoding for metadata, e.g. "damage:5@turn-end;status:poison@0.5". */
+    /** Compact effect encoding for metadata, e.g. "damage:5@turn-end:3t;status:poison@0.5:refresh". */
     effects: string;
     effectCount: number;
+    /** Authored display name. */
+    name?: string;
+    tags?: string[];
+    weatherConditions?: string[];
+    immuneTags?: string[];
 }
 
 export interface ConvertHazardsResult {
@@ -40,8 +45,12 @@ export interface ConvertHazardsResult {
 /** Compact, human-readable encoding of one effect for Godot metadata. */
 function encodeEffect(e: HazardEffect): string {
     switch (e.kind) {
-        case 'damage': return `damage:${e.amount}${e.amountIsPercentMaxHp ? '%' : ''}@${e.tickOn}`;
-        case 'status': return `status:${e.statusId}@${e.chance}`;
+        case 'damage': {
+            const pct = e.amountIsPercentMaxHp ? '%' : '';
+            const duration = e.durationTicks !== undefined ? `:${e.durationTicks}t` : '';
+            return `damage:${e.amount}${pct}@${e.tickOn}${duration}`;
+        }
+        case 'status': return `status:${e.statusId}@${e.chance}:${e.stacking}`;
         case 'instakill': return 'instakill';
         case 'ignite': return `ignite@${e.igniteChance}`;
     }
@@ -90,6 +99,10 @@ export function convertHazards(project: WorldProject): ConvertHazardsResult {
                 blocksVision: def.blocksVision ?? false,
                 effects: def.effects.map(encodeEffect).join(';'),
                 effectCount: def.effects.length,
+                name: def.name,
+                tags: def.tags.slice(),
+                weatherConditions: def.weatherConditions?.slice(),
+                immuneTags: def.immuneTags?.slice(),
             });
         }
     }

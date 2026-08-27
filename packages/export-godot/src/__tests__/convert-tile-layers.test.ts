@@ -64,7 +64,7 @@ describe('convertTileLayers — image-backed tilesets', () => {
     const l = tileLayers[0];
     expect(l.imageBacked).toBe(true);
     expect(l.atlasSources).toHaveLength(1);
-    expect(l.atlasSources[0]).toMatchObject({ tilesetId: 'img', texturePath: 'res://assets/tilesets/img.png', tileWidth: 16, tileHeight: 16, sourceId: 0 });
+    expect(l.atlasSources[0]).toMatchObject({ tilesetId: 'img', texturePath: 'res://assets/tilesets/town.png', tileWidth: 16, tileHeight: 16, sourceId: 0 });
     expect(l.cells).toHaveLength(2);
     // i-a → col0/row0; i-b → col3/row2 (atlasX = col, atlasY = row).
     expect(l.cells).toContainEqual({ gridX: 0, gridY: 0, sourceId: 0, atlasX: 0, atlasY: 0 });

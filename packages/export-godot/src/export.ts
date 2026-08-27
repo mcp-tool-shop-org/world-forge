@@ -25,11 +25,22 @@ import { convertEconomy, type GodotMarketNode, type GodotCraftingStation } from 
 import { convertStructures, type GodotBuilding, type GodotHub, type GodotStronghold } from './convert-structures.js';
 import { convertStrata, type GodotStratum, type GodotStratumLink } from './convert-strata.js';
 import { convertHazards, type GodotHazardPlacement } from './convert-hazards.js';
-import { convertGates } from './convert-gates.js';
+import { convertGates, type GodotZoneGate } from './convert-gates.js';
 import { buildWorldScene } from './scene-builder.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
+import { collectDroppedFieldFidelity } from './field-coverage.js';
+import { serializeResource } from './tres-serializer.js';
 
-export const GODOT_PACK_FORMAT_VERSION = '1.0.0';
+/**
+ * Pack format version (semver). Bump rules:
+ *   - **Major** — required field added/removed, or field semantics change.
+ *   - **Minor** — optional field added (old loaders ignore it).
+ *   - **Patch** — clarifications, doc-only changes.
+ * When the pack shape changes, bump this constant and add a migration in
+ * migrations.ts. 1.1.0 added `files` (resourcePath → .tres body) and
+ * `zoneGates` on the JSON pack.
+ */
+export const GODOT_PACK_FORMAT_VERSION = '1.1.0';
 
 export interface GodotPackMeta {
     id: string;
@@ -67,13 +78,25 @@ export interface GodotContentPack {
     strata: GodotStratum[];
     stratumLinks: GodotStratumLink[];
     hazards: GodotHazardPlacement[];
-    /** The generated .tscn scene text (main world scene). */
+    /** Entry gates copied onto the JSON pack (same data as zone-node scene metadata). */
+    zoneGates: GodotZoneGate[];
+    /**
+     * Map of stamped `resourcePath` → `.tres` file body. Every zone, district,
+     * dialogue, loot table, and item resourcePath has an entry so
+     * ResourceLoader.load() can resolve the path against this pack.
+     */
+    files: Record<string, string>;
+    /** The generated .tscn scene text (main world scene). Empty when includeWorldTscn is false. */
     worldSceneTscn: string;
 }
 
 export interface GodotExportOptions {
     /** Override the project version string in the pack. */
     version?: string;
+    /** When false, skip .tscn generation (worldSceneTscn is ''). Default true. */
+    includeWorldTscn?: boolean;
+    /** Prefix for the per-project scene uid (default `wf` → uid://wf_<project.id>). */
+    sceneUidPrefix?: string;
 }
 
 export interface GodotExportResult {
@@ -163,6 +186,7 @@ export function exportToGodot(
     fidelityEntries.push(...strataResult.fidelity);
     fidelityEntries.push(...hazardsResult.fidelity);
     fidelityEntries.push(...gatesResult.fidelity);
+    fidelityEntries.push(...collectDroppedFieldFidelity(project));
 
     // Advisory warnings.
     if (project.entityPlacements.length === 0) {
@@ -181,28 +205,42 @@ export function exportToGodot(
         warnings.push(`${entitiesResult.manifest.dropped.length} entity/entities dropped due to orphan zone references.`);
     }
 
-    // Build the .tscn scene.
-    const worldSceneTscn = buildWorldScene({
-        projectName: project.name,
-        zones: zonesResult.zones,
-        entities: entitiesResult.manifest,
-        items: itemsResult.items,
-        navigationLinks: connectionsResult.links,
-        spawnMarkers: spawnResult.spawnMarkers,
-        transitions: transitionsResult.transitions,
-        tileLayers: tileLayersResult.tileLayers,
-        props: propsResult.props,
-        markets: economyResult.markets,
-        craftingStations: economyResult.craftingStations,
-        buildings: structuresResult.buildings,
-        hubs: structuresResult.hubs,
-        strongholds: structuresResult.strongholds,
-        strata: strataResult.strata,
-        stratumLinks: strataResult.links,
-        zoneStrata: strataResult.zoneStrata,
-        hazards: hazardsResult.placements,
-        zoneGates: gatesResult.zoneGates,
-    });
+    let worldSceneTscn = '';
+    if (options?.includeWorldTscn !== false) {
+        try {
+            worldSceneTscn = buildWorldScene({
+                projectName: project.name,
+                projectId: project.id,
+                sceneUidPrefix: options?.sceneUidPrefix,
+                tileSize: project.map.tileSize,
+                fidelity: fidelityEntries,
+                zones: zonesResult.zones,
+                entities: entitiesResult.manifest,
+                items: itemsResult.items,
+                navigationLinks: connectionsResult.links,
+                spawnMarkers: spawnResult.spawnMarkers,
+                transitions: transitionsResult.transitions,
+                tileLayers: tileLayersResult.tileLayers,
+                props: propsResult.props,
+                markets: economyResult.markets,
+                craftingStations: economyResult.craftingStations,
+                buildings: structuresResult.buildings,
+                hubs: structuresResult.hubs,
+                strongholds: structuresResult.strongholds,
+                strata: strataResult.strata,
+                stratumLinks: strataResult.links,
+                zoneStrata: strataResult.zoneStrata,
+                hazards: hazardsResult.placements,
+                zoneGates: gatesResult.zoneGates,
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            return {
+                success: false,
+                errors: [{ path: 'scene', message }],
+            };
+        }
+    }
 
     const proj = project as unknown as Record<string, unknown>;
     const meta: GodotPackMeta = {
@@ -241,6 +279,14 @@ export function exportToGodot(
         strata: strataResult.strata,
         stratumLinks: strataResult.links,
         hazards: hazardsResult.placements,
+        zoneGates: Object.values(gatesResult.zoneGates),
+        files: collectTresFiles({
+            zones: zonesResult.zones,
+            districts: districtsResult.districts,
+            dialogues: dialoguesResult.dialogues,
+            lootTables: lootResult.lootTables,
+            items: itemsResult.items,
+        }),
         worldSceneTscn,
     };
 
@@ -254,4 +300,23 @@ export function exportToGodot(
         warnings,
         fidelity: fidelityReport,
     };
+}
+
+function collectTresFiles(parts: {
+    zones: GodotZoneResource[];
+    districts: GodotDistrictResource[];
+    dialogues: GodotDialogueResource[];
+    lootTables: GodotLootTableResource[];
+    items: GodotItemResource[];
+}): Record<string, string> {
+    const files: Record<string, string> = {};
+    const put = (className: string, path: string, obj: object) => {
+        files[path] = serializeResource(className, obj as Record<string, unknown>);
+    };
+    for (const z of parts.zones) put('GodotZoneResource', z.resourcePath, z);
+    for (const d of parts.districts) put('GodotDistrictResource', d.resourcePath, d);
+    for (const dlg of parts.dialogues) put('GodotDialogueResource', dlg.resourcePath, dlg);
+    for (const t of parts.lootTables) put('GodotLootTableResource', t.resourcePath, t);
+    for (const i of parts.items) put('GodotItemResource', i.resourcePath, i);
+    return files;
 }

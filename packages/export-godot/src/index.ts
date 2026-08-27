@@ -26,7 +26,7 @@ export type { GodotNavigationLink, GodotTransitionMode, ConvertConnectionsResult
 export { convertDialogues } from './convert-dialogues.js';
 export type { GodotDialogueResource, GodotDialogueNode, GodotDialogueChoice, ConvertDialoguesResult } from './convert-dialogues.js';
 
-export { convertAssets } from './convert-assets.js';
+export { convertAssets, deriveGodotFilename, FALLBACK_ASSET_DIR } from './convert-assets.js';
 export type { GodotAssetBinding, ConvertAssetsResult } from './convert-assets.js';
 
 export { convertLootTables } from './convert-loot-tables.js';
@@ -61,11 +61,22 @@ export type { GodotHazardPlacement, ConvertHazardsResult } from './convert-hazar
 export { convertGates } from './convert-gates.js';
 export type { GodotZoneGate, ConvertGatesResult } from './convert-gates.js';
 
-export { buildWorldScene } from './scene-builder.js';
+export { buildWorldScene, uniquifyRootNodeNames, RESERVED_ROOT_NODE_NAMES } from './scene-builder.js';
 export type { SceneBuildInput } from './scene-builder.js';
 
-export { serializeTres, objectToTresFields } from './tres-serializer.js';
+export { serializeTres, objectToTresFields, serializeResource } from './tres-serializer.js';
 export type { TresField, TresValue } from './tres-serializer.js';
+
+export {
+    collectDroppedFieldFidelity, COVERED_FIELDS, KNOWN_DROPPED, ALL_WORLD_PROJECT_FIELDS,
+} from './field-coverage.js';
+
+export {
+    migrateGodotPack, parseSemVer, compareSemVer, isMigrationError, MIGRATIONS,
+} from './migrations.js';
+export type { MigrationResult, MigrationError, SemVer } from './migrations.js';
+
+export { uniqueSiblingName, sanitizeNodeName } from './node-naming.js';
 
 export {
     gridToGodot2D, gridToGodot3D, extentToGodot2D, DEFAULT_TILE_SIZE_PX,

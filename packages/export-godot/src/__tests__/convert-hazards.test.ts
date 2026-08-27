@@ -33,14 +33,18 @@ describe('convertHazards', () => {
     const { placements } = convertHazards(proj(
       [zone('z1', 0, 0, 2, 2, ['mix'])],
       [hazard('mix', { effects: [
-        { kind: 'damage', amount: 8, tickOn: 'turn-start' },
+        { kind: 'damage', amount: 8, tickOn: 'turn-end', durationTicks: 3 },
         { kind: 'status', statusId: 'poison', chance: 0.5, stacking: 'refresh' },
         { kind: 'instakill' },
         { kind: 'ignite', igniteChance: 0.3 },
-      ] })],
+      ], weatherConditions: ['rain'], immuneTags: ['poison-immune'], name: 'Mix', tags: ['swamp'] })],
     ));
     expect(placements[0].effectCount).toBe(4);
-    expect(placements[0].effects).toBe('damage:8@turn-start;status:poison@0.5;instakill;ignite@0.3');
+    expect(placements[0].effects).toBe('damage:8@turn-end:3t;status:poison@0.5:refresh;instakill;ignite@0.3');
+    expect(placements[0].weatherConditions).toEqual(['rain']);
+    expect(placements[0].immuneTags).toEqual(['poison-immune']);
+    expect(placements[0].name).toBe('Mix');
+    expect(placements[0].tags).toEqual(['swamp']);
   });
 
   it('emits one Area2D per (zone, hazardRef) pair', () => {

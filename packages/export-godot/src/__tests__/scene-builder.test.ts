@@ -17,6 +17,7 @@ import type { GodotMarketNode, GodotCraftingStation } from '../convert-economy.j
 import type { GodotBuilding, GodotHub, GodotStronghold } from '../convert-structures.js';
 import type { GodotStratum, GodotStratumLink } from '../convert-strata.js';
 import type { GodotHazardPlacement } from '../convert-hazards.js';
+import type { FidelityEntry } from '../fidelity.js';
 
 function makeZone(overrides: Partial<GodotZoneResource> = {}): GodotZoneResource {
     return {
@@ -622,5 +623,143 @@ describe('buildWorldScene — textureless entity/transition placeholders (F-e171
         expect(tscn).not.toMatch(/\[ext_resource type="PackedScene"/);
         expect(tscn).not.toContain('instance=ExtResource');
         expect(tscn).not.toContain('res://transitions/stairwell.tscn" id="');
+    });
+});
+
+describe('buildWorldScene — quoted metadata escaping (F-2d6bede0)', () => {
+    it('RED: spawnCondition item:the "seal" emits a well-formed quoted property', () => {
+        const inst = {
+            nodeName: 'Npc1' as const,
+            sceneTemplate: 'res://entities/npc/npc_generic.tscn' as const,
+            entityId: 'e1', zoneId: 'zone-a',
+            localPosition: { x: 10, y: 10 },
+            role: 'npc' as const, tags: [] as string[],
+            spawnCondition: 'item:the "seal"',
+            factionId: 'the "keepers"',
+            dialogueId: 'dlg "one"',
+        };
+        const entities: GodotEntityManifest = {
+            byZone: { 'zone-a': [inst] },
+            all: [inst],
+            dropped: [],
+            incomplete: false,
+        };
+        const tscn = buildWorldScene(baseInput([makeZone()], entities));
+        const line = tscn.split('\n').find((l) => l.startsWith('metadata/spawn_condition'));
+        expect(line).toBeDefined();
+        expect(line).toMatch(/^metadata\/spawn_condition = "(?:[^"\\]|\\.)*"$/);
+        expect(line).toContain('\\"seal\\"');
+        expect(tscn.split('\n').find((l) => l.startsWith('metadata/faction_id')))
+            .toMatch(/^metadata\/faction_id = "(?:[^"\\]|\\.)*"$/);
+        expect(tscn.split('\n').find((l) => l.startsWith('metadata/dialogue_id')))
+            .toMatch(/^metadata\/dialogue_id = "(?:[^"\\]|\\.)*"$/);
+        expect(tscn.split('\n').find((l) => l.startsWith('metadata/entity_id')))
+            .toMatch(/^metadata\/entity_id = "(?:[^"\\]|\\.)*"$/);
+    });
+});
+
+describe('buildWorldScene — connection condition (F-c8fc01b1)', () => {
+    it('emits metadata/condition on NavigationLink2D when set', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            navigationLinks: [{
+                fromZoneId: 'zone-a',
+                toZoneId: 'zone-b',
+                kind: 'door',
+                bidirectional: true,
+                condition: 'item:iron-key',
+                transitionMode: 'door',
+                startPosition: { x: 0, y: 0 },
+                endPosition: { x: 32, y: 0 },
+            }],
+        });
+        expect(tscn).toContain('[node name="Link_0" type="NavigationLink2D" parent="NavigationLinks"]');
+        expect(tscn).toContain('metadata/condition = "item:iron-key"');
+        expect(tscn).toContain('metadata/kind = "door"');
+    });
+});
+
+describe('buildWorldScene — TransitionShape tileSize (F-cb8a70e5)', () => {
+    it('sizes the shared trigger rect from SceneBuildInput.tileSize', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone()]),
+            tileSize: 64,
+            transitions: [{
+                id: 'stair-1',
+                zoneId: 'zone-a',
+                targetZoneId: 'zone-b',
+                type: 'stairwell',
+                localPosition: { x: 32, y: 48 },
+                sceneTemplate: 'res://transitions/stairwell.tscn',
+                nodeName: 'Transition_stair_1',
+            }],
+        });
+        expect(tscn).toMatch(
+            /\[sub_resource type="RectangleShape2D" id="TransitionShape"\]\nsize = Vector2\(64, 64\)/,
+        );
+    });
+});
+
+describe('buildWorldScene — per-project uid (F-a5afd9fd)', () => {
+    it('two different projectIds produce two different uid= values', () => {
+        const a = buildWorldScene({ ...baseInput([makeZone()]), projectId: 'world-alpha' });
+        const b = buildWorldScene({ ...baseInput([makeZone()]), projectId: 'world-beta' });
+        expect(a).toContain('uid="uid://wf_world_alpha"');
+        expect(b).toContain('uid="uid://wf_world_beta"');
+        expect(a.match(/uid="([^"]+)"/)?.[1]).not.toBe(b.match(/uid="([^"]+)"/)?.[1]);
+    });
+
+    it('omits uid when no projectId is provided so Godot can assign one', () => {
+        const tscn = buildWorldScene(baseInput([makeZone()]));
+        expect(tscn.startsWith('[gd_scene load_steps=')).toBe(true);
+        expect(tscn.split('\n')[0]).not.toContain('uid=');
+    });
+});
+
+describe('buildWorldScene — root-level name registry (F-6599ac0d)', () => {
+    it('renames a zone that collides with reserved Camera2D', () => {
+        const fidelity: FidelityEntry[] = [];
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone({ id: 'cam-zone', nodeName: 'Camera2D' })]),
+            fidelity,
+        });
+        expect(tscn).toContain('[node name="Camera2D" type="Camera2D" parent="."]');
+        expect(tscn).toContain('[node name="Camera2D_2" type="Node2D" parent="."]');
+        expect(fidelity.some((f) => f.level === 'approximated' && f.message.includes('Camera2D'))).toBe(true);
+    });
+
+    it('renames a zone that collides with a tile layer named Ground', () => {
+        const fidelity: FidelityEntry[] = [];
+        const groundLayer: GodotTileLayer = {
+            nodeName: 'Ground', id: 'tl-ground', name: 'Ground', zIndex: 0, tileSize: 32,
+            atlasSources: [], cells: [], solidCells: [], tileCount: 0, imageBacked: false,
+        };
+        const tscn = buildWorldScene({
+            ...baseInput([makeZone({ id: 'z-ground', nodeName: 'Ground' })]),
+            tileLayers: [groundLayer],
+            fidelity,
+        });
+        expect(tscn).toContain('[node name="Ground" type="TileMapLayer" parent="."]');
+        expect(tscn).toContain('[node name="Ground_2" type="Node2D" parent="."]');
+        expect(fidelity.some((f) => f.entityId === 'z-ground' && f.message.includes('tile-layer:tl-ground'))).toBe(true);
+    });
+});
+
+describe('buildWorldScene — zone 2.5D metadata (F-af27217d)', () => {
+    it('emits parallax/skyline/physics metadata from the zone resource', () => {
+        const tscn = buildWorldScene(baseInput([makeZone({
+            parallaxLayers: [{ id: 'far', depth: 100, assetRef: 'sky', scrollFactor: 0.2 }],
+            skylineRef: 'sky',
+            physicsMode: 'platformer',
+            timeOfDay: 'dusk',
+            gravityOverride: 3.7,
+        })]));
+        expect(tscn).toContain('metadata/skyline_ref = "sky"');
+        expect(tscn).toContain('metadata/physics_mode = "platformer"');
+        expect(tscn).toContain('metadata/time_of_day = "dusk"');
+        expect(tscn).toContain('metadata/gravity_override = 3.7');
+        expect(tscn).toContain('metadata/parallax_count = 1');
+        expect(tscn).toContain('metadata/parallax_layers =');
+        expect(tscn).toContain('far');
     });
 });
