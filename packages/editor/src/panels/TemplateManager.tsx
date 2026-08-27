@@ -5,7 +5,8 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { useTemplateStore, type UserTemplate } from '../store/template-store.js';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
-import { useKitStore, filterKitsByMode, serializeKit, kitFilename } from '../kits/index.js';
+import { useKitStore, filterKitsByMode, serializeKit, kitFilename, StoragePersistError } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
@@ -145,7 +146,14 @@ export function TemplateManager({ onClose }: Props) {
   }, [confirmDelete, deleteTemplate]);
 
   const handleDuplicateKit = useCallback((id: string) => {
-    duplicateKitAction(id);
+    try {
+      duplicateKitAction(id);
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not duplicate kit — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not duplicate kit.');
+      pushToast(msg, 'error', 4000);
+    }
   }, [duplicateKitAction]);
 
   const handleExportKit = useCallback((kit: StarterKit) => {
@@ -161,8 +169,15 @@ export function TemplateManager({ onClose }: Props) {
 
   const handleDeleteKit = useCallback((id: string) => {
     if (confirmDeleteKit === id) {
-      deleteKitAction(id);
-      setConfirmDeleteKit(null);
+      try {
+        deleteKitAction(id);
+        setConfirmDeleteKit(null);
+      } catch (err) {
+        const msg = err instanceof StoragePersistError
+          ? 'Could not delete kit — browser storage is full or blocked.'
+          : (err instanceof Error ? err.message : 'Could not delete kit.');
+        pushToast(msg, 'error', 4000);
+      }
     } else {
       setConfirmDeleteKit(id);
     }

@@ -22,11 +22,14 @@ const domainLabels: Record<Domain, string> = {
   deps: 'Dependencies',
   strata: 'Strata',
   hazards: 'Hazards',
+  town: 'Town Structures',
+  loot: 'Loot Tables',
+  transitions: 'Transitions',
 };
 
 // EUB-006: domainOrder must stay exhaustive — when adding a new Domain variant to
 // validation-helpers.ts, add a corresponding entry here and in domainLabels above.
-const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'strata', 'hazards', 'deps'];
+const domainOrder: Domain[] = ['world', 'entities', 'items', 'dialogue', 'player', 'builds', 'progression', 'assets', 'packs', 'strata', 'hazards', 'town', 'loot', 'transitions', 'deps'];
 
 export function ValidationPanel() {
   const { project } = useProjectStore();
@@ -44,7 +47,7 @@ export function ValidationPanel() {
     const map: Record<Domain, ValidationError[]> = {
       world: [], entities: [], items: [], dialogue: [],
       player: [], builds: [], progression: [], assets: [], packs: [], deps: [],
-      strata: [], hazards: [],
+      strata: [], hazards: [], town: [], loot: [], transitions: [],
     };
     for (const err of result.errors) {
       map[classifyError(err)].push(err);
@@ -56,7 +59,7 @@ export function ValidationPanel() {
   // helper (validation-helpers.ts) instead of being duplicated here.
   const handleClick = (err: ValidationError) => {
     const focus = { domain: classifyError(err), subPath: err.path, timestamp: Date.now() };
-    const nav = navigationForError(err);
+    const nav = navigationForError(err, project);
     if (nav.selectZoneId) setSelectedZone(nav.selectZoneId);
     else if (nav.clearZone) setSelectedZone(null);
     setRightTab(nav.tab);

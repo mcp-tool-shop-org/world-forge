@@ -4,34 +4,29 @@ import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { EmptyState, useFocusHighlight } from './shared.js';
 import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonRemove as xBtnStyle, hintText as hintStyle } from '../ui/styles.js';
-import type { PlayerTemplate } from '@world-forge/schema';
-
-function createDefaultTemplate(): PlayerTemplate {
-  return {
-    name: 'Wanderer',
-    baseStats: { vigor: 3, instinct: 3, will: 3 },
-    baseResources: { hp: 10, stamina: 5 },
-    startingInventory: [],
-    startingEquipment: {},
-    spawnPointId: '',
-    tags: [],
-    custom: {},
-  };
-}
+import {
+  createDefaultPlayerTemplate,
+  isMissingSpawnPoint,
+  pickDefaultSpawnPointId,
+} from './player-template-helpers.js';
 
 export function PlayerTemplatePanel() {
   const { project, setPlayerTemplate, updatePlayerTemplate } = useProjectStore();
   const focusRef = useFocusHighlight('player');
   const pt = project.playerTemplate;
+  const defaultSpawnId = pickDefaultSpawnPointId(project.spawnPoints);
+  const canCreate = defaultSpawnId != null;
 
   if (!pt) {
     return (
       <EmptyState
         title="Player Template"
-        description="Defines how new players start: base stats, resources, inventory, equipment, and spawn location. Required for a playable pack."
-        actions={[
-          { label: '+ Create Player Template', onClick: () => setPlayerTemplate(createDefaultTemplate()) },
-        ]}
+        description={canCreate
+          ? 'Defines how new players start: base stats, resources, inventory, equipment, and spawn location. Required for a playable pack.'
+          : 'Place a spawn point on the map before creating a player template. An empty spawnPointId fails validation and blocks Export.'}
+        actions={canCreate && defaultSpawnId
+          ? [{ label: '+ Create Player Template', onClick: () => setPlayerTemplate(createDefaultPlayerTemplate(defaultSpawnId)) }]
+          : []}
       />
     );
   }
@@ -46,14 +41,25 @@ export function PlayerTemplatePanel() {
       </label>
       <label style={labelStyle}>Spawn Point
         <select style={inputStyle} value={pt.spawnPointId}
-          onChange={(e) => updatePlayerTemplate({ spawnPointId: e.target.value })}>
-          <option value="">None</option>
+          onChange={(e) => {
+            const next = e.target.value;
+            if (!next) return;
+            updatePlayerTemplate({ spawnPointId: next });
+          }}>
+          {isMissingSpawnPoint(pt.spawnPointId, project.spawnPoints) && (
+            <option value="">None</option>
+          )}
           {project.spawnPoints.map((sp) => (
             <option key={sp.id} value={sp.id}>{sp.id} ({sp.zoneId})</option>
           ))}
         </select>
         {project.spawnPoints.length === 0 && (
           <div style={hintStyle}>Place a spawn point on the map first.</div>
+        )}
+        {isMissingSpawnPoint(pt.spawnPointId, project.spawnPoints) && (
+          <div style={{ ...hintStyle, color: '#f85149' }} data-testid="wf-player-missing-spawn">
+            Spawn point is required. Empty spawnPointId fails validation and blocks Export.
+          </div>
         )}
       </label>
       <label style={labelStyle}>Tags

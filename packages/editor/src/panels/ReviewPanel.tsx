@@ -1,11 +1,12 @@
 // ReviewPanel.tsx — read-only project review snapshot with health status and content overview
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { buildReviewSnapshot, type ReviewSnapshot, type HealthStatus } from '@world-forge/schema';
 import { reviewSnapshotToMarkdown, reviewSnapshotToJSON, summaryFilename } from '../review/export-summary.js';
 import { buttonBase } from '../ui/styles.js';
+import { useKitStore } from '../kits/index.js';
 
 // ── Enriched snapshot (adds editor-only context) ────────────
 
@@ -23,6 +24,9 @@ export function enrichReviewSnapshot(
   snapshot: ReviewSnapshot,
   context: {
     activeKitId: string | null;
+    /** Resolved display name; falls back to activeKitId when omitted (legacy callers). */
+    kitName?: string | null;
+    kitSource?: string | null;
     importSourceFormat: string | null;
     projectBundleSource: string | null;
     importFidelityPercent: number | null;
@@ -32,7 +36,10 @@ export function enrichReviewSnapshot(
 ): EnrichedReviewSnapshot {
   return {
     ...snapshot,
-    kitName: context.activeKitId ?? undefined,
+    // F-b6d9c980: prefer the human kit name; keep activeKitId as a last resort
+    // so existing callers that only pass the id still populate provenance.
+    kitName: context.kitName ?? context.activeKitId ?? undefined,
+    kitSource: context.kitSource ?? undefined,
     importFormat: context.importSourceFormat ?? undefined,
     bundleSource: context.projectBundleSource ?? undefined,
     importFidelityPercent: context.importFidelityPercent ?? undefined,
@@ -62,7 +69,9 @@ const HEALTH_BG: Record<HealthStatus, string> = {
 export function ReviewPanel() {
   const { project } = useProjectStore();
   const { setRightTab, setSelectedZone, activeKitId, importSourceFormat, projectBundleSource, importFidelity, hasExported } = useEditorStore();
+  const { kits } = useKitStore();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const activeKit = activeKitId ? kits.find((k) => k.id === activeKitId) : undefined;
 
   const snapshot = useMemo(() => buildReviewSnapshot(project), [project]);
 
@@ -74,29 +83,45 @@ export function ReviewPanel() {
 
   const enriched = useMemo(() => enrichReviewSnapshot(snapshot, {
     activeKitId,
+    kitName: activeKit?.name ?? null,
+    kitSource: activeKit ? (activeKit.builtIn ? 'built-in' : activeKit.source) : null,
     importSourceFormat: importSourceFormat ?? null,
     projectBundleSource,
     importFidelityPercent: importFidelity?.summary.losslessPercent ?? null,
     hasExported,
     unassignedZoneNames: unassignedZones.map((z) => z.name),
-  }), [snapshot, activeKitId, importSourceFormat, projectBundleSource, importFidelity, hasExported, unassignedZones]);
+  }), [snapshot, activeKitId, activeKit, importSourceFormat, projectBundleSource, importFidelity, hasExported, unassignedZones]);
 
   const [exportMsg, setExportMsg] = useState<string | null>(null);
+  // F-91523015: keep the object URL and show a manual-download fallback
+  // (ED-B-002). Do not revoke immediately — a blocked synthetic click would
+  // otherwise report success against a dead URL.
+  const [fallback, setFallback] = useState<{ href: string; filename: string } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (fallback?.href) {
+        try { URL.revokeObjectURL(fallback.href); } catch { /* ignore */ }
+      }
+    };
+  }, [fallback]);
 
   const toggle = (key: string) => setCollapsed((c) => ({ ...c, [key]: !c[key] }));
   const isOpen = (key: string) => !collapsed[key];
 
   const downloadBlob = useCallback((content: string, filename: string, mime: string) => {
+    if (fallback?.href) {
+      try { URL.revokeObjectURL(fallback.href); } catch { /* ignore */ }
+    }
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
-    setExportMsg('Summary saved!');
-    setTimeout(() => setExportMsg(null), 2000);
-  }, []);
+    setFallback({ href: url, filename });
+    setExportMsg('If nothing appears, click here to download.');
+  }, [fallback]);
 
   const handleExportMd = useCallback(() => {
     const md = reviewSnapshotToMarkdown(enriched);
@@ -115,7 +140,17 @@ export function ReviewPanel() {
         <div style={{ flex: 1 }} />
         <button onClick={handleExportMd} style={exportBtnStyle}>Export MD</button>
         <button onClick={handleExportJson} style={exportBtnStyle}>Export JSON</button>
-        {exportMsg && <span style={{ fontSize: 10, color: '#3fb950' }}>{exportMsg}</span>}
+        {exportMsg && fallback && (
+          <a
+            href={fallback.href}
+            download={fallback.filename}
+            data-testid="wf-review-fallback-link"
+            style={{ fontSize: 10, color: '#58a6ff' }}
+          >
+            {exportMsg}
+          </a>
+        )}
+        {exportMsg && !fallback && <span style={{ fontSize: 10, color: '#3fb950' }}>{exportMsg}</span>}
       </div>
 
       {/* Health banner */}

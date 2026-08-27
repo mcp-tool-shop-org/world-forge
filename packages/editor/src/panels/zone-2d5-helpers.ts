@@ -15,6 +15,10 @@ export interface ElevationRangeError {
  * Validate an elevation range. Returns `null` when the range is either unset
  * or valid; returns a structured error otherwise so the UI can show the
  * exact cause inline without clearing the user's input.
+ *
+ * Partial ranges (one side unset) are allowed while the user is typing —
+ * F-2f33dcb9: the writer must persist `undefined` for an empty side rather
+ * than coercing it to 0 (which produced floor=10, ceiling=0).
  */
 export function validateElevationRange(
   floor: number | undefined,
@@ -30,6 +34,27 @@ export function validateElevationRange(
     return { kind: 'floor-not-less-than-ceiling', message: 'floor must be less than ceiling' };
   }
   return null;
+}
+
+/** Draft elevation range — either side may be unset while the user is typing. */
+export interface ElevationRangeDraft {
+  floor?: number;
+  ceiling?: number;
+}
+
+/**
+ * F-2f33dcb9: next persisted elevation range after a side-edit.
+ * Empty sides stay `undefined` (never coerced to 0). Both-empty clears the range.
+ */
+export function nextElevationRange(
+  current: ElevationRangeDraft | undefined,
+  side: 'floor' | 'ceiling',
+  parsed: number | undefined,
+): ElevationRangeDraft | undefined {
+  const nextFloor = side === 'floor' ? parsed : current?.floor;
+  const nextCeiling = side === 'ceiling' ? parsed : current?.ceiling;
+  if (nextFloor == null && nextCeiling == null) return undefined;
+  return { floor: nextFloor, ceiling: nextCeiling };
 }
 
 /** Parse user input into a number, returning `undefined` for empty/invalid. */

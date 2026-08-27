@@ -41,3 +41,27 @@ export function distinctBundleWarnings(bundle: ImportProjectResult): {
     validationWarnings: bundle.validationWarnings.filter((w) => !errorSet.has(w)),
   };
 }
+
+export interface SafeDependencyReport {
+  kitRef?: { name: string; source?: string };
+  assetPacks: Array<{ id: string; label: string }>;
+}
+
+/**
+ * F-67ac3bf9: extractDependencies maps bundle.project.assetPacks with no
+ * fallback. A truncated-but-ok bundle throws while painting the preview and
+ * unmounts the modal. Never let a dependency report crash the import UI.
+ */
+export function safeExtractDependencies(
+  extract: (bundle: ImportProjectResult['bundle']) => SafeDependencyReport,
+  bundle: ImportProjectResult['bundle'] | null | undefined,
+): SafeDependencyReport | null {
+  if (!bundle) return null;
+  try {
+    const deps = extract(bundle);
+    const assetPacks = Array.isArray(deps?.assetPacks) ? deps.assetPacks : [];
+    return { kitRef: deps?.kitRef, assetPacks };
+  } catch {
+    return null;
+  }
+}

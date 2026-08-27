@@ -71,17 +71,29 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const handleExport = () => {
     setFallback(null);
-    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts);
+    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts)
+      .catch((err) => {
+        setStatus('invalid');
+        setErrors([err instanceof Error ? err.message : String(err)]);
+      });
   };
 
   const handleExportUnreal = () => {
     setFallback(null);
-    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, unrealOpts);
+    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, unrealOpts)
+      .catch((err) => {
+        setStatus('invalid');
+        setErrors([err instanceof Error ? err.message : String(err)]);
+      });
   };
 
   const handleExportGodot = () => {
     setFallback(null);
-    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, godotOpts);
+    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, godotOpts)
+      .catch((err) => {
+        setStatus('invalid');
+        setErrors([err instanceof Error ? err.message : String(err)]);
+      });
   };
 
   // F-001: routing now goes through the single shared navigationForError
@@ -94,7 +106,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     if (precheck.errors.length === 0) return;
     const err = precheck.errors[0];
     const focus = { domain: classifyError(err), subPath: err.path, timestamp: Date.now() };
-    const nav = navigationForError(err);
+    const nav = navigationForError(err, project);
     if (nav.selectZoneId) setSelectedZone(nav.selectZoneId);
     else if (nav.clearZone) setSelectedZone(null);
     setRightTab(nav.tab);
@@ -360,8 +372,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer', marginBottom: 2 }}>
                 <input type="checkbox" checked={godotOpts.includeWorldTscn} onChange={(e) => setGodotOpts({ ...godotOpts, includeWorldTscn: e.target.checked })} />
-                Include world .tscn
+                Include world .tscn in pack
               </label>
+              <div style={{ fontSize: 10, color: '#484f58', fontStyle: 'italic', marginBottom: 4 }}>
+                Unchecked omits worldSceneTscn from the downloaded pack, not just the sidecar.
+              </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c9d1d9', cursor: 'pointer' }}>
                 <span style={{ minWidth: 100 }}>Asset binding:</span>
                 <select
