@@ -55,6 +55,7 @@ describe('WorldProject → UnrealContentPack parity', () => {
       'connections', 'world-partition', 'assets', 'parallax',
       'elevation', 'skyline', 'dialogues', 'world',
       'lighting', 'collision', 'physics', 'transitions',
+      'tiles', 'props', 'structures',
     ];
     const domainSet = new Set<string>(validDomains);
     for (const entry of result.fidelity.entries) {
@@ -82,15 +83,17 @@ describe('WorldProject → UnrealContentPack parity', () => {
       expect(covered || dropped).toBe(true);
       expect(covered && dropped).toBe(false);
     }
-    // Honesty check: no Unreal converter exists for any of these six yet
-    // (see field-coverage.ts's comment block), so today they must all be
-    // KNOWN_DROPPED, not COVERED_FIELDS. This is the "do not mark them
-    // covered to make the test green" guardrail — if a real converter lands,
-    // update this test alongside field-coverage.ts, don't just flip the flag.
-    for (const field of previouslyDrifted) {
+    // Honesty check: buildings / hubs / strongholds still have no Unreal
+    // converter. strata / stratumLinks / hazardDefinitions shipped (F-a05c69b8,
+    // F-c1f4acbd) and must be COVERED, not silently flipped without a converter.
+    for (const field of ['buildings', 'hubs', 'strongholds']) {
       expect(COVERED_FIELDS.has(field)).toBe(false);
       expect(typeof KNOWN_DROPPED[field]).toBe('string');
       expect(KNOWN_DROPPED[field].length).toBeGreaterThan(0);
+    }
+    for (const field of ['strata', 'stratumLinks', 'hazardDefinitions']) {
+      expect(COVERED_FIELDS.has(field)).toBe(true);
+      expect(KNOWN_DROPPED[field]).toBeUndefined();
     }
   });
 
@@ -129,15 +132,19 @@ describe('WorldProject → UnrealContentPack parity', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
 
-    for (const field of ['buildings', 'hubs', 'strongholds', 'strata', 'stratumLinks', 'hazardDefinitions']) {
+    for (const field of ['buildings', 'hubs', 'strongholds']) {
       const entry = result.fidelity.entries.find((e) => e.level === 'dropped' && e.fieldPath === field);
       expect(entry, `expected a dropped fidelity entry for "${field}"`).toBeDefined();
       expect(entry?.reason.length).toBeGreaterThan(0);
     }
+    for (const field of ['strata', 'stratumLinks', 'hazardDefinitions']) {
+      const dropped = result.fidelity.entries.find((e) => e.level === 'dropped' && e.fieldPath === field);
+      expect(dropped, `"${field}" is now covered and must not appear as a dropped WorldProject field`).toBeUndefined();
+    }
 
-    // The report must not be able to claim 100% lossless while these six
-    // authored-but-unmapped fields are silently missing from the entries list.
-    expect(result.fidelity.summary.dropped).toBeGreaterThanOrEqual(6);
+    // The report must not be able to claim 100% lossless while authored-but-
+    // unmapped town-structure fields are silently missing from the entries list.
+    expect(result.fidelity.summary.dropped).toBeGreaterThanOrEqual(3);
     expect(result.fidelity.summary.losslessPercent).toBeLessThan(100);
   });
 

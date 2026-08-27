@@ -176,6 +176,10 @@ describe('CLI: world-forge-export-unreal', () => {
     expect(stdout).toContain('actors/manifest.json');
     expect(stdout).toContain('parallax-manifest.json');
     expect(stdout).toContain('transitions.json');
+    expect(stdout).toContain('actors/strata.json');
+    expect(stdout).toContain('actors/tiles.json');
+    expect(stdout).toContain('actors/props.json');
+    expect(stdout).toContain('actors/hazards.json');
     expect(stdout).toContain('connections.json');
     expect(stdout).toContain('world-partition.json');
     expect(stdout).toContain('fidelity.json');

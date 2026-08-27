@@ -46,6 +46,10 @@ Produces (under --out):
   actors/manifest.json           — entity placements grouped by zone, BP-class tag per role
   actors/parallax-manifest.json  — one parallax actor per ParallaxLayer across all zones
   actors/transitions.json        — placed transition entities (elevators, warps, lifts)
+  actors/strata.json             — discrete vertical strata + stratum links
+  actors/tiles.json              — per-layer tile cells, walkable collision, HISM hints
+  actors/props.json              — placed props with walkable collision
+  actors/hazards.json            — typed hazard definitions + zone volume actors
   connections.json               — ZoneConnection → LevelStreamingHint
   world-partition.json           — grid cell hints (gridWidth/gridHeight → UE cells)
   fidelity.json                  — what was lossless / approximated / dropped`;
@@ -214,6 +218,22 @@ async function main(): Promise<void> {
   await writeFile(
     join(resolvedOut, 'actors', 'transitions.json'),
     JSON.stringify(result.contentPack.Transitions, null, 2),
+  );
+  await writeFile(
+    join(resolvedOut, 'actors', 'strata.json'),
+    JSON.stringify(result.contentPack.Strata, null, 2),
+  );
+  await writeFile(
+    join(resolvedOut, 'actors', 'tiles.json'),
+    JSON.stringify(result.contentPack.Tiles, null, 2),
+  );
+  await writeFile(
+    join(resolvedOut, 'actors', 'props.json'),
+    JSON.stringify(result.contentPack.Props, null, 2),
+  );
+  await writeFile(
+    join(resolvedOut, 'actors', 'hazards.json'),
+    JSON.stringify(result.contentPack.Hazards, null, 2),
   );
 
   // UE-B-001: zone + district writes are concurrent but must not silently drop

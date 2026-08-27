@@ -71,7 +71,7 @@ Human-readable change review over exported packs. `--summary` prints counts + Fo
 - **Minor bump** — optional field added (additive, back-compatible). Old loaders ignore new fields.
 - **Patch bump** — doc-only.
 
-The current format is `1.1.0` (v1.0.0 → v1.1.0 added the optional `Signature` field). A migration framework (`migratePack` + `MIGRATIONS` chain) walks older packs forward on import; unknown majors are rejected with a clear error naming the version, and newer minors load with a forward-compat warning.
+The current format is `1.2.0` (v1.0.0 → v1.1.0 added the optional `Signature` field; v1.1.0 → v1.2.0 added strata / tile cells / props / typed hazards). A migration framework (`migratePack` + `MIGRATIONS` chain) walks older packs forward on import; unknown majors are rejected with a clear error naming the version, and newer minors load with a forward-compat warning.
 
 ## Output layout
 
@@ -85,12 +85,16 @@ UnrealPack/
   actors/manifest.json            — entity placements grouped by zone, BP-class tag per role
   actors/parallax-manifest.json   — one parallax actor per ParallaxLayer across all zones
   actors/transitions.json         — placed transition entities (elevators, warps, lifts)
+  actors/strata.json              — discrete vertical strata + stratum links (ZBand, VisibleStrata)
+  actors/tiles.json               — per-layer cells (GridX/Y, TileId, AtlasCol/Row, Walkable) + CollisionBoxes + HISM hints
+  actors/props.json               — placed props with walkable collision
+  actors/hazards.json             — typed hazard definitions + zone-covering volume actors
   connections.json                — ZoneConnection → LevelStreamingHint
   world-partition.json            — grid cell hints (gridWidth/gridHeight → UE cells)
   fidelity.json                   — what was lossless / approximated / dropped
 ```
 
-Each zone file carries transformed coordinates in Unreal units (centimetres, Z-up, Y-flipped) and 2.5D-specific fields (elevation, parallax layers, skyline ref). ParallaxLayers also live on each zone asset, so loaders can pick the zone files **or** `actors/parallax-manifest.json` — not both, or backdrops spawn twice.
+Each zone file carries transformed coordinates in Unreal units (centimetres, Z-up, Y-flipped) and 2.5D-specific fields (elevation, parallax layers, skyline ref, StratumId/ZBand, EntryGate, HazardRefs). `TilesetAssetId` is kept; the cell grid and walkable collision live in `actors/tiles.json` so a loader can reconstruct the gameplay plane. ParallaxLayers also live on each zone asset, so loaders can pick the zone files **or** `actors/parallax-manifest.json` — not both, or backdrops spawn twice.
 
 ## Coordinate transform
 
@@ -118,13 +122,17 @@ Projects without 2.5D fields still export cleanly — elevation defaults to 0 an
 Expected loader contract:
 
 1. Read `pack.json` once to pin the source project id, `TileSizeCm`, and `FormatVersion`. Bail early if `FormatVersion` is past the loader's supported major.
-2. Iterate `zones/<id>.json` — each file is a UE5 Primary Data Asset payload with zone extent in UE cm (Z-up, Y-flipped), elevation in cm, parallax layers, and the tileset/background/skyline asset ids.
+2. Iterate `zones/<id>.json` — each file is a UE5 Primary Data Asset payload with zone extent in UE cm (Z-up, Y-flipped), elevation in cm, parallax layers, StratumId/ZBand, EntryGate, HazardRefs, and the tileset/background/skyline asset ids.
 3. Consult `world-partition.json` to size the streaming grid (`CellsX`, `CellsY`, `CellSizeCm`) and pick a loader strategy (always-loaded for small maps, streaming cells for open worlds).
 4. Read `connections.json` to wire LevelStreaming edges and set up teleport/load volumes per `StreamMode`.
 5. Iterate `actors/manifest.json` — entities are grouped by zone, each with a role tag (`npc`, `enemy`, `merchant`, `quest-giver`, `companion`, `boss`) the loader maps to a Blueprint class. `LocationCm` is already in UE space.
 6. Read `actors/parallax-manifest.json` — one actor per parallax layer keyed by `ZoneId` + `LayerId`. ParallaxLayers also live on each zone asset; pick one source so backdrops are not spawned twice.
 7. Read `actors/transitions.json` — elevators, warps, and lifts with `LocationCm` already in UE space.
-8. Surface `fidelity.json` to content authors — the `dropped` / `approximated` entries tell them what didn't round-trip and why.
+8. Read `actors/strata.json` — discrete vertical layers + stair/ladder/elevator links. Stamp `StratumId`/`ZBand` from each zone asset for draw/PVS order.
+9. Read `actors/tiles.json` — per-layer cells (atlas coords or Color/Opacity), CollisionBoxes from `!walkable` tiles, HISM instance transforms when a zone exceeds 50 tiles.
+10. Read `actors/props.json` — placed props with footprint + CollisionBoxes from `!walkable` definitions.
+11. Read `actors/hazards.json` — typed definitions + zone-covering volume actors (trigger, effects, passability, vision, weather).
+12. Surface `fidelity.json` to content authors — the `dropped` / `approximated` entries tell them what didn't round-trip and why.
 
 A reference UE5 loader will be published alongside the Star Freight UE5 project when it lands.
 

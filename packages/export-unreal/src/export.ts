@@ -17,6 +17,10 @@ import { convertConnections, type UnrealLevelStreamingHint } from './convert-con
 import { convertWorldPartition, type UnrealWorldPartitionHint } from './convert-world-partition.js';
 import { convertParallax, type UnrealParallaxManifest } from './convert-parallax.js';
 import { convertTransitions, type UnrealTransitionEntity } from './convert-transitions.js';
+import { convertStrata, type UnrealStrataManifest } from './convert-strata.js';
+import { convertTileLayers, type UnrealTileManifest } from './convert-tile-layers.js';
+import { convertProps, type UnrealPropManifest } from './convert-props.js';
+import { convertHazards, type UnrealHazardManifest } from './convert-hazards.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_CM } from './coordinate-transform.js';
 import { collectDroppedFieldFidelity } from './field-coverage.js';
@@ -62,8 +66,9 @@ export interface UnrealPackMeta {
  *   - Patch bump — doc-only clarification.
  *
  * v1.0.0 → v1.1.0 (UE-FT-007): optional `Signature` Meta field added.
+ * v1.1.0 → v1.2.0: additive pack arrays for strata, tiles, props, hazards.
  */
-export const UNREAL_PACK_FORMAT_VERSION = '1.1.0';
+export const UNREAL_PACK_FORMAT_VERSION = '1.2.0';
 
 export interface UnrealContentPack {
   Meta: UnrealPackMeta;
@@ -76,6 +81,14 @@ export interface UnrealContentPack {
   Parallax: UnrealParallaxManifest;
   /** SCH-FT-004 passthrough: placed transition entities with presentation metadata. */
   Transitions: UnrealTransitionEntity[];
+  /** F-a05c69b8: discrete vertical strata + cross-level links. */
+  Strata: UnrealStrataManifest;
+  /** F-9615478f: per-layer tile cells, walkable collision, HISM hints. */
+  Tiles: UnrealTileManifest;
+  /** F-9615478f: placed props with walkable collision. */
+  Props: UnrealPropManifest;
+  /** F-c1f4acbd: typed hazard definitions + zone-covering volume actors. */
+  Hazards: UnrealHazardManifest;
 }
 
 export interface UnrealExportOptions {
@@ -139,6 +152,10 @@ export function exportToUnreal(
   let worldPartitionResult: ReturnType<typeof convertWorldPartition>;
   let parallaxResult: ReturnType<typeof convertParallax>;
   let transitionsResult: ReturnType<typeof convertTransitions>;
+  let strataResult: ReturnType<typeof convertStrata>;
+  let tilesResult: ReturnType<typeof convertTileLayers>;
+  let propsResult: ReturnType<typeof convertProps>;
+  let hazardsResult: ReturnType<typeof convertHazards>;
   try {
     zonesResult = convertZones(project, tileSizeCm);
     districtsResult = convertDistricts(project);
@@ -147,6 +164,10 @@ export function exportToUnreal(
     worldPartitionResult = convertWorldPartition(project, tileSizeCm);
     parallaxResult = convertParallax(project, tileSizeCm);
     transitionsResult = convertTransitions(project, tileSizeCm);
+    strataResult = convertStrata(project, tileSizeCm);
+    tilesResult = convertTileLayers(project, tileSizeCm);
+    propsResult = convertProps(project, tileSizeCm);
+    hazardsResult = convertHazards(project, tileSizeCm);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -167,6 +188,10 @@ export function exportToUnreal(
   fidelityEntries.push(...worldPartitionResult.fidelity);
   fidelityEntries.push(...parallaxResult.fidelity);
   fidelityEntries.push(...transitionsResult.fidelity);
+  fidelityEntries.push(...strataResult.fidelity);
+  fidelityEntries.push(...tilesResult.fidelity);
+  fidelityEntries.push(...propsResult.fidelity);
+  fidelityEntries.push(...hazardsResult.fidelity);
   // F-e2908aac: previously NO known-dropped field (24 of them before this v4.5
   // wave, 30 after) ever produced a fidelity entry, so the summary could claim
   // 100% lossless while dozens of authored fields silently vanished. This
@@ -202,6 +227,10 @@ export function exportToUnreal(
     WorldPartition: worldPartition,
     Parallax: parallaxResult.manifest,
     Transitions: transitionsResult.transitions,
+    Strata: strataResult.manifest,
+    Tiles: tilesResult.manifest,
+    Props: propsResult.manifest,
+    Hazards: hazardsResult.manifest,
   };
 
   // UE-B-003: surface dropped-entity count on the fidelity summary so callers
