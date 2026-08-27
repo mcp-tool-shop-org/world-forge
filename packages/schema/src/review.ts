@@ -271,6 +271,10 @@ export function __resetClassifyDomainWarnings(): void {
   WARNED_UNKNOWN_PREFIXES.clear();
 }
 
+function asArray<T>(value: T[] | undefined | null | unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 // ── Build snapshot ─────────────────────────────────────────
 
 export function buildReviewSnapshot(
@@ -282,11 +286,28 @@ export function buildReviewSnapshot(
   // SCH-B-006: build lookup maps once and share with scanDependencies so we
   // don't rebuild four maps inside scan when the snapshot already has them
   // available. Future passes (validate, advisory) can adopt the same shape.
+  // asArray matches scanDependencies' `?? []` / Array.isArray so omitted or
+  // corrupt nested arrays produce health:'blocked' instead of throwing.
+  const zones = asArray(project.zones);
+  const districts = asArray(project.districts);
+  const entityPlacements = asArray(project.entityPlacements);
+  const itemPlacements = asArray(project.itemPlacements);
+  const dialogues = asArray(project.dialogues);
+  const progressionTrees = asArray(project.progressionTrees);
+  const spawnPoints = asArray(project.spawnPoints);
+  const connections = asArray(project.connections);
+  const encounterAnchors = asArray(project.encounterAnchors);
+  const landmarks = asArray(project.landmarks);
+  const assets = asArray(project.assets);
+  const assetPacks = asArray(project.assetPacks);
+  const factionPresences = asArray(project.factionPresences);
+  const pressureHotspots = asArray(project.pressureHotspots);
+
   const sharedLookups = {
-    assetMap: new Map(project.assets.map((a) => [a.id, { kind: a.kind, label: a.label }])),
-    packIds: new Set(project.assetPacks.map((p) => p.id)),
-    zoneIds: new Set(project.zones.map((z) => z.id)),
-    dialogueIds: new Set(project.dialogues.map((d) => d.id)),
+    assetMap: new Map(assets.map((a) => [a.id, { kind: a.kind, label: a.label }])),
+    packIds: new Set(assetPacks.map((p) => p.id)),
+    zoneIds: new Set(zones.map((z) => z.id)),
+    dialogueIds: new Set(dialogues.map((d) => d.id)),
   };
   const depReport = scanDependencies(project, sharedLookups);
   const mode: AuthoringMode = project.mode ?? DEFAULT_MODE;
@@ -297,36 +318,36 @@ export function buildReviewSnapshot(
 
   // Content counts
   const counts: ContentCounts = {
-    zones: project.zones.length,
-    districts: project.districts.length,
-    entities: project.entityPlacements.length,
-    items: project.itemPlacements.length,
-    dialogues: project.dialogues.length,
-    progressionTrees: project.progressionTrees.length,
-    spawns: project.spawnPoints.length,
-    connections: project.connections.length,
-    encounters: project.encounterAnchors.length,
-    landmarks: project.landmarks.length,
-    assets: project.assets.length,
-    assetPacks: project.assetPacks.length,
-    factions: project.factionPresences.length,
-    hotspots: project.pressureHotspots.length,
+    zones: zones.length,
+    districts: districts.length,
+    entities: entityPlacements.length,
+    items: itemPlacements.length,
+    dialogues: dialogues.length,
+    progressionTrees: progressionTrees.length,
+    spawns: spawnPoints.length,
+    connections: connections.length,
+    encounters: encounterAnchors.length,
+    landmarks: landmarks.length,
+    assets: assets.length,
+    assetPacks: assetPacks.length,
+    factions: factionPresences.length,
+    hotspots: pressureHotspots.length,
   };
 
   // System completeness
   const missingLabels: string[] = [];
   if (!project.playerTemplate) missingLabels.push('No player template');
   if (!project.buildCatalog) missingLabels.push('No build catalog');
-  if (project.progressionTrees.length === 0) missingLabels.push('No progression trees');
-  if (project.dialogues.length === 0) missingLabels.push('No dialogues');
-  if (project.spawnPoints.length === 0) missingLabels.push('No spawn points');
+  if (progressionTrees.length === 0) missingLabels.push('No progression trees');
+  if (dialogues.length === 0) missingLabels.push('No dialogues');
+  if (spawnPoints.length === 0) missingLabels.push('No spawn points');
 
   const systems: SystemCompleteness = {
     hasPlayerTemplate: !!project.playerTemplate,
     hasBuildCatalog: !!project.buildCatalog,
-    hasProgressionTrees: project.progressionTrees.length > 0,
-    hasDialogues: project.dialogues.length > 0,
-    hasSpawnPoints: project.spawnPoints.length > 0,
+    hasProgressionTrees: progressionTrees.length > 0,
+    hasDialogues: dialogues.length > 0,
+    hasSpawnPoints: spawnPoints.length > 0,
     missingLabels,
   };
 
@@ -335,25 +356,26 @@ export function buildReviewSnapshot(
   // cached if buildReviewSnapshot is called repeatedly on the same project
   // (e.g. during editor live-refresh with sub-second intervals). Currently
   // expected to be called once per user action, so rebuild cost is acceptable.
-  const zoneMap = new Map(project.zones.map((z) => [z.id, z]));
-  const regions: RegionSummary[] = project.districts.map((d) => {
-    const districtZoneIds = new Set(d.zoneIds);
-    const zoneNames = d.zoneIds
+  const zoneMap = new Map(zones.map((z) => [z.id, z]));
+  const regions: RegionSummary[] = districts.map((d) => {
+    const districtZoneIdsList = asArray(d.zoneIds);
+    const districtZoneIds = new Set(districtZoneIdsList);
+    const zoneNames = districtZoneIdsList
       .map((zid) => zoneMap.get(zid)?.name)
       .filter((n): n is string => !!n);
 
     // Entities in this district's zones
-    const districtEntities = project.entityPlacements.filter((ep) => districtZoneIds.has(ep.zoneId));
+    const districtEntities = entityPlacements.filter((ep) => districtZoneIds.has(ep.zoneId));
     const entityRoles: Record<string, number> = {};
     for (const ep of districtEntities) {
       entityRoles[ep.role] = (entityRoles[ep.role] || 0) + 1;
     }
 
     // Encounters in this district's zones
-    const encounterCount = project.encounterAnchors.filter((ea) => districtZoneIds.has(ea.zoneId)).length;
+    const encounterCount = encounterAnchors.filter((ea) => districtZoneIds.has(ea.zoneId)).length;
 
     // Items in this district's zones
-    const itemCount = project.itemPlacements.filter((ip) => districtZoneIds.has(ip.zoneId)).length;
+    const itemCount = itemPlacements.filter((ip) => districtZoneIds.has(ip.zoneId)).length;
 
     // Safely access baseMetrics — if missing (e.g. draft district), default all to 0.
     // This avoids a runtime crash and surfaces the gap in the review output.
@@ -362,10 +384,10 @@ export function buildReviewSnapshot(
     return {
       id: d.id,
       name: d.name,
-      zoneCount: d.zoneIds.length,
+      zoneCount: districtZoneIdsList.length,
       zoneNames,
       controllingFaction: d.controllingFaction,
-      tags: d.tags,
+      tags: asArray(d.tags),
       metrics: {
         commerce: metrics.commerce ?? 0,
         morale: metrics.morale ?? 0,
@@ -384,17 +406,17 @@ export function buildReviewSnapshot(
   let totalProbability = 0;
   const zonesWithEncounters = new Set<string>();
   let bossEncounters = 0;
-  for (const ea of project.encounterAnchors) {
+  for (const ea of encounterAnchors) {
     byType[ea.encounterType] = (byType[ea.encounterType] || 0) + 1;
     totalProbability += ea.probability;
     zonesWithEncounters.add(ea.zoneId);
-    if (ea.tags.includes('boss')) bossEncounters++;
+    if (asArray(ea.tags).includes('boss')) bossEncounters++;
   }
   const encounters: EncounterSummary = {
     byType,
-    totalCount: project.encounterAnchors.length,
-    avgProbability: project.encounterAnchors.length > 0
-      ? totalProbability / project.encounterAnchors.length
+    totalCount: encounterAnchors.length,
+    avgProbability: encounterAnchors.length > 0
+      ? totalProbability / encounterAnchors.length
       : 0,
     zonesWithEncounters: zonesWithEncounters.size,
     bossEncounters,
@@ -405,7 +427,7 @@ export function buildReviewSnapshot(
   let conditionalCount = 0;
   let oneWayCount = 0;
   let bidirectionalCount = 0;
-  for (const c of project.connections) {
+  for (const c of connections) {
     const kind = c.kind || 'passage';
     byKind[kind] = (byKind[kind] || 0) + 1;
     if (c.condition) conditionalCount++;
@@ -414,7 +436,7 @@ export function buildReviewSnapshot(
   }
   const connectionSummary: ConnectionSummary = {
     byKind,
-    totalCount: project.connections.length,
+    totalCount: connections.length,
     conditionalCount,
     oneWayCount,
     bidirectionalCount,
