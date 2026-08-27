@@ -76,12 +76,60 @@ describe('CLI: world-forge-export-unreal', () => {
     const { code, stderr } = await runCli([badJsonPath]);
     expect(code).not.toBe(0);
     expect(stderr).toContain('not valid JSON');
+    // F-487b492e: SyntaxError.message (token and/or position) must survive.
+    expect(stderr).toMatch(/Unexpected token|position/i);
   });
 
   it('errors when --out is passed with no value', async () => {
     const { code, stderr } = await runCli([validJsonPath, '--out']);
     expect(code).not.toBe(0);
     expect(stderr).toContain('--out requires a path value');
+  });
+
+  it('F-42820520: --out followed by another flag is a swallowed flag, not a directory', async () => {
+    const { code, stderr } = await runCli([validJsonPath, '--out', '--sign']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("does not start with '-'");
+    expect(stderr).toContain('--sign');
+    expect(stderr).toMatch(/swallowed flag/);
+  });
+
+  it('F-42820520: --summary followed by another flag is a swallowed flag, not a pack dir', async () => {
+    const { code, stderr } = await runCli(['--summary', '--verbose']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('--summary');
+    expect(stderr).toContain('--verbose');
+    expect(stderr).toMatch(/swallowed flag/);
+  });
+
+  it("F-42820520: --help documents that --out/--summary/--verify paths must not start with '-'", async () => {
+    const { code, stdout } = await runCli(['--help']);
+    expect(code).toBe(0);
+    expect(stdout).toMatch(/must not start with '-'/);
+    expect(stdout).toContain('--out');
+    expect(stdout).toContain('--summary');
+    expect(stdout).toContain('--verify');
+  });
+
+  it("F-c0271959: unknown flag --sgin is rejected with a --sign suggestion", async () => {
+    const { code, stderr } = await runCli([validJsonPath, '--sgin']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("unknown option '--sgin'");
+    expect(stderr).toContain('Did you mean --sign?');
+  });
+
+  it("F-c0271959: leading typo --verfiy is rejected with a --verify suggestion and flags-follow hint", async () => {
+    const { code, stderr } = await runCli(['--verfiy', './UnrealPack']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("unknown option '--verfiy'");
+    expect(stderr).toContain('Did you mean --verify?');
+    expect(stderr).toContain('project.json must be the first argument; flags follow.');
+  });
+
+  it('F-c0271959: flags-first --out <dir> project.json is rejected', async () => {
+    const { code, stderr } = await runCli(['--out', join(tmpDir, 'flags-first-out'), validJsonPath]);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('project.json must be the first argument; flags follow.');
   });
 
   it('errors when --tile-size-cm is non-numeric', async () => {
@@ -367,5 +415,32 @@ describe('CLI: world-forge-export-unreal', () => {
     const { code, stderr } = await runCli(['--diff', tmpDir]);
     expect(code).not.toBe(0);
     expect(stderr).toContain('--diff requires two');
+  });
+
+  it('F-5aa31629: Fidelity stdout names dropped and approximated counts', async () => {
+    const outDir = join(tmpDir, 'fidelity-counts-out');
+    const { code, stdout } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(0);
+    expect(stdout).toMatch(/Fidelity:.*dropped/);
+    expect(stdout).toMatch(/approximated/);
+  });
+
+  it('F-5aa31629: ghost-target transition is named on stderr without --verbose', async () => {
+    const ghostPath = join(tmpDir, 'ghost-target.json');
+    const ghostProject = {
+      ...minimalProject,
+      transitions: [
+        {
+          id: 't-ghost-target',
+          zoneId: 'zone-entrance',
+          targetZoneId: 'zone-does-not-exist',
+          type: 'elevator',
+        },
+      ],
+    };
+    await writeFile(ghostPath, JSON.stringify(ghostProject, null, 2));
+    const outDir = join(tmpDir, 'ghost-target-out');
+    const { stderr } = await runCli([ghostPath, '--out', outDir]);
+    expect(stderr).toContain('t-ghost-target');
   });
 });

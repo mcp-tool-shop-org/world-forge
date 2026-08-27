@@ -137,7 +137,8 @@ describe('TileLayerRenderer', () => {
     expect(renderer.container.children.length).toBe(1);
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(String(warnSpy.mock.calls[0][0])).toMatch(/ts-truncated/);
-    expect(String(warnSpy.mock.calls[0][0])).toMatch(/tiles array/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/not an array/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/got object/);
     warnSpy.mockRestore();
   });
 
@@ -163,7 +164,8 @@ describe('TileLayerRenderer', () => {
     expect(renderer.container.children.length).toBe(1);
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(String(warnSpy.mock.calls[0][0])).toMatch(/layer-truncated/);
-    expect(String(warnSpy.mock.calls[0][0])).toMatch(/tiles array/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/not an array/);
+    expect(String(warnSpy.mock.calls[0][0])).toMatch(/got object/);
     warnSpy.mockRestore();
   });
 

@@ -48,6 +48,14 @@ export class WorldViewport {
   }
 
   async init(container: HTMLElement): Promise<void> {
+    // F-03dd3ea3: destroy() is terminal — the Pixi Application is already torn
+    // down. Re-init must not call app.init() on it, and must not tell the
+    // caller to "call destroy() first" after they already did.
+    if (this._destroyed) {
+      throw new Error(
+        'WorldViewport has been destroyed — construct a new WorldViewport to continue.',
+      );
+    }
     // INF-B-002: init() is one-shot — double-init leaks the PixiJS Application
     // and re-parents the world container, producing subtle, hard-to-debug bugs.
     if (this._initialized) {
@@ -64,8 +72,11 @@ export class WorldViewport {
         resizeTo: container,
       });
     } catch (err) {
+      // F-fd76f08c: callers that print err.message never saw the WebGL/GPU
+      // reason when it lived only on Error.cause.
+      const causeMessage = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `WorldViewport failed to initialize PixiJS Application (${this.opts.width}x${this.opts.height})`,
+        `WorldViewport failed to initialize PixiJS Application (${this.opts.width}x${this.opts.height}): ${causeMessage}. Check WebGL/GPU availability and that the container is in the document.`,
         { cause: err },
       );
     }
