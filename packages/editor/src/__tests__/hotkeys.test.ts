@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { matchHotkey, dispatchHotkey, type HotkeyContext } from '../hotkeys.js';
+import { matchHotkey, dispatchHotkey, shouldArmSpacePan, isActivatingControl, type HotkeyContext } from '../hotkeys.js';
 import type { SelectionSet } from '../store/editor-store.js';
 
 function makeEvent(overrides: Partial<KeyboardEvent> & { code: string }): KeyboardEvent {
@@ -215,6 +215,25 @@ describe('dispatchHotkey — actions', () => {
     expect(ctx.clearSelection).toHaveBeenCalled();
   });
 
+  it('F-eb7fc5ef: escape clears connectionStart', () => {
+    const setConnectionStart = vi.fn();
+    const ctx = makeCtx({ setConnectionStart });
+    const result = dispatchHotkey(makeEvent({ code: 'Escape' }), ctx);
+    expect(result.handled).toBe(true);
+    expect(setConnectionStart).toHaveBeenCalledWith(null);
+    expect(ctx.clearSelection).toHaveBeenCalled();
+  });
+
+  it('F-eb7fc5ef: escape clears connectionStart even when a speed panel was closed', () => {
+    const setConnectionStart = vi.fn();
+    const ctx = makeCtx({ showSpeedPanel: true, setConnectionStart });
+    const result = dispatchHotkey(makeEvent({ code: 'Escape' }), ctx);
+    expect(result.handled).toBe(true);
+    expect(ctx.closeSpeedPanel).toHaveBeenCalled();
+    expect(ctx.clearSelection).not.toHaveBeenCalled();
+    expect(setConnectionStart).toHaveBeenCalledWith(null);
+  });
+
   it('apply-preset switches to presets tab', () => {
     const ctx = makeCtx();
     const e = makeEvent({ code: 'KeyP' });
@@ -307,5 +326,55 @@ describe('dispatchHotkey — actions', () => {
     const result = dispatchHotkey(e, ctx);
     expect(result.handled).toBe(true);
     expect(ctx.setTool).toHaveBeenCalledWith(tool);
+  });
+});
+
+describe('F-6c1fa8ce: shouldArmSpacePan', () => {
+  const canvas = { tagName: 'CANVAS' };
+
+  it('arms when focus is on the canvas', () => {
+    expect(shouldArmSpacePan(canvas, canvas, canvas)).toBe(true);
+  });
+
+  it('arms when focus is on body/root', () => {
+    expect(shouldArmSpacePan({ tagName: 'BODY' }, { tagName: 'BODY' }, canvas)).toBe(true);
+    expect(shouldArmSpacePan({ tagName: 'DIV' }, { tagName: 'HTML' }, canvas)).toBe(true);
+    expect(shouldArmSpacePan({ tagName: 'DIV' }, null, canvas)).toBe(true);
+  });
+
+  it('does not steal Space from a focused button', () => {
+    const btn = { tagName: 'BUTTON' };
+    expect(isActivatingControl(btn)).toBe(true);
+    expect(shouldArmSpacePan(btn, btn, canvas)).toBe(false);
+  });
+
+  it('skips INPUT/TEXTAREA/SELECT', () => {
+    expect(shouldArmSpacePan({ tagName: 'INPUT' }, { tagName: 'INPUT' }, canvas)).toBe(false);
+    expect(shouldArmSpacePan({ tagName: 'TEXTAREA' }, { tagName: 'TEXTAREA' }, canvas)).toBe(false);
+    expect(shouldArmSpacePan({ tagName: 'SELECT' }, { tagName: 'SELECT' }, canvas)).toBe(false);
+  });
+
+  it('skips role=button, links, contentEditable, and menuitem', () => {
+    expect(shouldArmSpacePan(
+      { tagName: 'DIV', getAttribute: (n: string) => n === 'role' ? 'button' : null },
+      { tagName: 'DIV', getAttribute: (n: string) => n === 'role' ? 'button' : null },
+      canvas,
+    )).toBe(false);
+    expect(shouldArmSpacePan({ tagName: 'A' }, { tagName: 'A' }, canvas)).toBe(false);
+    expect(shouldArmSpacePan(
+      { tagName: 'DIV', isContentEditable: true },
+      { tagName: 'DIV', isContentEditable: true },
+      canvas,
+    )).toBe(false);
+    expect(shouldArmSpacePan(
+      { tagName: 'BUTTON', getAttribute: (n: string) => n === 'role' ? 'menuitem' : null },
+      { tagName: 'BUTTON', getAttribute: (n: string) => n === 'role' ? 'menuitem' : null },
+      canvas,
+    )).toBe(false);
+  });
+
+  it('does not arm when some other chrome control is focused', () => {
+    const tab = { tagName: 'BUTTON', getAttribute: () => 'tab' };
+    expect(shouldArmSpacePan({ tagName: 'DIV' }, tab, canvas)).toBe(false);
   });
 });

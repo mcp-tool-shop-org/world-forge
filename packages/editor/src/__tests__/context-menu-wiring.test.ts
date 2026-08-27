@@ -20,6 +20,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { buildExecuteStores, executeContextMenuAction } from '../speed-panel-execute.js';
+import { _resetToastsForTest, _getToastsForTest } from '../ui/Toast.js';
 import type { HitResult } from '../hit-testing.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 
@@ -94,6 +95,19 @@ describe('F-ef5cce21: canvas context menu — real onClick wiring', () => {
     expect(result.executed).toBe(false);
     expect(result.reason).toBe('need at least 2 zones');
     expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('F-dd0278b5: toasts a fix-it sentence, not the reason token', () => {
+    useEditorStore.getState().selectZone('chapel-entrance', false);
+    _resetToastsForTest();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = onContextMenuItemClick('merge-zones', { type: 'zone', id: 'chapel-entrance' });
+    expect(result.reason).toBe('need at least 2 zones');
+    const toasts = _getToastsForTest();
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0].message).toBe('Select at least two zones, then Merge Zones again.');
+    expect(toasts[0].message).not.toBe(result.reason);
     warn.mockRestore();
   });
 });

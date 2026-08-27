@@ -32,14 +32,14 @@ export interface SaveProjectDeps {
  * element. Resolves true once the click has been dispatched (or on `load`);
  * false if the environment can't download or the click errors.
  */
-export function defaultDownloadViaAnchor(json: string, filename: string, holdMs = 1000): Promise<boolean> {
+export function defaultDownloadViaAnchor(json: string, filename: string, holdMs = 1000, mimeType = 'application/json'): Promise<boolean> {
   return new Promise((resolve) => {
     try {
       if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
         resolve(false);
         return;
       }
-      const blob = new Blob([json], { type: 'application/json' });
+      const blob = new Blob([json], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

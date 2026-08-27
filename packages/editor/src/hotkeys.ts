@@ -85,6 +85,11 @@ export interface HotkeyContext {
   setTool: (tool: EditorTool) => void;
   showSpeedPanel: boolean;
   closeSpeedPanel: () => void;
+  /**
+   * F-eb7fc5ef: Escape must drop an in-progress connection, not only the
+   * SelectionSet. Optional so older test bags still type-check.
+   */
+  setConnectionStart?: (zoneId: string | null) => void;
 }
 
 export type HotkeyResult =
@@ -195,6 +200,10 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     case 'escape':
       if (ctx.showSpeedPanel) { ctx.closeSpeedPanel(); }
       else { ctx.clearSelection(); }
+      // F-eb7fc5ef: connectionStart is store state (not a Canvas drag ref),
+      // so the advertised Esc-to-cancel must clear it even when a speed panel
+      // was closed. setTool() is otherwise the only production clear.
+      ctx.setConnectionStart?.(null);
       return { handled: true, action };
 
     case 'nudge-up':
@@ -256,4 +265,53 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
     default:
       return { handled: false };
   }
+}
+
+/**
+ * F-6c1fa8ce: Space is the standard activation key for focused buttons /
+ * links / menuitems. The canvas pan-on-Space chord is only legal when the
+ * event is not targeting an activating control.
+ */
+export function isActivatingControl(target: EventTarget | null): boolean {
+  if (!target || typeof target !== 'object') return false;
+  const el = target as {
+    tagName?: string;
+    isContentEditable?: boolean;
+    getAttribute?: (name: string) => string | null;
+    closest?: (selector: string) => { tagName?: string } | null;
+  };
+  const tag = el.tagName;
+  if (tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY') return true;
+  if (el.isContentEditable) return true;
+  const role = typeof el.getAttribute === 'function' ? el.getAttribute('role') : null;
+  if (role === 'button' || role === 'menuitem' || role === 'tab' || role === 'link') return true;
+  try {
+    if (typeof el.closest === 'function' && el.closest('button, [role="button"], a[href], [role="menuitem"], [role="tab"]')) {
+      return true;
+    }
+  } catch { /* closest may throw on non-Element test doubles */ }
+  return false;
+}
+
+/**
+ * F-6c1fa8ce: only arm Space-to-pan when focus is on the canvas (or body/root
+ * with nothing else focused). Never preventDefault Space for INPUT/TEXTAREA/
+ * SELECT (existing skip) or for buttons / [role=button] / links / contentEditable.
+ */
+export function shouldArmSpacePan(
+  target: EventTarget | null,
+  activeElement: { tagName?: string } | null,
+  canvas: object | null,
+): boolean {
+  const tag = (target as { tagName?: string } | null)?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false;
+  if (isActivatingControl(target)) return false;
+  if (isActivatingControl(activeElement as EventTarget | null)) return false;
+  if (!activeElement) return true;
+  const activeTag = activeElement.tagName;
+  if (!activeTag || activeTag === 'BODY' || activeTag === 'HTML') return true;
+  if (canvas && activeElement === canvas) return true;
+  const contains = (canvas as { contains?: (node: unknown) => boolean } | null)?.contains;
+  if (typeof contains === 'function' && contains.call(canvas, activeElement)) return true;
+  return false;
 }

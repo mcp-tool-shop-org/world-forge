@@ -26,6 +26,10 @@ import { getModeProfile } from '../mode-profiles.js';
 import { nextId } from '../ids.js';
 import { reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
 
+/** F-d94458a6: name the visible top-bar controls (there is no File menu). */
+export const AUTOSAVE_SAVE_HINT = 'Click Save in the top bar';
+export const AUTOSAVE_EXPORT_HINT = 'Click Export, then Export Project Bundle';
+
 export function createEmptyProject(mode?: AuthoringMode): WorldProject {
   const profile = getModeProfile(mode);
   return {
@@ -617,11 +621,11 @@ export function writeAutoSave(project: WorldProject): void {
       console.warn(
         `[auto-save] project exceeds ${Math.round(AUTOSAVE_MAX_BYTES / 1024 / 1024)} MB ` +
         `(${Math.round(serialized.length / 1024 / 1024 * 10) / 10} MB); skipping auto-save. ` +
-        `Use Export Project Bundle to preserve work.`,
+        `${AUTOSAVE_SAVE_HINT}.`,
       );
       _warnedOversize = true;
     }
-    _lastAutoSaveError = 'Auto-save skipped: project is too large for local storage.';
+    _lastAutoSaveError = `Auto-save skipped: project is too large for local storage. ${AUTOSAVE_SAVE_HINT}.`;
     _oversize = true;
     return;
   }
@@ -657,7 +661,7 @@ export function writeAutoSave(project: WorldProject): void {
     serializedHistory = JSON.stringify(history);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    _lastAutoSaveError = `Auto-save skipped — could not serialize autosave history (${msg}). Your canvas is safe; use File → Export Project Bundle to back up.`;
+    _lastAutoSaveError = `Auto-save skipped — could not serialize autosave history (${msg}). Your canvas is safe; ${AUTOSAVE_EXPORT_HINT}.`;
     return;
   }
 
@@ -709,7 +713,7 @@ function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = fal
     console.warn(
       `[auto-save] localStorage quota exceeded while writing ${stage}; ` +
       'auto-save suspended until space is freed. ' +
-      'Use File → Export Project Bundle to preserve your work.',
+      `${AUTOSAVE_EXPORT_HINT}.`,
     );
     _warnedQuota = true;
   } else if (!isQuota) {
@@ -719,8 +723,8 @@ function surfaceAutoSaveFailure(err: unknown, stage: string, afterRollback = fal
     ? ' Your previous auto-save is still intact.'
     : '';
   _lastAutoSaveError = isQuota
-    ? `Auto-save paused — local storage is full (${stage}). Free space or export the project to keep saving.${rollbackNote}`
-    : `Auto-save failed on ${stage}: ${msg}.${rollbackNote}`;
+    ? `Auto-save paused — local storage is full (${stage}). ${AUTOSAVE_EXPORT_HINT}.${rollbackNote}`
+    : `Auto-save failed on ${stage}: ${msg}. ${AUTOSAVE_EXPORT_HINT}.${rollbackNote}`;
 }
 
 /**

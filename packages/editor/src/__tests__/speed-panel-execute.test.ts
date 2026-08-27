@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { executeAction, executeMacro, type ExecuteStores } from '../speed-panel-execute.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { executeAction, executeMacro, failReasonToUserMessage, type ExecuteStores } from '../speed-panel-execute.js';
 import type { HitResult } from '../hit-testing.js';
 import type { WorldProject } from '@world-forge/schema';
 import { createEmptyProject } from '../store/project-store.js';
@@ -213,6 +213,53 @@ describe('executeAction — previously-unwired actions (F-bdf856bf)', () => {
     expect(typeof content).toBe('string');
     expect(content).toContain('My World');
     expect(mimeType).toBe('text/markdown');
+  });
+
+  it('F-8912e227: export-summary default does not call revokeObjectURL synchronously', () => {
+    vi.useFakeTimers();
+    const revoke = vi.fn();
+    const create = vi.fn(() => 'blob:export-summary');
+    const click = vi.fn();
+    vi.stubGlobal('Blob', class FakeBlob {
+      constructor(public parts: unknown[], public options?: unknown) {}
+    });
+    vi.stubGlobal('URL', { createObjectURL: create, revokeObjectURL: revoke });
+    vi.stubGlobal('document', {
+      createElement: () => ({
+        href: '', download: '', rel: '', style: { display: '' },
+        click, addEventListener: vi.fn(), remove: vi.fn(),
+      }),
+      body: { appendChild: vi.fn() },
+    });
+    try {
+      const project = { ...createEmptyProject(), name: 'My World' };
+      const stores = makeStores({ project });
+      const result = executeAction('export-summary', null, stores);
+      expect(result.executed).toBe(true);
+      expect(create).toHaveBeenCalled();
+      expect(click).toHaveBeenCalled();
+      expect(revoke).not.toHaveBeenCalled();
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('F-dd0278b5: failReasonToUserMessage', () => {
+  it('skips toast copy for cancelled', () => {
+    expect(failReasonToUserMessage('set-elevation', 'cancelled')).toBeNull();
+  });
+
+  it('maps merge-zones to a fix-it sentence and keeps the token distinct', () => {
+    const msg = failReasonToUserMessage('merge-zones', 'need at least 2 zones');
+    expect(msg).toBe('Select at least two zones, then Merge Zones again.');
+    expect(msg).not.toBe('need at least 2 zones');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 });
 
