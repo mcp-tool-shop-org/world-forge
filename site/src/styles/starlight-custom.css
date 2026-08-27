@@ -1,3 +1,15 @@
+/* Force dark chrome even when data-theme='light' (ThemeSelect / prefers-color-scheme).
+   Starlight reset.css sets html[data-theme='light'] { color-scheme: light } inside
+   @layer starlight.reset — this unlayered rule wins and keeps scrollbars / form
+   controls / Expressive Code on the dark scheme. */
+html,
+html[data-theme='light'],
+html[data-theme='dark'],
+:root,
+:root[data-theme='light'] {
+  color-scheme: dark;
+}
+
 /* Align Starlight with @mcptoolshop/site-theme dark palette */
 /* Accent: #34d399 (emerald) — world-forge brand */
 :root {

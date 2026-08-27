@@ -1,0 +1,10 @@
+---
+/** Always lock the handbook to dark. Starlight has no defaultTheme config key. */
+---
+
+<script is:inline>
+	document.documentElement.dataset.theme = 'dark';
+	window.StarlightThemeProvider = {
+		updatePickers() {},
+	};
+</script>
