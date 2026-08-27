@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português (BR)</a>
+  <a href="README.md">English</a> | <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português (BR)</a>
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.6.0</strong> — 2747 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.7.0</strong> — 3385 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
 <!-- version:end -->
 
 ## Architecture
@@ -60,10 +60,15 @@ Open `http://localhost:5173` to launch the editor.
 # AI RPG Engine
 npx world-forge-export project.json --out ./my-pack
 npx world-forge-export project.json --validate-only
+npx world-forge-export --import ./my-pack --out ./round-trip
 
 # Unreal Engine 5
 npx world-forge-export-unreal project.json --out ./UnrealPack --sign
 npx world-forge-export-unreal --summary ./UnrealPack
+
+# Godot 4 — writes a loadable project root (project.godot + world.tscn)
+npx world-forge-export-godot project.json --out ./GodotPack
+npx world-forge-export-godot project.json --validate-only
 ```
 
 ## Packages
@@ -78,7 +83,8 @@ Core TypeScript types and validation for world authoring.
 - **Town + structures** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
 - **World modeling** — `Stratum` + `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), `ZoneEntryGate` + party-state `SpawnCondition` operands (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
 - **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
-- **Validation** — `validateProject()` (89 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming)
+- **Validation** — `validateProject()` (89 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming). v4.0 JSON that omits later required arrays is accepted after `normalizeProjectShape()` / `stampProjectSchemaVersion()`.
+- **Closed unions on the barrel** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS`, and the rest of the `VALID_*` sets export from `@world-forge/schema`.
 - **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
 
 ### @world-forge/export-unreal
@@ -95,8 +101,9 @@ Converts a `WorldProject` into an Unreal Engine 5 content pack tuned for 2.5D ga
 
 Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 
-- **Output** — `pack.json`, per-zone resources, entity manifest, navigation links, loot tables, spawn markers, transition nodes, dialogue resources, asset bindings, and a world `.tscn` scene
-- **Playable scene** — `buildWorldScene()` emits a navigable `.tscn`: per-zone `StaticBody2D` collision + `NavigationRegion2D`, a framed `Camera2D`, and y-sort / `z_index` depth
+- **Output** — a Godot 4 project root: `project.godot`, `world.tscn` (ExtResource `.tres`), copied textures under `assets/`, `scripts/player.gd`, plus `pack.json` and `fidelity.json`
+- **CLI** — `world-forge-export-godot` with `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
+- **Playable scene** — `buildWorldScene()` emits a navigable `.tscn`: per-zone `StaticBody2D` collision + `NavigationRegion2D`, a framed `Camera2D`, a `CharacterBody2D` player pawn, and y-sort / `z_index` depth
 - **Tiles + interiors** — `TileMapLayer` + `TileSet` (baked `tile_map_data` for image tilesets), per-cell wall `StaticBody2D` collision, and prop `Node2D` placements
 - **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
 - **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
@@ -108,10 +115,10 @@ Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format.
 
 - **Export** — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, encounters, factions, hotspots, manifest, and pack metadata
-- **Import** — 8 reverse converters reconstruct a WorldProject from exported JSON
-- **Fidelity reporting** — structured tracking of what was lossless, approximated, or dropped during conversion
+- **Import** — 8 reverse converters reconstruct a WorldProject from exported JSON; CLI `--import` / `--from-pack` write `world-project.json` (or stdout)
+- **Fidelity reporting** — structured tracking of what was lossless, approximated, or dropped during conversion; `--out` writes `fidelity.json` beside the pack
 - **Format detection** — auto-detects WorldProject, ExportResult, ContentPack, and ProjectBundle formats
-- **CLI** — `world-forge-export` command with `--out`, `--validate-only`, and `--verbose` flags
+- **CLI** — `world-forge-export` with `--out`, `--import`, `--from-pack`, `--validate-only`, `--dry-run`, and `--verbose`
 
 ### @world-forge/renderer-2d
 
@@ -142,7 +149,7 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 
 #### Canvas & Editing
 
-- **Tools** — select, zone-paint, connection, entity-place, landmark, spawn
+- **Tools** — select, zone-paint, connection, entity-place, landmark, spawn, item-place, encounter-place
 - **Multi-select** — shift-click, box-select, Ctrl+A; drag-move with atomic undo
 - **Alignment** — 6-way align (left/right/top/bottom/center-h/center-v) and horizontal/vertical distribution
 - **Snapping** — drag-time snap to edges/centers of nearby objects with visual guide lines
@@ -156,7 +163,7 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 - **Viewport culling** — only renders objects within visible bounds (64px margin)
 - **Performance stats** — toggle FPS/object count/render time overlay
 - **Per-object visibility** — hide/show individual objects (persisted in localStorage)
-- **Layers** — 7 visibility toggles (grid, connections, entities, landmarks, spawns, backgrounds, ambient)
+- **Layers** — visibility toggles (grid, connections, entities, landmarks, spawns, town, tiles, props, ambient; items hit-test with the item layer)
 
 #### Navigation & Shortcuts
 

@@ -60,6 +60,27 @@ Every node is a textureless, self-contained engine primitive — the export load
 clean in **real Godot 4.7 headless** (the dogfood smoke asserts 36 facts about the
 generated scene, from zone collision to the cellar's underground `z_index` band).
 
+## CLI
+
+```bash
+npx world-forge-export-godot project.json --out ./GodotPack
+npx world-forge-export-godot project.json --validate-only
+npx world-forge-export-godot project.json --out ./GodotPack --no-world-tscn
+```
+
+`--out` writes a **loadable Godot 4 project root** (File → Open Project):
+
+| Path | What |
+|------|------|
+| `project.godot` | `config_version=5`, features `4.x`, `run/main_scene="res://world.tscn"` |
+| `world.tscn` | playable scene; ExtResource entries point at `.tres` under `res://world_data/` |
+| `world_data/` | stamped `.tres` bodies (zones, items, dialogues, …) |
+| `assets/` | copied authored textures (tilesets / sprites / props); URI paths warn and are skipped |
+| `scripts/player.gd` | `CharacterBody2D` move script for the player pawn |
+| `pack.json` / `fidelity.json` | data pack + lossless / approximated / dropped report |
+
+`--out` requires a path that does not start with `-`. Exit 1 on validation or write failure, with path + message + a fix hint.
+
 ## Programmatic Usage
 
 ```typescript

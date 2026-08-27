@@ -61,7 +61,7 @@ export type ValidationResult = {
  * package.json. `validateProject()` also stamps this value into every
  * ValidationResult so error logs carry the producing schema version.
  */
-export const SCHEMA_VERSION = '4.6.0';
+export const SCHEMA_VERSION = '4.7.0';
 
 /**
  * Stamp `SCHEMA_VERSION` onto a WorldProject when missing or blank, and

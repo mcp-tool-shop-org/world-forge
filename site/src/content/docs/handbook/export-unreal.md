@@ -13,8 +13,9 @@ The `@world-forge/export-unreal` package converts a `WorldProject` into a direct
 2. **Convert zones** — Every `Zone` becomes an `UnrealZoneDataAsset` with elevation, sky / lighting metadata, collision channel, physics overrides, and parallax layer references.
 3. **Convert entities** — `EntityPlacement[]` becomes the actor spawn manifest. Placements in missing zones are NOT silently dropped — they land in `UnrealDroppedEntity[]` with zone-id context so the loader can surface the loss.
 4. **Convert districts, transitions, landmarks, encounters** — each becomes its own flat JSON file.
-5. **Compose Meta** — `buildMeta` runs a chain of `MetaStep` functions. The last step optionally signs the result.
-6. **Write files** — zones, districts, and actor manifests write in parallel via `Promise.allSettled`. Any file that fails to write aggregates its reason; the CLI exits non-zero with a per-file breakdown.
+5. **Convert strata, tiles, props, hazards, gates** — vertical strata and links, tile layers, prop placements, typed hazard refs, and zone `entryGate` land in the pack (not overlay-only).
+6. **Compose Meta** — `buildMeta` runs a chain of `MetaStep` functions. The last step optionally signs the result.
+7. **Write files** — zones, districts, and actor manifests write in parallel via `Promise.allSettled`. Any file that fails to write aggregates its reason; the CLI exits non-zero with a per-file breakdown.
 
 ## CLI
 
@@ -108,6 +109,7 @@ The **loader plugin lives in your UE5 project, not in world-forge.** `star-freig
 4. **Scan entities/** — spawn actors per the manifest. If `Incomplete: true` or `UnrealDroppedEntity[]` is non-empty, log which actors the loader chose not to spawn (zone missing, etc.).
 5. **Scan transitions/** — wire elevators, warps, cargo lifts.
 6. **Apply meta** — source tile size, parallax layer hints, sky atmosphere asset ids.
+7. **Scan strata / tiles / props** — emit vertical layers, tile cells, and prop actors; evaluate `entryGate` and `hazardRefs` on zone entry.
 
 ## 2.5D Fields (from v4.3.0)
 

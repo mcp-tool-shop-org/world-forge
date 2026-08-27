@@ -60,6 +60,13 @@ If you want to use World Forge types or the export pipeline in your own project:
 npm install @world-forge/schema @world-forge/export-ai-rpg @world-forge/export-unreal @world-forge/export-godot
 ```
 
+```bash
+npx world-forge-export project.json --out ./pack
+npx world-forge-export --import ./pack --out ./round-trip
+npx world-forge-export-unreal project.json --out ./UnrealPack
+npx world-forge-export-godot project.json --out ./GodotPack
+```
+
 ```typescript
 import type { WorldProject } from '@world-forge/schema';
 import { validateProject } from '@world-forge/schema';

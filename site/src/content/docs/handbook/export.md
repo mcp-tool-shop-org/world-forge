@@ -75,6 +75,12 @@ npx world-forge-export project.json --out ./my-pack --no-emit-schema-version
 
 # Verbose output (detailed conversion log)
 npx world-forge-export project.json --out ./my-pack --verbose
+
+# Import a pack directory back to WorldProject JSON
+npx world-forge-export --import ./my-pack --out ./round-trip
+
+# Import content-pack.json + pack-meta.json + manifest.json (and sidecars)
+npx world-forge-export --from-pack ./my-pack --out ./round-trip
 ```
 
 ## Programmatic Usage

@@ -25,7 +25,7 @@ export const config: SiteConfig = {
     previews: [
       { label: 'Install', code: 'npm install\nnpm run build' },
       { label: 'Editor', code: 'npm run dev --workspace=packages/editor\n# → http://localhost:5173' },
-      { label: 'Export (UE5)', code: 'npx world-forge-export-unreal project.json \\\n  --out ./UnrealPack' },
+      { label: 'Export (Godot 4)', code: 'npx world-forge-export-godot project.json \\\n  --out ./GodotPack' },
     ],
   },
 
@@ -77,7 +77,7 @@ export const config: SiteConfig = {
         },
         {
           title: 'CLI Export',
-          code: '# AI RPG Engine\nnpx world-forge-export project.json --out ./pack\n\n# Unreal Engine 5 (2.5D-aware)\nnpx world-forge-export-unreal project.json --out ./UnrealPack\n\n# Validate without writing files\nnpx world-forge-export project.json --dry-run',
+          code: '# AI RPG Engine\nnpx world-forge-export project.json --out ./pack\n\n# Unreal Engine 5 (2.5D-aware)\nnpx world-forge-export-unreal project.json --out ./UnrealPack\n\n# Godot 4 (loadable project root)\nnpx world-forge-export-godot project.json --out ./GodotPack\n\n# Validate without writing files\nnpx world-forge-export project.json --dry-run',
         },
       ],
     },
