@@ -1,6 +1,6 @@
 // SearchOverlay.tsx — Ctrl+K command-jump modal
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { usePresetStore } from '../presets/preset-store.js';
@@ -21,15 +21,34 @@ export interface SearchResult {
   detail: string;
 }
 
+const TYPE_CATEGORY: Record<SearchResult['type'], string> = {
+  zone: 'Places', entity: 'People', landmark: 'Places', spawn: 'Places',
+  district: 'Places', dialogue: 'People', tree: 'Review', connection: 'Places',
+  encounter: 'People', 'region-preset': 'Kits', 'encounter-preset': 'Kits',
+  'starter-kit': 'Kits', dependency: 'Review', review: 'Review',
+};
+
 const TYPE_ICONS: Record<SearchResult['type'], string> = {
-  zone: 'Z', entity: 'E', landmark: 'L', spawn: 'S', district: 'D', dialogue: 'DL', tree: 'T', connection: 'C', encounter: 'Enc',
-  'region-preset': 'Rgn', 'encounter-preset': 'Enc', 'starter-kit': 'Kit', dependency: 'Dep', review: 'Rev',
+  zone: '\u25A6',
+  entity: '\u25C9',
+  landmark: '\u25B2',
+  spawn: '\u2605',
+  district: '\u25A3',
+  dialogue: '\u201C',
+  tree: '\u22A4',
+  connection: '\u2194',
+  encounter: '\u2694',
+  'region-preset': '\u25EB',
+  'encounter-preset': '\u25CE',
+  'starter-kit': '\u25A8',
+  dependency: '\u26A0',
+  review: '\u2630',
 };
 
 const TYPE_COLORS: Record<SearchResult['type'], string> = {
-  zone: '#58a6ff', entity: '#3fb950', landmark: '#d2a8ff', spawn: '#f0883e',
-  district: '#79c0ff', dialogue: '#e3b341', tree: '#a5d6ff', connection: '#8b949e', encounter: '#da3633',
-  'region-preset': '#8b5cf6', 'encounter-preset': '#da3633', 'starter-kit': '#f0883e', dependency: '#d29922', review: '#bc8cff',
+  zone: 'var(--wf-accent)', entity: 'var(--wf-success-text)', landmark: 'var(--wf-accent)', spawn: 'var(--wf-warning)',
+  district: 'var(--wf-accent)', dialogue: 'var(--wf-warning)', tree: 'var(--wf-accent)', connection: 'var(--wf-text-muted)', encounter: 'var(--wf-danger)',
+  'region-preset': 'var(--wf-accent)', 'encounter-preset': 'var(--wf-danger)', 'starter-kit': 'var(--wf-warning)', dependency: 'var(--wf-warning)', review: 'var(--wf-accent)',
 };
 
 export function buildSearchIndex(project: WorldProject): SearchResult[] {
@@ -167,6 +186,10 @@ type NavItem =
   | { kind: 'recent'; term: string }
   | { kind: 'result'; result: SearchResult };
 
+function navCategory(item: NavItem): string {
+  return item.kind === 'recent' ? 'Recent' : TYPE_CATEGORY[item.result.type];
+}
+
 function downloadReviewMarkdown(project: WorldProject): string {
   const snapshot = { ...buildReviewSnapshot(project), hasExported: false };
   const markdown = reviewSnapshotToMarkdown(snapshot);
@@ -230,8 +253,13 @@ export function SearchOverlay() {
 
   const navItems: NavItem[] = useMemo(() => {
     if (query.trim()) return results.map((result) => ({ kind: 'result' as const, result }));
-    return recentSearches.map((term) => ({ kind: 'recent' as const, term }));
-  }, [query, results, recentSearches]);
+    const recents: NavItem[] = recentSearches.map((term) => ({ kind: 'recent' as const, term }));
+    const catalog: NavItem[] = searchIndex
+      .filter((r) => r.type === 'review' || r.type === 'starter-kit')
+      .slice(0, 10)
+      .map((result) => ({ kind: 'result' as const, result }));
+    return [...recents, ...catalog];
+  }, [query, results, recentSearches, searchIndex]);
 
   // Reset active index when the navigable list changes
   useEffect(() => { setActiveIdx(0); }, [navItems.length, query]);
@@ -415,7 +443,9 @@ export function SearchOverlay() {
       onClick={dismiss}
       style={{
         position: 'fixed', inset: 0, background: 'var(--wf-bg-overlay)',
-        zIndex: 9999, display: 'flex', justifyContent: 'center', paddingTop: 80,
+        zIndex: 'var(--wf-z-overlay)' as unknown as number,
+        display: 'flex', justifyContent: 'center',
+        paddingTop: 'calc(var(--wf-topbar-height) * 2 + var(--wf-space-2))',
       }}
     >
       <div
@@ -427,7 +457,9 @@ export function SearchOverlay() {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         style={{
-          width: 480, maxHeight: 420, background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',
+          width: 'min(90vw, calc(var(--wf-inspector-width) + var(--wf-sidebar-width)))',
+          maxHeight: 'min(70vh, calc(100vh - var(--wf-topbar-height) * 4))',
+          background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-border-default)',
           borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
@@ -452,63 +484,68 @@ export function SearchOverlay() {
           />
         </div>
         <div ref={listRef} id={SEARCH_LISTBOX_ID} role="listbox" style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
-          {/* Recents are part of the keyboard list when the query is empty */}
-          {!query.trim() && recentSearches.length > 0 && (
-            <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-hint)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-              Recent
-            </div>
-          )}
           {results.length === 0 && query.trim() && (
             <div style={{ padding: '16px 12px', color: 'var(--wf-text-muted)', fontSize: 12, textAlign: 'center' }}>
               No results for "{query}"
             </div>
           )}
           {navItems.map((item, i) => {
+            const cat = navCategory(item);
+            const prev = i > 0 ? navCategory(navItems[i - 1]) : null;
+            const header = cat !== prev ? (
+              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--wf-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                {cat}
+              </div>
+            ) : null;
             if (item.kind === 'recent') {
               return (
-                <div
-                  key={`recent-${item.term}`}
-                  id={`wf-search-option-${i}`}
-                  role="option"
-                  aria-selected={i === activeIdx}
-                  onClick={() => activateNavItem(item)}
-                  style={{
-                    padding: '5px 12px', cursor: 'pointer', fontSize: 12,
-                    color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
-                    background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
-                  }}
-                >
-                  <span style={{ fontSize: 11, color: 'var(--wf-text-hint)' }}>{'\u23F0'}</span>
-                  {item.term}
-                </div>
+                <Fragment key={`recent-${item.term}`}>
+                  {header}
+                  <div
+                    id={`wf-search-option-${i}`}
+                    role="option"
+                    aria-selected={i === activeIdx}
+                    onClick={() => activateNavItem(item)}
+                    style={{
+                      padding: 'var(--wf-space-1) var(--wf-space-3)', cursor: 'pointer', fontSize: 12,
+                      color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 6,
+                      background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
+                    }}
+                  >
+                    <span style={{ fontSize: 14, width: 16, textAlign: 'center', color: 'var(--wf-text-muted)' }}>{'\u23F0'}</span>
+                    {item.term}
+                  </div>
+                </Fragment>
               );
             }
             const r = item.result;
             return (
-              <div
-                key={`${r.type}-${r.id}`}
-                id={`wf-search-option-${i}`}
-                role="option"
-                aria-selected={i === activeIdx}
-                onClick={() => handleSelect(r)}
-                style={{
-                  padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
-                }}
-              >
-                <span style={{
-                  fontSize: 9, fontWeight: 'bold', color: TYPE_COLORS[r.type],
-                  background: 'var(--wf-bg-app)', borderRadius: 3, padding: '1px 4px', minWidth: 18, textAlign: 'center',
-                }}>
-                  {TYPE_ICONS[r.type]}
-                </span>
-                <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
-                <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
-              </div>
+              <Fragment key={`${r.type}-${r.id}`}>
+                {header}
+                <div
+                  id={`wf-search-option-${i}`}
+                  role="option"
+                  aria-selected={i === activeIdx}
+                  onClick={() => handleSelect(r)}
+                  style={{
+                    padding: 'var(--wf-space-2) var(--wf-space-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                    background: i === activeIdx ? 'var(--wf-bg-elevated)' : 'transparent',
+                  }}
+                >
+                  <span style={{
+                    fontSize: 14, color: TYPE_COLORS[r.type],
+                    width: 16, textAlign: 'center', flexShrink: 0, lineHeight: 1,
+                  }} title={r.type}>
+                    {TYPE_ICONS[r.type]}
+                  </span>
+                  <span style={{ color: 'var(--wf-text-primary)', fontSize: 12 }}>{r.label}</span>
+                  <span style={{ color: 'var(--wf-text-muted)', fontSize: 11, marginLeft: 'auto' }}>{r.detail}</span>
+                </div>
+              </Fragment>
             );
           })}
         </div>
-        <div style={{ padding: '6px 12px', borderTop: '1px solid var(--wf-border-default)', fontSize: 10, color: 'var(--wf-text-hint)' }}>
+        <div style={{ padding: '6px 12px', borderTop: '1px solid var(--wf-border-default)', fontSize: 10, color: 'var(--wf-text-muted)' }}>
           <kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>↑↓</kbd> navigate
           {' '}<kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>Enter</kbd> select
           {' '}<kbd style={{ background: 'var(--wf-bg-control)', padding: '1px 4px', borderRadius: 2 }}>Esc</kbd> close

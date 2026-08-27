@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { useModalStore } from '../store/modal-store.js';
 import type { FidelityDomain, FidelityEntry } from '@world-forge/export-ai-rpg';
+import { EmptyState } from './shared.js';
 
 const DOMAIN_LABELS: Record<FidelityDomain, string> = {
   zones: 'Zones', districts: 'Districts', entities: 'Entities', items: 'Items',
@@ -16,9 +17,9 @@ const DOMAIN_ORDER: FidelityDomain[] = [
 ];
 
 const LEVEL_COLORS = {
-  lossless: '#3fb950',
-  approximated: '#d29922',
-  dropped: '#f85149',
+  lossless: 'var(--wf-success-text)',
+  approximated: 'var(--wf-warning)',
+  dropped: 'var(--wf-danger-text)',
 };
 
 const SEVERITY_ICONS = {
@@ -56,24 +57,16 @@ export function ImportSummaryPanel() {
     // EUB-020: log why fidelity report is null for debugging
     console.warn('[ImportSummaryPanel] No fidelity report available. This tab is only populated after importing a project via the Import modal.');
     return (
-      <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>No import summary yet.</div>
-        <div>
-          {/* ED-B-014: clickable link jumps straight to the Import dialog. */}
-          <a
-            href="#"
-            data-testid="import-summary-open-import"
-            onClick={(e) => { e.preventDefault(); openModal('import'); }}
-            style={{ color: '#58a6ff', textDecoration: 'underline', cursor: 'pointer' }}
-          >
-            Click here
-          </a>
-          {' '}to open the Import dialog and load a file.
-        </div>
-        <div style={{ marginTop: 6, color: '#484f58' }}>
-          You'll see a fidelity breakdown showing what was preserved, approximated, or dropped during conversion.
-        </div>
-      </div>
+      <EmptyState
+        title="No import summary yet"
+        description="Open the Import dialog and load a file. You'll see a fidelity breakdown of what was preserved, approximated, or dropped."
+        icon={'\u21C4'}
+        actions={[{
+          label: 'Open Import',
+          onClick: () => openModal('import'),
+          testId: 'import-summary-open-import',
+        }]}
+      />
     );
   }
 
@@ -94,15 +87,15 @@ export function ImportSummaryPanel() {
 
   return (
     <div style={{ fontSize: 12 }}>
-      <div style={{ fontWeight: 600, color: '#c9d1d9', marginBottom: 8, fontSize: 14 }}>Import Summary</div>
+      <div style={{ fontWeight: 600, color: 'var(--wf-text-primary)', marginBottom: 8, fontSize: 14 }}>Import Summary</div>
 
       {/* Format badge */}
       <div style={{ marginBottom: 12 }}>
         <span style={{
           display: 'inline-block', fontSize: 11, borderRadius: 12, padding: '2px 10px', fontWeight: 600,
-          background: format === 'world-project' ? '#0d2818' : '#2a1c08',
-          color: format === 'world-project' ? '#3fb950' : '#d29922',
-          border: `1px solid ${format === 'world-project' ? '#238636' : '#9e6a03'}`,
+          background: format === 'world-project' ? 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))' : 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))',
+          color: format === 'world-project' ? 'var(--wf-success-text)' : 'var(--wf-warning)',
+          border: `1px solid ${format === 'world-project' ? 'var(--wf-success)' : 'var(--wf-warning)'}`,
         }}>
           {formatLabel}
         </span>
@@ -116,21 +109,21 @@ export function ImportSummaryPanel() {
           and draws no bar, because a full green bar IS a claim. */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ color: '#c9d1d9' }}>
+          <span style={{ color: 'var(--wf-text-primary)' }}>
             {pct === null ? 'Overall: unmeasured (no fidelity observations)' : `Overall: ${pct}% lossless`}
           </span>
-          <span style={{ color: '#8b949e' }}>{summary.total} entries</span>
+          <span style={{ color: 'var(--wf-text-muted)' }}>{summary.total} entries</span>
         </div>
-        <div style={{ height: 6, background: '#21262d', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: 6, background: 'var(--wf-bg-control)', borderRadius: 3, overflow: 'hidden' }}>
           {pct !== null && (
             <div style={{
               height: '100%', borderRadius: 3,
               width: `${pct}%`,
-              background: pct === 100 ? '#3fb950' : pct >= 70 ? '#d29922' : '#f85149',
+              background: pct === 100 ? 'var(--wf-success-text)' : pct >= 70 ? 'var(--wf-warning)' : 'var(--wf-danger-text)',
             }} />
           )}
         </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 4, color: '#8b949e', fontSize: 11 }}>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4, color: 'var(--wf-text-muted)', fontSize: 11 }}>
           <span style={{ color: LEVEL_COLORS.lossless }}>Lossless: {summary.lossless}</span>
           <span style={{ color: LEVEL_COLORS.approximated }}>Approximated: {summary.approximated}</span>
           <span style={{ color: LEVEL_COLORS.dropped }}>Dropped: {summary.dropped}</span>
@@ -152,15 +145,15 @@ export function ImportSummaryPanel() {
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '4px 6px', cursor: 'pointer', borderRadius: 4,
-                background: '#161b22', border: '1px solid #21262d',
+                background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-bg-control)',
               }}
             >
-              <span style={{ color: '#c9d1d9' }}>
+              <span style={{ color: 'var(--wf-text-primary)' }}>
                 {isCollapsed ? '\u25B6' : '\u25BC'} {DOMAIN_LABELS[domain]} ({domainEntries.length})
               </span>
               <span style={{
                 fontSize: 11,
-                color: domainPct === 100 ? '#3fb950' : domainPct >= 50 ? '#d29922' : '#f85149',
+                color: domainPct === 100 ? 'var(--wf-success-text)' : domainPct >= 50 ? 'var(--wf-warning)' : 'var(--wf-danger-text)',
               }}>
                 {domainPct}%
               </span>
@@ -177,12 +170,12 @@ export function ImportSummaryPanel() {
                       }}>
                         <span>{SEVERITY_ICONS[entry.severity]}</span>
                         <span>
-                          {entry.entityId && <span style={{ color: '#8b949e' }}>{entry.entityId}: </span>}
+                          {entry.entityId && <span style={{ color: 'var(--wf-text-muted)' }}>{entry.entityId}: </span>}
                           {entry.message}
                         </span>
                       </div>
                       {hint && (
-                        <div data-testid="repair-hint" style={{ fontSize: 10, color: '#8b949e', fontStyle: 'italic', paddingLeft: 18, marginTop: 1 }}>
+                        <div data-testid="repair-hint" style={{ fontSize: 10, color: 'var(--wf-text-muted)', fontStyle: 'italic', paddingLeft: 18, marginTop: 1 }}>
                           {hint}
                         </div>
                       )}

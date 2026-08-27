@@ -57,7 +57,7 @@ export function PlayerTemplatePanel() {
           <div style={hintStyle}>Place a spawn point on the map first.</div>
         )}
         {isMissingSpawnPoint(pt.spawnPointId, project.spawnPoints) && (
-          <div style={{ ...hintStyle, color: '#f85149' }} data-testid="wf-player-missing-spawn">
+          <div style={{ ...hintStyle, color: 'var(--wf-danger-text)' }} data-testid="wf-player-missing-spawn">
             Spawn point is required. Empty spawnPointId fails validation and blocks Export.
           </div>
         )}
@@ -140,7 +140,7 @@ function KeyValueEditor({ data, placeholder, onChange }: {
     <div style={{ marginBottom: 4 }}>
       {entries.map(([key, val]) => (
         <div key={key} style={{ display: 'flex', gap: 6, marginBottom: 3, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#c9d1d9', minWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{key}</span>
+          <span style={{ fontSize: 11, color: 'var(--wf-text-primary)', minWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{key}</span>
           <input style={{ ...inputStyle, width: 60, marginTop: 0, textAlign: 'center' }} type="number" value={val}
             onChange={(e) => onChange({ ...data, [key]: Number(e.target.value) })} />
           <button onClick={() => handleRemove(key)} style={xBtnStyle} title={`Remove ${key}`}>&times;</button>
@@ -150,7 +150,7 @@ function KeyValueEditor({ data, placeholder, onChange }: {
         <input style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder={placeholder}
           value={newKey} onChange={(e) => setNewKey(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()} />
-        <button onClick={handleAdd} style={{ ...xBtnStyle, color: '#3fb950', fontSize: 16 }} title="Add">+</button>
+        <button onClick={handleAdd} style={{ ...xBtnStyle, color: 'var(--wf-success-text)', fontSize: 16 }} title="Add">+</button>
       </div>
     </div>
   );
@@ -179,7 +179,7 @@ function EquipmentEditor({ data, onChange }: {
       {entries.length === 0 && <div style={hintStyle}>No equipment slots. Add one below.</div>}
       {entries.map(([slot, itemId]) => (
         <div key={slot} style={{ display: 'flex', gap: 6, marginBottom: 3, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#c9d1d9', minWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slot}</span>
+          <span style={{ fontSize: 11, color: 'var(--wf-text-primary)', minWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{slot}</span>
           <input style={{ ...inputStyle, flex: 1, marginTop: 0 }} value={itemId} placeholder="item ID"
             onChange={(e) => onChange({ ...data, [slot]: e.target.value })} />
           <button onClick={() => handleRemove(slot)} style={xBtnStyle} title={`Remove ${slot}`}>&times;</button>
@@ -189,7 +189,7 @@ function EquipmentEditor({ data, onChange }: {
         <input style={{ ...inputStyle, flex: 1, marginTop: 0 }} placeholder="e.g. weapon, armor, charm"
           value={newSlot} onChange={(e) => setNewSlot(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()} />
-        <button onClick={handleAdd} style={{ ...xBtnStyle, color: '#3fb950', fontSize: 16 }} title="Add slot">+</button>
+        <button onClick={handleAdd} style={{ ...xBtnStyle, color: 'var(--wf-success-text)', fontSize: 16 }} title="Add slot">+</button>
       </div>
     </div>
   );

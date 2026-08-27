@@ -104,10 +104,10 @@ export function SaveKitModal({ onClose }: Props) {
                   onClick={() => toggleMode(m)}
                   aria-pressed={active}
                   style={{
-                    background: active ? '#0d1d30' : '#0d1117',
-                    border: active ? '2px solid #58a6ff' : '1px solid #30363d',
+                    background: active ? 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))' : 'var(--wf-bg-app)',
+                    border: active ? '2px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
                     borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-                    color: active ? '#58a6ff' : '#8b949e', fontSize: 10,
+                    color: active ? 'var(--wf-accent)' : 'var(--wf-text-muted)', fontSize: 10,
                   }}
                 >
                   {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
@@ -128,7 +128,7 @@ export function SaveKitModal({ onClose }: Props) {
         />
 
         {/* Content summary */}
-        <div style={{ fontSize: 11, color: '#8b949e', marginTop: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 8, marginBottom: 16 }}>
           This kit will include: {project.zones.length} zones, {project.entityPlacements.length} entities,
           {' '}{project.dialogues.length} dialogues, {project.itemPlacements.length} items
         </div>

@@ -83,9 +83,9 @@ export function DialoguePanel() {
         return (
           <div key={d.id}
             onClick={() => { setSelectedId(d.id); setEditingNodeId(null); }}
-            style={{ ...itemStyle, borderColor: selectedId === d.id ? '#58a6ff' : '#30363d', cursor: 'pointer' }}>
-            <div style={{ fontSize: 12, color: '#c9d1d9' }}>{d.id}</div>
-            <div style={{ fontSize: 10, color: '#8b949e' }}>
+            style={{ ...itemStyle, borderColor: selectedId === d.id ? 'var(--wf-accent)' : 'var(--wf-border-default)', cursor: 'pointer' }}>
+            <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{d.id}</div>
+            <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>
               {nodeCount} node(s) | entry: {d.entryNodeId}
               {d.speakers.length > 0 && ` | ${d.speakers.join(', ')}`}
             </div>
@@ -95,10 +95,10 @@ export function DialoguePanel() {
       <button onClick={handleAdd} style={addBtnStyle}>+ Add Dialogue</button>
 
       {selected && (
-        <div style={{ marginTop: 12, borderTop: '1px solid #21262d', paddingTop: 8 }}>
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--wf-bg-control)', paddingTop: 8 }}>
           <div style={sectionTitle}>Settings</div>
           <label style={labelStyle}>Dialogue ID
-            <input style={{ ...inputStyle, color: '#484f58' }} value={selected.id} disabled />
+            <input style={{ ...inputStyle, color: 'var(--wf-text-muted)' }} value={selected.id} disabled />
           </label>
           <label style={labelStyle}>Speakers
             <input style={inputStyle} value={selected.speakers.join(', ')} placeholder="e.g. keeper, merchant"
@@ -117,19 +117,19 @@ export function DialoguePanel() {
           </label>
 
           {brokenRefs.size > 0 && (
-            <div style={{ fontSize: 11, color: '#f85149', padding: '4px 8px', background: '#1c1410', borderRadius: 3, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: 'var(--wf-danger-text)', padding: '4px 8px', background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', borderRadius: 3, marginBottom: 8 }}>
               Broken references: {[...brokenRefs].join(', ')}
             </div>
           )}
 
           <button onClick={() => { removeDialogue(selected.id); setSelectedId(null); }}
-            style={{ ...smallBtnStyle, color: '#f85149', marginBottom: 8 }}>Delete Dialogue</button>
+            style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)', marginBottom: 8 }}>Delete Dialogue</button>
 
           <div style={sectionTitle}>Nodes ({Object.keys(selected.nodes).length})</div>
           {Object.values(selected.nodes).map((node) => {
             const isEntry = node.id === selected.entryNodeId;
             return (
-              <div key={node.id} style={{ ...itemStyle, borderColor: isEntry ? '#3fb950' : '#30363d' }}>
+              <div key={node.id} style={{ ...itemStyle, borderColor: isEntry ? 'var(--wf-success-text)' : 'var(--wf-border-default)' }}>
                 {editingNodeId === node.id ? (
                   <DialogueNodeEditor node={node} dialogueId={selected.id}
                     allNodeIds={Object.keys(selected.nodes)} brokenRefs={brokenRefs}
@@ -138,19 +138,19 @@ export function DialoguePanel() {
                     onDone={() => setEditingNodeId(null)} />
                 ) : (
                   <div onClick={() => setEditingNodeId(node.id)} style={{ cursor: 'pointer' }}>
-                    <div style={{ fontSize: 12, color: '#c9d1d9' }}>
-                      {isEntry && <span style={{ color: '#3fb950', fontSize: 9, marginRight: 4, fontWeight: 700 }}>ENTRY</span>}
+                    <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>
+                      {isEntry && <span style={{ color: 'var(--wf-success-text)', fontSize: 9, marginRight: 4, fontWeight: 700 }}>ENTRY</span>}
                       {node.id}
                     </div>
-                    <div style={{ fontSize: 11, color: '#8b949e' }}>
-                      {node.speaker && <span style={{ color: '#58a6ff' }}>{node.speaker}:</span>}{' '}
+                    <div style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>
+                      {node.speaker && <span style={{ color: 'var(--wf-accent)' }}>{node.speaker}:</span>}{' '}
                       {node.text.slice(0, 50)}{node.text.length > 50 ? '...' : ''}
                     </div>
                     {(node.choices?.length ?? 0) > 0 && (
-                      <div style={{ fontSize: 10, color: '#58a6ff' }}>{node.choices!.length} choice(s)</div>
+                      <div style={{ fontSize: 10, color: 'var(--wf-accent)' }}>{node.choices!.length} choice(s)</div>
                     )}
                     {node.nextNodeId && (
-                      <div style={{ fontSize: 10, color: brokenRefs.has(node.nextNodeId) ? '#f85149' : '#484f58' }}>
+                      <div style={{ fontSize: 10, color: brokenRefs.has(node.nextNodeId) ? 'var(--wf-danger-text)' : 'var(--wf-text-muted)' }}>
                         auto: {node.nextNodeId} {brokenRefs.has(node.nextNodeId) && '(broken!)'}
                       </div>
                     )}
@@ -206,7 +206,7 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
         // when a choice is added, see "+ choice" below) that avoids the same
         // reorder-corruption risk fixed in ZoneProperties.tsx's parallax
         // layer list, for a much more commonly multi-item list.
-        <div key={choice.id} style={{ padding: 6, background: '#0d1117', borderRadius: 3, marginBottom: 4, border: '1px solid #21262d' }}>
+        <div key={choice.id} style={{ padding: 6, background: 'var(--wf-bg-app)', borderRadius: 3, marginBottom: 4, border: '1px solid var(--wf-bg-control)' }}>
           <input style={{ ...inputStyle, marginTop: 0 }} value={choice.text} placeholder="Choice text"
             onChange={(e) => {
               const choices = (node.choices ?? []).map((c, idx) => idx === i ? { ...c, text: e.target.value } : c);
@@ -223,7 +223,7 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
             ))}
           </select>
           {choice.nextNodeId && brokenRefs.has(choice.nextNodeId) && (
-            <div style={{ fontSize: 10, color: '#f85149', marginTop: 2 }}>Broken reference!</div>
+            <div style={{ fontSize: 10, color: 'var(--wf-danger-text)', marginTop: 2 }}>Broken reference!</div>
           )}
           <button onClick={() => update({ choices: (node.choices ?? []).filter((_, idx) => idx !== i) })}
             style={{ ...xBtnStyle, fontSize: 10, marginTop: 2 }}>remove</button>
@@ -236,7 +236,7 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
 
       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
         <button onClick={onDone} style={smallBtnStyle}>Done</button>
-        <button onClick={() => onRemove(node.id)} style={{ ...smallBtnStyle, color: '#f85149' }}>Delete Node</button>
+        <button onClick={() => onRemove(node.id)} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete Node</button>
       </div>
     </>
   );

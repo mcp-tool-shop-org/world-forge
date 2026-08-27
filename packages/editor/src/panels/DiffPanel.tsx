@@ -6,6 +6,8 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { diffProjects } from '../diff/diff-model.js';
 import type { FidelityDomain } from '@world-forge/export-ai-rpg';
+import { EmptyState, STATUS_TOKEN } from './shared.js';
+import { useModalStore } from '../store/modal-store.js';
 
 // EUB-019: DOMAIN_LABELS must stay exhaustive with the FidelityDomain union.
 // When adding a new FidelityDomain variant in export-ai-rpg, add a corresponding label here.
@@ -15,12 +17,7 @@ const DOMAIN_LABELS: Record<FidelityDomain, string> = {
   progression: 'Progression Trees', world: 'World', assets: 'Assets', packs: 'Packs',
 };
 
-const STATUS_COLORS = {
-  unchanged: '#8b949e',
-  modified: '#58a6ff',
-  added: '#3fb950',
-  removed: '#f85149',
-};
+const STATUS_COLORS = STATUS_TOKEN;
 
 export function DiffPanel() {
   const { project } = useProjectStore();
@@ -34,9 +31,12 @@ export function DiffPanel() {
 
   if (!snapshot || !diff) {
     return (
-      <div style={{ fontSize: 12, color: '#8b949e', padding: '8px 0' }}>
-        Import a project to enable change tracking.
-      </div>
+      <EmptyState
+        title="No change tracking"
+        description="Import a project to enable change tracking."
+        icon={'\u2194'}
+        actions={[{ label: 'Open Import', onClick: () => useModalStore.getState().openModal('import') }]}
+      />
     );
   }
 
@@ -46,12 +46,12 @@ export function DiffPanel() {
 
   return (
     <div style={{ fontSize: 12 }}>
-      <div style={{ fontWeight: 600, color: '#c9d1d9', marginBottom: 8, fontSize: 14 }}>Changes Since Import</div>
+      <div style={{ fontWeight: 600, color: 'var(--wf-text-primary)', marginBottom: 8, fontSize: 14 }}>Changes Since Import</div>
 
       {totalChanges === 0 ? (
-        <div style={{ color: '#3fb950', marginBottom: 12 }}>No changes since import.</div>
+        <div style={{ color: 'var(--wf-success-text)', marginBottom: 12 }}>No changes since import.</div>
       ) : (
-        <div style={{ marginBottom: 12, color: '#8b949e' }}>
+        <div style={{ marginBottom: 12, color: 'var(--wf-text-muted)' }}>
           <span style={{ color: STATUS_COLORS.modified }}>{diff.totalModified} modified</span>
           {', '}
           <span style={{ color: STATUS_COLORS.added }}>{diff.totalAdded} added</span>
@@ -74,13 +74,13 @@ export function DiffPanel() {
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '4px 6px', cursor: 'pointer', borderRadius: 4,
-                background: '#161b22', border: '1px solid #21262d',
+                background: 'var(--wf-bg-panel)', border: '1px solid var(--wf-bg-control)',
               }}
             >
-              <span style={{ color: '#c9d1d9' }}>
+              <span style={{ color: 'var(--wf-text-primary)' }}>
                 {isCollapsed ? '\u25B6' : '\u25BC'} {label}
               </span>
-              <span style={{ fontSize: 11, color: changeCount === 0 ? '#3fb950' : '#58a6ff' }}>
+              <span style={{ fontSize: 11, color: changeCount === 0 ? 'var(--wf-success-text)' : 'var(--wf-accent)' }}>
                 {changeCount === 0 ? 'no changes' : `${changeCount} change${changeCount !== 1 ? 's' : ''}`}
               </span>
             </div>
@@ -95,12 +95,12 @@ export function DiffPanel() {
                       <div style={{ paddingLeft: 8, fontSize: 11 }}>
                         {obj.fieldDiffs.map((fd, i) => (
                           <div key={i} style={{ marginBottom: 2 }}>
-                            <span style={{ color: '#8b949e' }}>{fd.field}: </span>
-                            <span style={{ color: '#f85149', textDecoration: 'line-through', opacity: 0.7 }}>
+                            <span style={{ color: 'var(--wf-text-muted)' }}>{fd.field}: </span>
+                            <span style={{ color: 'var(--wf-danger-text)', textDecoration: 'line-through', opacity: 0.7 }}>
                               {formatValue(fd.before)}
                             </span>
                             {' \u2192 '}
-                            <span style={{ color: '#3fb950' }}>{formatValue(fd.after)}</span>
+                            <span style={{ color: 'var(--wf-success-text)' }}>{formatValue(fd.after)}</span>
                           </div>
                         ))}
                       </div>

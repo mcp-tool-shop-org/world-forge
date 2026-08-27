@@ -7,6 +7,7 @@ import { buildReviewSnapshot, type ReviewSnapshot, type HealthStatus } from '@wo
 import { reviewSnapshotToMarkdown, reviewSnapshotToJSON, summaryFilename } from '../review/export-summary.js';
 import { buttonBase } from '../ui/styles.js';
 import { useKitStore } from '../kits/index.js';
+import { HEALTH_TOKEN } from './shared.js';
 
 // ── Enriched snapshot (adds editor-only context) ────────────
 
@@ -50,18 +51,13 @@ export function enrichReviewSnapshot(
 
 // ── Health badge styling ────────────────────────────────────
 
-const HEALTH_COLORS: Record<HealthStatus, string> = {
-  ready: '#3fb950',
-  healthy: '#3fb950',
-  degraded: '#d29922',
-  blocked: '#f85149',
-};
+const HEALTH_COLORS: Record<HealthStatus, string> = HEALTH_TOKEN;
 
 const HEALTH_BG: Record<HealthStatus, string> = {
-  ready: 'rgba(63,185,80,0.12)',
-  healthy: 'rgba(63,185,80,0.12)',
-  degraded: 'rgba(210,153,34,0.12)',
-  blocked: 'rgba(248,81,73,0.12)',
+  ready: 'color-mix(in srgb, var(--wf-success-text) 12%, transparent)',
+  healthy: 'color-mix(in srgb, var(--wf-success-text) 12%, transparent)',
+  degraded: 'color-mix(in srgb, var(--wf-warning) 12%, transparent)',
+  blocked: 'color-mix(in srgb, var(--wf-danger-text) 12%, transparent)',
 };
 
 // ── Component ───────────────────────────────────────────────
@@ -145,30 +141,30 @@ export function ReviewPanel() {
             href={fallback.href}
             download={fallback.filename}
             data-testid="wf-review-fallback-link"
-            style={{ fontSize: 10, color: '#58a6ff' }}
+            style={{ fontSize: 10, color: 'var(--wf-accent)' }}
           >
             {exportMsg}
           </a>
         )}
-        {exportMsg && !fallback && <span style={{ fontSize: 10, color: '#3fb950' }}>{exportMsg}</span>}
+        {exportMsg && !fallback && <span style={{ fontSize: 10, color: 'var(--wf-success-text)' }}>{exportMsg}</span>}
       </div>
 
       {/* Health banner */}
       <div style={{
         padding: '8px 10px', marginBottom: 10, borderRadius: 6,
         background: HEALTH_BG[enriched.health],
-        border: `1px solid ${HEALTH_COLORS[enriched.health]}33`,
+        border: `1px solid color-mix(in srgb, ${HEALTH_COLORS[enriched.health]} 20%, transparent)`,
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{
           fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
           color: HEALTH_COLORS[enriched.health],
-          background: `${HEALTH_COLORS[enriched.health]}22`,
+          background: `color-mix(in srgb, ${HEALTH_COLORS[enriched.health]} 13%, transparent)`,
           borderRadius: 4, padding: '2px 6px',
         }}>
           {enriched.health}
         </span>
-        <span style={{ fontSize: 12, color: '#c9d1d9' }}>{enriched.healthLabel}</span>
+        <span style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{enriched.healthLabel}</span>
       </div>
 
       {/* FT-035: Project Metadata UI */}
@@ -202,8 +198,8 @@ export function ReviewPanel() {
           const district = project.districts.find((d) => d.id === r.id);
           const firstZoneId = district?.zoneIds[0];
           return (
-          <div key={r.id} style={{ marginBottom: 8, padding: '6px 8px', background: '#161b22', borderRadius: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 4, cursor: firstZoneId ? 'pointer' : 'default' }}
+          <div key={r.id} style={{ marginBottom: 8, padding: '6px 8px', background: 'var(--wf-bg-panel)', borderRadius: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-text-primary)', marginBottom: 4, cursor: firstZoneId ? 'pointer' : 'default' }}
               onClick={() => { if (firstZoneId) { setSelectedZone(firstZoneId); setRightTab('map'); } }}
               title={firstZoneId ? 'Click to navigate to first zone' : undefined}
             >
@@ -214,7 +210,7 @@ export function ReviewPanel() {
             <MetricsBar metrics={r.metrics} />
             {r.entityCount > 0 && (
               <div style={{ marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: '#8b949e' }}>Entities: {r.entityCount}</span>
+                <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Entities: {r.entityCount}</span>
                 <RolePills roles={r.entityRoles} />
               </div>
             )}
@@ -224,11 +220,11 @@ export function ReviewPanel() {
           );
         })}
         {unassignedZones.length > 0 && (
-          <div style={{ marginBottom: 8, padding: '6px 8px', background: '#161b22', borderRadius: 4, borderLeft: '2px solid #d29922' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#d29922', marginBottom: 4 }}>
+          <div style={{ marginBottom: 8, padding: '6px 8px', background: 'var(--wf-bg-panel)', borderRadius: 4, borderLeft: '2px solid var(--wf-warning)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wf-warning)', marginBottom: 4 }}>
               Unassigned ({unassignedZones.length})
             </div>
-            <div style={{ fontSize: 11, color: '#8b949e' }}>
+            <div style={{ fontSize: 11, color: 'var(--wf-text-muted)' }}>
               {unassignedZones.map((z) => z.name).join(', ')}
             </div>
           </div>
@@ -272,7 +268,7 @@ export function ReviewPanel() {
       {/* Dependencies */}
       <Section title="Dependencies" isOpen={isOpen('deps')} toggle={() => toggle('deps')}>
         {enriched.dependencies.totalIssues === 0 ? (
-          <div style={{ fontSize: 11, color: '#3fb950' }}>All references resolved</div>
+          <div style={{ fontSize: 11, color: 'var(--wf-success-text)' }}>All references resolved</div>
         ) : (
           <>
             <Row label="Broken" value={`${enriched.dependencies.broken}`} highlight={enriched.dependencies.broken > 0} />
@@ -286,7 +282,7 @@ export function ReviewPanel() {
       {/* Validation */}
       <Section title="Validation" isOpen={isOpen('validation')} toggle={() => toggle('validation')}>
         {enriched.validation.valid ? (
-          <div style={{ fontSize: 11, color: '#3fb950' }}>No validation errors</div>
+          <div style={{ fontSize: 11, color: 'var(--wf-success-text)' }}>No validation errors</div>
         ) : (
           <>
             <Row label="Errors" value={`${enriched.validation.errorCount}`} highlight />
@@ -296,7 +292,7 @@ export function ReviewPanel() {
             {enriched.validation.firstErrors.length > 0 && (
               <div style={{ marginTop: 4 }}>
                 {enriched.validation.firstErrors.map((e, i) => (
-                  <div key={i} style={{ fontSize: 10, color: '#f0883e', padding: '2px 0' }}>{e.message}</div>
+                  <div key={i} style={{ fontSize: 10, color: 'var(--wf-warning)', padding: '2px 0' }}>{e.message}</div>
                 ))}
               </div>
             )}
@@ -364,7 +360,7 @@ function ProjectMetadataFields() {
   return (
     <div style={{ marginTop: 6 }}>
       <div style={{ marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: '#8b949e' }}>Author</span>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Author</span>
         <input
           value={project.author ?? ''}
           onChange={(e) => setField('author', e.target.value)}
@@ -373,7 +369,7 @@ function ProjectMetadataFields() {
         />
       </div>
       <div style={{ marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: '#8b949e' }}>License</span>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>License</span>
         <input
           value={project.license ?? ''}
           onChange={(e) => setField('license', e.target.value)}
@@ -382,7 +378,7 @@ function ProjectMetadataFields() {
         />
       </div>
       <div style={{ marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: '#8b949e' }}>Category</span>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Category</span>
         <input
           value={project.category ?? ''}
           onChange={(e) => setField('category', e.target.value)}
@@ -391,7 +387,7 @@ function ProjectMetadataFields() {
         />
       </div>
       <div style={{ marginBottom: 4 }}>
-        <span style={{ fontSize: 10, color: '#8b949e' }}>Tags</span>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Tags</span>
         <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
           <input
             value={tagInput}
@@ -407,7 +403,7 @@ function ProjectMetadataFields() {
             {(project.projectTags ?? []).map((tag) => (
               <span key={tag} style={{ fontSize: 10, background: 'var(--wf-bg-control)', border: '1px solid var(--wf-border-default)', borderRadius: 8, padding: '1px 6px', color: 'var(--wf-text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
                 {tag}
-                <span onClick={() => removeTag(tag)} style={{ cursor: 'pointer', color: 'var(--wf-danger, #f85149)', fontWeight: 'bold' }}>{'\u00D7'}</span>
+                <span onClick={() => removeTag(tag)} style={{ cursor: 'pointer', color: 'var(--wf-danger)', fontWeight: 'bold' }}>{'\u00D7'}</span>
               </span>
             ))}
           </div>
@@ -424,12 +420,12 @@ export function StatBar({ label, count, total, color }: { label: string; count: 
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, padding: '2px 0' }}>
-      <span style={{ color: '#8b949e', minWidth: 80 }}>{label}</span>
-      <div style={{ flex: 1, height: 8, background: '#21262d', borderRadius: 4, overflow: 'hidden' }}>
+      <span style={{ color: 'var(--wf-text-muted)', minWidth: 80 }}>{label}</span>
+      <div style={{ flex: 1, height: 8, background: 'var(--wf-bg-control)', borderRadius: 4, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, minWidth: count > 0 ? 2 : 0 }} />
       </div>
-      <span style={{ color: '#c9d1d9', minWidth: 32, textAlign: 'right' }}>{count}</span>
-      <span style={{ color: '#6e7681', minWidth: 32, fontSize: 10 }}>{pct}%</span>
+      <span style={{ color: 'var(--wf-text-primary)', minWidth: 32, textAlign: 'right' }}>{count}</span>
+      <span style={{ color: 'var(--wf-text-muted)', minWidth: 32, fontSize: 10 }}>{pct}%</span>
     </div>
   );
 }
@@ -471,7 +467,7 @@ export function computeStatistics(project: import('@world-forge/schema').WorldPr
   return { roleMap, kindMap, encTypeMap, districtZones };
 }
 
-const STAT_COLORS = ['#58a6ff', '#f85149', '#3fb950', '#d29922', '#bc8cff', '#79c0ff', '#ff7b72', '#39d5ff'];
+const STAT_COLORS = ['var(--wf-accent)', 'var(--wf-danger-text)', 'var(--wf-success-text)', 'var(--wf-warning)', 'var(--wf-accent)', 'var(--wf-accent)', 'var(--wf-danger-text)', 'var(--wf-accent)'];
 
 function StatisticsSection({ project, snapshot }: { project: import('@world-forge/schema').WorldProject; snapshot: EnrichedReviewSnapshot }) {
   const stats = useMemo(() => computeStatistics(project), [project]);
@@ -485,7 +481,7 @@ function StatisticsSection({ project, snapshot }: { project: import('@world-forg
       {/* Entity role distribution */}
       {totalEntities > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Entity Roles ({totalEntities})</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', fontWeight: 600, marginBottom: 2 }}>Entity Roles ({totalEntities})</div>
           {Object.entries(stats.roleMap)
             .sort(([, a], [, b]) => b - a)
             .map(([role, count], i) => (
@@ -497,7 +493,7 @@ function StatisticsSection({ project, snapshot }: { project: import('@world-forg
       {/* Connection kind breakdown */}
       {totalConnections > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Connection Kinds ({totalConnections})</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', fontWeight: 600, marginBottom: 2 }}>Connection Kinds ({totalConnections})</div>
           {Object.entries(stats.kindMap)
             .sort(([, a], [, b]) => b - a)
             .map(([kind, count], i) => (
@@ -509,7 +505,7 @@ function StatisticsSection({ project, snapshot }: { project: import('@world-forg
       {/* Encounter type summary */}
       {totalEncounters > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Encounter Types ({totalEncounters})</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', fontWeight: 600, marginBottom: 2 }}>Encounter Types ({totalEncounters})</div>
           {Object.entries(stats.encTypeMap)
             .sort(([, a], [, b]) => b - a)
             .map(([type, count], i) => (
@@ -521,7 +517,7 @@ function StatisticsSection({ project, snapshot }: { project: import('@world-forg
       {/* Zone count per district */}
       {stats.districtZones.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, color: '#6e7681', fontWeight: 600, marginBottom: 2 }}>Zones per District ({totalDistrictZones})</div>
+          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', fontWeight: 600, marginBottom: 2 }}>Zones per District ({totalDistrictZones})</div>
           {stats.districtZones.map((d, i) => (
             <StatBar key={d.name} label={d.name} count={d.count} total={totalDistrictZones} color={STAT_COLORS[(i + 1) % STAT_COLORS.length]} />
           ))}
@@ -545,7 +541,7 @@ function Section({ title, isOpen, toggle, children }: {
       <div
         onClick={toggle}
         style={{
-          fontSize: 12, fontWeight: 600, color: '#58a6ff',
+          fontSize: 12, fontWeight: 600, color: 'var(--wf-accent)',
           cursor: 'pointer', padding: '4px 0', userSelect: 'none',
         }}
       >
@@ -559,8 +555,8 @@ function Section({ title, isOpen, toggle, children }: {
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
-      <span style={{ color: '#8b949e' }}>{label}</span>
-      <span style={{ color: highlight ? '#d29922' : '#c9d1d9' }}>{value}</span>
+      <span style={{ color: 'var(--wf-text-muted)' }}>{label}</span>
+      <span style={{ color: highlight ? 'var(--wf-warning)' : 'var(--wf-text-primary)' }}>{value}</span>
     </div>
   );
 }
@@ -571,8 +567,8 @@ function CountGrid({ counts }: { counts: ReviewSnapshot['counts'] }) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px' }}>
       {entries.map(([key, count]) => (
         <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '1px 0' }}>
-          <span style={{ color: '#8b949e' }}>{key}</span>
-          <span style={{ color: '#c9d1d9' }}>{count}</span>
+          <span style={{ color: 'var(--wf-text-muted)' }}>{key}</span>
+          <span style={{ color: 'var(--wf-text-primary)' }}>{count}</span>
         </div>
       ))}
     </div>
@@ -581,7 +577,7 @@ function CountGrid({ counts }: { counts: ReviewSnapshot['counts'] }) {
 
 function SystemCheck({ label, ok }: { label: string; ok: boolean }) {
   return (
-    <div style={{ fontSize: 11, padding: '2px 0', color: ok ? '#3fb950' : '#8b949e' }}>
+    <div style={{ fontSize: 11, padding: '2px 0', color: ok ? 'var(--wf-success-text)' : 'var(--wf-text-muted)' }}>
       {ok ? '\u2714' : '\u2014'} {label}
     </div>
   );
@@ -600,9 +596,9 @@ function MetricsBar({ metrics }: { metrics: { commerce: number; morale: number; 
         <div key={m.label} style={{ flex: 1, textAlign: 'center' }}>
           <div style={{
             height: 4, borderRadius: 2,
-            background: `linear-gradient(to right, #58a6ff ${m.value}%, #21262d ${m.value}%)`,
+            background: `linear-gradient(to right, var(--wf-accent) ${m.value}%, var(--wf-bg-control) ${m.value}%)`,
           }} />
-          <div style={{ fontSize: 9, color: '#6e7681', marginTop: 1 }}>{m.label} {m.value}</div>
+          <div style={{ fontSize: 9, color: 'var(--wf-text-muted)', marginTop: 1 }}>{m.label} {m.value}</div>
         </div>
       ))}
     </div>
@@ -610,12 +606,12 @@ function MetricsBar({ metrics }: { metrics: { commerce: number; morale: number; 
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  npc: '#58a6ff',
-  enemy: '#f85149',
-  merchant: '#3fb950',
-  boss: '#bc8cff',
-  companion: '#79c0ff',
-  'quest-giver': '#d29922',
+  npc: 'var(--wf-accent)',
+  enemy: 'var(--wf-danger-text)',
+  merchant: 'var(--wf-success-text)',
+  boss: 'var(--wf-accent)',
+  companion: 'var(--wf-accent)',
+  'quest-giver': 'var(--wf-warning)',
 };
 
 function RolePills({ roles }: { roles: Record<string, number> }) {
@@ -624,8 +620,8 @@ function RolePills({ roles }: { roles: Record<string, number> }) {
       {Object.entries(roles).map(([role, count]) => (
         <span key={role} style={{
           fontSize: 9, borderRadius: 8, padding: '1px 6px',
-          background: `${ROLE_COLORS[role] ?? '#8b949e'}22`,
-          color: ROLE_COLORS[role] ?? '#8b949e',
+          background: `${ROLE_COLORS[role] ?? 'var(--wf-text-muted)'}22`,
+          color: ROLE_COLORS[role] ?? 'var(--wf-text-muted)',
         }}>
           {role} {count}
         </span>
@@ -635,7 +631,7 @@ function RolePills({ roles }: { roles: Record<string, number> }) {
 }
 
 function EmptyNote({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 11, color: '#6e7681', fontStyle: 'italic' }}>{children}</div>;
+  return <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', fontStyle: 'italic' }}>{children}</div>;
 }
 
 function LinkButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
@@ -643,7 +639,7 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
     <div
       onClick={onClick}
       style={{
-        fontSize: 10, color: '#58a6ff', cursor: 'pointer', marginTop: 4,
+        fontSize: 10, color: 'var(--wf-accent)', cursor: 'pointer', marginTop: 4,
         textDecoration: 'underline',
       }}
     >
@@ -652,7 +648,7 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
   );
 }
 
-const headerStyle: React.CSSProperties = { fontSize: 11, color: '#8b949e', marginBottom: 8 };
+const headerStyle: React.CSSProperties = { fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 8 };
 
 const exportBtnStyle: React.CSSProperties = {
   ...buttonBase, padding: '2px 8px', fontSize: 10,

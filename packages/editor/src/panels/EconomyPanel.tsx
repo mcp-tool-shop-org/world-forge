@@ -1,16 +1,16 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, EmptyState } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 
-const card: CSSProperties = { border: '1px solid #30363d', borderRadius: 4, padding: 6, marginBottom: 6, background: '#161b22' };
+const card: CSSProperties = { border: '1px solid var(--wf-border-default)', borderRadius: 4, padding: 6, marginBottom: 6, background: 'var(--wf-bg-panel)' };
 const rowHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 };
-const lbl: CSSProperties = { display: 'block', fontSize: 11, color: '#8b949e', marginBottom: 4 };
-const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 3, marginTop: 2 };
+const lbl: CSSProperties = { display: 'block', fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 };
+const inp: CSSProperties = { width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 5px', background: 'var(--wf-bg-app)', color: 'var(--wf-text-primary)', border: '1px solid var(--wf-border-default)', borderRadius: 3, marginTop: 2 };
 const addBtn: CSSProperties = { ...buttonBase, padding: '3px 8px', fontSize: 11, borderRadius: 3 };
 const delBtn: CSSProperties = { ...buttonBase, padding: '0 6px', fontSize: 12 };
-const section: CSSProperties = { fontSize: 11, color: '#8b949e', margin: '10px 0 4px' };
+const section: CSSProperties = { fontSize: 11, color: 'var(--wf-text-muted)', margin: '10px 0 4px' };
 const csv = (s: string): string[] => s.split(',').map((x) => x.trim()).filter(Boolean);
 
 /**
@@ -36,10 +36,17 @@ export function EconomyPanel() {
       <PanelHeader title="Economy" />
 
       <div style={{ ...section, marginTop: 0 }}>Markets ({markets.length})</div>
+      {markets.length === 0 && (
+        <EmptyState
+          title="No markets"
+          description="Add a market node to this zone to author supply categories and prices."
+          icon={'\u25A7'}
+        />
+      )}
       {markets.map((m) => (
         <div key={m.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{m.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{m.id}</span>
             <button title="Remove market" style={delBtn} onClick={() => removeMarketNode(m.id)}>×</button>
           </div>
           <label style={lbl}>Supply categories (comma-separated)
@@ -62,7 +69,7 @@ export function EconomyPanel() {
       {stations.map((c) => (
         <div key={c.id} style={card}>
           <div style={rowHead}>
-            <span style={{ fontSize: 10, color: '#6e7681' }}>{c.id}</span>
+            <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{c.id}</span>
             <button title="Remove station" style={delBtn} onClick={() => removeCraftingStation(c.id)}>×</button>
           </div>
           <label style={lbl}>Station type

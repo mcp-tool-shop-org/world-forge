@@ -4,6 +4,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { fallbackTileColor } from '../tile-render.js';
 import { buttonBase } from '../ui/styles.js';
 import type { Tileset, TileDefinition } from '@world-forge/schema';
+import { EmptyState } from './shared.js';
 
 /** Swatch background for a tile — the sliced sheet image when available, else its fallback color. */
 function tileSwatchStyle(tileset: Tileset, def: TileDefinition, size: number): CSSProperties {
@@ -66,21 +67,27 @@ export function TilePalette() {
   const row = (active: boolean): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '3px 6px', marginBottom: 2, fontSize: 12, cursor: 'pointer', borderRadius: 3,
-    background: active ? 'rgba(31,111,235,0.2)' : '#21262d',
-    border: `1px solid ${active ? '#1f6feb' : '#30363d'}`,
-    color: active ? '#fff' : '#c9d1d9',
+    background: active ? 'color-mix(in srgb, var(--wf-accent) 20%, transparent)' : 'var(--wf-bg-control)',
+    border: `1px solid ${active ? 'var(--wf-accent)' : 'var(--wf-border-default)'}`,
+    color: active ? '#fff' : 'var(--wf-text-primary)',
   });
   const addBtn: CSSProperties = { ...buttonBase, padding: '2px 6px', fontSize: 11, borderRadius: 3, marginTop: 2 };
-  const sectionLabel: CSSProperties = { marginTop: 12, fontSize: 11, color: '#8b949e', marginBottom: 4 };
-  const hint: CSSProperties = { fontSize: 11, color: '#6e7681', marginBottom: 4 };
+  const sectionLabel: CSSProperties = { marginTop: 12, fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 };
 
   return (
     <div style={{ marginTop: 12 }} data-testid="wf-tile-palette">
       <div style={{ ...sectionLabel, marginTop: 0 }}>Tile Layers</div>
-      {layers.length === 0 && <div style={hint}>No layers yet — painting creates one.</div>}
+      {layers.length === 0 && (
+        <EmptyState
+          title="No tile layers"
+          description="Painting creates a layer, or add one here to start."
+          icon={'\u25A6'}
+          actions={[{ label: '+ New layer', onClick: createLayer }]}
+        />
+      )}
       {layers.map((l) => (
         <div key={l.id} style={row(l.id === activeLayerId)} onClick={() => setActiveTileLayer(l.id)}>
-          <span>{l.name} <span style={{ color: '#6e7681' }}>({l.tiles.length})</span></span>
+          <span>{l.name} <span style={{ color: 'var(--wf-text-muted)' }}>({l.tiles.length})</span></span>
           <button
             title="Delete layer"
             style={{ ...buttonBase, padding: '0 5px', fontSize: 12 }}
@@ -94,8 +101,8 @@ export function TilePalette() {
       {tilesets.length === 0 && <div style={hint}>No tilesets — create one to start painting.</div>}
       {tilesets.map((ts) => (
         <div key={ts.id} style={row(ts.id === (activeTilesetId ?? tilesets[0]?.id))} onClick={() => setActiveTileset(ts.id)}>
-          <span>{ts.name} <span style={{ color: '#6e7681' }}>({ts.tiles.length})</span></span>
-          <span style={{ color: ts.imagePath ? '#3fb950' : '#6e7681', fontSize: 10 }}>{ts.imagePath ? 'img' : 'color'}</span>
+          <span>{ts.name} <span style={{ color: 'var(--wf-text-muted)' }}>({ts.tiles.length})</span></span>
+          <span style={{ color: ts.imagePath ? 'var(--wf-success-text)' : 'var(--wf-text-muted)', fontSize: 10 }}>{ts.imagePath ? 'img' : 'color'}</span>
         </div>
       ))}
       <button style={addBtn} onClick={createTileset}>+ New tileset</button>
@@ -113,7 +120,7 @@ export function TilePalette() {
                   onClick={() => setActiveTile(t.id)}
                   style={{
                     padding: 0, cursor: 'pointer', lineHeight: 0, background: 'none',
-                    border: `2px solid ${active ? '#1f6feb' : '#30363d'}`, borderRadius: 3,
+                    border: `2px solid ${active ? 'var(--wf-accent)' : 'var(--wf-border-default)'}`, borderRadius: 3,
                   }}
                 >
                   <span style={{ display: 'block', ...tileSwatchStyle(activeTileset, t, 28) }} />
@@ -132,7 +139,7 @@ export function TilePalette() {
                   onChange={() => updateTileset(activeTileset.id, {
                     tiles: activeTileset.tiles.map((t) => t.id === activeTile.id ? { ...t, walkable: !t.walkable } : t),
                   })}
-                /> Solid <span style={{ color: '#6e7681', fontSize: 10 }}>(blocks movement — exports collision)</span>
+                /> Solid <span style={{ color: 'var(--wf-text-muted)', fontSize: 10 }}>(blocks movement — exports collision)</span>
               </label>
             );
           })()}
@@ -141,9 +148,9 @@ export function TilePalette() {
 
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, cursor: 'pointer' }}>
         <input type="checkbox" checked={tileEraseMode} onChange={toggleTileEraseMode} /> Erase mode
-        <span style={{ color: '#6e7681', fontSize: 10 }}>(or hold Alt)</span>
+        <span style={{ color: 'var(--wf-text-muted)', fontSize: 10 }}>(or hold Alt)</span>
       </label>
-      <div style={{ marginTop: 6, fontSize: 10, color: '#6e7681' }}>Left-drag to paint into the active layer.</div>
+      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--wf-text-muted)' }}>Left-drag to paint into the active layer.</div>
     </div>
   );
 }

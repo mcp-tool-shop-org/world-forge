@@ -135,14 +135,14 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Error */}
         {error && (
-          <div role="alert" aria-live="assertive" style={{ marginTop: 12, padding: 8, background: '#3d1418', border: '1px solid #f85149', borderRadius: 4, color: '#f85149', fontSize: 12 }}>
+          <div role="alert" aria-live="assertive" style={{ marginTop: 12, padding: 8, background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', border: '1px solid var(--wf-danger-text)', borderRadius: 4, color: 'var(--wf-danger-text)', fontSize: 12 }}>
             {error}
           </div>
         )}
 
         {/* Validation errors */}
         {result && result.validationErrors.length > 0 && (
-          <div style={{ marginTop: 12, padding: 8, background: '#3d1418', border: '1px solid #f85149', borderRadius: 4, color: '#f85149', fontSize: 12 }}>
+          <div style={{ marginTop: 12, padding: 8, background: 'var(--wf-danger-bg, color-mix(in srgb, var(--wf-danger) 18%, var(--wf-bg-panel)))', border: '1px solid var(--wf-danger-text)', borderRadius: 4, color: 'var(--wf-danger-text)', fontSize: 12 }}>
             <strong>Validation errors:</strong>
             <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
               {result.validationErrors.map((e, i) => <li key={i}>{e}</li>)}
@@ -152,19 +152,19 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Preview */}
         {result && result.isValid && c && (
-          <div style={{ marginTop: 12, padding: 10, background: '#0d1117', border: '1px solid #30363d', borderRadius: 4 }}>
-            <div style={{ fontWeight: 600, color: '#e6edf3', marginBottom: 4 }}>
+          <div style={{ marginTop: 12, padding: 10, background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)', borderRadius: 4 }}>
+            <div style={{ fontWeight: 600, color: 'var(--wf-text-primary)', marginBottom: 4 }}>
               {result.kit.icon} {result.kit.name}
             </div>
             {result.kit.description && (
-              <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 6 }}>{result.kit.description}</div>
+              <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 6 }}>{result.kit.description}</div>
             )}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
               {result.kit.modes.map((m) => (
                 <span key={m} style={modeBadgeStyle}>{m}</span>
               ))}
             </div>
-            <div style={{ fontSize: 10, color: '#484f58' }}>
+            <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>
               {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
             </div>
           </div>
@@ -172,7 +172,7 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Warnings */}
         {allWarnings.length > 0 && (
-          <div style={{ marginTop: 8, padding: 8, background: '#2a1c08', border: '1px solid #9e6a03', borderRadius: 4, color: '#d29922', fontSize: 11 }}>
+          <div style={{ marginTop: 8, padding: 8, background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-warning)', borderRadius: 4, color: 'var(--wf-warning)', fontSize: 11 }}>
             <strong>Warnings:</strong>
             <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
               {allWarnings.map((w, i) => <li key={i}>{w}</li>)}
@@ -182,7 +182,7 @@ export function ImportKitModal({ onClose }: Props) {
 
         {/* Collision UI */}
         {result && result.isValid && collision && (
-          <div style={{ marginTop: 12, padding: 10, background: '#1c1917', border: '1px solid #9e6a03', borderRadius: 4, color: '#d29922', fontSize: 12 }}>
+          <div style={{ marginTop: 12, padding: 10, background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-warning)', borderRadius: 4, color: 'var(--wf-warning)', fontSize: 12 }}>
             A kit named &ldquo;{result.kit.name}&rdquo; already exists.
           </div>
         )}
@@ -209,5 +209,5 @@ export function ImportKitModal({ onClose }: Props) {
 
 const modeBadgeStyle: React.CSSProperties = {
   fontSize: 9, padding: '1px 6px', borderRadius: 4,
-  background: '#21262d', color: '#8b949e', border: '1px solid #30363d',
+  background: 'var(--wf-bg-control)', color: 'var(--wf-text-muted)', border: '1px solid var(--wf-border-default)',
 };

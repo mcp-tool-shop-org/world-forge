@@ -81,26 +81,26 @@ export function EditKitModal({ kit, onClose }: Props) {
     <ModalFrame title="Edit Kit" width={480} onClose={onClose}>
 
         {/* Name */}
-        <label style={labelStyle} htmlFor="wf-edit-kit-name">Name</label>
-        <input id="wf-edit-kit-name" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Kit name" />
+        <label style={labelText} htmlFor="wf-edit-kit-name">Name</label>
+        <input id="wf-edit-kit-name" value={name} onChange={(e) => setName(e.target.value)} style={inputBase} placeholder="Kit name" />
 
         {/* Description */}
-        <label style={labelStyle} htmlFor="wf-edit-kit-desc">Description</label>
+        <label style={labelText} htmlFor="wf-edit-kit-desc">Description</label>
         <textarea
           id="wf-edit-kit-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }}
+          style={{ ...inputBase, minHeight: 50, resize: 'vertical' }}
           placeholder="What this kit is for..."
         />
 
         {/* Icon */}
-        <label style={labelStyle} htmlFor="wf-edit-kit-icon">Icon</label>
-        <input id="wf-edit-kit-icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ ...inputStyle, width: 60 }} maxLength={2} />
+        <label style={labelText} htmlFor="wf-edit-kit-icon">Icon</label>
+        <input id="wf-edit-kit-icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ ...inputBase, width: 60 }} maxLength={2} />
 
         {/* Modes */}
         <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend style={labelStyle}>Modes</legend>
+          <legend style={labelText}>Modes</legend>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
             {AUTHORING_MODES.map((m) => {
               const active = modes.includes(m);
@@ -111,10 +111,10 @@ export function EditKitModal({ kit, onClose }: Props) {
                   onClick={() => toggleMode(m)}
                   aria-pressed={active}
                   style={{
-                    background: active ? '#0d1d30' : '#0d1117',
-                    border: active ? '2px solid #58a6ff' : '1px solid #30363d',
+                    background: active ? 'color-mix(in srgb, var(--wf-accent) 18%, var(--wf-bg-panel))' : 'var(--wf-bg-app)',
+                    border: active ? '2px solid var(--wf-accent)' : '1px solid var(--wf-border-default)',
                     borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
-                    color: active ? '#58a6ff' : '#8b949e', fontSize: 10,
+                    color: active ? 'var(--wf-accent)' : 'var(--wf-text-muted)', fontSize: 10,
                   }}
                 >
                   {MODE_PROFILES[m].icon} {MODE_PROFILES[m].label}
@@ -125,14 +125,14 @@ export function EditKitModal({ kit, onClose }: Props) {
         </fieldset>
 
         {/* Tags */}
-        <label style={labelStyle} htmlFor="wf-edit-kit-tags">Tags (comma-separated)</label>
-        <input id="wf-edit-kit-tags" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} style={inputStyle} placeholder="e.g. fantasy, dungeon" />
+        <label style={labelText} htmlFor="wf-edit-kit-tags">Tags (comma-separated)</label>
+        <input id="wf-edit-kit-tags" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} style={inputBase} placeholder="e.g. fantasy, dungeon" />
 
         {/* Region Preset Refs */}
-        <label style={labelStyle}>Region Presets</label>
+        <label style={labelText}>Region Presets</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 100, overflow: 'auto' }}>
           {BUILTIN_REGION_PRESETS.map((p) => (
-            <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#c9d1d9', cursor: 'pointer' }}>
+            <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--wf-text-primary)', cursor: 'pointer' }}>
               <input type="checkbox" checked={regionRefs.includes(p.id)} onChange={() => toggleRef(regionRefs, setRegionRefs, p.id)} />
               {p.name}
             </label>
@@ -140,10 +140,10 @@ export function EditKitModal({ kit, onClose }: Props) {
         </div>
 
         {/* Encounter Preset Refs */}
-        <label style={labelStyle}>Encounter Presets</label>
+        <label style={labelText}>Encounter Presets</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 100, overflow: 'auto' }}>
           {BUILTIN_ENCOUNTER_PRESETS.map((p) => (
-            <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#c9d1d9', cursor: 'pointer' }}>
+            <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--wf-text-primary)', cursor: 'pointer' }}>
               <input type="checkbox" checked={encounterRefs.includes(p.id)} onChange={() => toggleRef(encounterRefs, setEncounterRefs, p.id)} />
               {p.name}
             </label>
@@ -151,22 +151,22 @@ export function EditKitModal({ kit, onClose }: Props) {
         </div>
 
         {/* Guide Hints */}
-        <label style={labelStyle}>Guide Hints (optional)</label>
+        <label style={labelText}>Guide Hints (optional)</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflow: 'auto' }}>
           {GUIDE_STEP_KEYS.map((key) => (
-            <div key={key} style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 4, padding: 6 }}>
-              <div style={{ fontSize: 10, color: '#58a6ff', marginBottom: 4, textTransform: 'capitalize' }}>{key}</div>
+            <div key={key} style={{ background: 'var(--wf-bg-app)', border: '1px solid var(--wf-bg-control)', borderRadius: 4, padding: 6 }}>
+              <div style={{ fontSize: 10, color: 'var(--wf-accent)', marginBottom: 4, textTransform: 'capitalize' }}>{key}</div>
               <input
                 value={guideHints[key]?.label ?? ''}
                 onChange={(e) => setGuideHint(key, 'label', e.target.value)}
                 placeholder="Label override"
-                style={{ ...inputStyle, fontSize: 11, marginBottom: 4 }}
+                style={{ ...inputBase, fontSize: 11, marginBottom: 4 }}
               />
               <input
                 value={guideHints[key]?.description ?? ''}
                 onChange={(e) => setGuideHint(key, 'description', e.target.value)}
                 placeholder="Description override"
-                style={{ ...inputStyle, fontSize: 11 }}
+                style={{ ...inputBase, fontSize: 11 }}
               />
             </div>
           ))}
@@ -191,12 +191,3 @@ export function EditKitModal({ kit, onClose }: Props) {
     </ModalFrame>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 12, color: '#8b949e', marginBottom: 4, marginTop: 12,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '6px 8px', background: '#0d1117', color: '#c9d1d9',
-  border: '1px solid #30363d', borderRadius: 4, fontSize: 13, boxSizing: 'border-box',
-};
