@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // cli.ts — world-forge-export-godot CLI
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { copyFile, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { exportToGodot, GODOT_PACK_FORMAT_VERSION } from './export.js';
 import type { WorldProject } from '@world-forge/schema';
+import { buildProjectGodot } from './godot-project.js';
+import { resourcePathToRel } from './copy-assets.js';
 
 export const USAGE = `Usage: world-forge-export-godot <project.json> [options]
 
-Export a WorldProject to a Godot 4 content pack (.tscn + .tres files).
+Export a WorldProject to a loadable Godot 4 project (.tscn + .tres + project.godot).
 
 Options:
   --out <dir>              Output directory (default: ./GodotPack).
@@ -17,7 +19,7 @@ Options:
   --validate-only          Validate without writing files
   --verbose                Show detailed export diagnostics (includes err.stack on failure)
   --include-world-tscn     Emit world.tscn (default)
-  --no-world-tscn          Skip .tscn generation (JSON pack + files/ only)
+  --no-world-tscn          Skip .tscn generation (JSON pack + .tres + project.godot)
   --help                   Show this help
 
 Exit codes:
@@ -30,10 +32,13 @@ Pack format version: ${GODOT_PACK_FORMAT_VERSION}
   Additional pack fields may be added in minor versions. Loaders should gate on
   pack format version, not a frozen field list.
 
-Produces (under --out):
-  pack.json       — GodotContentPack JSON (meta, zones, zoneGates, files, …)
+Produces (under --out) a Godot 4 project root (File>Open Project):
+  project.godot   — config_version=5, features 4.x, run/main_scene=res://world.tscn
   world.tscn      — playable Godot 4 scene (omit with --no-world-tscn)
-  files/          — .tres bodies keyed by resourcePath (res:// prefix stripped)
+  world_data/     — .tres bodies at the res://-stripped resourcePath
+  assets/         — copied authored textures (tilesets / sprites / props)
+  scripts/player.gd — CharacterBody2D move script
+  pack.json       — GodotContentPack JSON (meta, zones, zoneGates, files, …)
   fidelity.json   — lossless / approximated / dropped report
 
 See also: world-forge-export-unreal (Unreal Engine 5 2.5D).`;
@@ -49,13 +54,6 @@ const defaultIo: CliIo = {
     error: (line) => console.error(line),
     stderrWrite: (line) => process.stderr.write(line),
 };
-
-/** Convert a `res://...` resourcePath into a files/-relative path; reject `..`. */
-function resourcePathToRel(resourcePath: string): string {
-    const stripped = resourcePath.replace(/^res:\/\//, '');
-    const parts = stripped.split(/[/\\]/).filter((p) => p.length > 0 && p !== '.' && p !== '..');
-    return parts.join('/');
-}
 
 function invokedAsCli(): boolean {
     const entry = process.argv[1];
@@ -122,7 +120,11 @@ export async function runGodotCli(args: string[], io: CliIo = defaultIo): Promis
         return 1;
     }
 
-    const result = exportToGodot(project, { includeWorldTscn });
+    const projectAbs = resolve(projectPath);
+    const result = exportToGodot(project, {
+        includeWorldTscn,
+        assetBaseDir: dirname(projectAbs),
+    });
 
     if (!result.success) {
         io.error('Godot export failed:');
@@ -154,12 +156,18 @@ export async function runGodotCli(args: string[], io: CliIo = defaultIo): Promis
         );
         await writeFile(join(resolvedOut, 'pack.json'), JSON.stringify(packForJson, null, 2));
         await writeFile(join(resolvedOut, 'fidelity.json'), JSON.stringify(result.fidelity, null, 2));
+        await writeFile(
+            join(resolvedOut, 'project.godot'),
+            buildProjectGodot({
+                name: result.contentPack.meta.name,
+                mainScene: includeWorldTscn && result.contentPack.worldSceneTscn ? 'res://world.tscn' : undefined,
+            }),
+        );
         if (includeWorldTscn && result.contentPack.worldSceneTscn) {
             await writeFile(join(resolvedOut, 'world.tscn'), result.contentPack.worldSceneTscn);
         }
 
-        const filesDir = join(resolvedOut, 'files');
-        await mkdir(filesDir, { recursive: true });
+        // Write stamped resources at the project root so res://world_data/... resolves.
         for (const [resourcePath, body] of Object.entries(result.contentPack.files)) {
             const rel = resourcePathToRel(resourcePath);
             if (!rel) {
@@ -167,9 +175,15 @@ export async function runGodotCli(args: string[], io: CliIo = defaultIo): Promis
                 io.error(`Hint: check disk space, directory permissions on ${resolvedOut}, and retry with --out pointing at a writable path.`);
                 return 1;
             }
-            const dest = join(filesDir, rel);
+            const dest = join(resolvedOut, rel);
             await mkdir(dirname(dest), { recursive: true });
             await writeFile(dest, body);
+        }
+
+        for (const copy of result.assetCopies) {
+            const dest = join(resolvedOut, copy.destRel);
+            await mkdir(dirname(dest), { recursive: true });
+            await copyFile(copy.sourceAbs, dest);
         }
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

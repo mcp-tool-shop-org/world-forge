@@ -51,7 +51,7 @@ const FIELD_COVERAGE: { readonly [K in keyof WorldProject]-?: FieldStatus } = {
 
     dialogues: { kind: 'covered' },
 
-    playerTemplate: { kind: 'dropped', reason: 'Gameplay-only data; Godot uses its own player scene defaults.' },
+    playerTemplate: { kind: 'covered' },
     buildCatalog: { kind: 'dropped', reason: 'Gameplay-only data; archetype/background/trait system is engine-specific.' },
     progressionTrees: { kind: 'dropped', reason: 'Gameplay-only data; drives character advancement outside world layout.' },
 

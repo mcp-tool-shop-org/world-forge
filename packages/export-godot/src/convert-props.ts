@@ -14,6 +14,12 @@ import type { WorldProject } from '@world-forge/schema';
 import { formatDroppedIdentities, type FidelityEntry } from './fidelity.js';
 import { gridToGodot2D, resolveTileSize, type GodotVec2 } from './coordinate-transform.js';
 import { sanitizeNodeName } from './node-naming.js';
+import { deriveGodotFilename } from './convert-assets.js';
+
+/** Godot dest for a prop image — copied under --out when the authored file is local. */
+export function propTexturePath(propId: string, imagePath: string): string {
+    return `res://assets/props/${deriveGodotFilename(propId, imagePath)}`;
+}
 
 export interface GodotPropNode {
     /** Sanitized, unique node name. */
@@ -31,6 +37,8 @@ export interface GodotPropNode {
     walkable: boolean;
     interactable: boolean;
     imagePath?: string;
+    /** Stamped res:// dest when imagePath is authored (file channel copies here). */
+    godotPath?: string;
     zoneId?: string;
 }
 
@@ -71,6 +79,7 @@ export function convertProps(project: WorldProject): ConvertPropsResult {
             walkable: def.walkable,
             interactable: def.interactable,
             imagePath: def.imagePath,
+            godotPath: def.imagePath ? propTexturePath(pl.propId, def.imagePath) : undefined,
             zoneId: pl.zoneId,
         });
     }

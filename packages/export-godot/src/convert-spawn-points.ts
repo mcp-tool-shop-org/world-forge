@@ -1,8 +1,9 @@
 /**
  * convert-spawn-points.ts — SpawnPoint → Godot marker nodes.
  *
- * Spawn points become Marker2D nodes in the zone scene. The default spawn
- * is marked with metadata so the runtime knows where to place the player.
+ * Extra spawn points become Marker2D gizmos in the zone scene. The default
+ * spawn's coordinates are consumed by the player CharacterBody2D pawn
+ * (scene-builder); extras stay as Marker2D with metadata/is_default.
  */
 
 import type { WorldProject, Zone } from '@world-forge/schema';

@@ -53,7 +53,10 @@ describe('convertProps', () => {
   it('carries multi-tile footprint + imagePath through', () => {
     const withImg: PropDefinition = { ...rug, imagePath: 'props/rug.png' };
     const { props } = convertProps(proj([withImg], [{ id: 'p1', propId: 'rug', gridX: 0, gridY: 0 }]));
-    expect(props[0]).toMatchObject({ width: 2, height: 1, imagePath: 'props/rug.png' });
+    expect(props[0]).toMatchObject({
+      width: 2, height: 1, imagePath: 'props/rug.png',
+      godotPath: 'res://assets/props/rug.png',
+    });
   });
 
   it('returns nothing for a propless project', () => {
