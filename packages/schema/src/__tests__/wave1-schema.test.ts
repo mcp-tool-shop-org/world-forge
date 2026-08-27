@@ -250,6 +250,11 @@ describe('Wave 1: SpawnCondition parse/validate', () => {
     expect(validateSpawnCondition('garbage')).toContain('Unrecognized spawn condition');
   });
 
+  it('validateSpawnCondition rejects a non-string without throwing', () => {
+    expect(() => validateSpawnCondition(123)).not.toThrow();
+    expect(validateSpawnCondition(123)).toContain('must be a string');
+  });
+
   it('validateProject flags invalid entity spawn condition (check #59)', () => {
     const p = clone(minimalProject);
     p.entityPlacements = [

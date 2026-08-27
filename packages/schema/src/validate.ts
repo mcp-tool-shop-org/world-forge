@@ -89,6 +89,17 @@ void _assertAssetKindCoverage;
 /** Semver pattern for pack version validation (x.y.z). */
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 
+function expectedArrayMessage(field: string, value: unknown): string {
+  return `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`;
+}
+
+/** Guard a required nested array: report and skip iteration instead of throwing. */
+function isArrayOrReport(value: unknown, path: string, errors: ValidationError[]): boolean {
+  if (Array.isArray(value)) return true;
+  errors.push({ path, message: expectedArrayMessage(path, value) });
+  return false;
+}
+
 export function validateProject(project: WorldProject, options?: ValidateOptions): ValidationResult {
   const errors: ValidationError[] = [];
   let warningCount = 0;
@@ -134,22 +145,25 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
-  // F-4b9345d3: the town layer's three arrays are OPTIONAL (project.ts:72-74),
-  // so they cannot join requiredArrays — a legacy project that omits them is
-  // valid and must stay valid. But "absent" and "corrupted to a non-array" are
-  // different facts, and rules 87-89 below iterate these fields. Guard the
-  // second case only: present-but-wrong-type is reported here, absent passes
-  // through untouched.
+  // Optional WorldProject arrays cannot join requiredArrays — a legacy project
+  // that omits them is valid. Present-but-not-an-array (including null) is an
+  // error; undefined stays valid. Town arrays (F-4b9345d3) plus leftover
+  // loot/transitions/strata/hazardDefinitions (F-7282f981).
   const optionalArrays: [unknown, string][] = [
     [project.buildings, 'buildings'],
     [project.hubs, 'hubs'],
     [project.strongholds, 'strongholds'],
+    [project.lootTables, 'lootTables'],
+    [project.transitions, 'transitions'],
+    [project.strata, 'strata'],
+    [project.stratumLinks, 'stratumLinks'],
+    [project.hazardDefinitions, 'hazardDefinitions'],
   ];
   for (const [value, field] of optionalArrays) {
     if (value !== undefined && !Array.isArray(value)) {
       errors.push({
         path: field,
-        message: `Expected "${field}" to be an array but got ${value === null ? 'null' : typeof value}. The project file may be corrupted or truncated.`,
+        message: expectedArrayMessage(field, value),
       });
     }
   }
@@ -223,6 +237,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 5. Zone neighbors must reference existing zones
   for (const z of project.zones) {
+    if (!isArrayOrReport(z.neighbors, `zones.${z.id}.neighbors`, errors)) continue;
     for (const nid of z.neighbors) {
       if (!zoneIds.has(nid)) {
         errors.push({ path: `zones.${z.id}.neighbors`, message: `Zone "${z.id}" references nonexistent neighbor "${nid}"` });
@@ -233,8 +248,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // 6. Symmetrical neighbors — if A lists B, B should list A
   // Build zone map and neighbor Sets for O(1) lookups (avoids O(n²) find + O(n³) includes)
   const zoneMap = new Map(project.zones.map((z) => [z.id, z]));
-  const neighborSets = new Map(project.zones.map((z) => [z.id, new Set(z.neighbors)]));
+  const neighborSets = new Map(project.zones.map((z) => [
+    z.id,
+    new Set(Array.isArray(z.neighbors) ? z.neighbors : []),
+  ]));
   for (const z of project.zones) {
+    if (!Array.isArray(z.neighbors)) continue;
     for (const nid of z.neighbors) {
       // Skip symmetry check for nonexistent neighbors — already reported in step 5.
       // Without this guard, we'd silently skip instead of making intent clear.
@@ -254,6 +273,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // is the same kind of zone-to-zone reference as neighbors[] (rule 5) and
   // ZoneConnection.toZoneId (rule 11) — checked the same way for consistency.
   for (const z of project.zones) {
+    if (!isArrayOrReport(z.exits, `zones.${z.id}.exits`, errors)) continue;
     for (const exit of z.exits) {
       if (!zoneIds.has(exit.targetZoneId)) {
         errors.push({
@@ -273,6 +293,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 7. District zoneIds must reference existing zones
   for (const d of project.districts) {
+    if (!isArrayOrReport(d.zoneIds, `districts.${d.id}.zoneIds`, errors)) continue;
     for (const zid of d.zoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `districts.${d.id}.zoneIds`, message: `District "${d.id}" references nonexistent zone "${zid}"` });
@@ -356,6 +377,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 14. Faction districtIds must reference valid districts
   for (const fp of project.factionPresences) {
+    if (!Array.isArray(fp.districtIds)) continue;
     for (const did of fp.districtIds) {
       if (!districtIds.has(did)) {
         errors.push({ path: `factionPresences.${fp.factionId}`, message: `Faction "${fp.factionId}" references nonexistent district "${did}"` });
@@ -389,6 +411,16 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `dialogues.${dlg.id}`, message: `Duplicate dialogue ID: ${dlg.id}` });
     }
     dialogueIds.add(dlg.id);
+
+    // 17-19. Node graph — `nodes` is a required Record. Omitted/corrupt JSON
+    // must return ValidationResult, not throw on `dlg.nodes[entry]`.
+    if (dlg.nodes === undefined || dlg.nodes === null || typeof dlg.nodes !== 'object' || Array.isArray(dlg.nodes)) {
+      errors.push({
+        path: `dialogues.${dlg.id}.nodes`,
+        message: `Expected "dialogues.${dlg.id}.nodes" to be an object but got ${dlg.nodes === null ? 'null' : Array.isArray(dlg.nodes) ? 'array' : typeof dlg.nodes}. The project file may be corrupted or truncated.`,
+      });
+      continue;
+    }
 
     // 17. Entry node must exist
     if (!dlg.nodes[dlg.entryNodeId]) {
@@ -494,22 +526,26 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
     // 22. Starting inventory items should exist in item placements
     const itemIds = new Set(project.itemPlacements.map((ip) => ip.itemId));
-    for (const itemId of pt.startingInventory) {
-      if (!itemIds.has(itemId)) {
-        errors.push({
-          path: `playerTemplate.startingInventory`,
-          message: `Player template starting item "${itemId}" not found in item placements`,
-        });
+    if (isArrayOrReport(pt.startingInventory, 'playerTemplate.startingInventory', errors)) {
+      for (const itemId of pt.startingInventory) {
+        if (!itemIds.has(itemId)) {
+          errors.push({
+            path: `playerTemplate.startingInventory`,
+            message: `Player template starting item "${itemId}" not found in item placements`,
+          });
+        }
       }
     }
 
     // 23. Starting equipment items should exist
-    for (const [slot, itemId] of Object.entries(pt.startingEquipment)) {
-      if (!itemIds.has(itemId)) {
-        errors.push({
-          path: `playerTemplate.startingEquipment.${slot}`,
-          message: `Player template equipment "${itemId}" in slot "${slot}" not found in item placements`,
-        });
+    if (pt.startingEquipment && typeof pt.startingEquipment === 'object') {
+      for (const [slot, itemId] of Object.entries(pt.startingEquipment)) {
+        if (!itemIds.has(itemId)) {
+          errors.push({
+            path: `playerTemplate.startingEquipment.${slot}`,
+            message: `Player template equipment "${itemId}" in slot "${slot}" not found in item placements`,
+          });
+        }
       }
     }
 
@@ -529,7 +565,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
     // 25. Default archetype must exist in build catalog
     if (pt.defaultArchetypeId && project.buildCatalog) {
-      if (!project.buildCatalog.archetypes.some((a) => a.id === pt.defaultArchetypeId)) {
+      const archetypes = project.buildCatalog.archetypes;
+      if (Array.isArray(archetypes) && !archetypes.some((a) => a.id === pt.defaultArchetypeId)) {
         errors.push({
           path: 'playerTemplate.defaultArchetypeId',
           message: `Player template references archetype "${pt.defaultArchetypeId}" which is not in buildCatalog.archetypes[]. Add it to the catalog, or pick an existing archetype id.`,
@@ -539,7 +576,8 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
     // 26. Default background must exist in build catalog
     if (pt.defaultBackgroundId && project.buildCatalog) {
-      if (!project.buildCatalog.backgrounds.some((b) => b.id === pt.defaultBackgroundId)) {
+      const backgrounds = project.buildCatalog.backgrounds;
+      if (Array.isArray(backgrounds) && !backgrounds.some((b) => b.id === pt.defaultBackgroundId)) {
         errors.push({
           path: 'playerTemplate.defaultBackgroundId',
           message: `Player template references background "${pt.defaultBackgroundId}" which is not in buildCatalog.backgrounds[]. Add it to the catalog, or pick an existing background id.`,
@@ -558,86 +596,98 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
     // 27. Archetype ID uniqueness + progression tree refs
     const progressionTreeIds = new Set(project.progressionTrees.map((t) => t.id));
-    for (const arch of bc.archetypes) {
-      if (archetypeIds.has(arch.id)) {
-        errors.push({ path: `buildCatalog.archetypes.${arch.id}`, message: `Duplicate archetype ID: ${arch.id}` });
-      }
-      archetypeIds.add(arch.id);
+    if (isArrayOrReport(bc.archetypes, 'buildCatalog.archetypes', errors)) {
+      for (const arch of bc.archetypes) {
+        if (archetypeIds.has(arch.id)) {
+          errors.push({ path: `buildCatalog.archetypes.${arch.id}`, message: `Duplicate archetype ID: ${arch.id}` });
+        }
+        archetypeIds.add(arch.id);
 
-      if (!progressionTreeIds.has(arch.progressionTreeId)) {
-        errors.push({
-          path: `buildCatalog.archetypes.${arch.id}.progressionTreeId`,
-          message: `Archetype "${arch.id}" references nonexistent progression tree "${arch.progressionTreeId}"`,
-        });
+        if (!progressionTreeIds.has(arch.progressionTreeId)) {
+          errors.push({
+            path: `buildCatalog.archetypes.${arch.id}.progressionTreeId`,
+            message: `Archetype "${arch.id}" references nonexistent progression tree "${arch.progressionTreeId}"`,
+          });
+        }
       }
     }
 
     // 28. Background ID uniqueness
     const backgroundIds = new Set<string>();
-    for (const bg of bc.backgrounds) {
-      if (backgroundIds.has(bg.id)) {
-        errors.push({ path: `buildCatalog.backgrounds.${bg.id}`, message: `Duplicate background ID: ${bg.id}` });
+    if (Array.isArray(bc.backgrounds)) {
+      for (const bg of bc.backgrounds) {
+        if (backgroundIds.has(bg.id)) {
+          errors.push({ path: `buildCatalog.backgrounds.${bg.id}`, message: `Duplicate background ID: ${bg.id}` });
+        }
+        backgroundIds.add(bg.id);
       }
-      backgroundIds.add(bg.id);
     }
 
     // 29. Trait ID uniqueness + incompatibility refs
-    for (const trait of bc.traits) {
-      if (traitIds.has(trait.id)) {
-        errors.push({ path: `buildCatalog.traits.${trait.id}`, message: `Duplicate trait ID: ${trait.id}` });
+    if (Array.isArray(bc.traits)) {
+      for (const trait of bc.traits) {
+        if (traitIds.has(trait.id)) {
+          errors.push({ path: `buildCatalog.traits.${trait.id}`, message: `Duplicate trait ID: ${trait.id}` });
+        }
+        traitIds.add(trait.id);
       }
-      traitIds.add(trait.id);
-    }
-    for (const trait of bc.traits) {
-      if (trait.incompatibleWith) {
-        for (const incompat of trait.incompatibleWith) {
-          if (!traitIds.has(incompat)) {
-            errors.push({
-              path: `buildCatalog.traits.${trait.id}.incompatibleWith`,
-              message: `Trait "${trait.id}" lists incompatible trait "${incompat}" that does not exist`,
-            });
+      for (const trait of bc.traits) {
+        if (trait.incompatibleWith) {
+          for (const incompat of trait.incompatibleWith) {
+            if (!traitIds.has(incompat)) {
+              errors.push({
+                path: `buildCatalog.traits.${trait.id}.incompatibleWith`,
+                message: `Trait "${trait.id}" lists incompatible trait "${incompat}" that does not exist`,
+              });
+            }
           }
         }
       }
     }
 
     // 30. Discipline ID uniqueness
-    for (const disc of bc.disciplines) {
-      if (disciplineIds.has(disc.id)) {
-        errors.push({ path: `buildCatalog.disciplines.${disc.id}`, message: `Duplicate discipline ID: ${disc.id}` });
+    if (Array.isArray(bc.disciplines)) {
+      for (const disc of bc.disciplines) {
+        if (disciplineIds.has(disc.id)) {
+          errors.push({ path: `buildCatalog.disciplines.${disc.id}`, message: `Duplicate discipline ID: ${disc.id}` });
+        }
+        disciplineIds.add(disc.id);
       }
-      disciplineIds.add(disc.id);
     }
 
     // 31. Cross-title refs must point to existing archetypes + disciplines
-    for (const ct of bc.crossTitles) {
-      if (!archetypeIds.has(ct.archetypeId)) {
-        errors.push({
-          path: `buildCatalog.crossTitles`,
-          message: `Cross-title references nonexistent archetype "${ct.archetypeId}"`,
-        });
-      }
-      if (!disciplineIds.has(ct.disciplineId)) {
-        errors.push({
-          path: `buildCatalog.crossTitles`,
-          message: `Cross-title references nonexistent discipline "${ct.disciplineId}"`,
-        });
+    if (Array.isArray(bc.crossTitles)) {
+      for (const ct of bc.crossTitles) {
+        if (!archetypeIds.has(ct.archetypeId)) {
+          errors.push({
+            path: `buildCatalog.crossTitles`,
+            message: `Cross-title references nonexistent archetype "${ct.archetypeId}"`,
+          });
+        }
+        if (!disciplineIds.has(ct.disciplineId)) {
+          errors.push({
+            path: `buildCatalog.crossTitles`,
+            message: `Cross-title references nonexistent discipline "${ct.disciplineId}"`,
+          });
+        }
       }
     }
 
     // 32. Entanglement refs must point to existing archetypes + disciplines
-    for (const ent of bc.entanglements) {
-      if (!archetypeIds.has(ent.archetypeId)) {
-        errors.push({
-          path: `buildCatalog.entanglements.${ent.id}`,
-          message: `Entanglement "${ent.id}" references nonexistent archetype "${ent.archetypeId}"`,
-        });
-      }
-      if (!disciplineIds.has(ent.disciplineId)) {
-        errors.push({
-          path: `buildCatalog.entanglements.${ent.id}`,
-          message: `Entanglement "${ent.id}" references nonexistent discipline "${ent.disciplineId}"`,
-        });
+    if (Array.isArray(bc.entanglements)) {
+      for (const ent of bc.entanglements) {
+        if (!archetypeIds.has(ent.archetypeId)) {
+          errors.push({
+            path: `buildCatalog.entanglements.${ent.id}`,
+            message: `Entanglement "${ent.id}" references nonexistent archetype "${ent.archetypeId}"`,
+          });
+        }
+        if (!disciplineIds.has(ent.disciplineId)) {
+          errors.push({
+            path: `buildCatalog.entanglements.${ent.id}`,
+            message: `Entanglement "${ent.id}" references nonexistent discipline "${ent.disciplineId}"`,
+          });
+        }
       }
     }
   }
@@ -652,6 +702,10 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `progressionTrees.${tree.id}`, message: `Duplicate progression tree ID: ${tree.id}` });
     }
     treeIds.add(tree.id);
+
+    if (!isArrayOrReport(tree.nodes, `progressionTrees.${tree.id}.nodes`, errors)) {
+      continue;
+    }
 
     const nodeIds = new Set(tree.nodes.map((n) => n.id));
     const nodeIdDupes = new Set<string>();
@@ -810,7 +864,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (z.tilesetId) referencedAssetIds.add(z.tilesetId);
     // 2.5D (v4.2.0): skyline + parallax assetRefs also count as valid references.
     if (z.skylineRef) referencedAssetIds.add(z.skylineRef);
-    if (z.parallaxLayers) {
+    if (Array.isArray(z.parallaxLayers)) {
       for (const layer of z.parallaxLayers) {
         if (layer.assetRef) referencedAssetIds.add(layer.assetRef);
       }
@@ -907,7 +961,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // Also validates assetRef resolves to an asset of kind 'background' or 'sprite'
   // (SCH-A-002) and that scrollFactor is finite in [0.0, 1.0] (SCH-A-003).
   for (const zone of project.zones) {
-    if (!zone.parallaxLayers || zone.parallaxLayers.length === 0) continue;
+    if (!Array.isArray(zone.parallaxLayers) || zone.parallaxLayers.length === 0) continue;
     const seenDepths = new Map<number, string>();
     const seenIds = new Set<string>();
     for (const layer of zone.parallaxLayers) {
@@ -1221,7 +1275,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 69. Stratum.visibleStrata must reference existing strata.
   for (const s of strata) {
-    for (const vid of s.visibleStrata ?? []) {
+    for (const vid of Array.isArray(s.visibleStrata) ? s.visibleStrata : []) {
       if (!stratumIds.has(vid)) {
         errors.push({
           path: `strata.${s.id}.visibleStrata`,
@@ -1300,6 +1354,9 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // branch, so a garbled/typo'd/future kind silently produced zero errors.
     // 'instakill' is handled explicitly (no extra fields) so it is never
     // misflagged by that catch-all.
+    if (!isArrayOrReport(h.effects, `hazardDefinitions.${h.id}.effects`, errors)) {
+      continue;
+    }
     for (let i = 0; i < h.effects.length; i++) {
       const e = h.effects[i];
       const base = `hazardDefinitions.${h.id}.effects[${i}]`;
@@ -1350,7 +1407,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 77. Zone.hazardRefs must reference existing hazard definitions.
   for (const z of project.zones) {
-    for (const ref of z.hazardRefs ?? []) {
+    for (const ref of Array.isArray(z.hazardRefs) ? z.hazardRefs : []) {
       if (!hazardIds.has(ref)) {
         errors.push({ path: `zones.${z.id}.hazardRefs`, message: `Zone "${z.id}" references nonexistent hazard "${ref}".` });
       }
@@ -1365,7 +1422,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!VALID_GATE_MODES.has(gate.mode)) {
       errors.push({ path: `zones.${z.id}.entryGate.mode`, message: `Zone "${z.id}" entry gate has unsupported mode "${gate.mode}" (expected hard or soft).` });
     }
-    if (!Array.isArray(gate.conditions) || gate.conditions.length === 0) {
+    if (!Array.isArray(gate.conditions)) {
+      errors.push({
+        path: `zones.${z.id}.entryGate.conditions`,
+        message: expectedArrayMessage(`zones.${z.id}.entryGate.conditions`, gate.conditions),
+      });
+    } else if (gate.conditions.length === 0) {
       errors.push({ path: `zones.${z.id}.entryGate.conditions`, message: `Zone "${z.id}" entry gate must have at least one condition.` });
     } else {
       for (let i = 0; i < gate.conditions.length; i++) {
@@ -1430,6 +1492,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // existing tileset.
   const tileDefinitionIds = new Set<string>();
   for (const ts of project.tilesets) {
+    if (!isArrayOrReport(ts.tiles, `tilesets.${ts.id}.tiles`, errors)) continue;
     for (const td of ts.tiles) {
       if (tileDefinitionIds.has(td.id)) {
         errors.push({ path: `tilesets.${ts.id}.tiles.${td.id}`, message: `Duplicate tile definition ID: ${td.id}` });
@@ -1449,6 +1512,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `tileLayers.${tl.id}`, message: `Duplicate tile layer ID: ${tl.id}` });
     }
     tileLayerIds.add(tl.id);
+    if (!isArrayOrReport(tl.tiles, `tileLayers.${tl.id}.tiles`, errors)) continue;
     for (const placement of tl.tiles) {
       if (!tileDefinitionIds.has(placement.tileId)) {
         errors.push({ path: `tileLayers.${tl.id}.tiles`, message: `Tile layer "${tl.id}" references nonexistent tile "${placement.tileId}"` });
@@ -1487,6 +1551,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `ambientLayers.${al.id}`, message: `Duplicate ambient layer ID: ${al.id}` });
     }
     ambientLayerIds.add(al.id);
+    if (!Array.isArray(al.zoneIds)) continue;
     for (const zid of al.zoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `ambientLayers.${al.id}.zoneIds`, message: `Ambient layer "${al.id}" references nonexistent zone "${zid}"` });
@@ -1524,6 +1589,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!zoneIds.has(h.zoneId)) {
       errors.push({ path: `hubs.${h.id}.zoneId`, message: `Hub "${h.id}" anchored to nonexistent zone "${h.zoneId}"` });
     }
+    if (!isArrayOrReport(h.connectedZoneIds, `hubs.${h.id}.connectedZoneIds`, errors)) continue;
     for (const zid of h.connectedZoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `hubs.${h.id}.connectedZoneIds`, message: `Hub "${h.id}" serves nonexistent zone "${zid}"` });
@@ -1545,9 +1611,11 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!zoneIds.has(s.zoneId)) {
       errors.push({ path: `strongholds.${s.id}.zoneId`, message: `Stronghold "${s.id}" in nonexistent zone "${s.zoneId}"` });
     }
-    for (const eid of s.garrisonEntityIds) {
-      if (!entityPlacementIds.has(eid)) {
-        errors.push({ path: `strongholds.${s.id}.garrisonEntityIds`, message: `Stronghold "${s.id}" garrisons nonexistent entity "${eid}"` });
+    if (isArrayOrReport(s.garrisonEntityIds, `strongholds.${s.id}.garrisonEntityIds`, errors)) {
+      for (const eid of s.garrisonEntityIds) {
+        if (!entityPlacementIds.has(eid)) {
+          errors.push({ path: `strongholds.${s.id}.garrisonEntityIds`, message: `Stronghold "${s.id}" garrisons nonexistent entity "${eid}"` });
+        }
       }
     }
     if (!Number.isFinite(s.defenseLevel) || s.defenseLevel < 0) {

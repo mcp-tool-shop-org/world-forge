@@ -345,6 +345,33 @@ describe('buildReviewSnapshot', () => {
 
   // --- SB-009: District with missing baseMetrics defaults to zero ---
 
+  it('does not throw when top-level arrays are omitted (corrupt import)', () => {
+    const p = { ...clone(), assets: undefined, assetPacks: undefined } as unknown as WorldProject;
+    delete (p as { assets?: unknown }).assets;
+    let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+    expect(() => {
+      snap = buildReviewSnapshot(p);
+    }).not.toThrow();
+    expect(snap!.health).toBe('blocked');
+    expect(snap!.validation.valid).toBe(false);
+  });
+
+  it('does not throw when a district omits zoneIds', () => {
+    const proj = clone({
+      districts: [{
+        id: 'd1', name: 'Draft District', tags: [],
+        baseMetrics: { commerce: 0, morale: 0, safety: 0, stability: 0 },
+        economyProfile: { supplyCategories: [], scarcityDefaults: {} },
+      } as WorldProject['districts'][number]],
+    });
+    delete (proj.districts[0] as { zoneIds?: unknown }).zoneIds;
+    let snap: ReturnType<typeof buildReviewSnapshot> | undefined;
+    expect(() => {
+      snap = buildReviewSnapshot(proj);
+    }).not.toThrow();
+    expect(snap!.regions[0].zoneCount).toBe(0);
+  });
+
   it('handles district with missing baseMetrics gracefully', () => {
     const proj = clone({
       zones: [
