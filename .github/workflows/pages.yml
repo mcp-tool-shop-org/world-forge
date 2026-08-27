@@ -22,6 +22,9 @@ concurrency:
 
 jobs:
   build:
+    # F-4a5efc2f: job id stays build. Display name so a handbook-build
+    # failure is not the generic 'build' under this workflow.
+    name: Build handbook (Pages artifact)
     runs-on: ubuntu-latest
     # INF-B-006: cap wall time so a hung build can't burn the 6-hour default.
     timeout-minutes: 20
@@ -60,6 +63,9 @@ jobs:
           path: site/dist
 
   deploy:
+    # F-4a5efc2f: job id stays deploy. The verify step name was already
+    # operator-facing; the job title in the run list was not.
+    name: Deploy to GitHub Pages + verify 200
     needs: build
     runs-on: ubuntu-latest
     # INF-B-006: deploy is normally <1 min; 20 minutes leaves generous headroom.
@@ -79,22 +85,34 @@ jobs:
       # but occasionally the CDN lags or a redirect misfires and the site goes
       # stale silently. Curl the deployed URL and fail the job on non-200.
       # Retries 5x with backoff because CDN propagation can take a few seconds.
+      # F-97ca7b28: operator-facing half — per-attempt ::warning, no sleep
+      # after the last miss, curl write-out without concatenating the
+      # fallback, final ::error names last status + attempt count + Next.
       - name: Verify deployed site returns 200
         run: |
           url="${{ steps.deployment.outputs.page_url }}"
           if [ -z "$url" ]; then
-            echo "::error::deploy-pages did not emit a page_url output"
+            echo "::error::deploy-pages emitted no page_url — check environment github-pages, permissions pages:write + id-token:write. Next: re-run after Pages is enabled."
             exit 1
           fi
           echo "Probing $url"
-          for attempt in 1 2 3 4 5; do
-            status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url" || echo "000")
-            echo "attempt $attempt: HTTP $status"
+          max=5
+          status=""
+          for attempt in $(seq 1 "$max"); do
+            status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
+            if [ -z "$status" ] || [ "$status" = "000" ]; then
+              status="curl-failed"
+            fi
+            echo "attempt $attempt/$max: HTTP $status"
             if [ "$status" = "200" ]; then
               echo "::notice::Pages deploy verified ($url returned 200)"
               exit 0
             fi
-            sleep $((attempt * 5))
+            if [ "$attempt" -lt "$max" ]; then
+              wait_s=$((attempt * 5))
+              echo "::warning::Pages probe attempt $attempt/$max got HTTP $status for $url — sleeping ${wait_s}s (CDN lag)"
+              sleep "$wait_s"
+            fi
           done
-          echo "::error::Pages deploy verification failed — $url never returned 200"
+          echo "::error::Pages deploy verification failed after $max attempts — last HTTP $status for $url. Next: wait for CDN and re-run the workflow, or open $url"
           exit 1

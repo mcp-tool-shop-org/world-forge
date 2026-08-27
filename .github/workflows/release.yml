@@ -186,6 +186,18 @@ jobs:
       # F-5ff896af: same hole as ci.yml e2e — on failure the only
       # observability was the job log. Upload even if harness has not yet
       # enabled retain-on-failure traces (if-no-files-found: ignore).
+      # F-19a6c1a0: operator-facing half — Checks pane must name the
+      # playwright-e2e-release artifact (or warn that Playwright wrote
+      # nothing). Keep if-no-files-found: ignore so a missing zip does not
+      # overwrite the Playwright Andon with 'No files were found'.
+      - name: Point operator at Playwright artifacts
+        if: failure()
+        run: |
+          if [ -d playwright-report ] || [ -d test-results ]; then
+            echo "::notice::Playwright failed — download the playwright-e2e-release artifact (HTML report + traces)."
+          else
+            echo "::warning::Playwright wrote no report/traces (install or config failed before the runner). Re-run locally with PWDEBUG=1; traces need harness retain-on-failure."
+          fi
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

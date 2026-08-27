@@ -75,7 +75,10 @@ jobs:
       # F-6a9332cf: id so Upload can tell skipped (tests already failed,
       # coverage/ never written) from ran-but-empty. success() || failure()
       # still collects an artifact on a red test leg; cancelled jobs skip.
-      - name: Coverage
+      # F-e61d16bc: this is a second full vitest run, not a coverage-only
+      # collector. A red required-check step must name the suite, not the
+      # reporter — keep id: coverage for the skip-gated upload below.
+      - name: Re-run suite with coverage
         id: coverage
         if: success() || failure()
         run: npx vitest run --coverage
@@ -111,7 +114,11 @@ jobs:
   # Node 24 only. reuseExistingServer is disabled by CI=true (harness owns
   # playwright.config.ts). No continue-on-error. Build is required because
   # the editor vite aliases point at export-unreal/export-godot dist/.
+  # F-4a5efc2f: job id stays e2e (not a required check). Display name so the
+  # Actions tab does not sit as the abbreviation 'e2e' next to required
+  # build-and-test / site-build — do not add name: on those two jobs.
   e2e:
+    name: Playwright editor smoke (Chromium)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -132,6 +139,18 @@ jobs:
       # had only the job log. harness-owned playwright.config.ts still needs
       # trace: retain-on-failure / screenshot: only-on-failure so test-results/
       # is not empty; this job still uploads whatever Playwright wrote.
+      # F-19a6c1a0: Checks pane was still Playwright's locator dump with a
+      # zip nobody was pointed at. Annotate before upload; keep
+      # if-no-files-found: ignore so a missing zip does not overwrite the
+      # Playwright Andon with 'No files were found'.
+      - name: Point operator at Playwright artifacts
+        if: failure()
+        run: |
+          if [ -d playwright-report ] || [ -d test-results ]; then
+            echo "::notice::Playwright failed — download the playwright-e2e artifact (HTML report + traces)."
+          else
+            echo "::warning::Playwright wrote no report/traces (install or config failed before the runner). Re-run locally with PWDEBUG=1; traces need harness retain-on-failure."
+          fi
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
