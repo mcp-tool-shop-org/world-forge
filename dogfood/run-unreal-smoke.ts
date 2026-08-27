@@ -23,6 +23,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { proofProject } from './worlds/multi-target-proof.js';
+import { SCHEMA_VERSION } from '../packages/schema/src/index.js';
 import { exportToUnreal, UNREAL_PACK_FORMAT_VERSION } from '../packages/export-unreal/src/index.js';
 import type { UnrealContentPack, UnrealZoneDataAsset, UnrealActorSpawnEntry } from '../packages/export-unreal/src/index.js';
 
@@ -291,6 +292,28 @@ run();
 process.exit(failed === 0 ? 0 : 1);
 
 // ── Receipt ──────────────────────────────────────────────────
+// F-c621e532: rows come from pack.Zones[].OriginCm / ElevationCm (or n/a
+// when the zone is missing). Hardcoded 0,-400,-300 painted a success-shaped
+// table on FORCE_UNREAL_DROP_CELLAR even after cellar_zone_found failed.
+const COORD_SPOT_CHECKS: Array<{ id: string; label: string }> = [
+    { id: 'zone-cellar', label: 'cellar' },
+    { id: 'zone-market', label: 'market' },
+    { id: 'zone-alley', label: 'alley' },
+];
+
+function coordinateSpotCheckRows(): string {
+    return COORD_SPOT_CHECKS.map(({ id, label }) => {
+        const source = proofProject.zones.find((z) => z.id === id);
+        const live = pack?.Zones.find((z: UnrealZoneDataAsset) => z.Id === id);
+        const grid = source ? `${source.gridX},${source.gridY}` : 'n/a';
+        const elev = source ? `${source.elevation ?? 0}m` : 'n/a';
+        if (!live) {
+            return `| ${label} | ${grid} | ${elev} | n/a | n/a | n/a |`;
+        }
+        return `| ${label} | ${grid} | ${elev} | ${live.OriginCm.X} | ${live.OriginCm.Y} | ${live.ElevationCm} |`;
+    }).join('\n');
+}
+
 function writeReceipt(): void {
     mkdirSync(outDir, { recursive: true });
     const ts = new Date().toISOString();
@@ -305,7 +328,8 @@ function writeReceipt(): void {
 
 **Date:** ${ts}
 **Proof world:** Dustwalk — Multi-Target Proof (proof-dustwalk)
-**Schema:** ${proofProject.version}
+**Schema:** ${SCHEMA_VERSION}
+**Project version:** ${proofProject.version}
 **Format version:** ${UNREAL_PACK_FORMAT_VERSION}
 **Tile scale:** ${TILE_SIZE_PX}px → ${TILE_SIZE_CM}cm (1 tile = 1m)
 
@@ -338,9 +362,7 @@ ${results.map(r => `- ${r.ok ? '✓' : '✗'} ${r.label}${r.detail ? ': ' + r.de
 
 | Zone | gridX,gridY | elevation | → X cm | → Y cm | → Z cm |
 |------|-------------|-----------|--------|--------|--------|
-| cellar | 0,4 | -3m | 0 | -400 | -300 |
-| market | 5,0 | 0m | 500 | 0 | 0 |
-| alley | 11,2 | 0m | 1100 | -200 | 0 |
+${coordinateSpotCheckRows()}
 
 ## Verdict
 
