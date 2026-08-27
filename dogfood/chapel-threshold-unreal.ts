@@ -164,6 +164,10 @@ writeFileSync(join(outDir, 'world-partition.json'), JSON.stringify(contentPack.W
 writeFileSync(join(outDir, 'connections.json'), JSON.stringify(contentPack.Connections, null, 2));
 writeFileSync(join(outDir, 'fidelity.json'), JSON.stringify(fidelity, null, 2));
 writeFileSync(join(outDir, 'actors', 'manifest.json'), JSON.stringify(contentPack.Actors, null, 2));
+// F-43c9fbfa: same CLI-layout sidecars as packages/export-unreal/src/cli.ts so
+// a consumer of dogfood/output/unreal/ sees Parallax actors + Transitions.
+writeFileSync(join(outDir, 'actors', 'parallax-manifest.json'), JSON.stringify(contentPack.Parallax, null, 2));
+writeFileSync(join(outDir, 'actors', 'transitions.json'), JSON.stringify(contentPack.Transitions, null, 2));
 
 for (const zone of contentPack.Zones) {
   writeFileSync(join(outDir, 'zones', `${sanitize(zone.Id)}.json`), JSON.stringify(zone, null, 2));

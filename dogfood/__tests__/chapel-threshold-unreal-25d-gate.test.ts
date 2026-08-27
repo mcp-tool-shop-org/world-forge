@@ -1,13 +1,16 @@
-// chapel-threshold-unreal-25d-gate.test.ts — F-4641d61e / F-66a22d53.
+// chapel-threshold-unreal-25d-gate.test.ts — F-4641d61e / F-66a22d53 / F-43c9fbfa.
 //
 // chapel-threshold-unreal.ts authored elevation/skyline/parallax then only
 // console.log'd OriginCm/ElevationCm. A converter that zeroed elevation or
 // dropped parallax still exited 0. WORLD_FORGE_FORCE_UNREAL_25D_FAIL mutates
 // the pack so this suite can fire the gate without a live converter bug.
+// F-43c9fbfa: after the gate the writer must emit actors/parallax-manifest.json
+// and actors/transitions.json (Unreal CLI layout) with a non-empty parallax
+// manifest on a clean chapel 2.5D run.
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFile } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -16,6 +19,7 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '../..');
 const SCRIPT_PATH = resolve(__dirname, '../chapel-threshold-unreal.ts');
 const SCHEMA_DIST = resolve(REPO_ROOT, 'packages/schema/dist/index.js');
+const OUT_DIR = resolve(__dirname, '../output/unreal');
 
 beforeAll(async () => {
     try {
@@ -72,6 +76,15 @@ describe('chapel-threshold-unreal.ts 2.5D gate (F-4641d61e)', () => {
         expect(stdout).toContain('✓ zone_0_skyline_survives');
         expect(stdout).toContain('✓ zone_0_parallax_survives');
         expect(code).toBe(0);
+
+        // F-43c9fbfa: CLI-layout sidecars must land on disk after a clean 2.5D run.
+        const parallaxPath = resolve(OUT_DIR, 'actors', 'parallax-manifest.json');
+        const transitionsPath = resolve(OUT_DIR, 'actors', 'transitions.json');
+        await access(parallaxPath);
+        await access(transitionsPath);
+        const parallax = JSON.parse(await readFile(parallaxPath, 'utf-8')) as { Actors?: unknown[] };
+        expect(Array.isArray(parallax.Actors)).toBe(true);
+        expect(parallax.Actors!.length).toBeGreaterThan(0);
     }, 60_000);
 
     it('exits non-zero when 2.5D fields are forced dropped', async () => {
