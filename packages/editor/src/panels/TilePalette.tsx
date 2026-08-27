@@ -69,7 +69,7 @@ export function TilePalette() {
     padding: '3px 6px', marginBottom: 2, fontSize: 12, cursor: 'pointer', borderRadius: 3,
     background: active ? 'color-mix(in srgb, var(--wf-accent) 20%, transparent)' : 'var(--wf-bg-control)',
     border: `1px solid ${active ? 'var(--wf-accent)' : 'var(--wf-border-default)'}`,
-    color: active ? '#fff' : 'var(--wf-text-primary)',
+    color: 'var(--wf-text-primary)',
   });
   const addBtn: CSSProperties = { ...buttonBase, padding: '2px 6px', fontSize: 11, borderRadius: 3, marginTop: 2 };
   const sectionLabel: CSSProperties = { marginTop: 12, fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 };
