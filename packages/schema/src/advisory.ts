@@ -68,7 +68,7 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
 
   // ── Asset naming advisories ────────────────────────────────
   for (const asset of assets) {
-    const label = asset.label;
+    const label = typeof asset.label === 'string' ? asset.label : '';
     const lower = label.toLowerCase();
     const isGeneric =
       lower.includes('untitled') ||
@@ -152,8 +152,17 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
       if (!kinds.includes('door')) {
         items.push({ path: 'connections', message: 'Interior tip: doors are the most natural connection for rooms.', severity: 'suggestion' });
       }
-      if (project.map.gridWidth * project.map.gridHeight > 1600) {
-        items.push({ path: 'map', message: 'Interior tip: interiors are typically compact. Consider a smaller grid.', severity: 'info' });
+      {
+        const map = project.map;
+        if (
+          map != null &&
+          typeof map === 'object' &&
+          Number.isFinite(map.gridWidth) &&
+          Number.isFinite(map.gridHeight) &&
+          map.gridWidth * map.gridHeight > 1600
+        ) {
+          items.push({ path: 'map', message: 'Interior tip: interiors are typically compact. Consider a smaller grid.', severity: 'info' });
+        }
       }
       break;
 

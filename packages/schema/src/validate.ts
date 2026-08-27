@@ -100,6 +100,11 @@ function isArrayOrReport(value: unknown, path: string, errors: ValidationError[]
   return false;
 }
 
+/** True when value is a string with at least one non-whitespace character. */
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function validateProject(project: WorldProject, options?: ValidateOptions): ValidationResult {
   const errors: ValidationError[] = [];
   let warningCount = 0;
@@ -365,19 +370,20 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     }
   }
 
-  // 13c. Encounter anchor encounterType must be non-empty and not whitespace-only
+  // 13c. Encounter anchor encounterType must be a non-empty, non-whitespace string.
+  // Non-strings (e.g. 123 from truncated JSON) must return ValidationResult, not throw on .trim().
   for (const ea of project.encounterAnchors) {
-    if (!ea.encounterType || ea.encounterType.trim().length === 0) {
+    if (!isNonEmptyString(ea.encounterType)) {
       errors.push({
         path: `encounterAnchors.${ea.id}`,
-        message: `Encounter anchor "${ea.id}" has ${!ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
+        message: `Encounter anchor "${ea.id}" has ${typeof ea.encounterType !== 'string' || !ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
       });
     }
   }
 
   // 14. Faction districtIds must reference valid districts
   for (const fp of project.factionPresences) {
-    if (!Array.isArray(fp.districtIds)) continue;
+    if (!isArrayOrReport(fp.districtIds, `factionPresences.${fp.factionId}.districtIds`, errors)) continue;
     for (const did of fp.districtIds) {
       if (!districtIds.has(did)) {
         errors.push({ path: `factionPresences.${fp.factionId}`, message: `Faction "${fp.factionId}" references nonexistent district "${did}"` });
@@ -439,7 +445,9 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
           message: `Node "${nodeId}" auto-advances to nonexistent node "${node.nextNodeId}"`,
         });
       }
-      if (node.choices) {
+      // choices is optional; omitted (undefined) is valid. Present-but-not-an-array
+      // (null / {} / 123) must report, not throw. Falsy skip of null hid unreachable nodes.
+      if (node.choices !== undefined && isArrayOrReport(node.choices, `dialogues.${dlg.id}.nodes.${nodeId}.choices`, errors)) {
         for (const choice of node.choices) {
           if (!nodeIds.has(choice.nextNodeId)) {
             errors.push({
@@ -469,7 +477,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         const nd = dlg.nodes[current];
         if (!nd) continue;
         if (nd.nextNodeId && nodeIds.has(nd.nextNodeId)) queue.push(nd.nextNodeId);
-        if (nd.choices) {
+        if (nd.choices !== undefined && isArrayOrReport(nd.choices, `dialogues.${dlg.id}.nodes.${current}.choices`, errors)) {
           for (const ch of nd.choices) {
             if (nodeIds.has(ch.nextNodeId)) queue.push(ch.nextNodeId);
           }
@@ -632,7 +640,11 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         traitIds.add(trait.id);
       }
       for (const trait of bc.traits) {
-        if (trait.incompatibleWith) {
+        if (trait.incompatibleWith !== undefined && isArrayOrReport(
+          trait.incompatibleWith,
+          `buildCatalog.traits.${trait.id}.incompatibleWith`,
+          errors,
+        )) {
           for (const incompat of trait.incompatibleWith) {
             if (!traitIds.has(incompat)) {
               errors.push({
@@ -720,8 +732,13 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       }
       nodeIdDupes.add(node.id);
 
-      // 35. Required node refs must exist
-      if (node.requires) {
+      // 35. Required node refs must exist. requires is optional; present-but-not-an-array
+      // ({} / 5 / null) must report, not throw on for...of.
+      if (node.requires !== undefined && isArrayOrReport(
+        node.requires,
+        `progressionTrees.${tree.id}.nodes.${node.id}.requires`,
+        errors,
+      )) {
         for (const reqId of node.requires) {
           if (!nodeIds.has(reqId)) {
             errors.push({
@@ -746,7 +763,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     // requires-cycle island (e.g. "x requires y" + "y requires x", neither
     // ever reachable from any root). That island now correctly stays
     // unreached: neither node's prerequisites are ever satisfied.
-    const roots = tree.nodes.filter((n) => !n.requires || n.requires.length === 0);
+    const roots = tree.nodes.filter((n) => !Array.isArray(n.requires) || n.requires.length === 0);
     if (roots.length === 0 && tree.nodes.length > 0) {
       errors.push({
         path: `progressionTrees.${tree.id}`,
@@ -759,7 +776,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
         changed = false;
         for (const node of tree.nodes) {
           if (reachable.has(node.id)) continue;
-          const reqs = node.requires ?? [];
+          const reqs = Array.isArray(node.requires) ? node.requires : [];
           if (reqs.length > 0 && reqs.every((r) => reachable.has(r))) {
             reachable.add(node.id);
             changed = true;
@@ -792,9 +809,9 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     assetMap.set(a.id, { kind: a.kind });
   }
 
-  // 38. Asset path must be non-empty
+  // 38. Asset path must be a non-empty string (non-strings must not throw on .trim())
   for (const a of project.assets) {
-    if (!a.path || a.path.trim().length === 0) {
+    if (!isNonEmptyString(a.path)) {
       errors.push({ path: `assets.${a.id}.path`, message: `Asset "${a.id}" has empty path` });
     }
   }
@@ -898,16 +915,16 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     packIds.add(pack.id);
   }
 
-  // 48. Pack label must be non-empty
+  // 48. Pack label must be a non-empty string (non-strings must not throw on .trim())
   for (const pack of project.assetPacks) {
-    if (!pack.label || pack.label.trim().length === 0) {
+    if (!isNonEmptyString(pack.label)) {
       errors.push({ path: `assetPacks.${pack.id}.label`, message: `Asset pack "${pack.id}" has empty label` });
     }
   }
 
-  // 49. Pack version must be non-empty
+  // 49. Pack version must be a non-empty string (non-strings must not throw on .trim())
   for (const pack of project.assetPacks) {
-    if (!pack.version || pack.version.trim().length === 0) {
+    if (!isNonEmptyString(pack.version)) {
       errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" has empty version` });
     }
   }
@@ -932,7 +949,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 52. Pack version must be valid semver format (x.y.z) — uses module-level SEMVER_PATTERN
   for (const pack of project.assetPacks) {
-    if (pack.version && pack.version.trim().length > 0 && !SEMVER_PATTERN.test(pack.version)) {
+    if (isNonEmptyString(pack.version) && !SEMVER_PATTERN.test(pack.version)) {
       errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" version "${pack.version}" is not valid semver (expected x.y.z)` });
     }
   }
@@ -968,10 +985,10 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       // SCH-A-006: layer.id must be non-empty and not whitespace-only.
       // Checked before dedup so an empty id still errors informatively instead
       // of colliding under the dedup Set on the empty string.
-      if (!layer.id || layer.id.trim().length === 0) {
+      if (!isNonEmptyString(layer.id)) {
         errors.push({
           path: `zones.${zone.id}.parallaxLayers.${layer.id}`,
-          message: `Zone "${zone.id}" has a parallax layer with ${!layer.id ? 'missing' : 'whitespace-only'} id — provide a non-empty id.`,
+          message: `Zone "${zone.id}" has a parallax layer with ${typeof layer.id !== 'string' || !layer.id ? 'missing' : 'whitespace-only'} id — provide a non-empty id.`,
         });
       }
       if (seenIds.has(layer.id)) {
@@ -1375,7 +1392,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
           break;
         }
         case 'status': {
-          if (!e.statusId || e.statusId.trim().length === 0) {
+          if (!isNonEmptyString(e.statusId)) {
             errors.push({ path: base, message: `Hazard "${h.id}" status effect has a missing statusId.` });
           }
           if (!Number.isFinite(e.chance) || e.chance < 0 || e.chance > 1) {
@@ -1551,7 +1568,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       errors.push({ path: `ambientLayers.${al.id}`, message: `Duplicate ambient layer ID: ${al.id}` });
     }
     ambientLayerIds.add(al.id);
-    if (!Array.isArray(al.zoneIds)) continue;
+    if (!isArrayOrReport(al.zoneIds, `ambientLayers.${al.id}.zoneIds`, errors)) continue;
     for (const zid of al.zoneIds) {
       if (!zoneIds.has(zid)) {
         errors.push({ path: `ambientLayers.${al.id}.zoneIds`, message: `Ambient layer "${al.id}" references nonexistent zone "${zid}"` });

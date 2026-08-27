@@ -75,10 +75,8 @@ function collectReferencedAssetIds(project: WorldProject): Set<string> {
     // Mirrors the orphan check in validate.ts — without this, authored 2.5D assets
     // get false-flagged as orphans even though parallax/skyline layers use them.
     if (z.skylineRef) ids.add(z.skylineRef);
-    if (z.parallaxLayers) {
-      for (const layer of z.parallaxLayers) {
-        if (layer.assetRef) ids.add(layer.assetRef);
-      }
+    for (const layer of Array.isArray(z.parallaxLayers) ? z.parallaxLayers : []) {
+      if (layer.assetRef) ids.add(layer.assetRef);
     }
   }
   for (const ep of project.entityPlacements ?? []) {
