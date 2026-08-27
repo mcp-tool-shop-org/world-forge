@@ -45,6 +45,12 @@ jobs:
         working-directory: site
         run: npm ci
 
+      # F-df8375e8: Pages deploys the handbook graph. Root CI audit cannot
+      # see site/package-lock.json. No continue-on-error.
+      - name: Dependency audit
+        working-directory: site
+        run: npm audit --audit-level=high
+
       - name: Build site
         working-directory: site
         run: npm run build

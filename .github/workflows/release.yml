@@ -140,6 +140,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # F-df8375e8: a tag that never rode a PR must still fail on high/
+      # critical advisories before publish. No continue-on-error.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
       - name: Verify release tag matches package.json version
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
