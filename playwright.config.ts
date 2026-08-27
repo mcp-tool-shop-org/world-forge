@@ -9,9 +9,6 @@ export default defineConfig({
   // HTML reporter is what materializes that directory. Screenshot + trace
   // already capture the PNG/zip; without this reporter the gallery is empty.
   reporter: [['html', { open: 'never' }], process.env.CI ? ['dot'] : ['list']],
-  // Materialize chapel-project.json from the schema fixture so e2e does not
-  // depend on a tracked file sitting under gitignored dogfood/output/.
-  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: 'http://localhost:5200',
     headless: true,
@@ -24,7 +21,7 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'npm run dev --workspace=@world-forge/editor -- --port 5200',
+    command: 'npx tsx e2e/write-chapel-fixture.ts && npm run dev --workspace=@world-forge/editor -- --port 5200',
     port: 5200,
     // F-b48f68c3: never trust a leftover :5200 process in CI.
     reuseExistingServer: !process.env.CI,

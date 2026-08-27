@@ -2,14 +2,14 @@
 // Run: npx tsx dogfood/chapel-threshold.ts
 //
 // INF-B-007 / F-2abb3406: generated files under dogfood/output/ are .gitignored
-// and are NOT the e2e input. Playwright globalSetup (e2e/global-setup.ts) writes
+// and are NOT the e2e input. Playwright webServer runs e2e/write-chapel-fixture.ts to write
 // chapel-project.json from the schema chapel fixture at suite start. This script
 // still writes the same filename as a local dogfood artifact; it must not be
 // committed. chapel-export-result.json was an unreferenced leftover and is gone.
 //
 // If a future release wants snapshot regression, the work is:
 //   1. Un-gitignore a named fixture path and document it as the e2e input, OR
-//      keep generating it in Playwright globalSetup (current path).
+//      keep generating it from e2e/write-chapel-fixture.ts (current path).
 //   2. Add a CI step that runs this dogfood script, then `git diff --exit-code`
 //      against committed snapshots.
 //   3. Add a documented refresh path (`npm run dogfood:refresh` or similar) so

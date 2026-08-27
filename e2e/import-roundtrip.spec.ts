@@ -6,7 +6,7 @@
  *
  * Replaces the 2026-05-01 markdown-only PASS
  * (dogfood/DOGFOOD_IMPORT_ROUNDTRIP_UI_2026-05-01.md) with a browser spec.
- * Reuses globalSetup's chapel fixture (dogfood/output/chapel-project.json).
+ * Reuses write-chapel-fixture.ts chapel JSON (dogfood/output/chapel-project.json).
  */
 import { tmpdir } from 'node:os';
 import path from 'node:path';
