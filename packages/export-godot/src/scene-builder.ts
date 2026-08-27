@@ -10,7 +10,7 @@
  *   ├── <ZoneName> (Node2D) — at zone origin, y_sort_enabled, z_index from elevation
  *   │   ├── Collision (StaticBody2D) — only when collisionType is void/hazard
  *   │   │   └── CollisionShape2D — RectangleShape2D covering the zone bounds
- *   │   ├── Navigation (NavigationRegion2D) — rectangular NavigationPolygon
+ *   │   ├── Navigation (NavigationRegion2D) — walkable interiors only; skipped for void/hazard
  *   │   ├── Entities/ (Node2D)
  *   │   │   └── <EntityName> (Node2D) — textureless placeholder; sceneTemplate in metadata
  *   │   ├── Items/ (Node2D)
@@ -245,9 +245,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push('');
         }
 
-        if (ids) {
+        if (ids?.nav) {
             // Navigation — a rectangular navmesh so NPCs/the player can path
-            // within the zone (NavigationLink2D only connects zones, not inside).
+            // within the zone. Void/hazard hulls skip this: a covering
+            // NavigationRegion2D would say walk while physics says solid.
             lines.push(`[node name="Navigation" type="NavigationRegion2D" parent="${zone.nodeName}"]`);
             lines.push(`navigation_polygon = SubResource("${ids.nav}")`);
             lines.push('');
@@ -529,12 +530,17 @@ export function buildWorldScene(input: SceneBuildInput): string {
         }
     }
 
-    // Navigation links as metadata on root
-    if (input.navigationLinks.length > 0) {
+    // Navigation links as metadata on root. Skip links whose from/to zone is a
+    // filled hull — a door into a pit must not stay a walkable NavigationLink2D.
+    const solidZoneIds = new Set(input.zones.filter(zoneFillsCollision).map((z) => z.id));
+    const walkableLinks = input.navigationLinks.filter(
+        (link) => !solidZoneIds.has(link.fromZoneId) && !solidZoneIds.has(link.toZoneId),
+    );
+    if (walkableLinks.length > 0) {
         lines.push(`[node name="NavigationLinks" type="Node2D" parent="."]`);
         lines.push('');
-        for (let i = 0; i < input.navigationLinks.length; i++) {
-            const link = input.navigationLinks[i];
+        for (let i = 0; i < walkableLinks.length; i++) {
+            const link = walkableLinks[i];
             lines.push(`[node name="Link_${i}" type="NavigationLink2D" parent="NavigationLinks"]`);
             lines.push(`start_position = Vector2(${link.startPosition.x}, ${link.startPosition.y})`);
             lines.push(`end_position = Vector2(${link.endPosition.x}, ${link.endPosition.y})`);
@@ -877,7 +883,7 @@ interface SubResourceSet {
     /** Sub-resource declaration blocks, in declaration order. */
     blocks: string[];
     /** Map of zone id → the sub-resource ids that zone's nodes reference. */
-    idsByZone: Map<string, { rect?: string; nav: string }>;
+    idsByZone: Map<string, { rect?: string; nav?: string }>;
 }
 
 /** Void/hazard zones are solid; walkable/water/custom interiors stay open. */
@@ -886,19 +892,18 @@ function zoneFillsCollision(zone: GodotZoneResource): boolean {
 }
 
 /**
- * Build the per-zone navigation-polygon (and, for void/hazard, filled-hull)
- * sub-resources. Ids are index-based (RectShape_N / NavPoly_N) so they are
- * always valid Godot SubResource ids regardless of zone naming.
+ * Build per-zone sub-resources. Walkable interiors get a NavigationPolygon;
+ * void/hazard get a filled-hull RectangleShape2D and no navmesh (physics
+ * already says solid). Ids are index-based (RectShape_N / NavPoly_N).
  */
 function collectSubResources(zones: GodotZoneResource[]): SubResourceSet {
     const blocks: string[] = [];
-    const idsByZone = new Map<string, { rect?: string; nav: string }>();
+    const idsByZone = new Map<string, { rect?: string; nav?: string }>();
 
     for (let i = 0; i < zones.length; i++) {
         const zone = zones[i];
         const { w, h } = zoneExtent(zone);
-        const nav = `NavPoly_${i}`;
-        const ids: { rect?: string; nav: string } = { nav };
+        const ids: { rect?: string; nav?: string } = {};
 
         if (zoneFillsCollision(zone)) {
             const rect = `RectShape_${i}`;
@@ -907,13 +912,17 @@ function collectSubResources(zones: GodotZoneResource[]): SubResourceSet {
                 `size = Vector2(${w}, ${h})`,
             );
             ids.rect = rect;
+            // No covering navmesh — that would say walk over the solid hull.
+        } else {
+            const nav = `NavPoly_${i}`;
+            // Rectangular navmesh in zone-local space: (0,0) (w,0) (w,h) (0,h).
+            blocks.push(
+                `[sub_resource type="NavigationPolygon" id="${nav}"]\n` +
+                `vertices = PackedVector2Array(0, 0, ${w}, 0, ${w}, ${h}, 0, ${h})\n` +
+                `polygons = [PackedInt32Array(0, 1, 2, 3)]`,
+            );
+            ids.nav = nav;
         }
-        // Rectangular navmesh in zone-local space: (0,0) (w,0) (w,h) (0,h).
-        blocks.push(
-            `[sub_resource type="NavigationPolygon" id="${nav}"]\n` +
-            `vertices = PackedVector2Array(0, 0, ${w}, 0, ${w}, ${h}, 0, ${h})\n` +
-            `polygons = [PackedInt32Array(0, 1, 2, 3)]`,
-        );
 
         idsByZone.set(zone.id, ids);
     }

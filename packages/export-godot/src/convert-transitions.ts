@@ -75,6 +75,19 @@ export function convertTransitions(project: WorldProject): ConvertTransitionsRes
             continue;
         }
 
+        if (!zonesById.has(t.targetZoneId)) {
+            fidelity.push({
+                level: 'dropped',
+                domain: 'transitions',
+                severity: 'error',
+                entityId: t.id,
+                fieldPath: `transitions.${t.id}.targetZoneId`,
+                message: `Transition "${t.id}" dropped — target zone "${t.targetZoneId}" not found.`,
+                reason: 'Orphan target zone reference.',
+            });
+            continue;
+        }
+
         let gridX = t.gridX;
         let gridY = t.gridY;
 

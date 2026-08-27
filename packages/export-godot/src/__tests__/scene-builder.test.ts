@@ -93,7 +93,17 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
         expect(hazard).toContain('type="StaticBody2D" parent="ZoneA"');
     });
 
-    it('gives every zone a NavigationRegion2D with a rectangular navmesh', () => {
+    it('does not emit a walkable NavigationRegion2D over a void hull (F-71730b5a)', () => {
+        const tscn = buildWorldScene(baseInput([makeZone({ collisionType: 'void', size: { x: 160, y: 96 } })]));
+        expect(tscn).toContain('type="StaticBody2D" parent="ZoneA"');
+        expect(tscn).toContain('[sub_resource type="RectangleShape2D" id="RectShape_0"]');
+        expect(tscn).toContain('size = Vector2(160, 96)');
+        expect(tscn).not.toContain('type="NavigationRegion2D" parent="ZoneA"');
+        expect(tscn).not.toContain('[sub_resource type="NavigationPolygon"');
+        expect(tscn).not.toMatch(/vertices = PackedVector2Array\(0, 0, 160, 0, 160, 96, 0, 96\)/);
+    });
+
+    it('gives a walkable zone a NavigationRegion2D with a rectangular navmesh', () => {
         const tscn = buildWorldScene(baseInput([makeZone({ size: { x: 160, y: 96 } })]));
         expect(tscn).toContain('[sub_resource type="NavigationPolygon" id="NavPoly_0"]');
         expect(tscn).toContain('vertices = PackedVector2Array(0, 0, 160, 0, 160, 96, 0, 96)');
@@ -676,6 +686,29 @@ describe('buildWorldScene — connection condition (F-c8fc01b1)', () => {
         expect(tscn).toContain('[node name="Link_0" type="NavigationLink2D" parent="NavigationLinks"]');
         expect(tscn).toContain('metadata/condition = "item:iron-key"');
         expect(tscn).toContain('metadata/kind = "door"');
+    });
+
+    it('does not emit NavigationLink2D into a void zone (F-71730b5a)', () => {
+        const tscn = buildWorldScene({
+            ...baseInput([
+                makeZone({ id: 'zone-a', nodeName: 'ZoneA' }),
+                makeZone({ id: 'pit', nodeName: 'Pit', collisionType: 'void', position: { x: 160, y: 0 } }),
+            ]),
+            navigationLinks: [{
+                fromZoneId: 'zone-a',
+                toZoneId: 'pit',
+                kind: 'door',
+                bidirectional: true,
+                transitionMode: 'door',
+                startPosition: { x: 160, y: 48 },
+                endPosition: { x: 160, y: 48 },
+            }],
+        });
+        expect(tscn).not.toContain('type="NavigationLink2D"');
+        expect(tscn).not.toContain('[node name="NavigationLinks"');
+        expect(tscn).toContain('type="NavigationRegion2D" parent="ZoneA"');
+        expect(tscn).not.toContain('type="NavigationRegion2D" parent="Pit"');
+        expect(tscn).toContain('type="StaticBody2D" parent="Pit"');
     });
 });
 
