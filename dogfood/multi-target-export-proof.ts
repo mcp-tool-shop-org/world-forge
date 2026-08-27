@@ -58,6 +58,16 @@ mkdirSync(outGodot, { recursive: true });
 mkdirSync(outUnreal, { recursive: true });
 mkdirSync(worldsDir, { recursive: true });
 
+/**
+ * Test-only fault injection (F-987419c9).
+ * `WORLD_FORGE_FORCE_PROOF_FLAG=<name>` forces that boolean to false so the
+ * exit-code + receipt-honesty tests can drive each gate independently.
+ * Never set during a normal run.
+ */
+function applyProofForceFlag(name: string, value: boolean): boolean {
+    return process.env.WORLD_FORGE_FORCE_PROOF_FLAG === name ? false : value;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 1. VALIDATE SOURCE WORLD
 // ═══════════════════════════════════════════════════════════════
@@ -89,15 +99,16 @@ const brokenProject = {
     ],
 };
 const brokenResult = validateProject(brokenProject as any);
-console.log(`  Introduced: entity in nonexistent zone`);
-console.log(`  Caught: ${!brokenResult.valid} (${brokenResult.errors.length} errors)`);
+const breakCaught = applyProofForceFlag('breakFixCaught', !brokenResult.valid);
 const fixedProject = {
     ...brokenProject,
     entityPlacements: brokenProject.entityPlacements.filter((e) => e.zoneId !== 'zone-NONEXISTENT'),
 };
 const fixedResult = validateProject(fixedProject as any);
-console.log(`  Fixed: removed ghost entity → valid: ${fixedResult.valid}`);
-console.log('  ✓ Validation catches invalid states, repair restores validity.\n');
+const breakFixed = applyProofForceFlag('breakFixRepaired', fixedResult.valid);
+console.log(`  Introduced: entity in nonexistent zone`);
+console.log(`  Caught: ${breakCaught} (${brokenResult.errors.length} errors)`);
+console.log(`  Fixed: removed ghost entity → valid: ${breakFixed}\n`);
 
 // Advisory
 const advisory = advisoryValidation(proofProject);
@@ -191,11 +202,11 @@ console.log(`    Lossless %: ${godotFidelity.summary.losslessPercent}%`);
 
 // Validate .tscn structure
 const tscnLines = godot.contentPack.worldSceneTscn.split('\n');
-const hasGdScene = tscnLines[0].startsWith('[gd_scene');
+const hasGdScene = applyProofForceFlag('hasGdScene', tscnLines[0].startsWith('[gd_scene'));
 const nodeCount = tscnLines.filter((l) => l.startsWith('[node ')).length;
 const hasNavLinks = tscnLines.some((l) => l.includes('NavigationLink2D'));
 console.log(`\n  .tscn validation:`);
-console.log(`    Valid header: ${hasGdScene}`);
+console.log(`    [gd_scene] header: ${hasGdScene}`);
 console.log(`    Node count: ${nodeCount}`);
 console.log(`    Has NavigationLink2D: ${hasNavLinks}`);
 
@@ -207,19 +218,25 @@ const allResPaths = [
     ...godot.contentPack.lootTables.map((l) => l.resourcePath),
     ...godot.contentPack.items.map((i) => i.resourcePath),
 ];
-const allResValid = allResPaths.every((p) => p.startsWith('res://'));
-console.log(`    All resource paths valid (res://): ${allResValid}`);
+const allResValid = applyProofForceFlag('allResValid', allResPaths.every((p) => p.startsWith('res://')));
+console.log(`    res:// prefixed: ${allResValid}`);
 console.log(`    Total resource paths: ${allResPaths.length}`);
 
 // Validate IDs survive
 const godotZoneIds = godot.contentPack.zones.map((z) => z.id);
 const sourceZoneIds = proofProject.zones.map((z) => z.id);
-const zoneIdsPreserved = sourceZoneIds.every((id) => godotZoneIds.includes(id));
+const zoneIdsPreserved = applyProofForceFlag(
+    'zoneIdsPreserved',
+    sourceZoneIds.every((id) => godotZoneIds.includes(id)),
+);
 console.log(`    Zone IDs preserved: ${zoneIdsPreserved}`);
 
 const godotEntityIds = godot.contentPack.entities.all.map((e) => e.entityId);
 const sourceEntityIds = proofProject.entityPlacements.map((e) => e.entityId);
-const entityIdsPreserved = sourceEntityIds.every((id) => godotEntityIds.includes(id));
+const entityIdsPreserved = applyProofForceFlag(
+    'entityIdsPreserved',
+    sourceEntityIds.every((id) => godotEntityIds.includes(id)),
+);
 console.log(`    Entity IDs preserved: ${entityIdsPreserved}`);
 
 writeFileSync(resolve(outGodot, 'content-pack.json'), JSON.stringify(godot.contentPack, null, 2));
@@ -284,9 +301,15 @@ console.log(`    Y-axis flip: gridY=${sourceCellar.gridY} → UE Y=${unrealCella
 
 // ID preservation
 const unrealZoneIds = unreal.contentPack.Zones.map((z) => z.Id);
-const unrealZoneIdsPreserved = sourceZoneIds.every((id) => unrealZoneIds.includes(id));
+const unrealZoneIdsPreserved = applyProofForceFlag(
+    'unrealZoneIdsPreserved',
+    sourceZoneIds.every((id) => unrealZoneIds.includes(id)),
+);
 const unrealActorIds = unreal.contentPack.Actors.All.map((a) => a.ActorId);
-const unrealEntityIdsPreserved = sourceEntityIds.every((id) => unrealActorIds.includes(id));
+const unrealEntityIdsPreserved = applyProofForceFlag(
+    'unrealEntityIdsPreserved',
+    sourceEntityIds.every((id) => unrealActorIds.includes(id)),
+);
 console.log(`\n  ID preservation:`);
 console.log(`    Zone IDs preserved: ${unrealZoneIdsPreserved}`);
 console.log(`    Entity IDs preserved: ${unrealEntityIdsPreserved}`);
@@ -413,6 +436,26 @@ assert('No dropped entities (Godot)', !godot.contentPack.entities.incomplete,
     `dropped: ${godot.contentPack.entities.dropped.length}`);
 assert('No dropped entities (Unreal)', !unreal.contentPack.Actors.Incomplete,
     `dropped: ${unreal.contentPack.Actors.Dropped.length}`);
+
+// F-987419c9: these used to be printed (and copied into the receipt as
+// hardcoded success prose) without joining assertions[], so a truncated
+// .tscn / remapped ID / ghost-accepting validator still exited 0.
+assert('Break/fix catches ghost entity', breakCaught,
+    breakCaught ? `${brokenResult.errors.length} error(s)` : 'validator accepted ghost entity');
+assert('Break/fix repair restores validity', breakFixed,
+    breakFixed ? 'revalidated clean' : 'repair did not restore validity');
+assert('Godot [gd_scene] header', hasGdScene,
+    hasGdScene ? 'present' : 'missing or truncated');
+assert('Godot res:// paths valid', allResValid,
+    allResValid ? `${allResPaths.length} paths` : 'one or more paths missing res:// prefix');
+assert('Godot zone IDs preserved', zoneIdsPreserved,
+    zoneIdsPreserved ? `${sourceZoneIds.length} ids` : 'one or more source zone ids missing from Godot pack');
+assert('Godot entity IDs preserved', entityIdsPreserved,
+    entityIdsPreserved ? `${sourceEntityIds.length} ids` : 'one or more source entity ids missing from Godot pack');
+assert('Unreal zone IDs preserved', unrealZoneIdsPreserved,
+    unrealZoneIdsPreserved ? `${sourceZoneIds.length} ids` : 'one or more source zone ids missing from Unreal pack');
+assert('Unreal entity IDs preserved', unrealEntityIdsPreserved,
+    unrealEntityIdsPreserved ? `${sourceEntityIds.length} ids` : 'one or more source entity ids missing from Unreal pack');
 
 // Test-only fault injection (dogfood/__tests__/multi-target-export-proof-exit-code.test.ts):
 // lets a regression test exercise the "cross-lane invariant fails" branch of
@@ -546,7 +589,7 @@ const receipt = `# Multi-Target Export Proof — ${receiptDate}
 ## Validation
 
 - **Structural:** PASS (${validation.warningCount} warnings)
-- **Break/fix:** Ghost entity in nonexistent zone caught → removed → revalidated clean
+- **Break/fix:** ghost-invalid=${breakCaught}; repair-valid=${breakFixed}
 - **Advisory:** ${advisory.items.length} suggestions
 
 ## Export Matrix
@@ -567,9 +610,9 @@ const receipt = `# Multi-Target Export Proof — ${receiptDate}
 ## Lane 2: Godot 4
 
 - **Format:** GodotContentPack JSON + .tscn scene file
-- **Scene:** ${tscnLines.length} lines, ${nodeCount} nodes, valid \`[gd_scene]\` header
+- **Scene:** ${tscnLines.length} lines, ${nodeCount} nodes, [gd_scene] header=${hasGdScene}
 - **Coordinate system:** Y-down preserved (no flip), grid × ${tileSize}px scale
-- **Resource paths:** ${allResPaths.length} total, all valid \`res://\` prefixed
+- **Resource paths:** ${allResPaths.length} total, res:// prefixed=${allResValid}
 - **NavigationLink2D:** ${godot.contentPack.navigationLinks.length} links for zone connections
 - **Zone IDs preserved:** ${zoneIdsPreserved}
 - **Entity IDs preserved:** ${entityIdsPreserved}
@@ -580,7 +623,7 @@ const receipt = `# Multi-Target Export Proof — ${receiptDate}
 - **Format:** UnrealContentPack JSON (format v${unreal.contentPack.Meta.FormatVersion})
 - **Scale:** ${tileSizeCm}cm/tile (1 tile = 1 metre)
 - **Y-axis:** Flipped (Y-down → -Y in Unreal, matching Z-up convention)
-- **Elevation:** ${sourceCellar.elevation}m → Z=${unrealCellar.ElevationCm}cm ✓
+- **Elevation:** ${sourceCellar.elevation}m → Z=${unrealCellar.ElevationCm}cm match=${unrealCellar.ElevationCm === expectedZ}
 - **WorldPartition:** ${unreal.contentPack.WorldPartition.CellsX}×${unreal.contentPack.WorldPartition.CellsY} cells (${unreal.contentPack.WorldPartition.CellSizeCm}cm each)
 - **Zone IDs preserved:** ${unrealZoneIdsPreserved}
 - **Entity IDs preserved:** ${unrealEntityIdsPreserved}

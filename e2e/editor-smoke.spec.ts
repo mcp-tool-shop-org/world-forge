@@ -16,6 +16,8 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
+// Written by e2e/global-setup.ts from the schema chapel fixture so this
+// suite does not depend on a tracked file under gitignored dogfood/output/.
 const CHAPEL_PROJECT = path.resolve(__dirname, '../dogfood/output/chapel-project.json');
 
 test.describe('Editor browser smoke', () => {

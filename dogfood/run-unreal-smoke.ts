@@ -156,15 +156,34 @@ assert(
 );
 
 // Transition zone refs valid
-if (pack.Transitions.length > 0) {
-    const transZoneRefs = pack.Transitions.flatMap((t) => [t.ZoneId, t.TargetZoneId]);
-    assert(
-        transZoneRefs.every((id) => zoneIds.has(id)),
-        'transition_zone_refs_valid',
-    );
-} else {
-    assert(true, 'transition_zone_refs_valid'); // vacuously true
+//
+// F-933d65b9: the empty-array branch used to `assert(true, 'transition_zone_refs_valid')`,
+// so a convert-transitions regression that emitted [] still recorded a pass
+// for the step that claims to prove 'ID/reference preservation — zone IDs in
+// … Transitions'. Require the pack count to match the proof fixture (which
+// must itself be > 0), then validate refs — never a vacuous true.
+if (process.env.WORLD_FORGE_FORCE_UNREAL_EMPTY_TRANSITIONS === '1') {
+    pack.Transitions.length = 0;
 }
+const expectedTransitionCount = (proofProject.transitions ?? []).length;
+assert(
+    expectedTransitionCount > 0,
+    'proof_fixture_has_transitions',
+    'Dustwalk proof world must include at least one transition — an empty fixture would make the ref check vacuous',
+);
+assert(
+    pack.Transitions.length === expectedTransitionCount,
+    'transition_count_matches_source',
+    `pack=${pack.Transitions.length}, source=${expectedTransitionCount}`,
+);
+const transZoneRefs = pack.Transitions.flatMap((t) => [t.ZoneId, t.TargetZoneId]);
+assert(
+    pack.Transitions.length > 0 && transZoneRefs.every((id) => zoneIds.has(id)),
+    'transition_zone_refs_valid',
+    pack.Transitions.length === 0
+        ? 'Transitions is empty — cannot validate refs'
+        : `orphans: ${transZoneRefs.filter((id) => !zoneIds.has(id)).join(', ') || 'none'}`,
+);
 
 // Step 6: Blueprint tag assignment
 console.log('\n── 6. Blueprint tag assignment ──');

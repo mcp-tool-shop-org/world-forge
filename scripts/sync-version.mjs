@@ -35,7 +35,9 @@
  *   node scripts/sync-version.mjs
  *     Rewrite the vX.Y.Z token if it has drifted. Fast (no test execution) —
  *     this is the mode wired to npm `prebuild`, so it runs on every
- *     `npm run build` without taxing it.
+ *     `npm run build` without taxing it. In CI / GITHUB_ACTIONS this write
+ *     is a no-op (F-adf9c645) so prebuild cannot stamp the runner workspace
+ *     and hide committed README drift from a later `--check`.
  *
  *   node scripts/sync-version.mjs --check
  *     Exit non-zero if ANY of the following has drifted: the version token,
@@ -80,6 +82,10 @@ const readmePath = resolve(repoRoot, 'README.md');
 
 const CHECK = process.argv.includes('--check');
 const SYNC_TESTS = process.argv.includes('--sync-tests');
+// F-adf9c645: default (write) mode used to stamp README during `npm prebuild`,
+// which CI runs before `npm run check-version`. --check then compared against
+// the already-rewritten file and could not see committed README drift.
+const IN_CI = process.env.CI === 'true' || process.env.CI === '1' || Boolean(process.env.GITHUB_ACTIONS);
 
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const version = pkg.version;
@@ -172,6 +178,17 @@ if (CHECK) {
       : ''
   );
   process.exit(1);
+}
+
+if (IN_CI) {
+  // Refuse every write path in CI (default stamp and --sync-tests). --check
+  // above is the only CI-safe mode: a read-only comparison against the
+  // committed README.
+  console.log(
+    `[sync-version] CI/GITHUB_ACTIONS set — refusing to write README.md. ` +
+      `Use --check to compare the committed README against package.json v${version}.`
+  );
+  process.exit(0);
 }
 
 if (nextInner === inner) {
