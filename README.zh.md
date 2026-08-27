@@ -97,7 +97,7 @@ npx world-forge-export-unreal --summary ./UnrealPack
 - **城镇**——市场 + 工坊，建筑物（`StaticBody2D` 占位符）/枢纽/据点作为 `Node2D` 占位符，所有这些都将它们的数据作为元数据携带。
 - **世界建模**——垂直层（每个区域的 `z_index` 带状 + `StratumLink` 连接器）、类型化的危险区域作为 `Area2D` 区域以及区域入口门控元数据。
 - **保真度报告**——对无损、近似和已删除数据的结构化跟踪，并与真实的 Godot 4 引擎进行验证（无头烟雾，36 个断言）。
-- **格式版本**——`GODOT_PACK_FORMAT_VERSION` 1.0.0
+- **格式版本**——`GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 

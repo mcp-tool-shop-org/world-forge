@@ -97,7 +97,7 @@ npx world-forge-export-unreal --summary ./UnrealPack
 - **町** — 市場+クラフトステーション、および建物（`StaticBody2D`フットプリント）/ハブ/要塞を `Node2D` プレースホルダーとして配置し、すべてメタデータとしてデータを持ちます。
 - **ワールドモデリング** — 垂直層（ゾーンごとの `z_index` バンディング + `StratumLink` コネクタ）、型付きの危険要素を `Area2D` リージョンとして表現し、ゾーンエントリーゲートのメタデータを設定します。
 - **品質レポート** — 無損失、近似化されたデータ、および変換中に削除されたデータの構造化追跡を行い、実際のGodot 4エンジンに対して検証します（ヘッドレススモーク、36個のアサート）。
-- **フォーマットバージョン** — `GODOT_PACK_FORMAT_VERSION` 1.0.0
+- **フォーマットバージョン** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 

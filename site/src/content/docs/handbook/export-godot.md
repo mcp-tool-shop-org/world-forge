@@ -113,4 +113,12 @@ contributed.
 
 ## Format Version
 
-`GODOT_PACK_FORMAT_VERSION` — currently `1.0.0`.
+`GODOT_PACK_FORMAT_VERSION` — currently `1.1.0`.
+
+Bump rules (keep in sync with `packages/export-godot/src/migrations.ts`):
+
+- **Major** — required field added/removed, or field semantics change in a way a loader must see.
+- **Minor** — optional field added. Old loaders ignore it; new loaders may read it.
+- **Patch** — clarifications, doc-only changes.
+
+`migrateGodotPack()` walks that chain. 1.1.0 added `files` (each stamped `resourcePath` → `.tres` body) and `zoneGates` on the JSON pack so a data-driven loader does not need to parse the `.tscn`.

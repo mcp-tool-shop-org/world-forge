@@ -97,7 +97,7 @@ Converte un `WorldProject` in un pacchetto di contenuti Godot 4 con testo della 
 - **Città:** mercati + stazioni di creazione ed edifici (impronte `StaticBody2D`) / hub / roccaforti come segnaposto `Node2D`, tutti contenenti i loro dati come metadati.
 - **Modellazione del mondo:** strati verticali (banding per zona `z_index` + connettori `StratumLink`), pericoli tipizzati come regioni `Area2D` e metadati della porta di ingresso alla zona.
 - **Rapporto sulla fedeltà:** tracciamento strutturato dei dati senza perdite, approssimati o eliminati, verificato rispetto al motore Godot 4 reale (rendering in modalità headless, 36 asserzioni).
-- **Versione del formato:** `GODOT_PACK_FORMAT_VERSION` 1.0.0
+- **Versione del formato:** `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 
