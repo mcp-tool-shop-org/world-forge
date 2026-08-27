@@ -28,6 +28,12 @@ export interface ZoneEntryGate {
   reason?: string;
 }
 
+/** Physics runtime the engine should apply in a zone. */
+export type PhysicsMode = 'normal' | 'platformer' | 'zero-g' | 'aquatic';
+
+/** Gravity direction override. Default is 'down' (negative Z). */
+export type GravityDirection = 'down' | 'up' | 'none';
+
 /** A named area on the map occupying a rectangular tile region. */
 export interface Zone {
   id: string;
@@ -75,9 +81,9 @@ export interface Zone {
   /** Gravity magnitude override (m/s²). Leave undefined to inherit project/engine default. */
   gravityOverride?: number;
   /** Gravity direction. Default is 'down' (negative Z). */
-  gravityDirection?: 'down' | 'up' | 'none';
+  gravityDirection?: GravityDirection;
   /** Physics mode that the engine should apply in this zone. */
-  physicsMode?: 'normal' | 'platformer' | 'zero-g' | 'aquatic';
+  physicsMode?: PhysicsMode;
 
   // ── Sky + lighting (UE-FT-002 schema half) ──────────────────
   // Hints for exporters (UE5 Sky Atmosphere / Godot WorldEnvironment). The

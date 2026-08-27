@@ -19,6 +19,8 @@ Core TypeScript types for [World Forge](https://github.com/mcp-tool-shop-org/wor
 - **World modeling:** `Stratum`, `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), plus party-state `SpawnCondition` operands powering `ZoneEntryGate`
 - **Visual:** `Tileset`, `TileDefinition`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
 - **Project:** `WorldProject` — the complete authored world container
+- **Shape helpers:** `createEmptyProject()`, `normalizeProjectShape()`, `stampProjectSchemaVersion()` — v4.x backfill for arrays added after v4.0
+- **Closed unions:** `VALID_*` sets (`VALID_CONNECTION_KINDS`, `VALID_PHYSICS_MODES`, …) — refuse-to-guess lookups derived from the TypeScript unions
 - **Validation:** `validateProject()` — numbered structural checks live in `src/validate.ts` (do not treat a published count as the contract)
 
 ## Install
@@ -30,13 +32,27 @@ npm install @world-forge/schema
 ## Usage
 
 ```typescript
-import type { WorldProject, Zone, EntityPlacement } from '@world-forge/schema';
-import { validateProject } from '@world-forge/schema';
+import type { WorldProject } from '@world-forge/schema';
+import {
+  validateProject,
+  stampProjectSchemaVersion,
+  normalizeProjectShape,
+  VALID_PHYSICS_MODES,
+} from '@world-forge/schema';
 
-const result = validateProject(myProject);
+// v4.0 JSON may omit arrays added later (craftingStations, tilesets, …).
+// Stamp backfills omitted required arrays to []; validateProject still rejects
+// present-but-wrong types on the raw document.
+const parsed: unknown = JSON.parse(raw);
+const project = stampProjectSchemaVersion(
+  normalizeProjectShape(parsed) ?? (parsed as WorldProject),
+);
+const result = validateProject(project);
 if (!result.valid) {
   console.error(result.errors);
 }
+
+VALID_PHYSICS_MODES.has('platformer'); // true — refuse-to-guess against one source
 ```
 
 ## License
