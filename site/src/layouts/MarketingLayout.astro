@@ -1,0 +1,92 @@
+---
+const {
+  title,
+  description,
+  logoBadge,
+  brandName,
+  nav = [],
+  repoUrl,
+  npmUrl,
+  footerText,
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + '/';
+const origin = Astro.site ? Astro.site.origin : 'https://mcp-tool-shop-org.github.io';
+const ogImage = `${origin}${base}og-image.jpg`;
+const appleTouch = `${base}apple-touch-icon.png`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <link rel="apple-touch-icon" href={appleTouch} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+    <title>{title}</title>
+  </head>
+
+  <body class="min-h-screen bg-surface text-heading antialiased">
+    <div class="mx-auto max-w-6xl px-4">
+      <header class="flex items-center justify-between py-6">
+        <a href={base} class="flex items-center gap-2 font-semibold tracking-tight">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-surface-strong">
+            {logoBadge}
+          </span>
+          <span>{brandName}</span>
+        </a>
+
+        <nav class="hidden items-center gap-6 text-sm text-muted md:flex">
+          {nav.map((item: { href: string; label: string }) => (
+            <a href={item.href} class="hover:text-heading">{item.label}</a>
+          ))}
+        </nav>
+
+        <div class="flex items-center gap-3">
+          {npmUrl && (
+            <a
+              class="hidden rounded-xl border border-edge px-4 py-2 text-sm text-body hover:bg-surface-raised md:inline-flex"
+              href={npmUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              npm
+            </a>
+          )}
+          <a
+            class="inline-flex rounded-xl bg-action px-4 py-2 text-sm font-medium text-action-text hover:bg-action-hover"
+            href={repoUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+        </div>
+      </header>
+
+      <main class="pb-24">
+        <slot />
+      </main>
+
+      <footer class="border-t border-edge-subtle py-10 text-sm text-dim">
+        <div class="flex flex-col justify-between gap-4 md:flex-row">
+          <p set:html={footerText} />
+          <div class="flex gap-4">
+            {npmUrl && (
+              <a class="hover:text-body" href={npmUrl} target="_blank" rel="noreferrer">npm</a>
+            )}
+            <a class="hover:text-body" href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
+            <a class="hover:text-body" href="https://opensource.org/license/mit/" target="_blank" rel="noreferrer">License</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
