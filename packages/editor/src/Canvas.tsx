@@ -514,11 +514,8 @@ export function Canvas() {
       const labelY = y + (fontSize + 3) / zoom;
       fillLabelPill(zone.name, labelX, labelY, selected ? tokenTextPrimary : tokenTextMuted);
 
-      // ED-FT-003: elevation badge (e.g. "+12m" or "-4m..+8m"). Shown only when
-      // the layer toggle is on and the zone carries elevation data. The renderer
-      // agent will extend ZoneOverlayRenderer with fuller visualization (tint,
-      // dashed outline, drop-shadow) in Wave 2; this gives authors an immediate
-      // cue today.
+      // ED-FT-003: elevation badge (e.g. "+12m" or "-4m..+8m") on the same
+      // elevated pill as zone names (F-b42da805 leftover of F-407b7c74).
       if (showElevation && (zone.elevation != null || zone.elevationRange != null)) {
         let text = '';
         if (zone.elevationRange) {
@@ -532,13 +529,9 @@ export function Canvas() {
           const badgeFont = Math.max(8, Math.min(12, 10 / zoom));
           ctx.font = `${badgeFont}px monospace`;
           const tw = ctx.measureText(text).width;
-          const bpad = 3 / zoom;
-          const bx = x + w - tw - bpad * 2 - 2 / zoom;
-          const by = y + 2 / zoom;
-          ctx.fillStyle = 'rgba(88, 166, 255, 0.35)';
-          ctx.fillRect(bx, by, tw + bpad * 2, badgeFont + bpad);
-          ctx.fillStyle = '#e6f0ff';
-          ctx.fillText(text, bx + bpad, by + badgeFont);
+          const tx = x + w - tw - 5 / zoom;
+          const ty = y + 2 / zoom + badgeFont;
+          fillLabelPill(text, tx, ty, tokenAccentText);
         }
       }
     }

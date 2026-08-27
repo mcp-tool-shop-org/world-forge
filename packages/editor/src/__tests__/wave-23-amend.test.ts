@@ -122,6 +122,11 @@ describe('F-ce49d7e0: complete light/dark token tables', () => {
     expect(canvas).not.toMatch(/fillStyle\s*=\s*'#aaa'/);
     expect(canvas).not.toMatch(/fillStyle\s*=\s*'#ccc'/);
     expect(canvas).not.toMatch(/selected \? '#fff' : '#ccc'/);
+    // F-b42da805: leftover GitHub-dark overlay paint (not readCssVar fallbacks)
+    expect(canvas).not.toMatch(/fillStyle\s*=\s*['"]#e6f0ff['"]/);
+    expect(canvas).not.toMatch(/fillStyle\s*=\s*['"]#58a6ff['"]/);
+    expect(canvas).not.toMatch(/fillStyle\s*=\s*['"]rgba\(\s*88\s*,\s*166\s*,\s*255/);
+    expect(canvas).toMatch(/fillLabelPill\(text,\s*[^,]+,\s*[^,]+,\s*tokenAccentText\)/);
     expect(canvas).toContain("readCssVar('--wf-accent'");
     expect(canvas).toContain("readCssVar('--wf-text-muted'");
     expect(canvas).toContain("readCssVar('--wf-bg-overlay'");
@@ -141,6 +146,8 @@ describe('F-ce49d7e0: complete light/dark token tables', () => {
     expect(contrast(lightTokens['--wf-accent'], lightTokens['--wf-bg-app'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast(lightTokens['--wf-text-primary'], lightTokens['--wf-bg-app'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast(lightTokens['--wf-text-muted'], lightTokens['--wf-bg-elevated'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-accent-text'], lightTokens['--wf-bg-elevated'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-text-primary'], lightTokens['--wf-bg-elevated'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast(lightTokens['--wf-on-warning'], lightTokens['--wf-warning'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast(lightTokens['--wf-on-success'], lightTokens['--wf-success'])).toBeGreaterThanOrEqual(4.5);
     expect(contrast(lightTokens['--wf-on-danger'], lightTokens['--wf-danger'])).toBeGreaterThanOrEqual(4.5);
