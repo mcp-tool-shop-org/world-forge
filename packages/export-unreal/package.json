@@ -38,7 +38,8 @@
     "dist",
     "!dist/__tests__",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "logo.png"
   ],
   "publishConfig": {
     "access": "public"

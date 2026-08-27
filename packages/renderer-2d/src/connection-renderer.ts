@@ -70,10 +70,11 @@ export class ConnectionRenderer {
 
       const g = new Graphics();
       const isDashed = !!conn.condition;
+      // F-8a7e82c7: unconditional stroke ≥3:1 on navy 0x1a1a2e; keep orange dash.
       const style = {
         width: 1,
-        color: isDashed ? 0xffaa00 : 0x888888,
-        alpha: 0.6,
+        color: isDashed ? 0xffaa00 : 0xb0b0b0,
+        alpha: isDashed ? 0.6 : 0.9,
       };
 
       if (isDashed) {

@@ -8,15 +8,29 @@ vi.mock('pixi.js', () => {
     children: unknown[] = [];
     position = { set: vi.fn() };
     scale = { set: vi.fn() };
-    addChild() {}
-    addChildAt() {}
-    removeChild() {}
+    addChild(child: unknown) { this.children.push(child); return child; }
+    addChildAt(child: unknown, index: number) {
+      this.children.splice(index, 0, child);
+      return child;
+    }
+    removeChild(child: unknown) {
+      const i = this.children.indexOf(child);
+      if (i >= 0) this.children.splice(i, 1);
+      return child;
+    }
   }
   class MockGraphics {
-    setStrokeStyle() { return this; }
+    strokes: Array<{ width?: number; color?: number; alpha?: number }> = [];
+    setStrokeStyle(s?: { width?: number; color?: number; alpha?: number }) {
+      if (s) this.strokes.push(s);
+      return this;
+    }
     moveTo() { return this; }
     lineTo() { return this; }
-    stroke() { return this; }
+    stroke(s?: { width?: number; color?: number; alpha?: number }) {
+      if (s) this.strokes.push(s);
+      return this;
+    }
     destroy() {}
   }
   class MockApplication {
@@ -36,7 +50,7 @@ vi.mock('pixi.js', () => {
   };
 });
 
-import { WorldViewport } from '../viewport.js';
+import { WorldViewport, DEFAULT_GRID_COLOR, DEFAULT_GRID_ALPHA } from '../viewport.js';
 
 function makeContainer(): HTMLElement {
   return {
@@ -163,6 +177,30 @@ describe('WorldViewport', () => {
     expect(vp.showGrid).toBe(true);
     vp.showGrid = false;
     expect(vp.showGrid).toBe(false);
+  });
+
+  it('F-87de2dd9: default grid stroke color/alpha pair is visible on navy', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    await vp.init(makeContainer());
+    const grid = vp.world.children[0] as { strokes: Array<{ width?: number; color?: number; alpha?: number }> };
+    expect(grid.strokes.length).toBeGreaterThan(0);
+    expect(grid.strokes.every((s) => s.color === DEFAULT_GRID_COLOR)).toBe(true);
+    expect(grid.strokes.every((s) => (s.alpha ?? 0) >= DEFAULT_GRID_ALPHA)).toBe(true);
+    expect(grid.strokes[0].width).toBeCloseTo(1, 5);
+  });
+
+  it('F-87de2dd9: grid hairline is 1/zoom and gridColor setter redraws', async () => {
+    const vp = new WorldViewport(defaultOpts);
+    await vp.init(makeContainer());
+    vp.zoom(2);
+    expect(vp.zoomLevel).toBeCloseTo(2, 5);
+    const afterZoom = vp.world.children[0] as { strokes: Array<{ width?: number; color?: number }> };
+    expect(afterZoom.strokes[0].width).toBeCloseTo(0.5, 5);
+
+    vp.gridColor = 0x8b949e;
+    expect(vp.gridColor).toBe(0x8b949e);
+    const afterSet = vp.world.children[0] as { strokes: Array<{ color?: number }> };
+    expect(afterSet.strokes.every((s) => s.color === 0x8b949e)).toBe(true);
   });
 
   describe('double-init guard (INF-B-002)', () => {

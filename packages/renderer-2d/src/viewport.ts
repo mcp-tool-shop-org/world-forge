@@ -3,6 +3,12 @@
 import { Application, Container, Graphics } from 'pixi.js';
 import type { DiagnosticInfo } from './diagnostics.js';
 
+/** Default grid stroke — ≥3:1 on navy 0x1a1a2e at this alpha (F-87de2dd9). */
+export const DEFAULT_GRID_COLOR = 0x6e7681;
+export const DEFAULT_GRID_ALPHA = 0.9;
+/** Major grid line every N cells. */
+export const GRID_MAJOR_EVERY = 8;
+
 export interface ViewportOptions {
   width: number;
   height: number;
@@ -10,6 +16,10 @@ export interface ViewportOptions {
   gridHeight: number;
   tileSize: number;
   backgroundColor?: number;
+  /** Grid overlay stroke color. Default 0x6e7681. */
+  gridColor?: number;
+  /** Grid overlay stroke alpha. Default 0.9. Major lines use min(1, alpha + 0.1). */
+  gridAlpha?: number;
 }
 
 export class WorldViewport {
@@ -123,22 +133,45 @@ export class WorldViewport {
     if (this.gridOverlay) {
       this.world.removeChild(this.gridOverlay);
       this.gridOverlay.destroy();
+      this.gridOverlay = null;
     }
     if (!this._showGrid) return;
 
     const g = new Graphics();
     const { gridWidth, gridHeight, tileSize } = this.opts;
-    g.setStrokeStyle({ width: 1, color: 0x333333, alpha: 0.3 });
+    const color = this.opts.gridColor ?? DEFAULT_GRID_COLOR;
+    const alpha = this.opts.gridAlpha ?? DEFAULT_GRID_ALPHA;
+    // F-87de2dd9: screen-space hairline so zoom does not hide or fatten lines.
+    const hairline = 1 / this._zoom;
+    const majorAlpha = Math.min(1, alpha + 0.1);
+
+    const isMajor = (i: number, max: number): boolean =>
+      i === 0 || i === max || i % GRID_MAJOR_EVERY === 0;
 
     for (let x = 0; x <= gridWidth; x++) {
+      if (isMajor(x, gridWidth)) continue;
       g.moveTo(x * tileSize, 0);
       g.lineTo(x * tileSize, gridHeight * tileSize);
     }
     for (let y = 0; y <= gridHeight; y++) {
+      if (isMajor(y, gridHeight)) continue;
       g.moveTo(0, y * tileSize);
       g.lineTo(gridWidth * tileSize, y * tileSize);
     }
-    g.stroke();
+    g.stroke({ width: hairline, color, alpha });
+
+    for (let x = 0; x <= gridWidth; x++) {
+      if (!isMajor(x, gridWidth)) continue;
+      g.moveTo(x * tileSize, 0);
+      g.lineTo(x * tileSize, gridHeight * tileSize);
+    }
+    for (let y = 0; y <= gridHeight; y++) {
+      if (!isMajor(y, gridHeight)) continue;
+      g.moveTo(0, y * tileSize);
+      g.lineTo(gridWidth * tileSize, y * tileSize);
+    }
+    g.stroke({ width: hairline, color, alpha: majorAlpha });
+
     this.gridOverlay = g;
     this.world.addChildAt(g, 0);
   }
@@ -154,6 +187,8 @@ export class WorldViewport {
     if (this.warnIfDestroyed('zoom')) return;
     this._zoom = Math.max(0.1, Math.min(5, this._zoom * factor));
     this.world.scale.set(this._zoom);
+    // Hairline width is 1/zoom — redraw so the overlay stays 1px on screen.
+    this.drawGrid();
   }
 
   centerOnTile(gridX: number, gridY: number): void {
@@ -175,6 +210,26 @@ export class WorldViewport {
   get showGrid(): boolean {
     if (this.warnIfDestroyed('showGrid')) return this._showGrid;
     return this._showGrid;
+  }
+
+  set gridColor(v: number) {
+    if (this.warnIfDestroyed('gridColor')) return;
+    this.opts.gridColor = v;
+    this.drawGrid();
+  }
+
+  get gridColor(): number {
+    return this.opts.gridColor ?? DEFAULT_GRID_COLOR;
+  }
+
+  set gridAlpha(v: number) {
+    if (this.warnIfDestroyed('gridAlpha')) return;
+    this.opts.gridAlpha = v;
+    this.drawGrid();
+  }
+
+  get gridAlpha(): number {
+    return this.opts.gridAlpha ?? DEFAULT_GRID_ALPHA;
   }
 
   get zoomLevel(): number {
