@@ -13,12 +13,32 @@
  * Prevents regressions on node:*, sidebar z-index, and export UI parity.
  */
 
-import { test, expect } from '@playwright/test';
+import { test as base, expect } from '@playwright/test';
 import path from 'path';
 
 // Written by e2e/global-setup.ts from the schema chapel fixture so this
 // suite does not depend on a tracked file under gitignored dogfood/output/.
 const CHAPEL_PROJECT = path.resolve(__dirname, '../dogfood/output/chapel-project.json');
+
+/**
+ * F-03e207f6: a Pixi/GPU exception or ErrorBoundary-swallowed render error
+ * after the top-bar <strong>World Forge</strong> is painted used to leave a
+ * red test name with no pageerror/console record. Fail the spec when either
+ * fires after goto (or later in the test).
+ */
+const test = base.extend({
+  page: async ({ page }, use) => {
+    const errors: string[] = [];
+    page.on('pageerror', (err) => {
+      errors.push(`pageerror: ${err.message}`);
+    });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(`console.error: ${msg.text()}`);
+    });
+    await use(page);
+    expect(errors, errors.join('\n')).toEqual([]);
+  },
+});
 
 test.describe('Editor browser smoke', () => {
   test('boots and renders the top bar', async ({ page }) => {

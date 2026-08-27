@@ -10,6 +10,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5200',
     headless: true,
+    // F-03e207f6: retries is 0, so 'on-first-retry' traces never fire.
+    // Capture a picture + trace of a failed editor boot for CI.
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
@@ -19,6 +23,10 @@ export default defineConfig({
     port: 5200,
     // F-b48f68c3: never trust a leftover :5200 process in CI.
     reuseExistingServer: !process.env.CI,
-    timeout: 15_000,
+    // F-06cc860c: 15s is below Playwright's 60s default and fails a cold CI
+    // Vite compile before any spec runs. 120s on CI, 60s locally.
+    timeout: process.env.CI ? 120_000 : 60_000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

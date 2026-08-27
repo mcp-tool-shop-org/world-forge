@@ -17,8 +17,8 @@
 // of the `packages/*/src/**/*.test.ts` glob it is checking up on.
 
 import { describe, it, expect } from 'vitest';
-import { readdirSync, statSync } from 'node:fs';
-import { resolve, join, dirname } from 'node:path';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { resolve, join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -96,4 +96,85 @@ describe('vitest include-glob floor (F-005)', () => {
         // to the checks that would otherwise be the only ones watching it.
         expect(findTestFiles(resolve(ROOT, 'dogfood')).length).toBeGreaterThan(0);
     });
+
+    it('parsed include globs still match src-root tests (F-4db80511)', () => {
+        // The on-disk walk above stays green if include is narrowed to
+        // packages/*/src/__tests__/**/*.test.ts, because every package still
+        // has files under src/. Parse the actual include and match it.
+        const globs = parseVitestInclude(readFileSync(resolve(ROOT, 'vitest.config.ts'), 'utf-8'));
+        expect(globs.length).toBeGreaterThan(0);
+
+        const srcRootTests = [
+            'packages/editor/src/modal-guards.test.ts',
+            'packages/editor/src/speed-panel-actions.test.ts',
+        ];
+        for (const rel of srcRootTests) {
+            expect(
+                matchesAnyGlob(rel, globs),
+                `${rel} must match vitest.config.ts include (got ${JSON.stringify(globs)})`,
+            ).toBe(true);
+        }
+
+        const packagesDir = resolve(ROOT, 'packages');
+        const packageDirs = readdirSync(packagesDir).filter((name) =>
+            isDirectory(join(packagesDir, name, 'src')),
+        );
+        for (const pkg of packageDirs) {
+            const found = findTestFiles(join(packagesDir, pkg, 'src'));
+            const matched = found.filter((full) =>
+                matchesAnyGlob(toPosix(relative(ROOT, full)), globs),
+            );
+            expect(
+                matched.length,
+                `packages/${pkg}/src has *.test.ts on disk but none match include ${JSON.stringify(globs)}`,
+            ).toBeGreaterThan(0);
+        }
+    });
+
+    it('a glob narrowed to __tests__/ would miss src-root tests (documents F-4db80511)', () => {
+        const narrowed = ['packages/*/src/__tests__/**/*.test.ts'];
+        expect(matchesAnyGlob('packages/editor/src/modal-guards.test.ts', narrowed)).toBe(false);
+        expect(matchesAnyGlob('packages/editor/src/speed-panel-actions.test.ts', narrowed)).toBe(false);
+        expect(matchesAnyGlob('packages/editor/src/__tests__/hotkeys.test.ts', narrowed)).toBe(true);
+    });
 });
+
+function parseVitestInclude(source: string): string[] {
+    const m = source.match(/include:\s*\[([\s\S]*?)\]/);
+    if (!m) throw new Error('could not parse include: [...] from vitest.config.ts');
+    return [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((x) => x[1]);
+}
+
+function toPosix(p: string): string {
+    return p.replace(/\\/g, '/');
+}
+
+function globToRegExp(glob: string): RegExp {
+    let pattern = '';
+    let i = 0;
+    while (i < glob.length) {
+        if (glob[i] === '*' && glob[i + 1] === '*') {
+            if (glob[i + 2] === '/') {
+                pattern += '(?:.*/)?';
+                i += 3;
+            } else {
+                pattern += '.*';
+                i += 2;
+            }
+        } else if (glob[i] === '*') {
+            pattern += '[^/]*';
+            i += 1;
+        } else if ('\\^$+?.()|[]{}'.includes(glob[i])) {
+            pattern += `\\${glob[i]}`;
+            i += 1;
+        } else {
+            pattern += glob[i];
+            i += 1;
+        }
+    }
+    return new RegExp(`^${pattern}$`);
+}
+
+function matchesAnyGlob(relPosix: string, globs: string[]): boolean {
+    return globs.some((g) => globToRegExp(g).test(relPosix));
+}

@@ -81,6 +81,72 @@ for (const z of contentPack.Zones) {
   console.log(`  ${z.Id}: OriginCm=(${z.OriginCm.X}, ${z.OriginCm.Y}, ${z.OriginCm.Z}), Elevation=${z.ElevationCm}cm${rangeStr}${parallaxStr}${skyStr}`);
 }
 
+// F-4641d61e: print-only Z-axis logs used to exit 0 when a converter zeroed
+// elevation or dropped parallax. Gate those fields. WORLD_FORGE_FORCE_UNREAL_25D_FAIL
+// mutates the pack so the subprocess test can fire the gate without a live bug.
+if (process.env.WORLD_FORGE_FORCE_UNREAL_25D_FAIL === '1') {
+  for (const z of contentPack.Zones) {
+    z.ElevationCm = 0;
+    z.ElevationRangeCm = undefined;
+    z.ParallaxLayers = undefined;
+    z.SkylineAssetId = undefined;
+  }
+}
+
+const fails: string[] = [];
+function assert25d(condition: boolean, label: string, detail?: string): void {
+  if (condition) {
+    console.log(`    ✓ ${label}`);
+  } else {
+    fails.push(label);
+    console.log(`    ✗ ${label}${detail ? ': ' + detail : ''}`);
+  }
+}
+
+const zone0 = contentPack.Zones[0];
+assert25d(zone0 != null, 'zone_0_present');
+if (zone0) {
+  assert25d(
+    zone0.SkylineAssetId === 'asset-chapel-skyline',
+    'zone_0_skyline_survives',
+    `expected asset-chapel-skyline, got ${zone0.SkylineAssetId ?? 'missing'}`,
+  );
+  assert25d(
+    Array.isArray(zone0.ParallaxLayers) && zone0.ParallaxLayers.length === 2,
+    'zone_0_parallax_survives',
+    `expected 2 parallax layers, got ${zone0.ParallaxLayers?.length ?? 0}`,
+  );
+}
+
+// i===1 is the authored multi-level cellar analogue (elevation -3 m → -300 cm).
+const cellar = contentPack.Zones[1];
+assert25d(cellar != null, 'cellar_zone_present');
+if (cellar) {
+  assert25d(
+    cellar.ElevationCm === -300,
+    'cellar_elevation_cm',
+    `expected -300, got ${cellar.ElevationCm}`,
+  );
+  assert25d(cellar.ElevationRangeCm != null, 'cellar_elevation_range_present');
+  if (cellar.ElevationRangeCm) {
+    assert25d(
+      cellar.ElevationRangeCm.FloorCm === -500,
+      'cellar_floor_cm',
+      `expected -500, got ${cellar.ElevationRangeCm.FloorCm}`,
+    );
+    assert25d(
+      cellar.ElevationRangeCm.CeilingCm === -100,
+      'cellar_ceiling_cm',
+      `expected -100, got ${cellar.ElevationRangeCm.CeilingCm}`,
+    );
+  }
+}
+
+if (fails.length > 0) {
+  console.error(`\n2.5D gate failed (${fails.length}): ${fails.join(', ')}`);
+  process.exit(1);
+}
+
 if (warnings.length > 0) {
   console.log('\n--- Warnings ---');
   for (const w of warnings) console.log(`  - ${w}`);
