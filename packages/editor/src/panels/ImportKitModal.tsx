@@ -9,6 +9,7 @@ import { countContent } from './TemplateManager.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, buttonPrimary, modalFooter } from '../ui/styles.js';
 import { readerOutcomeMessage } from './import-kit-modal-helpers.js';
+import { jsonFileParseError } from './import-modal-helpers.js';
 
 interface Props { onClose: () => void }
 
@@ -17,6 +18,7 @@ export function ImportKitModal({ onClose }: Props) {
   const { kits, importKit } = useKitStore();
 
   const [fileName, setFileName] = useState('');
+  const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportKitResult | null>(null);
   const [collision, setCollision] = useState<{ existingId: string; isBuiltIn: boolean } | null>(null);
@@ -41,6 +43,7 @@ export function ImportKitModal({ onClose }: Props) {
       activeReaderRef.current = null;
     }
     setFileName(file.name);
+    setReading(true);
     setError(null);
     setResult(null);
     setCollision(null);
@@ -52,6 +55,7 @@ export function ImportKitModal({ onClose }: Props) {
     };
     reader.onload = () => {
       clearActive();
+      setReading(false);
       try {
         const data = JSON.parse(reader.result as string);
         const res = prepareKitImport(data);
@@ -65,19 +69,21 @@ export function ImportKitModal({ onClose }: Props) {
         if (existing) {
           setCollision({ existingId: existing.id, isBuiltIn: existing.builtIn });
         }
-      } catch {
-        setError('Invalid JSON file');
+      } catch (err) {
+        setError(jsonFileParseError(err, file.name));
       }
     };
     // F-005: surface read errors/aborts instead of leaving the modal looking
     // stuck (fileName updates but result/error never populate).
     reader.onerror = () => {
       clearActive();
+      setReading(false);
       setError(readerOutcomeMessage('error', false, reader.error?.message));
     };
     reader.onabort = () => {
       const supplanted = activeReaderRef.current !== reader;
       clearActive();
+      if (!supplanted) setReading(false);
       const message = readerOutcomeMessage('abort', supplanted);
       if (message) setError(message);
     };
@@ -119,16 +125,17 @@ export function ImportKitModal({ onClose }: Props) {
 
   return (
     <ModalFrame title="Import Starter Kit" width={480} onClose={onClose}>
+      <div aria-busy={reading || undefined}>
 
         {/* File picker */}
-        <input ref={fileInput} type="file" accept=".wfkit.json,.json" onChange={handleFile} style={{ display: 'none' }} />
-        <button onClick={() => fileInput.current?.click()} style={buttonBase}>
-          {fileName || 'Choose .wfkit.json file\u2026'}
+        <input ref={fileInput} type="file" accept=".wfkit.json,.json" onChange={handleFile} style={{ display: 'none' }} disabled={reading} />
+        <button onClick={() => fileInput.current?.click()} style={buttonBase} disabled={reading}>
+          {reading ? `Reading ${fileName}…` : (fileName || 'Choose .wfkit.json file\u2026')}
         </button>
 
         {/* Error */}
         {error && (
-          <div style={{ marginTop: 12, padding: 8, background: '#3d1418', border: '1px solid #f85149', borderRadius: 4, color: '#f85149', fontSize: 12 }}>
+          <div role="alert" aria-live="assertive" style={{ marginTop: 12, padding: 8, background: '#3d1418', border: '1px solid #f85149', borderRadius: 4, color: '#f85149', fontSize: 12 }}>
             {error}
           </div>
         )}
@@ -184,17 +191,18 @@ export function ImportKitModal({ onClose }: Props) {
         <div style={modalFooter}>
           {result && result.isValid && collision && (
             <>
-              <button onClick={handleImportAsCopy} style={buttonPrimary}>Import as Copy</button>
+              <button onClick={handleImportAsCopy} style={buttonPrimary} disabled={reading}>Import as Copy</button>
               {!collision.isBuiltIn && (
-                <button onClick={handleReplace} style={{ ...buttonBase, color: 'var(--wf-warning)' }}>Replace Existing</button>
+                <button onClick={handleReplace} style={{ ...buttonBase, color: 'var(--wf-warning)' }} disabled={reading}>Replace Existing</button>
               )}
             </>
           )}
           {result && result.isValid && !collision && (
-            <button onClick={handleImport} style={buttonPrimary}>Import</button>
+            <button onClick={handleImport} style={buttonPrimary} disabled={reading}>Import</button>
           )}
           <button onClick={onClose} style={buttonBase}>Cancel</button>
         </div>
+      </div>
     </ModalFrame>
   );
 }

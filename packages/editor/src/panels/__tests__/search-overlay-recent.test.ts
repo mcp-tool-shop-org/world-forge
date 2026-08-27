@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadRecentSearches, saveRecentSearch, RECENT_SEARCHES_KEY } from '../SearchOverlay.js';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 describe('F-33ea175d / F-5c35446e: recent search write path', () => {
   beforeEach(() => {
@@ -27,5 +32,16 @@ describe('F-33ea175d / F-5c35446e: recent search write path', () => {
       throw new Error('QuotaExceededError');
     });
     expect(() => saveRecentSearch('chapel')).not.toThrow();
+  });
+});
+
+describe('F-807b04f7: starter-kit and export-summary have consequences', () => {
+  it('selecting a starter kit opens TemplateManager on Starters; Export Summary downloads', () => {
+    const src = readFileSync(join(here, '../SearchOverlay.tsx'), 'utf8');
+    expect(src).not.toMatch(/kit is informational in search/);
+    expect(src).toContain('requestTemplateManagerTab');
+    expect(src).toContain("openModal('template-manager')");
+    expect(src).toContain('downloadReviewMarkdown');
+    expect(src).toContain("result.id === 'export-summary'");
   });
 });

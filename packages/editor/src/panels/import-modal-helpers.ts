@@ -8,6 +8,12 @@
 
 import type { ImportProjectResult } from '../projects/index.js';
 
+/** JSON.parse failure message. SyntaxError.message names the token/position. */
+export function jsonFileParseError(err: unknown, fileName?: string): string {
+  const detail = err instanceof SyntaxError ? err.message : 'Invalid JSON file';
+  return fileName ? `${fileName}: ${detail}` : detail;
+}
+
 /** Import is enabled for a standard ImportResult, or a *valid* project bundle. */
 export function canConfirmImport(args: {
   result: unknown | null;

@@ -1,11 +1,11 @@
 // ExportModal.tsx — export dialog with readiness summary and content overview
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import {
   runEngineExport, runUnrealExport, runGodotExport, defaultDownloadJson,
-  type ExportReceipt, type AiRpgExportOptions, type UnrealExportOptions, type GodotExportUIOptions,
+  type ExportReceipt, type ExportStatus, type AiRpgExportOptions, type UnrealExportOptions, type GodotExportUIOptions,
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
 import { validateProject, scanDependencies } from '@world-forge/schema';
@@ -32,7 +32,9 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   const projectBundleSource = useEditorStore((s) => s.projectBundleSource);
   const { kits } = useKitStore();
   const [bundleExported, setBundleExported] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'valid' | 'invalid' | 'exported'>('idle');
+  const [status, setStatus] = useState<ExportStatus>('idle');
+  const exportInFlight = useRef(false);
+  const exporting = status === 'exporting';
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [receipts, setReceipts] = useState<ExportReceipt[]>([]);
@@ -69,31 +71,28 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
 
   const addReceipt = (r: ExportReceipt) => setReceipts((prev) => [r, ...prev.filter((p) => p.target !== r.target)]);
 
-  const handleExport = () => {
+  const runExport = (fn: () => Promise<void>) => {
+    if (exportInFlight.current) return;
+    exportInFlight.current = true;
     setFallback(null);
-    void runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts)
+    void fn()
       .catch((err) => {
         setStatus('invalid');
         setErrors([err instanceof Error ? err.message : String(err)]);
-      });
+      })
+      .finally(() => { exportInFlight.current = false; });
+  };
+
+  const handleExport = () => {
+    runExport(() => runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts));
   };
 
   const handleExportUnreal = () => {
-    setFallback(null);
-    void runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, unrealOpts)
-      .catch((err) => {
-        setStatus('invalid');
-        setErrors([err instanceof Error ? err.message : String(err)]);
-      });
+    runExport(() => runUnrealExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, unrealOpts));
   };
 
   const handleExportGodot = () => {
-    setFallback(null);
-    void runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, godotOpts)
-      .catch((err) => {
-        setStatus('invalid');
-        setErrors([err instanceof Error ? err.message : String(err)]);
-      });
+    runExport(() => runGodotExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, godotOpts));
   };
 
   // F-c28f6fa5: keep the object URL and reuse the ED-B-002 fallback anchor.
@@ -431,42 +430,42 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       )}
 
       {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <button onClick={handleValidate} style={buttonBase}>Validate</button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }} aria-busy={exporting || undefined}>
+        <button onClick={handleValidate} style={buttonBase} disabled={exporting}>Validate</button>
         <button onClick={handleExport} style={{
           ...buttonBase,
-          background: precheck.valid ? 'var(--wf-success)' : 'var(--wf-bg-control)',
-          color: precheck.valid ? '#fff' : 'var(--wf-text-hint)',
-          cursor: precheck.valid ? 'pointer' : 'not-allowed',
-          opacity: precheck.valid ? 1 : 0.6,
-        }} disabled={!precheck.valid}>Export JSON</button>
+          background: precheck.valid && !exporting ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+          color: precheck.valid && !exporting ? '#fff' : 'var(--wf-text-hint)',
+          cursor: precheck.valid && !exporting ? 'pointer' : 'not-allowed',
+          opacity: precheck.valid && !exporting ? 1 : 0.6,
+        }} disabled={!precheck.valid || exporting}>{exporting ? 'Exporting…' : 'Export JSON'}</button>
         <button
           onClick={handleExportUnreal}
           title="Export a 2.5D-aware Unreal Engine 5 content pack"
           style={{
             ...buttonBase,
-            background: precheck.valid ? 'var(--wf-accent)' : 'var(--wf-bg-control)',
-            color: precheck.valid ? '#fff' : 'var(--wf-text-hint)',
-            cursor: precheck.valid ? 'pointer' : 'not-allowed',
-            opacity: precheck.valid ? 1 : 0.6,
+            background: precheck.valid && !exporting ? 'var(--wf-accent)' : 'var(--wf-bg-control)',
+            color: precheck.valid && !exporting ? '#fff' : 'var(--wf-text-hint)',
+            cursor: precheck.valid && !exporting ? 'pointer' : 'not-allowed',
+            opacity: precheck.valid && !exporting ? 1 : 0.6,
           }}
-          disabled={!precheck.valid}
+          disabled={!precheck.valid || exporting}
         >
-          Export Unreal Engine 5
+          {exporting ? 'Exporting…' : 'Export Unreal Engine 5'}
         </button>
         <button
           onClick={handleExportGodot}
           title="Export a Godot 4 content pack with .tscn scenes"
           style={{
             ...buttonBase,
-            background: precheck.valid ? '#478cbf' : 'var(--wf-bg-control)',
-            color: precheck.valid ? '#fff' : 'var(--wf-text-hint)',
-            cursor: precheck.valid ? 'pointer' : 'not-allowed',
-            opacity: precheck.valid ? 1 : 0.6,
+            background: precheck.valid && !exporting ? '#478cbf' : 'var(--wf-bg-control)',
+            color: precheck.valid && !exporting ? '#fff' : 'var(--wf-text-hint)',
+            cursor: precheck.valid && !exporting ? 'pointer' : 'not-allowed',
+            opacity: precheck.valid && !exporting ? 1 : 0.6,
           }}
-          disabled={!precheck.valid}
+          disabled={!precheck.valid || exporting}
         >
-          Export Godot 4
+          {exporting ? 'Exporting…' : 'Export Godot 4'}
         </button>
         {!precheck.valid && precheck.errors.length > 0 && (
           <button onClick={handleGoToFirstIssue} style={buttonAccent}>Fix first issue</button>
@@ -474,6 +473,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         <button onClick={onClose} style={buttonBase}>Close</button>
       </div>
 
+      {status === 'exporting' && <div style={{ color: '#58a6ff', fontSize: 13 }} role="status">Exporting…</div>}
       {status === 'valid' && <div style={{ color: '#3fb950', fontSize: 13 }}>Validation passed!</div>}
       {(status === 'exported' || fallback) && (
         <div style={{ color: '#3fb950', fontSize: 13 }}>

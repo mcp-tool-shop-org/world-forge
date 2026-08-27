@@ -30,7 +30,9 @@ afterEach(() => {
 describe('F-6cf2e4a4: loadPresets with poisoned storage', () => {
   it('resets when regionPresets is null', () => {
     localStorage.setItem(STORAGE_KEY, '{"regionPresets":null,"encounterPresets":[]}');
-    expect(() => usePresetStore.getState().loadPresets()).not.toThrow();
+    let result: { reset: boolean } | undefined;
+    expect(() => { result = usePresetStore.getState().loadPresets(); }).not.toThrow();
+    expect(result?.reset).toBe(true);
     expect(usePresetStore.getState().regionPresets.every((p) => p.builtIn)).toBe(true);
   });
 });

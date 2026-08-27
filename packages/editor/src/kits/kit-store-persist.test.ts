@@ -29,7 +29,9 @@ afterEach(() => {
 describe('F-6cf2e4a4: loadKits with poisoned storage', () => {
   it('resets when kits is null instead of crashing', () => {
     localStorage.setItem(STORAGE_KEY, '{"kits":null}');
-    expect(() => useKitStore.getState().loadKits()).not.toThrow();
+    let result: { reset: boolean } | undefined;
+    expect(() => { result = useKitStore.getState().loadKits(); }).not.toThrow();
+    expect(result?.reset).toBe(true);
     const { kits } = useKitStore.getState();
     expect(kits.every((k) => k.builtIn)).toBe(true);
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -37,8 +39,14 @@ describe('F-6cf2e4a4: loadKits with poisoned storage', () => {
 
   it('resets when kits is missing', () => {
     localStorage.setItem(STORAGE_KEY, '{"other":[]}');
-    useKitStore.getState().loadKits();
+    const result = useKitStore.getState().loadKits();
+    expect(result.reset).toBe(true);
     expect(useKitStore.getState().kits.length).toBe(BUILTIN_KITS.length);
+  });
+
+  it('does not flag reset when storage is empty', () => {
+    const result = useKitStore.getState().loadKits();
+    expect(result.reset).toBe(false);
   });
 });
 

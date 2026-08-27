@@ -43,13 +43,18 @@ export type SpeedPanelExecuteOutcome = 'closed' | 'kept-open';
  * Close the panel only after a successful execute. Failed actions keep the
  * panel open and optionally toast so the click is not a silent dismiss.
  */
+export function formatSpeedPanelFailure(label: string, reason?: string): string {
+  return `${label}: ${reason || 'could not be executed'}`;
+}
+
 export function handleSpeedPanelExecuteResult(
-  result: { executed: boolean },
+  result: { executed: boolean; reason?: string },
   actionId: string,
   deps: {
     closeSpeedPanel: () => void;
     addRecent: (id: string) => void;
     toast?: (message: string, kind?: 'warning' | 'error' | 'info' | 'success') => void;
+    actionLabel?: string;
   },
 ): SpeedPanelExecuteOutcome {
   if (result.executed) {
@@ -57,6 +62,6 @@ export function handleSpeedPanelExecuteResult(
     deps.closeSpeedPanel();
     return 'closed';
   }
-  deps.toast?.('Action could not be executed', 'warning');
+  deps.toast?.(formatSpeedPanelFailure(deps.actionLabel ?? actionId, result.reason), 'warning');
   return 'kept-open';
 }

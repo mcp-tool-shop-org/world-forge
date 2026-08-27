@@ -62,6 +62,19 @@ describe('handleSpeedPanelExecuteResult (F-2a8f09c5)', () => {
     expect(outcome).toBe('kept-open');
     expect(closeSpeedPanel).not.toHaveBeenCalled();
     expect(addRecent).not.toHaveBeenCalled();
-    expect(toast).toHaveBeenCalledWith('Action could not be executed', 'warning');
+    expect(toast).toHaveBeenCalledWith('merge-zones: could not be executed', 'warning');
+  });
+
+  it('names the action and threads executeAction reason into the toast (F-601d154e)', () => {
+    const closeSpeedPanel = vi.fn();
+    const addRecent = vi.fn();
+    const toast = vi.fn();
+    handleSpeedPanelExecuteResult(
+      { executed: false, reason: 'need at least 2 zones' },
+      'merge-zones',
+      { closeSpeedPanel, addRecent, toast, actionLabel: 'Merge Zones' },
+    );
+    expect(toast).toHaveBeenCalledWith('Merge Zones: need at least 2 zones', 'warning');
+    expect(closeSpeedPanel).not.toHaveBeenCalled();
   });
 });

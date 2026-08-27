@@ -10,7 +10,7 @@ import { scanDependencies } from '@world-forge/schema';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
-import { applyBundleImport, canConfirmImport, distinctBundleWarnings, safeExtractDependencies } from './import-modal-helpers.js';
+import { applyBundleImport, canConfirmImport, distinctBundleWarnings, jsonFileParseError, safeExtractDependencies } from './import-modal-helpers.js';
 
 interface Props { onClose: () => void }
 
@@ -35,6 +35,7 @@ export function ImportModal({ onClose }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [fileName, setFileName] = useState('');
+  const [reading, setReading] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [bundleResult, setBundleResult] = useState<ImportProjectResult | null>(null);
@@ -62,6 +63,7 @@ export function ImportModal({ onClose }: Props) {
       activeReaderRef.current = null;
     }
     setFileName(file.name);
+    setReading(true);
     setParseError(null);
     setResult(null);
     setBundleResult(null);
@@ -75,6 +77,7 @@ export function ImportModal({ onClose }: Props) {
     };
     reader.onload = () => {
       clearActive();
+      setReading(false);
       try {
         if (reader.result == null || typeof reader.result !== 'string') {
           setParseError('Could not read file \u2014 please try a different file.');
@@ -99,13 +102,14 @@ export function ImportModal({ onClose }: Props) {
         } else {
           setResult(res);
         }
-      } catch {
-        setParseError('Invalid JSON file');
+      } catch (err) {
+        setParseError(jsonFileParseError(err, file.name));
       }
     };
     // EU-003: Handle FileReader error and abort events
     reader.onerror = () => {
       clearActive();
+      setReading(false);
       setParseError(`Failed to read file: ${reader.error?.message ?? 'unknown error'}`);
     };
     reader.onabort = () => {
@@ -114,7 +118,10 @@ export function ImportModal({ onClose }: Props) {
       // "aborted" if this was the reader the UI was waiting on.
       const supplanted = activeReaderRef.current !== reader;
       clearActive();
-      if (!supplanted) setParseError('File reading was aborted.');
+      if (!supplanted) {
+        setReading(false);
+        setParseError('File reading was aborted.');
+      }
     };
     reader.readAsText(file);
   }, []);
@@ -172,17 +179,20 @@ export function ImportModal({ onClose }: Props) {
 
   return (
     <ModalFrame title="Import Project" width={480} onClose={onClose}>
+      <div aria-busy={reading || undefined}>
 
         {/* File picker */}
         <div style={{ marginBottom: 16 }}>
-          <button onClick={() => fileInput.current?.click()} style={buttonBase}>Choose File</button>
-          {fileName && <span style={{ marginLeft: 8, color: '#8b949e', fontSize: 12 }}>{fileName}</span>}
-          <input ref={fileInput} type="file" accept=".json,.wfproject.json" style={{ display: 'none' }} onChange={handleFile} />
+          <button onClick={() => fileInput.current?.click()} style={buttonBase} disabled={reading}>
+            {reading ? `Reading ${fileName}…` : 'Choose File'}
+          </button>
+          {fileName && !reading && <span style={{ marginLeft: 8, color: '#8b949e', fontSize: 12 }}>{fileName}</span>}
+          <input ref={fileInput} type="file" accept=".json,.wfproject.json" style={{ display: 'none' }} onChange={handleFile} disabled={reading} />
         </div>
 
         {/* Error states */}
-        {parseError && <div style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{parseError}</div>}
-        {importError && <div style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{importError}</div>}
+        {parseError && <div role="alert" aria-live="assertive" style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{parseError}</div>}
+        {importError && <div role="alert" aria-live="assertive" style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{importError}</div>}
 
         {/* Standard format preview */}
         {result && p && (
@@ -334,18 +344,19 @@ export function ImportModal({ onClose }: Props) {
           <button onClick={onClose} style={buttonBase}>Cancel</button>
           <button
             onClick={handleImport}
-            disabled={!importEnabled}
+            disabled={!importEnabled || reading}
             style={{
               ...buttonBase,
-              background: importEnabled ? (confirmOverwrite ? '#9e6a03' : 'var(--wf-success)') : 'var(--wf-bg-control)',
-              color: importEnabled ? '#fff' : 'var(--wf-text-hint)',
-              cursor: importEnabled ? 'pointer' : 'default',
+              background: importEnabled && !reading ? (confirmOverwrite ? '#9e6a03' : 'var(--wf-success)') : 'var(--wf-bg-control)',
+              color: importEnabled && !reading ? '#fff' : 'var(--wf-text-hint)',
+              cursor: importEnabled && !reading ? 'pointer' : 'default',
               border: 'none',
             }}
           >
             {confirmOverwrite ? 'Confirm Import' : 'Import'}
           </button>
         </div>
+      </div>
     </ModalFrame>
   );
 }

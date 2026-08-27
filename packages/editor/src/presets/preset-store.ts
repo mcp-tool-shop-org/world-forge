@@ -34,10 +34,15 @@ function persist(data: StoredPresets): boolean {
   }
 }
 
-function loadFromStorage(): StoredPresets {
+export interface StorageLoadResult<T> {
+  data: T;
+  reset: boolean;
+}
+
+function loadFromStorage(): StorageLoadResult<StoredPresets> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { regionPresets: [], encounterPresets: [] };
+    if (!raw) return { data: { regionPresets: [], encounterPresets: [] }, reset: false };
     const parsed: unknown = JSON.parse(raw);
     // F-6cf2e4a4: valid JSON missing arrays (or null) used to crash loadPresets.
     if (
@@ -47,16 +52,19 @@ function loadFromStorage(): StoredPresets {
     ) {
       console.warn('Corrupted preset data in localStorage — resetting');
       localStorage.removeItem(STORAGE_KEY);
-      return { regionPresets: [], encounterPresets: [] };
+      return { data: { regionPresets: [], encounterPresets: [] }, reset: true };
     }
     return {
-      regionPresets: (parsed as StoredPresets).regionPresets,
-      encounterPresets: (parsed as StoredPresets).encounterPresets,
+      data: {
+        regionPresets: (parsed as StoredPresets).regionPresets,
+        encounterPresets: (parsed as StoredPresets).encounterPresets,
+      },
+      reset: false,
     };
   } catch {
     console.warn('Corrupted preset data in localStorage — resetting');
     localStorage.removeItem(STORAGE_KEY);
-    return { regionPresets: [], encounterPresets: [] };
+    return { data: { regionPresets: [], encounterPresets: [] }, reset: true };
   }
 }
 
@@ -66,7 +74,8 @@ interface PresetState {
   /** All encounter presets: built-in + user. */
   encounterPresets: EncounterPreset[];
 
-  loadPresets: () => void;
+  /** Load custom presets from localStorage. `reset` is true when stored data was unreadable and wiped. */
+  loadPresets: () => { reset: boolean };
 
   // Region preset CRUD (user presets only)
   saveRegionPreset: (preset: Omit<RegionPreset, 'id' | 'builtIn'>) => RegionPreset;
@@ -104,9 +113,10 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   loadPresets: () => {
     const stored = loadFromStorage();
     set({
-      regionPresets: [...BUILTIN_REGION_PRESETS, ...stored.regionPresets],
-      encounterPresets: [...BUILTIN_ENCOUNTER_PRESETS, ...stored.encounterPresets],
+      regionPresets: [...BUILTIN_REGION_PRESETS, ...stored.data.regionPresets],
+      encounterPresets: [...BUILTIN_ENCOUNTER_PRESETS, ...stored.data.encounterPresets],
     });
+    return { reset: stored.reset };
   },
 
   // ── Region preset CRUD ──────────────────────────────────────

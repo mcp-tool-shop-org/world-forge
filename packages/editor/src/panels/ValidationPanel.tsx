@@ -6,7 +6,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { validateProject, advisoryValidation, type ValidationError } from '@world-forge/schema';
 import { classifyError, navigationForError, isRefError, type Domain } from './validation-helpers.js';
 import { scanDependencies } from '@world-forge/schema';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, onEnter } from './shared.js';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 
 const domainLabels: Record<Domain, string> = {
@@ -95,7 +95,10 @@ export function ValidationPanel() {
         return (
           <div key={domain} style={{ marginBottom: 8 }}>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => toggle(domain)}
+              onKeyDown={onEnter(() => toggle(domain))}
               style={{
                 fontSize: 12, fontWeight: 600, color: '#f85149',
                 cursor: 'pointer', padding: '4px 0', userSelect: 'none',
@@ -106,6 +109,11 @@ export function ValidationPanel() {
             {!isCollapsed && errors.map((err, i) => (
               <div
                 key={i}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleClick(err)}
+                onKeyDown={onEnter(() => handleClick(err))}
+                title={`Jump to: ${err.path}`}
                 style={{
                   fontSize: 11, color: '#f0883e', padding: '3px 0 3px 14px',
                   cursor: 'pointer', borderLeft: '2px solid #30363d',
@@ -115,21 +123,19 @@ export function ValidationPanel() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#1c2128'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
-                <span
-                  onClick={() => handleClick(err)}
-                  title={`Click to jump to: ${err.path}`}
-                  style={{ flex: 1 }}
-                >
+                <span style={{ flex: 1 }}>
                   {err.message}
                 </span>
                 {isRefError(err) && depIssueCount > 0 && (
-                  <span
+                  <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); setRightTab('deps'); }}
+                    onKeyDown={(e) => e.stopPropagation()}
                     title="Open Dependency Manager to repair"
-                    style={{ fontSize: 10, color: '#d29922', whiteSpace: 'nowrap', textDecoration: 'underline' }}
+                    style={{ fontSize: 10, color: '#d29922', whiteSpace: 'nowrap', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     Open Deps
-                  </span>
+                  </button>
                 )}
               </div>
             ))}

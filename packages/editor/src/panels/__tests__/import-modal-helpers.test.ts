@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEmptyProject } from '../../store/project-store.js';
 import type { ImportProjectResult } from '../../projects/index.js';
-import { applyBundleImport, canConfirmImport, distinctBundleWarnings, safeExtractDependencies } from '../import-modal-helpers.js';
+import { applyBundleImport, canConfirmImport, distinctBundleWarnings, jsonFileParseError, safeExtractDependencies } from '../import-modal-helpers.js';
 
 function bundle(overrides: Partial<ImportProjectResult> = {}): ImportProjectResult {
   const project = createEmptyProject();
@@ -91,5 +91,20 @@ describe('F-67ac3bf9: safeExtractDependencies never throws', () => {
       bundle().bundle,
     );
     expect(deps).toEqual({ kitRef: { name: 'Kit' }, assetPacks: [] });
+  });
+});
+
+describe('jsonFileParseError (F-f70ae25c)', () => {
+  it('surfaces SyntaxError.message with the file name', () => {
+    const err = new SyntaxError('Unexpected token } in JSON at position 12');
+    expect(jsonFileParseError(err, 'world.wfproject.json')).toBe(
+      'world.wfproject.json: Unexpected token } in JSON at position 12',
+    );
+  });
+
+  it('falls back to Invalid JSON file for non-SyntaxError', () => {
+    expect(jsonFileParseError(new Error('boom'), 'kit.wfkit.json')).toBe(
+      'kit.wfkit.json: Invalid JSON file',
+    );
   });
 });
