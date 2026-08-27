@@ -49,7 +49,7 @@ describe('validateProject', () => {
   it('rejects connection referencing nonexistent zone', () => {
     const result = validateProject(invalidOrphanProject);
     expect(result.errors.some((e) =>
-      e.path === 'connections' && e.message.includes('zone-ghost'),
+      e.path.startsWith('connections[') && e.message.includes('zone-ghost'),
     )).toBe(true);
   });
 
@@ -78,7 +78,7 @@ describe('validateProject', () => {
     };
     const result = validateProject(proj);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.path === 'connections' && e.message.includes('unsupported kind'))).toBe(true);
+    expect(result.errors.some((e) => e.path.startsWith('connections[') && e.message.includes('unsupported kind'))).toBe(true);
   });
 
   it('rejects landmark in nonexistent zone', () => {

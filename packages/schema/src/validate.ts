@@ -188,6 +188,20 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+/** Empty/whitespace vs wrong-type copy for isNonEmptyString failures. */
+function nonEmptyStringIssue(subject: string, field: string, value: unknown): string {
+  if (typeof value !== 'string') {
+    return `${subject} ${field} must be a non-empty string (got ${typeof value})`;
+  }
+  return `${subject} has empty ${field}`;
+}
+
+/** Author-facing locator: from/to pair plus optional label. */
+function connectionLocator(c: { fromZoneId: string; toZoneId: string; label?: string }): string {
+  const labelPart = typeof c.label === 'string' && c.label.trim().length > 0 ? ` (label "${c.label}")` : '';
+  return `Connection from "${c.fromZoneId}" to "${c.toZoneId}"${labelPart}`;
+}
+
 /** Present-and-not-an-array is an error; omitted stays valid (caller skips). */
 function isOptionalArrayOrReport(value: unknown, path: string, errors: ValidationError[]): boolean {
   if (value === undefined) return false;
@@ -539,22 +553,28 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   }
 
   // 11. Connections must reference valid zones (kinds validated against VALID_CONNECTION_KINDS — module-level constant)
-  for (const c of project.connections) {
+  for (let i = 0; i < project.connections.length; i++) {
+    const c = project.connections[i];
+    const path = `connections[${i}]`;
+    const loc = connectionLocator(c);
     if (!zoneIds.has(c.fromZoneId)) {
-      errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.fromZoneId}"` });
+      errors.push({ path, message: `${loc} references nonexistent fromZoneId "${c.fromZoneId}"` });
     }
     if (!zoneIds.has(c.toZoneId)) {
-      errors.push({ path: 'connections', message: `Connection references nonexistent zone "${c.toZoneId}"` });
+      errors.push({ path, message: `${loc} references nonexistent toZoneId "${c.toZoneId}"` });
     }
     // 11b. Connection kind must be valid
     if (c.kind && !VALID_CONNECTION_KINDS.has(c.kind)) {
-      errors.push({ path: 'connections', message: `Connection has unsupported kind "${c.kind}"` });
+      errors.push({
+        path,
+        message: `${loc} has unsupported kind "${c.kind}" (expected one of: ${VALID_CONNECTION_KINDS_ARRAY.join(', ')}).`,
+      });
     }
     // 11c. Connection condition must be a legal SpawnCondition (F-007) —
     // mirrors rule 59/78's use of the shared validator.
     const connCondErr = validateSpawnCondition(c.condition);
     if (connCondErr) {
-      errors.push({ path: 'connections', message: `Connection: ${connCondErr}` });
+      errors.push({ path, message: `${loc}: ${connCondErr}` });
     }
   }
 
@@ -766,33 +786,39 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     const pt = project.playerTemplate;
 
     // 21. Spawn point must exist
-    if (!spawnPointIds.has(pt.spawnPointId)) {
+    if (!isNonEmptyString(pt.spawnPointId)) {
       errors.push({
         path: 'playerTemplate.spawnPointId',
-        message: `Player template spawn point "${pt.spawnPointId}" does not exist`,
+        message: 'Player template spawnPointId is empty — pick an id from spawnPoints[].',
+      });
+    } else if (!spawnPointIds.has(pt.spawnPointId)) {
+      errors.push({
+        path: 'playerTemplate.spawnPointId',
+        message: `Player template spawnPointId "${pt.spawnPointId}" is not in spawnPoints[]. Add a spawn point with that id, or pick an existing id.`,
       });
     }
 
-    // 22. Starting inventory items should exist in item placements
+    // 22. Starting inventory items must exist in item placements (not catalog-only ids)
     const itemIds = new Set(project.itemPlacements.map((ip) => ip.itemId));
     if (isArrayOrReport(pt.startingInventory, 'playerTemplate.startingInventory', errors)) {
-      for (const itemId of pt.startingInventory) {
+      for (let i = 0; i < pt.startingInventory.length; i++) {
+        const itemId = pt.startingInventory[i];
         if (!itemIds.has(itemId)) {
           errors.push({
-            path: `playerTemplate.startingInventory`,
-            message: `Player template starting item "${itemId}" not found in item placements`,
+            path: `playerTemplate.startingInventory[${i}]`,
+            message: `Player template startingInventory[${i}] item "${itemId}" is not in itemPlacements[]. Add a placement with that itemId, pick an existing itemId, or remove this entry.`,
           });
         }
       }
     }
 
-    // 23. Starting equipment items should exist
+    // 23. Starting equipment items must exist in item placements (not catalog-only ids)
     if (pt.startingEquipment && typeof pt.startingEquipment === 'object') {
       for (const [slot, itemId] of Object.entries(pt.startingEquipment)) {
         if (!itemIds.has(itemId)) {
           errors.push({
             path: `playerTemplate.startingEquipment.${slot}`,
-            message: `Player template equipment "${itemId}" in slot "${slot}" not found in item placements`,
+            message: `Player template startingEquipment.${slot} item "${itemId}" is not in itemPlacements[]. Add a placement with that itemId, pick an existing itemId, or clear this slot.`,
           });
         }
       }
@@ -1057,14 +1083,17 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // 38. Asset path must be a non-empty string (non-strings must not throw on .trim())
   for (const a of project.assets) {
     if (!isNonEmptyString(a.path)) {
-      errors.push({ path: `assets.${a.id}.path`, message: `Asset "${a.id}" has empty path` });
+      errors.push({ path: `assets.${a.id}.path`, message: nonEmptyStringIssue(`Asset "${a.id}"`, 'path', a.path) });
     }
   }
 
   // 39. Asset kind must be valid
   for (const a of project.assets) {
     if (!VALID_ASSET_KINDS.has(a.kind)) {
-      errors.push({ path: `assets.${a.id}.kind`, message: `Asset "${a.id}" has unsupported kind "${a.kind}"` });
+      errors.push({
+        path: `assets.${a.id}.kind`,
+        message: `Asset "${a.id}" has unsupported kind "${a.kind}" (expected one of: ${VALID_ASSET_KINDS_ARRAY.join(', ')}).`,
+      });
     }
   }
 
@@ -1164,14 +1193,14 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
   // 48. Pack label must be a non-empty string (non-strings must not throw on .trim())
   for (const pack of project.assetPacks) {
     if (!isNonEmptyString(pack.label)) {
-      errors.push({ path: `assetPacks.${pack.id}.label`, message: `Asset pack "${pack.id}" has empty label` });
+      errors.push({ path: `assetPacks.${pack.id}.label`, message: nonEmptyStringIssue(`Asset pack "${pack.id}"`, 'label', pack.label) });
     }
   }
 
   // 49. Pack version must be a non-empty string (non-strings must not throw on .trim())
   for (const pack of project.assetPacks) {
     if (!isNonEmptyString(pack.version)) {
-      errors.push({ path: `assetPacks.${pack.id}.version`, message: `Asset pack "${pack.id}" has empty version` });
+      errors.push({ path: `assetPacks.${pack.id}.version`, message: nonEmptyStringIssue(`Asset pack "${pack.id}"`, 'version', pack.version) });
     }
   }
 
@@ -1608,6 +1637,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   const VALID_HAZARD_TRIGGERS = new Set(['on-enter', 'per-turn', 'on-exit', 'timed']);
   const VALID_HAZARD_PASSABILITY = new Set(['yes', 'flying-only', 'never']);
+  const VALID_HAZARD_EFFECT_KINDS = ['damage', 'status', 'ignite', 'instakill'] as const;
   const hazardDefs = project.hazardDefinitions ?? [];
   const hazardIds = new Set<string>();
 
@@ -1689,7 +1719,10 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
           // runtime value is whatever garbage/future data actually arrived.
           const _exhaustive: never = e;
           const unknownKind = (_exhaustive as { kind?: unknown }).kind;
-          errors.push({ path: base, message: `Hazard "${h.id}" has an unsupported effect kind "${String(unknownKind)}".` });
+          errors.push({
+            path: base,
+            message: `Hazard "${h.id}" has an unsupported effect kind "${String(unknownKind)}" (expected one of: ${VALID_HAZARD_EFFECT_KINDS.join(', ')}).`,
+          });
         }
       }
     }
