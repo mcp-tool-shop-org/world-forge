@@ -11,6 +11,7 @@ import { validateSpawnCondition } from '@world-forge/schema';
 import {
   validateElevationRange,
   parseElevation,
+  nextElevationRange,
   createDefaultLayer,
   filterParallaxAssets,
   filterSkylineAssets,
@@ -207,18 +208,10 @@ function Advanced25DSection({ zone }: { zone: Zone }) {
     const parsed = parseElevation(raw);
     const current = zone.elevationRange;
     if (parsed == null && current == null) return;
-    const nextFloor = side === 'floor' ? parsed : current?.floor;
-    const nextCeiling = side === 'ceiling' ? parsed : current?.ceiling;
-    // Clear only when both sides are undefined.
-    if (nextFloor == null && nextCeiling == null) {
-      updateZone(zone.id, { elevationRange: undefined });
-      return;
-    }
+    // F-2f33dcb9: empty sides stay undefined — never coerce to 0.
+    const next = nextElevationRange(current, side, parsed);
     updateZone(zone.id, {
-      elevationRange: {
-        floor: nextFloor ?? 0,
-        ceiling: nextCeiling ?? 0,
-      },
+      elevationRange: next as { floor: number; ceiling: number } | undefined,
     });
   };
 

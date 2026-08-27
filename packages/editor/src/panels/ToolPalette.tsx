@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type EditorTool } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { computeContentBounds, fitBoundsToViewport, centerOnZone, frameBounds, MIN_ZOOM, MAX_ZOOM } from '../viewport.js';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { buttonBase } from '../ui/styles.js';
+import { defaultShowElevation } from './zone-2d5-helpers.js';
 
 const tools: { id: EditorTool; label: string; key: string }[] = [
   { id: 'select', label: 'Select', key: 'V' },
@@ -28,6 +30,20 @@ export function ToolPalette() {
   const selectedZoneId = getSelectedZoneId(selection);
   const { project } = useProjectStore();
   const tileSize = project.map.tileSize;
+
+  // F-2514135c: ED-FT-003 helper had zero callers; editor-store rehydrates
+  // with a hard default-on. Apply the mode-aware default only when the
+  // localStorage key has never been set.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('wf-show-elevation') != null) return;
+      const next = defaultShowElevation(project.mode);
+      if (next !== useEditorStore.getState().showElevation) {
+        useEditorStore.setState({ showElevation: next });
+      }
+      localStorage.setItem('wf-show-elevation', String(next));
+    } catch { /* private mode / quota — keep in-memory default */ }
+  }, [project.mode]);
 
   const getCanvasSize = () => {
     const canvas = document.querySelector('canvas');

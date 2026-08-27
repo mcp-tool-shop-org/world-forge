@@ -1,7 +1,8 @@
 // ImportKitModal.tsx — import a .wfkit.json kit bundle
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useKitStore } from '../kits/index.js';
+import { useKitStore, StoragePersistError } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import { prepareKitImport } from '../kits/bundle.js';
 import type { ImportKitResult } from '../kits/bundle.js';
 import { countContent } from './TemplateManager.js';
@@ -32,6 +33,8 @@ export function ImportKitModal({ onClose }: Props) {
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // F-ca164509: reset so the same path can be re-picked after an edit/error.
+    e.target.value = '';
     if (!file) return;
     if (activeReaderRef.current) {
       try { activeReaderRef.current.abort(); } catch { /* ignore */ }
@@ -81,24 +84,33 @@ export function ImportKitModal({ onClose }: Props) {
     reader.readAsText(file);
   }, [kits]);
 
+  const persistImport = useCallback((run: () => void) => {
+    try {
+      run();
+      onClose();
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not import kit — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not import kit.');
+      pushToast(msg, 'error', 4000);
+    }
+  }, [onClose]);
+
   const handleImportAsCopy = useCallback(() => {
     if (!result) return;
     const kit = { ...result.kit, name: `${result.kit.name} (imported)` };
-    importKit(kit);
-    onClose();
-  }, [result, importKit, onClose]);
+    persistImport(() => { importKit(kit); });
+  }, [result, importKit, persistImport]);
 
   const handleReplace = useCallback(() => {
     if (!result || !collision) return;
-    importKit(result.kit, collision.existingId);
-    onClose();
-  }, [result, collision, importKit, onClose]);
+    persistImport(() => { importKit(result.kit, collision.existingId); });
+  }, [result, collision, importKit, persistImport]);
 
   const handleImport = useCallback(() => {
     if (!result) return;
-    importKit(result.kit);
-    onClose();
-  }, [result, importKit, onClose]);
+    persistImport(() => { importKit(result.kit); });
+  }, [result, importKit, persistImport]);
 
   const c = result ? countContent(result.kit.project) : null;
   const allWarnings = result

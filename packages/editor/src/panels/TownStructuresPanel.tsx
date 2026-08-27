@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
-import { PanelHeader } from './shared.js';
+import { PanelHeader, useFocusHighlight } from './shared.js';
 import { buttonBase } from '../ui/styles.js';
 
 const card: CSSProperties = { border: '1px solid #30363d', borderRadius: 4, padding: 6, marginBottom: 6, background: '#161b22' };
@@ -32,6 +32,7 @@ export function TownStructuresPanel() {
   } = useProjectStore();
   const { selection } = useEditorStore();
   const zoneId = getSelectedZoneId(selection);
+  const focusRef = useFocusHighlight('town');
   if (!zoneId) return null;
 
   const zone = project.zones.find((z) => z.id === zoneId);
@@ -43,7 +44,7 @@ export function TownStructuresPanel() {
   const strongholds = (project.strongholds ?? []).filter((s) => s.zoneId === zoneId);
 
   return (
-    <div style={{ marginTop: 12 }} data-testid="wf-town-structures-panel">
+    <div ref={focusRef} style={{ marginTop: 12 }} data-testid="wf-town-structures-panel">
       <PanelHeader title="Town Structures" />
 
       <div style={{ ...section, marginTop: 0 }}>Buildings ({buildings.length})</div>

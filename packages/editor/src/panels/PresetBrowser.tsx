@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
-import { usePresetStore } from '../presets/preset-store.js';
+import { usePresetStore, StoragePersistError } from '../presets/preset-store.js';
+import { pushToast } from '../ui/Toast.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import type { AuthoringMode } from '@world-forge/schema';
 import { buttonBase, buttonAccent } from '../ui/styles.js';
@@ -73,31 +74,45 @@ export function PresetBrowser() {
     const hotspots = project.pressureHotspots
       .filter((h) => d.zoneIds.includes(h.zoneId))
       .map(({ id: _, zoneId: _z, ...rest }) => rest);
-    saveRegionPreset({
-      name: `${d.name} Preset`,
-      description: `Saved from ${d.name}`,
-      tags: [...d.tags],
-      regionTags: [...d.tags],
-      controllingFaction: d.controllingFaction,
-      baseMetrics: { ...d.baseMetrics },
-      economyProfile: { ...d.economyProfile },
-      factionPresences: factions,
-      pressureHotspots: hotspots,
-    });
+    try {
+      saveRegionPreset({
+        name: `${d.name} Preset`,
+        description: `Saved from ${d.name}`,
+        tags: [...d.tags],
+        regionTags: [...d.tags],
+        controllingFaction: d.controllingFaction,
+        baseMetrics: { ...d.baseMetrics },
+        economyProfile: { ...d.economyProfile },
+        factionPresences: factions,
+        pressureHotspots: hotspots,
+      });
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save region preset — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not save region preset.');
+      pushToast(msg, 'error', 4000);
+    }
   };
 
   const handleSaveEncounterFromCurrent = () => {
     if (!selectedEnc) return;
-    saveEncounterPreset({
-      name: `${selectedEnc.encounterType} Preset`,
-      description: `Saved from ${selectedEnc.id}`,
-      tags: [...selectedEnc.tags],
-      encounterType: selectedEnc.encounterType,
-      enemyIds: [...selectedEnc.enemyIds],
-      probability: selectedEnc.probability,
-      cooldownTurns: selectedEnc.cooldownTurns,
-      encounterTags: [...selectedEnc.tags],
-    });
+    try {
+      saveEncounterPreset({
+        name: `${selectedEnc.encounterType} Preset`,
+        description: `Saved from ${selectedEnc.id}`,
+        tags: [...selectedEnc.tags],
+        encounterType: selectedEnc.encounterType,
+        enemyIds: [...selectedEnc.enemyIds],
+        probability: selectedEnc.probability,
+        cooldownTurns: selectedEnc.cooldownTurns,
+        encounterTags: [...selectedEnc.tags],
+      });
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save encounter preset — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not save encounter preset.');
+      pushToast(msg, 'error', 4000);
+    }
   };
 
   return (
@@ -176,8 +191,22 @@ export function PresetBrowser() {
             }
           }}
           isConfirming={confirmTarget?.preset.id === p.id}
-          onDuplicate={() => duplicateRegionPreset(p.id)}
-          onDelete={!p.builtIn ? () => deleteRegionPreset(p.id) : undefined}
+          onDuplicate={() => {
+            try { duplicateRegionPreset(p.id); }
+            catch (err) {
+              pushToast(err instanceof StoragePersistError
+                ? 'Could not duplicate preset — browser storage is full or blocked.'
+                : 'Could not duplicate preset.', 'error', 4000);
+            }
+          }}
+          onDelete={!p.builtIn ? () => {
+            try { deleteRegionPreset(p.id); }
+            catch (err) {
+              pushToast(err instanceof StoragePersistError
+                ? 'Could not delete preset — browser storage is full or blocked.'
+                : 'Could not delete preset.', 'error', 4000);
+            }
+          } : undefined}
           previewLines={[
             p.controllingFaction ? `Faction: ${p.controllingFaction}` : '',
             p.baseMetrics.commerce != null ? `Commerce: ${p.baseMetrics.commerce}` : '',
@@ -198,8 +227,18 @@ export function PresetBrowser() {
           applyLabel={selectedZoneId ? 'Place in zone' : 'Select a zone'}
           onApply={() => handleApplyEncounter(p)}
           isConfirming={false}
-          onDuplicate={() => duplicateEncounterPreset(p.id)}
-          onDelete={!p.builtIn ? () => deleteEncounterPreset(p.id) : undefined}
+          onDuplicate={() => {
+            try { duplicateEncounterPreset(p.id); }
+            catch {
+              pushToast('Could not duplicate preset — browser storage is full or blocked.', 'error', 4000);
+            }
+          }}
+          onDelete={!p.builtIn ? () => {
+            try { deleteEncounterPreset(p.id); }
+            catch {
+              pushToast('Could not delete preset — browser storage is full or blocked.', 'error', 4000);
+            }
+          } : undefined}
           previewLines={[
             `Type: ${p.encounterType}`,
             `Probability: ${p.probability}`,

@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createEmptyProject } from '../../store/project-store.js';
 import type { ImportProjectResult } from '../../projects/index.js';
-import { applyBundleImport, canConfirmImport, distinctBundleWarnings } from '../import-modal-helpers.js';
+import { applyBundleImport, canConfirmImport, distinctBundleWarnings, safeExtractDependencies } from '../import-modal-helpers.js';
 
 function bundle(overrides: Partial<ImportProjectResult> = {}): ImportProjectResult {
   const project = createEmptyProject();
@@ -74,5 +74,22 @@ describe('ImportModal refuses isValid:false (F-f6081e61)', () => {
     }));
     expect(lists.parseWarnings).toEqual(['Missing genre']);
     expect(lists.validationWarnings).toEqual(['advisory: unused tag']);
+  });
+});
+
+describe('F-67ac3bf9: safeExtractDependencies never throws', () => {
+  it('returns null when extractDependencies throws (truncated assetPacks)', () => {
+    const throwing = () => {
+      throw new TypeError("Cannot read properties of undefined (reading 'map')");
+    };
+    expect(safeExtractDependencies(throwing as never, bundle().bundle)).toBeNull();
+  });
+
+  it('returns empty assetPacks when the report is missing the array', () => {
+    const deps = safeExtractDependencies(
+      () => ({ kitRef: { name: 'Kit' } }) as never,
+      bundle().bundle,
+    );
+    expect(deps).toEqual({ kitRef: { name: 'Kit' }, assetPacks: [] });
   });
 });

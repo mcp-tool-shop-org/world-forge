@@ -10,7 +10,7 @@ import { scanDependencies } from '@world-forge/schema';
 import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { ModalFrame } from '../ui/ModalFrame.js';
 import { buttonBase, modalFooter } from '../ui/styles.js';
-import { applyBundleImport, canConfirmImport, distinctBundleWarnings } from './import-modal-helpers.js';
+import { applyBundleImport, canConfirmImport, distinctBundleWarnings, safeExtractDependencies } from './import-modal-helpers.js';
 
 interface Props { onClose: () => void }
 
@@ -52,6 +52,8 @@ export function ImportModal({ onClose }: Props) {
 
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // F-ca164509: reset so the same path can be re-picked after an edit/error.
+    e.target.value = '';
     if (!file) return;
     // ED-B-011: abort any previous read + fully reset file-read state before
     // starting a new one.
@@ -165,7 +167,7 @@ export function ImportModal({ onClose }: Props) {
 
   const importEnabled = canConfirmImport({ result, bundleResult });
   const p = result?.project ?? bundleResult?.project;
-  const deps = bundleResult ? extractDependencies(bundleResult.bundle) : null;
+  const deps = bundleResult ? safeExtractDependencies(extractDependencies, bundleResult.bundle) : null;
   const bundleWarnings = bundleResult ? distinctBundleWarnings(bundleResult) : null;
 
   return (

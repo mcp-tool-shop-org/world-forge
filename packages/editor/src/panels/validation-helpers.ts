@@ -7,7 +7,7 @@ import type { BuildsSubTab, RightTab } from '../store/editor-store.js';
 // EUB-006: domainOrder in ValidationPanel.tsx must stay exhaustive — when
 // adding a new Domain variant here, add a corresponding entry there too
 // (domainLabels and domainOrder) and to the `grouped` initializer.
-export type Domain = 'world' | 'entities' | 'items' | 'dialogue' | 'player' | 'builds' | 'progression' | 'assets' | 'packs' | 'deps' | 'strata' | 'hazards';
+export type Domain = 'world' | 'entities' | 'items' | 'dialogue' | 'player' | 'builds' | 'progression' | 'assets' | 'packs' | 'deps' | 'strata' | 'hazards' | 'town' | 'loot' | 'transitions';
 
 // F-001: classifyError only recognized a fixed prefix list and fell back to
 // 'world' for everything else — including the schema's own strata.*,
@@ -28,6 +28,10 @@ export function classifyError(err: ValidationError): Domain {
   if (p.startsWith('progressionTrees')) return 'progression';
   if (p.startsWith('strata') || p.startsWith('stratumLinks')) return 'strata';
   if (p.startsWith('hazardDefinitions')) return 'hazards';
+  // F-ac5cee50: town structures / loot / transitions used to dump to World.
+  if (p.startsWith('buildings') || p.startsWith('hubs') || p.startsWith('strongholds')) return 'town';
+  if (p.startsWith('lootTables')) return 'loot';
+  if (p.startsWith('transitions')) return 'transitions';
   return 'world';
 }
 
@@ -43,13 +47,29 @@ export interface ErrorNavigation {
   clearZone?: boolean;
 }
 
+export interface StructureLookup {
+  buildings?: Array<{ id: string; zoneId?: string }>;
+  hubs?: Array<{ id: string; zoneId: string }>;
+  strongholds?: Array<{ id: string; zoneId: string }>;
+  transitions?: Array<{ id: string; zoneId: string }>;
+}
+
+function lookupZoneId(
+  kind: 'buildings' | 'hubs' | 'strongholds' | 'transitions',
+  id: string,
+  project?: StructureLookup,
+): string | undefined {
+  const list = project?.[kind];
+  return list?.find((row) => row.id === id)?.zoneId;
+}
+
 /** Single source of truth for "where should the UI navigate to focus this
  *  validation error" — previously duplicated independently in
  *  ValidationPanel.tsx's handleClick and ExportModal.tsx's
  *  handleGoToFirstIssue (three copies total, counting this one), all with
  *  the same strata/hazard gap (F-001). Both call sites now call this
  *  directly instead of maintaining their own copy of the prefix cascade. */
-export function navigationForError(err: ValidationError): ErrorNavigation {
+export function navigationForError(err: ValidationError, project?: StructureLookup): ErrorNavigation {
   const p = err.path;
 
   const zoneMatch = p.match(/^zones\.([^.]+)/);
@@ -66,6 +86,25 @@ export function navigationForError(err: ValidationError): ErrorNavigation {
   if (p.startsWith('progressionTrees')) return { tab: 'trees' };
   if (p.startsWith('dialogues')) return { tab: 'dialogue' };
   if (p.startsWith('assetPacks') || p.startsWith('assets')) return { tab: 'assets' };
+
+  // F-ac5cee50: TownStructuresPanel only mounts when a zone IS selected.
+  // Do not clearZone; select the owning zone when the path/lookup provides it.
+  const townMatch = p.match(/^(buildings|hubs|strongholds)\.([^.]+)/);
+  if (townMatch) {
+    const zoneId = lookupZoneId(townMatch[1] as 'buildings' | 'hubs' | 'strongholds', townMatch[2], project);
+    return zoneId ? { tab: 'map', selectZoneId: zoneId } : { tab: 'map' };
+  }
+
+  const transitionMatch = p.match(/^transitions\.([^.]+)/);
+  if (transitionMatch) {
+    const zoneId = lookupZoneId('transitions', transitionMatch[1], project);
+    return zoneId ? { tab: 'map', selectZoneId: zoneId } : { tab: 'map' };
+  }
+
+  if (p.startsWith('lootTables')) {
+    // No loot editor yet — stay on map without hiding zone-scoped panels.
+    return { tab: 'map' };
+  }
 
   // strata / stratumLinks / hazardDefinitions errors, and the generic
   // fallback, both target project-level panels in the map tab that only

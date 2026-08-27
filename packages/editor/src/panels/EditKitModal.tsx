@@ -1,7 +1,8 @@
 // EditKitModal.tsx — edit custom kit metadata, preset refs, and guide hints
 
 import { useState, useCallback } from 'react';
-import { useKitStore } from '../kits/index.js';
+import { useKitStore, StoragePersistError } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import type { StarterKit } from '../kits/index.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import type { AuthoringMode } from '@world-forge/schema';
@@ -57,16 +58,23 @@ export function EditKitModal({ kit, onClose }: Props) {
         cleanedHints[key] = { label: val.label.trim(), description: val.description.trim() };
       }
     }
-    updateKit(kit.id, {
-      name: name.trim(),
-      description: description.trim(),
-      icon,
-      modes,
-      tags,
-      presetRefs: { region: regionRefs, encounter: encounterRefs },
-      guideHints: cleanedHints,
-    });
-    onClose();
+    try {
+      updateKit(kit.id, {
+        name: name.trim(),
+        description: description.trim(),
+        icon,
+        modes,
+        tags,
+        presetRefs: { region: regionRefs, encounter: encounterRefs },
+        guideHints: cleanedHints,
+      });
+      onClose();
+    } catch (err) {
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save kit — browser storage is full or blocked.'
+        : (err instanceof Error ? err.message : 'Could not save kit.');
+      pushToast(msg, 'error', 4000);
+    }
   }, [name, description, icon, modes, tagsInput, regionRefs, encounterRefs, guideHints, kit.id, updateKit, onClose]);
 
   return (

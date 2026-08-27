@@ -136,7 +136,11 @@ function saveRecentSearch(query: string): void {
   if (!q) return;
   const recent = loadRecentSearches().filter((s) => s !== q);
   recent.unshift(q);
-  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+  // F-5c35446e: ED-B-006 quota guard was on prune/click but not this write.
+  // QuotaExceededError here used to abort handleSelect before navigation.
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+  } catch { /* ignore quota / private-mode — caller still navigates */ }
 }
 
 /**
@@ -293,7 +297,7 @@ export function SearchOverlay() {
     } else if (result.type === 'review') {
       setRightTab('review');
     }
-  }, [project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
+  }, [query, project, dismiss, selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectConnection, setSelection, setViewport, setRightTab, setFocusTarget]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { dismiss(); return; }

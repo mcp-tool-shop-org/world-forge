@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
-import { useKitStore } from '../kits/index.js';
+import { StoragePersistError, useKitStore } from '../kits/index.js';
+import { pushToast } from '../ui/Toast.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import type { AuthoringMode } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
@@ -35,17 +36,26 @@ export function SaveKitModal({ onClose }: Props) {
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
-    saveKit({
-      name: name.trim(),
-      description: description.trim(),
-      icon,
-      modes,
-      tags,
-      project: JSON.parse(JSON.stringify(project)),
-      presetRefs: { region: [], encounter: [] },
-      guideHints: {},
-    });
-    onClose();
+    try {
+      saveKit({
+        name: name.trim(),
+        description: description.trim(),
+        icon,
+        modes,
+        tags,
+        project: JSON.parse(JSON.stringify(project)),
+        presetRefs: { region: [], encounter: [] },
+        guideHints: {},
+      });
+      onClose();
+    } catch (err) {
+      // F-9d2f6dae: quota/security persist failure used to close the modal
+      // as success while the kit vanished on refresh.
+      const msg = err instanceof StoragePersistError
+        ? 'Could not save kit — browser storage is full or blocked. The kit was not kept.'
+        : (err instanceof Error ? err.message : 'Could not save kit.');
+      pushToast(msg, 'error', 4000);
+    }
   }, [name, description, icon, modes, tagsInput, project, saveKit, onClose]);
 
   return (
