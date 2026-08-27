@@ -3,14 +3,18 @@
 Godot 4 export pipeline for World Forge — converts a `WorldProject` into a structured content pack with `.tscn` scene generation.
 
 `buildWorldScene()` emits a single **playable** `.tscn` — not a metadata graph —
-that opens navigable in the Godot 4 editor. Verified against the real Godot 4.7
-engine via a headless dogfood smoke (36 assertions on the generated scene).
+that opens navigable in the Godot 4 editor. Walkable interiors are open (walls
+come from per-cell collision); entities and transitions are textureless
+placeholders so a clean project does not need PackedScenes this pack does not
+ship.
 
 ## What lands in the scene
 
-- **Per zone** — a `Node2D` with a `StaticBody2D` collision hull, a
-  `NavigationRegion2D` navmesh, `y_sort_enabled`, and a `z_index` from its stratum
-  band (+ elevation). A framed `Camera2D` sits on the root.
+- **Per zone** — a `Node2D` with a `NavigationRegion2D` navmesh (walkable
+  interiors are **not** filled with a `StaticBody2D` — walls come from per-cell
+  collision; `void`/`hazard` zones still get a solid hull), `y_sort_enabled`,
+  and a `z_index` from its stratum band (+ elevation). A framed `Camera2D` sits
+  on the root.
 - **Tiles** — `TileMapLayer` + `TileSet` (image tilesets bake `tile_map_data`
   cells; color-only layers carry a scaffold + metadata), with per-cell wall
   `StaticBody2D` collision for non-walkable tiles.
@@ -26,8 +30,11 @@ engine via a headless dogfood smoke (36 assertions on the generated scene).
 - **Fidelity report** — structured tracking of lossless / approximated / dropped
   data, grouped by domain.
 
-Every node is a textureless, self-contained engine primitive — the export loads
-clean headless with zero external resources.
+Every node is a textureless, self-contained engine primitive — entities and
+transitions are `Node2D` / `Area2D` placeholders (PackedScene paths live in
+metadata, matching props), so a clean Godot project loads the export with no
+missing PackedScene `ExtResource`s. Image-backed tilesets still declare
+`Texture2D` ext_resources for authored tileset files.
 
 ## Usage
 

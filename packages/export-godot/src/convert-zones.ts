@@ -36,6 +36,11 @@ export interface GodotZoneResource {
     tilesetId?: string;
     elevation?: number;
     elevationRange?: { floor: number; ceiling: number };
+    /**
+     * Collision channel from Zone.collisionType. Walkable interiors must not
+     * get a filled AABB hull (tile walls own collision); void/hazard stay solid.
+     */
+    collisionType?: 'walkable' | 'water' | 'hazard' | 'void' | 'custom';
     /** Suggested Godot node name (sanitized for scene tree). */
     nodeName: string;
 }
@@ -159,6 +164,7 @@ function convertZone(
         tilesetId: z.tilesetId,
         elevation: z.elevation,
         elevationRange: z.elevationRange ? { floor: z.elevationRange.floor, ceiling: z.elevationRange.ceiling } : undefined,
+        collisionType: z.collisionType,
         nodeName: uniqueZoneNodeName(z.id, z.name),
     };
 }

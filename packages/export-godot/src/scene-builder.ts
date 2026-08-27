@@ -8,22 +8,23 @@
  *   World (Node2D, y_sort_enabled)
  *   ├── Camera2D — framed on the world bounding box so the scene is visible on open
  *   ├── <ZoneName> (Node2D) — at zone origin, y_sort_enabled, z_index from elevation
- *   │   ├── Collision (StaticBody2D)
+ *   │   ├── Collision (StaticBody2D) — only when collisionType is void/hazard
  *   │   │   └── CollisionShape2D — RectangleShape2D covering the zone bounds
  *   │   ├── Navigation (NavigationRegion2D) — rectangular NavigationPolygon
  *   │   ├── Entities/ (Node2D)
- *   │   │   └── <EntityName> (Node2D) — instance of scene template
+ *   │   │   └── <EntityName> (Node2D) — textureless placeholder; sceneTemplate in metadata
  *   │   ├── Items/ (Node2D)
  *   │   ├── SpawnPoints/ (Node2D)
  *   │   │   └── <SpawnName> (Marker2D)
  *   │   └── Transitions/ (Node2D)
- *   │       └── <TransitionName> (Area2D)
+ *   │       └── <TransitionName> (Area2D + CollisionShape2D trigger)
  *   └── NavigationLinks/ (Node2D)
  *
- * Wave B-1: the scene ships a playable scaffold — per-zone collision bodies,
+ * Wave B-1: the scene ships a playable scaffold — per-cell wall collision,
  * per-zone navigation regions, a framed Camera2D, and 2.5D y-sort / z-index — so
  * a world-forge export opens in Godot as a navigable, collidable, visible scene
- * rather than a metadata-only graph.
+ * rather than a metadata-only graph. Walkable interiors are not filled with a
+ * zone AABB StaticBody2D (that blocked CharacterBody2D while navmesh said walk).
  */
 
 import type { GodotZoneResource } from './convert-zones.js';
@@ -40,6 +41,7 @@ import type { GodotStratum, GodotStratumLink } from './convert-strata.js';
 import type { GodotHazardPlacement } from './convert-hazards.js';
 import type { GodotZoneGate } from './convert-gates.js';
 import { sanitizeNodeName } from './node-naming.js';
+import { DEFAULT_TILE_SIZE_PX } from './coordinate-transform.js';
 
 export interface SceneBuildInput {
     projectName: string;
@@ -86,32 +88,35 @@ const Z_INDEX_MAX = 4096;
 export function buildWorldScene(input: SceneBuildInput): string {
     const lines: string[] = [];
     const tileLayers = input.tileLayers ?? [];
-    // External resources (scene templates referenced by entities/transitions).
-    const extResources = collectExtResources(input);
     // Tile resources — TileSet/TileSetAtlasSource sub-resources + tileset textures.
+    // Entities/transitions are textureless Node2D / Area2D placeholders (scene
+    // templates live in metadata) so a clean Godot project does not need the
+    // PackedScenes this pack does not ship.
     const tileResources = collectTileResources(tileLayers);
-    // Sub-resources (per-zone collision shapes + navigation polygons).
+    // Sub-resources (per-zone navigation polygons + optional void/hazard hulls).
     const subResources = collectSubResources(input.zones);
     // Building footprint collision shapes (one RectangleShape2D per building).
     const buildingShapes = collectBuildingShapes(input.buildings ?? []);
     // Hazard region collision shapes (one RectangleShape2D per hazard placement).
     const hazardShapes = collectHazardShapes(input.hazards ?? []);
+    // Shared Area2D trigger shape so fallback transitions fire body_entered.
+    const transitionShapes = collectTransitionShapes(input.transitions);
 
     // Header — load_steps counts every ext + sub resource plus the implicit scene step.
-    const loadSteps = extResources.length + tileResources.textures.length
+    const loadSteps = tileResources.textures.length
         + subResources.blocks.length + tileResources.subBlocks.length
-        + buildingShapes.blocks.length + hazardShapes.length + 1;
+        + buildingShapes.blocks.length + hazardShapes.length
+        + transitionShapes.length + 1;
     lines.push(`[gd_scene load_steps=${loadSteps} format=3 uid="uid://world_forge_export"]`);
     lines.push('');
 
-    // External resource declarations — PackedScene templates, then tileset textures.
-    for (let i = 0; i < extResources.length; i++) {
-        lines.push(`[ext_resource type="PackedScene" uid="uid://ext_${i}" path="${extResources[i].path}" id="${extResources[i].id}"]`);
-    }
+    // External resource declarations — tileset textures only. PackedScene
+    // templates are stored as metadata, matching props, so the scene loads
+    // without files this pack does not ship.
     for (const tex of tileResources.textures) {
         lines.push(`[ext_resource type="Texture2D" path="${tex.path}" id="${tex.id}"]`);
     }
-    if (extResources.length > 0 || tileResources.textures.length > 0) lines.push('');
+    if (tileResources.textures.length > 0) lines.push('');
 
     // Sub-resource declarations (must precede the nodes that reference them).
     for (const block of subResources.blocks) {
@@ -127,6 +132,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push('');
     }
     for (const block of hazardShapes) {
+        lines.push(block);
+        lines.push('');
+    }
+    for (const block of transitionShapes) {
         lines.push(block);
         lines.push('');
     }
@@ -175,6 +184,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(`metadata/noise = ${zone.noise}`);
         if (zone.elevation !== undefined) lines.push(`metadata/elevation = ${zone.elevation}`);
         if (zone.parentDistrictId) lines.push(`metadata/district_id = "${zone.parentDistrictId}"`);
+        if (zone.collisionType) lines.push(`metadata/collision_type = "${escapeGodot(zone.collisionType)}"`);
         // Entry gate — the runtime reads these to allow/deny party entry on contact.
         const gate = input.zoneGates?.[zone.id];
         if (gate) {
@@ -184,16 +194,21 @@ export function buildWorldScene(input: SceneBuildInput): string {
         }
         lines.push('');
 
-        // Collision — a static rectangular hull covering the zone bounds so
-        // characters collide with zone edges instead of falling through.
-        if (ids) {
+        // Collision — top-down walkable interiors must NOT get a filled AABB
+        // StaticBody2D (default layer/mask 1 blocked CharacterBody2D from the
+        // walkable interior while NavigationRegion2D said walk). Walls come
+        // from per-cell tile collision. Void/hazard honour collisionType with
+        // a solid hull covering the extent — not "zone edges".
+        if (ids?.rect) {
             lines.push(`[node name="Collision" type="StaticBody2D" parent="${zone.nodeName}"]`);
             lines.push('');
             lines.push(`[node name="CollisionShape2D" type="CollisionShape2D" parent="${zone.nodeName}/Collision"]`);
             lines.push(`position = Vector2(${w / 2}, ${h / 2})`);
             lines.push(`shape = SubResource("${ids.rect}")`);
             lines.push('');
+        }
 
+        if (ids) {
             // Navigation — a rectangular navmesh so NPCs/the player can path
             // within the zone (NavigationLink2D only connects zones, not inside).
             lines.push(`[node name="Navigation" type="NavigationRegion2D" parent="${zone.nodeName}"]`);
@@ -207,15 +222,13 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`[node name="Entities" type="Node2D" parent="${zone.nodeName}"]`);
             lines.push('');
             for (const entity of zoneEntities) {
-                const extRef = extResources.find((r) => r.path === entity.sceneTemplate);
-                if (extRef) {
-                    lines.push(`[node name="${entity.nodeName}" parent="${zone.nodeName}/Entities" instance=ExtResource("${extRef.id}")]`);
-                } else {
-                    lines.push(`[node name="${entity.nodeName}" type="Node2D" parent="${zone.nodeName}/Entities"]`);
-                }
+                // Textureless Node2D placeholder — matching props. sceneTemplate
+                // is metadata, not an ExtResource this pack does not ship.
+                lines.push(`[node name="${entity.nodeName}" type="Node2D" parent="${zone.nodeName}/Entities"]`);
                 lines.push(`position = Vector2(${entity.localPosition.x}, ${entity.localPosition.y})`);
                 lines.push(`metadata/entity_id = "${entity.entityId}"`);
                 lines.push(`metadata/role = "${entity.role}"`);
+                if (entity.sceneTemplate) lines.push(`metadata/scene_template = "${escapeGodot(entity.sceneTemplate)}"`);
                 if (entity.displayName) lines.push(`metadata/display_name = "${escapeGodot(entity.displayName)}"`);
                 if (entity.factionId) lines.push(`metadata/faction_id = "${entity.factionId}"`);
                 if (entity.dialogueId) lines.push(`metadata/dialogue_id = "${entity.dialogueId}"`);
@@ -267,18 +280,20 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`[node name="Transitions" type="Node2D" parent="${zone.nodeName}"]`);
             lines.push('');
             for (const tr of zoneTransitions) {
-                const extRef = extResources.find((r) => r.path === tr.sceneTemplate);
-                if (extRef) {
-                    lines.push(`[node name="${tr.nodeName}" parent="${zone.nodeName}/Transitions" instance=ExtResource("${extRef.id}")]`);
-                } else {
-                    lines.push(`[node name="${tr.nodeName}" type="Area2D" parent="${zone.nodeName}/Transitions"]`);
-                }
+                // Textureless Area2D placeholder with an inline trigger shape so
+                // body_entered fires without a PackedScene this pack does not ship.
+                lines.push(`[node name="${tr.nodeName}" type="Area2D" parent="${zone.nodeName}/Transitions"]`);
                 lines.push(`position = Vector2(${tr.localPosition.x}, ${tr.localPosition.y})`);
                 lines.push(`metadata/transition_id = "${tr.id}"`);
                 lines.push(`metadata/target_zone = "${tr.targetZoneId}"`);
                 lines.push(`metadata/type = "${tr.type}"`);
+                if (tr.sceneTemplate) lines.push(`metadata/scene_template = "${escapeGodot(tr.sceneTemplate)}"`);
                 if (tr.label) lines.push(`metadata/label = "${escapeGodot(tr.label)}"`);
+                if (tr.animation) lines.push(`metadata/animation = "${escapeGodot(tr.animation)}"`);
                 if (tr.durationSeconds !== undefined) lines.push(`metadata/duration = ${tr.durationSeconds}`);
+                lines.push('');
+                lines.push(`[node name="Trigger" type="CollisionShape2D" parent="${zone.nodeName}/Transitions/${tr.nodeName}"]`);
+                lines.push(`shape = SubResource("TransitionShape")`);
                 lines.push('');
             }
         }
@@ -634,31 +649,6 @@ function assertParseable(scene: string): string {
     return scene;
 }
 
-interface ExtResourceRef {
-    id: string;
-    path: string;
-}
-
-function collectExtResources(input: SceneBuildInput): ExtResourceRef[] {
-    const seen = new Set<string>();
-    const refs: ExtResourceRef[] = [];
-
-    for (const entity of input.entities.all) {
-        if (!seen.has(entity.sceneTemplate)) {
-            seen.add(entity.sceneTemplate);
-            refs.push({ id: `ext_${refs.length}`, path: entity.sceneTemplate });
-        }
-    }
-    for (const tr of input.transitions) {
-        if (!seen.has(tr.sceneTemplate)) {
-            seen.add(tr.sceneTemplate);
-            refs.push({ id: `ext_${refs.length}`, path: tr.sceneTemplate });
-        }
-    }
-
-    return refs;
-}
-
 interface TileResourceSet {
     /** Tileset texture ext_resources (deduped by path). */
     textures: { path: string; id: string }[];
@@ -822,28 +812,37 @@ interface SubResourceSet {
     /** Sub-resource declaration blocks, in declaration order. */
     blocks: string[];
     /** Map of zone id → the sub-resource ids that zone's nodes reference. */
-    idsByZone: Map<string, { rect: string; nav: string }>;
+    idsByZone: Map<string, { rect?: string; nav: string }>;
+}
+
+/** Void/hazard zones are solid; walkable/water/custom interiors stay open. */
+function zoneFillsCollision(zone: GodotZoneResource): boolean {
+    return zone.collisionType === 'void' || zone.collisionType === 'hazard';
 }
 
 /**
- * Build the per-zone collision-shape and navigation-polygon sub-resources.
- * Ids are index-based (RectShape_N / NavPoly_N) so they are always valid Godot
- * SubResource ids regardless of zone naming.
+ * Build the per-zone navigation-polygon (and, for void/hazard, filled-hull)
+ * sub-resources. Ids are index-based (RectShape_N / NavPoly_N) so they are
+ * always valid Godot SubResource ids regardless of zone naming.
  */
 function collectSubResources(zones: GodotZoneResource[]): SubResourceSet {
     const blocks: string[] = [];
-    const idsByZone = new Map<string, { rect: string; nav: string }>();
+    const idsByZone = new Map<string, { rect?: string; nav: string }>();
 
     for (let i = 0; i < zones.length; i++) {
         const zone = zones[i];
         const { w, h } = zoneExtent(zone);
-        const rect = `RectShape_${i}`;
         const nav = `NavPoly_${i}`;
+        const ids: { rect?: string; nav: string } = { nav };
 
-        blocks.push(
-            `[sub_resource type="RectangleShape2D" id="${rect}"]\n` +
-            `size = Vector2(${w}, ${h})`,
-        );
+        if (zoneFillsCollision(zone)) {
+            const rect = `RectShape_${i}`;
+            blocks.push(
+                `[sub_resource type="RectangleShape2D" id="${rect}"]\n` +
+                `size = Vector2(${w}, ${h})`,
+            );
+            ids.rect = rect;
+        }
         // Rectangular navmesh in zone-local space: (0,0) (w,0) (w,h) (0,h).
         blocks.push(
             `[sub_resource type="NavigationPolygon" id="${nav}"]\n` +
@@ -851,10 +850,23 @@ function collectSubResources(zones: GodotZoneResource[]): SubResourceSet {
             `polygons = [PackedInt32Array(0, 1, 2, 3)]`,
         );
 
-        idsByZone.set(zone.id, { rect, nav });
+        idsByZone.set(zone.id, ids);
     }
 
     return { blocks, idsByZone };
+}
+
+/**
+ * One shared tile-sized RectangleShape2D for every transition Area2D trigger.
+ * Without a CollisionShape2D, Godot Area2D never fires body_entered.
+ */
+function collectTransitionShapes(transitions: GodotTransitionNode[]): string[] {
+    if (transitions.length === 0) return [];
+    const size = DEFAULT_TILE_SIZE_PX;
+    return [
+        `[sub_resource type="RectangleShape2D" id="TransitionShape"]\n` +
+        `size = Vector2(${size}, ${size})`,
+    ];
 }
 
 /** Zone pixel extent, rounded and clamped to a minimum of 1px to avoid degenerate shapes. */
