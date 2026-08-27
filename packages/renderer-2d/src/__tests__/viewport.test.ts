@@ -59,14 +59,16 @@ describe('WorldViewport', () => {
     await expect(vp.init(el)).resolves.toBeUndefined();
   });
 
-  it('wraps PixiJS init errors with context (I-005)', async () => {
+  it('wraps PixiJS init errors with context (I-005 / F-fd76f08c)', async () => {
     const vp = new WorldViewport(defaultOpts);
     // Force the underlying app.init to reject
     (vp.app as unknown as { _initFn: () => Promise<void> })._initFn = () =>
       Promise.reject(new Error('WebGL not supported'));
 
     const el = makeContainer();
-    await expect(vp.init(el)).rejects.toThrow(/WorldViewport failed to initialize/);
+    await expect(vp.init(el)).rejects.toThrow(
+      /WorldViewport failed to initialize PixiJS Application \(800x600\): WebGL not supported\. Check WebGL\/GPU availability/,
+    );
   });
 
   it('preserves original error as cause (I-005)', async () => {
@@ -81,6 +83,7 @@ describe('WorldViewport', () => {
       expect.unreachable('should have thrown');
     } catch (err) {
       expect((err as Error).cause).toBe(original);
+      expect((err as Error).message).toContain('GPU context lost');
     }
   });
 
@@ -192,6 +195,29 @@ describe('WorldViewport', () => {
         Promise.reject(new Error('boom'));
       await expect(vp.init(makeContainer())).rejects.toThrow();
       expect(vp.isMounted()).toBe(false);
+    });
+  });
+
+  describe('re-init after destroy (F-03dd3ea3)', () => {
+    it('init() after destroy() (post-init) throws the construct-new message and does not re-init Pixi', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      await vp.init(makeContainer());
+      vp.destroy();
+      const initSpy = vi.spyOn(vp.app, 'init');
+      await expect(vp.init(makeContainer())).rejects.toThrow(
+        'WorldViewport has been destroyed — construct a new WorldViewport to continue.',
+      );
+      expect(initSpy).not.toHaveBeenCalled();
+    });
+
+    it('init() after destroy() (never inited) throws the construct-new message and does not call Pixi init', async () => {
+      const vp = new WorldViewport(defaultOpts);
+      vp.destroy();
+      const initSpy = vi.spyOn(vp.app, 'init');
+      await expect(vp.init(makeContainer())).rejects.toThrow(
+        'WorldViewport has been destroyed — construct a new WorldViewport to continue.',
+      );
+      expect(initSpy).not.toHaveBeenCalled();
     });
   });
 

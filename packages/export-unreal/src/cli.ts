@@ -18,7 +18,8 @@ const USAGE = `Usage: world-forge-export-unreal <project.json> [options]
        world-forge-export-unreal --diff <prev-dir> <new-dir>  [--detailed]
 
 Export options:
-  --out <dir>        Output directory (default: ./UnrealPack)
+  --out <dir>        Output directory (default: ./UnrealPack).
+                     <dir> must be a path and must not start with '-'
   --tile-size-cm N   Override world scale (default: 100 cm per tile)
   --sign             Attach a sha256 integrity hash to Meta.Signature
   --validate-only    Validate without writing files
@@ -27,8 +28,10 @@ Export options:
   --help             Show this help
 
 Summary / diff options:
-  --summary <dir>    Print summary of the pack at <dir>
-  --verify <dir>     Verify pack Signature; exit non-zero on mismatch or unsigned
+  --summary <dir>    Print summary of the pack at <dir>.
+                     <dir> must be a path and must not start with '-'
+  --verify <dir>     Verify pack Signature; exit non-zero on mismatch or unsigned.
+                     <dir> must be a path and must not start with '-'
   --diff <a> <b>     Compare packs at <a> (previous) and <b> (new)
   --detailed         With --diff, list added/removed/changed ids
 
@@ -59,11 +62,7 @@ async function main(): Promise<void> {
   // the export pipeline so they work without a project.json argument.
   const summaryIdx = args.indexOf('--summary');
   if (summaryIdx !== -1) {
-    const dir = args[summaryIdx + 1];
-    if (!dir) {
-      console.error('Error: --summary requires a pack directory path (e.g., --summary ./UnrealPack)');
-      process.exit(1);
-    }
+    const dir = requirePathArg('--summary', args[summaryIdx + 1], './UnrealPack');
     const result = await summarizePack(resolve(dir));
     if ('error' in result) {
       console.error(`Error: ${result.error}`);
@@ -76,11 +75,7 @@ async function main(): Promise<void> {
 
   const verifyIdx = args.indexOf('--verify');
   if (verifyIdx !== -1) {
-    const dir = args[verifyIdx + 1];
-    if (!dir) {
-      console.error('Error: --verify requires a pack directory path (e.g., --verify ./UnrealPack)');
-      process.exit(1);
-    }
+    const dir = requirePathArg('--verify', args[verifyIdx + 1], './UnrealPack');
     const result = await summarizePack(resolve(dir));
     if ('error' in result) {
       console.error(`Error: ${result.error}`);
@@ -119,6 +114,11 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // F-c0271959: leftover/typo'd flags used to be ignored (or become the
+  // project path). Closed set + Levenshtein suggestion; flags-first is a
+  // usage error, not a missing file named "--out".
+  rejectUnknownOrLeadingFlags(args);
+
   const projectPath = args[0];
   const validateOnly = args.includes('--validate-only');
   const verbose = args.includes('--verbose');
@@ -126,11 +126,7 @@ async function main(): Promise<void> {
   const sign = args.includes('--sign');
 
   const outIdx = args.indexOf('--out');
-  if (outIdx !== -1 && !args[outIdx + 1]) {
-    console.error('Error: --out requires a path value (e.g., --out ./UnrealPack)');
-    process.exit(1);
-  }
-  const outDir = outIdx !== -1 ? args[outIdx + 1] : './UnrealPack';
+  const outDir = outIdx !== -1 ? requirePathArg('--out', args[outIdx + 1], './UnrealPack') : './UnrealPack';
 
   const tileIdx = args.indexOf('--tile-size-cm');
   if (tileIdx !== -1 && !args[tileIdx + 1]) {
@@ -154,8 +150,8 @@ async function main(): Promise<void> {
   let project: WorldProject;
   try {
     project = JSON.parse(raw) as WorldProject;
-  } catch {
-    console.error(`Error: "${projectPath}" is not valid JSON`);
+  } catch (err) {
+    console.error(`Error: "${projectPath}" is not valid JSON: ${(err as Error).message}`);
     process.exit(1);
   }
 
@@ -271,7 +267,9 @@ async function main(): Promise<void> {
   console.log(
     `  WorldPartition cells: ${result.contentPack.WorldPartition.CellsX} × ${result.contentPack.WorldPartition.CellsY} @ ${result.contentPack.WorldPartition.CellSizeCm} cm`,
   );
-  console.log(`  Fidelity: ${result.fidelity.summary.losslessPercent}% lossless (${result.fidelity.summary.total} entries)`);
+  console.log(
+    `  Fidelity: ${result.fidelity.summary.losslessPercent}% lossless (${result.fidelity.summary.total} entries, ${result.fidelity.summary.dropped} dropped, ${result.fidelity.summary.approximated} approximated)`,
+  );
 
   // UE-B-003: surface dropped entities to stderr so users (and CI) see exactly
   // which actors the pack is missing and why. The manifest/fidelity already
@@ -288,6 +286,27 @@ async function main(): Promise<void> {
     }
     console.error(
       `Hint: fix the missing zones in the source project, or remove the stale entity placements. UE5 loader should check Actors.Incomplete on this pack.`,
+    );
+  }
+
+  // F-5aa31629: convertTransitions already records Dropped fidelity for
+  // ghost zoneId/targetZoneId, but the operator surface never read it.
+  // Mirror the Actors.Dropped block so a lift that didn't ship is named
+  // on stderr without --verbose.
+  const droppedTransitions = result.fidelity.entries.filter(
+    (e) =>
+      e.domain === 'transitions' &&
+      (e.level === 'dropped' || e.level === 'approximated') &&
+      (e.severity === 'warning' || e.severity === 'error'),
+  );
+  if (droppedTransitions.length > 0) {
+    console.error(`Warning: ${droppedTransitions.length} transition(s) dropped:`);
+    for (const e of droppedTransitions) {
+      const id = e.entityId ?? e.fieldPath ?? '(unknown)';
+      console.error(`  - Transition "${id}": ${e.message}${e.reason ? ` (${e.reason})` : ''}`);
+    }
+    console.error(
+      `Hint: fix the missing zoneId/targetZoneId refs in the source project so the UE5 loader can place these lifts/warps.`,
     );
   }
 
@@ -312,6 +331,93 @@ async function main(): Promise<void> {
 
 function safeFile(id: string): string {
   return id.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+/** F-42820520: a following token that starts with '-' is another flag, not a path. */
+function requirePathArg(flag: string, value: string | undefined, example: string): string {
+  if (!value || value.startsWith('-')) {
+    const got = value ?? '(missing)';
+    const extra = value?.startsWith('-')
+      ? ` — '${value}' looks like a swallowed flag, not a directory`
+      : ` (e.g., ${flag} ${example})`;
+    console.error(
+      `Error: ${flag} requires a path value that does not start with '-' (got '${got}')${extra}`,
+    );
+    process.exit(1);
+    throw new Error('unreachable');
+  }
+  return value;
+}
+
+const KNOWN_FLAGS = [
+  '--help',
+  '--summary',
+  '--verify',
+  '--diff',
+  '--detailed',
+  '--out',
+  '--tile-size-cm',
+  '--sign',
+  '--validate-only',
+  '--verbose',
+  '--warnings-only',
+] as const;
+
+const VALUE_FLAGS = new Set(['--out', '--tile-size-cm']);
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => {
+    const row = new Array<number>(n + 1);
+    row[0] = i;
+    return row;
+  });
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        dp[i][j] = Math.min(dp[i][j], dp[i - 2][j - 2] + 1);
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+function suggestFlag(unknown: string): string {
+  let best: (typeof KNOWN_FLAGS)[number] = KNOWN_FLAGS[0];
+  let bestD = Infinity;
+  for (const flag of KNOWN_FLAGS) {
+    const d = levenshtein(unknown, flag);
+    if (d < bestD) {
+      bestD = d;
+      best = flag;
+    }
+  }
+  return best;
+}
+
+function rejectUnknownOrLeadingFlags(args: string[]): void {
+  const known = new Set<string>(KNOWN_FLAGS);
+  for (let i = 0; i < args.length; i++) {
+    const tok = args[i];
+    if (!tok.startsWith('-')) continue;
+    if (!known.has(tok)) {
+      console.error(`Error: unknown option '${tok}'. Did you mean ${suggestFlag(tok)}?`);
+      if (args[0]?.startsWith('-')) {
+        console.error('Hint: project.json must be the first argument; flags follow.');
+      }
+      process.exit(1);
+    }
+    if (VALUE_FLAGS.has(tok)) i += 1;
+  }
+  if (args[0]?.startsWith('-')) {
+    console.error(`Error: expected a project.json path as the first argument (got '${args[0]}').`);
+    console.error('Hint: project.json must be the first argument; flags follow.');
+    process.exit(1);
+  }
 }
 
 main().catch((err: Error) => {

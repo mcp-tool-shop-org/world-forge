@@ -54,10 +54,10 @@ export class TileLayerRenderer {
     // to a non-array. Iterating that throws TypeError and aborts the whole
     // update — including sibling tilesets that would have rendered. Skip the
     // bad tileset and emit one aggregated warning, matching missing-tileId.
-    const malformedTilesets: string[] = [];
+    const malformedTilesets: Array<{ id: string; type: string }> = [];
     for (const ts of tilesets) {
       if (!Array.isArray(ts.tiles)) {
-        malformedTilesets.push(ts.id);
+        malformedTilesets.push({ id: ts.id, type: describeNonArray(ts.tiles) });
         continue;
       }
       for (const t of ts.tiles) {
@@ -77,11 +77,11 @@ export class TileLayerRenderer {
     // F-c95fe6c0: sibling of F-4cfcd60a. tileset.tiles is skip+warn; a
     // layer whose tiles is omitted or {} used to TypeError and abort every
     // remaining layer. Skip the bad layer and keep walking siblings.
-    const malformedLayers: string[] = [];
+    const malformedLayers: Array<{ id: string; type: string }> = [];
 
     for (const layer of sorted) {
       if (!Array.isArray(layer.tiles)) {
-        malformedLayers.push(layer.id);
+        malformedLayers.push({ id: layer.id, type: describeNonArray(layer.tiles) });
         continue;
       }
 
@@ -115,17 +115,11 @@ export class TileLayerRenderer {
     }
 
     if (malformedTilesets.length > 0) {
-      const ids = malformedTilesets.map((id) => `"${id}"`).join(', ');
-      console.warn(
-        `TileLayerRenderer.update: ${malformedTilesets.length} tileset${malformedTilesets.length === 1 ? '' : 's'} omitted a tiles array — skipping ${ids}. Sibling tilesets still render.`,
-      );
+      console.warn(formatNotArrayTilesWarn('tilesets', malformedTilesets));
     }
 
     if (malformedLayers.length > 0) {
-      const ids = malformedLayers.map((id) => `"${id}"`).join(', ');
-      console.warn(
-        `TileLayerRenderer.update: ${malformedLayers.length} layer${malformedLayers.length === 1 ? '' : 's'} omitted a tiles array — skipping ${ids}. Sibling layers still render.`,
-      );
+      console.warn(formatNotArrayTilesWarn('layers', malformedLayers));
     }
 
     // R2D-B-003: emit a single consolidated warning covering every missing
@@ -144,4 +138,21 @@ export class TileLayerRenderer {
       );
     }
   }
+}
+
+/** F-4daec731: name the runtime type — the field is often present as `{}`, not omitted. */
+function describeNonArray(value: unknown): string {
+  if (value === null) return 'null';
+  return typeof value;
+}
+
+function formatNotArrayTilesWarn(
+  sibling: 'tilesets' | 'layers',
+  items: Array<{ id: string; type: string }>,
+): string {
+  if (items.length === 1) {
+    return `TileLayerRenderer.update: tiles is not an array (got ${items[0].type}) — skipping "${items[0].id}". Sibling ${sibling} still render.`;
+  }
+  const details = items.map((m) => `"${m.id}" (got ${m.type})`).join(', ');
+  return `TileLayerRenderer.update: tiles is not an array — skipping ${details}. Sibling ${sibling} still render.`;
 }
