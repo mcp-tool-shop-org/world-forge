@@ -31,6 +31,20 @@ function makeStores(overrides: Partial<ExecuteStores> = {}): ExecuteStores {
 }
 
 describe('executeAction', () => {
+  it('place-encounter sets the encounter-place tool on a zone', () => {
+    const stores = makeStores();
+    const ctx: HitResult = { type: 'zone', id: 'z1' };
+    const result = executeAction('place-encounter', ctx, stores);
+    expect(result.executed).toBe(true);
+    expect(stores.setTool).toHaveBeenCalledWith('encounter-place');
+  });
+
+  it('place-encounter returns false for null context', () => {
+    const stores = makeStores();
+    const result = executeAction('place-encounter', null, stores);
+    expect(result.executed).toBe(false);
+  });
+
   it('edit-props selects context and opens map tab', () => {
     const stores = makeStores();
     const ctx: HitResult = { type: 'zone', id: 'z1' };

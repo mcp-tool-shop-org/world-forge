@@ -5,7 +5,8 @@ import type { SpeedPanelMacro, MacroExecutionResult } from './speed-panel-action
 import type { WorldProject, ZoneConnection, Zone } from '@world-forge/schema';
 import { buildReviewSnapshot } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
-import type { RightTab, EditorTool, SelectionSet } from './store/editor-store.js';
+import type { RightTab, EditorTool, SelectionSet, SelectionKind } from './store/editor-store.js';
+import { emptySelection, SELECTION_KIND_KEY } from './store/editor-store.js';
 import type { EnrichedReviewSnapshot } from './panels/ReviewPanel.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
 import { frameBounds } from './viewport.js';
@@ -23,6 +24,8 @@ export interface ExecuteStores {
   selectSpawn: (id: string, additive: boolean) => void;
   selectEncounter: (id: string, additive: boolean) => void;
   selectConnection: (fromId: string, toId: string) => void;
+  /** F-df71e70a / F-5515c044: optional so older test bags still type-check. */
+  selectKind?: (type: SelectionKind, id: string, additive: boolean) => void;
   clearSelection: () => void;
 
   // UI
@@ -32,7 +35,7 @@ export interface ExecuteStores {
   setViewport: (vp: ViewportState) => void;
 
   // Project mutations
-  removeSelected: (sel: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => void;
+  removeSelected: (sel: SelectionSet) => void;
   duplicateSelected: (sel: { zones: string[]; entities: string[]; landmarks: string[]; spawns: string[]; encounters: string[] }) => unknown;
   removeConnection: (fromId: string, toId: string) => void;
   addConnection: (conn: ZoneConnection) => void;
@@ -133,11 +136,9 @@ function selectFromContext(ctx: HitResult, stores: ExecuteStores): boolean {
   else if (ctx.type === 'landmark') stores.selectLandmark(ctx.id, false);
   else if (ctx.type === 'spawn') stores.selectSpawn(ctx.id, false);
   else if (ctx.type === 'encounter') stores.selectEncounter(ctx.id, false);
+  else if (stores.selectKind) stores.selectKind(ctx.type as SelectionKind, ctx.id, false);
+  else return false;
   return true;
-}
-
-function emptySelection() {
-  return { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
 }
 
 /**
@@ -154,6 +155,7 @@ export function buildExecuteStores(canvasSize?: { w: number; h: number }): Execu
     selectLandmark: editor.selectLandmark,
     selectSpawn: editor.selectSpawn,
     selectEncounter: editor.selectEncounter,
+    selectKind: editor.selectKind,
     selectConnection: editor.selectConnection,
     clearSelection: editor.clearSelection,
     setRightTab: editor.setRightTab,
@@ -208,7 +210,8 @@ export function executeAction(
       } else {
         selectFromContext(context, stores);
         const sel = emptySelection();
-        const key = context.type === 'zone' ? 'zones' : context.type === 'entity' ? 'entities' : context.type === 'landmark' ? 'landmarks' : context.type === 'spawn' ? 'spawns' : 'encounters';
+        const key = context.type === 'connection' ? null : SELECTION_KIND_KEY[context.type as SelectionKind];
+        if (!key) return fail('context mismatch');
         sel[key] = [context.id];
         stores.removeSelected(sel);
       }
@@ -253,6 +256,11 @@ export function executeAction(
     case 'place-entity':
       if (context?.type !== 'zone') return fail('context mismatch');
       stores.setTool('entity-place');
+      return { executed: true };
+
+    case 'place-encounter':
+      if (context?.type !== 'zone') return fail('context mismatch');
+      stores.setTool('encounter-place');
       return { executed: true };
 
     case 'connect-from':

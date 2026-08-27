@@ -320,6 +320,8 @@ describe('dispatchHotkey — actions', () => {
     ['KeyE', 'entity-place'],
     ['KeyL', 'landmark'],
     ['KeyS', 'spawn'],
+    ['KeyN', 'encounter-place'],
+    ['KeyI', 'item-place'],
   ] as const)('tool shortcut %s switches to %s', (code, tool) => {
     const ctx = makeCtx();
     const e = makeEvent({ code });
