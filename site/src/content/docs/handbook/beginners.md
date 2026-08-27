@@ -15,7 +15,7 @@ World Forge is a monorepo with six packages:
 
 | Package | What it does |
 |---------|-------------|
-| `@world-forge/schema` | TypeScript types, validation (60+ checks), and the `WorldProject` container |
+| `@world-forge/schema` | TypeScript types, validation (89 structural checks), and the `WorldProject` container |
 | `@world-forge/export-ai-rpg` | Converts projects to ai-rpg-engine format; includes a CLI tool |
 | `@world-forge/export-unreal` | Converts projects to Unreal Engine 5 format with 2.5D support; includes CLI |
 | `@world-forge/export-godot` | Converts projects to Godot 4 format with `.tscn` scene generation |
@@ -28,11 +28,11 @@ World Forge is built for game designers, content authors, and hobbyists who want
 
 You do not need programming experience to use the editor. Familiarity with RPG concepts (zones, NPCs, items, stats) is helpful but not required -- the glossary at the end of this page defines every term.
 
-Developers who want to integrate World Forge types or the export pipeline into their own tooling can use the published npm packages (`@world-forge/schema` and `@world-forge/export-ai-rpg`) directly.
+Developers who want to integrate World Forge types or an export pipeline into their own tooling can use the published npm packages (`@world-forge/schema`, `@world-forge/export-ai-rpg`, `@world-forge/export-unreal`, `@world-forge/export-godot`) directly.
 
 ## 3. Installation and Setup
 
-**Prerequisites:** Node.js 20+ and npm 10+.
+**Prerequisites:** Node.js 22+ (`engines.node`) and npm 10+.
 
 ```bash
 git clone https://github.com/mcp-tool-shop-org/world-forge
@@ -41,7 +41,7 @@ npm install
 npm run build
 ```
 
-The build step runs `tsc --build`, which compiles all four packages in dependency order (schema first, then renderer-2d and export-ai-rpg, then editor).
+The build step runs `tsc --build`, which compiles all six packages in dependency order: schema first, then renderer-2d / export-ai-rpg / export-unreal / export-godot (all depend on schema), then editor (depends on all five).
 
 Launch the editor:
 

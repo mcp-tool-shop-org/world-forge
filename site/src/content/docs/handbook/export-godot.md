@@ -67,9 +67,15 @@ import { exportToGodot } from '@world-forge/export-godot';
 
 const result = exportToGodot(project);
 
-// result.pack — full GodotContentPack
-// result.scenes — .tscn scene text per zone
-// result.fidelity — structured fidelity report
+if (!result.success) {
+  // GodotExportError — validation or conversion failed
+  console.error(result.errors);
+} else {
+  // GodotExportResult
+  const pack = result.contentPack;          // GodotContentPack
+  const scene = pack.worldSceneTscn;        // single playable .tscn, not per-zone
+  const { warnings, fidelity } = result;
+}
 ```
 
 ## Editor Export Options

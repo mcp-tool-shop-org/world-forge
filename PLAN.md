@@ -24,8 +24,8 @@
 
 All prior releases shipped. See CHANGELOG.md for full history.
 
-Highlights:
-- Schema + validation (54 checks) + advisory validation (mode-specific)
+Shipped-state Highlights through v4.3.0 (historical — current numbers live in README.md / CHANGELOG.md):
+- Schema + validation (54 checks at that tag; 89 on v4.6.0) + advisory validation (mode-specific)
 - Full authoring surface (zones, connections, districts, entities, items, dialogues, player, builds, trees, assets, packs, encounters, factions)
 - Canvas viewport with pan/zoom/fit, selection, multi-edit, snapping, resize handles
 - 7 authoring modes (dungeon, district, world, ocean, space, interior, wilderness)
@@ -34,15 +34,17 @@ Highlights:
 - Project bundles (.wfproject.json) with provenance
 - Dependency scanner with inline repair
 - Review mode with health classification
-- Export to ai-rpg-engine ContentPack (zero engine gaps)
+- Export to ai-rpg-engine ContentPack; UE5 and Godot 4 lanes shipped later (v4.2 / v4.5)
 - Design system token layer (theme.css + styles.ts + ModalFrame)
-- 7-page Starlight handbook
+- Starlight handbook (7 pages at v4.3; 10 pages on v4.6.0)
 
 ---
 
-## v4.4 Roadmap (deferred from v4.3.0 swarm)
+## Historical park list (v4.3.0 swarm leftovers, titled v4.4 at the time)
 
-The v4.3.0 dogfood swarm audited 51 features and approved a 2.5D-focused wave of 15. The remaining 36 features + 3 large-effort deferrals are parked here. Priorities are the auditor's — re-triage before picking up.
+This is **not** a live roadmap. v4.4.0, v4.5.0, and v4.6.0 have since shipped. Current product state is README.md + CHANGELOG.md. The list below is the v4.3.0 auditor's leftover park — re-triage against HEAD before picking anything up.
+
+The v4.3.0 dogfood swarm audited 51 features and approved a 2.5D-focused wave of 15. The remaining 36 features + 3 large-effort deferrals were parked here.
 
 ### Gates to decide at v4.4 kickoff
 

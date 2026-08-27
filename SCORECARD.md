@@ -1,8 +1,7 @@
 # Scorecard
 
-> **Release:** v4.4.0  
-> **Repo:** world-forge  
-> **Date:** 2026-05-01  
+> **Historical artifact — v4.4.0 (2026-05-01).** Not restamped for later minors. Current shipped state is README.md / CHANGELOG.md (v4.6.0).
+> **Repo:** world-forge
 > **Type tags:** `[npm]` `[cli]` `[editor]`
 
 ## Assessment

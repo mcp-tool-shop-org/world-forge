@@ -66,7 +66,7 @@ export const config: SiteConfig = {
         },
         {
           title: 'Review & Export',
-          desc: 'Health dashboard, content overview, summary export. Peer export lanes: AI RPG Engine ContentPack, Unreal Engine 5 UnrealContentPack (2.5D-aware), plus portable ProjectBundle (.wfproject.json). Multi-format import with fidelity reporting.',
+          desc: 'Health dashboard, content overview, summary export. Peer export lanes: AI RPG Engine ContentPack, Unreal Engine 5 UnrealContentPack (2.5D-aware), Godot 4 playable .tscn, plus portable ProjectBundle (.wfproject.json). Multi-format import with fidelity reporting.',
         },
         {
           title: '2.5D Authoring',

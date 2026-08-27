@@ -36,5 +36,5 @@ World Forge is a local-only authoring tool with a minimal threat surface.
 If you discover a security issue, please email [64996768+mcp-tool-shop@users.noreply.github.com](mailto:64996768+mcp-tool-shop@users.noreply.github.com).
 
 - Supported versions: v4.x
-- Response timeline: 72 hours for initial acknowledgment
+- Response timeline: see [SECURITY.md](https://github.com/mcp-tool-shop-org/world-forge/blob/main/SECURITY.md) — acknowledge in 48 hours, assess in 7 days, fix in 30 days. Do not keep a second SLA here.
 - We will work with you to understand and address the issue before any public disclosure

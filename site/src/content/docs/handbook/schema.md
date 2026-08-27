@@ -75,7 +75,7 @@ interface WorldProject {
 }
 ```
 
-Every field added since v4.1 is **optional**, and that is a deliberate contract rather than an accident: a project authored on any earlier v4.x opens, validates, and exports unchanged. See [Town Structures](#town-structures), [Vertical Strata](#vertical-strata), [Typed Hazards](#typed-hazards), and [Zone Entry Gates](#zone-entry-gates) below for the v4.5 additions.
+Town structures (`buildings` / `hubs` / `strongholds`), world-modeling (`strata` / `stratumLinks` / `hazardDefinitions`), `lootTables`, and `transitions` are **optional** — a project authored before those fields were added still opens, validates, and exports unchanged. The town-economy and visual arrays (`craftingStations`, `marketNodes`, `tilesets`, `tileLayers`, `props`, `propPlacements`, `ambientLayers`) are required; omitting them fails the structural guard. See [Town Structures](#town-structures), [Vertical Strata](#vertical-strata), [Typed Hazards](#typed-hazards), and [Zone Entry Gates](#zone-entry-gates) below for the v4.5 additions.
 
 ## AuthoringMode
 
@@ -306,7 +306,7 @@ Constants: `MIN_ZOOM = 0.1`, `MAX_ZOOM = 5.0`, `DEFAULT_VIEWPORT = { panX: 0, pa
 
 ## Validation
 
-`validateProject()` runs 89 structural checks using precomputed Map lookups for O(n) performance. Returns `{ valid, errors, warningCount }`. An optional `ValidateOptions` parameter supports `verbose` mode for detailed output.
+`validateProject()` runs 89 structural checks using precomputed Map lookups for O(n) performance. Returns `{ valid, errors, warningCount, schemaVersion }`. `warningCount` currently equals `errors.length` (it is not a separate advisory count — see `advisoryValidation()` for suggestions). `schemaVersion` is stamped on the full-validation return so exporters can pick a migration path; the structural-guard early return may omit it until that path also stamps. An optional `ValidateOptions` parameter supports `verbose` mode for detailed output.
 
 Before any rule runs, a structural guard confirms every required top-level array is actually an array. A truncated or corrupted import used to sail past this and fail later in a converter; now it fails immediately, with the field named. The three optional town arrays are guarded the same way, but only when present — absent stays valid, which is what keeps projects authored before v4.5 opening unchanged.
 
@@ -355,7 +355,6 @@ Before any rule runs, a structural guard confirms every required top-level array
 46. Asset packId references existing pack
 47. Orphaned pack detection (no assets reference this pack)
 48. Pack version format (semver x.y.z)
-49-52. Pack version non-empty, `packId` resolves, orphaned-pack detection, semver format
 53-55. 2.5D: elevation range sanity (finite, floor < ceiling), unique parallax depth per zone, `skylineRef` resolves to a `background` asset
 56-58. LootTable ID uniqueness; every entry weight finite and > 0
 59. `EntityPlacement.spawnCondition` parses as a legal condition

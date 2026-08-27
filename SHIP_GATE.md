@@ -45,7 +45,7 @@
 
 ## D. Shipping Hygiene
 
-- [x] `[all]` `verify` script exists (test + build + smoke in one command) (2026-04-22)
+- [x] `[all]` `verify` script exists (`npm run build && npm run test`) (2026-08-27)
 - [x] `[all]` Version in manifest matches git tag (2026-04-22)
 - [x] `[all]` Dependency scanning runs in CI (npm audit in verify) (2026-04-22)
 - [ ] `[all]` SKIP: no dependabot per org rules
@@ -58,8 +58,8 @@
 ## E. Identity
 
 - [x] `[all]` Logo in README header (2026-04-22)
-- [ ] `[all]` SKIP: no translations — internal authoring tool
-- [ ] `[org]` SKIP: no landing page — internal authoring tool
+- [x] `[all]` Translations present — README.{ja,zh,es,fr,hi,it,pt-BR}.md (2026-08-27)
+- [x] `[org]` Landing page live — https://mcp-tool-shop-org.github.io/world-forge/ (2026-08-27)
 - [ ] `[all]` SKIP: GitHub metadata set at repo creation
 
 ---
