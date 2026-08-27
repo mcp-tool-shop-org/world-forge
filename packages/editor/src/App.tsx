@@ -165,7 +165,7 @@ export function App() {
 
   const losslessPct = importFidelity?.summary.losslessPercent;
 
-  const tabs: { id: RightTab; label: string; badge?: string; badgeColor?: string }[] = [
+  const tabs: { id: RightTab; label: string; badge?: string; badgeColor?: string; badgeFg?: string }[] = [
     { id: 'map', label: 'Map' },
     { id: 'player', label: 'Player' },
     { id: 'builds', label: 'Builds' },
@@ -175,10 +175,10 @@ export function App() {
     { id: 'presets', label: 'Presets' },
     { id: 'assets', label: 'Assets', badge: (project.assets?.length ?? 0) > 0 ? `${project.assets!.length}` : undefined },
     { id: 'issues', label: 'Issues' },
-    { id: 'deps', label: 'Deps', badge: depsCount > 0 ? `${depsCount}` : undefined, badgeColor: '#d29922' },
+    { id: 'deps', label: 'Deps', badge: depsCount > 0 ? `${depsCount}` : undefined, badgeColor: 'var(--wf-warning)', badgeFg: 'var(--wf-on-warning)' },
     { id: 'review', label: 'Review' },
     ...(!checklistDismissed ? [{ id: 'guide' as RightTab, label: 'Guide' }] : []),
-    ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? '#3fb950' : '#d29922' }] : []),
+    ...(importFidelity ? [{ id: 'import-summary' as RightTab, label: 'Import', badge: `${losslessPct}%`, badgeColor: losslessPct === 100 ? 'var(--wf-success)' : 'var(--wf-warning)', badgeFg: losslessPct === 100 ? 'var(--wf-on-success)' : 'var(--wf-on-warning)' }] : []),
     ...(importSnapshot ? [{ id: 'diff' as RightTab, label: 'Diff' }] : []),
   ];
 
@@ -543,6 +543,8 @@ export function App() {
             </div>
           )}
           {showSpeedPanel && <SpeedPanel />}
+          {/* F-69a1f39b: same containing block as the minimap (canvas well), not viewport-fixed. */}
+          <ToastHost shiftForMinimap={showMinimap && project.zones.length > 0} />
         </div>
 
         {/* Right sidebar */}
@@ -613,7 +615,7 @@ export function App() {
                     {t.label}
                     {t.id === 'issues' && issueCount > 0 && (
                       <span style={{
-                        marginLeft: 4, fontSize: 9, background: 'var(--wf-danger)', color: '#fff',
+                        marginLeft: 4, fontSize: 9, background: 'var(--wf-danger)', color: 'var(--wf-on-danger)',
                         borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
                       }}>
                         {issueCount}
@@ -621,7 +623,7 @@ export function App() {
                     )}
                     {t.badge && (
                       <span style={{
-                        marginLeft: 4, fontSize: 9, background: t.badgeColor ?? '#8b949e', color: '#fff',
+                        marginLeft: 4, fontSize: 9, background: t.badgeColor ?? 'var(--wf-text-muted)', color: t.badgeFg ?? 'var(--wf-on-accent)',
                         borderRadius: 8, padding: '1px 5px', fontWeight: 'bold',
                       }}>
                         {t.badge}
@@ -721,9 +723,6 @@ export function App() {
       </div>
 
       <ModalLayer />
-
-      {/* ED-B-*: shared toast host for transient feedback (save, stale search, etc.) */}
-      <ToastHost shiftForMinimap={showMinimap && project.zones.length > 0} />
     </div>
   );
 }

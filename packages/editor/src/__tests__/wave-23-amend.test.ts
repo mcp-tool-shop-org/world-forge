@@ -116,6 +116,41 @@ describe('F-ce49d7e0: complete light/dark token tables', () => {
     expect(canvas).not.toContain("background: 'rgba(13,17,23,0.85)'");
   });
 
+  it('F-407b7c74: canvas overlay stroke/fill and App badgeColor keep no leftover #fff/#aaa/#ccc hex', () => {
+    const canvas = src('../Canvas.tsx');
+    expect(canvas).not.toMatch(/(?:strokeStyle|fillStyle)\s*=\s*'#fff'/);
+    expect(canvas).not.toMatch(/fillStyle\s*=\s*'#aaa'/);
+    expect(canvas).not.toMatch(/fillStyle\s*=\s*'#ccc'/);
+    expect(canvas).not.toMatch(/selected \? '#fff' : '#ccc'/);
+    expect(canvas).toContain("readCssVar('--wf-accent'");
+    expect(canvas).toContain("readCssVar('--wf-text-muted'");
+    expect(canvas).toContain("readCssVar('--wf-bg-overlay'");
+    expect(canvas).toContain("readCssVar('--wf-accent-text'");
+    const app = src('../App.tsx');
+    expect(app).not.toMatch(/badgeColor:\s*'#[0-9A-Fa-f]+'/);
+    expect(app).not.toMatch(/badgeColor \?\? '#[0-9A-Fa-f]+'/);
+    expect(app).toContain("badgeColor: 'var(--wf-warning)'");
+    expect(app).toContain("'var(--wf-success)'");
+    expect(app).toContain("t.badgeColor ?? 'var(--wf-text-muted)'");
+    expect(app).toContain("color: 'var(--wf-on-danger)'");
+    expect(app).toContain('var(--wf-on-warning)');
+    expect(app).toContain('var(--wf-on-success)');
+  });
+
+  it('F-407b7c74: ring/label/tab-badge token pairs meet 4.5:1 in light', () => {
+    expect(contrast(lightTokens['--wf-accent'], lightTokens['--wf-bg-app'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-text-primary'], lightTokens['--wf-bg-app'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-text-muted'], lightTokens['--wf-bg-elevated'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-on-warning'], lightTokens['--wf-warning'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-on-success'], lightTokens['--wf-success'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-on-danger'], lightTokens['--wf-danger'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(lightTokens['--wf-on-accent'], lightTokens['--wf-text-muted'])).toBeGreaterThanOrEqual(4.5);
+    for (const tokens of [darkTokens, lightTokens]) {
+      expect(contrast(tokens['--wf-accent'], tokens['--wf-bg-app'])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(tokens['--wf-text-muted'], tokens['--wf-bg-elevated'])).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('getInitialTheme stored value wins; unset honors prefers-color-scheme when window exists', () => {
     try { localStorage.removeItem('wf-theme'); } catch { /* ignore */ }
     localStorage.setItem('wf-theme', 'dark');
@@ -164,10 +199,34 @@ describe('F-516a5c4f: status-line contrast fixture', () => {
 describe('F-43ee22ef: toast host clears the status line and minimap', () => {
   it('anchors above --wf-bottombar-height and shifts left of the minimap', () => {
     const toast = src('../ui/Toast.tsx');
-    expect(toast).toContain('calc(var(--wf-bottombar-height) + var(--wf-space-2))');
+    // F-69a1f39b: canvas-well absolute; status line is a sibling below the well.
+    expect(toast).toContain("bottom: 'var(--wf-space-2)'");
     expect(toast).toContain('var(--wf-minimap-width)');
     expect(toast).toContain('shiftForMinimap');
     expect(toast).not.toMatch(/bottom:\s*16/);
+    const app = src('../App.tsx');
+    expect(app).toContain('var(--wf-bottombar-height)');
+    expect(app).toContain('wf-status-line');
+  });
+
+  it('F-69a1f39b: ToastHost shares the canvas well containing block with the minimap', () => {
+    const toast = src('../ui/Toast.tsx');
+    expect(toast).toMatch(/position:\s*'absolute'/);
+    expect(toast).not.toMatch(/position:\s*'fixed'/);
+    expect(toast).toContain('calc(var(--wf-minimap-width) + var(--wf-space-2) + var(--wf-space-2))');
+    expect(toast).not.toContain('wf-bottombar-height');
+    const app = src('../App.tsx');
+    const well = app.slice(app.indexOf('{/* Canvas */}'), app.indexOf('{/* Right sidebar'));
+    expect(well).toContain('<ToastHost');
+    expect(well).toContain("position: 'relative'");
+    expect(app.slice(app.indexOf('{/* Right sidebar'))).not.toContain('<ToastHost');
+    const canvas = src('../Canvas.tsx');
+    expect(canvas).toContain('var(--wf-minimap-width)');
+    expect(canvas).toContain('var(--wf-minimap-height)');
+    expect(canvas).toContain("bottom: 'var(--wf-space-2)'");
+    expect(canvas).toContain("right: 'var(--wf-space-2)'");
+    expect(canvas).not.toMatch(/const minimapWidth = 200/);
+    expect(canvas).not.toMatch(/bottom:\s*8,\s*right:\s*8/);
   });
 
   it('KIND_COLORS use accent/success/warning/danger with *-text foregrounds', () => {
