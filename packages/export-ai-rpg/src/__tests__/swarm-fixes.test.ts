@@ -2,6 +2,12 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { importEntities } from '../import-entities.js';
 import { importItems } from '../import-items.js';
 import { importFromContentPack } from '../import.js';
+import type { ImportResult, ImportError } from '../import.js';
+
+function requireImport(r: ImportResult | ImportError): ImportResult {
+  if (!r.success) throw new Error(r.message);
+  return r;
+}
 import { importBuildCatalog } from '../import-build-catalog.js';
 import { importZones } from '../import-zones.js';
 import { exportToEngine } from '../export.js';
@@ -89,7 +95,7 @@ describe('E-004: map bounds from zone positions', () => {
   it('uses 40x30 minimum floor when zones are small', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.map.gridWidth).toBeGreaterThanOrEqual(40);
     expect(imported.project.map.gridHeight).toBeGreaterThanOrEqual(30);
   });
@@ -99,7 +105,7 @@ describe('E-004: map bounds from zone positions', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
     // The auto-layout for 2 zones should be within 40x30 minimum
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.map.gridWidth).toBeGreaterThanOrEqual(40);
     expect(imported.project.map.gridHeight).toBeGreaterThanOrEqual(30);
   });
@@ -111,15 +117,15 @@ describe('E-005: project ID has random suffix', () => {
   it('generated project ID includes random suffix', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.id).toMatch(/^imported-\d+-[a-z0-9]{2,6}$/);
   });
 
   it('two imports produce different IDs', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported1 = importFromContentPack(exported.contentPack);
-    const imported2 = importFromContentPack(exported.contentPack);
+    const imported1 = requireImport(importFromContentPack(exported.contentPack));
+    const imported2 = requireImport(importFromContentPack(exported.contentPack));
     // IDs should differ (extremely unlikely to collide with random suffix)
     expect(imported1.project.id).not.toBe(imported2.project.id);
   });
@@ -242,7 +248,7 @@ describe('E-012: empty string spawnPointId treated as falsy', () => {
     if (!exported.success) throw new Error('export failed');
     // Modify player template to have empty string spawnPointId
     const pack = { ...exported.contentPack, playerTemplate: { ...exported.contentPack.playerTemplate!, spawnPointId: '' } };
-    const imported = importFromContentPack(pack);
+    const imported = requireImport(importFromContentPack(pack));
     expect(imported.project.playerTemplate?.spawnPointId).toBeTruthy();
     expect(imported.project.playerTemplate?.spawnPointId).not.toBe('');
   });

@@ -44,11 +44,13 @@
  */
 
 import type { WorldProject, ZoneConnection, AuthoringMode, ValidationError } from '@world-forge/schema';
-import { validateProject, isValidMode } from '@world-forge/schema';
+import { validateProject, isValidMode, SCHEMA_VERSION } from '@world-forge/schema';
 import type { ContentPack, ExportResult, AssetBindingMap } from './export.js';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { FidelityEntry, FidelityReport } from './fidelity.js';
 import { buildFidelityReport } from './fidelity.js';
+import { safeLookup } from './safe-lookup.js';
+import { GENRE_MAP, DIFFICULTY_MAP, ENGINE_VERSION_RANGE, RETIRED_PHANTOM_MODULES } from './convert-pack.js';
 
 import { importZones } from './import-zones.js';
 import { importDistricts } from './import-districts.js';
@@ -77,18 +79,19 @@ export interface ImportError {
 }
 
 // EB-012: Reverse maps must stay in sync with GENRE_MAP / DIFFICULTY_MAP in convert-pack.ts.
-// When new genres or difficulties are added to the forward maps, add their reverse entries here.
+// F-0fdda22c: canonical reverse is IDENTITY, not the editor alias — a pack
+// that exported genre 'mystery' must import as 'mystery', not 'detective'.
+// Derived from the forward-map VALUES so a newly added VALID_GENRES identity
+// cannot sit in GENRE_MAP and miss the reverse table.
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
-export const REVERSE_GENRE: Record<string, string> = {
-  fantasy: 'fantasy', 'sci-fi': 'sci-fi', cyberpunk: 'cyberpunk',
-  horror: 'horror', mystery: 'detective', western: 'western',
-  pirate: 'pirate', 'post-apocalyptic': 'zombie', historical: 'historical',
-};
+export const REVERSE_GENRE: Record<string, string> = Object.fromEntries(
+  [...new Set(Object.values(GENRE_MAP))].map((g) => [g, g]),
+);
 
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
-export const REVERSE_DIFFICULTY: Record<string, string> = {
-  beginner: 'beginner', intermediate: 'intermediate', advanced: 'advanced',
-};
+export const REVERSE_DIFFICULTY: Record<string, string> = Object.fromEntries(
+  [...new Set(Object.values(DIFFICULTY_MAP))].map((d) => [d, d]),
+);
 
 /** Infer authoring mode from project content when mode is not set. */
 export function inferMode(project: WorldProject): AuthoringMode {
@@ -158,10 +161,20 @@ export function importProject(data: unknown): ImportResult | ImportError {
   }
 
   if (format === 'world-project') {
+    // F-159f42a6: fail closed, matching exportToEngine's ExportError path.
+    // A truncated project that passes detectImportFormat (map+zones+entityPlacements)
+    // but fails validateProject is NOT a successful import, and lossless:true
+    // was a lie when validation.errors is non-empty.
     const project = data as WorldProject;
     const validation = validateProject(project);
-    const warnings = validation.valid ? [] : validation.errors.map((e) => `${e.path}: ${e.message}`);
-    return { success: true, project, format: 'world-project', warnings, lossless: true, fidelityReport: buildFidelityReport([]) };
+    if (!validation.valid) {
+      return {
+        success: false,
+        message: `WorldProject failed schema validation (${validation.errors.length} error(s)).`,
+        errors: validation.errors,
+      };
+    }
+    return { success: true, project, format: 'world-project', warnings: [], lossless: true, fidelityReport: buildFidelityReport([]) };
   }
 
   if (format === 'export-result') {
@@ -184,9 +197,10 @@ export function importProject(data: unknown): ImportResult | ImportError {
 }
 
 /** Import from an ExportResult (has contentPack + manifest + packMeta). */
-export function importFromExportResult(result: ExportResult, projectName?: string): ImportResult {
+export function importFromExportResult(result: ExportResult, projectName?: string): ImportResult | ImportError {
   const meta = result.packMeta;
-  const imported = importFromContentPack(result.contentPack, projectName ?? meta?.name, meta);
+  const imported = importFromContentPack(result.contentPack, projectName ?? meta?.name, meta, result.manifest);
+  if (!imported.success) return imported;
   imported.format = 'export-result';
 
   // Recover mode from PackMetadata tags if present (e.g. "mode:ocean")
@@ -264,33 +278,194 @@ function applyAssetBindings(project: WorldProject, bindings: AssetBindingMap): v
   }
 }
 
+type ManifestLike = { engineVersion?: string; modules?: string[] };
+
+function parseSemverTriple(version: string): [number, number, number] | null {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+function cmpTriple(a: [number, number, number], b: [number, number, number]): number {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+function classifyAgainstCurrent(
+  version: string | undefined,
+  current: string,
+): 'ok' | 'missing' | 'behind' | 'ahead' | 'unknown' {
+  if (version === undefined || version === '') return 'missing';
+  if (version === current) return 'ok';
+  const v = parseSemverTriple(version);
+  const c = parseSemverTriple(current);
+  if (!v || !c) return 'unknown';
+  const cmp = cmpTriple(v, c);
+  if (cmp === 0) return 'ok';
+  return cmp < 0 ? 'behind' : 'ahead';
+}
+
+function classifyAgainstRange(
+  version: string | undefined,
+  range: string,
+): 'ok' | 'missing' | 'behind' | 'ahead' | 'unknown' {
+  if (version === undefined || version === '') return 'missing';
+  if (version === range) return 'ok';
+  const v = parseSemverTriple(version);
+  if (!v) return 'unknown';
+  const ge = />=\s*(\d+\.\d+\.\d+)/.exec(range);
+  const lt = /<\s*(\d+\.\d+\.\d+)/.exec(range);
+  if (!ge || !lt) return 'unknown';
+  const floor = parseSemverTriple(ge[1]);
+  const ceil = parseSemverTriple(lt[1]);
+  if (!floor || !ceil) return 'unknown';
+  if (cmpTriple(v, floor) < 0) return 'behind';
+  if (cmpTriple(v, ceil) >= 0) return 'ahead';
+  return 'ok';
+}
+
+/** F-64b9e73d: warn when schemaVersion / engineVersion / retired modules are off. */
+function collectProvenanceNotes(
+  pack: ContentPack,
+  meta?: PackMetadata,
+  manifest?: ManifestLike,
+): { warnings: string[]; fidelity: FidelityEntry[] } {
+  const warnings: string[] = [];
+  const fidelity: FidelityEntry[] = [];
+
+  const schemaClass = classifyAgainstCurrent(pack.schemaVersion, SCHEMA_VERSION);
+  if (schemaClass !== 'ok') {
+    const msg = schemaClass === 'missing'
+      ? `ContentPack.schemaVersion is missing — importer cannot pick a migration path (current schema is ${SCHEMA_VERSION}).`
+      : schemaClass === 'behind'
+        ? `ContentPack.schemaVersion '${pack.schemaVersion}' is behind the current schema ${SCHEMA_VERSION}.`
+        : schemaClass === 'ahead'
+          ? `ContentPack.schemaVersion '${pack.schemaVersion}' is unknown-ahead of the current schema ${SCHEMA_VERSION}.`
+          : `ContentPack.schemaVersion '${pack.schemaVersion}' is not a recognised semver (current schema is ${SCHEMA_VERSION}).`;
+    warnings.push(msg);
+    fidelity.push({
+      level: 'approximated', domain: 'world', severity: 'warning',
+      fieldPath: 'schemaVersion',
+      message: msg,
+      reason: `schema-version-${schemaClass}`,
+    });
+  }
+
+  // engineVersion lives on the manifest (and packMeta). A raw ContentPack
+  // has no such field — don't invent a miss when the caller didn't pass one.
+  if (manifest !== undefined || meta !== undefined) {
+    const engineVersion = manifest?.engineVersion ?? meta?.engineVersion;
+    const engineClass = classifyAgainstRange(engineVersion, ENGINE_VERSION_RANGE);
+    if (engineClass !== 'ok') {
+      const labelled = engineVersion === undefined || engineVersion === '' ? '(missing)' : `'${engineVersion}'`;
+      const msg = engineClass === 'missing'
+        ? `engineVersion is missing — importer expected a version in ${ENGINE_VERSION_RANGE}.`
+        : engineClass === 'behind'
+          ? `engineVersion ${labelled} is behind the supported range ${ENGINE_VERSION_RANGE}.`
+          : engineClass === 'ahead'
+            ? `engineVersion ${labelled} is unknown-ahead of the supported range ${ENGINE_VERSION_RANGE}.`
+            : `engineVersion ${labelled} is not a recognised version in ${ENGINE_VERSION_RANGE}.`;
+      warnings.push(msg);
+      fidelity.push({
+        level: 'approximated', domain: 'world', severity: 'warning',
+        fieldPath: 'engineVersion',
+        message: msg,
+        reason: `engine-version-${engineClass}`,
+      });
+    }
+  }
+
+  const modules = manifest?.modules ?? [];
+  for (const id of modules) {
+    if (!Object.hasOwn(RETIRED_PHANTOM_MODULES, id)) continue;
+    const replacement = RETIRED_PHANTOM_MODULES[id];
+    const msg = replacement
+      ? `Retired module '${id}' is remapped to '${replacement}' (the engine no longer registers '${id}').`
+      : `Retired phantom module '${id}' has no engine counterpart and will not load.`;
+    warnings.push(msg);
+    fidelity.push({
+      level: 'dropped', domain: 'world', severity: 'warning',
+      fieldPath: 'modules',
+      message: msg,
+      reason: replacement ? 'retired-module-remapped' : 'retired-module-phantom',
+    });
+  }
+
+  return { warnings, fidelity };
+}
+
+function converterFailed(err: unknown): ImportError {
+  const message = err instanceof Error ? err.message : String(err);
+  return {
+    success: false,
+    message: `Converter failed: ${message}. Report this as a bug.`,
+    errors: [{ path: 'converter', message: `Converter failed: ${message}. Report this as a bug.` }],
+  };
+}
+
 /** Import from a ContentPack (lossy — zones lose grid positions, entities lose zones). */
 export function importFromContentPack(
   pack: ContentPack,
   projectName?: string,
   meta?: PackMetadata,
-): ImportResult {
+  manifest?: ManifestLike,
+): ImportResult | ImportError {
   const allFidelity: FidelityEntry[] = [];
 
-  // 1. Import each domain (destructure fidelity from each converter)
-  const { zones, fidelity: zoneFidelity } = importZones(pack.zones);
-  const { districts, fidelity: districtFidelity } = importDistricts(pack.districts);
-  // F-5a257bc8 (swarm wave-2, headline fix): pack.placements is threaded
-  // through so importEntities can restore each entity's REAL authored zoneId
-  // (and spawnCondition) instead of always falling back to round-robin. See
-  // importEntities's own doc comment for the per-entity fallback rule.
-  const { placements: entityPlacements, warnings: entityWarnings, fidelity: entityFidelity } = importEntities(pack.entities, zones.map((z) => z.id), pack.placements);
-  const { placements: itemPlacements, warnings: itemWarnings, fidelity: itemFidelity } = importItems(pack.items, zones.map((z) => z.id));
-  const { dialogues, fidelity: dialogueFidelity } = importDialogues(pack.dialogues ?? []);
-  const { template: playerTemplate, fidelity: playerFidelity } = importPlayerTemplate(pack.playerTemplate);
-  const { catalog: buildCatalog, fidelity: buildFidelity } = importBuildCatalog(pack.buildCatalog);
-  const { trees: progressionTrees, fidelity: treeFidelity } = importProgressionTrees(pack.progressionTrees ?? []);
+  let zones: ReturnType<typeof importZones>['zones'];
+  let districts: ReturnType<typeof importDistricts>['districts'];
+  let entityPlacements: ReturnType<typeof importEntities>['placements'];
+  let itemPlacements: ReturnType<typeof importItems>['placements'];
+  let dialogues: ReturnType<typeof importDialogues>['dialogues'];
+  let playerTemplate: ReturnType<typeof importPlayerTemplate>['template'];
+  let buildCatalog: ReturnType<typeof importBuildCatalog>['catalog'];
+  let progressionTrees: ReturnType<typeof importProgressionTrees>['trees'];
+  let entityWarnings: string[] = [];
+  let itemWarnings: string[] = [];
+  let entityFidelity: FidelityEntry[] = [];
+  const engineEntities = pack.entities ?? [];
+  const engineItems = pack.items ?? [];
 
-  // Collect all domain fidelity entries
-  allFidelity.push(
-    ...zoneFidelity, ...districtFidelity, ...entityFidelity, ...itemFidelity,
-    ...dialogueFidelity, ...playerFidelity, ...buildFidelity, ...treeFidelity,
-  );
+  // F-1d5f2ce5: wrap converters in the same try/catch exportToEngine uses so a
+  // TypeError from untrusted JSON becomes ImportError rather than escaping.
+  try {
+    // 1. Import each domain (destructure fidelity from each converter).
+    // F-1d5f2ce5: districts/items get the same `?? []` dialogues/progressionTrees
+    // already had — detectImportFormat admits a pack on entities+zones alone.
+    const zoneResult = importZones(pack.zones ?? []);
+    zones = zoneResult.zones;
+    const districtResult = importDistricts(pack.districts ?? []);
+    districts = districtResult.districts;
+    // F-5a257bc8 (swarm wave-2, headline fix): pack.placements is threaded
+    // through so importEntities can restore each entity's REAL authored zoneId
+    // (and spawnCondition) instead of always falling back to round-robin. See
+    // importEntities's own doc comment for the per-entity fallback rule.
+    const entityResult = importEntities(engineEntities, zones.map((z) => z.id), pack.placements);
+    entityPlacements = entityResult.placements;
+    entityWarnings = entityResult.warnings;
+    entityFidelity = entityResult.fidelity;
+    const itemResult = importItems(engineItems, zones.map((z) => z.id));
+    itemPlacements = itemResult.placements;
+    itemWarnings = itemResult.warnings;
+    const dialogueResult = importDialogues(pack.dialogues ?? []);
+    dialogues = dialogueResult.dialogues;
+    const playerResult = importPlayerTemplate(pack.playerTemplate);
+    playerTemplate = playerResult.template;
+    const buildResult = importBuildCatalog(pack.buildCatalog);
+    buildCatalog = buildResult.catalog;
+    const treeResult = importProgressionTrees(pack.progressionTrees ?? []);
+    progressionTrees = treeResult.trees;
+
+    // Collect all domain fidelity entries
+    allFidelity.push(
+      ...zoneResult.fidelity, ...districtResult.fidelity, ...entityFidelity, ...itemResult.fidelity,
+      ...dialogueResult.fidelity, ...playerResult.fidelity, ...buildResult.fidelity, ...treeResult.fidelity,
+    );
+  } catch (err) {
+    return converterFailed(err);
+  }
 
   // 2. Cross-reference districts → zones: set parentDistrictId
   for (const d of districts) {
@@ -355,9 +530,18 @@ export function importFromContentPack(
 
   // 6. Recover metadata from PackMetadata if available
   // EB-015: Null-coalescing for meta.genres and meta.tones before .map()
-  const genre = meta?.genres?.[0] ? (REVERSE_GENRE[meta.genres[0]] ?? meta.genres[0]) : 'fantasy';
+  // F-d0f3a1ed: reverse maps go through safeLookup so a prototype-name key
+  // ('__proto__' / 'constructor' / 'toString') misses instead of resolving to
+  // Object.prototype / Object / Function.
+  const authoredGenre = meta?.genres?.[0];
+  const genre = authoredGenre
+    ? (safeLookup(REVERSE_GENRE, authoredGenre) ?? authoredGenre)
+    : 'fantasy';
   const tones = (meta?.tones ?? []).length > 0 ? (meta?.tones ?? []).map(String) : ['atmospheric'];
-  const difficulty = meta?.difficulty ? (REVERSE_DIFFICULTY[meta.difficulty] ?? 'intermediate') : 'intermediate';
+  const authoredDifficulty = meta?.difficulty;
+  const difficulty = authoredDifficulty
+    ? (safeLookup(REVERSE_DIFFICULTY, authoredDifficulty) ?? 'intermediate')
+    : 'intermediate';
   const narratorTone = meta?.narratorTone ?? '';
 
   // 7. Build the WorldProject
@@ -450,11 +634,16 @@ export function importFromContentPack(
     reason: 'asset-packs-dropped',
   });
 
+  // F-64b9e73d: consult schemaVersion / engineVersion / retired modules instead
+  // of stamping the pack with the same mapping regardless of provenance.
+  const provenance = collectProvenanceNotes(pack, meta, manifest);
+  allFidelity.push(...provenance.fidelity);
+
   // 9. Build fidelity report
   const fidelityReport = buildFidelityReport(allFidelity);
 
   // 10. Derive backwards-compatible warnings from fidelity + entity/item warnings
-  const warnings: string[] = [...entityWarnings, ...itemWarnings];
+  const warnings: string[] = [...entityWarnings, ...itemWarnings, ...provenance.warnings];
   if (zones.length > 0) warnings.push('Zone grid positions auto-generated (original layout unknown)');
   // F-5a257bc8 (swarm wave-2): this warning used to fire unconditionally
   // whenever the pack had entities, claiming "original zones unknown" even
@@ -467,12 +656,12 @@ export function importFromContentPack(
   ).length;
   if (roundRobinFallbackCount > 0) {
     warnings.push(
-      roundRobinFallbackCount === pack.entities.length
+      roundRobinFallbackCount === engineEntities.length
         ? 'Entity zone placements reconstructed (original zones unknown) — this pack has no placements[] data.'
-        : `Entity zone placements reconstructed for ${roundRobinFallbackCount} of ${pack.entities.length} entities (original zone unknown for these; the rest were restored from the pack's placements[] data).`,
+        : `Entity zone placements reconstructed for ${roundRobinFallbackCount} of ${engineEntities.length} entities (original zone unknown for these; the rest were restored from the pack's placements[] data).`,
     );
   }
-  if (pack.items.length > 0) warnings.push('Item zone placements reconstructed (original zones unknown)');
+  if (engineItems.length > 0) warnings.push('Item zone placements reconstructed (original zones unknown)');
   warnings.push('Visual layers not imported (tilesets, props, ambient)');
 
   // 11. Validate and surface any remaining issues

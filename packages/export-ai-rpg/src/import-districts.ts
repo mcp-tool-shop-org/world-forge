@@ -7,6 +7,13 @@ import type { FidelityEntry } from './fidelity.js';
 export function importDistricts(engineDistricts: DistrictDefinition[]): { districts: District[]; fidelity: FidelityEntry[] } {
   const fidelity: FidelityEntry[] = [];
 
+  // F-1d5f2ce5: a hand-authored pack may omit `districts` entirely
+  // (detectImportFormat only requires entities+zones), so treat missing/non-array
+  // as empty rather than throwing on `.map`.
+  if (!Array.isArray(engineDistricts) || engineDistricts.length === 0) {
+    return { districts: [], fidelity };
+  }
+
   const districts = engineDistricts.map((ed) => {
     fidelity.push({
       level: 'approximated', domain: 'districts', severity: 'info',

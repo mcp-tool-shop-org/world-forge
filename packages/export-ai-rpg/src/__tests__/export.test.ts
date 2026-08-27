@@ -280,11 +280,19 @@ describe('exportToEngine', () => {
     }
   });
 
-  it('warns on missing landmarks', () => {
+  it('does not warn on empty landmarks (F-aa2c07bb: silent when empty)', () => {
     const noLandmarks = { ...minimalProject, landmarks: [] };
     const result = exportToEngine(noLandmarks);
     if (result.success) {
-      expect(result.warnings.some((w) => w.includes('landmark'))).toBe(true);
+      expect(result.warnings.some((w) => /landmark/i.test(w))).toBe(false);
+    }
+  });
+
+  it('warns when landmarks are authored-and-dropped (F-aa2c07bb)', () => {
+    const result = exportToEngine(minimalProject);
+    if (result.success) {
+      expect(minimalProject.landmarks.length).toBeGreaterThan(0);
+      expect(result.warnings.some((w) => w.includes('landmark') && w.includes('authored-and-dropped'))).toBe(true);
     }
   });
 

@@ -11,7 +11,13 @@ import { convertEntities } from '../convert-entities.js';
 import { convertItems } from '../convert-items.js';
 import { convertDistricts } from '../convert-districts.js';
 import { importZones } from '../import-zones.js';
-import { importFromContentPack, importFromExportResult } from '../import.js';
+import { importFromContentPack } from '../import.js';
+import type { ImportResult, ImportError } from '../import.js';
+
+function requireImport(r: ImportResult | ImportError): ImportResult {
+  if (!r.success) throw new Error(r.message);
+  return r;
+}
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 import type { WorldProject } from '@world-forge/schema';
@@ -58,15 +64,16 @@ describe('F-3dab95a4: prototype-key lookups on GENRE_MAP/TONE_MAP/DIFFICULTY_MAP
     expect(meta.difficulty).toBe('intermediate');
   });
 
-  it('a legitimate unmapped genre still falls back silently (unchanged behavior)', () => {
-    // The guard must not turn ordinary unmapped values into new warnings —
-    // that documented "silent fallback" behavior for genuinely-unknown
-    // strings is unrelated to this finding and must survive unchanged.
+  it('a legitimate unmapped genre falls back to fantasy AND warns (F-0fdda22c)', () => {
+    // F-0fdda22c: the prototype guard must not be the thing that invents a
+    // warning, but unmapped genres are no longer silent — they name the
+    // authored value and the fallback, matching the tone channel.
     const project: WorldProject = { ...minimalProject, genre: 'not-a-real-genre' };
     const warnings: string[] = [];
     const meta = convertPackMeta(project, warnings);
     expect(meta.genres).toEqual(['fantasy']);
-    expect(warnings.join('\n')).not.toContain('not-a-real-genre');
+    expect(warnings.join('\n')).toContain('not-a-real-genre');
+    expect(warnings.join('\n')).toContain('fantasy');
   });
 });
 
@@ -266,7 +273,7 @@ describe('F-9f90a607: importZones restores hazardRefs and scene.timeOfDay', () =
     };
     const exported = exportToEngine(project);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     const zone = imported.project.zones.find((z) => z.id === project.zones[0].id);
     expect(zone?.hazardRefs).toEqual(['hz-spikes']);
     // F-5442422b: hazardRefs-only is not sufficient — the catalog must survive too,
@@ -311,7 +318,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
     const project = derangedProject();
     const exported = exportToEngine(project);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     const byId = new Map(imported.project.entityPlacements.map((e) => [e.entityId, e]));
     // These would read 'zone-cellar' / 'zone-entrance' (swapped) under the old
     // round-robin-only behavior — the whole point of the derangement.
@@ -324,7 +331,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
     const project = derangedProject();
     const exported = exportToEngine(project);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     for (const orig of project.entityPlacements) {
       const back = imported.project.entityPlacements.find((e) => e.entityId === orig.entityId);
       expect(back, `entity ${orig.entityId} missing after round trip`).toBeDefined();
@@ -338,7 +345,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
     if (!exported.success) throw new Error('export failed');
     const placement = exported.contentPack.placements.find((p) => p.entityId === 'npc-second')!;
     expect(placement.spawnCondition).toEqual({ type: 'has-flag', params: { id: 'met-keeper' } });
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     const back = imported.project.entityPlacements.find((e) => e.entityId === 'npc-second');
     expect(back?.spawnCondition).toBe('flag:met-keeper');
   });
@@ -347,7 +354,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
     const project = derangedProject();
     const exported = exportToEngine(project);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     const roundRobin = imported.fidelityReport.entries.filter((e) => e.reason === 'zone-placement-round-robin');
     expect(roundRobin).toHaveLength(0);
     const restored = imported.fidelityReport.entries.filter((e) => e.reason === 'zone-placement-from-pack');
@@ -358,7 +365,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
   it('the "reconstructed, original zones unknown" warning does not fire when placements[] covers every entity', () => {
     const exported = exportToEngine(derangedProject());
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     // Scoped to the ENTITY-placement warning specifically — the unrelated
     // item-placement warning ("Item zone placements reconstructed...") is
     // out of this finding's scope and still fires unconditionally, so a
@@ -371,7 +378,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
     if (!exported.success) throw new Error('export failed');
     // Simulate an older / hand-built pack that predates the placements[] channel.
     const legacyPack = { ...exported.contentPack, placements: [] };
-    const imported = importFromContentPack(legacyPack);
+    const imported = requireImport(importFromContentPack(legacyPack));
     const roundRobin = imported.fidelityReport.entries.filter((e) => e.reason === 'zone-placement-round-robin');
     expect(roundRobin.length).toBe(legacyPack.entities.length);
     expect(imported.warnings.some((w) => /Entity zone placements reconstructed/i.test(w))).toBe(true);
@@ -384,7 +391,7 @@ describe('F-5a257bc8: entity zone placements round-trip through pack.placements 
       ...exported.contentPack,
       placements: exported.contentPack.placements.filter((p) => p.entityId !== 'npc-third'),
     };
-    const imported = importFromContentPack(partialPack);
+    const imported = requireImport(importFromContentPack(partialPack));
     const byId = new Map(imported.project.entityPlacements.map((e) => [e.entityId, e]));
     // npc-second still restored correctly from its own placement record.
     expect(byId.get('npc-second')!.zoneId).toBe('zone-entrance');
@@ -476,7 +483,7 @@ describe('F-5442422b: hazardDefinitions and lootTables round-trip through import
     expect(exported.contentPack.zones[0].hazardRefs).toEqual(['hz-spikes']);
     expect(exported.contentPack.lootTables).toEqual(project.lootTables);
 
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.hazardDefinitions).toEqual(project.hazardDefinitions);
     const zone = imported.project.zones.find((z) => z.id === project.zones[0].id);
     expect(zone?.hazardRefs).toEqual(['hz-spikes']);
@@ -496,7 +503,7 @@ describe('F-5442422b: hazardDefinitions and lootTables round-trip through import
     expect('hazardDefinitions' in omittedPack).toBe(false);
     expect('lootTables' in omittedPack).toBe(false);
 
-    const imported = importFromContentPack(omittedPack);
+    const imported = requireImport(importFromContentPack(omittedPack));
     expect(imported.project.hazardDefinitions).toEqual([]);
     expect(imported.project.lootTables).toEqual([]);
   });
@@ -511,20 +518,23 @@ describe('F-5442422b: hazardDefinitions and lootTables round-trip through import
       'marketNodes',
       'hazardDefinitions',
       'lootTables',
+      'districts',
     ] as const;
+    // F-1d5f2ce5: districts and items used to be INCLUDED as [] on this bare
+    // pack, so the sweep could not go red when those keys were actually
+    // missing. Omit them; importDistricts/importItems must ?? [] rather than throw.
     const bare = {
       entities: [],
       placements: [],
       zones: [],
-      districts: [],
       dialogues: [],
-      items: [],
       progressionTrees: [],
     } as unknown as ContentPack;
 
-    const imported = importFromContentPack(bare);
+    const imported = requireImport(importFromContentPack(bare));
     for (const key of catalogs) {
       expect(imported.project[key], `${key} must default to [] when the pack omits it`).toEqual([]);
     }
+    expect(imported.project.itemPlacements, 'items must default to [] when the pack omits it').toEqual([]);
   });
 });

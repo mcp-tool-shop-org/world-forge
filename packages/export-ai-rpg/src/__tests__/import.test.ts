@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { validateProject } from '@world-forge/schema';
 import { exportToEngine } from '../export.js';
 import { detectImportFormat, importProject, importFromContentPack, importFromExportResult, inferMode } from '../import.js';
+import type { ImportResult, ImportError } from '../import.js';
+
+function requireImport(r: ImportResult | ImportError): ImportResult {
+  if (!r.success) throw new Error(r.message);
+  return r;
+}
 import type { WorldProject } from '@world-forge/schema';
 import { importZones } from '../import-zones.js';
 import { importDistricts } from '../import-districts.js';
@@ -395,7 +401,7 @@ describe('round-trip: export → import → re-export', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     const validation = validateProject(imported.project);
     expect(validation.valid).toBe(true);
   });
@@ -404,7 +410,7 @@ describe('round-trip: export → import → re-export', () => {
     const exported1 = exportToEngine(chapelProject);
     if (!exported1.success) throw new Error('export failed');
 
-    const imported = importFromExportResult(exported1);
+    const imported = requireImport(importFromExportResult(exported1));
     const exported2 = exportToEngine(imported.project);
     if (!exported2.success) throw new Error('re-export failed');
 
@@ -448,7 +454,7 @@ describe('round-trip: export → import → re-export', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromContentPack(exported.contentPack, 'Minimal Re-import');
+    const imported = requireImport(importFromContentPack(exported.contentPack, 'Minimal Re-import'));
     const validation = validateProject(imported.project);
     expect(validation.valid).toBe(true);
   });
@@ -529,7 +535,7 @@ describe('asset preservation', () => {
     if (!exported.success) throw new Error('export failed');
     expect(exported.assets).toHaveLength(2);
 
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.assets).toHaveLength(2);
     expect(imported.project.assets[0].id).toBe('bg-1');
   });
@@ -538,7 +544,7 @@ describe('asset preservation', () => {
     const exported = exportToEngine(projectWithAssets);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     const entrance = imported.project.zones.find((z) => z.id === 'zone-entrance');
     expect(entrance?.backgroundId).toBe('bg-1');
     const guard = imported.project.entityPlacements.find((e) => e.entityId === 'guard-1');
@@ -549,7 +555,7 @@ describe('asset preservation', () => {
     const exported = exportToEngine(projectWithAssets);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'assets-recovered')).toBe(true);
   });
 
@@ -557,7 +563,7 @@ describe('asset preservation', () => {
     const exported = exportToEngine(projectWithAssets);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.assets).toHaveLength(0);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'assets-dropped')).toBe(true);
   });
@@ -591,7 +597,7 @@ describe('asset pack preservation', () => {
     const exported = exportToEngine(projectWithPacks);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.assetPacks).toHaveLength(1);
     expect(imported.project.assetPacks[0].id).toBe('test-pack');
     expect(imported.project.assetPacks[0].version).toBe('1.0.0');
@@ -601,7 +607,7 @@ describe('asset pack preservation', () => {
     const exported = exportToEngine(projectWithPacks);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-recovered')).toBe(true);
   });
 
@@ -609,7 +615,7 @@ describe('asset pack preservation', () => {
     const exported = exportToEngine(projectWithPacks);
     if (!exported.success) throw new Error('export failed');
 
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.assetPacks).toHaveLength(0);
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'asset-packs-dropped')).toBe(true);
   });
@@ -666,14 +672,14 @@ describe('mode inference and round-trip', () => {
     const project: WorldProject = { ...chapelProject, mode: 'ocean' };
     const exported = exportToEngine(project);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromExportResult(exported);
+    const imported = requireImport(importFromExportResult(exported));
     expect(imported.project.mode).toBe('ocean');
   });
 
   it('pre-mode ContentPack import triggers mode inference', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     // Mode was not set on minimalProject, so it should be inferred
     expect(imported.project.mode).toBeDefined();
     expect(imported.fidelityReport.entries.some((e) => e.reason === 'mode-inferred')).toBe(true);
@@ -682,7 +688,7 @@ describe('mode inference and round-trip', () => {
   it('fidelity mentions mode inference', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     const modeEntry = imported.fidelityReport.entries.find((e) => e.reason === 'mode-inferred');
     expect(modeEntry).toBeDefined();
     expect(modeEntry!.message).toContain('inferred');
@@ -711,7 +717,7 @@ describe('mode inference and round-trip', () => {
     // ContentPack import
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
-    const imported = importFromContentPack(exported.contentPack);
+    const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(validateProject(imported.project).valid).toBe(true);
   });
 });
@@ -728,7 +734,7 @@ describe('backward compat: old ContentPack shapes', () => {
     delete oldPack.dialogues;
     delete oldPack.progressionTrees;
 
-    const result = importFromContentPack(oldPack as typeof exported.contentPack);
+    const result = requireImport(importFromContentPack(oldPack as typeof exported.contentPack));
     expect(result.success).toBe(true);
     expect(result.project.dialogues).toEqual([]);
     expect(result.project.progressionTrees).toEqual([]);

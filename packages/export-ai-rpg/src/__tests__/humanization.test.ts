@@ -7,6 +7,12 @@ import { importZones } from '../import-zones.js';
 import { importDialogues } from '../import-dialogues.js';
 import { importItems } from '../import-items.js';
 import { importProject, importFromContentPack, detectImportFormat } from '../import.js';
+import type { ImportResult, ImportError } from '../import.js';
+
+function requireImport(r: ImportResult | ImportError): ImportResult {
+  if (!r.success) throw new Error(r.message);
+  return r;
+}
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import type { WorldProject } from '@world-forge/schema';
 
@@ -178,7 +184,7 @@ describe('EB-007: empty zones spawn point guard', () => {
       items: [], progressionTrees: [],
       encounterAnchors: [], factionPresences: [], pressureHotspots: [],
     };
-    const result = importFromContentPack(emptyPack as never);
+    const result = requireImport(importFromContentPack(emptyPack as never));
     const entry = result.fidelityReport.entries.find((f) => f.reason === 'no-zones-no-spawn');
     expect(entry).toBeDefined();
     expect(entry!.message).toContain('No zones found');
@@ -188,7 +194,7 @@ describe('EB-007: empty zones spawn point guard', () => {
   it('does not emit no-zones-no-spawn when zones exist', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const result = importFromContentPack(exported.contentPack);
+    const result = requireImport(importFromContentPack(exported.contentPack));
     expect(result.fidelityReport.entries.some((f) => f.reason === 'no-zones-no-spawn')).toBe(false);
   });
 });
@@ -313,24 +319,24 @@ describe('EB-015: null-coalescing for meta fields', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
     // Import with meta that has no tones field
-    const result = importFromContentPack(exported.contentPack, 'Test', {
+    const result = requireImport(importFromContentPack(exported.contentPack, 'Test', {
       id: 'test', name: 'Test', tagline: '', genres: ['fantasy'],
       difficulty: 'intermediate', tones: undefined as never,
       tags: [], engineVersion: '2.0.0', version: '1.0.0',
       description: 'test', narratorTone: '',
-    });
+    }));
     expect(result.project.tones).toEqual(['atmospheric']);
   });
 
   it('handles undefined meta.genres gracefully', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
-    const result = importFromContentPack(exported.contentPack, 'Test', {
+    const result = requireImport(importFromContentPack(exported.contentPack, 'Test', {
       id: 'test', name: 'Test', tagline: '', genres: undefined as never,
       difficulty: 'intermediate', tones: ['dark'],
       tags: [], engineVersion: '2.0.0', version: '1.0.0',
       description: 'test', narratorTone: '',
-    });
+    }));
     expect(result.project.genre).toBe('fantasy'); // fallback
   });
 });
