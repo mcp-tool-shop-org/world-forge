@@ -13,9 +13,11 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { SCHEMA_VERSION } from '../../packages/schema/src/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -95,5 +97,18 @@ describe('run-unreal-smoke.ts required-fixture receipt (F-fb07f3a1)', () => {
         expect(stdout).toMatch(/✗ cellar_zone_found/);
         expect(stdout).toContain('Receipt:');
         expect(code).not.toBe(0);
+
+        const receiptMatch = stdout.match(/Receipt:\s*(.+\.md)/);
+        expect(receiptMatch).not.toBeNull();
+        const receipt = readFileSync(receiptMatch![1].trim(), 'utf8');
+
+        // F-eab38be2: Schema line is SCHEMA_VERSION, not WorldProject.version '1.0.0'.
+        expect(receipt).toContain(`**Schema:** ${SCHEMA_VERSION}`);
+        expect(receipt).toMatch(/\*\*Schema:\*\*\s*4\./);
+        expect(receipt).not.toContain('**Schema:** 1.0.0');
+
+        // F-c621e532: missing cellar is not painted as a success-shaped coord row.
+        expect(receipt).not.toContain('| cellar | 0,4 | -3m | 0 | -400 | -300 |');
+        expect(receipt).toContain('| cellar | 0,4 | -3m | n/a | n/a | n/a |');
     }, 60_000);
 });

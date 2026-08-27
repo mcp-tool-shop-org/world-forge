@@ -4,6 +4,11 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
   retries: 0,
+  // F-861ff80c: Playwright 1.59 defaults to 'dot' when CI is set and 'list'
+  // otherwise — never 'html'. CI uploads playwright-report/ on failure; the
+  // HTML reporter is what materializes that directory. Screenshot + trace
+  // already capture the PNG/zip; without this reporter the gallery is empty.
+  reporter: [['html', { open: 'never' }], process.env.CI ? ['dot'] : ['list']],
   // Materialize chapel-project.json from the schema fixture so e2e does not
   // depend on a tracked file sitting under gitignored dogfood/output/.
   globalSetup: './e2e/global-setup.ts',
