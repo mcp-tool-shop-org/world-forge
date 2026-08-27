@@ -375,7 +375,7 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].gravityOverride', class: 'no-channel', absence: { kind: 'key-absent', key: 'gravityOverride' }, note: 'Physics override: no channel.' },
   { path: 'zones[].gravityDirection', class: 'no-channel', absence: { kind: 'key-absent', key: 'gravityDirection' }, note: 'Physics override: no channel.' },
   { path: 'zones[].physicsMode', class: 'no-channel', absence: { kind: 'key-absent', key: 'physicsMode' }, note: 'normal / platformer / zero-g / aquatic: no channel.' },
-  { path: 'zones[].skyAtmosphereRef', class: 'no-channel', absence: { kind: 'key-absent', key: 'skyAtmosphereRef' }, note: 'Sky preset: no channel. (Also has no referential validation on the authoring side — see the fixture note.)' },
+  { path: 'zones[].skyAtmosphereRef', class: 'no-channel', absence: { kind: 'key-absent', key: 'skyAtmosphereRef' }, note: 'Sky preset: no channel. (Referential check is on the authoring side via validateProject.)' },
   { path: 'zones[].directionalLightYaw', class: 'no-channel', absence: { kind: 'key-absent', key: 'directionalLightYaw' }, note: 'Lighting hint: no channel.' },
   { path: 'zones[].directionalLightPitch', class: 'no-channel', absence: { kind: 'key-absent', key: 'directionalLightPitch' }, note: 'Lighting hint: no channel.' },
   { path: 'zones[].skyLightIntensity', class: 'no-channel', absence: { kind: 'key-absent', key: 'skyLightIntensity' }, note: 'Lighting hint: no channel.' },

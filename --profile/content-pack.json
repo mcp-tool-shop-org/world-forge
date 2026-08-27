@@ -1,0 +1,220 @@
+{
+  "_debug": {
+    "timestamp": "2026-08-27T11:34:33.871Z",
+    "schemaVersion": "4.6.0",
+    "sourceProjectId": "minimal-test",
+    "fidelityVerbose": true
+  },
+  "schemaVersion": "4.6.0",
+  "entities": [
+    {
+      "id": "npc-keeper",
+      "type": "npc",
+      "name": "npc-keeper",
+      "tags": [
+        "faction:keepers"
+      ],
+      "aiProfile": "passive"
+    }
+  ],
+  "placements": [
+    {
+      "entityId": "npc-keeper",
+      "zoneId": "zone-entrance"
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone-entrance",
+      "name": "Entrance Hall",
+      "tags": [
+        "indoor",
+        "safe"
+      ],
+      "description": [
+        {
+          "text": "A dusty entrance hall with faded tapestries."
+        }
+      ],
+      "neighbors": [
+        "zone-cellar"
+      ],
+      "light": 6,
+      "noise": 2,
+      "interactables": [
+        "old tapestry"
+      ],
+      "exits": [
+        {
+          "targetZoneId": "zone-cellar",
+          "label": "trapdoor"
+        }
+      ],
+      "scene": {
+        "dressingDensity": "normal"
+      }
+    },
+    {
+      "id": "zone-cellar",
+      "name": "Cellar",
+      "tags": [
+        "indoor",
+        "dark",
+        "underground"
+      ],
+      "description": [
+        {
+          "text": "A damp cellar beneath the hall."
+        }
+      ],
+      "neighbors": [
+        "zone-entrance"
+      ],
+      "light": 2,
+      "noise": 1,
+      "hazards": [
+        "unstable-floor"
+      ],
+      "exits": [
+        {
+          "targetZoneId": "zone-entrance",
+          "label": "ladder up"
+        }
+      ],
+      "scene": {
+        "dressingDensity": "sparse"
+      }
+    }
+  ],
+  "districts": [
+    {
+      "id": "district-chapel",
+      "name": "Chapel Quarter",
+      "zoneIds": [
+        "zone-entrance",
+        "zone-cellar"
+      ],
+      "tags": [
+        "sacred",
+        "old"
+      ],
+      "controllingFaction": "keepers",
+      "baseMetrics": {
+        "commerce": 30,
+        "morale": 40,
+        "stability": 50,
+        "surveillance": 60
+      }
+    }
+  ],
+  "dialogues": [
+    {
+      "id": "dlg-keeper",
+      "speakers": [
+        "keeper"
+      ],
+      "entryNodeId": "greet",
+      "nodes": {
+        "greet": {
+          "id": "greet",
+          "speaker": "Keeper",
+          "text": "Welcome, traveler.",
+          "choices": [
+            {
+              "id": "ask",
+              "text": "What is this place?",
+              "nextNodeId": "explain"
+            },
+            {
+              "id": "bye",
+              "text": "Farewell.",
+              "nextNodeId": "end"
+            }
+          ]
+        },
+        "explain": {
+          "id": "explain",
+          "speaker": "Keeper",
+          "text": "An old chapel, nothing more.",
+          "nextNodeId": "end"
+        },
+        "end": {
+          "id": "end",
+          "speaker": "Keeper",
+          "text": "Safe travels."
+        }
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "item-torch",
+      "name": "item-torch",
+      "description": "Found in shelf",
+      "slot": "trinket",
+      "rarity": "common"
+    }
+  ],
+  "playerTemplate": {
+    "name": "Traveler",
+    "baseStats": {
+      "vigor": 3,
+      "instinct": 3,
+      "will": 3
+    },
+    "baseResources": {
+      "hp": 10,
+      "stamina": 5
+    },
+    "startingInventory": [
+      "item-torch"
+    ],
+    "startingEquipment": {},
+    "spawnPointId": "sp-default",
+    "tags": [
+      "player"
+    ],
+    "custom": {}
+  },
+  "progressionTrees": [],
+  "encounterAnchors": [
+    {
+      "id": "enc-cellar",
+      "zoneId": "zone-cellar",
+      "encounterType": "undead",
+      "enemyIds": [
+        "skeleton"
+      ],
+      "probability": 0.4,
+      "cooldownTurns": 3,
+      "tags": [
+        "undead"
+      ]
+    }
+  ],
+  "factionPresences": [
+    {
+      "factionId": "keepers",
+      "districtIds": [
+        "district-chapel"
+      ],
+      "influence": 70,
+      "alertLevel": 20
+    }
+  ],
+  "pressureHotspots": [
+    {
+      "id": "ph-cellar",
+      "zoneId": "zone-cellar",
+      "pressureType": "undead-stirring",
+      "baseProbability": 0.3,
+      "tags": [
+        "undead"
+      ]
+    }
+  ],
+  "hazardDefinitions": [],
+  "lootTables": [],
+  "craftingStations": [],
+  "marketNodes": []
+}

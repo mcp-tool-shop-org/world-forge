@@ -993,7 +993,15 @@ export function uniquifyRootNodeNames(
     }
 
     const take = (base: string, fallback: string, kind: 'tile-layer' | 'zone', id: string): string => {
-        const safe = sanitizeNodeName(base) || fallback;
+        // Empty string is an explicit caller-supplied defect (F-00cf78db RED
+        // control). Do not invent a fallback here — assertParseable must still
+        // refuse name="" / parent="". convertZones always supplies a non-empty
+        // name before this runs on the production path.
+        if (base === '') return '';
+        // Do not re-sanitize here: converters already ran sanitizeNodeName.
+        // Re-sanitizing would swallow the F-18d722e0 RED control (a raw quote
+        // in nodeName) before assertParseable can refuse the malformed header.
+        const safe = base || fallback;
         let candidate = safe;
         let suffix = 1;
         while ((seen.get(candidate) ?? 0) > 0) {
@@ -1021,6 +1029,11 @@ export function uniquifyRootNodeNames(
         layer.nodeName = take(layer.nodeName || layer.name || layer.id, 'TileLayer', 'tile-layer', layer.id);
     }
     for (const zone of zones) {
-        zone.nodeName = take(zone.nodeName || zone.displayName || zone.id, 'Zone', 'zone', zone.id);
+        zone.nodeName = take(
+            zone.nodeName === '' ? '' : (zone.nodeName || zone.displayName || zone.id),
+            'Zone',
+            'zone',
+            zone.id,
+        );
     }
 }

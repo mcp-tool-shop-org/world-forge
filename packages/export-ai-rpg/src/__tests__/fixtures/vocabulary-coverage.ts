@@ -170,9 +170,6 @@ export const vocabularyCoverageProject: WorldProject = {
       gravityOverride: 4.9,
       gravityDirection: 'down',
       physicsMode: 'aquatic',
-      // NOTE: `skyAtmosphereRef` has NO referential check in validateProject —
-      // unlike backgroundId / tilesetId / skylineRef / parallax assetRef. A
-      // finding for the C0 report, not patched here.
       skyAtmosphereRef: 'asset-sky-none',
       directionalLightYaw: 0,
       directionalLightPitch: -90,
@@ -888,6 +885,9 @@ export const vocabularyCoverageProject: WorldProject = {
     { id: 'asset-bg-cloud', kind: 'background', label: 'Cloud parallax', path: 'bg/cloud.png', tags: ['parallax'], packId: 'pack-harbour' },
     { id: 'asset-bg-skyline', kind: 'background', label: 'Harbour skyline', path: 'bg/skyline.png', tags: ['skyline'], packId: 'pack-harbour' },
     { id: 'asset-bg-vault-ceiling', kind: 'background', label: 'Vault ceiling', path: 'bg/vault-ceiling.png', tags: ['skyline'], packId: 'pack-harbour' },
+    { id: 'asset-sky-overcast', kind: 'background', label: 'Overcast sky', path: 'sky/overcast.png', tags: ['sky'], packId: 'pack-harbour' },
+    { id: 'asset-sky-none', kind: 'background', label: 'No sky', path: 'sky/none.png', tags: ['sky'], packId: 'pack-harbour' },
+    { id: 'asset-sky-clear', kind: 'background', label: 'Clear sky', path: 'sky/clear.png', tags: ['sky'], packId: 'pack-harbour' },
 
     { id: 'asset-portrait-hale', kind: 'portrait', label: 'Quartermaster Hale', path: 'portraits/hale.png', tags: ['npc'], packId: 'pack-harbour' },
     { id: 'asset-sprite-hale', kind: 'sprite', label: 'Hale sprite', path: 'sprites/hale.png', tags: ['npc'], packId: 'pack-harbour' },

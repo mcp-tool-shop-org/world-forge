@@ -104,15 +104,16 @@ describe('unrecognized entity role no longer crashes the export (unguarded array
     expect(warnings.some((w) => w.includes('__proto__'))).toBe(true);
   });
 
-  it('exportToEngine surfaces the same protection end-to-end', () => {
+  it('exportToEngine fail-closes on an unrecognized role (schema runtime guard) instead of throwing', () => {
     const project: WorldProject = {
       ...minimalProject,
       entityPlacements: [
         { entityId: 'npc-x', zoneId: 'zone-entrance', role: 'villager' as never, name: 'Villager' },
       ],
     };
+    expect(() => exportToEngine(project)).not.toThrow();
     const result = exportToEngine(project);
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('recognized roles are completely unaffected by the guard', () => {

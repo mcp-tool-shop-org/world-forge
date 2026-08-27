@@ -112,9 +112,9 @@ describe('exportToGodot', () => {
         expect(result).toBeDefined();
         expect(result!.success).toBe(false);
         if (result!.success) return;
-        expect(result.errors[0].path).toBe('scene');
-        expect(result.errors[0].message).toMatch(/refusing to emit an unparseable scene/);
-        expect(result.errors[0].message).toContain('metadata/hidden = undefined');
+        expect(result!.errors[0].path).toBe('scene');
+        expect(result!.errors[0].message).toMatch(/refusing to emit an unparseable scene/);
+        expect(result!.errors[0].message).toContain('metadata/hidden = undefined');
     });
 
     it('escapes spawnCondition item:the "seal" in the .tscn (F-2d6bede0)', () => {

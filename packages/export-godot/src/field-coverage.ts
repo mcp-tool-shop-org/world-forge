@@ -27,6 +27,7 @@ const FIELD_COVERAGE: { readonly [K in keyof WorldProject]-?: FieldStatus } = {
     name: { kind: 'covered' },
     description: { kind: 'covered' },
     version: { kind: 'covered' },
+    schemaVersion: { kind: 'dropped', reason: 'Authoring stamp — Godot pack carries GODOT_PACK_FORMAT_VERSION, not WorldProject.schemaVersion.' },
 
     genre: { kind: 'dropped', reason: 'Flavor metadata — not required for Godot runtime.' },
     tones: { kind: 'dropped', reason: 'Flavor metadata — not required for Godot runtime.' },

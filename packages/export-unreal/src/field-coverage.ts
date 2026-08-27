@@ -49,6 +49,7 @@ const FIELD_COVERAGE: { readonly [K in keyof WorldProject]-?: FieldStatus } = {
   name: { kind: 'covered' },
   description: { kind: 'covered' },
   version: { kind: 'covered' },
+  schemaVersion: { kind: 'dropped', reason: 'Authoring stamp — Unreal pack does not carry WorldProject.schemaVersion.' },
 
   genre: { kind: 'dropped', reason: 'Flavor metadata — not required for UE5 runtime.' },
   tones: { kind: 'dropped', reason: 'Flavor metadata — not required for UE5 runtime.' },

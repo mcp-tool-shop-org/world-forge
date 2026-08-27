@@ -3,8 +3,22 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
 import type { PackMetadata, PackGenre, PackDifficulty, PackTone } from '@ai-rpg-engine/pack-registry';
-import { VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES } from '@ai-rpg-engine/pack-registry';
 import { safeLookup } from './safe-lookup.js';
+
+// Value-importing @ai-rpg-engine/pack-registry from convert-pack.ts breaks the
+// dogfood tsx subprocesses (chapel-threshold, multi-target-export-proof): the
+// published package's exports map is import-only, and tsx's CJS resolver
+// throws ERR_PACKAGE_PATH_NOT_EXPORTED. Keep a local copy of the engine
+// 3.8.0 arrays; map-drift.test.ts (Vitest ESM) still imports VALID_GENRES
+// from the engine and asserts identity overlap.
+const VALID_GENRES: PackGenre[] = [
+  'fantasy', 'sci-fi', 'cyberpunk', 'horror', 'mystery',
+  'western', 'pirate', 'post-apocalyptic', 'historical', 'mercantile', 'pursuit',
+];
+const VALID_TONES: PackTone[] = [
+  'dark', 'gritty', 'heroic', 'noir', 'comedic', 'eerie', 'tense', 'atmospheric',
+];
+const VALID_DIFFICULTIES: PackDifficulty[] = ['beginner', 'intermediate', 'advanced'];
 
 /**
  * F-0fdda22c: identity targets are DERIVED from the engine's VALID_GENRES so

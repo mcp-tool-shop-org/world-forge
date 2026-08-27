@@ -83,7 +83,7 @@ describe('ConnectionRenderer', () => {
     ];
     renderer.update(zones, conns);
     expect(renderer.container.children.length).toBe(1);
-    const g = renderer.container.children[0] as { commands: Array<{ op: string }> };
+    const g = renderer.container.children[0] as unknown as { commands: Array<{ op: string }> };
     const moveToCount = g.commands.filter((c) => c.op === 'moveTo').length;
     const lineToCount = g.commands.filter((c) => c.op === 'lineTo').length;
     const strokeCount = g.commands.filter((c) => c.op === 'stroke').length;

@@ -76,7 +76,14 @@ beforeAll(async () => {
  * that the script itself stays silent on a clean run, and a filter loose enough to
  * swallow a real diagnostic would turn this into a check that cannot fail.
  */
-const BENIGN_STDERR = [/^npm notice\b/, /^npm warn\b/, /^npm WARN\b/];
+const BENIGN_STDERR = [
+    /^npm notice\b/,
+    /^npm warn\b/,
+    /^npm WARN\b/,
+    // convert-items now reports hidden/container losses on stderr (F-06fd0fb3).
+    // Those are intended export warnings, not chapel-threshold script failures.
+    /^\[convert-items\]/,
+];
 
 export function stderrDiagnostics(stderr: string): string[] {
     return stderr

@@ -20,6 +20,12 @@ mkdirSync(join(outDir, 'actors'), { recursive: true });
 const chapel25D: WorldProject = {
   ...chapelProject,
   mode: 'dungeon',
+  assets: [
+    ...chapelProject.assets,
+    { id: 'asset-chapel-skyline', kind: 'background', label: 'Chapel skyline', path: 'bg/chapel-skyline.png', tags: ['skyline'] },
+    { id: 'asset-clouds', kind: 'background', label: 'Far clouds', path: 'bg/clouds.png', tags: ['parallax'] },
+    { id: 'asset-hills', kind: 'background', label: 'Mid hills', path: 'bg/hills.png', tags: ['parallax'] },
+  ],
   zones: chapelProject.zones.map((z, i) => {
     if (i === 0) {
       return {

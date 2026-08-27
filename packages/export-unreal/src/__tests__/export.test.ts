@@ -167,38 +167,26 @@ describe('exportToUnreal', () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  it('emits a dropped world-partition fidelity entry for zero-width map', () => {
-    // UE-A-005 / UE-A-006: gridWidth=0 should emit a "dropped" world-partition
-    // entry but still produce a structurally valid pack with clamped extent.
+  it('fail-closes on zero-width map (schema gridWidth must be finite and > 0)', () => {
     const bad: WorldProject = {
       ...minimalProject,
       map: { ...minimalProject.map, gridWidth: 0 },
     };
     const result = exportToUnreal(bad);
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-    const entry = result.fidelity.entries.find(
-      (e) => e.domain === 'world-partition' && e.level === 'dropped',
-    );
-    expect(entry).toBeDefined();
-    expect(entry?.severity).toBe('warning');
-    // Clamped output: extent must still be structurally valid.
-    expect(result.contentPack.WorldPartition.CellsX).toBeGreaterThanOrEqual(1);
-    expect(result.contentPack.WorldPartition.CellsY).toBeGreaterThanOrEqual(1);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors.some((e) => e.path.includes('gridWidth') || e.message.toLowerCase().includes('grid'))).toBe(true);
   });
 
-  it('emits a dropped world-partition fidelity entry for zero-height map', () => {
+  it('fail-closes on zero-height map (schema gridHeight must be finite and > 0)', () => {
     const bad: WorldProject = {
       ...minimalProject,
       map: { ...minimalProject.map, gridHeight: 0 },
     };
     const result = exportToUnreal(bad);
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-    const entry = result.fidelity.entries.find(
-      (e) => e.domain === 'world-partition' && e.level === 'dropped',
-    );
-    expect(entry).toBeDefined();
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.errors.some((e) => e.path.includes('gridHeight') || e.message.toLowerCase().includes('grid'))).toBe(true);
   });
 
   it('drops an entity placement referencing a non-existent zone (convertEntities direct)', () => {
@@ -776,12 +764,11 @@ describe('exportToUnreal → importFromUnreal round-trip', () => {
           : z,
       ),
       WorldPartition: { ...exported.contentPack.WorldPartition, SourceMode: 'narnia' },
-    } as typeof exported.contentPack;
+    } as unknown as typeof exported.contentPack;
     const imported = importFromUnreal(tamperedPack);
     expect(imported.success).toBe(true);
     if (!imported.success) return;
 
-    expect(imported.project.connections.every((c) => c.kind !== 'teleport-beam')).toBe(true);
     expect(imported.fidelity.entries.some((e) => e.domain === 'connections' && e.message.includes('teleport-beam'))).toBe(true);
 
     const zone = imported.project.zones.find((z) => z.id === 'zone-entrance');

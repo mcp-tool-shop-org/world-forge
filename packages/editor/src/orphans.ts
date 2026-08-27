@@ -64,7 +64,7 @@ const ZONE_ID_TABLE: CollectionRow[] = [
 
 function rowsOf(project: WorldProject, collection: ZoneAttachedCollection): Array<Record<string, unknown>> {
   const arr = project[collection];
-  return Array.isArray(arr) ? (arr as Array<Record<string, unknown>>) : [];
+  return Array.isArray(arr) ? (arr as unknown as Array<Record<string, unknown>>) : [];
 }
 
 /** Pure scan. Returns orphans in table order (encounters first). */

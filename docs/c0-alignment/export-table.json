@@ -2,7 +2,7 @@
   "audit": "C0 — Forge→Engine export truth table",
   "direction": "WorldProject → export artifacts",
   "generatedBy": "packages/export-ai-rpg/src/__tests__/c0-export-table.test.ts",
-  "schemaVersion": "4.5.0",
+  "schemaVersion": "4.6.0",
   "forgeCommit": "feat/c0-alignment-audit",
   "engineDepVersions": {
     "@ai-rpg-engine/content-schema": "2.0.1",
@@ -31,32 +31,42 @@
   },
   "exporterSelfReport": {
     "fidelitySummary": {
-      "total": 3,
+      "total": 13,
       "lossless": 2,
-      "approximated": 1,
-      "dropped": 0,
-      "losslessPercent": 67,
+      "approximated": 2,
+      "dropped": 9,
+      "losslessPercent": 15,
       "observed": true,
       "byDomain": {
         "items": {
-          "total": 1,
+          "total": 4,
           "lossless": 0,
-          "approximated": 1,
-          "dropped": 0
+          "approximated": 2,
+          "dropped": 2
         },
         "world": {
-          "total": 2,
+          "total": 9,
           "lossless": 2,
           "approximated": 0,
-          "dropped": 0
+          "dropped": 7
         }
       }
     },
     "warnings": [
       "2 district(s) map authored 'safety' directly onto the engine's 'surveillance' metric (convert-districts.ts) — these are NOT synonyms: a heavily-surveilled district is not a safe one, and high surveillance drives heat/pursuit in the engine's own doctrine, which is the OPPOSITE of what a high 'safety' score is meant to convey. This mapping is unverified against the engine's actual district-metrics consumer; treat exported 'surveillance' values with caution until confirmed.",
+      "Item \"item-rope\" (Tarred Rope) has both description and container authored — container 'stall crate' was dropped rather than folded into the description.",
+      "Item \"item-lantern\" (Shuttered Lantern) has both description and container authored — container 'silt' was dropped rather than folded into the description.",
+      "Item \"item-lantern\" (Shuttered Lantern) has hidden:true, re-encoded as provenance flag 'contraband'. Map-visibility became an economic legality flag; the engine will treat this item as illegal goods.",
       "Item \"item-tide-ration\" (Tide Ration) has slot 'consumable', which is schema-legal but has NO equivalent in the engine's EquipmentSlot set (weapon/armor/accessory/tool/trinket) — narrowed to 'trinket'. The item will not function as a consumable at runtime.",
+      "2 landmark(s) authored-and-dropped — only iconId can survive in assetBindings; name/description/zone/position do not reach the engine.",
       "1 crafting station(s) exported as raw pass-through data on ContentPack.craftingStations — this package has no dedicated converter for them yet; verify your engine build's crafting-core module reads this field before shipping.",
-      "1 market node(s) exported as raw pass-through data on ContentPack.marketNodes — this package has no dedicated converter for them yet; verify your engine build's economy systems read this field before shipping."
+      "1 market node(s) exported as raw pass-through data on ContentPack.marketNodes — this package has no dedicated converter for them yet; verify your engine build's economy systems read this field before shipping.",
+      "1 building(s) authored but dropped — ContentPack has no channel for 'buildings'.",
+      "1 hub(s) authored but dropped — ContentPack has no channel for 'hubs'.",
+      "1 stronghold(s) authored but dropped — ContentPack has no channel for 'strongholds'.",
+      "3 stratum/strata authored but dropped — ContentPack has no channel for 'strata'.",
+      "2 stratum link(s) authored but dropped — ContentPack has no channel for 'stratumLinks'.",
+      "1 transition(s) authored but dropped — ContentPack has no channel for 'transitions'."
     ],
     "comment": "Recorded verbatim. The lane reports 100% lossless / 0 dropped and zero warnings on a fixture where the table below classifies the majority of authored fields as no-channel."
   },
@@ -256,7 +266,7 @@
       "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "22 authored values match assets:assets[].id exactly",
+      "evidence": "25 authored values match assets:assets[].id exactly",
       "note": "The whole `assets` array is passed through untouched into ExportResult.assets — a World Forge re-import channel with no engine reader."
     },
     {
@@ -267,7 +277,7 @@
       "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "22 authored values match assets:assets[].kind exactly",
+      "evidence": "25 authored values match assets:assets[].kind exactly",
       "note": ""
     },
     {
@@ -278,7 +288,7 @@
       "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "22 authored values match assets:assets[].label exactly",
+      "evidence": "25 authored values match assets:assets[].label exactly",
       "note": ""
     },
     {
@@ -289,7 +299,7 @@
       "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "22 authored values match assets:assets[].packId exactly",
+      "evidence": "25 authored values match assets:assets[].packId exactly",
       "note": ""
     },
     {
@@ -300,7 +310,7 @@
       "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "22 authored values match assets:assets[].path exactly",
+      "evidence": "25 authored values match assets:assets[].path exactly",
       "note": ""
     },
     {
@@ -355,7 +365,7 @@
       "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "22 authored values match assets:assets[].tags[] exactly",
+      "evidence": "25 authored values match assets:assets[].tags[] exactly",
       "note": ""
     },
     {
@@ -1353,11 +1363,11 @@
       "class": "carried-approximated",
       "channel": "packMeta",
       "packPath": "difficulty",
-      "transform": "DIFFICULTY_MAP-with-silent-fallback",
+      "transform": "DIFFICULTY_MAP-with-warned-fallback",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"DIFFICULTY_MAP-with-silent-fallback\" → packMeta:difficulty (1 values); semantics asserted separately",
-      "note": "Six authored values collapse to three engine tiers; unmapped silently becomes `intermediate`."
+      "evidence": "transform \"DIFFICULTY_MAP-with-warned-fallback\" → packMeta:difficulty (1 values); semantics asserted separately",
+      "note": "Six authored values collapse to three engine tiers; unmapped becomes `intermediate` WITH a warning naming the authored value and the fallback (F-0fdda22c)."
     },
     {
       "path": "districts[].baseMetrics.commerce",
@@ -1815,11 +1825,11 @@
       "class": "carried-approximated",
       "channel": "packMeta",
       "packPath": "genres[]",
-      "transform": "GENRE_MAP-with-silent-fallback",
+      "transform": "GENRE_MAP-with-warned-fallback",
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"GENRE_MAP-with-silent-fallback\" → packMeta:genres[] (1 values); semantics asserted separately",
-      "note": "Mapped through GENRE_MAP (convert-pack.ts:8). `detective`→`mystery`, `zombie`→`post-apocalyptic`; an UNMAPPED genre silently becomes `fantasy` with no warning."
+      "evidence": "transform \"GENRE_MAP-with-warned-fallback\" → packMeta:genres[] (1 values); semantics asserted separately",
+      "note": "Mapped through GENRE_MAP, identity-derived from VALID_GENRES so mercantile/pursuit cannot sit unmapped. `detective`→`mystery`, `zombie`→`post-apocalyptic`; an UNMAPPED genre becomes `fantasy` WITH a warning naming the authored value and the fallback (F-0fdda22c)."
     },
     {
       "path": "hazardDefinitions[].blocksVision",
@@ -2116,7 +2126,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "transform \"folded-into-synthesised-description\" → contentPack:items[].description (3 values); semantics asserted separately",
-      "note": "Container survives ONLY as prose inside a synthesised description, and ONLY when `description` is unset (convert-items.ts). Authoring both silently drops the container. The fixture exercises both branches."
+      "note": "Container survives ONLY as prose inside a synthesised description, and ONLY when `description` is unset (convert-items.ts). Authoring both drops the container WITH a warning and a fidelity entry (reason `item-container-dropped-when-description-present`, F-06fd0fb3). The fixture exercises both branches."
     },
     {
       "path": "itemPlacements[].description",
@@ -2182,7 +2192,7 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "transform \"boolean-reencoded-as-contraband-flag\" → contentPack:items[].provenance.flags[] (1 values); semantics asserted separately",
-      "note": "A boolean \"hidden on the map\" becomes the ECONOMIC flag `contraband` on item provenance. Only the true case is encoded; `hidden: false` writes nothing, so the field is not recoverable, and the meaning shifts from placement to legality."
+      "note": "A boolean \"hidden on the map\" becomes the ECONOMIC flag `contraband` on item provenance. Only the true case is encoded; `hidden: false` writes nothing, so the field is not recoverable, and the meaning shifts from placement to legality. The re-encode is now REPORTED (warning + fidelity reason `hidden-reencoded-as-contraband`, F-06fd0fb3)."
     },
     {
       "path": "itemPlacements[].iconId",
@@ -4140,7 +4150,7 @@
       "absenceProof": "key-absent",
       "verified": true,
       "evidence": "key \"skyAtmosphereRef\" absent from all six export artifacts",
-      "note": "Sky preset: no channel. (Also has no referential validation on the authoring side — see the fixture note.)"
+      "note": "Sky preset: no channel. (Referential check is on the authoring side via validateProject.)"
     },
     {
       "path": "zones[].skyLightIntensity",

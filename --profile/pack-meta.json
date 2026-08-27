@@ -1,0 +1,17 @@
+{
+  "id": "minimal-test",
+  "name": "Minimal Test World",
+  "tagline": "Two rooms connected by a door",
+  "genres": [
+    "fantasy"
+  ],
+  "difficulty": "beginner",
+  "tones": [
+    "dark"
+  ],
+  "tags": [],
+  "engineVersion": ">=3.8.0 <4.0.0",
+  "version": "0.1.0",
+  "description": "Two rooms connected by a door",
+  "narratorTone": "A weary narrator speaks of forgotten places."
+}
