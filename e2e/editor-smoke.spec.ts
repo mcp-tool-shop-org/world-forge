@@ -9,36 +9,26 @@
  *   5. Export modal opens
  *   6. AI RPG, UE5, and Godot export buttons are visible
  *   7. Pre-export advisories section is visible (when applicable)
+ *   8. F-624ed964: each export target is clicked and yields a non-empty
+ *      download (chapel id + zone count; Godot also ships a .tscn scene)
  *
  * Prevents regressions on node:*, sidebar z-index, and export UI parity.
+ * Visibility of the three buttons does not substitute for the download.
  */
 
-import { test as base, expect } from '@playwright/test';
-import path from 'path';
-
-// Written by e2e/global-setup.ts from the schema chapel fixture so this
-// suite does not depend on a tracked file under gitignored dogfood/output/.
-const CHAPEL_PROJECT = path.resolve(__dirname, '../dogfood/output/chapel-project.json');
-
-/**
- * F-03e207f6: a Pixi/GPU exception or ErrorBoundary-swallowed render error
- * after the top-bar <strong>World Forge</strong> is painted used to leave a
- * red test name with no pageerror/console record. Fail the spec when either
- * fires after goto (or later in the test).
- */
-const test = base.extend({
-  page: async ({ page }, use) => {
-    const errors: string[] = [];
-    page.on('pageerror', (err) => {
-      errors.push(`pageerror: ${err.message}`);
-    });
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(`console.error: ${msg.text()}`);
-    });
-    await use(page);
-    expect(errors, errors.join('\n')).toEqual([]);
-  },
-});
+import {
+  test,
+  expect,
+  CHAPEL_PROJECT,
+  CHAPEL_ID,
+  CHAPEL_ZONE_COUNT,
+  loadChapel,
+  openExportModal,
+  clickExportAndDownload,
+  readDownloadJson,
+  asRecord,
+  asArray,
+} from './helpers';
 
 test.describe('Editor browser smoke', () => {
   test('boots and renders the top bar', async ({ page }) => {
@@ -116,5 +106,53 @@ test.describe('Editor browser smoke', () => {
 
     // Modal still renders correctly alongside the advisories section.
     await expect(page.locator('button', { hasText: 'Export JSON' })).toBeVisible();
+  });
+});
+
+test.describe('Editor export downloads (F-624ed964)', () => {
+  test.describe.configure({ timeout: 45_000 });
+
+  test('Export JSON downloads a non-empty chapel engine pack', async ({ page }) => {
+    await loadChapel(page);
+    await openExportModal(page);
+
+    const download = await clickExportAndDownload(page, 'Export JSON');
+    expect(download.suggestedFilename()).toBe(`${CHAPEL_ID}-engine-pack.json`);
+
+    const json = await readDownloadJson(download);
+    expect(asRecord(json.packMeta, 'packMeta').id).toBe(CHAPEL_ID);
+    expect(asRecord(json.manifest, 'manifest').id).toBe(CHAPEL_ID);
+    expect(asArray(asRecord(json.contentPack, 'contentPack').zones, 'contentPack.zones')).toHaveLength(CHAPEL_ZONE_COUNT);
+  });
+
+  test('Export Unreal Engine 5 downloads a non-empty chapel pack', async ({ page }) => {
+    await loadChapel(page);
+    await openExportModal(page);
+
+    const download = await clickExportAndDownload(page, 'Export Unreal Engine 5');
+    expect(download.suggestedFilename()).toBe(`${CHAPEL_ID}-unreal-pack.json`);
+
+    const json = await readDownloadJson(download);
+    const pack = asRecord(json.contentPack, 'contentPack');
+    const meta = asRecord(pack.Meta, 'contentPack.Meta');
+    expect(meta.Id).toBe(CHAPEL_ID);
+    expect(meta.SourceProjectId).toBe(CHAPEL_ID);
+    expect(asArray(pack.Zones, 'contentPack.Zones')).toHaveLength(CHAPEL_ZONE_COUNT);
+  });
+
+  test('Export Godot 4 downloads a non-empty chapel pack with a world scene', async ({ page }) => {
+    await loadChapel(page);
+    await openExportModal(page);
+
+    const download = await clickExportAndDownload(page, 'Export Godot 4');
+    expect(download.suggestedFilename()).toBe(`${CHAPEL_ID}-godot-pack.json`);
+
+    const json = await readDownloadJson(download);
+    const pack = asRecord(json.contentPack, 'contentPack');
+    expect(asRecord(pack.meta, 'contentPack.meta').sourceProjectId).toBe(CHAPEL_ID);
+    expect(asArray(pack.zones, 'contentPack.zones')).toHaveLength(CHAPEL_ZONE_COUNT);
+    expect(typeof pack.worldSceneTscn).toBe('string');
+    expect(String(pack.worldSceneTscn).length).toBeGreaterThan(0);
+    expect(String(pack.worldSceneTscn)).toContain('[gd_scene');
   });
 });

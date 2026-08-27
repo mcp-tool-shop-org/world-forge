@@ -102,7 +102,7 @@ describe('run-godot-smoke.ts exit gates (F-66a22d53 / F-6551ab6c)', () => {
     }, 60_000);
 });
 
-describe('run-ai-rpg-smoke.ts exit gate (F-66a22d53)', () => {
+describe('run-ai-rpg-smoke.ts exit gate (F-66a22d53 / F-9721d756)', () => {
     beforeAll(async () => {
         try {
             await import('@ai-rpg-engine/content-schema');
@@ -113,6 +113,22 @@ describe('run-ai-rpg-smoke.ts exit gate (F-66a22d53)', () => {
             );
         }
     });
+
+    it('exits 0 on a clean run', async () => {
+        const { code, stdout } = await runScript(
+            resolve(__dirname, '../run-ai-rpg-smoke.ts'),
+        );
+        expect(stdout).toContain('VERDICT: PASS');
+        expect(stdout).toContain('player_in_start_zone');
+        expect(stdout).toContain('player_moved_to_neighbor');
+        expect(stdout).toContain('player_returned_to_start');
+        expect(stdout).toContain('traversal_verb_registered');
+        const match = stdout.match(/Assertions: (\d+)\/(\d+) passed/);
+        expect(match, 'prints an Assertions: N/N passed line').toBeTruthy();
+        expect(Number(match![1])).toBe(Number(match![2]));
+        expect(Number(match![1])).toBeGreaterThanOrEqual(15);
+        expect(code).toBe(0);
+    }, 60_000);
 
     it('exits non-zero when WORLD_FORGE_FORCE_AI_RPG_FAIL is set', async () => {
         const { code, stdout } = await runScript(
