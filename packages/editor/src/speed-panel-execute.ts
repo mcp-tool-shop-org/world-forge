@@ -9,6 +9,8 @@ import type { RightTab, EditorTool, SelectionSet } from './store/editor-store.js
 import type { EnrichedReviewSnapshot } from './panels/ReviewPanel.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
 import { frameBounds } from './viewport.js';
+import { useEditorStore } from './store/editor-store.js';
+import { useProjectStore } from './store/project-store.js';
 
 /** Bag of store methods needed by execute — keeps the function testable */
 export interface ExecuteStores {
@@ -49,7 +51,8 @@ export interface ExecuteStores {
   /**
    * F-bdf856bf: the app's current multi-select, needed by merge-zones to
    * know WHICH zones to merge — a single right-click context is only ever
-   * one zone. Optional for the same reason as mergeZones above.
+   * one zone. Optional so unit tests can omit it (fails closed). Production
+   * bags from `buildExecuteStores()` always include both this and mergeZones.
    */
   selection?: SelectionSet;
   /**
@@ -97,6 +100,37 @@ function selectFromContext(ctx: HitResult, stores: ExecuteStores): boolean {
 
 function emptySelection() {
   return { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] };
+}
+
+/**
+ * F-ef5cce21: production ExecuteStores bag used by the canvas context menu
+ * (and the same shape SpeedPanel should build). Reads live store state at
+ * call time so mergeZones + selection are never a stale render snapshot.
+ */
+export function buildExecuteStores(): ExecuteStores {
+  const editor = useEditorStore.getState();
+  const proj = useProjectStore.getState();
+  return {
+    selectZone: editor.selectZone,
+    selectEntity: editor.selectEntity,
+    selectLandmark: editor.selectLandmark,
+    selectSpawn: editor.selectSpawn,
+    selectEncounter: editor.selectEncounter,
+    selectConnection: editor.selectConnection,
+    clearSelection: editor.clearSelection,
+    setRightTab: editor.setRightTab,
+    setTool: editor.setTool,
+    setConnectionStart: (id) => editor.setConnectionStart(id),
+    setViewport: (vp) => editor.setViewport(vp),
+    removeSelected: proj.removeSelected,
+    duplicateSelected: proj.duplicateSelected,
+    removeConnection: proj.removeConnection,
+    addConnection: proj.addConnection,
+    updateZone: proj.updateZone,
+    mergeZones: proj.mergeZones,
+    selection: editor.selection,
+    project: proj.project,
+  };
 }
 
 /**

@@ -6,13 +6,14 @@ import { useEditorStore, getSelectionCount, getSelectedZoneId, getSelectedConnec
 import { useModalStore } from './store/modal-store.js';
 import { getConnectionEndpoints, findConnectionAt, getKindStyle, connectionMidpoint } from './connection-lines.js';
 import { centerOnZone, MIN_ZOOM, MAX_ZOOM } from './viewport.js';
-import { findHitAt, findAllHitsAt, findAllInRect } from './hit-testing.js';
+import { findHitAt, findAllHitsAt, findAllInRect, type HitResult } from './hit-testing.js';
 import { computeSnap, getNonSelectedEdges, computeResizeSnap, type SnapGuide } from './snap.js';
 import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type HandleKind, type ResizeResult } from './resize-handles.js';
 import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
 import { dispatchHotkey, type HotkeyContext } from './hotkeys.js';
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
+import { executeAction, buildExecuteStores } from './speed-panel-execute.js';
 import { fallbackTileColor } from './tile-render.js';
 
 const ZOOM_STEP = 0.1;
@@ -99,8 +100,14 @@ export function Canvas() {
   const panButton = useRef(-1);
   const panStartScreen = useRef<{ sx: number; sy: number } | null>(null);
 
-  // FT-005: Right-click context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; actions: { id: string; label: string; icon: string }[] } | null>(null);
+  // FT-005: Right-click context menu state. Hit is stored so a later menu-item
+  // click can execute against the object that was under the cursor (F-ef5cce21).
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    actions: { id: string; label: string; icon: string }[];
+    hit: HitResult | null;
+  } | null>(null);
 
   // FT-007: Connection preview — track cursor position during connection tool
   const connectionCursor = useRef<{ sx: number; sy: number } | null>(null);
@@ -1236,7 +1243,7 @@ export function Canvas() {
                   .slice(0, 7)
                   .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
                 if (actions.length > 0) {
-                  setContextMenu({ x: clickSx, y: clickSy, actions });
+                  setContextMenu({ x: clickSx, y: clickSy, actions, hit });
                 }
               }
             }, DBL_RIGHT_INTERVAL + 20);
@@ -1676,9 +1683,14 @@ export function Canvas() {
             <div
               key={action.id}
               onClick={() => {
+                // F-ef5cce21: this used to be a hardcoded close-only no-op
+                // ("For now, just close. The speed-panel-execute module handles
+                // execution.") — executeAction was never imported. Same defect
+                // class as the old Ctrl+V empty body. Mirrors SpeedPanel's bag
+                // (including mergeZones + selection). Tests reconstruct this
+                // closure in context-menu-wiring.test.ts.
+                executeAction(action.id, contextMenu.hit, buildExecuteStores());
                 setContextMenu(null);
-                // Dispatch action via speed panel execute if available
-                // For now, just close. The speed-panel-execute module handles execution.
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = '#30363d'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
