@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.7.0</strong> — 3385 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.8.0</strong> — 3424 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
 <!-- version:end -->
 
 ## Architettura
@@ -103,9 +103,9 @@ Converte un `WorldProject` in un pacchetto di contenuti Godot 4 con testo della 
 
 - **Output** — una cartella principale del progetto Godot 4: `project.godot`, `world.tscn` (ExtResource `.tres`), texture copiate in `assets/`, `scripts/player.gd`, più `pack.json` e `fidelity.json`
 - **CLI** — `world-forge-export-godot` con `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
-- **Scena giocabile** — `buildWorldScene()` emette un `.tscn` navigabile: collisione per zona `StaticBody2D` + `NavigationRegion2D`, un `Camera2D` incorniciato, un personaggio giocatore `CharacterBody2D` e ordinamento y / profondità `z_index`
-- **Tessere + interni** — `TileMapLayer` + `TileSet` (`tile_map_data` precalcolate per le immagini delle tessere), collisione a parete per cella `StaticBody2D` e posizionamenti di oggetti di scena `Node2D`
-- **Città** — mercati + stazioni di creazione e edifici (impronte `StaticBody2D`) / hub / roccaforti come segnaposto `Node2D`, tutti contenenti i loro dati come metadati
+- **Scena giocabile** — `buildWorldScene()` emette un `.tscn` navigabile: collisione per zona `StaticBody2D` + `NavigationRegion2D`, un `Camera2D` incorniciato, un elemento giocatore `CharacterBody2D` e ordinamento y / profondità `z_index`
+- **Tessere + interni** — `TileMapLayer` + `TileSet` (`tile_map_data` precalcolate per set di tessere immagine), collisione delle pareti per cella `StaticBody2D` e posizionamenti degli oggetti di scena `Node2D`
+- **Città** — mercati + stazioni di creazione e edifici (impronte `StaticBody2D`) / hub / roccaforti come segnaposto `Node2D`, tutti contenenti i propri dati come metadati
 - **Modellazione del mondo** — strati verticali (raggruppamento per zona `z_index` + connettori `StratumLink`), pericoli tipizzati come regioni `Area2D` e metadati della porta di ingresso alla zona
 - **Report sulla fedeltà** — tracciamento strutturato dei dati senza perdita, approssimati o eliminati, verificato rispetto al motore Godot 4 reale (fumo headless, 36 asserzioni)
 - **Versione del formato** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)

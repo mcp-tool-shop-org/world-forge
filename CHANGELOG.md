@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [4.8.0] - unreleased
+## [4.8.0] - 2026-08-27
 
 Leftover MED/LOW pass after v4.7.0. Not a new health swarm — the 32 HIGH
 leftover class already shipped. Operator-facing editor and CI gates land
-first; pack/export leftovers follow.
+first; pack/export leftovers follow. 3424 tests.
 
 ### Added
 

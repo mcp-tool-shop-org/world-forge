@@ -2,7 +2,7 @@
   "audit": "C0 — Forge→Engine export truth table",
   "direction": "WorldProject → export artifacts",
   "generatedBy": "packages/export-ai-rpg/src/__tests__/c0-export-table.test.ts",
-  "schemaVersion": "4.7.0",
+  "schemaVersion": "4.8.0",
   "forgeCommit": "feat/c0-alignment-audit",
   "engineDepVersions": {
     "@ai-rpg-engine/content-schema": "2.0.1",

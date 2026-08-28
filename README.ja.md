@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.7.0</strong> — 3385 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.8.0</strong> — 3424 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
 <!-- version:end -->
 
 ## アーキテクチャ
@@ -81,10 +81,10 @@ npx world-forge-export-godot project.json --validate-only
 - **コンテンツ型** — `EntityPlacement`、`ItemPlacement`、`DialogueDefinition`、`PlayerTemplate`、`BuildCatalogDefinition`、`ProgressionTreeDefinition`
 - **視覚レイヤー** — `AssetEntry`、`AssetPack`、`Tileset`、`TileLayer`、`PropDefinition`、`PropPlacement`、`AmbientLayer`
 - **町 + 構造物** — `MarketNode`、`CraftingStation`、`Building`、`Hub`、`Stronghold`
-- **ワールドモデリング** — `Stratum` + `StratumLink`（垂直レイヤー）、`HazardDefinition`（型付きエフェクトのユニオン）、`ZoneEntryGate` + パーティ状態 `SpawnCondition` オペランド（`party-level`、`party-size`、`item`、`flag`、`member`、`class`）
+- **ワールドモデリング** — `Stratum` + `StratumLink`（垂直レイヤー）、`HazardDefinition`（型付きエフェクトのユニオン）、`ZoneEntryGate` + パーティ状態 `SpawnCondition`オペランド（`party-level`、`party-size`、`item`、`flag`、`member`、`class`）
 - **モードシステム** — `AuthoringMode`（7つのモード）、モード固有のグリッド/接続/検証プロファイル
-- **検証** — `validateProject()`（マップベースのO(n)検索による89個の構造チェック、`warningCount`）、`advisoryValidation()`（モード固有の提案、メタデータの一貫性、アセットの名前付け）。後で必要な配列を省略したv4.0 JSONは、`normalizeProjectShape()` / `stampProjectSchemaVersion()` の後に受け入れられます。
-- **バレル上のクローズドユニオン** — `VALID_CONNECTION_KINDS`、`VALID_ASSET_KINDS`、`VALID_ENTITY_ROLES`、`VALID_ITEM_SLOTS`、および残りの `VALID_*` セットは、`@world-forge/schema` からエクスポートされます。
+- **検証** — `validateProject()`（マップベースのO(n)検索による89個の構造チェック、`warningCount`）、`advisoryValidation()`（モード固有の提案、メタデータの一貫性、アセットの名前付け）。後で必要な配列を省略したv4.0 JSONは、`normalizeProjectShape()` / `stampProjectSchemaVersion()`後に受け入れられます。
+- **バレル上のクローズドユニオン** — `VALID_CONNECTION_KINDS`、`VALID_ASSET_KINDS`、`VALID_ENTITY_ROLES`、`VALID_ITEM_SLOTS`、および残りの`VALID_*`セットは、`@world-forge/schema`からエクスポートされます。
 - **ユーティリティ** — `assembleSceneData()`（アセットが見つからない場合に検出する視覚的なバインディング）、`scanDependencies()`（参照グラフ分析）、`buildReviewSnapshot()`（健全性分類）
 
 ### @world-forge/export-unreal
@@ -101,24 +101,24 @@ npx world-forge-export-godot project.json --validate-only
 
 `WorldProject`をGodot 4コンテンツパックに変換し、`.tscn`シーンテキストを含めます。
 
-- **出力** — Godot 4プロジェクトのルート：`project.godot`、`world.tscn`（ExtResource `.tres`）、コピーされたテクスチャは `assets/`、`scripts/player.gd` の下に配置され、さらに `pack.json` と `fidelity.json` が追加されます。
-- **CLI** — `world-forge-export-godot` に `--out`、`--validate-only`、`--include-world-tscn` / `--no-world-tscn` を使用します。
-- **プレイ可能なシーン** — `buildWorldScene()` はナビゲート可能な `.tscn` を出力します：ゾーンごとの `StaticBody2D` コリジョン + `NavigationRegion2D`、フレーム化された `Camera2D`、`CharacterBody2D` のプレイヤーポーン、およびYソート / `z_index` デプス。
-- **タイル + インテリア** — `TileMapLayer` + `TileSet`（画像タイルセット用にベイクされた `tile_map_data`）、セルごとの壁の `StaticBody2D` コリジョン、およびプロップの `Node2D` 配置。
-- **町** — 市場 + クラフトステーション、および建物（`StaticBody2D` のフットプリント）/ ハブ / 要塞を `Node2D` のプレースホルダーとして使用し、すべてメタデータとしてデータを保持します。
-- **ワールドモデリング** — 垂直層（ゾーンごとの `z_index` バンディング + `StratumLink` コネクタ）、型付きの危険物を `Area2D` リージョンとして、およびゾーンエントリーゲートのメタデータ。
-- **忠実度レポート** — ロスレス、近似、および削除されたデータの構造化された追跡を行い、実際の Godot 4 エンジン（ヘッドレス煙、36個のアサート）に対して検証します。
-- **フォーマットバージョン** — `GODOT_PACK_FORMAT_VERSION` 1.1.0（`files`、`zoneGates`、`migrateGodotPack`）
+- **Output** — a Godot 4 project root: `project.godot`, `world.tscn` (ExtResource `.tres`), copied textures under `assets/`, `scripts/player.gd`, plus `pack.json` and `fidelity.json`
+- **CLI** — `world-forge-export-godot` with `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
+- **Playable scene** — `buildWorldScene()` emits a navigable `.tscn`: per-zone `StaticBody2D` collision + `NavigationRegion2D`, a framed `Camera2D`, a `CharacterBody2D` player pawn, and y-sort / `z_index` depth
+- **Tiles + interiors** — `TileMapLayer` + `TileSet` (baked `tile_map_data` for image tilesets), per-cell wall `StaticBody2D` collision, and prop `Node2D` placements
+- **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
+- **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
+- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
+- **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 
 `WorldProject`をai-rpg-engineの `ContentPack` フォーマットに変換します。
 
 - **エクスポート** — ゾーン、地区、エンティティ、アイテム、ダイアログ、プレイヤーテンプレート、ビルドカタログ、プログレッションツリー、遭遇、派閥、ホットスポット、マニフェスト、およびパックメタデータ。
-- **インポート** — 8つの逆変換器が、エクスポートされたJSONからWorldProjectを再構築します。CLI `--import` / `--from-pack` が `world-project.json`（または標準出力）に書き込みます。
-- **忠実度レポート** — 変換中に何がロスレスで維持され、何が近似され、または削除されたかを構造化して追跡します。`--out` はパックの横に `fidelity.json` を書き込みます。
-- **フォーマット検出** — WorldProject、ExportResult、ContentPack、およびProjectBundle のフォーマットを自動的に検出します。
-- **CLI** — `world-forge-export` に `--out`、`--import`、`--from-pack`、`--validate-only`、`--dry-run`、および `--verbose` を使用します。
+- **インポート** — 8つの逆変換器が、エクスポートされたJSONからWorldProjectを再構築します。CLI `--import` / `--from-pack`は、`world-project.json`（または標準出力）に書き込みます。
+- **忠実度レポート** — 変換中に何がロスレスで維持され、何が近似され、または削除されたかを構造的に追跡します。`--out`はパックの横に`fidelity.json`を書き込みます。
+- **フォーマット検出** — WorldProject、ExportResult、ContentPack、およびProjectBundle形式を自動的に検出します。
+- **CLI** — `world-forge-export`、オプションとして`--out`、`--import`、`--from-pack`、`--validate-only`、`--dry-run`、および`--verbose`。
 
 ### @world-forge/renderer-2d
 

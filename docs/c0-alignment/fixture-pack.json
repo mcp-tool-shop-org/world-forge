@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "4.7.0",
+  "schemaVersion": "4.8.0",
   "entities": [
     {
       "id": "npc-quartermaster",
