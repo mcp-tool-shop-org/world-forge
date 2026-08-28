@@ -2,7 +2,7 @@
 
 import type { HitResult } from './hit-testing.js';
 import type { SpeedPanelMacro, MacroExecutionResult } from './speed-panel-actions.js';
-import type { WorldProject, ZoneConnection, Zone } from '@world-forge/schema';
+import type { WorldProject, ZoneConnection, Zone, ConnectionKind } from '@world-forge/schema';
 import { buildReviewSnapshot } from '@world-forge/schema';
 import type { ViewportState } from './viewport.js';
 import type { RightTab, EditorTool, SelectionSet, SelectionKind } from './store/editor-store.js';
@@ -32,6 +32,8 @@ export interface ExecuteStores {
   setRightTab: (tab: RightTab) => void;
   setTool: (tool: EditorTool) => void;
   setConnectionStart: (zoneId: string) => void;
+  /** F-04f58b32: optional so older test bags still type-check. */
+  setPendingConnectionKind?: (kind: ConnectionKind | null) => void;
   setViewport: (vp: ViewportState) => void;
 
   // Project mutations
@@ -161,6 +163,7 @@ export function buildExecuteStores(canvasSize?: { w: number; h: number }): Execu
     setRightTab: editor.setRightTab,
     setTool: editor.setTool,
     setConnectionStart: (id) => editor.setConnectionStart(id),
+    setPendingConnectionKind: editor.setPendingConnectionKind,
     setViewport: (vp) => editor.setViewport(vp),
     removeSelected: proj.removeSelected,
     duplicateSelected: proj.duplicateSelected,
@@ -268,6 +271,22 @@ export function executeAction(
       stores.setTool('connection');
       stores.setConnectionStart(context.id);
       return { executed: true };
+
+    case 'add-secret-conn':
+    case 'add-channel-conn':
+    case 'add-warp-conn':
+    case 'add-trail-conn': {
+      if (context?.type !== 'zone') return fail('context mismatch');
+      const kind: ConnectionKind =
+        actionId === 'add-secret-conn' ? 'secret'
+          : actionId === 'add-channel-conn' ? 'channel'
+            : actionId === 'add-warp-conn' ? 'warp'
+              : 'trail';
+      stores.setPendingConnectionKind?.(kind);
+      stores.setTool('connection');
+      stores.setConnectionStart(context.id);
+      return { executed: true };
+    }
 
     case 'swap-direction':
       if (context?.type !== 'connection') return fail('context mismatch');

@@ -14,3 +14,22 @@ export function fallbackTileColor(tags: readonly string[]): string {
   if (tags.includes('door')) return '#886622';
   return '#333333'; // default floor
 }
+
+/** Matches renderer-2d EntityRenderer / TileLayerRenderer elevation y-offset. */
+export function elevationDrawOffset(elevation: number | undefined): number {
+  const elev = elevation ?? 0;
+  return -Math.min(Math.max(elev, -10), 10) * 0.8;
+}
+
+export function zoneElevationAt(
+  zones: Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number; elevation?: number }>,
+  gx: number,
+  gy: number,
+): number {
+  for (const z of zones) {
+    if (gx >= z.gridX && gx < z.gridX + z.gridWidth && gy >= z.gridY && gy < z.gridY + z.gridHeight) {
+      return z.elevation ?? 0;
+    }
+  }
+  return 0;
+}

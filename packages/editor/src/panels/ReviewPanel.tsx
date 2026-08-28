@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
-import { buildReviewSnapshot, type ReviewSnapshot, type HealthStatus } from '@world-forge/schema';
+import { buildReviewSnapshot, AUTHORING_MODES, VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES, type ReviewSnapshot, type HealthStatus, type AuthoringMode } from '@world-forge/schema';
 import { reviewSnapshotToMarkdown, reviewSnapshotToJSON, summaryFilename } from '../review/export-summary.js';
 import { buttonBase } from '../ui/styles.js';
 import { useKitStore } from '../kits/index.js';
@@ -169,11 +169,7 @@ export function ReviewPanel() {
 
       {/* FT-035: Project Metadata UI */}
       <Section title="Project Info" isOpen={isOpen('project-info')} toggle={() => toggle('project-info')}>
-        <Row label="Name" value={enriched.projectName} />
-        <Row label="Mode" value={`${enriched.modeLabel}`} />
-        <Row label="Genre" value={enriched.genre} />
-        <Row label="Version" value={enriched.version} />
-        {enriched.description && <Row label="Desc" value={enriched.description} />}
+        <ProjectIdentityFields />
         <ProjectMetadataFields />
       </Section>
 
@@ -318,6 +314,113 @@ export function ReviewPanel() {
           {enriched.hasExported && <Row label="Exported" value="Yes" />}
         </Section>
       )}
+    </div>
+  );
+}
+
+const identityInputStyle: React.CSSProperties = {
+  width: '100%', background: 'var(--wf-bg-app)', border: '1px solid var(--wf-border-default)',
+  borderRadius: 3, padding: '3px 6px', color: 'var(--wf-text-primary)', fontSize: 11, outline: 'none',
+};
+
+/** F-b97d277c: name/mode/genre/version/tones/difficulty were frozen after New Project. */
+function ProjectIdentityFields() {
+  const { project, updateProject } = useProjectStore();
+
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Name</span>
+        <input
+          data-testid="wf-project-name"
+          value={project.name}
+          onChange={(e) => updateProject((p) => ({ ...p, name: e.target.value }), 'Set name')}
+          style={identityInputStyle}
+        />
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Mode</span>
+        <select
+          data-testid="wf-project-mode"
+          value={project.mode}
+          onChange={(e) => updateProject((p) => ({ ...p, mode: e.target.value as AuthoringMode }), 'Set mode')}
+          style={identityInputStyle}
+        >
+          {AUTHORING_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Genre</span>
+        <input
+          data-testid="wf-project-genre"
+          list="wf-genre-list"
+          value={project.genre ?? ''}
+          onChange={(e) => updateProject((p) => ({ ...p, genre: e.target.value }), 'Set genre')}
+          placeholder="fantasy, mercantile, pursuit…"
+          style={identityInputStyle}
+        />
+        <datalist id="wf-genre-list">
+          {VALID_GENRES.map((g) => <option key={g} value={g} />)}
+        </datalist>
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Version</span>
+        <input
+          data-testid="wf-project-version"
+          value={project.version ?? ''}
+          onChange={(e) => updateProject((p) => ({ ...p, version: e.target.value }), 'Set version')}
+          style={identityInputStyle}
+        />
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Description</span>
+        <textarea
+          data-testid="wf-project-description"
+          value={project.description ?? ''}
+          onChange={(e) => updateProject((p) => ({ ...p, description: e.target.value }), 'Set description')}
+          rows={2}
+          style={{ ...identityInputStyle, resize: 'vertical' }}
+        />
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Tones (comma-separated)</span>
+        <input
+          data-testid="wf-project-tones"
+          value={(project.tones ?? []).join(', ')}
+          list="wf-tone-list"
+          onChange={(e) => updateProject((p) => ({
+            ...p,
+            tones: e.target.value.split(',').map((t) => t.trim()).filter(Boolean),
+          }), 'Set tones')}
+          style={identityInputStyle}
+        />
+        <datalist id="wf-tone-list">
+          {VALID_TONES.map((t) => <option key={t} value={t} />)}
+        </datalist>
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Difficulty</span>
+        <input
+          data-testid="wf-project-difficulty"
+          list="wf-difficulty-list"
+          value={project.difficulty ?? ''}
+          onChange={(e) => updateProject((p) => ({ ...p, difficulty: e.target.value }), 'Set difficulty')}
+          placeholder="beginner, intermediate, advanced…"
+          style={identityInputStyle}
+        />
+        <datalist id="wf-difficulty-list">
+          {VALID_DIFFICULTIES.map((d) => <option key={d} value={d} />)}
+        </datalist>
+      </label>
+      <label style={{ display: 'block', marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>Narrator tone</span>
+        <input
+          data-testid="wf-project-narrator-tone"
+          value={project.narratorTone ?? ''}
+          onChange={(e) => updateProject((p) => ({ ...p, narratorTone: e.target.value }), 'Set narrator tone')}
+          style={identityInputStyle}
+        />
+      </label>
     </div>
   );
 }

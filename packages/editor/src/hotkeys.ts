@@ -16,6 +16,7 @@ export interface HotkeyBinding {
 
 export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'KeyK', ctrl: true, action: 'search', label: 'Ctrl+K', description: 'Open search overlay' },
+  { key: 'KeyS', ctrl: true, action: 'save', label: 'Ctrl+S', description: 'Save project' },
   { key: 'KeyC', ctrl: true, action: 'copy', label: 'Ctrl+C', description: 'Copy selected objects' },
   { key: 'KeyV', ctrl: true, action: 'paste', label: 'Ctrl+V', description: 'Paste from clipboard' },
   { key: 'KeyD', ctrl: true, action: 'duplicate', label: 'Ctrl+D', description: 'Duplicate selected objects' },
@@ -31,7 +32,7 @@ export const HOTKEY_BINDINGS: HotkeyBinding[] = [
   { key: 'ArrowLeft', action: 'nudge-left', label: 'Left', description: 'Nudge selected left (Shift for 5x)' },
   { key: 'ArrowRight', action: 'nudge-right', label: 'Right', description: 'Nudge selected right (Shift for 5x)' },
   { key: 'Enter', action: 'open-details', label: 'Enter', description: 'Open details for selected object' },
-  { key: 'KeyP', action: 'apply-preset', label: 'P', description: 'Open preset browser for selection' },
+  { key: 'KeyP', action: 'apply-preset', label: 'P', description: 'Apply preset to selected district or zone' },
   { key: 'KeyP', shift: true, action: 'save-preset', label: 'Shift+P', description: 'Save current selection as preset' },
   // Tool switching — matches labels shown in ToolPalette
   { key: 'KeyV', action: 'tool-select', label: 'V', description: 'Switch to Select tool' },
@@ -89,6 +90,11 @@ export interface HotkeyContext {
   setTool: (tool: EditorTool) => void;
   showSpeedPanel: boolean;
   closeSpeedPanel: () => void;
+  /** F-bde2ece7: Ctrl+S. Optional so older test bags still type-check. */
+  save?: () => void;
+  /** F-fabda31a: P applies a preset; Shift+P saves one. Optional for older tests. */
+  applyPreset?: () => void;
+  savePreset?: () => void;
   /**
    * F-eb7fc5ef: Escape must drop an in-progress connection, not only the
    * SelectionSet. Optional so older test bags still type-check.
@@ -240,14 +246,22 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
       return { handled: true, action };
     }
 
+    case 'save': {
+      e.preventDefault();
+      ctx.save?.();
+      return { handled: true, action };
+    }
+
     case 'apply-preset': {
       e.preventDefault();
+      ctx.applyPreset?.();
       ctx.setRightTab('presets');
       return { handled: true, action };
     }
 
     case 'save-preset': {
       e.preventDefault();
+      ctx.savePreset?.();
       ctx.setRightTab('presets');
       return { handled: true, action };
     }

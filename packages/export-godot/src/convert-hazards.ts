@@ -4,10 +4,9 @@
  * A zone opts into hazards via `Zone.hazardRefs` (ids into hazardDefinitions).
  * Each (zone, hazard) pair exports as an Area2D covering the zone, with an inline
  * RectangleShape2D (collected in scene-builder, so it counts in load_steps) and
- * the hazard data as metadata. The runtime reads the metadata on `body_entered`
- * to apply effects (Godot research: Area2D + body_entered + metadata is the
- * textureless, self-contained hazard hook). Refs with no matching definition are
- * dropped with a fidelity warning.
+ * the hazard data as metadata. The pack ships `scripts/world_runtime.gd`
+ * (F-54831eeb) which reads that metadata on `body_entered`. Refs with no
+ * matching definition are dropped with a fidelity warning.
  */
 
 import type { WorldProject, HazardEffect } from '@world-forge/schema';
@@ -123,7 +122,7 @@ export function convertHazards(project: WorldProject): ConvertHazardsResult {
             domain: 'structures',
             severity: 'info',
             fieldPath: 'hazardDefinitions',
-            message: `${placements.length} hazard placement(s) exported as Area2D regions (zone-sized collision) with hazard data as metadata; the runtime applies effects on body_entered.`,
+            message: `${placements.length} hazard placement(s) exported as Area2D regions (zone-sized collision) with hazard data as metadata; scripts/world_runtime.gd applies effects on body_entered.`,
             reason: 'Hazards are zone-scoped Area2D triggers; effect application (damage/status/etc.) is runtime-driven from the metadata + content pack.',
         });
     }

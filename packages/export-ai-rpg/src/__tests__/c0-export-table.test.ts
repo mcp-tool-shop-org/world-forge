@@ -200,14 +200,14 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     expect(allExportLeafValues(artifacts).has('district')).toBe(false);
   });
 
-  it('landmark ids survive only as asset-binding map keys', () => {
-    // Binding-map keys are sorted alphabetically for byte-identical output
-    // (export.ts:296), so compare as sets, not in authored order.
+  it('landmark ids survive on ContentPack.landmarks and as asset-binding map keys', () => {
     expect(Object.keys(result.assetBindings!.landmarks!).sort()).toEqual(
       project.landmarks.map((l) => l.id).sort(),
     );
-    // …and nowhere in the ContentPack the engine actually loads.
-    expect(JSON.stringify(pack)).not.toContain('lm-tide-stone');
+    expect(pack.landmarks.map((l) => l.id).sort()).toEqual(
+      project.landmarks.map((l) => l.id).sort(),
+    );
+    expect(JSON.stringify(pack)).toContain('lm-tide-stone');
   });
 });
 
@@ -296,7 +296,7 @@ describe('C0/P1 — the exporter self-report, recorded', () => {
     // is still NOT done here (still a C3-sized pass); the remaining gap is
     // recorded rather than quietly widened.
     const noChannel = expandTable(project).filter((r) => r.class === 'no-channel').length;
-    expect(noChannel).toBeGreaterThan(100);
+    expect(noChannel).toBeGreaterThan(50);
   });
 });
 

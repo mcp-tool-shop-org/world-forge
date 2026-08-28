@@ -95,6 +95,18 @@ export function HazardLibraryPanel() {
                 onChange={(e) => updateHazardDefinition(h.id, { blocksVision: e.target.checked })} /> Blocks vision
             </label>
           </div>
+          <label style={lbl}>Tags (comma-separated)
+            <input style={inp} data-testid="wf-hazard-tags" value={(h.tags ?? []).join(', ')}
+              onChange={(e) => updateHazardDefinition(h.id, { tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+          </label>
+          <label style={lbl}>Weather conditions
+            <input style={inp} value={(h.weatherConditions ?? []).join(', ')}
+              onChange={(e) => updateHazardDefinition(h.id, { weatherConditions: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+          </label>
+          <label style={lbl}>Immune tags
+            <input style={inp} value={(h.immuneTags ?? []).join(', ')}
+              onChange={(e) => updateHazardDefinition(h.id, { immuneTags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+          </label>
 
           <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', margin: '6px 0 3px' }}>Effects ({h.effects.length})</div>
           {h.effects.map((eff, i) => (
@@ -121,6 +133,15 @@ export function HazardLibraryPanel() {
                       <option value="turn-start">turn-start</option>
                       <option value="turn-end">turn-end</option>
                     </select>
+                  </label>
+                  <label style={lbl}>Duration ticks
+                    <input style={inp} type="number" value={eff.durationTicks ?? 0}
+                      onChange={(e) => setEffects(h.id, h.effects.map((x, xi) => xi === i ? { ...eff, durationTicks: Number(e.target.value) || 0 } : x))} />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', marginTop: 18 }}>
+                    <input type="checkbox" checked={!!eff.amountIsPercentMaxHp}
+                      onChange={(e) => setEffects(h.id, h.effects.map((x, xi) => xi === i ? { ...eff, amountIsPercentMaxHp: e.target.checked } : x))} />
+                    % max HP
                   </label>
                 </div>
               )}

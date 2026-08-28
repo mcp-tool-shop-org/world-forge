@@ -193,6 +193,19 @@ export class ZoneOverlayRenderer {
         g.rect(x, y, w, h).stroke({ width: borderWidth, color, alpha: borderAlpha });
       }
 
+      // F-7cc1a9b2: decorative skyline along the zone's top edge.
+      if (zone.skylineRef) {
+        const sky = new Graphics();
+        const mid = x + w / 2;
+        sky.moveTo(x, y - 2);
+        sky.lineTo(x + w * 0.25, y - 6);
+        sky.lineTo(mid, y - 10);
+        sky.lineTo(x + w * 0.75, y - 6);
+        sky.lineTo(x + w, y - 2);
+        sky.stroke({ width: 2, color, alpha: 0.85 });
+        this.container.addChild(sky);
+      }
+
       // Label chip — hide when the zone is shorter than the text, ellipsize to width.
       const chipH = LABEL_FONT_SIZE + CHIP_PAD_Y * 2 + 2;
       const maxTextW = w - 8;

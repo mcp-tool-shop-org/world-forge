@@ -234,11 +234,38 @@ describe('dispatchHotkey — actions', () => {
     expect(setConnectionStart).toHaveBeenCalledWith(null);
   });
 
-  it('apply-preset switches to presets tab', () => {
-    const ctx = makeCtx();
+  it('apply-preset switches to presets tab and calls applyPreset when wired', () => {
+    const applyPreset = vi.fn();
+    const ctx = makeCtx({ applyPreset });
     const e = makeEvent({ code: 'KeyP' });
     const result = dispatchHotkey(e, ctx);
     expect(result.handled).toBe(true);
+    expect(applyPreset).toHaveBeenCalledTimes(1);
+    expect(ctx.setRightTab).toHaveBeenCalledWith('presets');
+  });
+
+  it('F-bde2ece7: Ctrl+S preventDefaults and calls save', () => {
+    const save = vi.fn();
+    const ctx = makeCtx({ save });
+    const e = makeEvent({ code: 'KeyS', ctrlKey: true });
+    const result = dispatchHotkey(e, ctx);
+    expect(result.handled).toBe(true);
+    expect(result).toEqual({ handled: true, action: 'save' });
+    expect(e.preventDefault).toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('F-bde2ece7: bare S is still the spawn tool, not save', () => {
+    expect(matchHotkey(makeEvent({ code: 'KeyS' }))).toBe('tool-spawn');
+    expect(matchHotkey(makeEvent({ code: 'KeyS', ctrlKey: true }))).toBe('save');
+  });
+
+  it('F-fabda31a: Shift+P calls savePreset and opens the presets tab', () => {
+    const savePreset = vi.fn();
+    const ctx = makeCtx({ savePreset });
+    const result = dispatchHotkey(makeEvent({ code: 'KeyP', shiftKey: true }), ctx);
+    expect(result).toEqual({ handled: true, action: 'save-preset' });
+    expect(savePreset).toHaveBeenCalledTimes(1);
     expect(ctx.setRightTab).toHaveBeenCalledWith('presets');
   });
 

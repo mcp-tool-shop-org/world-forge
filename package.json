@@ -20,7 +20,8 @@
     "verify": "npm run build && npm run test && npm run typecheck:dogfood",
     "typecheck:dogfood": "tsc -p tsconfig.dogfood.json",
     "check-version": "node scripts/sync-version.mjs --check",
-    "sync-tests": "node scripts/sync-version.mjs --sync-tests"
+    "sync-tests": "node scripts/sync-version.mjs --sync-tests",
+    "dogfood": "node scripts/run-proofs.mjs"
   },
   "repository": {
     "type": "git",

@@ -78,7 +78,8 @@ export class MinimapRenderer {
     for (const zone of zones) {
       const g = new Graphics();
       const x = offsetX + zone.gridX * scale;
-      const y = offsetY + zone.gridY * scale;
+      const elev = zone.elevation ?? 0;
+      const y = offsetY + zone.gridY * scale - Math.sign(elev) * Math.min(Math.abs(elev), 8) * 0.4;
       const w = zone.gridWidth * scale;
       const h = zone.gridHeight * scale;
 
@@ -88,7 +89,8 @@ export class MinimapRenderer {
         color = DISTRICT_COLORS[idx % DISTRICT_COLORS.length] ?? 0x888888;
       }
 
-      g.rect(x, y, w, h).fill({ color, alpha: 0.5 });
+      const alpha = elev > 0 ? 0.7 : elev < 0 ? 0.35 : 0.5;
+      g.rect(x, y, w, h).fill({ color, alpha });
       g.rect(x, y, w, h).stroke({ width: 1, color: 0xcccccc, alpha: 0.8 });
       this.container.addChild(g);
     }

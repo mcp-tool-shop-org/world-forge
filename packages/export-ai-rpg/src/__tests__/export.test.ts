@@ -288,11 +288,12 @@ describe('exportToEngine', () => {
     }
   });
 
-  it('warns when landmarks are authored-and-dropped (F-aa2c07bb)', () => {
+  it('converts authored landmarks onto ContentPack.landmarks (F-3c90bcc5)', () => {
     const result = exportToEngine(minimalProject);
     if (result.success) {
       expect(minimalProject.landmarks.length).toBeGreaterThan(0);
-      expect(result.warnings.some((w) => w.includes('landmark') && w.includes('authored-and-dropped'))).toBe(true);
+      expect(result.contentPack.landmarks.length).toBe(minimalProject.landmarks.length);
+      expect(result.fidelity.entries.some((e) => e.reason === 'landmarks-converted')).toBe(true);
     }
   });
 

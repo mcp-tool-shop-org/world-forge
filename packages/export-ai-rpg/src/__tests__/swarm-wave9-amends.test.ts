@@ -269,19 +269,15 @@ describe('F-aa2c07bb: dropped town/stratum/transition/landmark layers are report
     expect(joined).toContain('stratum');
     expect(joined).toContain('stratum link');
     expect(joined).toContain('transition');
-    expect(joined).toContain('landmark');
-    const droppedReasons = result.fidelity.entries.filter((f) => f.level === 'dropped').map((f) => f.reason);
-    expect(droppedReasons).toEqual(expect.arrayContaining([
-      'strata-dropped',
-      'stratum-links-dropped',
-      'transitions-dropped',
-      'landmarks-authored-and-dropped',
-    ]));
     const passReasons = result.fidelity.entries.filter((f) => f.level === 'lossless').map((f) => f.reason);
     expect(passReasons).toEqual(expect.arrayContaining([
       'buildings-raw-passthrough',
       'hubs-raw-passthrough',
       'strongholds-raw-passthrough',
+      'strata-raw-passthrough',
+      'stratum-links-raw-passthrough',
+      'transitions-raw-passthrough',
+      'landmarks-converted',
     ]));
   });
 

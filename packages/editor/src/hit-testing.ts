@@ -8,8 +8,25 @@ import { collectTownMarkers, type TownMarker } from './town-markers.js';
 
 export interface HitResult {
   type: 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter' | 'connection'
-    | 'item' | 'market' | 'building' | 'hub' | 'stronghold' | 'station';
+    | 'item' | 'market' | 'building' | 'hub' | 'stronghold' | 'station' | 'prop' | 'tile';
   id: string;
+}
+
+/** Composite tile id: `${layerId}::${gridX}::${gridY}` — TilePlacement has no own id. */
+export function encodeTileHitId(layerId: string, gridX: number, gridY: number): string {
+  return `${layerId}::${gridX}::${gridY}`;
+}
+
+export function decodeTileHitId(id: string): { layerId: string; gridX: number; gridY: number } | null {
+  const idx1 = id.lastIndexOf('::');
+  if (idx1 <= 0) return null;
+  const idx0 = id.lastIndexOf('::', idx1 - 1);
+  if (idx0 < 0) return null;
+  const layerId = id.slice(0, idx0);
+  const gridX = Number(id.slice(idx0 + 2, idx1));
+  const gridY = Number(id.slice(idx1 + 2));
+  if (!layerId || !Number.isFinite(gridX) || !Number.isFinite(gridY)) return null;
+  return { layerId, gridX, gridY };
 }
 
 export interface ScreenRect {
@@ -28,6 +45,10 @@ export interface VisibilityFlags {
   showTown?: boolean;
   /** F-df71e70a: item placements. Default true when omitted. */
   showItems?: boolean;
+  /** F-8801ff28: prop placements. Default true when omitted. */
+  showProps?: boolean;
+  /** F-8801ff28: tile cell occupancy. Default true when omitted. */
+  showTiles?: boolean;
 }
 
 /** Screen-space pixel radius for point-object hit detection (entities, landmarks, spawns). */
@@ -196,6 +217,29 @@ export function findHitAt(
     }
   }
 
+  // 5b. Props (over zones, under entities)
+  if (visibility.showProps !== false) {
+    const defs = new Map((project.props ?? []).map((p) => [p.id, p]));
+    for (const pl of project.propPlacements ?? []) {
+      const def = defs.get(pl.propId);
+      const w = (def?.width ?? 1) * tileSize;
+      const h = (def?.height ?? 1) * tileSize;
+      const wx = pl.gridX * tileSize;
+      const wy = pl.gridY * tileSize;
+      const { screenX: sx, screenY: sy } = worldToScreen(wx + w / 2, wy + h / 2, viewport);
+      const { screenX: x1, screenY: y1 } = worldToScreen(wx, wy, viewport);
+      const { screenX: x2, screenY: y2 } = worldToScreen(wx + w, wy + h, viewport);
+      const minX = Math.min(x1, x2);
+      const maxX = Math.max(x1, x2);
+      const minY = Math.min(y1, y2);
+      const maxY = Math.max(y1, y2);
+      if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+        return { type: 'prop', id: pl.id };
+      }
+      void sx; void sy;
+    }
+  }
+
   // 6. Entities
   if (visibility.showEntities) {
     for (const ep of project.entityPlacements) {
@@ -218,10 +262,19 @@ export function findHitAt(
     }
   }
 
-  // 8. Zones (grid containment)
+  // 8. Tiles (cell occupancy, top layer first) then Zones (grid containment)
   const { worldX, worldY } = screenToWorld(screenX, screenY, viewport);
   const gx = Math.floor(worldX / tileSize);
   const gy = Math.floor(worldY / tileSize);
+  if (visibility.showTiles !== false) {
+    const layers = [...(project.tileLayers ?? [])].sort((a, b) => b.zIndex - a.zIndex);
+    for (const layer of layers) {
+      const tiles = Array.isArray(layer.tiles) ? layer.tiles : [];
+      if (tiles.some((t) => t.gridX === gx && t.gridY === gy)) {
+        return { type: 'tile', id: encodeTileHitId(layer.id, gx, gy) };
+      }
+    }
+  }
   for (const zone of project.zones) {
     if (
       gx >= zone.gridX &&
@@ -267,6 +320,8 @@ export function findAllInRect(
   const buildings: string[] = [];
   const hubs: string[] = [];
   const strongholds: string[] = [];
+  const props: string[] = [];
+  const tiles: string[] = [];
 
   function inRect(sx: number, sy: number): boolean {
     return sx >= minX && sx <= maxX && sy >= minY && sy <= maxY;
@@ -365,7 +420,29 @@ export function findAllInRect(
     }
   }
 
-  return { zones, entities, landmarks, spawns, encounters, items, markets, stations, buildings, hubs, strongholds };
+  if (visibility.showProps !== false) {
+    for (const pl of project.propPlacements ?? []) {
+      const wx = (pl.gridX + 0.5) * tileSize;
+      const wy = (pl.gridY + 0.5) * tileSize;
+      const { screenX, screenY } = worldToScreen(wx, wy, viewport);
+      if (inRect(screenX, screenY)) props.push(pl.id);
+    }
+  }
+
+  if (visibility.showTiles !== false) {
+    const layers = [...(project.tileLayers ?? [])].sort((a, b) => b.zIndex - a.zIndex);
+    for (const layer of layers) {
+      const cells = Array.isArray(layer.tiles) ? layer.tiles : [];
+      for (const t of cells) {
+        const wx = (t.gridX + 0.5) * tileSize;
+        const wy = (t.gridY + 0.5) * tileSize;
+        const { screenX, screenY } = worldToScreen(wx, wy, viewport);
+        if (inRect(screenX, screenY)) tiles.push(encodeTileHitId(layer.id, t.gridX, t.gridY));
+      }
+    }
+  }
+
+  return { zones, entities, landmarks, spawns, encounters, items, markets, stations, buildings, hubs, strongholds, props, tiles };
 }
 
 // ── findAllHitsAt ─────────────────────────────────────────────
@@ -467,10 +544,40 @@ export function findAllHitsAt(
     }
   }
 
-  // Zones
+  // Props
+  if (visibility.showProps !== false) {
+    const defs = new Map((project.props ?? []).map((p) => [p.id, p]));
+    for (const pl of project.propPlacements ?? []) {
+      const def = defs.get(pl.propId);
+      const w = (def?.width ?? 1) * tileSize;
+      const h = (def?.height ?? 1) * tileSize;
+      const wx = pl.gridX * tileSize;
+      const wy = pl.gridY * tileSize;
+      const { screenX: x1, screenY: y1 } = worldToScreen(wx, wy, viewport);
+      const { screenX: x2, screenY: y2 } = worldToScreen(wx + w, wy + h, viewport);
+      const minX = Math.min(x1, x2);
+      const maxX = Math.max(x1, x2);
+      const minY = Math.min(y1, y2);
+      const maxY = Math.max(y1, y2);
+      if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+        hits.push({ type: 'prop', id: pl.id });
+      }
+    }
+  }
+
+  // Tiles then Zones
   const { worldX, worldY } = screenToWorld(screenX, screenY, viewport);
   const gx = Math.floor(worldX / tileSize);
   const gy = Math.floor(worldY / tileSize);
+  if (visibility.showTiles !== false) {
+    const layers = [...(project.tileLayers ?? [])].sort((a, b) => b.zIndex - a.zIndex);
+    for (const layer of layers) {
+      const tiles = Array.isArray(layer.tiles) ? layer.tiles : [];
+      if (tiles.some((t) => t.gridX === gx && t.gridY === gy)) {
+        hits.push({ type: 'tile', id: encodeTileHitId(layer.id, gx, gy) });
+      }
+    }
+  }
   for (const zone of project.zones) {
     if (gx >= zone.gridX && gx < zone.gridX + zone.gridWidth &&
         gy >= zone.gridY && gy < zone.gridY + zone.gridHeight) {

@@ -70,6 +70,12 @@ jobs:
       - name: Version + documented-count drift gate
         if: matrix.node-version == 24
         run: npm run check-version
+      # F-c3504879: SHIP_GATE D checked off `npm pack --dry-run` includes
+      # dist/ README.md LICENSE. No job ran pack. Node 24 only — tarball
+      # contents do not differ by Node version.
+      - name: Pack contents (SHIP_GATE D)
+        if: matrix.node-version == 24
+        run: node scripts/check-pack.mjs
       # INF-B-004: Coverage runs every matrix leg so artifacts are uploaded
       # unconditionally, not gated to a single Node version.
       # F-6a9332cf: id so Upload can tell skipped (tests already failed,

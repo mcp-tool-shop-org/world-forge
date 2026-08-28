@@ -315,19 +315,12 @@ describe('CLI: world-forge-export', () => {
   });
 
   // F-08ce4899: unknown flags are errors, not silent no-ops
-  it('rejects unknown option --strict with exit code 1 and does not write a pack', async () => {
-    const outDir = join(tmpDir, 'export-strict-should-not-exist');
+  it('F-43fdcc72: --strict is a known flag (exits 1 when the fixture has warnings)', async () => {
+    const outDir = join(tmpDir, 'export-strict-known');
     const { code, stderr } = await runCli([validJsonPath, '--out', outDir, '--strict']);
-    expect(code).not.toBe(0);
-    expect(stderr).toContain("unknown option '--strict'");
-    expect(stderr).toContain('--help');
-    let existed = true;
-    try {
-      await access(outDir);
-    } catch {
-      existed = false;
-    }
-    expect(existed).toBe(false);
+    expect(stderr).not.toContain("unknown option '--strict'");
+    expect(code).toBe(1);
+    expect(stderr).toContain('--strict:');
   });
 
   it('rejects unknown option --pretty with exit code 1 and does not write a pack', async () => {
@@ -422,7 +415,7 @@ describe('CLI: world-forge-export', () => {
     expect(stdout).toContain('Exported to');
     const combined = `${stdout}\n${stderr}`;
     expect(combined).toMatch(/Fidelity:|Warnings:/);
-    expect(combined).toMatch(/landmarks-authored-and-dropped|authored-and-dropped/);
+    expect(combined).toMatch(/landmark/i);
   });
 });
 

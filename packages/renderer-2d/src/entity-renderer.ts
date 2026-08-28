@@ -64,7 +64,7 @@ export class EntityRenderer {
 
   update(
     entities: EntityPlacement[],
-    zonePositions: Map<string, { x: number; y: number }>,
+    zonePositions: Map<string, { x: number; y: number; elevation?: number }>,
     opts?: Partial<EntityRenderOptions>,
   ): void {
     if (this.destroyed) {
@@ -96,7 +96,8 @@ export class EntityRenderer {
       }
 
       const x = (ep.gridX ?? zonePos.x + 2) * this.tileSize;
-      const y = (ep.gridY ?? zonePos.y + 2) * this.tileSize;
+      const elev = zonePos.elevation ?? 0;
+      const y = (ep.gridY ?? zonePos.y + 2) * this.tileSize - Math.min(Math.max(elev, -10), 10) * 0.8;
       const color = ROLE_COLORS[ep.role] ?? 0xcccccc;
       const shape = ROLE_SHAPES[ep.role] ?? 'circle';
       const size = ep.role === 'boss' ? 10 : 6;

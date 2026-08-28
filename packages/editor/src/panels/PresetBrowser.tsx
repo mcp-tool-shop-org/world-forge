@@ -4,20 +4,19 @@ import { useEditorStore, getSelectedZoneId } from '../store/editor-store.js';
 import { usePresetStore, StoragePersistError } from '../presets/preset-store.js';
 import { pushToast } from '../ui/Toast.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
-import type { AuthoringMode } from '@world-forge/schema';
 import { buttonBase, buttonAccent } from '../ui/styles.js';
 import { ConfirmButton } from './shared.js';
+import {
+  filterPresetsByMode,
+  buildRegionPresetFromDistrict,
+  buildEncounterPresetFromAnchor,
+  rememberAppliedRegionPreset,
+  rememberAppliedEncounterPreset,
+} from '../preset-actions.js';
+
+export { filterPresetsByMode } from '../preset-actions.js';
 
 type SubTab = 'region' | 'encounter';
-
-/** Pure filter: keep presets matching the given mode (or with undefined modes). */
-export function filterPresetsByMode<T extends { modes?: AuthoringMode[] }>(
-  presets: T[],
-  mode: AuthoringMode | undefined,
-): T[] {
-  if (!mode) return presets;
-  return presets.filter((p) => !p.modes || p.modes.includes(mode));
-}
 
 export function PresetBrowser() {
   const [subTab, setSubTab] = useState<SubTab>('region');
@@ -62,37 +61,22 @@ export function PresetBrowser() {
   const handleApplyRegion = (preset: RegionPreset) => {
     if (!selectedDistrict) return;
     applyRegionPreset(selectedDistrict.id, preset, applyMode);
+    rememberAppliedRegionPreset(preset.id);
     setConfirmTarget(null);
   };
 
   const handleApplyEncounter = (preset: EncounterPreset) => {
     if (!selectedZoneId) return;
     const id = createEncounterFromPreset(selectedZoneId, preset);
+    rememberAppliedEncounterPreset(preset.id);
     selectEncounter(id, false);
     setConfirmTarget(null);
   };
 
   const handleSaveRegionFromCurrent = () => {
     if (!selectedDistrict) return;
-    const d = selectedDistrict;
-    const factions = project.factionPresences
-      .filter((f) => f.districtIds.includes(d.id))
-      .map(({ districtIds: _, ...rest }) => rest);
-    const hotspots = project.pressureHotspots
-      .filter((h) => d.zoneIds.includes(h.zoneId))
-      .map(({ id: _, zoneId: _z, ...rest }) => rest);
     try {
-      saveRegionPreset({
-        name: `${d.name} Preset`,
-        description: `Saved from ${d.name}`,
-        tags: [...d.tags],
-        regionTags: [...d.tags],
-        controllingFaction: d.controllingFaction,
-        baseMetrics: { ...d.baseMetrics },
-        economyProfile: { ...d.economyProfile },
-        factionPresences: factions,
-        pressureHotspots: hotspots,
-      });
+      saveRegionPreset(buildRegionPresetFromDistrict(project, selectedDistrict));
     } catch (err) {
       const msg = err instanceof StoragePersistError
         ? 'Could not save region preset — browser storage is full or blocked.'
@@ -104,16 +88,7 @@ export function PresetBrowser() {
   const handleSaveEncounterFromCurrent = () => {
     if (!selectedEnc) return;
     try {
-      saveEncounterPreset({
-        name: `${selectedEnc.encounterType} Preset`,
-        description: `Saved from ${selectedEnc.id}`,
-        tags: [...selectedEnc.tags],
-        encounterType: selectedEnc.encounterType,
-        enemyIds: [...selectedEnc.enemyIds],
-        probability: selectedEnc.probability,
-        cooldownTurns: selectedEnc.cooldownTurns,
-        encounterTags: [...selectedEnc.tags],
-      });
+      saveEncounterPreset(buildEncounterPresetFromAnchor(selectedEnc));
     } catch (err) {
       const msg = err instanceof StoragePersistError
         ? 'Could not save encounter preset — browser storage is full or blocked.'

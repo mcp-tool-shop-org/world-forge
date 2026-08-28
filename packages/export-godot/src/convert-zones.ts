@@ -127,17 +127,16 @@ function convertZone(
         });
     }
 
-    // Parallax/sky/physics copy onto the zone resource and scene metadata, but
-    // are NOT emitted as ParallaxBackground/ParallaxLayer scene nodes.
+    // F-d3ef8fd3: ParallaxBackground / ParallaxLayer nodes plus metadata.
     if (z.parallaxLayers && z.parallaxLayers.length > 0) {
         fidelity.push({
-            level: 'approximated',
+            level: 'lossless',
             domain: 'zones',
             severity: 'info',
             entityId: z.id,
             fieldPath: `zones.${z.id}.parallaxLayers`,
-            message: `Zone "${z.id}" has ${z.parallaxLayers.length} parallax layer(s) copied onto the zone resource and scene metadata; ParallaxBackground scene-node emission is not yet implemented.`,
-            reason: 'Parallax data lives on GodotZoneResource.parallaxLayers and zone-node metadata; .tscn ParallaxBackground nodes are a planned enhancement.',
+            message: `Zone "${z.id}" has ${z.parallaxLayers.length} parallax layer(s) emitted as ParallaxBackground / ParallaxLayer nodes plus zone metadata.`,
+            reason: 'lossless-parallax-nodes',
         });
     }
 

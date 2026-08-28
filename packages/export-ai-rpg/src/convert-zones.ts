@@ -44,6 +44,8 @@ export type ExportedZone = ZoneDefinition & {
   hazardRefs?: string[];
   /** C3/P4 — the scene descriptor. */
   scene?: ExportedScene;
+  /** F-5dcb8b8a — zone→stratum membership. */
+  stratumId?: string;
 };
 
 /**
@@ -286,6 +288,7 @@ export function convertZones(
       hazardRefs: z.hazardRefs && z.hazardRefs.length > 0 ? [...z.hazardRefs] : undefined,
       // C3/P4 — the scene descriptor, built from keys already authored.
       scene: buildScene(z),
+      ...(z.stratumId ? { stratumId: z.stratumId } : {}),
     };
   });
 }

@@ -76,7 +76,7 @@ describe('summarizePack', () => {
     expect(result.counts.districts).toBe(pack.Districts.length);
     expect(result.counts.actors).toBe(pack.Actors.All.length);
     expect(result.counts.connections).toBe(pack.Connections.length);
-    expect(result.meta.formatVersion).toBe('1.2.0');
+    expect(result.meta.formatVersion).toBe('1.3.0');
     expect(result.meta.signed).toBe(false);
     expect(result.sizeBytes).toBeGreaterThan(0);
   });
@@ -114,7 +114,7 @@ describe('summarizePack', () => {
     if ('error' in result) throw new Error(result.error);
     const text = formatSummary(result);
     expect(text).toContain('Pack:');
-    expect(text).toContain('FormatVersion: 1.2.0');
+    expect(text).toContain('FormatVersion: 1.3.0');
     expect(text).toContain('Zones:');
     expect(text).toContain('Signed:');
   });
@@ -222,7 +222,7 @@ describe('diffPacks', () => {
     const result = await diffPacks(a, b);
     if ('error' in result) throw new Error(result.error);
     expect(result.formatVersion.changed).toBe(true);
-    expect(result.formatVersion.prev).toBe('1.2.0');
+    expect(result.formatVersion.prev).toBe('1.3.0');
     expect(result.formatVersion.next).toBe('1.0.0');
     const formatted = formatDiff(result);
     expect(formatted).toContain('FormatVersion');

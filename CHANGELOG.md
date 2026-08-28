@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.8.0] - unreleased
+
+Leftover MED/LOW pass after v4.7.0. Not a new health swarm — the 32 HIGH
+leftover class already shipped. Operator-facing editor and CI gates land
+first; pack/export leftovers follow.
+
+### Added
+
+- **Ctrl+S** saves the project. The File System Access handle is kept so a
+  second Save overwrites the same file; **Save As…** re-opens the picker.
+  Load / New drop the handle. (`F-bde2ece7`, `F-8680d2f9`)
+- **Encounter** and **Item** tools are on the Tool Palette (`N` / `I`).
+  (`F-1db1d1d7`)
+- Review **Project Info** edits name, mode, genre, version, description,
+  tones, difficulty, and narrator tone after New Project. (`F-b97d277c`)
+- Schema owns `VALID_GENRES` / `VALID_TONES` / `VALID_DIFFICULTIES` (plus
+  detective/zombie and easy/medium/hard aliases). Unknown flavor values
+  are advisory, not hard errors. The AI RPG exporter imports the same
+  tables. (`F-1fbf61d2`)
+- **Landmarks, strata, stratumLinks, transitions** now have ContentPack
+  channels; zone.`stratumId` copies onto the exported zone. (`F-3c90bcc5`,
+  `F-5dcb8b8a`)
+- **Loot table entry conditions** compile through `parseSpawnCondition`.
+  (`F-ef6779cc`)
+- CLI `--verbose` / `--dry-run` inventory the full pack; **`--strict`**
+  exits 1 on warnings or dropped/approximated fidelity. (`F-43fdcc72`)
+- Unreal pack **Spawns[]** PlayerStart locations (format 1.3.0).
+  (`F-dd8da467`)
+- Godot emits **ParallaxBackground / PointLight2D / Area2D gravity** and
+  ships `scripts/world_runtime.gd`. (`F-d3ef8fd3`, `F-54831eeb`)
+- Salt Road is an export proof; `npm run dogfood` aggregates the four
+  runners. (`F-422c6c36`, `F-973863f9`)
+- Release workflow packs tarballs, attests them with SHA-pinned
+  `actions/attest-build-provenance`, and attaches them to the GitHub Release.
+  (`F-1fdefe62`)
+- **Pending connection kind** — Speed Panel secret/channel/warp/trail
+  suggestions set the kind Canvas uses on finalize. (`F-04f58b32`)
+- Inspectors author zone noise/exits, hazard tags/weather/immune and damage
+  extras, stratum tags/PVS and link zone anchors, market merchant, town
+  structure tags, dialogue conditions/effects, catalog
+  archetype/background/discipline extras, prop definition fields, and
+  asset provenance. (`F-68fed5fc`, `F-420be5bb`, `F-d36789dc`)
+- Props and painted tile cells are independently hit-tested and selectable.
+  Delete removes selected props and tiles. (`F-8801ff28`)
+- Renderer draws a skyline polyline when `skylineRef` is set; entity, tile,
+  and minimap positions offset by elevation. (`F-7cc1a9b2`, `F-e3645c5a`)
+- **P** applies a region or encounter preset to the selection; **Shift+P**
+  saves one. The Presets tab still opens. (`F-fabda31a`)
+- Handbook **Accessibility** page and repo-root `a11y-audit.md`. (`F-375df619`)
+
+### Fixed
+
+- Pages post-deploy curl probes `/handbook/` as well as the landing URL.
+  (`F-961db918`)
+- CI runs `npm pack --dry-run` per published package and asserts `dist/`,
+  `README.md`, and `LICENSE` are in the tarball. (`F-c3504879`)
+
+### Docs
+
+- Keyboard table lists Ctrl+S, N, and I. Root README already named
+  `world-forge-export-godot` in 4.7.0 (`F-7e0068ac`, ledger-stale).
+
 ## [4.7.0] - 2026-08-27
 
 Advertised authoring and export surfaces that the store already named are now

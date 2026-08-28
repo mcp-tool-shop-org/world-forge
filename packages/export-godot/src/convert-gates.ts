@@ -2,7 +2,7 @@
  * convert-gates.ts — WorldProject zone entry gates → Godot zone metadata.
  *
  * Entry gates are zone-attached: a gated zone simply carries its gate as metadata
- * on its zone node (no dedicated gate node exists in Godot — the runtime reads the
+ * on its zone node (no dedicated gate node exists in Godot — `scripts/world_runtime.gd` reads the
  * metadata and evaluates the conditions against party state on entry, surfacing
  * the reason when unmet). This converter resolves the per-zone gate map; the
  * actual metadata lines are emitted by scene-builder on each zone node.
@@ -47,8 +47,8 @@ export function convertGates(project: WorldProject): ConvertGatesResult {
             domain: 'structures',
             severity: 'info',
             fieldPath: 'zones.entryGate',
-            message: `${count} zone entry gate(s) exported as zone metadata (entry_gate conditions + mode + reason); the runtime evaluates them against party state on entry.`,
-            reason: 'Godot has no dedicated gate node; the gate rides as metadata on the zone node and the runtime allows/denies entry from it.',
+            message: `${count} zone entry gate(s) exported as zone metadata (entry_gate conditions + mode + reason); scripts/world_runtime.gd evaluates them on body_entered.`,
+            reason: 'Godot has no dedicated gate node; the gate rides as metadata on the zone node. The pack ships scripts/world_runtime.gd to consume it.',
         });
     }
 

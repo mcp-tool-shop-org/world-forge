@@ -64,6 +64,15 @@ export function EconomyPanel() {
             <input type="checkbox" checked={m.contrabandAvailable}
               onChange={(e) => updateMarketNode(m.id, { contrabandAvailable: e.target.checked })} /> Contraband available
           </label>
+          <label style={lbl}>Merchant entity
+            <select style={inp} value={m.merchantEntityId ?? ''}
+              onChange={(e) => updateMarketNode(m.id, { merchantEntityId: e.target.value || undefined })}>
+              <option value="">None</option>
+              {project.entityPlacements.map((ep) => (
+                <option key={ep.entityId} value={ep.entityId}>{ep.name ?? ep.entityId}</option>
+              ))}
+            </select>
+          </label>
         </div>
       ))}
       <button style={addBtn} onClick={() => addMarketNode({ id: `market-${Date.now()}`, zoneId, supplyCategories: [], priceModifier: 1, contrabandAvailable: false })}>+ Add market</button>

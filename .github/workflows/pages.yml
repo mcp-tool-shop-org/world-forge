@@ -112,24 +112,33 @@ jobs:
             echo "::error::deploy-pages emitted no page_url — check environment github-pages, permissions pages:write + id-token:write. Next: re-run after Pages is enabled."
             exit 1
           fi
-          echo "Probing $url"
-          max=5
-          status=""
-          for attempt in $(seq 1 "$max"); do
-            status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
-            if [ -z "$status" ] || [ "$status" = "000" ]; then
-              status="curl-failed"
-            fi
-            echo "attempt $attempt/$max: HTTP $status"
-            if [ "$status" = "200" ]; then
-              echo "::notice::Pages deploy verified ($url returned 200)"
-              exit 0
-            fi
-            if [ "$attempt" -lt "$max" ]; then
-              wait_s=$((attempt * 5))
-              echo "::warning::Pages probe attempt $attempt/$max got HTTP $status for $url — sleeping ${wait_s}s (CDN lag)"
-              sleep "$wait_s"
-            fi
-          done
-          echo "::error::Pages deploy verification failed after $max attempts — last HTTP $status for $url. Next: wait for CDN and re-run the workflow, or open $url"
-          exit 1
+          # F-961db918: landing 200 is not enough — the secondary CTA is /handbook/.
+          probe() {
+            local target="$1"
+            local label="$2"
+            echo "Probing $label $target"
+            local max=5
+            local status=""
+            local attempt
+            for attempt in $(seq 1 "$max"); do
+              status=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$target" || true)
+              if [ -z "$status" ] || [ "$status" = "000" ]; then
+                status="curl-failed"
+              fi
+              echo "$label attempt $attempt/$max: HTTP $status"
+              if [ "$status" = "200" ]; then
+                echo "::notice::Pages $label verified ($target returned 200)"
+                return 0
+              fi
+              if [ "$attempt" -lt "$max" ]; then
+                wait_s=$((attempt * 5))
+                echo "::warning::Pages $label probe attempt $attempt/$max got HTTP $status for $target — sleeping ${wait_s}s (CDN lag)"
+                sleep "$wait_s"
+              fi
+            done
+            echo "::error::Pages $label verification failed after $max attempts — last HTTP $status for $target. Next: wait for CDN and re-run the workflow, or open $target"
+            return 1
+          }
+          probe "$url" "landing" || exit 1
+          handbook="${url%/}/handbook/"
+          probe "$handbook" "handbook" || exit 1

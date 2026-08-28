@@ -1,27 +1,25 @@
 // convert-pack.ts — WorldProject metadata → engine GameManifest + PackMetadata
 
-import type { WorldProject } from '@world-forge/schema';
+import {
+  VALID_GENRES as SCHEMA_GENRES,
+  VALID_TONES as SCHEMA_TONES,
+  VALID_DIFFICULTIES as SCHEMA_DIFFICULTIES,
+  GENRE_ALIASES,
+  DIFFICULTY_ALIASES,
+  type WorldProject,
+} from '@world-forge/schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
 import type { PackMetadata, PackGenre, PackDifficulty, PackTone } from '@ai-rpg-engine/pack-registry';
 import { safeLookup } from './safe-lookup.js';
 
-// Value-importing @ai-rpg-engine/pack-registry from convert-pack.ts breaks the
-// dogfood tsx subprocesses (chapel-threshold, multi-target-export-proof): the
-// published package's exports map is import-only, and tsx's CJS resolver
-// throws ERR_PACKAGE_PATH_NOT_EXPORTED. Keep a local copy of the engine
-// 3.8.0 arrays; map-drift.test.ts (Vitest ESM) still imports VALID_GENRES
-// from the engine and asserts identity overlap.
-const VALID_GENRES: PackGenre[] = [
-  'fantasy', 'sci-fi', 'cyberpunk', 'horror', 'mystery',
-  'western', 'pirate', 'post-apocalyptic', 'historical', 'mercantile', 'pursuit',
-];
-const VALID_TONES: PackTone[] = [
-  'dark', 'gritty', 'heroic', 'noir', 'comedic', 'eerie', 'tense', 'atmospheric',
-];
-const VALID_DIFFICULTIES: PackDifficulty[] = ['beginner', 'intermediate', 'advanced'];
+// F-1fbf61d2: schema owns the flavor lists. map-drift.test.ts still imports
+// VALID_GENRES from the engine and asserts identity overlap with this table.
+const VALID_GENRES = SCHEMA_GENRES as readonly PackGenre[];
+const VALID_TONES = SCHEMA_TONES as readonly PackTone[];
+const VALID_DIFFICULTIES = SCHEMA_DIFFICULTIES as readonly PackDifficulty[];
 
 /**
- * F-0fdda22c: identity targets are DERIVED from the engine's VALID_GENRES so
+ * F-0fdda22c: identity targets are DERIVED from the schema/engine VALID_GENRES so
  * a newly added engine genre (mercantile / pursuit at 3.x, and whatever 4.x
  * adds) cannot sit unmapped and silently fall back to 'fantasy'. Editor-side
  * aliases (detective→mystery, zombie→post-apocalyptic) overlay the identity
@@ -30,8 +28,7 @@ const VALID_DIFFICULTIES: PackDifficulty[] = ['beginner', 'intermediate', 'advan
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
 export const GENRE_MAP: Record<string, PackGenre> = {
   ...(Object.fromEntries(VALID_GENRES.map((g) => [g, g])) as Record<string, PackGenre>),
-  detective: 'mystery',
-  zombie: 'post-apocalyptic',
+  ...(GENRE_ALIASES as Record<string, PackGenre>),
 };
 
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
@@ -42,9 +39,7 @@ export const TONE_MAP: Record<string, PackTone> = {
 /** @internal Exported for drift-guard tests only (AIR-A-005/006). */
 export const DIFFICULTY_MAP: Record<string, PackDifficulty> = {
   ...(Object.fromEntries(VALID_DIFFICULTIES.map((d) => [d, d])) as Record<string, PackDifficulty>),
-  easy: 'beginner',
-  medium: 'intermediate',
-  hard: 'advanced',
+  ...(DIFFICULTY_ALIASES as Record<string, PackDifficulty>),
 };
 
 // EB-011 said "DEFAULT_MODULES must stay in sync with the engine module

@@ -138,6 +138,38 @@ export function ZoneProperties() {
           onChange={(e) => updateZone(zone.id, { light: Number(e.target.value) })} />
         <span style={{ fontSize: 11 }}>{zone.light}</span>
       </label>
+      <label style={labelStyle}>Noise (0-10)
+        <input data-testid="wf-zone-noise" style={inputStyle} type="range" min={0} max={10} value={zone.noise}
+          onChange={(e) => updateZone(zone.id, { noise: Number(e.target.value) })} />
+        <span style={{ fontSize: 11 }}>{zone.noise}</span>
+      </label>
+      <div style={{ ...labelStyle, marginTop: 8 }}>Exits
+        {(zone.exits ?? []).map((ex, i) => (
+          <div key={`${ex.targetZoneId}-${i}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 4, marginTop: 4 }}>
+            <select style={inputStyle} value={ex.targetZoneId}
+              onChange={(e) => {
+                const exits = zone.exits.map((x, xi) => xi === i ? { ...x, targetZoneId: e.target.value } : x);
+                updateZone(zone.id, { exits });
+              }}>
+              {project.zones.filter((z) => z.id !== zone.id).map((z) => (
+                <option key={z.id} value={z.id}>{z.name}</option>
+              ))}
+            </select>
+            <input style={inputStyle} value={ex.label} placeholder="label"
+              onChange={(e) => {
+                const exits = zone.exits.map((x, xi) => xi === i ? { ...x, label: e.target.value } : x);
+                updateZone(zone.id, { exits });
+              }} />
+            <button type="button" onClick={() => updateZone(zone.id, { exits: zone.exits.filter((_, xi) => xi !== i) })}>×</button>
+          </div>
+        ))}
+        <button type="button" data-testid="wf-zone-add-exit" style={{ ...inputStyle, marginTop: 4 }}
+          onClick={() => {
+            const other = project.zones.find((z) => z.id !== zone.id);
+            if (!other) return;
+            updateZone(zone.id, { exits: [...zone.exits, { targetZoneId: other.id, label: 'exit' }] });
+          }}>+ Add exit</button>
+      </div>
       <label style={labelStyle}>District
         <select style={inputStyle} value={zone.parentDistrictId ?? ''}
           onChange={(e) => updateZone(zone.id, { parentDistrictId: e.target.value || undefined })}>

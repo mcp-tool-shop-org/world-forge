@@ -38,7 +38,11 @@ export class TileLayerRenderer {
     };
   }
 
-  update(layers: TileLayer[], tilesets: Tileset[]): void {
+  update(
+    layers: TileLayer[],
+    tilesets: Tileset[],
+    zones?: Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number; elevation?: number }>,
+  ): void {
     if (this.destroyed) {
       console.warn('TileLayerRenderer.update: renderer has been destroyed — skipping. Create a new TileLayerRenderer instance to continue rendering.');
       return;
@@ -98,7 +102,8 @@ export class TileLayerRenderer {
         // Without actual tileset images, render colored rectangles based on tags
         const g = new Graphics();
         const x = placement.gridX * this.tileSize;
-        const y = placement.gridY * this.tileSize;
+        const elev = zoneElevationAt(zones, placement.gridX, placement.gridY);
+        const y = placement.gridY * this.tileSize - Math.min(Math.max(elev, -10), 10) * 0.8;
 
         let color = 0x333333; // default floor
         // F-4cfcd60a: omitted/non-array tags must not throw; treat as [].
@@ -138,6 +143,20 @@ export class TileLayerRenderer {
       );
     }
   }
+}
+
+function zoneElevationAt(
+  zones: Array<{ gridX: number; gridY: number; gridWidth: number; gridHeight: number; elevation?: number }> | undefined,
+  gx: number,
+  gy: number,
+): number {
+  if (!zones) return 0;
+  for (const z of zones) {
+    if (gx >= z.gridX && gx < z.gridX + z.gridWidth && gy >= z.gridY && gy < z.gridY + z.gridHeight) {
+      return z.elevation ?? 0;
+    }
+  }
+  return 0;
 }
 
 /** F-4daec731: name the runtime type — the field is often present as `{}`, not omitted. */

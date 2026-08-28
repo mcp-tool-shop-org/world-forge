@@ -18,7 +18,11 @@ export type SpeedPanelIconId =
   | 'elevation'
   | 'review'
   | 'summary'
-  | 'encounter';
+  | 'encounter'
+  | 'connect-secret'
+  | 'connect-channel'
+  | 'connect-warp'
+  | 'connect-trail';
 
 /** Geometric glyphs — not emoji, not 1–3 letter codes. */
 export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
@@ -36,6 +40,10 @@ export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
   review: '\u2611',
   summary: '\u25A4',
   encounter: '\u25C7',
+  'connect-secret': '\u2726',
+  'connect-channel': '\u2248',
+  'connect-warp': '\u29C1',
+  'connect-trail': '\u2198',
 };
 
 export interface SpeedPanelAction {
@@ -126,16 +134,10 @@ export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
   // -- Connection-only --
   { id: 'swap-direction',   label: 'Swap Direction',     icon: SPEED_PANEL_ICON_GLYPH.swap,       iconId: 'swap',       description: 'Reverse this connection’s direction',               category: 'context', contextFilter: (h) => h?.type === 'connection', macroSafe: true },
 
-  // F-bdf856bf: the 4 mode-suggested add-*-conn shortcuts (add-secret-conn,
-  // add-channel-conn, add-warp-conn, add-trail-conn) were removed here.
-  // They had no case in speed-panel-execute.ts's executeAction switch, so
-  // every click on a prominently-surfaced "MODE SUGGESTIONS" button silently
-  // did nothing. Drawing a connection of a SPECIFIC kind (rather than the
-  // mode's plain default kind) needs a "pending connection kind" concept
-  // that doesn't exist yet — new editor-store state consumed by Canvas.tsx's
-  // connection-finalize step. Until that's built, a non-functional
-  // suggestion is worse than no suggestion (this finding's own framing), so
-  // they're gone from the registry rather than left as dead buttons.
+  { id: 'add-secret-conn', label: 'Draw Secret Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-secret'], iconId: 'connect-secret', description: 'Start a secret connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['dungeon', 'interior'] },
+  { id: 'add-channel-conn', label: 'Draw Channel Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-channel'], iconId: 'connect-channel', description: 'Start a channel connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['ocean'] },
+  { id: 'add-warp-conn', label: 'Draw Warp Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-warp'], iconId: 'connect-warp', description: 'Start a warp connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['space'] },
+  { id: 'add-trail-conn', label: 'Draw Trail Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-trail'], iconId: 'connect-trail', description: 'Start a trail connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['wilderness'] },
 
   // -- Multi-zone --
   { id: 'merge-zones',      label: 'Merge Zones',           icon: SPEED_PANEL_ICON_GLYPH.merge,      iconId: 'merge',      description: 'Combine this zone with another selected zone',     category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },

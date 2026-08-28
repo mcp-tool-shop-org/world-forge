@@ -36,7 +36,7 @@ function makeProject(over: Record<string, unknown> = {}): WorldProject {
 }
 
 describe('Godot fidelity reporting (Wave B-1.5)', () => {
-    it('reports parallax as approximated metadata, not a false lossless ParallaxBackground mapping', () => {
+    it('reports parallax as lossless ParallaxBackground node emission', () => {
         const layers = [{ id: 'far', depth: 100, assetRef: 'a', scrollFactor: 0.5 }];
         const project = makeProject({
             zones: [makeZone({ parallaxLayers: layers, skylineRef: 'sky', physicsMode: 'platformer', timeOfDay: 'dusk' })],
@@ -44,8 +44,8 @@ describe('Godot fidelity reporting (Wave B-1.5)', () => {
         const { zones, fidelity } = convertZones(project);
         const parallax = fidelity.find((f) => f.fieldPath?.endsWith('.parallaxLayers'));
         expect(parallax).toBeDefined();
-        expect(parallax!.level).toBe('approximated');
-        expect(parallax!.message).not.toMatch(/mapped to ParallaxBackground/i);
+        expect(parallax!.level).toBe('lossless');
+        expect(parallax!.reason).toBe('lossless-parallax-nodes');
         expect(zones[0].parallaxLayers).toEqual(layers);
         expect(zones[0].skylineRef).toBe('sky');
         expect(zones[0].physicsMode).toBe('platformer');

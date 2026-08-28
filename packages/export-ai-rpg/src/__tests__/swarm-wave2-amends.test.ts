@@ -430,7 +430,8 @@ describe('F-ee46a52c: lootTables cross into the ContentPack instead of being sil
     const project = lootTableProject();
     const result = exportToEngine(project);
     if (!result.success) throw new Error('export failed');
-    expect((result.contentPack as unknown as { lootTables: unknown }).lootTables).toEqual(project.lootTables);
+    expect(result.contentPack.lootTables[0].entries[0].condition).toEqual({ type: 'never', params: {} });
+    expect(result.contentPack.lootTables[0].id).toBe('loot-x');
   });
 
   it('ContentPack.lootTables is present as an empty array when the project authors none (unconditional key)', () => {
@@ -443,7 +444,7 @@ describe('F-ee46a52c: lootTables cross into the ContentPack instead of being sil
     const project = lootTableProject();
     const result = exportToEngine(project, { profile: 'debug', debugTimestamp: '2026-01-01T00:00:00.000Z' });
     if (!result.success) throw new Error('export failed');
-    expect((result.contentPack as unknown as { lootTables: unknown }).lootTables).toEqual(project.lootTables);
+    expect(result.contentPack.lootTables[0].entries[0].condition).toEqual({ type: 'never', params: {} });
   });
 
   it('lootTables participates in the content hash (SIM_AFFECTING_KEYS)', () => {
@@ -482,7 +483,7 @@ describe('F-5442422b: hazardDefinitions and lootTables round-trip through import
 
     expect(exported.contentPack.hazardDefinitions).toEqual(project.hazardDefinitions);
     expect(exported.contentPack.zones[0].hazardRefs).toEqual(['hz-spikes']);
-    expect(exported.contentPack.lootTables).toEqual(project.lootTables);
+    expect(exported.contentPack.lootTables[0].entries[0].condition).toEqual({ type: 'never', params: {} });
 
     const imported = requireImport(importFromContentPack(exported.contentPack));
     expect(imported.project.hazardDefinitions).toEqual(project.hazardDefinitions);

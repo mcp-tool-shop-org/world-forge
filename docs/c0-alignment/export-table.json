@@ -15,27 +15,27 @@
   "tally": {
     "total": 377,
     "byClass": {
-      "no-channel": 108,
-      "carried-lossless": 252,
-      "carried-approximated": 17
+      "no-channel": 76,
+      "carried-lossless": 283,
+      "carried-approximated": 18
     },
     "byChannel": {
-      "none": 108,
+      "none": 76,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 231,
+      "contentPack": 264,
       "packMeta": 6,
-      "assetBindings": 7,
+      "assetBindings": 6,
       "manifest": 3
     }
   },
   "exporterSelfReport": {
     "fidelitySummary": {
       "total": 23,
-      "lossless": 6,
+      "lossless": 10,
       "approximated": 11,
-      "dropped": 6,
-      "losslessPercent": 26,
+      "dropped": 2,
+      "losslessPercent": 43,
       "observed": true,
       "byDomain": {
         "zones": {
@@ -64,9 +64,9 @@
         },
         "world": {
           "total": 9,
-          "lossless": 5,
+          "lossless": 9,
           "approximated": 0,
-          "dropped": 4
+          "dropped": 0
         }
       }
     },
@@ -85,15 +85,14 @@
       "Item \"item-lantern\" (Shuttered Lantern) has both description and container authored — container 'silt' was dropped rather than folded into the description.",
       "Item \"item-lantern\" (Shuttered Lantern) has hidden:true, re-encoded as provenance flag 'contraband'. Map-visibility became an economic legality flag; the engine will treat this item as illegal goods.",
       "Item \"item-tide-ration\" (Tide Ration) has slot 'consumable', which is schema-legal but has NO equivalent in the engine's EquipmentSlot set (weapon/armor/accessory/tool/trinket) — narrowed to 'trinket'. The item will not function as a consumable at runtime.",
-      "2 landmark(s) authored-and-dropped — only iconId can survive in assetBindings; name/description/zone/position do not reach the engine.",
       "1 crafting station(s) exported as raw pass-through data on ContentPack.craftingStations — this package has no dedicated converter for them yet; verify your engine build's crafting-core module reads this field before shipping.",
       "1 market node(s) exported as raw pass-through data on ContentPack.marketNodes — this package has no dedicated converter for them yet; verify your engine build's economy systems read this field before shipping.",
       "1 building(s) exported as raw pass-through data on ContentPack.buildings — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
       "1 hub(s) exported as raw pass-through data on ContentPack.hubs — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
       "1 stronghold(s) exported as raw pass-through data on ContentPack.strongholds — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
-      "3 stratum/strata authored but dropped — ContentPack has no channel for 'strata'.",
-      "2 stratum link(s) authored but dropped — ContentPack has no channel for 'stratumLinks'.",
-      "1 transition(s) authored but dropped — ContentPack has no channel for 'transitions'."
+      "3 stratum/strata exported as raw pass-through data on ContentPack.strata — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
+      "2 stratum link(s) exported as raw pass-through data on ContentPack.stratumLinks — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.",
+      "1 transition(s) exported as raw pass-through data on ContentPack.transitions — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping."
     ],
     "comment": "Recorded verbatim. The lane reports 100% lossless / 0 dropped and zero warnings on a fixture where the table below classifies the majority of authored fields as no-channel."
   },
@@ -2322,36 +2321,36 @@
     },
     {
       "path": "landmarks[].description",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].description",
       "transform": null,
-      "absenceProof": "value-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "all 2 authored string values absent from all six export artifacts",
-      "note": "See name."
+      "evidence": "2 authored values match contentPack:landmarks[].description exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "landmarks[].gridX",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].gridX",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"gridX\" absent from assetBindings:landmarks{}",
-      "note": "No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridX."
+      "evidence": "2 authored values match contentPack:landmarks[].gridX exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "landmarks[].gridY",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].gridY",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"gridY\" absent from assetBindings:landmarks{}",
-      "note": "No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridY."
+      "evidence": "2 authored values match contentPack:landmarks[].gridY exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "landmarks[].iconId",
@@ -2362,62 +2361,62 @@
       "absenceProof": null,
       "verified": true,
       "evidence": "2 authored values match assetBindings:landmarks{}.iconId exactly",
-      "note": "Same channel caveat: not part of the ContentPack."
+      "note": "iconId still lives in the asset binding map when present."
     },
     {
       "path": "landmarks[].id",
       "class": "carried-lossless",
-      "channel": "assetBindings",
-      "packPath": "landmarks{}",
-      "transform": "id-as-binding-map-key",
+      "channel": "contentPack",
+      "packPath": "landmarks[].id",
+      "transform": null,
       "absenceProof": null,
       "verified": true,
-      "evidence": "transform \"id-as-binding-map-key\" → assetBindings:landmarks{} (2 values); semantics asserted separately",
-      "note": "A landmark id survives ONLY as a key in the asset binding map, and only when the landmark has an iconId. A landmark with no icon vanishes entirely."
+      "evidence": "2 authored values match contentPack:landmarks[].id exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5. First-class ContentPack.landmarks channel."
     },
     {
       "path": "landmarks[].interactionType",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].interactionType",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"interactionType\" absent from all six export artifacts",
-      "note": "Landmark interaction type does not cross."
+      "evidence": "2 authored values match contentPack:landmarks[].interactionType exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "landmarks[].name",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].name",
       "transform": null,
-      "absenceProof": "value-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "all 2 authored string values absent from all six export artifacts",
-      "note": "Points of interest do not reach the engine as content."
+      "evidence": "2 authored values match contentPack:landmarks[].name exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "landmarks[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].tags[]",
       "transform": null,
-      "absenceProof": "value-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "all 3 authored string values absent from all six export artifacts",
-      "note": "Landmark tags do not cross."
+      "evidence": "3 authored values match contentPack:landmarks[].tags[] exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "landmarks[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "landmarks[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"zoneId\" absent from assetBindings:landmarks{}",
-      "note": "No landmark→zone link crosses. Scoped to the landmark's only surviving image (the binding map): `zoneId` DOES appear globally, on the raw-pass-through encounterAnchors and pressureHotspots, so a global proof would be false here while the claim is true."
+      "evidence": "2 authored values match contentPack:landmarks[].zoneId exactly",
+      "note": "CLOSED BY leftover F-3c90bcc5."
     },
     {
       "path": "license",
@@ -2432,14 +2431,14 @@
     },
     {
       "path": "lootTables[].entries[].condition",
-      "class": "carried-lossless",
+      "class": "carried-approximated",
       "channel": "contentPack",
-      "packPath": "lootTables[].entries[].condition",
-      "transform": null,
+      "packPath": "lootTables[].entries[].condition.type",
+      "transform": "compiled-through-parseSpawnCondition",
       "absenceProof": null,
       "verified": true,
-      "evidence": "3 authored values match contentPack:lootTables[].entries[].condition exactly",
-      "note": "CLOSED BY swarm wave-2 (F-ee46a52c). Raw SpawnCondition-grammar string, DELIBERATELY UNCOMPILED — see the block comment above for why this raw pass-through does not run the string through parseSpawnCondition yet."
+      "evidence": "transform \"compiled-through-parseSpawnCondition\" → contentPack:lootTables[].entries[].condition.type (3 values); semantics asserted separately",
+      "note": "CLOSED BY leftover F-ef6779cc. Grammar string compiles through parseSpawnCondition like zone exits / entryGate."
     },
     {
       "path": "lootTables[].entries[].itemId",
@@ -3191,157 +3190,157 @@
     },
     {
       "path": "strata[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "3 authored values match contentPack:strata[].id exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Stratum identity."
     },
     {
       "path": "strata[].name",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].name",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "3 authored values match contentPack:strata[].name exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Player-facing layer name."
     },
     {
       "path": "strata[].order",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].order",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "3 authored values match contentPack:strata[].order exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Signed vertical order (surface = 0)."
     },
     {
       "path": "strata[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "3 authored values match contentPack:strata[].tags[] exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Free tags."
     },
     {
       "path": "strata[].visibleStrata[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].visibleStrata[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "4 authored values match contentPack:strata[].visibleStrata[] exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. PVS neighbour stratum ids."
     },
     {
       "path": "strata[].zRange.ceiling",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].zRange.ceiling",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "3 authored values match contentPack:strata[].zRange.ceiling exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional metric span ceiling."
     },
     {
       "path": "strata[].zRange.floor",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "strata[].zRange.floor",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"strata\" absent from all six export artifacts",
-      "note": "The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo."
+      "evidence": "3 authored values match contentPack:strata[].zRange.floor exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional metric span floor."
     },
     {
       "path": "stratumLinks[].bidirectional",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].bidirectional",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].bidirectional exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Whether the link is two-way."
     },
     {
       "path": "stratumLinks[].fromStratumId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].fromStratumId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].fromStratumId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Source stratum."
     },
     {
       "path": "stratumLinks[].fromZoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].fromZoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].fromZoneId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional source-zone anchor."
     },
     {
       "path": "stratumLinks[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].id exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Link identity."
     },
     {
       "path": "stratumLinks[].linkType",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].linkType",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].linkType exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. stairs / ladder / elevator / shaft / ramp."
     },
     {
       "path": "stratumLinks[].toStratumId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].toStratumId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].toStratumId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Target stratum."
     },
     {
       "path": "stratumLinks[].toZoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "stratumLinks[].toZoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumLinks\" absent from all six export artifacts",
-      "note": "Cross-stratum connectors have no pack field."
+      "evidence": "2 authored values match contentPack:stratumLinks[].toZoneId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional target-zone anchor."
     },
     {
       "path": "strongholds[].defenseLevel",
@@ -3653,113 +3652,113 @@
     },
     {
       "path": "transitions[].animation",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].animation",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].animation exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional animation key."
     },
     {
       "path": "transitions[].durationSeconds",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].durationSeconds",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].durationSeconds exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Travel duration hint."
     },
     {
       "path": "transitions[].gridX",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].gridX",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].gridX exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional grid anchor X."
     },
     {
       "path": "transitions[].gridY",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].gridY",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].gridY exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Optional grid anchor Y."
     },
     {
       "path": "transitions[].id",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].id",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].id exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Transition identity."
     },
     {
       "path": "transitions[].label",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].label",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].label exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Display label."
     },
     {
       "path": "transitions[].tags[]",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].tags[]",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "2 authored values match contentPack:transitions[].tags[] exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Free tags."
     },
     {
       "path": "transitions[].targetZoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].targetZoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].targetZoneId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Destination zone."
     },
     {
       "path": "transitions[].type",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].type",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].type exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. elevator / warp / transporter / cargo-lift / stairwell."
     },
     {
       "path": "transitions[].zoneId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "transitions[].zoneId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"transitions\" absent from all six export artifacts",
-      "note": "Elevator / warp / lift transitions have no pack field."
+      "evidence": "1 authored values match contentPack:transitions[].zoneId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Raw pass-through. Source zone."
     },
     {
       "path": "version",
@@ -4203,14 +4202,14 @@
     },
     {
       "path": "zones[].stratumId",
-      "class": "no-channel",
-      "channel": "none",
-      "packPath": null,
+      "class": "carried-lossless",
+      "channel": "contentPack",
+      "packPath": "zones[].stratumId",
       "transform": null,
-      "absenceProof": "key-absent",
+      "absenceProof": null,
       "verified": true,
-      "evidence": "key \"stratumId\" absent from all six export artifacts",
-      "note": "The zone→stratum membership link, dropped along with the strata themselves."
+      "evidence": "3 authored values match contentPack:zones[].stratumId exactly",
+      "note": "CLOSED BY leftover F-5dcb8b8a. Zone→stratum membership copies onto ExportedZone.stratumId."
     },
     {
       "path": "zones[].tags[]",

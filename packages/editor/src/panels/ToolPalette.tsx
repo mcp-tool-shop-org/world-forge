@@ -7,7 +7,7 @@ import { buttonBase } from '../ui/styles.js';
 import { defaultShowElevation } from './zone-2d5-helpers.js';
 import { LayerChip } from './shared.js';
 
-const tools: { id: EditorTool; label: string; key: string; icon: string }[] = [
+export const TOOL_PALETTE_TOOLS: { id: EditorTool; label: string; key: string; icon: string }[] = [
   { id: 'select', label: 'Select', key: 'V', icon: '\u25C7' },
   { id: 'zone-paint', label: 'Zone', key: 'Z', icon: '\u25A6' },
   { id: 'connection', label: 'Connect', key: 'C', icon: '\u2194' },
@@ -16,7 +16,11 @@ const tools: { id: EditorTool; label: string; key: string; icon: string }[] = [
   { id: 'spawn', label: 'Spawn', key: 'S', icon: '\u2605' },
   { id: 'tile-paint', label: 'Tiles', key: 'T', icon: '\u25A3' },
   { id: 'prop-place', label: 'Prop', key: 'O', icon: '\u25A2' },
+  { id: 'encounter-place', label: 'Encounter', key: 'N', icon: '\u2694' },
+  { id: 'item-place', label: 'Item', key: 'I', icon: '\u2726' },
 ];
+
+const tools = TOOL_PALETTE_TOOLS;
 
 export function ToolPalette() {
   const {

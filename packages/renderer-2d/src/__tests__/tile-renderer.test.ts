@@ -16,7 +16,9 @@ vi.mock('pixi.js', () => {
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Container', opts }); }
   }
   class MockGraphics {
-    rect() { return this; }
+    x = 0;
+    y = 0;
+    rect(x?: number, y?: number) { if (x !== undefined) this.x = x; if (y !== undefined) this.y = y; return this; }
     fill() { return this; }
     destroy(opts?: unknown) { destroyCalls.push({ kind: 'Graphics', opts }); }
   }
@@ -55,6 +57,20 @@ describe('TileLayerRenderer', () => {
     renderer.update(layers, tilesets);
     // layerContainer is the only child of root container
     expect(renderer.container.children.length).toBe(1);
+  });
+
+  it('F-e3645c5a: offsets tile y by zone elevation', () => {
+    const renderer = new TileLayerRenderer(32);
+    const tilesets = [makeTileset([{ id: 'floor-1', tags: [] }])];
+    const layers: TileLayer[] = [{
+      id: 'layer-1', name: 'Ground', zIndex: 0,
+      tiles: [{ tileId: 'floor-1', gridX: 1, gridY: 2 }],
+    }];
+    renderer.update(layers, tilesets, [
+      { gridX: 0, gridY: 0, gridWidth: 8, gridHeight: 8, elevation: 10 },
+    ]);
+    const layer = renderer.container.children[0] as { children: Array<{ y: number }> };
+    expect(layer.children[0].y).toBe(2 * 32 - 8);
   });
 
   it('warns and skips when tileId is missing from all tilesets (IB-003)', () => {

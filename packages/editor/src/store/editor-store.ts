@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import type { FidelityReport, ImportFormat } from '@world-forge/export-ai-rpg';
 import type {
-  WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection,
+  WorldProject, Zone, EntityPlacement, Landmark, SpawnPoint, EncounterAnchor, ZoneConnection, ConnectionKind,
   ItemPlacement, PropPlacement, MarketNode, CraftingStation, Building, Hub, Stronghold, PressureHotspot,
 } from '@world-forge/schema';
 import { DEFAULT_VIEWPORT } from '../viewport.js';
@@ -62,11 +62,13 @@ export interface SelectionSet {
   buildings?: string[];
   hubs?: string[];
   strongholds?: string[];
+  props?: string[];
+  tiles?: string[];
 }
 
 export type SelectionKind =
   | 'zone' | 'entity' | 'landmark' | 'spawn' | 'encounter'
-  | 'item' | 'market' | 'station' | 'building' | 'hub' | 'stronghold';
+  | 'item' | 'market' | 'station' | 'building' | 'hub' | 'stronghold' | 'prop' | 'tile';
 
 export const SELECTION_KIND_KEY: Record<SelectionKind, keyof SelectionSet> = {
   zone: 'zones',
@@ -80,12 +82,16 @@ export const SELECTION_KIND_KEY: Record<SelectionKind, keyof SelectionSet> = {
   building: 'buildings',
   hub: 'hubs',
   stronghold: 'strongholds',
+  prop: 'props',
+  tile: 'tiles',
 };
 
 export function emptySelection(): SelectionSet {
   return {
     zones: [], entities: [], landmarks: [], spawns: [], encounters: [],
     items: [], markets: [], stations: [], buildings: [], hubs: [], strongholds: [],
+    props: [],
+    tiles: [],
   };
 }
 
@@ -106,7 +112,8 @@ export function getSelectedZoneId(sel: SelectionSet): string | null {
 export function getSelectionCount(sel: SelectionSet): number {
   return sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
     + idsOf(sel, 'items').length + idsOf(sel, 'markets').length + idsOf(sel, 'stations').length
-    + idsOf(sel, 'buildings').length + idsOf(sel, 'hubs').length + idsOf(sel, 'strongholds').length;
+    + idsOf(sel, 'buildings').length + idsOf(sel, 'hubs').length + idsOf(sel, 'strongholds').length
+    + idsOf(sel, 'props').length + idsOf(sel, 'tiles').length;
 }
 
 /** Check if a specific object is in the selection */
@@ -149,6 +156,8 @@ interface EditorState {
   hoveredZoneId: string | null;
   selectedConnection: { from: string; to: string } | null;
   connectionStart: string | null;
+  /** F-04f58b32: kind used when the connection rubber-band finalizes. */
+  pendingConnectionKind: ConnectionKind | null;
   checklistDismissed: boolean;
   hasExported: boolean;
   activeKitId: string | null;
@@ -179,6 +188,7 @@ interface EditorState {
   selectConnection: (from: string, to: string) => void;
   setHoveredZone: (id: string | null) => void;
   setConnectionStart: (id: string | null) => void;
+  setPendingConnectionKind: (kind: ConnectionKind | null) => void;
   toggleSnapToObjects: () => void;
   toggleGrid: () => void;
   toggleConnections: () => void;
@@ -290,6 +300,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   hoveredZoneId: null,
   selectedConnection: null,
   connectionStart: null,
+  pendingConnectionKind: null,
   checklistDismissed: false,
   hasExported: false,
   activeKitId: null,
@@ -298,7 +309,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   importSnapshot: null,
   projectBundleSource: null,
 
-  setTool: (tool) => set({ activeTool: tool, connectionStart: null }),
+  setTool: (tool) => set((s) => ({
+    activeTool: tool,
+    connectionStart: null,
+    pendingConnectionKind: tool === 'connection' ? s.pendingConnectionKind : null,
+  })),
   setRightTab: (tab) => set({ rightTab: tab }),
   setBuildsSubTab: (tab) => set({ buildsSubTab: tab }),
   setFocusTarget: (target) => set({ focusTarget: target }),
@@ -359,6 +374,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       buildings: [...new Set([...idsOf(s.selection, 'buildings'), ...idsOf(incoming, 'buildings')])],
       hubs: [...new Set([...idsOf(s.selection, 'hubs'), ...idsOf(incoming, 'hubs')])],
       strongholds: [...new Set([...idsOf(s.selection, 'strongholds'), ...idsOf(incoming, 'strongholds')])],
+      props: [...new Set([...idsOf(s.selection, 'props'), ...idsOf(incoming, 'props')])],
+      tiles: [...new Set([...idsOf(s.selection, 'tiles'), ...idsOf(incoming, 'tiles')])],
     } : { ...EMPTY_SELECTION, ...incoming },
   })),
   /** Backward compat: replaces selection with single zone (or clears if null) */
@@ -368,6 +385,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setHoveredZone: (id) => set({ hoveredZoneId: id }),
   setConnectionStart: (id) => set({ connectionStart: id }),
+  setPendingConnectionKind: (kind) => set({ pendingConnectionKind: kind }),
   toggleSnapToObjects: () => set((s) => ({ snapToObjects: !s.snapToObjects })),
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   toggleConnections: () => set((s) => ({ showConnections: !s.showConnections })),

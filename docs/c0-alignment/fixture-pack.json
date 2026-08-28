@@ -173,7 +173,8 @@
       "scene": {
         "timeOfDay": "dusk",
         "dressingDensity": "normal"
-      }
+      },
+      "stratumId": "stratum-surface"
     },
     {
       "id": "zone-under-vault",
@@ -253,7 +254,8 @@
       "scene": {
         "timeOfDay": "night",
         "dressingDensity": "normal"
-      }
+      },
+      "stratumId": "stratum-under"
     },
     {
       "id": "zone-sky-gantry",
@@ -318,7 +320,8 @@
       "scene": {
         "timeOfDay": "day",
         "dressingDensity": "normal"
-      }
+      },
+      "stratumId": "stratum-sky"
     }
   ],
   "connections": [
@@ -959,7 +962,12 @@
             "min": 1,
             "max": 1
           },
-          "condition": "random:0.25",
+          "condition": {
+            "type": "random-probability",
+            "params": {
+              "p": 0.25
+            }
+          },
           "rarity": "uncommon"
         },
         {
@@ -969,7 +977,10 @@
             "min": 1,
             "max": 2
           },
-          "condition": "never",
+          "condition": {
+            "type": "never",
+            "params": {}
+          },
           "rarity": "common"
         },
         {
@@ -979,13 +990,132 @@
             "min": 1,
             "max": 1
           },
-          "condition": "faction:tidewardens:>50",
+          "condition": {
+            "type": "faction-rep",
+            "params": {
+              "id": "tidewardens",
+              "op": ">",
+              "value": 50
+            }
+          },
           "rarity": "rare"
         }
       ],
       "tags": [
         "vault",
         "silt"
+      ]
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "lm-tide-stone",
+      "name": "Tide Stone",
+      "zoneId": "zone-surface-yard",
+      "gridX": 4,
+      "gridY": 4,
+      "tags": [
+        "sacred",
+        "marker"
+      ],
+      "interactionType": "inspect",
+      "description": "A salt-pitted stone marking high water."
+    },
+    {
+      "id": "lm-guild-seal",
+      "name": "Guild Seal",
+      "zoneId": "zone-sky-gantry",
+      "gridX": 20,
+      "gridY": 6,
+      "tags": [
+        "faction"
+      ],
+      "interactionType": "use",
+      "description": "The gantry guild seal, cast in brass."
+    }
+  ],
+  "strata": [
+    {
+      "id": "stratum-under",
+      "name": "Undervaults",
+      "order": -1,
+      "zRange": {
+        "floor": -14,
+        "ceiling": -2
+      },
+      "visibleStrata": [
+        "stratum-surface"
+      ],
+      "tags": [
+        "flooded"
+      ]
+    },
+    {
+      "id": "stratum-surface",
+      "name": "Surface",
+      "order": 0,
+      "zRange": {
+        "floor": -1,
+        "ceiling": 8
+      },
+      "visibleStrata": [
+        "stratum-under",
+        "stratum-sky"
+      ],
+      "tags": [
+        "default"
+      ]
+    },
+    {
+      "id": "stratum-sky",
+      "name": "Gantries",
+      "order": 1,
+      "zRange": {
+        "floor": 38,
+        "ceiling": 50
+      },
+      "visibleStrata": [
+        "stratum-surface"
+      ],
+      "tags": [
+        "exposed"
+      ]
+    }
+  ],
+  "stratumLinks": [
+    {
+      "id": "link-vault-stair",
+      "fromStratumId": "stratum-surface",
+      "toStratumId": "stratum-under",
+      "fromZoneId": "zone-surface-yard",
+      "toZoneId": "zone-under-vault",
+      "bidirectional": true,
+      "linkType": "stairs"
+    },
+    {
+      "id": "link-shaft",
+      "fromStratumId": "stratum-under",
+      "toStratumId": "stratum-sky",
+      "fromZoneId": "zone-under-vault",
+      "toZoneId": "zone-sky-gantry",
+      "bidirectional": false,
+      "linkType": "shaft"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "trans-cargo-lift",
+      "zoneId": "zone-under-vault",
+      "targetZoneId": "zone-sky-gantry",
+      "type": "cargo-lift",
+      "gridX": 12,
+      "gridY": 18,
+      "label": "Undervault → Gantry Lift",
+      "animation": "lift-rise",
+      "durationSeconds": 6,
+      "tags": [
+        "vertical",
+        "slow"
       ]
     }
   ],

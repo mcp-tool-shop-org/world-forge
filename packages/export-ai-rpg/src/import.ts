@@ -44,7 +44,8 @@
  */
 
 import type { WorldProject, ZoneConnection, AuthoringMode, ValidationError } from '@world-forge/schema';
-import { validateProject, isValidMode, SCHEMA_VERSION } from '@world-forge/schema';
+import { validateProject, isValidMode, SCHEMA_VERSION, formatConditionSpec } from '@world-forge/schema';
+import type { LootTable, Landmark } from '@world-forge/schema';
 import type { ContentPack, ExportResult, AssetBindingMap } from './export.js';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
 import type { FidelityEntry, FidelityReport } from './fidelity.js';
@@ -574,7 +575,7 @@ export function importFromContentPack(
     zones,
     connections,
     districts,
-    landmarks: [],
+    landmarks: landmarksFromPack(pack),
 
     factionPresences: pack.factionPresences ?? [],
     pressureHotspots: pack.pressureHotspots ?? [],
@@ -610,7 +611,10 @@ export function importFromContentPack(
     // Zones' hazardRefs (F-9f90a607) are not sufficient coverage — schema
     // rule 77 rejects a ref whose definition is missing from the project.
     hazardDefinitions: pack.hazardDefinitions ?? [],
-    lootTables: pack.lootTables ?? [],
+    lootTables: lootTablesFromPack(pack.lootTables),
+    strata: pack.strata ?? [],
+    stratumLinks: pack.stratumLinks ?? [],
+    transitions: pack.transitions ?? [],
     // F-5f16cf2e: town structures raw pass-through restore.
     buildings: pack.buildings ?? [],
     hubs: pack.hubs ?? [],
@@ -703,4 +707,37 @@ export function importFromContentPack(
   const lossless = fidelityReport.summary.approximated === 0 && fidelityReport.summary.dropped === 0;
 
   return { success: true, project, format: 'content-pack', warnings, lossless, fidelityReport };
+}
+
+function landmarksFromPack(pack: ContentPack): Landmark[] {
+  return (pack.landmarks ?? []).map((l) => ({
+    id: l.id,
+    name: l.name,
+    zoneId: l.zoneId,
+    gridX: l.gridX,
+    gridY: l.gridY,
+    tags: [...(l.tags ?? [])],
+    interactionType: l.interactionType,
+    ...(l.description !== undefined ? { description: l.description } : {}),
+  }));
+}
+
+function lootTablesFromPack(tables: ContentPack['lootTables'] | undefined): LootTable[] {
+  return (tables ?? []).map((table) => ({
+    id: table.id,
+    ...(table.rolls !== undefined ? { rolls: table.rolls } : {}),
+    entries: table.entries.map((entry) => {
+      const decompiled = entry.condition
+        ? formatConditionSpec(entry.condition)
+        : null;
+      return {
+        itemId: entry.itemId,
+        weight: entry.weight,
+        ...(entry.quantity ? { quantity: { min: entry.quantity.min, max: entry.quantity.max } } : {}),
+        ...(typeof decompiled === 'string' && decompiled.length > 0 ? { condition: decompiled } : {}),
+        ...(entry.rarity ? { rarity: entry.rarity } : {}),
+      };
+    }),
+    ...(table.tags ? { tags: [...table.tags] } : {}),
+  }));
 }

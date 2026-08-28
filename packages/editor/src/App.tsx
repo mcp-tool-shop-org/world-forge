@@ -351,6 +351,22 @@ export function App() {
             >
               <button
                 role="menuitem"
+                onClick={() => {
+                  setSaveMenuOpen(false);
+                  if (savingRef.current) return;
+                  savingRef.current = true;
+                  setSaving(true);
+                  void saveProjectFile(project, { markClean, toast: pushToast, saveAs: true }).finally(() => {
+                    savingRef.current = false;
+                    setSaving(false);
+                  });
+                }}
+                style={{ ...buttonBase, display: 'block', width: '100%', border: 'none', borderRadius: 0, textAlign: 'left' }}
+              >
+                Save As…
+              </button>
+              <button
+                role="menuitem"
                 onClick={() => { setSaveMenuOpen(false); openModal('save-template'); }}
                 style={{ ...buttonBase, display: 'block', width: '100%', border: 'none', borderRadius: 0, textAlign: 'left' }}
               >
@@ -507,7 +523,7 @@ export function App() {
 
         {/* Canvas */}
         <div style={{ flex: 1, position: 'relative', minWidth: 0, overflow: 'hidden' }}>
-          <Canvas />
+          <Canvas onSave={handleSave} />
           {project.zones.length === 0 && (
             <div
               data-testid="wf-first-run-welcome"

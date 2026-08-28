@@ -8,7 +8,7 @@ import { useSpeedPanelPins, loadJson } from '../store/speed-panel-store.js';
 import { findOrphanedByZone, findOrphanedEncounters } from '../orphans.js';
 import { nextId, generateZoneId } from '../ids.js';
 import { resetFileInput } from '../file-load.js';
-import { saveProjectFile } from '../save-project.js';
+import { saveProjectFile, clearSavedFileHandle } from '../save-project.js';
 import { duplicateSelected } from '../duplicate.js';
 import type { WorldProject, Zone, MarketNode, PropPlacement } from '@world-forge/schema';
 
@@ -21,6 +21,10 @@ function makeZone(id: string, x = 0, y = 0, w = 4, h = 4): Zone {
 }
 
 describe('F-95295187: saveProjectFile does not markClean on failure', () => {
+  beforeEach(() => {
+    clearSavedFileHandle();
+  });
+
   it('calls markClean only after a successful picker write', async () => {
     const markClean = vi.fn();
     const toast = vi.fn();

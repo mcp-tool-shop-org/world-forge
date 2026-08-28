@@ -25,6 +25,7 @@ export function productionExecuteStores(): ExecuteStores {
     setRightTab: editor.setRightTab,
     setTool: editor.setTool,
     setConnectionStart: editor.setConnectionStart,
+    setPendingConnectionKind: editor.setPendingConnectionKind,
     setViewport: editor.setViewport,
     selection: editor.selection,
     removeSelected: project.removeSelected,

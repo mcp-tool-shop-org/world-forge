@@ -256,6 +256,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`metadata/parallax_count = ${zone.parallaxLayers.length}`);
             lines.push(`metadata/parallax_layers = ${quoted(JSON.stringify(zone.parallaxLayers))}`);
         }
+        emitZoneVisualRuntime(lines, zone, w, h);
         // Entry gate — the runtime reads these to allow/deny party entry on contact.
         const gate = input.zoneGates?.[zone.id];
         if (gate) {
@@ -908,6 +909,50 @@ function emitTileMapLayers(
         }
     }
     return lines;
+}
+
+/** F-d3ef8fd3: native Godot nodes for parallax, light, and gravity. */
+function emitZoneVisualRuntime(
+    lines: string[],
+    zone: GodotZoneResource,
+    w: number,
+    h: number,
+): void {
+    if (zone.parallaxLayers && zone.parallaxLayers.length > 0) {
+        lines.push(`[node name="Parallax" type="ParallaxBackground" parent="${zone.nodeName}"]`);
+        lines.push('');
+        for (const layer of zone.parallaxLayers) {
+            const layerName = `Layer_${sanitizeNodeName(layer.id) || 'layer'}`;
+            const scale = Number.isFinite(layer.scrollFactor) ? layer.scrollFactor : 1;
+            lines.push(`[node name="${layerName}" type="ParallaxLayer" parent="${zone.nodeName}/Parallax"]`);
+            lines.push(`motion_scale = Vector2(${scale}, ${scale})`);
+            lines.push(`metadata/asset_ref = ${quoted(layer.assetRef)}`);
+            lines.push(`metadata/depth = ${layer.depth}`);
+            lines.push('');
+            lines.push(`[node name="Sprite" type="Sprite2D" parent="${zone.nodeName}/Parallax/${layerName}"]`);
+            lines.push(`metadata/asset_ref = ${quoted(layer.assetRef)}`);
+            lines.push('');
+        }
+    }
+
+    const energy = Math.max(0, Math.min(16, zone.light));
+    lines.push(`[node name="Light" type="PointLight2D" parent="${zone.nodeName}"]`);
+    lines.push(`position = Vector2(${w / 2}, ${h / 2})`);
+    lines.push(`energy = ${energy / 5}`);
+    lines.push(`texture_scale = ${Math.max(w, h) / 64}`);
+    lines.push('');
+
+    const needsGravity = (zone.physicsMode && zone.physicsMode !== 'normal') || zone.gravityOverride !== undefined;
+    if (needsGravity) {
+        const g = zone.gravityOverride ?? 980;
+        lines.push(`[node name="Gravity" type="Area2D" parent="${zone.nodeName}"]`);
+        lines.push('gravity_space_override = 3');
+        lines.push(`gravity = ${g}`);
+        if (zone.gravityDirection === 'up') lines.push('gravity_direction = Vector2(0, -1)');
+        else if (zone.gravityDirection === 'none') lines.push('gravity = 0');
+        lines.push(`metadata/physics_mode = ${quoted(zone.physicsMode ?? 'normal')}`);
+        lines.push('');
+    }
 }
 
 interface BuildingShapeSet {

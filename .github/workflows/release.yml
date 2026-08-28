@@ -86,8 +86,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read       # npm publish only; the GitHub Release is created separately
+      contents: write      # attach packed tarballs to the triggering GitHub Release (F-1fdefe62)
       id-token: write      # OIDC: npm trusted publishing + Sigstore provenance
+      attestations: write  # GitHub SLSA attest-build-provenance on packed tarballs (F-1fdefe62)
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -252,3 +253,22 @@ jobs:
         uses: ./.github/actions/publish-if-missing
         with:
           working-directory: packages/editor
+
+      # F-1fdefe62: npm --provenance is Sigstore; GitHub SLSA attestations +
+      # Release notes are a different artifact. Pack the six tarballs, attest
+      # them, and attach names onto the triggering release.
+      - name: Pack tarballs and attach to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist-tarballs
+          for dir in packages/schema packages/export-ai-rpg packages/export-unreal packages/export-godot packages/renderer-2d packages/editor; do
+            (cd "$dir" && npm pack --pack-destination "$GITHUB_WORKSPACE/dist-tarballs")
+          done
+          ls -la dist-tarballs
+          gh release upload "${GITHUB_REF_NAME}" dist-tarballs/*.tgz --clobber
+
+      - name: Attest packed tarballs
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist-tarballs/*.tgz

@@ -105,6 +105,13 @@ export { createEmptyProject, normalizeProjectShape, backfillOmittedRequiredArray
 export type { AuthoringMode } from './authoring-mode.js';
 export { AUTHORING_MODES, isValidMode, DEFAULT_MODE, MODE_GRID_DEFAULTS } from './authoring-mode.js';
 
+export type { FlavorGenre, FlavorTone, FlavorDifficulty } from './flavor.js';
+export {
+  VALID_GENRES, VALID_TONES, VALID_DIFFICULTIES,
+  GENRE_ALIASES, DIFFICULTY_ALIASES,
+  isValidGenre, isValidTone, isValidDifficulty,
+} from './flavor.js';
+
 export type { ValidationError, ValidationResult, ValidateOptions, ClosedUnionSet } from './validate.js';
 export {
   validateProject, stampProjectSchemaVersion,

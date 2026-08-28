@@ -45,11 +45,11 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
 }
 
 describe('SpeedPanel integration', () => {
-  it('zone context produces 8 actions', () => {
+  it('zone context produces 13 actions (9 core + 4 pending-kind connections)', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const { pinned, contextual } = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
     // edit, delete, duplicate, assign-district, place-entity, place-encounter, connect-from, merge-zones, set-elevation
-    expect(pinned.length + contextual.length).toBe(9);
+    expect(pinned.length + contextual.length).toBe(13);
   });
 
   it('empty context produces 4 global actions (2 core + 2 review) — F-bdf856bf removed the 4 non-functional mode-suggested add-*-conn actions', () => {
@@ -190,9 +190,9 @@ describe('macros in filterActions', () => {
     // had no backing implementation — see the 'mode-aware speed panel'
     // describe block below), so they no longer appear here either.
     expect(unsafe.map((a) => a.id).sort()).toEqual([
+      'add-channel-conn', 'add-secret-conn', 'add-trail-conn', 'add-warp-conn',
       'connect-from', 'new-zone', 'place-encounter', 'place-entity', 'set-elevation',
     ]);
-    // The rest are safe (6 core + merge-zones + 2 review)
     expect(safe.length).toBe(9);
   });
 });
@@ -238,19 +238,19 @@ describe('mode-aware speed panel', () => {
   // with a synthetic action list) is unchanged and ready for real
   // mode-suggested actions to be added back once they have real behavior.
 
-  it('no mode currently has any modeSuggested actions (the 4 non-functional add-*-conn actions were removed)', () => {
-    for (const mode of ['dungeon', 'interior', 'ocean', 'space', 'wilderness', 'district', 'world'] as const) {
-      const result = filterActions(SPEED_PANEL_ACTIONS, null, '', [], [], [], [], mode);
-      expect(result.modeSuggested).toHaveLength(0);
-    }
+  it('F-04f58b32: dungeon/interior suggest secret connections', () => {
+    const dungeon = filterActions(SPEED_PANEL_ACTIONS, { type: 'zone', id: 'z1' }, '', [], [], [], [], 'dungeon');
+    expect(dungeon.modeSuggested.map((a) => a.id)).toContain('add-secret-conn');
+    const ocean = filterActions(SPEED_PANEL_ACTIONS, { type: 'zone', id: 'z1' }, '', [], [], [], [], 'ocean');
+    expect(ocean.modeSuggested.map((a) => a.id)).toContain('add-channel-conn');
   });
 
-  it('the removed action ids are gone from the registry entirely (not just unsuggested)', () => {
+  it('the connection-kind action ids are back in the registry', () => {
     const ids = SPEED_PANEL_ACTIONS.map((a) => a.id);
-    expect(ids).not.toContain('add-secret-conn');
-    expect(ids).not.toContain('add-channel-conn');
-    expect(ids).not.toContain('add-warp-conn');
-    expect(ids).not.toContain('add-trail-conn');
+    expect(ids).toContain('add-secret-conn');
+    expect(ids).toContain('add-channel-conn');
+    expect(ids).toContain('add-warp-conn');
+    expect(ids).toContain('add-trail-conn');
   });
 
   it('no mode → modeSuggested empty', () => {
@@ -277,8 +277,7 @@ describe('mode-aware speed panel', () => {
   it('existing filterActions tests: all non-mode actions still work', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const result = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    // Zone context: + place-encounter
-    expect(result.pinned.length + result.contextual.length).toBe(9);
+    expect(result.pinned.length + result.contextual.length).toBe(13);
   });
 
   it('section order: PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL', () => {

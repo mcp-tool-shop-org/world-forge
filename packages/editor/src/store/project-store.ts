@@ -25,9 +25,11 @@ import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { nextId } from '../ids.js';
 import { reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
+import { clearSavedFileHandle } from '../save-project.js';
+import { encodeTileHitId } from '../hit-testing.js';
 
 /** F-d94458a6: name the visible top-bar controls (there is no File menu). */
-export const AUTOSAVE_SAVE_HINT = 'Click Save in the top bar';
+export const AUTOSAVE_SAVE_HINT = 'Click Save in the top bar (Ctrl+S)';
 export const AUTOSAVE_EXPORT_HINT = 'Click Export, then Export Project Bundle';
 
 export function createEmptyProject(mode?: AuthoringMode): WorldProject {
@@ -812,6 +814,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // slot so abandoned project A cannot resurrect after loading B. Failed loads
     // return false above without reaching here.
     clearAutoSave();
+    // F-8680d2f9: a loaded file is not the previous Save handle.
+    clearSavedFileHandle();
     return true;
   },
   newProject: () => {
@@ -820,6 +824,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     useEditorStore.getState().clearHiddenIds();
     // F-9e54f408: New abandons the previous in-memory project; drop its slot.
     clearAutoSave();
+    clearSavedFileHandle();
   },
 
   markClean: () => {
@@ -1188,8 +1193,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   moveSelected: (sel, dx, dy) => {
     const iSet = new Set(sel.items ?? []);
     const bSet = new Set(sel.buildings ?? []);
+    const pSet = new Set(sel.props ?? []);
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
-      + iSet.size + bSet.size;
+      + iSet.size + bSet.size + pSet.size;
     const label = `Move ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
@@ -1228,10 +1234,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           : p.spawnPoints.map((s) => sSet.has(s.id) ? { ...s, gridX: s.gridX + dx, gridY: s.gridY + dy } : s),
         itemPlacements: attached ? shiftItems(attached.itemPlacements, true) : shiftItems(p.itemPlacements, false),
         buildings: attached ? shiftBuildings(attached.buildings, true) : shiftBuildings(p.buildings, false),
-        ...(attached ? {
-          propPlacements: attached.propPlacements,
-          tileLayers: attached.tileLayers,
-        } : {}),
+        propPlacements: attached
+          ? attached.propPlacements
+          : (p.propPlacements ?? []).map((pl) => pSet.has(pl.id)
+            ? { ...pl, gridX: pl.gridX + dx, gridY: pl.gridY + dy }
+            : pl),
+        ...(attached ? { tileLayers: attached.tileLayers } : {}),
       };
     }, label);
   },
@@ -1242,8 +1250,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const bSet = new Set(sel.buildings ?? []);
     const hSet = new Set(sel.hubs ?? []);
     const shSet = new Set(sel.strongholds ?? []);
+    const pSet = new Set(sel.props ?? []);
+    const tSet = new Set(sel.tiles ?? []);
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
-      + iSet.size + mSet.size + stSet.size + bSet.size + hSet.size + shSet.size;
+      + iSet.size + mSet.size + stSet.size + bSet.size + hSet.size + shSet.size + pSet.size + tSet.size;
     const label = `Delete ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
@@ -1284,6 +1294,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         buildings: (p.buildings ?? []).filter((b) => !bSet.has(b.id)),
         hubs: (p.hubs ?? []).filter((h) => !hSet.has(h.id)),
         strongholds: (p.strongholds ?? []).filter((s) => !shSet.has(s.id)),
+        propPlacements: (p.propPlacements ?? []).filter((pl) => !pSet.has(pl.id)),
+        tileLayers: (p.tileLayers ?? []).map((l) => ({
+          ...l,
+          tiles: l.tiles.filter((t) => !tSet.has(encodeTileHitId(l.id, t.gridX, t.gridY))),
+        })),
       };
     }, label);
   },

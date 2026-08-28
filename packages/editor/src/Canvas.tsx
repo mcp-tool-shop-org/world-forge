@@ -14,12 +14,14 @@ import { dispatchHotkey, shouldArmSpacePan, type HotkeyContext } from './hotkeys
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
 import { executeContextMenuAction } from './speed-panel-execute.js';
-import { fallbackTileColor } from './tile-render.js';
+import { fallbackTileColor, elevationDrawOffset, zoneElevationAt } from './tile-render.js';
 import { nextId, generateZoneId } from './ids.js';
 import { pushToast } from './ui/Toast.js';
 import { readCssVar, resolveCssColor } from './ui/css-var.js';
 import { applyPlacementClick } from './canvas-placement.js';
 import { collectTownMarkers } from './town-markers.js';
+import { applyPresetFromSelection, savePresetFromSelection } from './preset-actions.js';
+import { usePresetStore } from './presets/preset-store.js';
 
 export { generateZoneId };
 
@@ -47,7 +49,7 @@ export const LARGE_SELECTION_THRESHOLD = 50;
 const DBL_RIGHT_INTERVAL = 300; // ms between right-clicks for speed panel
 const DBL_RIGHT_RADIUS = 5;     // px proximity for double-right-click
 
-export function Canvas() {
+export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, addLandmark, addItemPlacement, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
   const {
@@ -56,7 +58,7 @@ export function Canvas() {
     selectZone, selectEntity, selectLandmark, selectSpawn, selectEncounter, selectKind, selectConnection,
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
-    connectionStart, setConnectionStart,
+    connectionStart, setConnectionStart, pendingConnectionKind, setPendingConnectionKind,
     viewport, setViewport, setShowSearch, setRightTab,
     openSpeedPanel, showSpeedPanel, closeSpeedPanel,
     hiddenIds, showPerfStats, showElevation, setTool,
@@ -346,7 +348,7 @@ export function Canvas() {
           if (stroke?.erasing && stroke.layerId === layer.id && stroke.cells.has(`${placement.gridX},${placement.gridY}`)) continue;
           totalCount++;
           const dx = placement.gridX * tileSize;
-          const dy = placement.gridY * tileSize;
+          const dy = placement.gridY * tileSize + elevationDrawOffset(zoneElevationAt(project.zones, placement.gridX, placement.gridY));
           if (!inViewport(dx, dy, tileSize, tileSize)) continue;
           visibleCount++;
           drawTileCell(entry.def, entry.tileset, dx, dy);
@@ -359,7 +361,7 @@ export function Canvas() {
         if (entry) {
           for (const c of stroke.cells.values()) {
             const dx = c.gridX * tileSize;
-            const dy = c.gridY * tileSize;
+            const dy = c.gridY * tileSize + elevationDrawOffset(zoneElevationAt(project.zones, c.gridX, c.gridY));
             if (!inViewport(dx, dy, tileSize, tileSize)) continue;
             drawTileCell(entry.def, entry.tileset, dx, dy);
           }
@@ -372,7 +374,7 @@ export function Canvas() {
         ctx.lineWidth = 2 / zoom;
         for (const c of stroke.cells.values()) {
           const dx = c.gridX * tileSize;
-          const dy = c.gridY * tileSize;
+          const dy = c.gridY * tileSize + elevationDrawOffset(zoneElevationAt(project.zones, c.gridX, c.gridY));
           if (!inViewport(dx, dy, tileSize, tileSize)) continue;
           ctx.strokeRect(dx + 1 / zoom, dy + 1 / zoom, tileSize - 2 / zoom, tileSize - 2 / zoom);
         }
@@ -1039,6 +1041,27 @@ export function Canvas() {
       const newSel = useProjectStore.getState().pasteClipboard();
       if (newSel) selectAll(newSel, false);
     },
+    save: onSave,
+    applyPreset: () => {
+      const editor = useEditorStore.getState();
+      const projectStore = useProjectStore.getState();
+      const result = applyPresetFromSelection(project, editor.selection, {
+        regionPresets: usePresetStore.getState().regionPresets,
+        encounterPresets: usePresetStore.getState().encounterPresets,
+        applyRegionPreset: projectStore.applyRegionPreset,
+        createEncounterFromPreset: projectStore.createEncounterFromPreset,
+        selectEncounter: editor.selectEncounter,
+      });
+      pushToast(result.message, result.ok ? 'success' : 'warning', 3000);
+    },
+    savePreset: () => {
+      const editor = useEditorStore.getState();
+      const result = savePresetFromSelection(project, editor.selection, {
+        saveRegionPreset: usePresetStore.getState().saveRegionPreset,
+        saveEncounterPreset: usePresetStore.getState().saveEncounterPreset,
+      });
+      pushToast(result.message, result.ok ? 'success' : 'warning', 3000);
+    },
   };
 
   useEffect(() => {
@@ -1118,7 +1141,7 @@ export function Canvas() {
       gy >= z.gridY && gy < z.gridY + z.gridHeight,
     );
 
-  const visibility = { showEntities, showLandmarks, showSpawns, showConnections, showTown, showItems: true };
+  const visibility = { showEntities, showLandmarks, showSpawns, showConnections, showTown, showItems: true, showProps, showTiles };
 
   // FT-009: Filter hidden objects from hit test results
   const filterHidden = useCallback((hits: import('./hit-testing.js').HitResult[]): import('./hit-testing.js').HitResult[] =>
@@ -1156,7 +1179,7 @@ export function Canvas() {
       return selectedConnection?.from === from && selectedConnection?.to === to;
     }
     if (hit.type === 'zone' || hit.type === 'entity' || hit.type === 'landmark' || hit.type === 'spawn' || hit.type === 'encounter'
-      || hit.type === 'item' || hit.type === 'market' || hit.type === 'station' || hit.type === 'building' || hit.type === 'hub' || hit.type === 'stronghold') {
+      || hit.type === 'item' || hit.type === 'market' || hit.type === 'station' || hit.type === 'building' || hit.type === 'hub' || hit.type === 'stronghold' || hit.type === 'prop' || hit.type === 'tile') {
       return isSel(selection, hit.type, hit.id);
     }
     return false;
@@ -1257,7 +1280,13 @@ export function Canvas() {
       if (zone) {
         if (connectionStart) {
           if (connectionStart !== zone.id) {
-            addConnection({ fromZoneId: connectionStart, toZoneId: zone.id, bidirectional: true, kind: getDefaultConnectionKind(project.mode) });
+            addConnection({
+              fromZoneId: connectionStart,
+              toZoneId: zone.id,
+              bidirectional: true,
+              kind: pendingConnectionKind ?? getDefaultConnectionKind(project.mode),
+            });
+            setPendingConnectionKind(null);
           }
           setConnectionStart(null);
         } else {

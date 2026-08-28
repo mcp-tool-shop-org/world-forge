@@ -75,6 +75,14 @@ export function StrataPanel() {
               </label>
             </div>
           )}
+          <label style={lbl}>Tags (comma-separated)
+            <input style={inp} value={(s.tags ?? []).join(', ')}
+              onChange={(e) => updateStratum(s.id, { tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+          </label>
+          <label style={lbl}>Visible strata (comma ids)
+            <input style={inp} value={(s.visibleStrata ?? []).join(', ')}
+              onChange={(e) => updateStratum(s.id, { visibleStrata: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+          </label>
         </div>
       ))}
       <button style={addBtn} onClick={() => addStratum({ id: `stratum-${Date.now()}`, name: 'Stratum', order: nextOrder, tags: [] })}>+ Add stratum</button>
@@ -105,6 +113,22 @@ export function StrataPanel() {
             <input type="checkbox" checked={l.bidirectional}
               onChange={(e) => updateStratumLink(l.id, { bidirectional: e.target.checked })} /> Bidirectional
           </label>
+          <div style={grid2}>
+            <label style={lbl}>From zone
+              <select style={inp} value={l.fromZoneId ?? ''}
+                onChange={(e) => updateStratumLink(l.id, { fromZoneId: e.target.value || undefined })}>
+                <option value="">None</option>
+                {project.zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+              </select>
+            </label>
+            <label style={lbl}>To zone
+              <select style={inp} value={l.toZoneId ?? ''}
+                onChange={(e) => updateStratumLink(l.id, { toZoneId: e.target.value || undefined })}>
+                <option value="">None</option>
+                {project.zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
       ))}
       <button style={addBtn} disabled={strata.length < 2}

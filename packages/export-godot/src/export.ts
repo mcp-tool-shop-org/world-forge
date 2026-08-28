@@ -31,7 +31,7 @@ import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './
 import { collectDroppedFieldFidelity } from './field-coverage.js';
 import { serializeResource } from './tres-serializer.js';
 import { planAuthoredAssetCopies, type GodotAssetCopy } from './copy-assets.js';
-import { PLAYER_MOVE_SCRIPT, PLAYER_SCRIPT_PATH } from './godot-project.js';
+import { PLAYER_MOVE_SCRIPT, PLAYER_SCRIPT_PATH, WORLD_RUNTIME_SCRIPT, WORLD_RUNTIME_SCRIPT_PATH } from './godot-project.js';
 
 export type { GodotAssetCopy } from './copy-assets.js';
 
@@ -325,6 +325,7 @@ export function exportToGodot(
                 items: itemsResult.items,
             }),
             [PLAYER_SCRIPT_PATH]: PLAYER_MOVE_SCRIPT,
+            [WORLD_RUNTIME_SCRIPT_PATH]: WORLD_RUNTIME_SCRIPT,
         },
         worldSceneTscn,
     };

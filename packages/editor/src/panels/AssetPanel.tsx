@@ -164,6 +164,32 @@ export function AssetPanel() {
                 {project.assetPacks.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
             </label>
+            <label style={labelStyle}>
+              Provenance source
+              <input style={inputStyle} data-testid="wf-asset-provenance-source"
+                value={a.provenance?.source ?? ''}
+                placeholder="hand-drawn, ai-generated, stock…"
+                onChange={(e) => updateAsset(a.id, {
+                  provenance: { ...a.provenance, source: e.target.value || undefined },
+                })} />
+            </label>
+            <label style={labelStyle}>
+              Provenance author
+              <input style={inputStyle} data-testid="wf-asset-provenance-author"
+                value={a.provenance?.author ?? ''}
+                onChange={(e) => updateAsset(a.id, {
+                  provenance: { ...a.provenance, author: e.target.value || undefined },
+                })} />
+            </label>
+            <label style={labelStyle}>
+              Provenance license
+              <input style={inputStyle} data-testid="wf-asset-provenance-license"
+                value={a.provenance?.license ?? ''}
+                placeholder="CC-BY-4.0"
+                onChange={(e) => updateAsset(a.id, {
+                  provenance: { ...a.provenance, license: e.target.value || undefined },
+                })} />
+            </label>
           </div>
         )}
       </div>

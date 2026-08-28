@@ -77,6 +77,10 @@ export function TownStructuresPanel() {
             <input style={inp} value={b.interiorZoneId ?? ''}
               onChange={(e) => updateBuilding(b.id, { interiorZoneId: e.target.value || undefined })} />
           </label>
+          <label style={lbl}>Tags (comma-separated)
+            <input style={inp} value={(b.tags ?? []).join(', ')}
+              onChange={(e) => updateBuilding(b.id, { tags: csv(e.target.value) })} />
+          </label>
         </div>
       ))}
       <button style={addBtn} onClick={() => addBuilding({ id: `building-${Date.now()}`, name: 'Building', buildingType: 'house', gridX: ox, gridY: oy, width: 2, height: 2, zoneId, tags: [] })}>+ Add building</button>
@@ -101,6 +105,10 @@ export function TownStructuresPanel() {
           <label style={lbl}>Connected zone ids (comma-separated)
             <input style={inp} value={h.connectedZoneIds.join(', ')}
               onChange={(e) => updateHub(h.id, { connectedZoneIds: csv(e.target.value) })} />
+          </label>
+          <label style={lbl}>Tags (comma-separated)
+            <input style={inp} value={(h.tags ?? []).join(', ')}
+              onChange={(e) => updateHub(h.id, { tags: csv(e.target.value) })} />
           </label>
         </div>
       ))}
@@ -127,6 +135,10 @@ export function TownStructuresPanel() {
           <label style={lbl}>Garrison entity ids (comma-separated)
             <input style={inp} value={s.garrisonEntityIds.join(', ')}
               onChange={(e) => updateStronghold(s.id, { garrisonEntityIds: csv(e.target.value) })} />
+          </label>
+          <label style={lbl}>Tags (comma-separated)
+            <input style={inp} value={(s.tags ?? []).join(', ')}
+              onChange={(e) => updateStronghold(s.id, { tags: csv(e.target.value) })} />
           </label>
         </div>
       ))}

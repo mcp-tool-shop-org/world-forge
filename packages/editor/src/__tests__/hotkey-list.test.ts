@@ -41,4 +41,9 @@ describe('Keyboard Shortcut Registry (FT-017)', () => {
     expect(list.some((h) => h.label === 'Ctrl+Shift+Z')).toBe(true);
     expect(list.some((h) => h.label === 'Ctrl+Y')).toBe(true);
   });
+
+  it('F-bde2ece7: includes Ctrl+S save', () => {
+    const list = getHotkeyList();
+    expect(list.some((h) => h.label === 'Ctrl+S' && /save/i.test(h.description))).toBe(true);
+  });
 });

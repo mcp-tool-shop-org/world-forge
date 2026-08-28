@@ -15,7 +15,7 @@ import type {
   Stratum, StratumLink,
   HazardDefinition, HazardEffect,
   Tileset, TileLayer, TileDefinition,
-  PropDefinition, PropPlacement,
+  PropDefinition, PropPlacement, SpawnPoint,
 } from '@world-forge/schema';
 import { DEFAULT_MODE, isValidMode, VALID_CONNECTION_KINDS } from '@world-forge/schema';
 import { KNOWN_DROPPED } from './field-coverage.js';
@@ -33,6 +33,7 @@ import type { UnrealPropManifest, UnrealPropActor } from './convert-props.js';
 import type {
   UnrealHazardManifest, UnrealHazardDefinition, UnrealHazardEffect,
 } from './convert-hazards.js';
+import type { UnrealPlayerStart } from './convert-spawn-points.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { unrealAxisToGrid, zToElevationMeters } from './coordinate-transform.js';
 
@@ -331,7 +332,7 @@ function deserializeV1Unchecked(pack: UnrealContentPack): UnrealImportResult | U
     entityPlacements,
     itemPlacements: [],
     encounterAnchors: [],
-    spawnPoints: [],
+    spawnPoints: spawnPointsFromUnreal(pack.Spawns ?? [], tileSizeCm),
     craftingStations: [],
     marketNodes: [],
     transitions,
@@ -734,6 +735,19 @@ function hazardDefinitionsFromUnreal(manifest: UnrealHazardManifest): HazardDefi
 
 function isPhysicsMode(value: string): value is NonNullable<Zone['physicsMode']> {
   return value === 'normal' || value === 'platformer' || value === 'zero-g' || value === 'aquatic';
+}
+
+function spawnPointsFromUnreal(spawns: UnrealPlayerStart[], tileSizeCm: number): SpawnPoint[] {
+  return spawns.map((s) => {
+    const grid = unrealAxisToGrid(s.LocationCm.X, s.LocationCm.Y, tileSizeCm);
+    return {
+      id: s.Id,
+      zoneId: s.ZoneId,
+      gridX: grid.gridX,
+      gridY: grid.gridY,
+      isDefault: s.IsDefault,
+    };
+  });
 }
 
 function isInteractableType(value: unknown): value is Interactable['type'] {

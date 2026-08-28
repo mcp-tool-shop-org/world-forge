@@ -80,7 +80,7 @@ const FIELD_COVERAGE: { readonly [K in keyof WorldProject]-?: FieldStatus } = {
   entityPlacements: { kind: 'covered' },
   itemPlacements: { kind: 'dropped', reason: 'Item spawning handled by UE5 loot tables in this export profile.' },
   encounterAnchors: { kind: 'dropped', reason: 'Encounters covered by Blueprint spawners in this export profile.' },
-  spawnPoints: { kind: 'dropped', reason: 'Player spawn handled separately by UE5 PlayerStart actors.' },
+  spawnPoints: { kind: 'covered' },
   craftingStations: { kind: 'dropped', reason: 'Gameplay-only data; driven by UE5 subsystem.' },
   marketNodes: { kind: 'dropped', reason: 'Gameplay-only data; driven by UE5 subsystem.' },
 

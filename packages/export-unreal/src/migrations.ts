@@ -17,6 +17,7 @@
  * Migration edges:
  *   `1.0.0 → 1.1.0` — no-op; optional `Signature` (UE-FT-007).
  *   `1.1.0 → 1.2.0` — no-op; additive Strata / Tiles / Props / Hazards arrays.
+ *   `1.2.0 → 1.3.0` — no-op; additive Spawns[] PlayerStart locations.
  */
 
 import type { UnrealPackMeta } from './export.js';
@@ -86,6 +87,11 @@ export const MIGRATIONS: ReadonlyArray<Migration> = [
     from: '1.1.0',
     to: '1.2.0',
     migrate: (meta) => ({ ...meta, FormatVersion: '1.2.0' }),
+  },
+  {
+    from: '1.2.0',
+    to: '1.3.0',
+    migrate: (meta) => ({ ...meta, FormatVersion: '1.3.0' }),
   },
 ];
 

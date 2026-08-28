@@ -101,7 +101,7 @@ describe('F-aa55b8da: crash-screen copy fallback', () => {
 
 describe('F-d94458a6: auto-save copy names visible controls', () => {
   it('oversize / quota surfaces agree on Save vs Export wording', () => {
-    expect(AUTOSAVE_SAVE_HINT).toBe('Click Save in the top bar');
+    expect(AUTOSAVE_SAVE_HINT).toBe('Click Save in the top bar (Ctrl+S)');
     expect(AUTOSAVE_EXPORT_HINT).toBe('Click Export, then Export Project Bundle');
     const store = src('../store/project-store.ts');
     const app = src('../App.tsx');

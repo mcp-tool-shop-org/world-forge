@@ -120,6 +120,10 @@ export const SIM_AFFECTING_KEYS = [
   'buildings',
   'hubs',
   'strongholds',
+  'landmarks',
+  'strata',
+  'stratumLinks',
+  'transitions',
 ] as const;
 
 /**

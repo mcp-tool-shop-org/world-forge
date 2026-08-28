@@ -261,6 +261,13 @@ describe('ZoneOverlayRenderer', () => {
       expect(strokeCalls.length).toBe(3);
     });
 
+    it('F-7cc1a9b2: draws a skyline polyline when skylineRef is set', () => {
+      renderer.update([zoneAt('plain', {})], districts);
+      const without = renderer.container.children.length;
+      renderer.update([zoneAt('sky', { skylineRef: 'asset-skyline' } as Partial<Zone>)], districts);
+      expect(renderer.container.children.length).toBe(without + 1);
+    });
+
     it('setShowElevation(true) is the default', () => {
       // Fresh instance should already render cues.
       const fresh = new ZoneOverlayRenderer({ tileSize: 32 });

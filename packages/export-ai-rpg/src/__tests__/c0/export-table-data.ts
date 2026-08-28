@@ -116,8 +116,8 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   // list, which is the shape of progress here.
   // buildings/hubs/strongholds moved OUT of DROPPED_CONTAINERS by swarm
   // wave-32 (F-5f16cf2e) — see BUILDING_ROWS/HUB_ROWS/STRONGHOLD_ROWS below.
-  strata: 'The v4.5 vertical-layer model has no pack field. Zero hits for `stratum`/`strata` anywhere in the engine repo.',
-  stratumLinks: 'Cross-stratum connectors have no pack field.',
+  // strata/stratumLinks/transitions moved OUT of DROPPED_CONTAINERS by
+  // leftover F-5dcb8b8a — see STRATA_ROWS / STRATUM_LINK_ROWS / TRANSITION_ROWS.
   // hazardDefinitions moved OUT of DROPPED_CONTAINERS by C3/P3 — see
   // HAZARD_DEFINITION_ROWS below. Kept as a comment rather than deleted so the
   // diff shows a domain LEAVING this list, which is the shape of progress here.
@@ -130,7 +130,6 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   // see LOOT_TABLE_ROWS below. Kept as a comment for the same reason
   // hazardDefinitions' entry was: the diff should show a domain LEAVING this
   // list, which is the shape of progress here.
-  transitions: 'Elevator / warp / lift transitions have no pack field.',
 };
 
 /**
@@ -219,7 +218,6 @@ const LOOT_TABLE_ROWS: ExportRow[] = (
     ['entries[].weight', 'Relative weight for the weighted pick.'],
     ['entries[].quantity.min', 'Quantity range floor.'],
     ['entries[].quantity.max', 'Quantity range ceiling.'],
-    ['entries[].condition', 'Raw SpawnCondition-grammar string, DELIBERATELY UNCOMPILED — see the block comment above for why this raw pass-through does not run the string through parseSpawnCondition yet.'],
     ['entries[].rarity', 'Optional per-entry rarity tier for UI display.'],
     ['tags[]', 'Free tags for filtering/discovery.'],
   ] as const
@@ -382,6 +380,63 @@ const STRONGHOLD_ROWS: ExportRow[] = (
   note: `CLOSED BY swarm wave-32 (F-5f16cf2e). Raw pass-through. ${note}`,
 }));
 
+const STRATA_ROWS: ExportRow[] = (
+  [
+    ['id', 'Stratum identity.'],
+    ['name', 'Player-facing layer name.'],
+    ['order', 'Signed vertical order (surface = 0).'],
+    ['zRange.floor', 'Optional metric span floor.'],
+    ['zRange.ceiling', 'Optional metric span ceiling.'],
+    ['visibleStrata[]', 'PVS neighbour stratum ids.'],
+    ['tags[]', 'Free tags.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `strata[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `strata[].${field}`,
+  note: `CLOSED BY leftover F-5dcb8b8a. Raw pass-through. ${note}`,
+}));
+
+const STRATUM_LINK_ROWS: ExportRow[] = (
+  [
+    ['id', 'Link identity.'],
+    ['fromStratumId', 'Source stratum.'],
+    ['toStratumId', 'Target stratum.'],
+    ['fromZoneId', 'Optional source-zone anchor.'],
+    ['toZoneId', 'Optional target-zone anchor.'],
+    ['bidirectional', 'Whether the link is two-way.'],
+    ['linkType', 'stairs / ladder / elevator / shaft / ramp.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `stratumLinks[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `stratumLinks[].${field}`,
+  note: `CLOSED BY leftover F-5dcb8b8a. Raw pass-through. ${note}`,
+}));
+
+const TRANSITION_ROWS: ExportRow[] = (
+  [
+    ['id', 'Transition identity.'],
+    ['zoneId', 'Source zone.'],
+    ['targetZoneId', 'Destination zone.'],
+    ['type', 'elevator / warp / transporter / cargo-lift / stairwell.'],
+    ['gridX', 'Optional grid anchor X.'],
+    ['gridY', 'Optional grid anchor Y.'],
+    ['label', 'Display label.'],
+    ['animation', 'Optional animation key.'],
+    ['durationSeconds', 'Travel duration hint.'],
+    ['tags[]', 'Free tags.'],
+  ] as const
+).map(([field, note]) => ({
+  path: `transitions[].${field}`,
+  class: 'carried-lossless' as const,
+  channel: 'contentPack' as const,
+  packPath: `transitions[].${field}`,
+  note: `CLOSED BY leftover F-5dcb8b8a. Raw pass-through. ${note}`,
+}));
+
 export const EXPLICIT_ROWS: ExportRow[] = [
   ...HAZARD_DEFINITION_ROWS,
   ...LOOT_TABLE_ROWS,
@@ -392,6 +447,17 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   ...BUILDING_ROWS,
   ...HUB_ROWS,
   ...STRONGHOLD_ROWS,
+  ...STRATA_ROWS,
+  ...STRATUM_LINK_ROWS,
+  ...TRANSITION_ROWS,
+  {
+    path: 'lootTables[].entries[].condition',
+    class: 'carried-approximated',
+    channel: 'contentPack',
+    packPath: 'lootTables[].entries[].condition.type',
+    transform: 'compiled-through-parseSpawnCondition',
+    note: 'CLOSED BY leftover F-ef6779cc. Grammar string compiles through parseSpawnCondition like zone exits / entryGate.',
+  },
   // ── Project identity ────────────────────────────────────────────────
   { path: 'id', class: 'carried-lossless', channel: 'manifest', packPath: 'id', note: 'Also lands on packMeta.id, buildCatalog.packId, and manifest.contentPacks[].' },
   { path: 'name', class: 'carried-lossless', channel: 'manifest', packPath: 'title', transform: 'renamed-key', note: 'manifest.title and packMeta.name both receive it verbatim.' },
@@ -454,7 +520,7 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'zones[].elevation', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevation' }, note: 'The 2.5D vertical field the charter\'s Pillar 2 names first. Zero hits for `elevation` in the engine repo.' },
   { path: 'zones[].elevationRange.floor', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
   { path: 'zones[].elevationRange.ceiling', class: 'no-channel', absence: { kind: 'key-absent', key: 'elevationRange' }, note: 'Multi-level vertical span: no channel.' },
-  { path: 'zones[].stratumId', class: 'no-channel', absence: { kind: 'key-absent', key: 'stratumId' }, note: 'The zone→stratum membership link, dropped along with the strata themselves.' },
+  { path: 'zones[].stratumId', class: 'carried-lossless', channel: 'contentPack', packPath: 'zones[].stratumId', note: 'CLOSED BY leftover F-5dcb8b8a. Zone→stratum membership copies onto ExportedZone.stratumId.' },
   // ⚠ FLIPPED BY C3/P3. C0: "The TYPED hazard references. The legacy free-text
   // `hazards` list crosses instead, so a zone that authored only typed hazards
   // exports as hazard-free." Both cross now, and only the typed ones mean anything
@@ -507,15 +573,15 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'districts[].economyProfile.scarcityDefaults{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'districts[].economyProfile.scarcityDefaults{}', note: 'CLOSED BY swarm wave-32 (F-229409a8). Full authored map copies; recognized SupplyCategory keys also land on economyProfile.baseline for economy-core.' },
 
   // ── Landmarks (partially carried, via the binding map only) ─────────
-  { path: 'landmarks[].id', class: 'carried-lossless', channel: 'assetBindings', packPath: 'landmarks{}', transform: 'id-as-binding-map-key', note: 'A landmark id survives ONLY as a key in the asset binding map, and only when the landmark has an iconId. A landmark with no icon vanishes entirely.' },
-  { path: 'landmarks[].iconId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'landmarks{}.iconId', note: 'Same channel caveat: not part of the ContentPack.' },
-  { path: 'landmarks[].name', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'Points of interest do not reach the engine as content.' },
-  { path: 'landmarks[].description', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'See name.' },
-  { path: 'landmarks[].zoneId', class: 'no-channel', absence: { kind: 'key-absent', key: 'zoneId', scope: [{ channel: 'assetBindings', packPath: 'landmarks{}' }] }, note: 'No landmark→zone link crosses. Scoped to the landmark\'s only surviving image (the binding map): `zoneId` DOES appear globally, on the raw-pass-through encounterAnchors and pressureHotspots, so a global proof would be false here while the claim is true.' },
-  { path: 'landmarks[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX', scope: [{ channel: 'assetBindings', packPath: 'landmarks{}' }] }, note: 'No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridX.' },
-  { path: 'landmarks[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY', scope: [{ channel: 'assetBindings', packPath: 'landmarks{}' }] }, note: 'No landmark coordinates cross. Scoped because spawnPoints / itemPlacements / buildings now carry gridY.' },
-  { path: 'landmarks[].tags[]', class: 'no-channel', absence: { kind: 'value-absent' }, note: 'Landmark tags do not cross.' },
-  { path: 'landmarks[].interactionType', class: 'no-channel', absence: { kind: 'key-absent', key: 'interactionType' }, note: 'Landmark interaction type does not cross.' },
+  { path: 'landmarks[].id', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].id', note: 'CLOSED BY leftover F-3c90bcc5. First-class ContentPack.landmarks channel.' },
+  { path: 'landmarks[].iconId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'landmarks{}.iconId', note: 'iconId still lives in the asset binding map when present.' },
+  { path: 'landmarks[].name', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].name', note: 'CLOSED BY leftover F-3c90bcc5.' },
+  { path: 'landmarks[].description', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].description', note: 'CLOSED BY leftover F-3c90bcc5.' },
+  { path: 'landmarks[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].zoneId', note: 'CLOSED BY leftover F-3c90bcc5.' },
+  { path: 'landmarks[].gridX', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].gridX', note: 'CLOSED BY leftover F-3c90bcc5.' },
+  { path: 'landmarks[].gridY', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].gridY', note: 'CLOSED BY leftover F-3c90bcc5.' },
+  { path: 'landmarks[].tags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].tags[]', note: 'CLOSED BY leftover F-3c90bcc5.' },
+  { path: 'landmarks[].interactionType', class: 'carried-lossless', channel: 'contentPack', packPath: 'landmarks[].interactionType', note: 'CLOSED BY leftover F-3c90bcc5.' },
 
   // ── Faction presence + pressure (raw pass-through) ──────────────────
   { path: 'factionPresences[].factionId', class: 'carried-lossless', channel: 'contentPack', packPath: 'factionPresences[].factionId', note: 'Raw pass-through: export.ts:360 copies `project.factionPresences` unchanged into a pack key the ENGINE type does not declare.' },

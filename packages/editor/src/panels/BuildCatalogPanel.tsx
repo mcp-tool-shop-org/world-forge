@@ -162,6 +162,15 @@ function ArchetypeSection({ cat, trees, onAdd, onUpdate, onRemove }: {
                 <input style={inputStyle} value={(a.grantedVerbs ?? []).join(', ')} placeholder="e.g. strike, block"
                   onChange={(e) => onUpdate(a.id, { grantedVerbs: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
               </label>
+              <RecordNumberField label="Stat Priorities" testId="wf-arch-stat-priorities"
+                value={a.statPriorities} placeholder="e.g. vigor:2, instinct:1"
+                onChange={(statPriorities) => onUpdate(a.id, { statPriorities })} />
+              <RecordNumberField label="Resource Overrides" testId="wf-arch-resource-overrides"
+                value={a.resourceOverrides ?? {}} placeholder="e.g. hp:100, mana:50"
+                onChange={(resourceOverrides) => onUpdate(a.id, { resourceOverrides })} />
+              <CsvField label="Starting Inventory" testId="wf-arch-starting-inventory"
+                value={a.startingInventory ?? []} placeholder="item ids"
+                onChange={(startingInventory) => onUpdate(a.id, { startingInventory })} />
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
                 <button onClick={() => { onRemove(a.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
@@ -212,6 +221,15 @@ function BackgroundSection({ cat, onAdd, onUpdate, onRemove }: {
                 <input style={inputStyle} value={b.startingTags.join(', ')} placeholder="e.g. traveler, noble"
                   onChange={(e) => onUpdate(b.id, { startingTags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
               </label>
+              <RecordNumberField label="Stat Modifiers" testId="wf-bg-stat-modifiers"
+                value={b.statModifiers} placeholder="e.g. instinct:1"
+                onChange={(statModifiers) => onUpdate(b.id, { statModifiers })} />
+              <RecordNumberField label="Faction Modifiers" testId="wf-bg-faction-modifiers"
+                value={b.factionModifiers ?? {}} placeholder="e.g. harbour:5"
+                onChange={(factionModifiers) => onUpdate(b.id, { factionModifiers })} />
+              <CsvField label="Starting Inventory" testId="wf-bg-starting-inventory"
+                value={b.startingInventory ?? []} placeholder="item ids"
+                onChange={(startingInventory) => onUpdate(b.id, { startingInventory })} />
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
                 <button onClick={() => { onRemove(b.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
@@ -329,6 +347,16 @@ function DisciplineSection({ cat, onAdd, onUpdate, onRemove }: {
                 <input style={inputStyle} value={(d.requiredTags ?? []).join(', ')} placeholder="e.g. learned, arcane"
                   onChange={(e) => onUpdate(d.id, { requiredTags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
               </label>
+              <div data-testid="wf-disc-passive">
+                <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Passive</div>
+                <EffectListEditor effects={d.passive ? [d.passive] : []}
+                  onChange={(effects) => onUpdate(d.id, { passive: effects[0] ?? { type: 'grant-tag' } })} />
+              </div>
+              <div data-testid="wf-disc-drawback">
+                <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Drawback</div>
+                <EffectListEditor effects={d.drawback ? [d.drawback] : []}
+                  onChange={(effects) => onUpdate(d.id, { drawback: effects[0] ?? { type: 'stat-modifier' } })} />
+              </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button onClick={() => setEditing(null)} style={smallBtnStyle}>Done</button>
                 <button onClick={() => { onRemove(d.id); setEditing(null); }} style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
@@ -425,5 +453,44 @@ function EffectListEditor({ effects, onChange }: {
       <button onClick={() => onChange([...effects, { type: 'stat-modifier', stat: '', amount: 0 }])}
         style={{ ...addBtnStyle, fontSize: 10 }}>+ effect</button>
     </div>
+  );
+}
+
+function parseRecordNumbers(text: string): Record<string, number> {
+  const next: Record<string, number> = {};
+  for (const part of text.split(',')) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const colon = trimmed.lastIndexOf(':');
+    if (colon <= 0) continue;
+    const key = trimmed.slice(0, colon).trim();
+    const n = Number(trimmed.slice(colon + 1).trim());
+    if (key && Number.isFinite(n)) next[key] = n;
+  }
+  return next;
+}
+
+function RecordNumberField({ label, value, placeholder, testId, onChange }: {
+  label: string; value: Record<string, number>; placeholder: string; testId: string;
+  onChange: (next: Record<string, number>) => void;
+}) {
+  const text = Object.entries(value).map(([k, v]) => `${k}:${v}`).join(', ');
+  return (
+    <label style={labelStyle}>{label}
+      <input style={inputStyle} data-testid={testId} value={text} placeholder={placeholder}
+        onChange={(e) => onChange(parseRecordNumbers(e.target.value))} />
+      <div style={hintStyle}>Comma-separated key:number pairs.</div>
+    </label>
+  );
+}
+
+function CsvField({ label, value, placeholder, testId, onChange }: {
+  label: string; value: string[]; placeholder: string; testId: string; onChange: (next: string[]) => void;
+}) {
+  return (
+    <label style={labelStyle}>{label}
+      <input style={inputStyle} data-testid={testId} value={value.join(', ')} placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} />
+    </label>
   );
 }

@@ -8,6 +8,7 @@
 
 /** Stamped path of the pawn move script written next to world.tscn. */
 export const PLAYER_SCRIPT_PATH = 'res://scripts/player.gd';
+export const WORLD_RUNTIME_SCRIPT_PATH = 'res://scripts/world_runtime.gd';
 
 /**
  * Minimal CharacterBody2D controller. Bound on the exported Player node so
@@ -22,6 +23,28 @@ func _physics_process(_delta: float) -> void:
 	var direction := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	velocity = direction * SPEED
 	move_and_slide()
+`;
+
+/**
+ * F-54831eeb: shipped Area2D consumer for hazard / gate metadata.
+ * Attach to hazard Area2Ds (or autoload). Reads metadata on body_entered.
+ */
+export const WORLD_RUNTIME_SCRIPT = `extends Node
+
+func _ready() -> void:
+	for child in get_tree().get_nodes_in_group("wf_hazards"):
+		if child is Area2D and not child.body_entered.is_connected(_on_hazard_entered):
+			child.body_entered.connect(_on_hazard_entered.bind(child))
+
+func _on_hazard_entered(body: Node, area: Area2D) -> void:
+	if body == null:
+		return
+	var effects := str(area.get_meta("effects", ""))
+	var gate := str(area.get_meta("entry_gate", ""))
+	if effects != "":
+		print("[world_runtime] hazard ", area.name, " effects=", effects)
+	if gate != "":
+		print("[world_runtime] gate ", area.name, " conditions=", gate)
 `;
 
 /** Godot Key enum values used by the generated InputMap. */

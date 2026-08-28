@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { EmptyState, useFocusHighlight } from './shared.js';
 import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, buttonRemove as xBtnStyle, cardItem as itemStyle, hintText as hintStyle } from '../ui/styles.js';
-import type { DialogueNode, DialogueChoice } from '@world-forge/schema';
+import type { DialogueNode, DialogueChoice, DialogueEffect } from '@world-forge/schema';
 
 const STARTER_DIALOGUE = {
   id: 'keeper-greeting',
@@ -170,6 +170,24 @@ export function DialoguePanel() {
   );
 }
 
+function ChoiceEffectsEditor({ effects, onChange }: { effects: DialogueEffect[]; onChange: (next: DialogueEffect[]) => void }) {
+  return (
+    <div style={{ marginTop: 4 }}>
+      {effects.map((eff, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 4, marginBottom: 4 }}>
+          <input style={inputStyle} value={eff.type} placeholder="effect type"
+            onChange={(e) => onChange(effects.map((x, xi) => xi === i ? { ...x, type: e.target.value } : x))} />
+          <input style={inputStyle} value={String(eff.params?.id ?? '')} placeholder="param id"
+            onChange={(e) => onChange(effects.map((x, xi) => xi === i ? { ...x, params: { ...x.params, id: e.target.value } } : x))} />
+          <button type="button" onClick={() => onChange(effects.filter((_, xi) => xi !== i))}>×</button>
+        </div>
+      ))}
+      <button type="button" data-testid="wf-add-dialogue-effect" style={{ ...addBtnStyle, fontSize: 10 }}
+        onClick={() => onChange([...effects, { type: 'grant-tag', params: { id: '' } }])}>+ effect</button>
+    </div>
+  );
+}
+
 function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate, onRemove, onDone }: {
   node: DialogueNode; dialogueId: string; allNodeIds: string[]; brokenRefs: Set<string>;
   onUpdate: (dialogueId: string, nodeId: string, updates: Partial<DialogueNode>) => void;
@@ -225,6 +243,25 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
           {choice.nextNodeId && brokenRefs.has(choice.nextNodeId) && (
             <div style={{ fontSize: 10, color: 'var(--wf-danger-text)', marginTop: 2 }}>Broken reference!</div>
           )}
+          <label style={{ ...labelStyle, marginTop: 4 }}>Condition type
+            <input style={inputStyle} data-testid="wf-choice-condition"
+              value={choice.condition?.type ?? ''}
+              placeholder="e.g. has-item"
+              onChange={(e) => {
+                const type = e.target.value;
+                const choices = (node.choices ?? []).map((c, idx) => idx === i
+                  ? { ...c, condition: type ? { type, params: c.condition?.params ?? {} } : undefined }
+                  : c);
+                update({ choices });
+              }} />
+          </label>
+          <ChoiceEffectsEditor
+            effects={choice.effects ?? []}
+            onChange={(effects) => {
+              const choices = (node.choices ?? []).map((c, idx) => idx === i ? { ...c, effects } : c);
+              update({ choices });
+            }}
+          />
           <button onClick={() => update({ choices: (node.choices ?? []).filter((_, idx) => idx !== i) })}
             style={{ ...xBtnStyle, fontSize: 10, marginTop: 2 }}>remove</button>
         </div>
@@ -233,6 +270,12 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
         const choices = [...(node.choices ?? []), { id: `choice-${Date.now()}`, text: '', nextNodeId: '' }];
         update({ choices });
       }} style={{ ...addBtnStyle, fontSize: 10 }}>+ choice</button>
+
+      <div style={{ ...sectionTitle, marginTop: 10 }}>Node effects</div>
+      <ChoiceEffectsEditor
+        effects={node.effects ?? []}
+        onChange={(effects) => update({ effects })}
+      />
 
       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
         <button onClick={onDone} style={smallBtnStyle}>Done</button>

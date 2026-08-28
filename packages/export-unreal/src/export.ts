@@ -21,6 +21,7 @@ import { convertStrata, type UnrealStrataManifest } from './convert-strata.js';
 import { convertTileLayers, type UnrealTileManifest } from './convert-tile-layers.js';
 import { convertProps, type UnrealPropManifest } from './convert-props.js';
 import { convertHazards, type UnrealHazardManifest } from './convert-hazards.js';
+import { convertSpawnPoints, type UnrealPlayerStart } from './convert-spawn-points.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { DEFAULT_TILE_SIZE_CM } from './coordinate-transform.js';
 import { collectDroppedFieldFidelity } from './field-coverage.js';
@@ -67,8 +68,9 @@ export interface UnrealPackMeta {
  *
  * v1.0.0 → v1.1.0 (UE-FT-007): optional `Signature` Meta field added.
  * v1.1.0 → v1.2.0: additive pack arrays for strata, tiles, props, hazards.
+ * v1.2.0 → v1.3.0: additive Spawns[] PlayerStart locations (F-dd8da467).
  */
-export const UNREAL_PACK_FORMAT_VERSION = '1.2.0';
+export const UNREAL_PACK_FORMAT_VERSION = '1.3.0';
 
 export interface UnrealContentPack {
   Meta: UnrealPackMeta;
@@ -89,6 +91,8 @@ export interface UnrealContentPack {
   Props: UnrealPropManifest;
   /** F-c1f4acbd: typed hazard definitions + zone-covering volume actors. */
   Hazards: UnrealHazardManifest;
+  /** F-dd8da467: PlayerStart-shaped spawn locations (cm, Z-up). Optional on pre-1.3 packs. */
+  Spawns?: UnrealPlayerStart[];
 }
 
 export interface UnrealExportOptions {
@@ -156,6 +160,7 @@ export function exportToUnreal(
   let tilesResult: ReturnType<typeof convertTileLayers>;
   let propsResult: ReturnType<typeof convertProps>;
   let hazardsResult: ReturnType<typeof convertHazards>;
+  let spawnsResult: ReturnType<typeof convertSpawnPoints>;
   try {
     zonesResult = convertZones(project, tileSizeCm);
     districtsResult = convertDistricts(project);
@@ -168,6 +173,7 @@ export function exportToUnreal(
     tilesResult = convertTileLayers(project, tileSizeCm);
     propsResult = convertProps(project, tileSizeCm);
     hazardsResult = convertHazards(project, tileSizeCm);
+    spawnsResult = convertSpawnPoints(project, tileSizeCm);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
@@ -192,6 +198,7 @@ export function exportToUnreal(
   fidelityEntries.push(...tilesResult.fidelity);
   fidelityEntries.push(...propsResult.fidelity);
   fidelityEntries.push(...hazardsResult.fidelity);
+  fidelityEntries.push(...spawnsResult.fidelity);
   // F-e2908aac: previously NO known-dropped field (24 of them before this v4.5
   // wave, 30 after) ever produced a fidelity entry, so the summary could claim
   // 100% lossless while dozens of authored fields silently vanished. This
@@ -231,6 +238,7 @@ export function exportToUnreal(
     Tiles: tilesResult.manifest,
     Props: propsResult.manifest,
     Hazards: hazardsResult.manifest,
+    Spawns: spawnsResult.spawns,
   };
 
   // UE-B-003: surface dropped-entity count on the fidelity summary so callers

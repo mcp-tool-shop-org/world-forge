@@ -46,6 +46,8 @@ Options:
   --verbose                 Show detailed export diagnostics on every path
                             (success, --validate-only, --dry-run, and failure;
                             includes err.stack on failure)
+  --strict                  Exit 1 when warnings.length > 0 or fidelity has
+                            dropped/approximated entries (CI-friendly)
   --help                    Show this help
 
 Produces (under --out):
@@ -61,7 +63,7 @@ Produces (under --out):
 (so \`world-forge-export --validate-only project.json\` is accepted).
 Unknown options (any token starting with '-' that is not listed above)
 are errors: the CLI prints "Error: unknown option '<flag>'. See --help."
-and exits 1. This tool has no --strict or --pretty flag.
+and exits 1. This tool has no --pretty flag.
 
 Exit codes:
   0  success (or --validate-only / --dry-run passed)
@@ -74,6 +76,7 @@ const FLAGS_NO_VALUE = new Set([
   '--validate-only',
   '--verbose',
   '--dry-run',
+  '--strict',
   '--no-emit-schema-version',
   '--emit-schema-version',
 ]);
@@ -185,6 +188,17 @@ function printVerboseSuccess(
   console.log(`  Encounter Anchors: ${exportResult.contentPack.encounterAnchors.length}`);
   console.log(`  Faction Presences: ${exportResult.contentPack.factionPresences.length}`);
   console.log(`  Pressure Hotspots: ${exportResult.contentPack.pressureHotspots.length}`);
+  console.log(`  Landmarks: ${exportResult.contentPack.landmarks.length}`);
+  console.log(`  Loot Tables: ${exportResult.contentPack.lootTables.length}`);
+  console.log(`  Crafting Stations: ${exportResult.contentPack.craftingStations.length}`);
+  console.log(`  Market Nodes: ${exportResult.contentPack.marketNodes.length}`);
+  console.log(`  Buildings: ${exportResult.contentPack.buildings.length}`);
+  console.log(`  Hubs: ${exportResult.contentPack.hubs.length}`);
+  console.log(`  Strongholds: ${exportResult.contentPack.strongholds.length}`);
+  console.log(`  Strata: ${exportResult.contentPack.strata.length}`);
+  console.log(`  Stratum Links: ${exportResult.contentPack.stratumLinks.length}`);
+  console.log(`  Transitions: ${exportResult.contentPack.transitions.length}`);
+  console.log(`  Spawn Points: ${exportResult.contentPack.spawnPoints.length}`);
   console.log(`  Player Template: ${exportResult.contentPack.playerTemplate ? 'yes' : 'no'}`);
   console.log(`  Build Catalog: ${exportResult.contentPack.buildCatalog ? 'yes' : 'no'}`);
   console.log(`  Fidelity entries: ${exportResult.fidelity.entries.length}`);
@@ -386,6 +400,7 @@ async function main(): Promise<void> {
   const validateOnly = present.has('--validate-only');
   const verbose = present.has('--verbose');
   const dryRun = present.has('--dry-run');
+  const strict = present.has('--strict');
   const hasOut = present.has('--out');
   const hasImport = present.has('--import');
   const hasFromPack = present.has('--from-pack');
@@ -511,7 +526,7 @@ async function main(): Promise<void> {
     console.log('Validation passed.');
     printWarningsAndFidelity(exportResult);
     if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);
-    process.exit(0);
+    exitAfterExport(exportResult, strict);
   }
 
   // AIR-FT-005: --dry-run — report sizes, never touch disk
@@ -525,6 +540,12 @@ async function main(): Promise<void> {
     console.log(`  Districts: ${exportResult.contentPack.districts.length}`);
     console.log(`  Items: ${exportResult.contentPack.items.length}`);
     console.log(`  Dialogues: ${exportResult.contentPack.dialogues.length}`);
+    console.log(`  Landmarks: ${exportResult.contentPack.landmarks.length}`);
+    console.log(`  Loot Tables: ${exportResult.contentPack.lootTables.length}`);
+    console.log(`  Buildings: ${exportResult.contentPack.buildings.length}`);
+    console.log(`  Strata: ${exportResult.contentPack.strata.length}`);
+    console.log(`  Transitions: ${exportResult.contentPack.transitions.length}`);
+    console.log(`  Spawn Points: ${exportResult.contentPack.spawnPoints.length}`);
     for (const f of files) {
       const n = Buffer.byteLength(f.json, 'utf-8');
       totalBytes += n;
@@ -533,7 +554,7 @@ async function main(): Promise<void> {
     console.log(`  Total:             ${totalBytes} bytes`);
     printWarningsAndFidelity(exportResult);
     if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);
-    process.exit(0);
+    exitAfterExport(exportResult, strict);
   }
 
   // Write output files
@@ -560,6 +581,19 @@ async function main(): Promise<void> {
   if (verbose) {
     printVerboseSuccess(exportResult, profile, emitSchemaVersion);
   }
+  exitAfterExport(exportResult, strict);
+}
+
+function exitAfterExport(exportResult: ExportResult, strict: boolean): void {
+  if (!strict) process.exit(0);
+  const dropped = exportResult.fidelity.entries.filter((e) => e.level === 'dropped' || e.level === 'approximated');
+  if (exportResult.warnings.length > 0 || dropped.length > 0) {
+    console.error(
+      `--strict: ${exportResult.warnings.length} warning(s), ${dropped.length} dropped/approximated fidelity entr${dropped.length === 1 ? 'y' : 'ies'}.`,
+    );
+    process.exit(1);
+  }
+  process.exit(0);
 }
 
 main().catch((err: Error) => {

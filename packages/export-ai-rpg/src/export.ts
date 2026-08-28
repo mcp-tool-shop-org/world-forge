@@ -39,7 +39,7 @@
  * @module export
  */
 
-import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, LootTable, CraftingStation, MarketNode, Building, Hub, Stronghold } from '@world-forge/schema';
+import type { WorldProject, ValidationError, AssetEntry, AssetPack, EncounterAnchor, FactionPresence, PressureHotspot, HazardDefinition, CraftingStation, MarketNode, Building, Hub, Stronghold, Stratum, StratumLink, TransitionEntity } from '@world-forge/schema';
 import { validateProject, SCHEMA_VERSION } from '@world-forge/schema';
 import type { EntityBlueprint, DialogueDefinition, ProgressionTreeDefinition } from '@ai-rpg-engine/content-schema';
 import type { GameManifest } from '@ai-rpg-engine/core';
@@ -54,6 +54,8 @@ import { convertItems } from './convert-items.js';
 import { convertItemPlacements, type ExportedItemPlacement } from './convert-item-placements.js';
 import { convertConnections, type ExportedConnection } from './convert-connections.js';
 import { convertSpawnPoints, type ExportedSpawnPoint } from './convert-spawn-points.js';
+import { convertLandmarks, type ExportedLandmark } from './convert-landmarks.js';
+import { convertLootTables, type ExportedLootTable } from './convert-loot-tables.js';
 import { convertDialogues } from './convert-dialogues.js';
 import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-player-template.js';
 import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-catalog.js';
@@ -190,7 +192,20 @@ export type ContentPack = {
    * contract that does not exist. Revisit when the engine actually consumes
    * this channel.
    */
-  lootTables: LootTable[];
+  lootTables: ExportedLootTable[];
+  /**
+   * F-3c90bcc5 — landmarks as a first-class pack channel (id, name, zoneId,
+   * interactionType, tags, description, grid). iconId still lives in
+   * assetBindings when present.
+   */
+  landmarks: ExportedLandmark[];
+  /**
+   * F-5dcb8b8a — remaining v4.3–v4.5 spatial subsystems. Raw pass-through
+   * like buildings: the engine has no Stratum/Transition type yet.
+   */
+  strata: Stratum[];
+  stratumLinks: StratumLink[];
+  transitions: TransitionEntity[];
   /**
    * F-f216da1a (swarm wave-4) — CLOSED. `WorldProject.craftingStations` and
    * `WorldProject.marketNodes` were read NOWHERE in this package: no key on
@@ -313,6 +328,8 @@ export function exportToEngine(
   let dialogues: ReturnType<typeof convertDialogues>;
   let playerTemplate: ReturnType<typeof convertPlayerTemplate>;
   let spawnPoints: ReturnType<typeof convertSpawnPoints>;
+  let landmarks: ReturnType<typeof convertLandmarks>;
+  let convertedLootTables: ReturnType<typeof convertLootTables>;
   let buildCatalog: ReturnType<typeof convertBuildCatalog>;
   let progressionTrees: ReturnType<typeof convertProgressionTrees>;
   let manifest: ReturnType<typeof convertManifest>;
@@ -382,6 +399,8 @@ export function exportToEngine(
     playerTemplate = convertPlayerTemplate(project, warnings);
     // F-0e432e10: spawn records themselves, not just the dangling spawnPointId.
     spawnPoints = convertSpawnPoints(project, warnings, fidelityEntries);
+    landmarks = convertLandmarks(project, fidelityEntries);
+    convertedLootTables = convertLootTables(project, warnings, fidelityEntries);
     buildCatalog = convertBuildCatalog(project);
     progressionTrees = convertProgressionTrees(project);
 
@@ -419,13 +438,12 @@ export function exportToEngine(
   // survive in assetBindings; name/description/zone/position never reach the
   // engine). Flip to the craftingStations polarity: loud on present, silent
   // on empty.
-  if (project.landmarks.length > 0) {
-    const msg = `${project.landmarks.length} landmark(s) authored-and-dropped — only iconId can survive in assetBindings; name/description/zone/position do not reach the engine.`;
-    warnings.push(msg);
+  if (landmarks.length > 0) {
+    const msg = `${landmarks.length} landmark(s) exported on ContentPack.landmarks (iconId still in assetBindings when present).`;
     fidelityEntries.push({
-      level: 'dropped', domain: 'world', severity: 'warning',
+      level: 'lossless', domain: 'world', severity: 'info',
       message: msg,
-      reason: 'landmarks-authored-and-dropped',
+      reason: 'landmarks-converted',
     });
   }
   if (project.pressureHotspots.length === 0) {
@@ -469,9 +487,8 @@ export function exportToEngine(
   //
   // buildings/hubs/strongholds now have a ContentPack channel (raw pass-through,
   // F-5f16cf2e) — stamp lossless-passthrough fidelity when non-empty, but KEEP
-  // the dropped *warning* until a real engine type exists. strata/stratumLinks/
-  // transitions still have no channel: loud on present, silent on empty,
-  // level:'dropped'.
+  // the dropped *warning* until a real engine type exists. F-5dcb8b8a: strata /
+  // stratumLinks / transitions now share that passthrough class.
   const townPassthrough: Array<{ key: 'buildings' | 'hubs' | 'strongholds'; label: string; passReason: string }> = [
     { key: 'buildings', label: 'building(s)', passReason: 'buildings-raw-passthrough' },
     { key: 'hubs', label: 'hub(s)', passReason: 'hubs-raw-passthrough' },
@@ -491,20 +508,20 @@ export function exportToEngine(
       });
     }
   }
-  const droppedNoChannel: Array<{ key: 'strata' | 'stratumLinks' | 'transitions'; label: string; reason: string }> = [
-    { key: 'strata', label: 'stratum/strata', reason: 'strata-dropped' },
-    { key: 'stratumLinks', label: 'stratum link(s)', reason: 'stratum-links-dropped' },
-    { key: 'transitions', label: 'transition(s)', reason: 'transitions-dropped' },
+  const spatialPassthrough: Array<{ key: 'strata' | 'stratumLinks' | 'transitions'; label: string; passReason: string }> = [
+    { key: 'strata', label: 'stratum/strata', passReason: 'strata-raw-passthrough' },
+    { key: 'stratumLinks', label: 'stratum link(s)', passReason: 'stratum-links-raw-passthrough' },
+    { key: 'transitions', label: 'transition(s)', passReason: 'transitions-raw-passthrough' },
   ];
-  for (const { key, label, reason } of droppedNoChannel) {
+  for (const { key, label, passReason } of spatialPassthrough) {
     const list = project[key];
     if (Array.isArray(list) && list.length > 0) {
-      const msg = `${list.length} ${label} authored but dropped — ContentPack has no channel for '${key}'.`;
+      const msg = `${list.length} ${label} exported as raw pass-through data on ContentPack.${key} — this package has no dedicated engine type for them yet; verify any consumer reads this field before shipping.`;
       warnings.push(msg);
       fidelityEntries.push({
-        level: 'dropped', domain: 'world', severity: 'warning',
-        message: msg,
-        reason,
+        level: 'lossless', domain: 'world', severity: 'info',
+        message: `${list.length} ${label} passed through to ContentPack.${key} verbatim (no dedicated engine type yet)`,
+        reason: passReason,
       });
     }
   }
@@ -600,7 +617,11 @@ export function exportToEngine(
     // F-ee46a52c. Same `?? []` discipline as hazardDefinitions above — raw
     // pass-through, unconditional key presence, see the ContentPack.lootTables
     // doc comment for why this is not routed through a dedicated converter.
-    lootTables: project.lootTables ?? [],
+    lootTables: convertedLootTables,
+    landmarks,
+    strata: project.strata ?? [],
+    stratumLinks: project.stratumLinks ?? [],
+    transitions: project.transitions ?? [],
     // F-f216da1a. No `?? []` — both are REQUIRED on WorldProject (see the
     // ContentPack.craftingStations doc comment above for why that matters
     // here specifically).
@@ -631,6 +652,10 @@ export function exportToEngine(
       pressureHotspots: [],
       hazardDefinitions: [],
       lootTables: [],
+      landmarks: [],
+      strata: [],
+      stratumLinks: [],
+      transitions: [],
       craftingStations: [],
       marketNodes: [],
       buildings: [],
@@ -672,6 +697,10 @@ export function exportToEngine(
     prefixed.pressureHotspots = contentPack.pressureHotspots;
     prefixed.hazardDefinitions = contentPack.hazardDefinitions;
     prefixed.lootTables = contentPack.lootTables;
+    prefixed.landmarks = contentPack.landmarks;
+    prefixed.strata = contentPack.strata;
+    prefixed.stratumLinks = contentPack.stratumLinks;
+    prefixed.transitions = contentPack.transitions;
     prefixed.craftingStations = contentPack.craftingStations;
     prefixed.marketNodes = contentPack.marketNodes;
     prefixed.buildings = contentPack.buildings;

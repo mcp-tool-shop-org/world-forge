@@ -4,6 +4,7 @@ import type { WorldProject } from './project.js';
 import type { AuthoringMode } from './authoring-mode.js';
 import type { PressureHotspot } from './districts.js';
 import { AUTHORING_MODES, DEFAULT_MODE } from './authoring-mode.js';
+import { isValidDifficulty, isValidGenre, isValidTone, VALID_DIFFICULTIES, VALID_GENRES, VALID_TONES } from './flavor.js';
 
 export interface AdvisoryItem {
   path: string;
@@ -61,6 +62,35 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   }
   if (project.category !== undefined && (typeof project.category !== 'string' || project.category.trim().length === 0)) {
     items.push({ path: 'category', message: 'Category is present but empty — provide a value like "fantasy", "sci-fi", or "horror".', severity: 'suggestion' });
+  }
+
+  // F-1fbf61d2: flavor fields are optional and never hard-fail, but a typo
+  // must be visible in Review. Aliases (detective, zombie, easy/hard) count as known.
+  const genreStr = typeof project.genre === 'string' ? project.genre.trim() : '';
+  if (genreStr && !isValidGenre(genreStr)) {
+    items.push({
+      path: 'genre',
+      message: `Unrecognized genre '${genreStr}' — known values: ${VALID_GENRES.join(', ')} (aliases: detective, zombie). Export will warn and fall back.`,
+      severity: 'suggestion',
+    });
+  }
+  const tones = asArray(project.tones);
+  for (const tone of tones) {
+    if (typeof tone === 'string' && tone.trim() && !isValidTone(tone.trim())) {
+      items.push({
+        path: 'tones',
+        message: `Unrecognized tone '${tone}' — known values: ${VALID_TONES.join(', ')}.`,
+        severity: 'suggestion',
+      });
+    }
+  }
+  const diffStr = typeof project.difficulty === 'string' ? project.difficulty.trim() : '';
+  if (diffStr && !isValidDifficulty(diffStr)) {
+    items.push({
+      path: 'difficulty',
+      message: `Unrecognized difficulty '${diffStr}' — known values: ${VALID_DIFFICULTIES.join(', ')} (aliases: easy, medium, hard).`,
+      severity: 'suggestion',
+    });
   }
 
   // ── Universal suggestions ──────────────────────────────────
