@@ -12,9 +12,22 @@ export interface HitResult {
   id: string;
 }
 
-/** Composite tile id: `${layerId}::${gridX}::${gridY}` — TilePlacement has no own id. */
+/** Composite tile id: `${layerId}::${gridX}::${gridY}` — fallback when TilePlacement.id is absent. */
 export function encodeTileHitId(layerId: string, gridX: number, gridY: number): string {
   return `${layerId}::${gridX}::${gridY}`;
+}
+
+export function tileHitId(layerId: string, t: { id?: string; gridX: number; gridY: number }): string {
+  return t.id ?? encodeTileHitId(layerId, t.gridX, t.gridY);
+}
+
+export function tileMatchesSelection(
+  layerId: string,
+  t: { id?: string; gridX: number; gridY: number },
+  selected: Set<string>,
+): boolean {
+  if (t.id && selected.has(t.id)) return true;
+  return selected.has(encodeTileHitId(layerId, t.gridX, t.gridY));
 }
 
 export function decodeTileHitId(id: string): { layerId: string; gridX: number; gridY: number } | null {
@@ -270,9 +283,8 @@ export function findHitAt(
     const layers = [...(project.tileLayers ?? [])].sort((a, b) => b.zIndex - a.zIndex);
     for (const layer of layers) {
       const tiles = Array.isArray(layer.tiles) ? layer.tiles : [];
-      if (tiles.some((t) => t.gridX === gx && t.gridY === gy)) {
-        return { type: 'tile', id: encodeTileHitId(layer.id, gx, gy) };
-      }
+      const hit = tiles.find((t) => t.gridX === gx && t.gridY === gy);
+      if (hit) return { type: 'tile', id: tileHitId(layer.id, hit) };
     }
   }
   for (const zone of project.zones) {
@@ -437,7 +449,7 @@ export function findAllInRect(
         const wx = (t.gridX + 0.5) * tileSize;
         const wy = (t.gridY + 0.5) * tileSize;
         const { screenX, screenY } = worldToScreen(wx, wy, viewport);
-        if (inRect(screenX, screenY)) tiles.push(encodeTileHitId(layer.id, t.gridX, t.gridY));
+        if (inRect(screenX, screenY)) tiles.push(tileHitId(layer.id, t));
       }
     }
   }
@@ -573,9 +585,8 @@ export function findAllHitsAt(
     const layers = [...(project.tileLayers ?? [])].sort((a, b) => b.zIndex - a.zIndex);
     for (const layer of layers) {
       const tiles = Array.isArray(layer.tiles) ? layer.tiles : [];
-      if (tiles.some((t) => t.gridX === gx && t.gridY === gy)) {
-        hits.push({ type: 'tile', id: encodeTileHitId(layer.id, gx, gy) });
-      }
+      const hit = tiles.find((t) => t.gridX === gx && t.gridY === gy);
+      if (hit) hits.push({ type: 'tile', id: tileHitId(layer.id, hit) });
     }
   }
   for (const zone of project.zones) {

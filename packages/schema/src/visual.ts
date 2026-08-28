@@ -33,6 +33,8 @@ export interface TileLayer {
 
 /** A single tile placed at a grid position. */
 export interface TilePlacement {
+  /** Stable instance id so select/move survive a cell shift. Optional on disk. */
+  id?: string;
   tileId: string;
   gridX: number;
   gridY: number;

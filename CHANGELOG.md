@@ -53,6 +53,11 @@ first; pack/export leftovers follow.
   Delete removes selected props and tiles. (`F-8801ff28`)
 - Renderer draws a skyline polyline when `skylineRef` is set; entity, tile,
   and minimap positions offset by elevation. (`F-7cc1a9b2`, `F-e3645c5a`)
+- Tile placements stamp a stable `id` on paint so selected tiles can drag-move.
+- Build-catalog combos edit cross-title title/tags/ids and entanglement
+  description/effects.
+- Godot editor download stringifies off the UI thread so the chapel e2e
+  download can fire.
 - **P** applies a region or encounter preset to the selection; **Shift+P**
   saves one. The Presets tab still opens. (`F-fabda31a`)
 - Handbook **Accessibility** page and repo-root `a11y-audit.md`. (`F-375df619`)

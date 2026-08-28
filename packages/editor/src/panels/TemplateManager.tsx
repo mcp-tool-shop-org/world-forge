@@ -11,7 +11,7 @@ import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
 import { AUTHORING_MODES } from '@world-forge/schema';
 import { MODE_PROFILES } from '../mode-profiles.js';
-import { defaultDownloadJson } from './export-handlers.js';
+import { downloadJsonSync } from './export-handlers.js';
 import { EditKitModal } from './EditKitModal.js';
 import { ImportKitModal } from './ImportKitModal.js';
 import { confirmDiscard } from '../modal-guards.js';
@@ -189,7 +189,7 @@ export function TemplateManager({ onClose }: Props) {
       try { URL.revokeObjectURL(kitFallback.href); } catch { /* ignore */ }
     }
     const filename = kitFilename(kit.name);
-    const url = defaultDownloadJson(filename, serializeKit(kit));
+    const url = downloadJsonSync(filename, serializeKit(kit));
     if (url) setKitFallback({ href: url, filename });
   }, [kitFallback]);
 

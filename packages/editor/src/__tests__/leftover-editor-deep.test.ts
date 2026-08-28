@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findHitAt, encodeTileHitId } from '../hit-testing.js';
-import { createEmptyProject } from '../store/project-store.js';
+import { createEmptyProject, useProjectStore } from '../store/project-store.js';
+import { emptySelection } from '../store/editor-store.js';
 import type { ViewportState } from '../viewport.js';
 import type { WorldProject } from '@world-forge/schema';
 
@@ -45,6 +46,8 @@ describe('F-420be5bb / F-68fed5fc inspector bindings', () => {
     expect(text).toContain('wf-bg-faction-modifiers');
     expect(text).toContain('wf-disc-passive');
     expect(text).toContain('wf-disc-drawback');
+    expect(text).toContain('wf-cross-title');
+    expect(text).toContain('wf-ent-description');
   });
 
   it('PropPalette expands definition fields', () => {
@@ -97,5 +100,19 @@ describe('F-8801ff28 prop hit-test', () => {
     const vis = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: false, showTown: false, showItems: false, showProps: true, showTiles: true };
     const hit = findHitAt(3 * 32 + 8, 1 * 32 + 8, vp, project, 32, vis);
     expect(hit).toEqual({ type: 'tile', id: encodeTileHitId('layer-1', 3, 1) });
+  });
+
+  it('moveSelected shifts a painted tile by its stamped id', () => {
+    useProjectStore.setState({ project: createEmptyProject() });
+    const store = useProjectStore.getState();
+    store.addTileLayer({ id: 'layer-1', name: 'Ground', zIndex: 0, tiles: [] });
+    store.addTilePlacement('layer-1', { tileId: 'floor', gridX: 1, gridY: 1 });
+    const stamped = useProjectStore.getState().project.tileLayers[0].tiles[0];
+    expect(stamped.id).toBeTruthy();
+    store.moveSelected({ ...emptySelection(), tiles: [stamped.id!] }, 2, 3);
+    const moved = useProjectStore.getState().project.tileLayers[0].tiles[0];
+    expect(moved.id).toBe(stamped.id);
+    expect(moved.gridX).toBe(3);
+    expect(moved.gridY).toBe(4);
   });
 });

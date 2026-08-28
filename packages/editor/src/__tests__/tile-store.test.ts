@@ -111,7 +111,9 @@ describe('tile store — placements', () => {
 
   it('paints a tile into a layer', () => {
     store().addTilePlacement('layer1', { tileId: 'ts1-floor', gridX: 2, gridY: 3 });
-    expect(layerById('layer1').tiles).toEqual([{ tileId: 'ts1-floor', gridX: 2, gridY: 3 }]);
+    expect(layerById('layer1').tiles).toHaveLength(1);
+    expect(layerById('layer1').tiles[0]).toMatchObject({ tileId: 'ts1-floor', gridX: 2, gridY: 3 });
+    expect(layerById('layer1').tiles[0].id).toMatch(/^tile-/);
   });
 
   it('painting the same cell twice does not duplicate (idempotent drag)', () => {

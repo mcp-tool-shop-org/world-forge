@@ -26,7 +26,7 @@ import { getModeProfile } from '../mode-profiles.js';
 import { nextId } from '../ids.js';
 import { reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
 import { clearSavedFileHandle } from '../save-project.js';
-import { encodeTileHitId } from '../hit-testing.js';
+import { tileMatchesSelection } from '../hit-testing.js';
 
 /** F-d94458a6: name the visible top-bar controls (there is no File menu). */
 export const AUTOSAVE_SAVE_HINT = 'Click Save in the top bar (Ctrl+S)';
@@ -387,8 +387,10 @@ interface ProjectState {
   updateDiscipline: (id: string, updates: Partial<DisciplineDefinition>) => void;
   removeDiscipline: (id: string) => void;
   addCrossTitle: (ct: CrossDisciplineTitle) => void;
+  updateCrossTitle: (archetypeId: string, disciplineId: string, updates: Partial<CrossDisciplineTitle>) => void;
   removeCrossTitle: (archetypeId: string, disciplineId: string) => void;
   addEntanglement: (e: ClassEntanglement) => void;
+  updateEntanglement: (id: string, updates: Partial<ClassEntanglement>) => void;
   removeEntanglement: (id: string) => void;
 
   // Progression tree helpers
@@ -1060,12 +1062,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   // A layer holds at most one tile per (gridX,gridY): painting replaces any
   // existing placement at that cell, so dragging across a cell is idempotent
   // and painting over an existing tile overwrites it.
-  addTilePlacement: (layerId, placement) => get().updateProject((p) => ({
-    ...p, tileLayers: (p.tileLayers ?? []).map((l) =>
-      l.id === layerId
-        ? { ...l, tiles: [...l.tiles.filter((t) => !(t.gridX === placement.gridX && t.gridY === placement.gridY)), placement] }
-        : l),
-  }), 'Paint tile'),
+  addTilePlacement: (layerId, placement) => get().updateProject((p) => {
+    const stamped = { ...placement, id: placement.id ?? nextId('tile') };
+    return {
+      ...p, tileLayers: (p.tileLayers ?? []).map((l) =>
+        l.id === layerId
+          ? { ...l, tiles: [...l.tiles.filter((t) => !(t.gridX === stamped.gridX && t.gridY === stamped.gridY)), stamped] }
+          : l),
+    };
+  }, 'Paint tile'),
   removeTilePlacement: (layerId, gridX, gridY) => get().updateProject((p) => ({
     ...p, tileLayers: (p.tileLayers ?? []).map((l) =>
       l.id === layerId
@@ -1081,7 +1086,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const kept = l.tiles.filter((t) => !editedKeys.has(`${t.gridX},${t.gridY}`));
       const painted = edits
         .filter((e) => e.tileId != null)
-        .map((e) => ({ tileId: e.tileId as string, gridX: e.gridX, gridY: e.gridY }));
+        .map((e) => ({ id: nextId('tile'), tileId: e.tileId as string, gridX: e.gridX, gridY: e.gridY }));
       return { ...l, tiles: [...kept, ...painted] };
     }),
   }), edits.every((e) => e.tileId == null) ? 'Erase tiles' : 'Paint tiles'),
@@ -1194,8 +1199,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const iSet = new Set(sel.items ?? []);
     const bSet = new Set(sel.buildings ?? []);
     const pSet = new Set(sel.props ?? []);
+    const tSet = new Set(sel.tiles ?? []);
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
-      + iSet.size + bSet.size + pSet.size;
+      + iSet.size + bSet.size + pSet.size + tSet.size;
     const label = `Move ${count} ${count === 1 ? 'object' : 'objects'}`;
     get().updateProject((p) => {
       const zSet = new Set(sel.zones);
@@ -1239,7 +1245,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           : (p.propPlacements ?? []).map((pl) => pSet.has(pl.id)
             ? { ...pl, gridX: pl.gridX + dx, gridY: pl.gridY + dy }
             : pl),
-        ...(attached ? { tileLayers: attached.tileLayers } : {}),
+        tileLayers: (attached?.tileLayers ?? p.tileLayers ?? []).map((l) => {
+          if (attached || tSet.size === 0) return l;
+          return {
+            ...l,
+            tiles: l.tiles.map((t) => tileMatchesSelection(l.id, t, tSet)
+              ? { ...t, id: t.id ?? nextId('tile'), gridX: t.gridX + dx, gridY: t.gridY + dy }
+              : t),
+          };
+        }),
       };
     }, label);
   },
@@ -1297,7 +1311,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         propPlacements: (p.propPlacements ?? []).filter((pl) => !pSet.has(pl.id)),
         tileLayers: (p.tileLayers ?? []).map((l) => ({
           ...l,
-          tiles: l.tiles.filter((t) => !tSet.has(encodeTileHitId(l.id, t.gridX, t.gridY))),
+          tiles: l.tiles.filter((t) => !tileMatchesSelection(l.id, t, tSet)),
         })),
       };
     }, label);
@@ -1389,6 +1403,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, crossTitles: [...cat.crossTitles, ct] } };
   }, 'Add cross-title'),
+  updateCrossTitle: (archetypeId, disciplineId, updates) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return {
+      ...p,
+      buildCatalog: {
+        ...cat,
+        crossTitles: cat.crossTitles.map((ct) =>
+          ct.archetypeId === archetypeId && ct.disciplineId === disciplineId ? { ...ct, ...updates } : ct),
+      },
+    };
+  }, 'Update cross-title'),
   removeCrossTitle: (archetypeId, disciplineId) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, crossTitles: cat.crossTitles.filter((ct) => !(ct.archetypeId === archetypeId && ct.disciplineId === disciplineId)) } };
@@ -1397,6 +1422,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, entanglements: [...cat.entanglements, e] } };
   }, 'Add entanglement'),
+  updateEntanglement: (id, updates) => get().updateProject((p) => {
+    const cat = ensureBuildCatalog(p);
+    return {
+      ...p,
+      buildCatalog: {
+        ...cat,
+        entanglements: cat.entanglements.map((e) => e.id === id ? { ...e, ...updates } : e),
+      },
+    };
+  }, 'Update entanglement'),
   removeEntanglement: (id) => get().updateProject((p) => {
     const cat = ensureBuildCatalog(p);
     return { ...p, buildCatalog: { ...cat, entanglements: cat.entanglements.filter((e) => e.id !== id) } };

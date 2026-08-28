@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import {
-  runEngineExport, runUnrealExport, runGodotExport, defaultDownloadJson,
+  runEngineExport, runUnrealExport, runGodotExport, downloadJsonSync,
   type ExportReceipt, type ExportStatus, type AiRpgExportOptions, type UnrealExportOptions, type GodotExportUIOptions,
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
@@ -117,7 +117,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
       try { URL.revokeObjectURL(fallback.href); } catch { /* ignore */ }
     }
     const filename = projectFilename(project.name);
-    const url = defaultDownloadJson(filename, bundle);
+    const url = downloadJsonSync(filename, bundle);
     if (url) setFallback({ href: url, filename });
     setBundleExported(true);
   };

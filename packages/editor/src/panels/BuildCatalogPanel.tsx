@@ -31,7 +31,7 @@ export function BuildCatalogPanel() {
     addBackground, updateBackground, removeBackground,
     addTrait, updateTrait, removeTrait,
     addDiscipline, updateDiscipline, removeDiscipline,
-    addCrossTitle, removeCrossTitle, addEntanglement, removeEntanglement,
+    addCrossTitle, updateCrossTitle, removeCrossTitle, addEntanglement, updateEntanglement, removeEntanglement,
   } = useProjectStore();
   const { buildsSubTab, setBuildsSubTab } = useEditorStore();
   const focusRef = useFocusHighlight('builds');
@@ -83,8 +83,8 @@ export function BuildCatalogPanel() {
       {buildsSubTab === 'disciplines' && <DisciplineSection cat={cat}
         onAdd={addDiscipline} onUpdate={updateDiscipline} onRemove={removeDiscipline} />}
       {buildsSubTab === 'combos' && <CombosSection cat={cat}
-        onAddCT={addCrossTitle} onRemoveCT={removeCrossTitle}
-        onAddEnt={addEntanglement} onRemoveEnt={removeEntanglement} />}
+        onAddCT={addCrossTitle} onUpdateCT={updateCrossTitle} onRemoveCT={removeCrossTitle}
+        onAddEnt={addEntanglement} onUpdateEnt={updateEntanglement} onRemoveEnt={removeEntanglement} />}
     </div>
   );
 }
@@ -375,45 +375,125 @@ function DisciplineSection({ cat, onAdd, onUpdate, onRemove }: {
   );
 }
 
-function CombosSection({ cat, onAddCT, onRemoveCT, onAddEnt, onRemoveEnt }: {
+function CombosSection({ cat, onAddCT, onUpdateCT, onRemoveCT, onAddEnt, onUpdateEnt, onRemoveEnt }: {
   cat: BuildCatalogDefinition;
   onAddCT: (ct: { archetypeId: string; disciplineId: string; title: string; tags: string[] }) => void;
+  onUpdateCT: (archetypeId: string, disciplineId: string, u: Partial<{ archetypeId: string; disciplineId: string; title: string; tags: string[] }>) => void;
   onRemoveCT: (archetypeId: string, disciplineId: string) => void;
   onAddEnt: (e: { id: string; archetypeId: string; disciplineId: string; description: string; effects: TraitEffect[] }) => void;
+  onUpdateEnt: (id: string, u: Partial<{ archetypeId: string; disciplineId: string; description: string; effects: TraitEffect[] }>) => void;
   onRemoveEnt: (id: string) => void;
 }) {
   const needsBoth = cat.archetypes.length === 0 || cat.disciplines.length === 0;
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [editingEnt, setEditingEnt] = useState<string | null>(null);
 
   return (
     <div>
       <div style={sectionTitle}>Cross-Titles ({cat.crossTitles.length})</div>
       {needsBoth && <div style={hintStyle}>Requires at least one archetype and one discipline.</div>}
-      {cat.crossTitles.map((ct, i) => (
+      {cat.crossTitles.map((ct, i) => {
+        const key = `${ct.archetypeId}::${ct.disciplineId}`;
+        const editing = editingTitle === key;
+        return (
         <div key={i} style={itemStyle}>
-          <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{ct.title}</div>
-          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{ct.archetypeId} + {ct.disciplineId}</div>
-          <button onClick={() => onRemoveCT(ct.archetypeId, ct.disciplineId)} style={{ ...xBtnStyle, fontSize: 10 }}>remove</button>
+          {editing ? (
+            <>
+              <label style={labelStyle}>Title
+                <input style={inputStyle} data-testid="wf-cross-title" value={ct.title}
+                  onChange={(e) => onUpdateCT(ct.archetypeId, ct.disciplineId, { title: e.target.value })} />
+              </label>
+              <label style={labelStyle}>Archetype
+                <select style={inputStyle} data-testid="wf-cross-archetype" value={ct.archetypeId}
+                  onChange={(e) => {
+                    onUpdateCT(ct.archetypeId, ct.disciplineId, { archetypeId: e.target.value });
+                    setEditingTitle(`${e.target.value}::${ct.disciplineId}`);
+                  }}>
+                  {cat.archetypes.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+              <label style={labelStyle}>Discipline
+                <select style={inputStyle} data-testid="wf-cross-discipline" value={ct.disciplineId}
+                  onChange={(e) => {
+                    onUpdateCT(ct.archetypeId, ct.disciplineId, { disciplineId: e.target.value });
+                    setEditingTitle(`${ct.archetypeId}::${e.target.value}`);
+                  }}>
+                  {cat.disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </label>
+              <CsvField label="Tags" testId="wf-cross-tags" value={ct.tags} placeholder="e.g. hybrid"
+                onChange={(tags) => onUpdateCT(ct.archetypeId, ct.disciplineId, { tags })} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <button onClick={() => setEditingTitle(null)} style={smallBtnStyle}>Done</button>
+                <button onClick={() => { onRemoveCT(ct.archetypeId, ct.disciplineId); setEditingTitle(null); }}
+                  style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
+              </div>
+            </>
+          ) : (
+            <div onClick={() => setEditingTitle(key)} style={{ cursor: 'pointer' }}>
+              <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{ct.title}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{ct.archetypeId} + {ct.disciplineId}</div>
+            </div>
+          )}
         </div>
-      ))}
+        );
+      })}
       {!needsBoth && (
-        <button onClick={() => onAddCT({ archetypeId: cat.archetypes[0].id, disciplineId: cat.disciplines[0].id, title: 'New Title', tags: [] })}
-          style={addBtnStyle}>+ Add Cross-Title</button>
+        <button onClick={() => {
+          onAddCT({ archetypeId: cat.archetypes[0].id, disciplineId: cat.disciplines[0].id, title: 'New Title', tags: [] });
+          setEditingTitle(`${cat.archetypes[0].id}::${cat.disciplines[0].id}`);
+        }} style={addBtnStyle}>+ Add Cross-Title</button>
       )}
 
       <div style={{ ...sectionTitle, marginTop: 14 }}>Entanglements ({cat.entanglements.length})</div>
       {needsBoth && <div style={hintStyle}>Requires at least one archetype and one discipline.</div>}
       {cat.entanglements.map((e) => (
         <div key={e.id} style={itemStyle}>
-          <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{e.description || e.id}</div>
-          <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{e.archetypeId} + {e.disciplineId}</div>
-          <button onClick={() => onRemoveEnt(e.id)} style={{ ...xBtnStyle, fontSize: 10 }}>remove</button>
+          {editingEnt === e.id ? (
+            <>
+              <label style={labelStyle}>Description
+                <textarea style={{ ...inputStyle, height: 40, resize: 'vertical' }} data-testid="wf-ent-description"
+                  value={e.description} onChange={(ev) => onUpdateEnt(e.id, { description: ev.target.value })} />
+              </label>
+              <label style={labelStyle}>Archetype
+                <select style={inputStyle} value={e.archetypeId}
+                  onChange={(ev) => onUpdateEnt(e.id, { archetypeId: ev.target.value })}>
+                  {cat.archetypes.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+              <label style={labelStyle}>Discipline
+                <select style={inputStyle} value={e.disciplineId}
+                  onChange={(ev) => onUpdateEnt(e.id, { disciplineId: ev.target.value })}>
+                  {cat.disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </label>
+              <div data-testid="wf-ent-effects">
+                <EffectListEditor effects={e.effects}
+                  onChange={(effects) => onUpdateEnt(e.id, { effects })} />
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <button onClick={() => setEditingEnt(null)} style={smallBtnStyle}>Done</button>
+                <button onClick={() => { onRemoveEnt(e.id); setEditingEnt(null); }}
+                  style={{ ...smallBtnStyle, color: 'var(--wf-danger-text)' }}>Delete</button>
+              </div>
+            </>
+          ) : (
+            <div onClick={() => setEditingEnt(e.id)} style={{ cursor: 'pointer' }}>
+              <div style={{ fontSize: 12, color: 'var(--wf-text-primary)' }}>{e.description || e.id}</div>
+              <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{e.archetypeId} + {e.disciplineId}</div>
+            </div>
+          )}
         </div>
       ))}
       {!needsBoth && (
-        <button onClick={() => onAddEnt({
-          id: `ent-${Date.now()}`, archetypeId: cat.archetypes[0].id,
-          disciplineId: cat.disciplines[0].id, description: '', effects: [],
-        })} style={addBtnStyle}>+ Add Entanglement</button>
+        <button onClick={() => {
+          const id = `ent-${Date.now()}`;
+          onAddEnt({
+            id, archetypeId: cat.archetypes[0].id,
+            disciplineId: cat.disciplines[0].id, description: '', effects: [],
+          });
+          setEditingEnt(id);
+        }} style={addBtnStyle}>+ Add Entanglement</button>
       )}
     </div>
   );

@@ -78,7 +78,7 @@ export interface ExportEnv {
    * Throws on serialization / blob failure; the handler converts that into a
    * user-visible error.
    */
-  downloadJson: (filename: string, data: unknown) => string | null;
+  downloadJson: (filename: string, data: unknown) => string | null | Promise<string | null>;
 }
 
 /** Callbacks the handler uses to drive React state / side effects. */
@@ -103,20 +103,59 @@ export interface ExportCallbacks {
  * object URL, and synthesises a click. Used by the modal at runtime. Tests
  * replace this.
  */
-export function defaultDownloadJson(filename: string, data: unknown): string | null {
-  // Compact JSON: chapel Godot packs with a full world.tscn freeze Chromium for
-  // tens of seconds when pretty-printed on CI, so the e2e download never fires.
-  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+function clickDownloadBlob(filename: string, text: string): string | null {
+  const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
-  // ED-B-002: we intentionally DO NOT revoke here. The caller may stash the
-  // URL as a manual-download fallback if the synthetic click was blocked. The
-  // fallback anchor is short-lived and revoked when the user dismisses it or
-  // the modal unmounts.
   return url;
+}
+
+/** Stringify off the UI thread when Worker is available so Playwright can still see the download. */
+export function stringifyOffMainThread(data: unknown): Promise<string> {
+  if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
+    return Promise.resolve(JSON.stringify(data));
+  }
+  return new Promise<string>((resolve, reject) => {
+    const src = 'onmessage=function(e){try{postMessage(JSON.stringify(e.data))}catch(err){postMessage({__err:String(err)})}}';
+    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    const worker = new Worker(url);
+    worker.onmessage = (e: MessageEvent) => {
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      if (e.data && typeof e.data === 'object' && '__err' in e.data) {
+        reject(new Error(String((e.data as { __err: string }).__err)));
+        return;
+      }
+      resolve(e.data as string);
+    };
+    worker.onerror = (e) => {
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      reject(e.error ?? new Error('stringify worker failed'));
+    };
+    try {
+      worker.postMessage(data);
+    } catch (err) {
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      reject(err);
+    }
+  }).catch(() => JSON.stringify(data));
+}
+
+/** Sync download for kit/project bundles (small JSON). */
+export function downloadJsonSync(filename: string, data: unknown): string | null {
+  return clickDownloadBlob(filename, JSON.stringify(data));
+}
+
+export async function defaultDownloadJson(filename: string, data: unknown): Promise<string | null> {
+  // Compact JSON + off-thread stringify: chapel Godot packs with a full
+  // world.tscn used to freeze Chromium so the e2e download never fired.
+  const text = await stringifyOffMainThread(data);
+  return clickDownloadBlob(filename, text);
 }
 
 function failExport(cb: ExportCallbacks, message: string): void {
@@ -294,7 +333,7 @@ export async function runEngineExport(
       if (opts.includeFidelityReport) {
         bundle.fidelityReport = result.fidelity;
       }
-      const url = env.downloadJson(filename, bundle);
+      const url = await env.downloadJson(filename, bundle);
       cb.setStatus('exported');
       cb.markExported();
       // ED-B-002: stash a manual-download URL so the modal can render a visible
@@ -379,7 +418,7 @@ export async function runUnrealExport(
           signing: 'disabled (CLI-only)',
         },
       };
-      const url = env.downloadJson(filename, bundle);
+      const url = await env.downloadJson(filename, bundle);
       cb.setStatus('exported');
       cb.markExported();
       // ED-B-002: manual-download fallback — see runEngineExport for rationale.
@@ -452,7 +491,7 @@ export async function runGodotExport(
           assetBindingMode: opts.assetBindingMode,
         },
       };
-      const url = env.downloadJson(filename, bundle);
+      const url = await env.downloadJson(filename, bundle);
       cb.setStatus('exported');
       cb.markExported();
       if (url && cb.setFallback) cb.setFallback({ href: url, filename });
