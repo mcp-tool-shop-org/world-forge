@@ -233,13 +233,13 @@ export const saltRoadProject: WorldProject = {
             elevation: 0,
             timeOfDay: 'morning',
             collisionType: 'walkable',
-            // The door that will not open. Hard, and refused by a person with her own
+            // The door that will not open. Hard, and refused by a person with his own
             // reasons — never by a rule citing itself.
             entryGate: {
                 conditions: ['item:guild-seal'],
                 mode: 'hard',
                 reason:
-                    'Halle keeps her hand flat on the register. "It\'s my name beside whatever leaves '
+                    'Halle keeps his hand flat on the register. "It\'s my name beside whatever leaves '
                     + 'here, and I\'ve a mother in Dockward. Seal, or nothing."',
             },
         },
