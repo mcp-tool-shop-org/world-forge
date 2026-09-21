@@ -120,6 +120,14 @@ export interface SceneBuildInput {
         tags?: string[];
         startingInventory?: string[];
     };
+    /**
+     * Stage join graph. ai-rpg-stage instances this scene and does not ship
+     * `scripts/player.gd` or `world_data/*.tres`. Omit the play pawn, its
+     * script, and every stamped .tres ExtResource. Zone nodes, gate metadata,
+     * and tileset textures stay. The full Godot project export leaves this
+     * false and still emits the pawn.
+     */
+    joinGraph?: boolean;
 }
 
 /** Godot CanvasItem z_index hard limits (RenderingServer.CANVAS_ITEM_Z_MIN/MAX). */
@@ -139,8 +147,11 @@ export function buildWorldScene(input: SceneBuildInput): string {
     // are Area2D placeholders (scene templates live in metadata) so a clean Godot
     // project does not need the PackedScenes this pack does not ship. Stamped
     // .tres paths (zones/items/dialogues/loot) ARE ExtResource'd — dual-channel.
+    const joinGraph = input.joinGraph === true;
     const tileResources = collectTileResources(tileLayers);
-    const dataResources = collectDataExtResources(input);
+    // A join graph must not declare .tres paths. Empty maps also stop the
+    // zone/item loops from emitting ExtResource() lines for those paths.
+    const dataResources = joinGraph ? emptyDataExtResources() : collectDataExtResources(input);
     const playerScriptId = 'player_gd';
     const playerShapeId = 'PlayerShape';
     // Sub-resources (per-zone navigation polygons + optional void/hazard hulls).
@@ -154,25 +165,30 @@ export function buildWorldScene(input: SceneBuildInput): string {
         input.transitions,
         input.tileSize ?? DEFAULT_TILE_SIZE_PX,
     );
-    const playerShape = collectPlayerShape(input.tileSize ?? DEFAULT_TILE_SIZE_PX, playerShapeId);
+    const playerShape = joinGraph
+        ? ''
+        : collectPlayerShape(input.tileSize ?? DEFAULT_TILE_SIZE_PX, playerShapeId);
 
     // Header — load_steps counts every ext + sub resource plus the implicit scene step.
+    // Join graph: no player.gd, no .tres ExtResources, no PlayerShape.
+    const pawnSteps = joinGraph ? 0 : dataResources.ext.length + 2;
     const loadSteps = tileResources.textures.length
-        + dataResources.ext.length
-        + 1 // player.gd
+        + pawnSteps
         + subResources.blocks.length + tileResources.subBlocks.length
         + buildingShapes.blocks.length + hazardShapes.length
         + transitionShapes.length
-        + 1 // PlayerShape
         + 1;
     lines.push(`[gd_scene load_steps=${loadSteps} format=3${sceneUidAttribute(input.projectId, input.sceneUidPrefix)}]`);
     lines.push('');
 
     // External resource declarations — player script, stamped .tres Resources,
     // then tileset textures. PackedScene templates stay metadata (F-e17190f1).
-    lines.push(`[ext_resource type="Script" path=${quoted(PLAYER_SCRIPT_PATH)} id="${playerScriptId}"]`);
-    for (const res of dataResources.ext) {
-        lines.push(`[ext_resource type="Resource" path=${quoted(res.path)} id="${res.id}"]`);
+    // The stage join graph keeps textures only.
+    if (!joinGraph) {
+        lines.push(`[ext_resource type="Script" path=${quoted(PLAYER_SCRIPT_PATH)} id="${playerScriptId}"]`);
+        for (const res of dataResources.ext) {
+            lines.push(`[ext_resource type="Resource" path=${quoted(res.path)} id="${res.id}"]`);
+        }
     }
     for (const tex of tileResources.textures) {
         lines.push(`[ext_resource type="Texture2D" path=${quoted(tex.path)} id="${tex.id}"]`);
@@ -200,8 +216,10 @@ export function buildWorldScene(input: SceneBuildInput): string {
         lines.push(block);
         lines.push('');
     }
-    lines.push(playerShape);
-    lines.push('');
+    if (!joinGraph) {
+        lines.push(playerShape);
+        lines.push('');
+    }
 
     // Root node — y-sort enabled so 2.5D depth ordering works out of the box.
     // F-00cf78db: the identical gap convert-zones.ts:116 had — a project name
@@ -211,7 +229,9 @@ export function buildWorldScene(input: SceneBuildInput): string {
     lines.push('');
 
     const defaultSpawn = pickDefaultSpawn(input.spawnMarkers);
-    emitPlayerPawn(lines, input, playerScriptId, playerShapeId, defaultSpawn);
+    if (!joinGraph) {
+        emitPlayerPawn(lines, input, playerScriptId, playerShapeId, defaultSpawn);
+    }
 
     // Tile layers — TileMapLayer nodes (ground art) parented to the root. Image-
     // backed layers carry baked tile_map_data cells; color-only layers emit
@@ -256,8 +276,9 @@ export function buildWorldScene(input: SceneBuildInput): string {
             lines.push(`metadata/parallax_count = ${zone.parallaxLayers.length}`);
             lines.push(`metadata/parallax_layers = ${quoted(JSON.stringify(zone.parallaxLayers))}`);
         }
-        emitZoneVisualRuntime(lines, zone, w, h);
-        // Entry gate — the runtime reads these to allow/deny party entry on contact.
+        // Gate metadata belongs on THIS node. emitZoneVisualRuntime opens a
+        // Light child; a property line after that header sticks to the light,
+        // and the stage then reads an empty reason off the zone.
         const gate = input.zoneGates?.[zone.id];
         if (gate) {
             lines.push(`metadata/entry_gate = ${quoted(gate.conditions.join(';'))}`);
@@ -265,6 +286,7 @@ export function buildWorldScene(input: SceneBuildInput): string {
             if (gate.reason) lines.push(`metadata/entry_gate_reason = ${quoted(gate.reason)}`);
         }
         lines.push('');
+        emitZoneVisualRuntime(lines, zone, w, h);
 
         // Collision — top-down walkable interiors must NOT get a filled AABB
         // StaticBody2D (default layer/mask 1 blocked CharacterBody2D from the
@@ -1084,6 +1106,16 @@ interface DataExtResourceSet {
  * dialogue on entities, loot on items that reference a table). Dual-channel:
  * metadata string copies stay for loaders that do not parse ExtResource.
  */
+function emptyDataExtResources(): DataExtResourceSet {
+    return {
+        ext: [],
+        zoneId: new Map(),
+        itemId: new Map(),
+        dialogueId: new Map(),
+        lootId: new Map(),
+    };
+}
+
 function collectDataExtResources(input: SceneBuildInput): DataExtResourceSet {
     const ext: { path: string; id: string }[] = [];
     const byPath = new Map<string, string>();

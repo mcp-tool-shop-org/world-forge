@@ -81,6 +81,32 @@ describe('export-stage-fixture.ts presentation carry', () => {
             presentation?: { occupancy?: unknown[] };
         };
         expect(pack.presentation?.occupancy).toHaveLength(6);
+        const scene = readFileSync(join(out, 'world.tscn'), 'utf-8');
+        expect(scene).not.toContain('player.gd');
+        expect(scene).not.toContain('world_data');
+        expect(scene).not.toContain('CharacterBody2D');
+        expect(scene).toContain('metadata/zone_id = "counting-house"');
+        expect(scene).toContain('mother in Dockward');
+    }, 60_000);
+
+    it('--engine-out is a 3.12.0 pack: no presentation, no zone-stand itemPlacements', async () => {
+        const out = tmpOut('wf-stage-engine-lane-');
+        const engineOut = join(out, 'engine-pack.json');
+        const { code, stderr } = await runScript(SCRIPT, {}, [
+            '--world=salt-road',
+            `--out=${out}`,
+            `--engine-out=${engineOut}`,
+        ]);
+        expect(stderr, stderr).toBe('');
+        expect(code).toBe(0);
+        const engine = JSON.parse(readFileSync(engineOut, 'utf-8')) as Record<string, unknown>;
+        expect(Object.prototype.hasOwnProperty.call(engine, 'presentation')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'connections')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'spawnPoints')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'lootTables')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'itemPlacements')).toBe(false);
+        expect(Array.isArray(engine.zones)).toBe(true);
+        expect((engine.zones as unknown[]).length).toBe(6);
     }, 60_000);
 
     it('--world=proof emits no presentation key', async () => {

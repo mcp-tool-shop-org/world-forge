@@ -65,6 +65,20 @@ describe('buildWorldScene — playable scaffold (Wave B-1)', () => {
         expect(tscn).toContain('[ext_resource type="Script" path="res://scripts/player.gd" id="player_gd"]');
     });
 
+    it('joinGraph is the stage scene: zones stay, the pawn and world_data do not', () => {
+        const tscn = buildWorldScene({ ...baseInput([makeZone()]), joinGraph: true });
+        expect(tscn).toContain('metadata/zone_id = "zone-a"');
+        expect(tscn).not.toContain('player.gd');
+        expect(tscn).not.toContain('world_data');
+        expect(tscn).not.toContain('CharacterBody2D');
+        expect(tscn).not.toContain('PlayerShape');
+        const ext = (tscn.match(/\[ext_resource /g) ?? []).length;
+        const sub = (tscn.match(/\[sub_resource /g) ?? []).length;
+        const header = tscn.match(/load_steps=(\d+)/);
+        expect(header).not.toBeNull();
+        expect(Number(header?.[1])).toBe(ext + sub + 1);
+    });
+
     it('y-sorts the root and each zone for 2.5D depth', () => {
         const tscn = buildWorldScene(baseInput([makeZone()]));
         const count = (tscn.match(/y_sort_enabled = true/g) ?? []).length;
@@ -677,6 +691,11 @@ describe('buildWorldScene — zone entry gates (world modeling)', () => {
         expect(tscn).toContain('metadata/entry_gate = "party-level:>=10;item:iron-key"');
         expect(tscn).toContain('metadata/entry_gate_mode = "hard"');
         expect(tscn).toContain('metadata/entry_gate_reason = "You need the Iron Key."');
+        const zoneAt = tscn.indexOf('metadata/zone_id = "zone-a"');
+        const reasonAt = tscn.indexOf('metadata/entry_gate_reason = "You need the Iron Key."');
+        const nextNode = tscn.indexOf('\n[node ', zoneAt);
+        expect(reasonAt).toBeGreaterThan(zoneAt);
+        expect(nextNode).toBeGreaterThan(reasonAt);
     });
 
     it('omits the reason line when no reason is authored', () => {

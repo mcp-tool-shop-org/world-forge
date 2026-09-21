@@ -8,11 +8,15 @@
  *
  * Two files are written, and the pairing is the point:
  *
- *   world.tscn   the scene the client renders (zone nodes carry `metadata/zone_id`)
+ *   world.tscn   the join graph the client instances (zone nodes carry
+ *                `metadata/zone_id`). Not a playable pawn: no CharacterBody2D,
+ *                no `scripts/player.gd`, no `world_data/*.tres`. The stage
+ *                project does not contain those paths.
  *   pack.json    the wire-side truth (zone ids, gates, descriptors, counts).
  *                pack.json.presentation is the drawing contract (cells, anchors,
  *                plates, who stands where), copied from the authored block; the
- *                stage prefers it over the sidecar when present.
+ *                stage prefers it over the sidecar when present. It is NOT
+ *                written onto the engine-lane pack.
  *
  * A client joins wire events to scene nodes by `zone_id`. Emitting both halves
  * from ONE export is what makes that join checkable: if the two ever disagree,
@@ -199,7 +203,7 @@ if (!project) {
 
 // ── Export ───────────────────────────────────────────────────
 console.log(`── export '${worldName}' (${project.id}) → Godot ──`);
-const result = exportToGodot(project);
+const result = exportToGodot(project, { joinGraph: true });
 if (!result.success) {
     console.error('  ✗ export failed:');
     for (const e of result.errors) console.error(`    ${e.path ?? '(root)'}: ${e.message}`);
@@ -359,8 +363,8 @@ if (process.env.WORLD_FORGE_FORCE_PRESENTATION_ADVISORY === '1') {
 for (const z of wireSide.zones) {
     if (z.entryGate === null) continue;
     checksRun += 1;
-    if (!pack.worldSceneTscn.includes(`metadata/entry_gate_mode = "${z.entryGate.mode}"`)) {
-        selfChecks.push(`zone '${z.id}' has a gate in pack.json with no entry_gate metadata in the scene`);
+    if (!gateMetadataOnZoneNode(pack.worldSceneTscn, z.id, z.entryGate.mode)) {
+        selfChecks.push(`zone '${z.id}' has a gate in pack.json that is not on the zone node`);
     }
 }
 // The pairing is the whole point: a zone in the pack whose node the scene does not
@@ -370,6 +374,16 @@ for (const id of wireSide.zoneIds) {
     if (!pack.worldSceneTscn.includes(`metadata/zone_id = "${id}"`)) {
         selfChecks.push(`zone '${id}' is in the pack but carries no scene node metadata`);
     }
+}
+// The stage instances this file alone. A pawn or a .tres ExtResource fails
+// the load before the joiner runs (missing player.gd / world_data).
+checksRun += 1;
+if (
+    pack.worldSceneTscn.includes('res://scripts/player.gd')
+    || pack.worldSceneTscn.includes('CharacterBody2D')
+    || pack.worldSceneTscn.includes('res://world_data/')
+) {
+    selfChecks.push('stage scene still references a play pawn or a world_data resource');
 }
 
 if (project.presentation) {
@@ -447,6 +461,84 @@ if (writeDoctored) {
     console.log(`  → ${doctoredPath}  (zone '${victim}' → '${victim}-DOCTORED')`);
 }
 
+/** Gate lines must sit on the zone node, before the next child header. */
+function gateMetadataOnZoneNode(scene: string, zoneId: string, mode: string): boolean {
+    const at = scene.indexOf(`metadata/zone_id = "${zoneId}"`);
+    if (at < 0) return false;
+    const next = scene.indexOf('\n[node ', at);
+    const block = next < 0 ? scene.slice(at) : scene.slice(at, next);
+    return block.includes(`metadata/entry_gate_mode = "${mode}"`);
+}
+
+/**
+ * Top-level keys the stage's pinned engine loads (3.12.0,
+ * content-schema gate.ts ALLOWED_PACK_KEYS at 97d6ef1).
+ * presentation is not one of them.
+ */
+const ENGINE_LANE_KEYS = [
+    'schemaVersion',
+    'entities',
+    'zones',
+    'dialogues',
+    'quests',
+    'abilities',
+    'statuses',
+    'verbs',
+    'archetypes',
+    'backgrounds',
+    'itemUseEffects',
+    'districts',
+    'buildCatalog',
+    'progressionTrees',
+    'placements',
+    'encounterAnchors',
+    'hazardDefinitions',
+    'itemPlacements',
+    'entityAi',
+    'ruleset',
+    'ruleProfiles',
+    'meta',
+    'manifest',
+    'factions',
+    'items',
+    'factionPresences',
+    'pressureHotspots',
+] as const;
+
+/**
+ * The library ContentPack is wider than the engine gate. The file the sidecar
+ * reads is the intersection, plus giveItem rows only: a zone stand has no
+ * entityId, and the engine requires one.
+ */
+function projectEngineLane(pack: object): {
+    projected: Record<string, unknown>;
+    dropped: string[];
+    itemPlacementsOmitted: number;
+} {
+    const raw = pack as Record<string, unknown>;
+    const allowed = new Set<string>(ENGINE_LANE_KEYS);
+    const dropped = Object.keys(raw).filter((k) => !allowed.has(k)).sort();
+    const projected: Record<string, unknown> = {};
+    let itemPlacementsOmitted = 0;
+    for (const key of ENGINE_LANE_KEYS) {
+        if (raw[key] === undefined) continue;
+        if (key === 'itemPlacements') {
+            const rows = Array.isArray(raw[key]) ? raw[key] as Array<Record<string, unknown>> : [];
+            const give = rows.filter((row) =>
+                row !== null && typeof row === 'object'
+                && typeof row.entityId === 'string' && row.entityId.length > 0
+                && typeof row.itemId === 'string' && row.itemId.length > 0,
+            );
+            itemPlacementsOmitted = rows.length - give.length;
+            if (give.length === 0) continue;
+            projected[key] = give;
+            continue;
+        }
+        projected[key] = raw[key];
+    }
+    return { projected, dropped, itemPlacementsOmitted };
+}
+
 // ── The engine lane ─────────────────────────────────────────
 // The same world through `export-ai-rpg`, which is what the sidecar's `--content` reads.
 // Emitted here rather than by a second command because the two halves must describe one
@@ -462,8 +554,20 @@ if (engineOut !== undefined) {
     }
     const enginePath = resolve(engineOut);
     mkdirSync(dirname(enginePath), { recursive: true });
-    writeFileSync(enginePath, `${JSON.stringify(engineResult.contentPack, null, 2)}
-`, 'utf-8');
+    // Sidecar 3.12.0 loads this file. Its gate allowlist is narrower than
+    // ContentPack, and itemPlacements means giveItem {itemId, entityId} —
+    // a zone stand with no entity is SIDECAR_CONTENT_INVALID. Presentation
+    // stays on the stage pack.json above and is not a ContentPack key.
+    const lane = projectEngineLane(engineResult.contentPack);
+    if (lane.dropped.length > 0 || lane.itemPlacementsOmitted > 0) {
+        const bits: string[] = [];
+        if (lane.dropped.length > 0) bits.push(`dropped ${lane.dropped.join(', ')}`);
+        if (lane.itemPlacementsOmitted > 0) {
+            bits.push(`omitted ${lane.itemPlacementsOmitted} itemPlacement(s) with no entityId`);
+        }
+        console.log(`  · engine lane projected for 3.12.0: ${bits.join('; ')}`);
+    }
+    writeFileSync(enginePath, `${JSON.stringify(lane.projected, null, 2)}\n`, 'utf-8');
 
     // The two lanes must agree on the zone set. Checked rather than trusted: the client
     // joins events to nodes by zone id, so a disagreement here is a silent hole later.

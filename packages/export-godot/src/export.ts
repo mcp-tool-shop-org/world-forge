@@ -107,6 +107,12 @@ export interface GodotExportOptions {
      * When omitted, image-copy planning is skipped.
      */
     assetBaseDir?: string;
+    /**
+     * Emit the stage join graph instead of the playable pawn scene.
+     * See SceneBuildInput.joinGraph. Default false — a Godot project export
+     * still writes the pawn, player.gd, and world_data.
+     */
+    joinGraph?: boolean;
 }
 
 export interface GodotExportResult {
@@ -273,6 +279,7 @@ export function exportToGodot(
                         startingInventory: project.playerTemplate.startingInventory,
                     }
                     : undefined,
+                joinGraph: options?.joinGraph === true,
             });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
