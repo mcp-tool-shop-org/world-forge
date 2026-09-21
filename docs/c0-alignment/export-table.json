@@ -13,14 +13,14 @@
     "@ai-rpg-engine/character-creation": "2.0.2"
   },
   "tally": {
-    "total": 377,
+    "total": 389,
     "byClass": {
-      "no-channel": 76,
+      "no-channel": 88,
       "carried-lossless": 283,
       "carried-approximated": 18
     },
     "byChannel": {
-      "none": 76,
+      "none": 88,
       "assetPacks": 11,
       "assets": 11,
       "contentPack": 264,
@@ -2802,6 +2802,138 @@
       "verified": true,
       "evidence": "2 authored values match contentPack:playerTemplate.tags[] exactly",
       "note": ""
+    },
+    {
+      "path": "presentation.floor{}",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].cell[]",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].character",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].facing",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].id",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].why",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].y_sort_proof",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.occupancy[].zone",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.span",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.tile[]",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.view",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
+    },
+    {
+      "path": "presentation.zoneCells{}[]",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
+      "transform": null,
+      "absenceProof": "key-absent",
+      "verified": true,
+      "evidence": "key \"presentation\" absent from all six export artifacts",
+      "note": "Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter."
     },
     {
       "path": "pressureHotspots[].baseProbability",

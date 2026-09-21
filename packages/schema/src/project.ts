@@ -18,6 +18,7 @@ import type {
 } from './visual.js';
 import type { AssetEntry, AssetPack } from './assets.js';
 import type { AuthoringMode } from './authoring-mode.js';
+import type { WorldPresentation } from './presentation.js';
 
 /** Complete authored world — everything needed to export to ai-rpg-engine. */
 export interface WorldProject {
@@ -115,6 +116,13 @@ export interface WorldProject {
    * Additive since v4.3 — existing projects without this field validate normally.
    */
   transitions?: TransitionEntity[];
+
+  /**
+   * How a client DRAWS this world (dimetric cells, zone anchors, who stands
+   * where). Additive since 4.8.x. Never simulated, never hashed, never scaled
+   * by scaleForSandbox. See presentation.ts for the three grids.
+   */
+  presentation?: WorldPresentation;
 }
 
 /**

@@ -126,6 +126,7 @@ export const DROPPED_CONTAINERS: Record<string, string> = {
   props: 'Prop definitions have no pack field.',
   propPlacements: 'Prop placements have no pack field.',
   ambientLayers: 'Ambient layers (fog / rain / dust) have no pack field.',
+  presentation: 'Client presentation (dimetric cells, zone anchors, standing positions). No engine pack field by design: the sim owns zone ids only; cells are how the stage draws them. Carried by dogfood/export-stage-fixture.ts onto the stage pack.json, not by this exporter.',
   // lootTables moved OUT of DROPPED_CONTAINERS by swarm wave-2 (F-ee46a52c) —
   // see LOOT_TABLE_ROWS below. Kept as a comment for the same reason
   // hazardDefinitions' entry was: the diff should show a domain LEAVING this

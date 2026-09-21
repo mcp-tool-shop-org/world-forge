@@ -45,6 +45,7 @@ const WORLD_PROJECT_FIELDS = [
   'tilesets', 'tileLayers', 'props', 'propPlacements', 'ambientLayers',
   'assets', 'assetPacks',
   'lootTables', 'transitions',
+  'presentation',
 ] as const;
 
 /** Every optional field on the `Zone` interface (`schema/src/spatial.ts`). */

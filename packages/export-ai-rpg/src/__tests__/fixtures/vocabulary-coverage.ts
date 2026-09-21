@@ -968,4 +968,41 @@ export const vocabularyCoverageProject: WorldProject = {
       tags: ['vertical', 'slow'],
     },
   ],
+
+  // ── Presentation (additive, 4.8.x) ────────────────────────────
+  // How a CLIENT draws this world. Never simulated, never hashed, never
+  // scaled by scaleForSandbox — a different grid from the authored
+  // gridX/gridY above. Populated here only so the C0 drift guards see the
+  // field once; the export lane has no channel for it by design
+  // (DROPPED_CONTAINERS.presentation).
+  presentation: {
+    view: 'dimetric-2:1',
+    tile: [256, 128],
+    span: 3,
+    zoneCells: {
+      'zone-surface-yard': [2, 2],
+      'zone-under-vault': [5, 5],
+    },
+    floor: { 'zone-under-vault': 'stone_wet' },
+    occupancy: [
+      {
+        id: 'player',
+        character: 'merchant',
+        zone: 'zone-surface-yard',
+        cell: [3, 3],
+        facing: 'front',
+      },
+      {
+        // Matches entityPlacements[0] — same id, same zone. Rule 6 of
+        // presentationAdvisories is exactly the check that they agree.
+        id: 'npc-quartermaster',
+        character: 'elder',
+        zone: 'zone-surface-yard',
+        cell: [4, 2],
+        facing: 'front_left',
+        y_sort_proof: 'front',
+        why: 'stands north of the arch so the stall never occludes the portrait',
+      },
+    ],
+  },
 };
