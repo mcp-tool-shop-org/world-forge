@@ -120,6 +120,32 @@ World Forge grid coordinates are converted to Godot 2D coordinates:
 - Zone dimensions map to scene node bounds
 - Entity placements become positioned child nodes
 
+## The Three Grids
+
+A 2.5D world is described by three grids at once, and the exporter converts
+between **none** of them. Mixing them is how a harbour ends up with a person
+drawn in a room the simulation says they are not in.
+
+| Grid | Unit | Who owns it | Hashed? |
+|------|------|-------------|---------|
+| Sim occupancy | zone id | the engine's `WorldState` | yes — authoritative |
+| Dimetric cell | 256x128 diamond, span 3 | the client's isometric view, via `presentation` | never |
+| Forge cartesian | `gridX` / `gridY` in tiles | the editor and this `.tscn` | never |
+
+The Godot export writes the **cartesian** grid: zone origins, tile cells, and
+the `CharacterBody2D` pawn all live there, and a sandbox scale may multiply the
+whole thing. The optional `WorldProject.presentation` block holds the
+**dimetric** grid — zone anchor cells, floor plates, and an occupancy row per
+actor — and is carried through the export untouched, never scaled and never
+recomputed from `gridX`/`gridY`. The **zone id** is the only thing the two
+share, and it is what a client joins on.
+
+`exportToGodot` pushes `presentationAdvisories()` onto `warnings[]`, so a block
+whose cells fall outside a zone's span, or whose actor stands in a room the sim
+places elsewhere, is reported at export time rather than discovered on screen.
+The stage-fixture lane (`dogfood/export-stage-fixture.ts`) can promote those
+advisories to a hard failure with `--strict`.
+
 ## Fidelity Reporting
 
 Every export produces a structured fidelity report tracking what was preserved, approximated, or dropped:

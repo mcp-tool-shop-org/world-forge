@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+The harbour a client draws is now authored in the Forge, not measured by hand
+on the other side of the wire. A world may carry a `presentation` block: the
+dimetric cells, zone anchors, floor plates, and who stands where. It is drawing
+truth, never simulation truth — never hashed, never scaled, and the sim always
+wins a dispute about which room a person is in.
+
+### Added
+
+- **`WorldProject.presentation`** — an optional `WorldPresentation` block
+  (`view`, `tile`, `span`, `zoneCells`, `floor`, `occupancy`) describing how a
+  client DRAWS an authored world. Additive: projects without it validate
+  unchanged. `packages/schema/src/presentation.ts` documents the three grids
+  a 2.5D client juggles — sim zone id, dimetric cell, Forge cartesian — and
+  the rule that no lane converts between them.
+- **`presentationAdvisories(project)`** — eight advisory rules over the block:
+  unknown `zoneCells` zone, occupancy zone with no anchor, cell outside its
+  zone's `span x span` box, no `player` row, a drawn actor the sim never
+  places, an actor drawn in a room the sim puts elsewhere, unknown `floor`
+  zone, and duplicate actor ids. Returns `[]` when the block is absent, so
+  the overwhelming majority of worlds are never penalised for not having one.
+  Exported from `@world-forge/schema` alongside `PRESENTATION_VIEWS`,
+  `PRESENTATION_FACINGS`, `PRESENTATION_PLAYER_ID`, and
+  `PRESENTATION_ADVISORY_PREFIX`.
+- **Salt Road carries the harbour occupancy the stage plays** — six anchored
+  zones, a wet-stone plate on the long quay, and six actors (the merchant
+  player plus Corvane, Halle, Drell, the tally boy, and the stair collector).
+  Every cell is transcribed from the measured stage sidecar, not derived from
+  `EntityPlacement.gridX/gridY`; each row keeps the measured rationale.
+- **`export-stage-fixture.ts --strict`** — exits 1 *before* writing if any
+  presentation advisory reached the export warnings. Non-presentation warnings
+  do not trip it. The script now reports the number of self-checks it actually
+  ran instead of a literal, and checks the presentation rows, the anchors, and
+  the `player` row against the emitted `zoneIds`.
+
+### Changed
+
+- **`exportToGodot` surfaces presentation advisories on `warnings[]`.** A
+  person drawn in the wrong room is an export defect, so every lane that wraps
+  the Godot exporter sees it without importing the rule set itself.
+- **`export-stage-fixture.ts` writes `presentation` onto the stage
+  `pack.json`** under one additive key, copied verbatim from the authored
+  block and omitted entirely when the world has none. A stage consumer can
+  prefer the pack over its hand-measured sidecar.
+- **`scaleForSandbox` skips `presentation` by name.** Dimetric cells are
+  absolute positions on a 256x128 diamond grid; the cartesian x3 has no
+  meaning there. Skipping by name means a future walker that recurses into
+  objects cannot scale the block by accident.
+
+### Notes
+
+- The carry is **stage-fixture-only**. The engine's `ContentPack` has no
+  additive slot and its loader is strict, so `presentation` does not travel
+  the `export-ai-rpg` lane; the C0 alignment table still lists it as dropped
+  there. Reopening that route is an engine-side change, not a Forge one.
+
 ## [4.8.0] - 2026-08-27
 
 Leftover MED/LOW pass after v4.7.0. Not a new health swarm — the 32 HIGH

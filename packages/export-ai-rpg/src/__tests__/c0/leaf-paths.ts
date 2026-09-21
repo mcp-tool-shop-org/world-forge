@@ -43,6 +43,9 @@ export const DYNAMIC_KEY_PATHS: ReadonlySet<string> = new Set([
   // items
   'itemPlacements[].statModifiers',
   'itemPlacements[].resourceModifiers',
+  // presentation — zone id is the author-chosen key on both maps
+  'presentation.zoneCells',
+  'presentation.floor',
 ]);
 
 export function isPlainObject(v: unknown): v is Record<string, unknown> {

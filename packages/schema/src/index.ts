@@ -102,6 +102,16 @@ export {
 } from './project.js';
 export { createEmptyProject, normalizeProjectShape, backfillOmittedRequiredArrays } from './project-shape.js';
 
+export type {
+  PresentationView, PresentationFacing, PresentationCell,
+  PresentationActor, WorldPresentation, PresentationAdvisoryInput,
+} from './presentation.js';
+export {
+  PRESENTATION_VIEWS, PRESENTATION_FACINGS,
+  PRESENTATION_PLAYER_ID, PRESENTATION_ADVISORY_PREFIX,
+  presentationAdvisories,
+} from './presentation.js';
+
 export type { AuthoringMode } from './authoring-mode.js';
 export { AUTHORING_MODES, isValidMode, DEFAULT_MODE, MODE_GRID_DEFAULTS } from './authoring-mode.js';
 

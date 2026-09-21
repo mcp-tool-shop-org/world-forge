@@ -73,6 +73,26 @@ gizmos, transitions are `Area2D` placeholders, so a clean Godot project loads
 the export with no missing PackedScene `ExtResource`s. Image-backed tilesets
 still declare `Texture2D` ext_resources for authored tileset files.
 
+## ai-rpg-stage's play camera is not this pawn
+
+The `CharacterBody2D` pawn, its following `Camera2D`, and `scripts/player.gd`
+above exist so a clean Godot project opens this export and walks around in it.
+They are a cartesian join graph — the same grid the editor paints on. The
+`ai-rpg-stage` client does something else: it hides the pawn and draws its own
+2:1 dimetric harbour from `pack.json.presentation`, binding sprites to 256x128
+diamond cells that were measured on the stage, not computed here.
+
+So the two never argue, keep the grids apart. **Never derive a dimetric cell
+from `EntityPlacement.gridX/gridY`** — the cartesian grid is an authoring
+convenience that a sandbox scale may multiply, and it says nothing about where
+a sprite stands on a diamond. The authored `presentation` block is the only
+source for dimetric cells; the sim's zone id is the only source for which room
+someone is in; and this exporter converts between none of them. It carries
+`presentation` through untouched and reports
+[`presentationAdvisories`](../schema/src/presentation.ts) on `warnings[]` when
+the two records disagree. `player.gd` is unchanged by any of this and should
+stay that way.
+
 ## CLI
 
 ```

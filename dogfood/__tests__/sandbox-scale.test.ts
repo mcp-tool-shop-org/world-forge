@@ -52,3 +52,34 @@ describe('scaleForSandbox (F-4fd2946a)', () => {
         expect(scaled.buildings?.[0].gridY).toBe(6);
     });
 });
+
+describe('scaleForSandbox leaves presentation untouched', () => {
+    const scaled = scaleForSandbox(saltRoadProject);
+
+    it('keeps the authored presentation object', () => {
+        expect(scaled.presentation).toEqual(saltRoadProject.presentation);
+    });
+
+    it('keeps occupancy cells at the sidecar literals', () => {
+        const occupancy = scaled.presentation?.occupancy ?? [];
+        expect(occupancy[0].cell).toEqual([4, 4]);
+        expect(occupancy[1].cell).toEqual([6, 3]);
+        expect(occupancy[2].cell).toEqual([10, 4]);
+        expect(occupancy[3].cell).toEqual([9, 7]);
+        expect(occupancy[4].cell).toEqual([7, 6]);
+        expect(occupancy[5].cell).toEqual([7, 9]);
+    });
+
+    it('keeps long-quay at [5, 5]', () => {
+        expect(scaled.presentation?.zoneCells['long-quay']).toEqual([5, 5]);
+    });
+
+    it('keeps span 3 and tile [256, 128]', () => {
+        expect(scaled.presentation?.span).toBe(3);
+        expect(scaled.presentation?.tile).toEqual([256, 128]);
+    });
+
+    it('still scales cartesian map.gridWidth to 120', () => {
+        expect(scaled.map.gridWidth).toBe(120);
+    });
+});

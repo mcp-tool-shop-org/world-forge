@@ -14,6 +14,7 @@ import type { EntityRole, ItemSlot, ItemRarity } from './entities.js';
 import type { AmbientLayer } from './visual.js';
 import { validateSpawnCondition } from './spawn-condition.js';
 import { AUTHORING_MODES, isValidMode } from './authoring-mode.js';
+import { PRESENTATION_FACINGS, PRESENTATION_VIEWS } from './presentation.js';
 import { backfillOmittedRequiredArrays } from './project-shape.js';
 
 export type ValidationError = {
@@ -257,6 +258,116 @@ function finishResult(
   return result;
 }
 
+function isPlainObjectValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function describeValue(value: unknown): string {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+/** A cell / tile pair: exactly two finite numbers. */
+function isNumberPair(value: unknown): boolean {
+  return Array.isArray(value)
+    && value.length === 2
+    && value.every((n) => typeof n === 'number' && Number.isFinite(n));
+}
+
+/**
+ * Structural guard for `WorldProject.presentation`. Absent ⇒ zero errors: most
+ * worlds have no presentation block and must not be penalised for it. Present
+ * ⇒ it has to actually be one.
+ */
+function validatePresentationShape(value: unknown, errors: ValidationError[]): void {
+  if (!isPlainObjectValue(value)) {
+    errors.push({
+      path: 'presentation',
+      message: `Expected "presentation" to be an object when present but got ${describeValue(value)}.`,
+    });
+    return;
+  }
+
+  const views = [...PRESENTATION_VIEWS] as readonly string[];
+  if (typeof value.view !== 'string' || !views.includes(value.view)) {
+    errors.push({
+      path: 'presentation.view',
+      message: `Presentation view ${JSON.stringify(value.view)} is not a supported view (expected one of: ${views.join(', ')}).`,
+    });
+  }
+
+  if (!isNumberPair(value.tile) || (value.tile as number[]).some((n) => n <= 0)) {
+    errors.push({
+      path: 'presentation.tile',
+      message: 'Presentation tile must be a 2-tuple of positive numbers, e.g. [256, 128].',
+    });
+  }
+
+  if (typeof value.span !== 'number' || !Number.isInteger(value.span) || value.span <= 0) {
+    errors.push({
+      path: 'presentation.span',
+      message: `Presentation span (${JSON.stringify(value.span)}) must be a positive integer.`,
+    });
+  }
+
+  if (!isPlainObjectValue(value.zoneCells)) {
+    errors.push({
+      path: 'presentation.zoneCells',
+      message: `Expected "presentation.zoneCells" to be an object of zone id -> [x, y] but got ${describeValue(value.zoneCells)}.`,
+    });
+  } else {
+    for (const [zoneId, cell] of Object.entries(value.zoneCells)) {
+      if (!isNumberPair(cell)) {
+        errors.push({
+          path: `presentation.zoneCells.${zoneId}`,
+          message: `Presentation anchor for zone "${zoneId}" must be a 2-tuple of numbers, e.g. [2, 2].`,
+        });
+      }
+    }
+  }
+
+  if (!Array.isArray(value.occupancy)) {
+    errors.push({
+      path: 'presentation.occupancy',
+      message: `Expected "presentation.occupancy" to be an array but got ${describeValue(value.occupancy)}.`,
+    });
+    return;
+  }
+
+  const facings = [...PRESENTATION_FACINGS] as readonly string[];
+  for (let i = 0; i < value.occupancy.length; i++) {
+    const row: unknown = value.occupancy[i];
+    if (!isPlainObjectValue(row)) {
+      errors.push({
+        path: `presentation.occupancy[${i}]`,
+        message: `Expected occupancy row ${i} to be an object but got ${describeValue(row)}.`,
+      });
+      continue;
+    }
+    for (const field of ['id', 'character', 'zone'] as const) {
+      if (typeof row[field] !== 'string' || row[field] === '') {
+        errors.push({
+          path: `presentation.occupancy[${i}].${field}`,
+          message: `Occupancy row ${i} must carry a non-empty string "${field}".`,
+        });
+      }
+    }
+    if (!isNumberPair(row.cell)) {
+      errors.push({
+        path: `presentation.occupancy[${i}].cell`,
+        message: `Occupancy row ${i} cell must be a 2-tuple of numbers, e.g. [4, 4].`,
+      });
+    }
+    if (typeof row.facing !== 'string' || !facings.includes(row.facing)) {
+      errors.push({
+        path: `presentation.occupancy[${i}].facing`,
+        message: `Occupancy row ${i} facing ${JSON.stringify(row.facing)} is not a supported facing (expected one of: ${facings.join(', ')}).`,
+      });
+    }
+  }
+}
+
 export function validateProject(project: WorldProject, options?: ValidateOptions): ValidationResult {
   const errors: ValidationError[] = [];
   const verbose = options?.verbose ?? false;
@@ -349,6 +460,17 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
       path: 'mode',
       message: `Project mode "${project.mode}" is not a supported authoring mode (expected one of: ${AUTHORING_MODES.join(', ')}).`,
     });
+  }
+
+  // `presentation` is an optional OBJECT, so it joins neither closed array list
+  // and the structural array guard above never sees it. These are STRUCTURAL
+  // checks only — "is this a presentation block at all". The semantic rules
+  // (cell inside its zone's span, drawn zone agrees with the sim) are
+  // ADVISORIES in presentation.ts, because ValidationResult has no warnings
+  // channel and a drawing hint must never block an export.
+  const presentationValue = (project as { presentation?: unknown }).presentation;
+  if (presentationValue !== undefined) {
+    validatePresentationShape(presentationValue, errors);
   }
 
   // Map grid dimensions must be finite and > 0 (NaN/0 used to pass silently).

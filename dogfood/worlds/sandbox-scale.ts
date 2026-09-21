@@ -24,8 +24,8 @@
 // place to change when the next measurement says something different.
 //
 // WHAT IT DELIBERATELY DOES NOT TOUCH: prose, ids, tags, neighbours, gates,
-// hazards, descriptors — everything the Director froze. This function moves
-// geometry and nothing else.
+// hazards, descriptors, presentation — everything the Director froze. This
+// function moves geometry and nothing else.
 
 import type { WorldProject } from '@world-forge/schema';
 
@@ -73,6 +73,11 @@ export function scaleForSandbox(project: WorldProject): WorldProject {
 
     for (const [key, value] of Object.entries(project)) {
         if (key === 'map') continue;
+        // Presentation is NOT geometry. Dimetric cells and zone anchors are absolute
+        // positions on the stage's 256x128 diamond grid, copied from a measured
+        // sidecar; the cartesian x3 has no meaning there. Skipped by name so a
+        // future walker that recurses into objects cannot scale it by accident.
+        if (key === 'presentation') continue;
         if (!Array.isArray(value)) continue;
 
         if (key === 'tileLayers') {

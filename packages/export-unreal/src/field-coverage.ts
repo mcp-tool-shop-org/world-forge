@@ -105,6 +105,8 @@ const FIELD_COVERAGE: { readonly [K in keyof WorldProject]-?: FieldStatus } = {
 
   lootTables: { kind: 'dropped', reason: 'Drop tables are resolved server-side in the UE5 gameplay layer.' },
   transitions: { kind: 'covered' },
+
+  presentation: { kind: 'dropped', reason: 'Client presentation (dimetric cells, zone anchors, standing positions) — a different grid from the cartesian one this lane emits; carried onto the stage pack.json by dogfood/export-stage-fixture.ts, not by this exporter.' },
 };
 
 // Compile-time exhaustiveness lock. If WorldProject gains, loses, or renames
