@@ -26,7 +26,7 @@
  * to the system second. The rules it was written under:
  *
  *   * A SPEAKER AND A MOTIVE. Nobody refuses the player on behalf of a rule. The
- *     clerk at the warehouse door has her name on the register and a mother in
+ *     clerk at the warehouse door has his name on the register and a mother in
  *     Dockward, and that is why the door stays shut.
  *   * NO SYSTEM NOUNS. No ids, no "zone", no "requires", no effect names. If a
  *     mechanic is present the prose shows its consequence, not its label.
@@ -506,7 +506,7 @@ export const saltRoadProject: WorldProject = {
             tags: ['bonded', 'register'],
             spriteId: 'sprite-halle',
             custom: {
-                wants: 'to keep her name clean on a register she did not write the rules for',
+                wants: 'to keep his name clean on a register he did not write the rules for',
                 tell: 'answers without looking up from the book',
             },
         },
