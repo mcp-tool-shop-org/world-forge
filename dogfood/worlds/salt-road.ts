@@ -807,4 +807,81 @@ export const saltRoadProject: WorldProject = {
     buildings: [],
     hubs: [],
     strongholds: [],
+
+    // ── How the stage DRAWS this harbour ─────────────────────────────────────
+    //
+    // Copied, not derived. Every cell below is transcribed from ai-rpg-stage
+    // fixtures/harbour-occupancy.json @ 839ad31 (PR #7), which was measured from
+    // the harbour as drawn. The cartesian gridX/gridY on entityPlacements above are
+    // a different grid (the Forge's 40x28 editor grid, scaled x3 for the sandbox)
+    // and say nothing about where a sprite stands on a 256x128 diamond.
+    //
+    // If this block and the sidecar ever disagree, the sidecar wins and the
+    // disagreement is a defect to record, not a position to "improve".
+    // See packages/schema/src/presentation.ts for the three grids.
+    presentation: {
+        view: 'dimetric-2:1',
+        tile: [256, 128],
+        span: 3,
+        zoneCells: {
+            'counting-house': [2, 2],
+            'weighing-floor': [5, 2],
+            'bonded-warehouse': [8, 2],
+            'long-quay': [5, 5],
+            'customs-shed': [8, 5],
+            'crooked-stair': [5, 8],
+        },
+        floor: { 'long-quay': 'stone_wet' },
+        occupancy: [
+            {
+                id: 'player',
+                character: 'merchant',
+                zone: 'counting-house',
+                cell: [4, 4],
+                facing: 'front',
+                why: 'the counting house fills its whole 3x3; the near corner is the one cell whose sort Y beats every wall strip, so the merchant stands at the building\'s front corner',
+            },
+            {
+                id: 'npc-corvane',
+                character: 'elder',
+                zone: 'weighing-floor',
+                cell: [6, 3],
+                facing: 'front',
+                why: 'two rows straight below the well at (5,2): in front of it, same screen column',
+            },
+            {
+                id: 'npc-halle',
+                character: 'scribe',
+                zone: 'bonded-warehouse',
+                cell: [10, 4],
+                facing: 'front_left',
+                why: 'the warehouse fills its 3x3; near corner, sorts in front of every strip',
+            },
+            {
+                id: 'npc-drell',
+                character: 'guard',
+                zone: 'customs-shed',
+                cell: [9, 7],
+                facing: 'front',
+                y_sort_proof: 'front',
+                why: 'one row below the shed\'s near vertex (9,6), in front of the door face; x+y=16 beats every shed strip (max 15), no tie; the torch stands at (9,6) beside him',
+            },
+            {
+                id: 'npc-tally-boy',
+                character: 'child',
+                zone: 'long-quay',
+                cell: [7, 6],
+                facing: 'front_left',
+                why: 'right of the crate at (6,6), clear of the cart (5,5) and bollard (5,6); faces the cart',
+            },
+            {
+                id: 'npc-stair-collector',
+                character: 'fisherman',
+                zone: 'crooked-stair',
+                cell: [7, 9],
+                facing: 'front',
+                why: 'beside the stair\'s right parapet (footprint 5..6 x 8..10), on the free column x=7',
+            },
+        ],
+    },
 };
