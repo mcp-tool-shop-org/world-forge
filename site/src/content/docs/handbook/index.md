@@ -19,6 +19,8 @@ World Forge is the authoring end of a three-layer authoring-to-play pipeline:
 | Runtime | **[ai-rpg-engine](https://github.com/mcp-tool-shop-org/ai-rpg-engine)** | Simulation truth — stats, combat, economy, faction pressure. Loads an exported ContentPack and runs it. |
 | Client | **[ai-rpg-stage](https://github.com/mcp-tool-shop-org/ai-rpg-stage)** | Godot 4 client that renders the running simulation and submits player intents |
 
+The knobs, and which layer hears each one, are on [Authoring levers](./levers/). Salt Road is the worked example.
+
 ## What World Forge Does
 
 - **Choose an authoring mode** — dungeon, district, world, ocean, space, interior, or wilderness — to adapt grid size, connection vocabulary, validation, and guide text to your world's scale

@@ -132,13 +132,17 @@ drawn in a room the simulation says they are not in.
 | Dimetric cell | 256x128 diamond, span 3 | the client's isometric view, via `presentation` | never |
 | Forge cartesian | `gridX` / `gridY` in tiles | the editor and this `.tscn` | never |
 
-The Godot export writes the **cartesian** grid: zone origins, tile cells, and
-the `CharacterBody2D` pawn all live there, and a sandbox scale may multiply the
-whole thing. The optional `WorldProject.presentation` block holds the
-**dimetric** grid — zone anchor cells, floor plates, and an occupancy row per
-actor — and is carried through the export untouched, never scaled and never
-recomputed from `gridX`/`gridY`. The **zone id** is the only thing the two
-share, and it is what a client joins on.
+A full Godot **project** export writes the **cartesian** grid: zone origins,
+tile cells, and a `CharacterBody2D` pawn, and a sandbox scale may multiply that
+geometry. The stage fixture (`dogfood/export-stage-fixture.ts`) is a different
+file: a join graph of the same zones and gate metadata, with no pawn, no
+`scripts/player.gd`, and no `world_data` resources, because the stage project
+does not contain those paths. The optional `WorldProject.presentation` block
+holds the **dimetric** grid — zone anchor cells, floor plates, and an occupancy
+row per actor — and is copied onto the stage `pack.json` only. It is never
+scaled, never recomputed from `gridX`/`gridY`, and never added to the engine
+`ContentPack`. The **zone id** is the only thing the two grids share, and it is
+what a client joins on.
 
 `exportToGodot` pushes `presentationAdvisories()` onto `warnings[]`, so a block
 whose cells fall outside a zone's span, or whose actor stands in a room the sim

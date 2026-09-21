@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Authoring levers.** The handbook has a single map of which knob the
+  simulation hashes, which knob is only a dimetric cell, and how Salt Road
+  is exported as a join graph. The Godot export page now says the stage
+  fixture is that join graph.
 - **Stage fixture is a join graph.** `export-stage-fixture.ts` asks the Godot
   exporter for `joinGraph`: the scene the stage instances has zone nodes and
   gate metadata, and does not reference `scripts/player.gd`, `world_data/*.tres`,
