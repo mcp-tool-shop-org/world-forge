@@ -1,8 +1,7 @@
 // swarm-wave4-amends.test.ts — Stage-B AMEND wave (wave 4) fixes for export-ai-rpg.
 //
-// One describe block per approved finding. See
-// E:\AI\testing-os\swarms\swarm-1785831762-2a42\wave-4\export-engine.md for
-// the full finding text this wave fixes.
+// One describe block per approved finding. See the swarm wave-4
+// export-engine finding for the full finding text this wave fixes.
 
 import { describe, it, expect } from 'vitest';
 import { exportToEngine } from '../export.js';

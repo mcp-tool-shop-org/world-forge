@@ -1,7 +1,7 @@
 // swarm-wave32-amends.test.ts — Stage-B AMEND wave (wave 32) fixes for export-ai-rpg.
 //
-// One describe block per approved finding. See
-// E:\AI\testing-os\swarms\swarm-1787820671-c76a\wave-32\export-engine.md
+// One describe block per approved finding. See the swarm wave-32
+// export-engine finding.
 
 import { describe, it, expect } from 'vitest';
 import { exportToEngine } from '../export.js';

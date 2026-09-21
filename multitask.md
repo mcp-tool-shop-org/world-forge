@@ -7,9 +7,9 @@
 
 ## Repos
 
-- **World Forge:** `E:\AI\world-forge` (monorepo, `packages/*`)
-- **Engine (read-only reference):** `E:\AI\ai-rpg-engine` (target export format — the deterministic runtime that loads an exported pack)
-- **Client (read-only reference):** `E:\AI\ai-rpg-stage` (Godot 4 client that renders a running engine session)
+- **World Forge:** this repo (monorepo, `packages/*`)
+- **Engine (read-only reference):** `ai-rpg-engine` (target export format — the deterministic runtime that loads an exported pack)
+- **Client (read-only reference):** `ai-rpg-stage` (Godot 4 client that renders a running engine session)
 
 ## Design Principles
 

@@ -1,8 +1,8 @@
 // swarm-wave18-amends.test.ts — Stage-C HUMANIZATION amend (wave 18) for export-ai-rpg.
 //
-// One describe block per approved finding. See
-// E:\AI\testing-os\swarms\swarm-1787820671-c76a\wave-18\export-engine.md for
-// the full finding text this wave fixes. CLI-side assertions live in cli.test.ts.
+// One describe block per approved finding. See the swarm wave-18
+// export-engine finding for the full finding text this wave fixes.
+// CLI-side assertions live in cli.test.ts.
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { exportToEngine } from '../export.js';
