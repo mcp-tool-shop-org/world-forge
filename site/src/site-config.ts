@@ -50,7 +50,7 @@ export const config: SiteConfig = {
         },
         {
           title: '2.5D Authoring',
-          desc: 'Elevation ranges, parallax layers, and skyline refs on the canvas. UE5 export emits Z-up coordinates and collision channels.',
+          desc: 'Elevation ranges, parallax layers, and skyline refs on the canvas. UE5 export emits Z-up coordinates; an authored presentation block gives a dimetric client its cells and occupancy.',
         },
         {
           title: 'Godot 4 Playable Scene',
@@ -119,6 +119,7 @@ export const config: SiteConfig = {
         ['Forge→Engine alignment audit (measured export table + leaf-path differ)', 'Shipped (v4.6.0)'],
         ['Content-pack manifest truth (real semver range, content hash, gated module ids)', 'Shipped (v4.6.0)'],
         ['Space vocabulary crossing (compiled spawn conditions, hazards, entry gates, scene descriptors)', 'Shipped (v4.6.0)'],
+        ['Drawing contract (presentation block: dimetric cells, zone anchors, occupancy, advisories)', 'Shipped (v4.9.0)'],
         ['UE5 reference loader plugin', 'Ships with Star Freight'],
         ['Quest system + Canon adapter v1 + faction relationships', 'Planned'],
       ],

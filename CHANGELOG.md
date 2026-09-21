@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-The harbour a client draws is now authored in the Forge, not measured by hand
-on the other side of the wire. A world may carry a `presentation` block: the
-dimetric cells, zone anchors, floor plates, and who stands where. It is drawing
-truth, never simulation truth — never hashed, never scaled, and the sim always
-wins a dispute about which room a person is in.
+## [4.9.0] - 2026-09-21
+
+**The harbour a client draws is now authored in the Forge.** A world may carry
+a `presentation` block — the dimetric cells, zone anchors, floor plates, and
+who stands where — instead of a client measuring it by hand on the far side of
+the wire. It is drawing truth, never simulation truth: never hashed, never
+scaled, and the sim always wins a dispute about which room a person is in.
+3473 tests.
 
 ### Added
 

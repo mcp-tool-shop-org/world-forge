@@ -72,6 +72,9 @@ interface WorldProject {
   // Earlier additive fields
   lootTables?: LootTable[];        // v4.3
   transitions?: TransitionEntity[]; // v4.3
+
+  // How a client DRAWS this world (v4.9) — also optional
+  presentation?: WorldPresentation;
 }
 ```
 
@@ -264,6 +267,67 @@ level:>=3            faction:keepers:>50 random:0.25
 ```
 
 Comparator grammars (`level:`, `party-level:`, `party-size:`, `faction:<id>:<op>`, `random:`) reject an empty or whitespace-only operand rather than coercing it to `0`.
+
+## Presentation
+
+`WorldProject.presentation` is optional and describes how a **client draws** this
+world. It is never simulated and never hashed, and the sandbox scale skips it by
+name — the cells it holds are absolute positions on a dimetric grid, not
+cartesian geometry to be multiplied.
+
+```typescript
+interface WorldPresentation {
+  view: 'dimetric-2:1';
+  tile: readonly [number, number];       // diamond footprint, e.g. [256, 128]
+  span: number;                          // cells per zone on each axis
+  zoneCells: Record<string, PresentationCell>;   // zone id -> anchor cell
+  floor?: Record<string, string>;        // zone id -> floor plate id
+  occupancy: PresentationActor[];
+}
+
+interface PresentationActor {
+  id: string;                            // 'player', or an EntityPlacement.entityId
+  character: string;                     // character PACK id the client binds
+  zone: string;                          // must match the sim placement's zoneId
+  cell: readonly [number, number];       // absolute dimetric cell
+  facing: PresentationFacing;            // one of 8 transcribed facings
+  y_sort_proof?: 'front';
+  why?: string;                          // measured rationale, not player-facing
+}
+```
+
+### The three grids
+
+Three grids describe a 2.5D world at once, and no lane converts between them:
+
+| Grid | Unit | Owner | Hashed |
+|---|---|---|---|
+| Sim occupancy | zone id | the engine's `WorldState` | yes — authoritative |
+| Dimetric cell | `tile` diamond, `span` per zone | the client, via `presentation` | never |
+| Forge cartesian | `gridX` / `gridY` | the editor and the Godot `.tscn` | never |
+
+A dimetric cell is **copied from a measurement**, never derived from
+`EntityPlacement.gridX/gridY`.
+
+### Advisories
+
+`presentationAdvisories(project)` returns `[]` when the block is absent, so a
+world without one is never penalised. When it is present, eight rules run in
+this order:
+
+1. a `zoneCells` key that is not a zone id
+2. an occupancy row in a zone with no anchor cell
+3. a cell outside its zone's `span x span` box (measured from the anchor, inclusive)
+4. no row with `id === 'player'`
+5. a non-player row the simulation never places
+6. a non-player row drawn in a zone the simulation places it outside of
+7. a `floor` key that is not a zone id
+8. a duplicate occupancy `id`
+
+Rule 6 is the one this whole block exists to catch. The findings are advisory,
+not `ValidationResult` errors — `exportToGodot` pushes them onto `warnings[]`,
+and `dogfood/export-stage-fixture.ts --strict` promotes them to a non-zero exit
+before anything is written.
 
 ## Scene Data Assembly
 

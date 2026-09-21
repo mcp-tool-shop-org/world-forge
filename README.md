@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.8.0</strong> — 3473 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.9.0</strong> — 3473 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architecture
@@ -83,6 +83,7 @@ Core TypeScript types and validation for world authoring.
 - **Town + structures** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
 - **World modeling** — `Stratum` + `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), `ZoneEntryGate` + party-state `SpawnCondition` operands (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
 - **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
+- **Presentation** — optional `WorldPresentation` on `WorldProject`: dimetric view, tile footprint, zone anchor cells, floor plates, and an occupancy row per actor. `presentationAdvisories()` runs eight advisory rules over it, including the one that matters — a person drawn in a room the simulation places them outside of
 - **Validation** — `validateProject()` (89 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming). v4.0 JSON that omits later required arrays is accepted after `normalizeProjectShape()` / `stampProjectSchemaVersion()`.
 - **Closed unions on the barrel** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS`, and the rest of the `VALID_*` sets export from `@world-forge/schema`.
 - **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
@@ -108,6 +109,7 @@ Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 - **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
 - **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
 - **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
+- **Presentation advisories** — an authored `presentation` block is carried through untouched and its advisories ride on `warnings[]`, so a drawing/sim disagreement is an export finding rather than a surprise on screen
 - **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
@@ -210,6 +212,7 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 - **Vertical strata** — discrete layers (surface / underground / sky, or building floors) with signed order, z-range, inter-layer visibility, and connectors (stairs / ladders / elevators); zones assign to a stratum
 - **Typed environmental hazards** — a shared hazard library (damage / status / instakill / ignite effects, trigger timing, terrain move-cost, passability, vision-blocking, weather gating) referenced per zone
 - **Zone entry party-gates** — gate entry on party state (level / size / items / flags / members / classes) as a hard or advisory gate with an authored "show the lock" reason
+- **Presentation occupancy** — for 2.5D clients: a dimetric view with a tile footprint and span, an anchor cell and optional floor plate per zone, and an occupancy row (character pack, zone, cell, facing) per actor including the player
 
 ### Content
 
@@ -288,6 +291,33 @@ a number instead of an assumption.
   does not quietly succeed.
 
 Requires `ai-rpg-engine` `^3.8.0`.
+
+### The drawing contract
+
+A world can also say how a client should **draw** it. `WorldProject.presentation`
+is optional and additive — most worlds have none and are never penalised for it —
+and it holds the dimetric view, the tile footprint, a zone anchor cell and floor
+plate per zone, and one occupancy row per actor.
+
+It exists because a 2.5D world is described by three grids at once, and the
+export converts between **none** of them:
+
+| Grid | Unit | Owner | Hashed |
+|---|---|---|---|
+| Sim occupancy | zone id | the engine's `WorldState` | yes — authoritative |
+| Dimetric cell | 256x128 diamond, span 3 | the client's view, via `presentation` | never |
+| Forge cartesian | `gridX` / `gridY` | the editor and the Godot `.tscn` | never |
+
+A dimetric cell is never derived from `gridX`/`gridY`, and the sandbox scale
+skips the block by name so an absolute diamond cell cannot be multiplied by
+accident. The sim always wins a dispute about which room a person is in;
+`presentationAdvisories()` says so out loud, `exportToGodot` reports it on
+`warnings[]`, and the stage-fixture lane can make it fatal with `--strict`.
+
+The block travels on the Godot stage fixture's `pack.json`. It does **not**
+travel the `export-ai-rpg` lane — the engine's `ContentPack` has no additive
+slot and its loader is strict — and the measured export table reports it as
+dropped there rather than implying otherwise.
 
 ## Security
 
