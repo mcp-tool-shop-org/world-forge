@@ -7,6 +7,41 @@ sidebar:
 
 The World Forge editor is a React web app that provides a visual authoring surface for world projects. Here is the typical workflow from empty canvas to exported ContentPack.
 
+## The harbour you can already play
+
+Salt Road, the felt harbour, is the worked example for this whole studio. It is **not** a project you paint in the editor. It lives at `dogfood/worlds/salt-road.ts`. The sections below are how you author a world of the same shape. The harbour you can walk today is produced by one export of that file.
+
+Six zones, one continuous town: `counting-house`, `weighing-floor`, `bonded-warehouse`, `long-quay`, `customs-shed`, `crooked-stair`.
+
+One door that explains itself. `bonded-warehouse` has a hard `entryGate` whose condition is `item:guild-seal`. The reason is a person's sentence. The stage displays that sentence. The engine decides whether the door opens. Do not teach the client to evaluate the condition.
+
+How it is drawn, which is a different grid from the canvas:
+
+| Field | Salt Road |
+|---|---|
+| `presentation.view` | `dimetric-2:1` |
+| `presentation.tile` | `[256, 128]` |
+| `presentation.span` | `3` (each zone is a 3×3 of diamonds) |
+| `presentation.floor` | `long-quay` → `stone_wet` |
+| `presentation.zoneCells` | counting-house `[2,2]`, weighing-floor `[5,2]`, bonded-warehouse `[8,2]`, long-quay `[5,5]`, customs-shed `[8,5]`, crooked-stair `[5,8]` |
+
+Occupancy cells are copied onto `presentation.occupancy`. They are not computed from `entityPlacements` `gridX` / `gridY`. The full list, and which layer hears each knob, is [Authoring levers](./levers/).
+
+Export both lanes from a world-forge checkout:
+
+```bash
+npx tsx dogfood/export-stage-fixture.ts \
+  --world=salt-road \
+  --out=<ai-rpg-stage>/fixtures \
+  --doctor \
+  --strict \
+  --engine-out=dogfood/output/salt-road/pack.json
+```
+
+`--strict` refuses to write if a presentation advisory fires. The scene is a join graph: zone nodes and gate text, no play pawn. The **Export Godot 4** button in the editor (§16) is the other file — a full Godot project that includes a pawn. The stage cannot instance that pawn. Play the harbour from the stage checkout with `node tools/play.mjs`.
+
+To make your own world, follow §0 onward, then add a `presentation` block of this same shape before you export for the stage. Change one lever, export again, and look. The lever page says which repo is allowed to hear it.
+
 ## 0. Choose an Authoring Mode
 
 When creating a new project (via the Template Manager), choose an **authoring mode** that matches your world's scale. The mode picker appears in the wizard alongside genre selection.
@@ -664,7 +699,7 @@ Three target-specific buttons download the appropriate pack:
 
 - **Export JSON** — AI RPG Engine content pack
 - **Export Unreal Engine 5** — 2.5D-aware UE5 content pack
-- **Export Godot 4** — `.tscn` scenes + resource pack
+- **Export Godot 4** — a full Godot project (`.tscn`, pawn, `world_data`). The stage does not instance this file. The harbour the stage plays is the join-graph command in [the worked example](#the-harbour-you-can-already-play).
 
 A **Validate** button runs the validation pipeline without downloading.
 

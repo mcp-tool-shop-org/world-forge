@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Salt Road in the editor handbook.** The workflow page now says the
+  playable harbour is `dogfood/worlds/salt-road.ts`, names the six zones,
+  the warehouse gate, and the presentation block, and points the stage
+  export at the join-graph command rather than the editor's pawn project.
 - **Authoring levers.** The handbook has a single map of which knob the
   simulation hashes, which knob is only a dimetric cell, and how Salt Road
   is exported as a join graph. The Godot export page now says the stage
