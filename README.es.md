@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.8.0</strong> — 3424 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.9.0</strong> — 3473 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Arquitectura
@@ -77,15 +77,16 @@ npx world-forge-export-godot project.json --validate-only
 
 Tipos centrales de TypeScript y validación para la creación de mundos.
 
-- **Spatial types** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
-- **Content types** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
-- **Visual layers** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
-- **Town + structures** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
-- **World modeling** — `Stratum` + `StratumLink` (vertical layers), `HazardDefinition` (typed effects union), `ZoneEntryGate` + party-state `SpawnCondition` operands (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
-- **Mode system** — `AuthoringMode` (7 modes), mode-specific grid/connection/validation profiles
-- **Validation** — `validateProject()` (89 structural checks with Map-based O(n) lookups, `warningCount`), `advisoryValidation()` (mode-specific suggestions, metadata completeness, asset naming). v4.0 JSON that omits later required arrays is accepted after `normalizeProjectShape()` / `stampProjectSchemaVersion()`.
-- **Closed unions on the barrel** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS`, and the rest of the `VALID_*` sets export from `@world-forge/schema`.
-- **Utilities** — `assembleSceneData()` (visual bindings with missing-asset detection), `scanDependencies()` (reference graph analysis), `buildReviewSnapshot()` (health classification)
+- **Tipos espaciales** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
+- **Tipos de contenido** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
+- **Capas visuales** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
+- **Ciudad + estructuras** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
+- **Modelado del mundo** — `Stratum` + `StratumLink` (capas verticales), `HazardDefinition` (unión de efectos tipados), `ZoneEntryGate` + operandos de estado de la partida `SpawnCondition` (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
+- **Sistema de modos** — `AuthoringMode` (7 modos), perfiles específicos del modo para la cuadrícula/conexión/validación
+- **Presentación** — opcional `WorldPresentation` en `WorldProject`: vista dimétrica, huella de la tesela, celdas de anclaje de la zona, planos de planta y una fila de ocupación por actor. `presentationAdvisories()` ejecuta ocho reglas de asesoramiento sobre ella, incluida la que importa: una persona dibujada en una habitación, la simulación la coloca fuera de ella.
+- **Validación** — `validateProject()` (89 comprobaciones estructurales con búsquedas O(n) basadas en mapas, `warningCount`), `advisoryValidation()` (sugerencias específicas del modo, integridad de los metadatos, nombres de los activos). El JSON v4.0 que omite las matrices requeridas posteriormente se acepta después de `normalizeProjectShape()` / `stampProjectSchemaVersion()`.
+- **Uniones cerradas en el cilindro** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS` y el resto de los conjuntos `VALID_*` se exportan desde `@world-forge/schema`.
+- **Utilidades** — `assembleSceneData()` (enlaces visuales con detección de activos faltantes), `scanDependencies()` (análisis del gráfico de referencia), `buildReviewSnapshot()` (clasificación de la salud)
 
 ### @world-forge/export-unreal
 
@@ -101,14 +102,15 @@ Convierte un `WorldProject` en un paquete de contenido para Unreal Engine 5, opt
 
 Convierte un `WorldProject` en un paquete de contenido para Godot 4 con texto de escena `.tscn`.
 
-- **Salida:** una raíz de proyecto de Godot 4: `project.godot`, `world.tscn` (ExtResource `.tres`), texturas copiadas debajo de `assets/`, `scripts/player.gd`, más `pack.json` y `fidelity.json`.
-- **CLI:** `world-forge-export-godot` con `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`.
-- **Escena jugable:** `buildWorldScene()` emite una escena navegable `.tscn`: colisión por zona `StaticBody2D` + `NavigationRegion2D`, un marco `Camera2D`, un avatar de jugador `CharacterBody2D` y ordenación Y / profundidad `z_index`.
-- **Mosaicos + interiores:** `TileMapLayer` + `TileSet` (texturas horneadas `tile_map_data` para conjuntos de mosaicos de imágenes), colisión de pared por celda `StaticBody2D` y colocaciones de accesorios `Node2D`.
-- **Ciudad:** mercados + estaciones de artesanía, y edificios (huellas `StaticBody2D`) / centros / fortalezas como marcadores de posición `Node2D`, todos los cuales llevan sus datos como metadatos.
-- **Modelado del mundo:** estratos verticales (bandas por zona `z_index` + conectores `StratumLink`), peligros tipificados como regiones `Area2D` y metadatos de entrada de zona.
-- **Informe de fidelidad:** seguimiento estructurado de los datos sin pérdidas, aproximados y eliminados, verificados con el motor real de Godot 4 (humo sin conexión, 36 aserciones).
-- **Versión del formato:** `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`).
+- **Salida** — la raíz de un proyecto Godot 4: `project.godot`, `world.tscn` (ExtResource `.tres`), texturas copiadas en `assets/`, `scripts/player.gd`, más `pack.json` y `fidelity.json`
+- **CLI** — `world-forge-export-godot` con `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
+- **Escena jugable** — `buildWorldScene()` emite una `.tscn` navegable: colisión por zona `StaticBody2D` + `NavigationRegion2D`, un `Camera2D` enmarcado, un peón de jugador `CharacterBody2D` y ordenación y/o profundidad `z_index`
+- **Teselas + interiores** — `TileMapLayer` + `TileSet` (`tile_map_data` precalculado para conjuntos de teselas de imagen), colisión de pared por celda `StaticBody2D` y ubicaciones de accesorios `Node2D`
+- **Ciudad** — mercados + estaciones de artesanía y edificios (huellas `StaticBody2D`) / centros / fortalezas como marcadores de posición `Node2D`, todos los cuales llevan sus datos como metadatos
+- **Modelado del mundo** — estratos verticales (bandas por zona `z_index` + `StratumLink` conectores), peligros tipados como regiones `Area2D` y metadatos de entrada de la zona
+- **Informes de fidelidad** — seguimiento estructurado de datos sin pérdidas, aproximados y descartados, verificados con el motor real de Godot 4 (humo sin cabeza, 36 aserciones)
+- **Asesoramiento de la presentación** — un bloque `presentation` creado se transmite sin cambios y su asesoramiento se aplica a `warnings[]`, por lo que una discrepancia entre el dibujo y la simulación es un hallazgo de la exportación en lugar de una sorpresa en la pantalla
+- **Versión del formato** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @world-forge/export-ai-rpg
 
@@ -202,14 +204,15 @@ El modo se establece al crear un proyecto y se guarda como `mode?: AuthoringMode
 
 ### Estructura mundial
 
-- Zonas con distribución espacial, vecinos, salidas, iluminación, ruido, peligros y elementos interactivos.
-- 12 tipos de conexión (pasaje, puerta, escalera, camino, portal, secreto, peligro, canal, ruta, acoplamiento, teletransporte, sendero) con estilos visuales distintos, enrutamiento anclado a los bordes, flechas direccionales y estilo discontinuo condicional.
-- Distritos con control de facciones, perfiles económicos, controles deslizantes de métricas, etiquetas y etiquetas de nombre de distrito en los centroides de las zonas.
-- Puntos de referencia (puntos de interés nombrados dentro de las zonas).
-- Puntos de aparición, anclajes de encuentros (coloreado basado en el tipo), presencia de facciones y puntos críticos de presión.
-- **Estratos verticales:** capas discretas (superficie/subterráneo/cielo o pisos de un edificio) con orden definido, rango Z, visibilidad entre capas y conectores (escaleras/escaleras de mano/ascensores); las zonas se asignan a un estrato.
-- **Peligros ambientales tipificados:** una biblioteca compartida de peligros (efectos de daño/estado/muerte instantánea/ignición, tiempo de activación, costo de movimiento del terreno, transitabilidad, bloqueo de la visión, condiciones climáticas) referenciados por zona.
-- **Puertas de entrada a zonas para grupos:** entrada a través de una puerta basada en el estado del grupo (nivel/tamaño/objetos/indicadores/miembros/clases) como una barrera estricta o un aviso con una razón "mostrar la cerradura" definida por el autor.
+- Zonas con diseño espacial, vecinos, salidas, luz, ruido, peligros e interactivos
+- 12 tipos de conexión (pasaje, puerta, escaleras, carretera, portal, secreto, peligro, canal, ruta, acoplamiento, teletransporte, sendero) con estilos visuales distintos, enrutamiento anclado al borde, flechas direccionales y estilo discontinuo condicional
+- Distritos con control de facción, perfiles económicos, controles deslizantes de métricas, etiquetas y etiquetas de nombre de distrito en los centroides de la zona
+- Puntos de referencia (puntos de interés con nombre dentro de las zonas)
+- Puntos de aparición, anclajes de encuentro (coloreado basado en el tipo), presencias de facción y puntos críticos
+- **Estratificación vertical** — capas discretas (superficie / subterráneo / cielo, o pisos de edificios) con orden firmado, rango z, visibilidad entre capas y conectores (escaleras / escaleras de mano / ascensores); las zonas se asignan a un estrato
+- **Peligros ambientales tipados** — una biblioteca de peligros compartida (efectos de daño / estado / muerte instantánea / ignición, tiempo de activación, costo de movimiento del terreno, transitabilidad, bloqueo de la visión, control del clima) referenciada por zona
+- **Puertas de entrada de zona** — entrada de puerta en el estado de la partida (nivel / tamaño / elementos / indicadores / miembros / clases) como una puerta dura o de asesoramiento con una razón de "mostrar la cerradura" creada
+- **Ocupación de la presentación** — para clientes 2.5D: una vista dimétrica con una huella de tesela y un rango, una celda de anclaje y un plano de planta opcional por zona, y una fila de ocupación (paquete de personaje, zona, celda, orientación) por actor, incluido el jugador
 
 ### Contenido
 
@@ -276,6 +279,22 @@ Un exportador que se ejecuta no es lo mismo que un mundo que se inicia. v4.6.0 c
 - **La información sobre la fidelidad mantiene el contrato.** Cada canal informa qué fue sin pérdidas, aproximado o descartado. Cuando un campo no puede atravesar el proceso, la exportación lo indica; no tiene éxito silenciosamente.
 
 Requiere `ai-rpg-engine` `^3.8.0`.
+
+### El contrato de dibujo
+
+Un mundo también puede indicar cómo un cliente debe **dibujarlo**. `WorldProject.presentation` es opcional y aditivo; la mayoría de los mundos no tienen ninguno y nunca se ven penalizados por ello, y contiene la vista dimétrica, la huella de la tesela, una celda de anclaje de la zona y un plano de planta por zona, y una fila de ocupación por actor.
+
+Existe porque un mundo 2.5D se describe mediante tres cuadrículas a la vez, y la exportación convierte entre **ninguna** de ellas:
+
+| Cuadrícula | Unidad | Propietario | Hash |
+|---|---|---|---|
+| Ocupación de la simulación | ID de la zona | el `WorldState` del motor | sí, es autoritativo |
+| Celda dimétrica | diamante de 256x128, rango 3 | la vista del cliente, a través de `presentation` | nunca |
+| Cartesiano de Forge | `gridX` / `gridY` | el editor y el Godot `.tscn` | nunca |
+
+Una celda dimétrica nunca se deriva de `gridX`/`gridY`, y la escala del sandbox omite el bloque por nombre, por lo que una celda de diamante absoluta no se puede multiplicar accidentalmente. La simulación siempre gana una disputa sobre en qué habitación se encuentra una persona; `presentationAdvisories()` lo dice en voz alta, `exportToGodot` lo informa en `warnings[]`, y la línea de accesorios de la escena puede hacerlo fatal con `--strict`.
+
+El bloque viaja en el `pack.json` del accesorio de la escena de Godot. No viaja por la línea `export-ai-rpg`; el `ContentPack` del motor no tiene una ranura aditiva y su cargador es estricto, y la tabla de exportación medida lo informa como descartado allí en lugar de implicar lo contrario.
 
 ## Seguridad
 

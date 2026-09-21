@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.8.0</strong> — 3424 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.9.0</strong> — 3473 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## 架构
@@ -77,15 +77,16 @@ npx world-forge-export-godot project.json --validate-only
 
 用于世界构建的核心 TypeScript 类型和验证。
 
-- **空间类型**——`WorldMap`、`Zone`、`ZoneConnection`、`District`、`Landmark`、`SpawnPoint`、`EncounterAnchor`、`FactionPresence`、`PressureHotspot`
-- **内容类型**——`EntityPlacement`、`ItemPlacement`、`DialogueDefinition`、`PlayerTemplate`、`BuildCatalogDefinition`、`ProgressionTreeDefinition`
-- **视觉图层**——`AssetEntry`、`AssetPack`、`Tileset`、`TileLayer`、`PropDefinition`、`PropPlacement`、`AmbientLayer`
-- **城镇 + 结构**——`MarketNode`、`CraftingStation`、`Building`、`Hub`、`Stronghold`
-- **世界建模**——`Stratum` + `StratumLink`（垂直图层）、`HazardDefinition`（类型化效果联合体）、`ZoneEntryGate` + 派对状态 `SpawnCondition` 操作数（`party-level`、`party-size`、`item`、`flag`、`member`、`class`）
-- **模式系统**——`AuthoringMode`（7 种模式），特定于模式的网格/连接/验证配置文件。
-- **验证**——`validateProject()`（使用基于 Map 的 O(n) 查找进行的 89 项结构检查，`warningCount`）、`advisoryValidation()`（特定于模式的建议、元数据完整性、资源命名）。v4.0 JSON 在 `normalizeProjectShape()` / `stampProjectSchemaVersion()` 后接受省略后续必需数组的文件。
-- **封闭联合体**——`VALID_CONNECTION_KINDS`、`VALID_ASSET_KINDS`、`VALID_ENTITY_ROLES`、`VALID_ITEM_SLOTS`，以及其余的 `VALID_*` 集合从 `@world-forge/schema` 导出。
-- **实用程序**——`assembleSceneData()`（带有缺失资源检测的视觉绑定）、`scanDependencies()`（引用图分析）、`buildReviewSnapshot()`（健康状况分类）
+- **空间类型** — `WorldMap`, `Zone`, `ZoneConnection`, `District`, `Landmark`, `SpawnPoint`, `EncounterAnchor`, `FactionPresence`, `PressureHotspot`
+- **内容类型** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
+- **视觉图层** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
+- **城镇 + 建筑物** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
+- **世界建模** — `Stratum` + `StratumLink`（垂直图层），`HazardDefinition`（类型化效果联合），`ZoneEntryGate` + 派对状态 `SpawnCondition` 操作数（`party-level`, `party-size`, `item`, `flag`, `member`, `class`）
+- **模式系统** — `AuthoringMode`（7 种模式），特定模式的网格/连接/验证配置
+- **呈现** — 可选的 `WorldPresentation` 应用于 `WorldProject`：双侧视，瓦片占位，区域锚定单元格，楼层平面图，以及每个角色的占用行。`presentationAdvisories()` 在其上运行八条建议规则，包括最重要的规则——在模拟中，如果将角色绘制在某个房间中，则将其放置在该房间之外。
+- **验证** — `validateProject()`（89 个结构检查，使用基于地图的 O(n) 查找，`warningCount`），`advisoryValidation()`（特定模式的建议，元数据完整性，资源命名）。v4.0 JSON 格式，省略了后续所需的数组，在 `normalizeProjectShape()` / `stampProjectSchemaVersion()` 之后会被接受。
+- **桶上的封闭联合** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS`，以及其余的 `VALID_*` 集合，从 `@world-forge/schema` 导出。
+- **实用程序** — `assembleSceneData()`（带有缺失资源检测的视觉绑定），`scanDependencies()`（参考图分析），`buildReviewSnapshot()`（健康分类）
 
 ### @world-forge/export-unreal
 
@@ -101,14 +102,15 @@ npx world-forge-export-godot project.json --validate-only
 
 将 `WorldProject` 转换为带有 `.tscn` 场景文本的 Godot 4 内容包。
 
-- **输出**——Godot 4 项目根目录：`project.godot`、`world.tscn`（ExtResource `.tres`）、复制到 `assets/`、`scripts/player.gd` 下的纹理，以及 `pack.json` 和 `fidelity.json`。
-- **CLI**——`world-forge-export-godot`，带有 `--out`、`--validate-only`、`--include-world-tscn` / `--no-world-tscn`。
-- **可玩场景**——`buildWorldScene()` 发出可导航的 `.tscn`：每个区域的 `StaticBody2D` 碰撞 + `NavigationRegion2D`，一个带边框的 `Camera2D`，一个 `CharacterBody2D` 玩家模型以及 y 排序 / `z_index` 深度。
-- **图块 + 室内**——`TileMapLayer` + `TileSet`（烘焙 `tile_map_data` 用于图像图块集），每个单元的墙壁 `StaticBody2D` 碰撞，以及道具 `Node2D` 放置。
-- **城镇**——市场 + 工坊，建筑物（`StaticBody2D` 占位符）/枢纽/据点作为 `Node2D` 占位符，所有这些都将其数据作为元数据携带。
-- **世界建模**——垂直层（每个区域的 `z_index` 带状 + `StratumLink` 连接器），类型化的危险区域作为 `Area2D` 区域，以及区域入口门控元数据。
-- **保真度报告**——对无损、近似和已删除数据的结构化跟踪，并与真实的 Godot 4 引擎（无头烟雾、36 项断言）进行验证。
-- **格式版本**——`GODOT_PACK_FORMAT_VERSION` 1.1.0（`files`、`zoneGates`、`migrateGodotPack`）。
+- **输出** — Godot 4 项目根目录：`project.godot`, `world.tscn`（ExtResource `.tres`），复制的纹理位于 `assets/`, `scripts/player.gd`，以及 `pack.json` 和 `fidelity.json`
+- **命令行界面 (CLI)** — `world-forge-export-godot`，带有 `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
+- **可玩场景** — `buildWorldScene()` 产生一个可导航的 `.tscn`：每个区域的 `StaticBody2D` 碰撞 + `NavigationRegion2D`，一个带边框的 `Camera2D`，一个 `CharacterBody2D` 玩家角色，以及 y 排序 / `z_index` 深度
+- **瓦片 + 内部** — `TileMapLayer` + `TileSet`（烘焙 `tile_map_data` 用于图像瓦片集），每个单元格的墙壁 `StaticBody2D` 碰撞，以及道具 `Node2D` 放置
+- **城镇** — 市场 + 制作站，以及建筑物（`StaticBody2D` 占位），枢纽/据点作为 `Node2D` 占位符，所有这些都将它们的数据作为元数据进行存储
+- **世界建模** — 垂直层（每个区域的 `z_index` 分层 + `StratumLink` 连接器），类型化的环境危害作为 `Area2D` 区域，以及区域入口-门元数据
+- **保真度报告** — 对无损、近似和丢弃的数据进行结构化跟踪，并与真实的 Godot 4 引擎进行验证（无头烟雾，36 个断言）
+- **呈现建议** — 授权的 `presentation` 块会完整地传递，并且其建议会附加到 `warnings[]` 上，因此绘制/模拟不一致是一种导出结果，而不是屏幕上的意外情况
+- **格式版本** — `GODOT_PACK_FORMAT_VERSION` 1.1.0（`files`, `zoneGates`, `migrateGodotPack`）
 
 ### @world-forge/export-ai-rpg
 
@@ -202,14 +204,15 @@ World Forge 将 **类型**（奇幻、赛博朋克、海盗）与 **模式**（�
 
 ### 世界结构
 
-- 具有空间布局、相邻区域、出口、光照、噪音、危险因素和可交互对象的区域。
-- 12种连接类型（通道、门、楼梯、道路、传送门、秘密通道、危险区域、渠道、路线、对接点、跃迁点、小路），具有独特的视觉风格、边缘锚定路由、方向箭头和有条件虚线样式。
-- 具有派系控制、经济概况、指标滑块、标签以及位于区域中心的区域名称标签的区域。
-- 地标（区域内命名的兴趣点）。
-- 生成点、遭遇锚点（基于类型的颜色标记）、派系存在以及压力热点。
-- **垂直分层**——离散的分层（表面/地下/天空，或建筑物楼层），具有带符号的顺序、z范围、层间可见性和连接器（楼梯/梯子/电梯）；区域分配到某一分层。
-- **类型的环境危险**——共享的危险库（伤害/状态/即死/点燃效果、触发时间、地形移动成本、可通行性、视野阻挡、天气限制），每个区域引用。
-- **区域入口派系门**——基于队伍状态（等级/规模/物品/标志/成员/职业）的门禁，作为硬性或建议性的门禁，并带有作者编写的“显示锁”理由。
+具有空间布局、邻居、出口、光照、噪音、危害和可交互对象的区域
+具有 12 种连接类型（通道、门、楼梯、道路、传送门、秘密通道、危害、通道、路线、停靠、传送、小路），具有独特的视觉风格、边缘锚定的路由、方向箭头和有条件虚线样式
+具有派系控制、经济配置文件、指标滑块、标签和区域中心点的区域名称标签的区域
+地标（区域内命名的兴趣点）
+生成点、遭遇锚点（基于类型的着色）、派系存在和压力热点
+- **垂直层** — 离散层（表面/地下/天空，或建筑物楼层），具有带符号的顺序、z 范围、层间可见性和连接器（楼梯/梯子/电梯）；区域分配到一层
+- **类型化的环境危害** — 共享的危害库（伤害/状态/立即击杀/点燃效果、触发时间、地形移动成本、可通行性、视觉遮挡、天气限制），每个区域引用
+- **区域入口派对门** — 基于派对状态（等级/大小/物品/标志/成员/职业）的门入口，作为硬门或建议门，并带有授权的“显示锁”理由
+- **呈现占用** — 对于 2.5D 客户端：双侧视，带有瓦片占位和跨度，每个区域的锚定单元格和可选的楼层平面图，以及每个角色的占用行（角色包、区域、单元格、朝向），包括玩家
 
 ### 内容
 
@@ -276,6 +279,22 @@ World Forge 将 **类型**（奇幻、赛博朋克、海盗）与 **模式**（�
 - **保真度报告始终如一。** 每个通道都会报告哪些内容是无损的、近似的或已删除的。如果某个字段无法应用，导出过程会明确说明——它不会悄无声息地成功。
 
 需要 `ai-rpg-engine` `^3.8.0`。
+
+### 绘制合同
+
+世界还可以说明客户端应该如何**绘制**它。`WorldProject.presentation` 是可选的，并且是附加的——大多数世界都没有，并且不会因为没有而受到惩罚——它包含双侧视、瓦片占位、每个区域的区域锚定单元格和楼层平面图，以及每个角色的一个占用行。
+
+它存在的原因是，2.5D 世界由三个网格同时描述，并且导出在它们之间进行转换，但实际上并没有转换任何一个：
+
+| 网格 | 单元 | 所有者 | 已哈希 |
+|---|---|---|---|
+| 模拟占用 | 区域 ID | 引擎的 `WorldState` | 是的——权威 |
+| 双侧视单元格 | 256x128 菱形，跨度为 3 | 通过 `presentation`，客户端的视图 | 永远不会 |
+| 锻造笛卡尔 | `gridX` / `gridY` | 编辑器和 Godot `.tscn` | 永远不会 |
+
+双侧视单元格永远不会从 `gridX`/`gridY` 派生，并且沙盒缩放会跳过该块，因此绝对菱形单元格不会意外地被乘以。模拟始终会在关于某人位于哪个房间的争论中获胜；`presentationAdvisories()` 会大声说出来，`exportToGodot` 会在 `warnings[]` 上报告，并且舞台固定装置通道可以通过 `--strict` 使其致命。
+
+该块通过 Godot 舞台固定装置的 `pack.json` 传递。它**不**通过 `export-ai-rpg` 通道传递——引擎的 `ContentPack` 没有附加插槽，并且其加载器是严格的——并且测量的导出表会将其报告为已丢弃在那里，而不是暗示其他情况。
 
 ## 安全性
 

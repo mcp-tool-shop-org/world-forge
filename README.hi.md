@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.8.0</strong> — 3424 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), and a measured Forge→Engine content contract</p>
+<p align="center"><strong>v4.9.0</strong> — 3473 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## आर्किटेक्चर
@@ -81,9 +81,10 @@ npx world-forge-export-godot project.json --validate-only
 - **सामग्री प्रकार** — `EntityPlacement`, `ItemPlacement`, `DialogueDefinition`, `PlayerTemplate`, `BuildCatalogDefinition`, `ProgressionTreeDefinition`
 - **दृश्य परतें** — `AssetEntry`, `AssetPack`, `Tileset`, `TileLayer`, `PropDefinition`, `PropPlacement`, `AmbientLayer`
 - **शहर + संरचनाएं** — `MarketNode`, `CraftingStation`, `Building`, `Hub`, `Stronghold`
-- **विश्व मॉडलिंग** — `Stratum` + `StratumLink` (ऊर्ध्वाधर परतें), `HazardDefinition` (प्रकारित प्रभाव संघ), `ZoneEntryGate` + पार्टी-स्टेट `SpawnCondition` ऑपरेंड्स (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
-- **मोड प्रणाली** — `AuthoringMode` (7 मोड), मोड-विशिष्ट ग्रिड/कनेक्शन/सत्यापन प्रोफाइल
-- **सत्यापन** — `validateProject()` (मानचित्र-आधारित O(n) लुकअप के साथ 89 संरचनात्मक जांच, `warningCount`), `advisoryValidation()` (मोड-विशिष्ट सुझाव, मेटाडेटा पूर्णता, संपत्ति नामकरण)। v4.0 JSON जिसमें बाद में आवश्यक सरणियाँ शामिल नहीं हैं, उसे `normalizeProjectShape()` / `stampProjectSchemaVersion()` के बाद स्वीकार किया जाता है।
+- **विश्व मॉडलिंग** — `Stratum` + `StratumLink` (ऊर्ध्वाधर परतें), `HazardDefinition` (टाइप किए गए प्रभावों का संघ), `ZoneEntryGate` + पार्टी-स्टेट `SpawnCondition` ऑपरेंड (`party-level`, `party-size`, `item`, `flag`, `member`, `class`)
+- **मोड सिस्टम** — `AuthoringMode` (7 मोड), मोड-विशिष्ट ग्रिड/कनेक्शन/सत्यापन प्रोफाइल
+- **प्रस्तुति** — वैकल्पिक `WorldPresentation` पर `WorldProject`: डाइमेट्रिक दृश्य, टाइल पदचिह्न, ज़ोन एंकर सेल, फर्श प्लेट, और प्रति अभिनेता एक अधिभोग पंक्ति। `presentationAdvisories()` इस पर आठ सलाहकार नियमों को लागू करता है, जिसमें वह नियम भी शामिल है जो मायने रखता है - एक व्यक्ति को एक कमरे में चित्रित किया गया है, सिमुलेशन उसे कमरे के बाहर रखता है।
+- **सत्यापन** — `validateProject()` (मानचित्र-आधारित O(n) लुकअप के साथ 89 संरचनात्मक जांच, `warningCount`), `advisoryValidation()` (मोड-विशिष्ट सुझाव, मेटाडेटा पूर्णता, संपत्ति नामकरण)। v4.0 JSON जो बाद में आवश्यक सरणियों को छोड़ देता है, `normalizeProjectShape()` / `stampProjectSchemaVersion()` के बाद स्वीकार किया जाता है।
 - **बैरल पर बंद संघ** — `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS`, और शेष `VALID_*` सेट `@world-forge/schema` से निर्यात किए जाते हैं।
 - **उपयोगिताएँ** — `assembleSceneData()` (लापता-संपत्ति पहचान के साथ दृश्य बंधन), `scanDependencies()` (संदर्भ ग्राफ विश्लेषण), `buildReviewSnapshot()` (स्वास्थ्य वर्गीकरण)
 
@@ -101,14 +102,15 @@ npx world-forge-export-godot project.json --validate-only
 
 यह `WorldProject` को `.tscn` दृश्य पाठ के साथ गॉडोट 4 सामग्री पैक में बदल देता है।
 
-- **आउटपुट** – गॉडोट 4 प्रोजेक्ट की रूट निर्देशिका: `project.godot`, `world.tscn` (एक्सटेंस रिसोर्स `.tres`), `assets/` और `scripts/player.gd` के अंतर्गत कॉपी किए गए टेक्सचर, साथ ही `pack.json` और `fidelity.json`।
-- **सीएलआई** – `world-forge-export-godot` जिसमें `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn` शामिल हैं।
-- **प्ले करने योग्य दृश्य** – `buildWorldScene()` एक नेविगेट करने योग्य `.tscn` उत्सर्जित करता है: प्रति-क्षेत्र `StaticBody2D` टकराव + `NavigationRegion2D`, एक फ्रेमयुक्त `Camera2D`, एक `CharacterBody2D` प्लेयर पॉन और वाई-सॉर्ट / `z_index` गहराई।
-- **टाइल्स + आंतरिक भाग** – `TileMapLayer` + `TileSet` (इमेज टाइलसेट के लिए बेक्ड `tile_map_data`), प्रति-सेल दीवार `StaticBody2D` टकराव, और प्रॉप `Node2D` प्लेसमेंट।
-- **शहर** – बाजार + क्राफ्टिंग स्टेशन, और इमारतें (`StaticBody2D` पदचिह्न) / हब / गढ़, जिन्हें `Node2D` प्लेसहोल्डर के रूप में उपयोग किया जाता है, जिनमें सभी मेटाडेटा के रूप में अपना डेटा रखते हैं।
-- **विश्व मॉडलिंग** – ऊर्ध्वाधर परतें (प्रति-क्षेत्र `z_index` बैंडिंग + `StratumLink` कनेक्टर), टाइप किए गए खतरे `Area2D` क्षेत्रों के रूप में, और ज़ोन एंट्री-गेट मेटाडेटा।
-- **विश्वसनीयता रिपोर्टिंग** – बिना किसी हानि के, अनुमानित और छोड़े गए डेटा का संरचित ट्रैकिंग, वास्तविक गॉडोट 4 इंजन (हेडलैस स्मोक, 36 दावे) के विरुद्ध सत्यापित।
-- **फॉर्मेट संस्करण** – `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)।
+- **Output** — a Godot 4 project root: `project.godot`, `world.tscn` (ExtResource `.tres`), copied textures under `assets/`, `scripts/player.gd`, plus `pack.json` and `fidelity.json`
+- **CLI** — `world-forge-export-godot` with `--out`, `--validate-only`, `--include-world-tscn` / `--no-world-tscn`
+- **Playable scene** — `buildWorldScene()` emits a navigable `.tscn`: per-zone `StaticBody2D` collision + `NavigationRegion2D`, a framed `Camera2D`, a `CharacterBody2D` player pawn, and y-sort / `z_index` depth
+- **Tiles + interiors** — `TileMapLayer` + `TileSet` (baked `tile_map_data` for image tilesets), per-cell wall `StaticBody2D` collision, and prop `Node2D` placements
+- **Town** — markets + crafting stations, and buildings (`StaticBody2D` footprints) / hubs / strongholds as `Node2D` placeholders, all carrying their data as metadata
+- **World modeling** — vertical strata (per-zone `z_index` banding + `StratumLink` connectors), typed hazards as `Area2D` regions, and zone entry-gate metadata
+- **Fidelity reporting** — structured tracking of lossless, approximated, and dropped data, verified against the real Godot 4 engine (headless smoke, 36 assertions)
+- **Presentation advisories** — an authored `presentation` block is carried through untouched and its advisories ride on `warnings[]`, so a drawing/sim disagreement is an export finding rather than a surprise on screen
+- **Format version** — `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
 ### @वर्ल्ड-फोर्ज/एक्सपोर्ट-एआई-आरपीजी
 
@@ -202,14 +204,15 @@ npx world-forge-export-godot project.json --validate-only
 
 ### विश्व संरचना
 
-- स्थानिक लेआउट, पड़ोसी क्षेत्र, निकास द्वार, प्रकाश, शोर, खतरे और इंटरैक्टेबल वस्तुओं वाले क्षेत्र
-- 12 प्रकार के कनेक्शन (मार्ग, दरवाजा, सीढ़ियाँ, सड़क, पोर्टल, गुप्त मार्ग, खतरा, चैनल, रास्ता, डॉकिंग स्टेशन, वार्प, निशान) जिनमें अलग-अलग दृश्य शैली, किनारे से जुड़े रूटिंग, दिशात्मक तीर, और सशर्त डैश वाली स्टाइल हो।
-- ऐसे जिले जिनमें गुट नियंत्रण, आर्थिक प्रोफाइल, मेट्रिक्स स्लाइडर, टैग और क्षेत्र के केंद्र में जिले का नाम लेबल हो।
-- स्थलचिह्न (क्षेत्रों के भीतर रुचि के नामित बिंदु)
-- स्पॉन पॉइंट, मुठभेड़ एंकर (प्रकार-आधारित रंग), गुट की उपस्थिति और दबाव वाले हॉटस्पॉट
-- **ऊर्ध्वाधर परतें** - अलग-अलग परतें (सतह / भूमिगत / आकाश, या इमारत की मंजिलें) जिनमें क्रमबद्ध क्रम, z-रेंज, इंटर-लेयर दृश्यता और कनेक्टर (सीढ़ियाँ / सीढ़ी / लिफ्ट) हों; क्षेत्र एक परत को निर्दिष्ट किए जाते हैं।
-- **विशिष्ट पर्यावरणीय खतरे** - एक साझा खतरा लाइब्रेरी (क्षति / स्थिति / तत्काल मृत्यु / प्रज्वलन प्रभाव, ट्रिगर समय, भूभाग गति लागत, पारगम्यता, दृष्टि अवरोधन, मौसम नियंत्रण) जो प्रत्येक क्षेत्र के लिए संदर्भित है।
-- **क्षेत्र प्रवेश द्वार** - पार्टी की स्थिति (स्तर / आकार / वस्तुएं / ध्वज / सदस्य / वर्ग) के आधार पर गेट एंट्री, एक कठोर या सलाहकार गेट के रूप में जिसमें "लॉक दिखाएं" का कारण दिया गया हो।
+- स्थानिक लेआउट, पड़ोसी, निकास, प्रकाश, शोर, खतरे और इंटरैक्टेबल के साथ क्षेत्र
+- 12 कनेक्शन प्रकार (मार्ग, दरवाजा, सीढ़ी, सड़क, पोर्टल, गुप्त, खतरा, चैनल, मार्ग, डॉकिंग, वार्प, निशान) विशिष्ट दृश्य शैलियों, किनारे-एकरित रूटिंग, दिशात्मक तीर के आकार और सशर्त धराशायी स्टाइलिंग के साथ
+- जिलों में गुट नियंत्रण, अर्थव्यवस्था प्रोफाइल, मेट्रिक्स स्लाइडर, टैग और ज़ोन सेंट्रॉइड पर जिला नाम लेबल होते हैं
+- स्थलचिह्न (क्षेत्रों के भीतर नामित रुचि बिंदु)
+- स्पॉन पॉइंट, मुठभेड़ एंकर (प्रकार-आधारित रंग), गुट उपस्थिति और दबाव हॉटस्पॉट
+- **ऊर्ध्वाधर स्तरीकरण** — अलग परतें (सतह / भूमिगत / आकाश, या इमारत की मंजिलें) हस्ताक्षरित क्रम, z-श्रेणी, इंटर-लेयर दृश्यता और कनेक्टर (सीढ़ियाँ / सीढ़ी / लिफ्ट) के साथ; क्षेत्र एक स्तरीकरण को असाइन करते हैं
+- **टाइप किए गए पर्यावरणीय खतरे** — एक साझा खतरा पुस्तकालय (क्षति / स्थिति / इंस्टाकिल / प्रज्वलित प्रभाव, ट्रिगर समय, भूभाग चाल-लागत, पारगम्यता, दृष्टि-अवरोधन, मौसम गेटिंग) प्रति क्षेत्र संदर्भित
+- **ज़ोन प्रविष्टि पार्टी-गेट** — पार्टी स्थिति (स्तर / आकार / आइटम / ध्वज / सदस्य / कक्षा) पर गेट प्रविष्टि, एक कठोर या सलाहकार गेट के रूप में, जिसमें एक निर्मित "ताला दिखाएं" कारण हो
+- **प्रस्तुति अधिभोग** — 2.5D क्लाइंट के लिए: एक डाइमेट्रिक दृश्य जिसमें एक टाइल पदचिह्न और अवधि, एक एंकर सेल और प्रति क्षेत्र एक वैकल्पिक फर्श प्लेट, और प्रति अभिनेता एक अधिभोग पंक्ति (चरित्र पैक, क्षेत्र, सेल, सामना) शामिल है, जिसमें खिलाड़ी भी शामिल है
 
 ### सामग्री
 
@@ -276,6 +279,22 @@ npx world-forge-export-godot project.json --validate-only
 - **विश्वसनीयता रिपोर्ट अनुबंध पर कायम रहती है।** प्रत्येक लेन रिपोर्ट करता है कि क्या बिना किसी नुकसान के, अनुमानित रूप से या हटाकर किया गया था। जहां कोई फ़ील्ड पार नहीं कर सकता, निर्यात यह बताता है — यह चुपचाप सफल नहीं होता है।
 
 इसके लिए `ai-rpg-engine` `^3.8.0` की आवश्यकता होती है।
+
+### ड्राइंग अनुबंध
+
+एक दुनिया यह भी बता सकती है कि एक क्लाइंट को इसे कैसे **चित्रित** करना चाहिए। `WorldProject.presentation` वैकल्पिक और अतिरिक्त है - अधिकांश दुनिया में यह नहीं होता है और इसके लिए उन्हें कभी दंडित नहीं किया जाता है - और इसमें डाइमेट्रिक दृश्य, टाइल पदचिह्न, एक ज़ोन एंकर सेल और प्रति क्षेत्र फर्श प्लेट, और प्रति अभिनेता एक अधिभोग पंक्ति होती है।
+
+यह मौजूद है क्योंकि 2.5D दुनिया को एक साथ तीन ग्रिड द्वारा वर्णित किया गया है, और निर्यात उनमें से **किसी** के बीच परिवर्तित नहीं होता है:
+
+| ग्रिड | इकाई | मालिक | हैश किया गया |
+|---|---|---|---|
+| सिम अधिभोग | ज़ोन आईडी | इंजन का `WorldState` | हाँ - आधिकारिक |
+| डाइमेट्रिक सेल | 256x128 हीरा, अवधि 3 | क्लाइंट का दृश्य, `presentation` के माध्यम से | कभी नहीं |
+| फोर्ज कार्टेशियन | `gridX` / `gridY` | संपादक और गॉडोट `.tscn` | कभी नहीं |
+
+एक डाइमेट्रिक सेल कभी भी `gridX`/`gridY` से प्राप्त नहीं होती है, और सैंडबॉक्स स्केल नाम से ब्लॉक को छोड़ देता है ताकि एक पूर्ण हीरा सेल को गलती से गुणा नहीं किया जा सके। सिमुलेशन हमेशा इस बारे में विवाद जीतता है कि एक व्यक्ति किस कमरे में है; `presentationAdvisories()` इसे जोर से कहता है, `exportToGodot` इसे `warnings[]` पर रिपोर्ट करता है, और स्टेज-फिक्स्चर लेन इसे `--strict` के साथ घातक बना सकती है।
+
+ब्लॉक गॉडोट स्टेज फिक्स्चर के `pack.json` पर यात्रा करता है। यह `export-ai-rpg` लेन पर यात्रा **नहीं** करता है - इंजन के `ContentPack` में कोई अतिरिक्त स्लॉट नहीं है और इसका लोडर सख्त है - और मापा निर्यात तालिका इसे वहां छोड़े गए के रूप में रिपोर्ट करती है, न कि अन्यथा निहित करती है।
 
 ## सुरक्षा
 
