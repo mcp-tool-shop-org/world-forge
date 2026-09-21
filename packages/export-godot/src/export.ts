@@ -7,7 +7,7 @@
  */
 
 import type { WorldProject, ValidationError } from '@world-forge/schema';
-import { validateProject } from '@world-forge/schema';
+import { validateProject, presentationAdvisories } from '@world-forge/schema';
 
 import { convertZones, type GodotZoneResource } from './convert-zones.js';
 import { convertDistricts, type GodotDistrictResource } from './convert-districts.js';
@@ -228,6 +228,11 @@ export function exportToGodot(
     if (entitiesResult.manifest.incomplete) {
         warnings.push(`${entitiesResult.manifest.dropped.length} entity/entities dropped due to orphan zone references.`);
     }
+
+    // Presentation advisories (schema-owned). A stage consumer reads these cells
+    // off the fixture pack; a person drawn in the wrong room is an export defect,
+    // surfaced here so every lane that wraps exportToGodot sees it.
+    warnings.push(...presentationAdvisories(project));
 
     let worldSceneTscn = '';
     if (options?.includeWorldTscn !== false) {

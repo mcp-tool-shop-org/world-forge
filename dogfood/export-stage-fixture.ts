@@ -9,14 +9,17 @@
  * Two files are written, and the pairing is the point:
  *
  *   world.tscn   the scene the client renders (zone nodes carry `metadata/zone_id`)
- *   pack.json    the wire-side truth (zone ids, gates, descriptors, counts)
+ *   pack.json    the wire-side truth (zone ids, gates, descriptors, counts).
+ *                pack.json.presentation is the drawing contract (cells, anchors,
+ *                plates, who stands where), copied from the authored block; the
+ *                stage prefers it over the sidecar when present.
  *
  * A client joins wire events to scene nodes by `zone_id`. Emitting both halves
  * from ONE export is what makes that join checkable: if the two ever disagree,
  * the export produced them and the export is where the defect is.
  *
  * Usage:
- *   npx tsx dogfood/export-stage-fixture.ts --world=coverage --out=E:/AI/ai-rpg-stage/fixtures
+ *   npx tsx dogfood/export-stage-fixture.ts --world=coverage --out=<stage-fixtures>
  *
  * Options (world names are the keys of WORLDS below — --help prints them live):
  *   --world=<name>  coverage | proof | salt-road   (default: coverage)
@@ -24,6 +27,8 @@
  *   --doctor        additionally write world.doctored.tscn with ONE zone_id
  *                   altered — the RED control for the join proof. A join checker
  *                   that has only ever passed proves nothing.
+ *   --strict        exit 1 before writing if any presentation advisory is in
+ *                   the export warnings. Non-presentation warnings do not trip it.
  *   --engine-out=<file>
  *                   also write the ENGINE-lane pack (`export-ai-rpg`) the sidecar loads
  *                   with `--content`. Both lanes from ONE invocation, on purpose: the
@@ -37,6 +42,7 @@ import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 
 import type { WorldProject } from '@world-forge/schema';
+import { presentationAdvisories, PRESENTATION_ADVISORY_PREFIX } from '@world-forge/schema';
 import { exportToGodot, convertGates } from '../packages/export-godot/src/index.js';
 import { exportToEngine } from '../packages/export-ai-rpg/src/index.js';
 import { vocabularyCoverageProject } from '../packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.js';
@@ -58,11 +64,12 @@ const VALUE_FLAGS = new Set(['world', 'out', 'engine-out']);
 function printUsage(toErr = true): void {
     const write = toErr ? console.error : console.log;
     const names = Object.keys(WORLDS).join('|');
-    write(`usage: npx tsx dogfood/export-stage-fixture.ts --world=<name> --out=<dir> [--doctor] [--engine-out=<file>]`);
+    write(`usage: npx tsx dogfood/export-stage-fixture.ts --world=<name> --out=<dir> [--doctor] [--strict] [--engine-out=<file>]`);
     write('options:');
     write(`  --world=<name>         ${names}  (default: coverage)`);
     write('  --out=<dir>            output directory (required)');
     write('  --doctor               additionally write world.doctored.tscn with one zone_id altered');
+    write('  --strict               exit 1 before writing if any presentation advisory is in the export warnings');
     write('  --engine-out=<file>    also write the engine-lane pack (accepts --engine-out <file>)');
     write('  --help, -h             print this help');
 }
@@ -77,6 +84,7 @@ const args = process.argv.slice(2);
 interface ParsedArgs {
     help: boolean;
     doctor: boolean;
+    strict: boolean;
     worldName: string;
     outDir: string | undefined;
     engineOut: string | undefined;
@@ -88,6 +96,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     const parsed: ParsedArgs = {
         help: false,
         doctor: false,
+        strict: false,
         worldName: 'coverage',
         outDir: undefined,
         engineOut: undefined,
@@ -103,6 +112,10 @@ function parseArgs(argv: string[]): ParsedArgs {
         }
         if (a === '--doctor') {
             parsed.doctor = true;
+            continue;
+        }
+        if (a === '--strict') {
+            parsed.strict = true;
             continue;
         }
 
@@ -151,6 +164,7 @@ const parsed = parseArgs(args);
 const worldName = parsed.worldName;
 const outDir = parsed.outDir;
 const writeDoctored = parsed.doctor;
+const writeStrict = parsed.strict;
 const engineOut = parsed.engineOut;
 const engineLaneRequested = engineOut !== undefined || parsed.engineOutMissingValue;
 
@@ -289,6 +303,7 @@ const wireSide = {
         strata: pack.strata.length,
         tileLayers: pack.tileLayers.length,
     },
+    ...(project.presentation ? { presentation: project.presentation } : {}),
 };
 
 // ── Self-checks — a generator that emits a hole must halt, not ship it ──
@@ -297,16 +312,20 @@ const wireSide = {
 // repo that cannot typecheck it and by a test that would happily pass on an empty
 // join (two empty sets are equal).
 const selfChecks: string[] = [];
+let checksRun = 0;
 
+checksRun += 1;
 if (wireSide.zoneIds.length === 0) {
     selfChecks.push('zero zones — the join proof would compare two empty sets and pass');
 }
+checksRun += 1;
 if (new Set(wireSide.zoneIds).size !== wireSide.zoneIds.length) {
     selfChecks.push('duplicate zone ids — a set-based join cannot detect a collision');
 }
 // The authored truth, read from the project rather than from the export, so this
 // check cannot be satisfied by the same bug it is looking for.
 const authoredGateCount = project.zones.filter((z) => z.entryGate).length;
+checksRun += 1;
 if (authoredGateCount !== Object.keys(zoneGates).length) {
     selfChecks.push(
         `gate count mismatch: the world authors ${authoredGateCount},`
@@ -316,6 +335,7 @@ if (authoredGateCount !== Object.keys(zoneGates).length) {
 // The EMITTED count, checked against the authored truth. The check above compares two
 // values that were already right; this one covers the number that actually reaches the
 // artefact, which is where the surviving copy of the bug lived.
+checksRun += 1;
 if (wireSide.counts.gatedZones !== authoredGateCount) {
     selfChecks.push(
         `emitted gatedZones=${wireSide.counts.gatedZones} but the world authors ${authoredGateCount}`,
@@ -324,12 +344,21 @@ if (wireSide.counts.gatedZones !== authoredGateCount) {
 // Test-only fault injection (dogfood/__tests__/dogfood-runner-exit-codes.test.ts):
 // WORLD_FORGE_FORCE_FIXTURE_FAIL is never set during a normal run.
 if (process.env.WORLD_FORGE_FORCE_FIXTURE_FAIL === '1') {
+    checksRun += 1;
     selfChecks.push('Test-injected failure (WORLD_FORGE_FORCE_FIXTURE_FAIL) — exercises the exit-code gate');
+}
+// WORLD_FORGE_FORCE_PRESENTATION_ADVISORY injects a presentation advisory so
+// --strict can be tested without editing Salt Road. Never set during a normal run.
+if (process.env.WORLD_FORGE_FORCE_PRESENTATION_ADVISORY === '1') {
+    result.warnings.push(
+        `${PRESENTATION_ADVISORY_PREFIX}test-injected advisory (WORLD_FORGE_FORCE_PRESENTATION_ADVISORY)`,
+    );
 }
 // Same class, one field over: a gate in the projection with no gate in the scene text
 // would let the client believe a door is guarded that the exporter never marked.
 for (const z of wireSide.zones) {
     if (z.entryGate === null) continue;
+    checksRun += 1;
     if (!pack.worldSceneTscn.includes(`metadata/entry_gate_mode = "${z.entryGate.mode}"`)) {
         selfChecks.push(`zone '${z.id}' has a gate in pack.json with no entry_gate metadata in the scene`);
     }
@@ -337,8 +366,33 @@ for (const z of wireSide.zones) {
 // The pairing is the whole point: a zone in the pack whose node the scene does not
 // carry is an unjoinable zone, and finding that out in Godot is finding out late.
 for (const id of wireSide.zoneIds) {
+    checksRun += 1;
     if (!pack.worldSceneTscn.includes(`metadata/zone_id = "${id}"`)) {
         selfChecks.push(`zone '${id}' is in the pack but carries no scene node metadata`);
+    }
+}
+
+if (project.presentation) {
+    const emittedZones = new Set(wireSide.zoneIds);
+    for (const actor of project.presentation.occupancy) {
+        checksRun += 1;
+        if (!emittedZones.has(actor.zone)) {
+            selfChecks.push(`occupancy '${actor.id}' zone '${actor.zone}' is not in pack.json zoneIds`);
+        }
+    }
+    for (const key of Object.keys(project.presentation.zoneCells)) {
+        checksRun += 1;
+        if (!emittedZones.has(key)) {
+            selfChecks.push(`zoneCells key '${key}' is not in pack.json zoneIds`);
+        }
+    }
+    checksRun += 1;
+    if (!project.presentation.occupancy.some((row) => row.id === 'player')) {
+        selfChecks.push("occupancy has no row with id === 'player'");
+    }
+    for (const advisory of presentationAdvisories(project)) {
+        checksRun += 1;
+        selfChecks.push(advisory);
     }
 }
 
@@ -347,7 +401,18 @@ if (selfChecks.length > 0) {
     for (const c of selfChecks) console.error(`    ${c}`);
     process.exit(1);
 }
-console.log(`  ✓ ${4 + wireSide.zoneIds.length} self-checks passed`);
+console.log(`  ✓ ${checksRun} self-checks passed`);
+
+if (writeStrict) {
+    const presentationWarnings = result.warnings.filter((w) =>
+        w.startsWith(PRESENTATION_ADVISORY_PREFIX),
+    );
+    if (presentationWarnings.length > 0) {
+        console.error('  ✗ strict:');
+        for (const w of presentationWarnings) console.error(`    ${w}`);
+        process.exit(1);
+    }
+}
 
 // ── Write ────────────────────────────────────────────────────
 const dir = resolve(outDir);

@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { exportToGodot, GODOT_PACK_FORMAT_VERSION } from '../export.js';
 import { COVERED_FIELDS, KNOWN_DROPPED, ALL_WORLD_PROJECT_FIELDS } from '../field-coverage.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
-import type { WorldProject } from '@world-forge/schema';
+import { PRESENTATION_ADVISORY_PREFIX, type WorldProject } from '@world-forge/schema';
 
 describe('FIELD_COVERAGE completeness', () => {
     it('classifies every WorldProject key as covered or dropped', () => {
@@ -184,5 +184,29 @@ describe('exportToGodot', () => {
             expect(result.warnings).toContain(e.message);
         }
         expect(result.warnings.some((w) => w.includes(`${result.fidelity.summary.dropped}`))).toBe(true);
+    });
+
+    it('pushes presentation advisories onto warnings without failing the export', () => {
+        const outOfSpan: WorldProject = {
+            ...minimalProject,
+            presentation: {
+                view: 'dimetric-2:1',
+                tile: [256, 128],
+                span: 3,
+                zoneCells: { 'zone-entrance': [2, 2] },
+                occupancy: [
+                    { id: 'player', character: 'merchant', zone: 'zone-entrance', cell: [5, 4], facing: 'front' },
+                ],
+            },
+        };
+        const bad = exportToGodot(outOfSpan);
+        expect(bad.success).toBe(true);
+        if (!bad.success) return;
+        expect(bad.warnings.some((w) => w.startsWith(PRESENTATION_ADVISORY_PREFIX))).toBe(true);
+
+        const clean = exportToGodot(minimalProject);
+        expect(clean.success).toBe(true);
+        if (!clean.success) return;
+        expect(clean.warnings.some((w) => w.startsWith(PRESENTATION_ADVISORY_PREFIX))).toBe(false);
     });
 });
