@@ -1,0 +1,62 @@
+summary: ""
+boundaries:
+  - name: .claude
+    globs:
+      - .claude/**
+    role: config
+  - name: .github
+    globs:
+      - .github/**
+    role: config
+  - name: assets
+    globs:
+      - assets/**
+    role: config
+  - name: docs
+    globs:
+      - docs/**
+    role: docs
+  - name: dogfood
+    globs:
+      - dogfood/**
+    role: code
+  - name: e2e
+    globs:
+      - e2e/**
+    role: code
+  - name: editor
+    globs:
+      - packages/editor/**
+    role: code
+  - name: export-ai-rpg
+    globs:
+      - packages/export-ai-rpg/**
+    role: code
+  - name: export-godot
+    globs:
+      - packages/export-godot/**
+    role: code
+  - name: export-unreal
+    globs:
+      - packages/export-unreal/**
+    role: code
+  - name: renderer-2d
+    globs:
+      - packages/renderer-2d/**
+    role: code
+  - name: root
+    globs:
+      - "*"
+    role: docs
+  - name: schema
+    globs:
+      - packages/schema/**
+    role: code
+  - name: scripts
+    globs:
+      - scripts/**
+    role: code
+  - name: site
+    globs:
+      - site/**
+    role: docs
