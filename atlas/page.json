@@ -1,0 +1,518 @@
+{
+  "authored": [
+    ".claude/",
+    ".github/",
+    "assets/",
+    "docs/",
+    "site/"
+  ],
+  "breaks": [
+    {
+      "doors": 2,
+      "importedBy": [
+        "dogfood",
+        "e2e",
+        "editor",
+        "export-ai-rpg",
+        "export-godot",
+        "export-unreal",
+        "renderer-2d"
+      ],
+      "importedByTests": [],
+      "kind": "part",
+      "name": "schema"
+    },
+    {
+      "doors": 2,
+      "importedBy": [
+        "dogfood",
+        "editor"
+      ],
+      "importedByTests": [],
+      "kind": "part",
+      "name": "export-ai-rpg"
+    },
+    {
+      "doors": 2,
+      "importedBy": [
+        "dogfood",
+        "editor"
+      ],
+      "importedByTests": [],
+      "kind": "part",
+      "name": "export-godot"
+    },
+    {
+      "doors": 2,
+      "importedBy": [
+        "dogfood",
+        "editor"
+      ],
+      "importedByTests": [],
+      "kind": "part",
+      "name": "export-unreal"
+    },
+    {
+      "doors": 2,
+      "importedBy": [
+        "site"
+      ],
+      "importedByTests": [
+        "dogfood"
+      ],
+      "kind": "part",
+      "name": "root"
+    },
+    {
+      "doors": 2,
+      "importedBy": [],
+      "importedByTests": [],
+      "kind": "part",
+      "name": "dogfood"
+    },
+    {
+      "doors": 2,
+      "importedBy": [],
+      "importedByTests": [],
+      "kind": "part",
+      "name": "e2e"
+    },
+    {
+      "kind": "place",
+      "readers": [
+        "scripts"
+      ],
+      "target": "README.md",
+      "writers": [
+        "scripts"
+      ]
+    }
+  ],
+  "changes": {
+    "first": true
+  },
+  "changesTogether": [
+    {
+      "a": "packages/export-godot/src/export.ts",
+      "b": "packages/export-godot/src/index.ts",
+      "either": 16,
+      "partLabels": [
+        "export-godot",
+        "export-godot"
+      ],
+      "parts": [
+        "export-godot",
+        "export-godot"
+      ],
+      "relation": "inside",
+      "shared": 12
+    },
+    {
+      "a": "packages/export-unreal/src/export.ts",
+      "b": "packages/export-unreal/src/index.ts",
+      "either": 7,
+      "partLabels": [
+        "export-unreal",
+        "export-unreal"
+      ],
+      "parts": [
+        "export-unreal",
+        "export-unreal"
+      ],
+      "relation": "inside",
+      "shared": 5
+    },
+    {
+      "a": "packages/schema/src/index.ts",
+      "b": "packages/schema/src/project.ts",
+      "either": 10,
+      "partLabels": [
+        "schema",
+        "schema"
+      ],
+      "parts": [
+        "schema",
+        "schema"
+      ],
+      "relation": "inside",
+      "shared": 7
+    },
+    {
+      "a": "packages/export-unreal/src/__tests__/export.test.ts",
+      "b": "packages/export-unreal/src/import.ts",
+      "either": 12,
+      "partLabels": [
+        "export-unreal",
+        "export-unreal"
+      ],
+      "parts": [
+        "export-unreal",
+        "export-unreal"
+      ],
+      "relation": "inside",
+      "shared": 8
+    },
+    {
+      "a": "packages/schema/src/index.ts",
+      "b": "packages/schema/src/spatial.ts",
+      "either": 11,
+      "partLabels": [
+        "schema",
+        "schema"
+      ],
+      "parts": [
+        "schema",
+        "schema"
+      ],
+      "relation": "inside",
+      "shared": 7
+    }
+  ],
+  "changesTogetherNote": [
+    "5 files changed together with their own tests, as expected.",
+    "Confidence is low: fewer than 20 source files reach 10 revisions in the window.",
+    "Window: 180 days; a pair counts from 3 shared commits."
+  ],
+  "changesTogetherWithTests": 5,
+  "commit": "b6fa56adfcc2579a96c038d940d77103304e59fa",
+  "doors": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "landings": [
+        "README.md",
+        "dogfood/"
+      ],
+      "name": "CI",
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "dogfood",
+          "depth": 0,
+          "files": 24
+        },
+        {
+          "boundary": "e2e",
+          "depth": 0,
+          "files": 4
+        },
+        {
+          "boundary": "editor",
+          "depth": 0,
+          "files": 242
+        },
+        {
+          "boundary": "export-ai-rpg",
+          "depth": 0,
+          "files": 58
+        },
+        {
+          "boundary": "export-godot",
+          "depth": 0,
+          "files": 56
+        },
+        {
+          "boundary": "export-unreal",
+          "depth": 0,
+          "files": 35
+        },
+        {
+          "boundary": "renderer-2d",
+          "depth": 0,
+          "files": 20
+        },
+        {
+          "boundary": "schema",
+          "depth": 0,
+          "files": 53
+        },
+        {
+          "boundary": "scripts",
+          "depth": 0,
+          "files": 2
+        },
+        {
+          "boundary": "root",
+          "depth": 1,
+          "files": 1
+        }
+      ],
+      "runs": [
+        "scripts/check-pack.mjs",
+        "scripts/sync-version.mjs",
+        "dogfood/",
+        "e2e/",
+        "packages/editor/src/",
+        "packages/export-ai-rpg/src/",
+        "packages/export-godot/src/",
+        "packages/export-unreal/src/",
+        "packages/renderer-2d/src/",
+        "packages/schema/src/"
+      ],
+      "runsCount": 10,
+      "sends": [],
+      "stages": [],
+      "triggers": [
+        "on a pull request",
+        "on a push",
+        "or by hand"
+      ]
+    },
+    {
+      "file": ".github/workflows/release.yml",
+      "landings": [
+        "README.md",
+        "dogfood/"
+      ],
+      "name": "Release",
+      "pushes": false,
+      "reach": [
+        {
+          "boundary": "dogfood",
+          "depth": 0,
+          "files": 24
+        },
+        {
+          "boundary": "e2e",
+          "depth": 0,
+          "files": 4
+        },
+        {
+          "boundary": "editor",
+          "depth": 0,
+          "files": 242
+        },
+        {
+          "boundary": "export-ai-rpg",
+          "depth": 0,
+          "files": 58
+        },
+        {
+          "boundary": "export-godot",
+          "depth": 0,
+          "files": 56
+        },
+        {
+          "boundary": "export-unreal",
+          "depth": 0,
+          "files": 35
+        },
+        {
+          "boundary": "renderer-2d",
+          "depth": 0,
+          "files": 20
+        },
+        {
+          "boundary": "schema",
+          "depth": 0,
+          "files": 53
+        },
+        {
+          "boundary": "scripts",
+          "depth": 0,
+          "files": 1
+        },
+        {
+          "boundary": "root",
+          "depth": 1,
+          "files": 1
+        }
+      ],
+      "runs": [
+        "scripts/sync-version.mjs",
+        "dogfood/",
+        "e2e/",
+        "packages/editor/src/",
+        "packages/export-ai-rpg/src/",
+        "packages/export-godot/src/",
+        "packages/export-unreal/src/",
+        "packages/renderer-2d/src/",
+        "packages/schema/src/"
+      ],
+      "runsCount": 9,
+      "sends": [],
+      "stages": [],
+      "triggers": [
+        "when a release is published"
+      ]
+    },
+    {
+      "file": ".github/workflows/pages.yml",
+      "landings": [],
+      "name": "Deploy site to GitHub Pages",
+      "pushes": false,
+      "reach": [],
+      "runs": [],
+      "runsCount": 0,
+      "sends": [
+        "deploys the site"
+      ],
+      "stages": [],
+      "triggers": [
+        "on a push to main touching 3 paths",
+        "when a release is published",
+        "or by hand"
+      ]
+    }
+  ],
+  "duplicates": [
+    {
+      "contract": true,
+      "files": [
+        "packages/export-ai-rpg/src/fidelity.ts",
+        "packages/export-godot/src/fidelity.ts",
+        "packages/export-unreal/src/fidelity.ts"
+      ],
+      "name": "buildFidelityReport",
+      "partLabels": [
+        "export-ai-rpg",
+        "export-godot",
+        "export-unreal"
+      ],
+      "parts": [
+        "export-ai-rpg",
+        "export-godot",
+        "export-unreal"
+      ]
+    },
+    {
+      "files": [
+        "packages/export-godot/src/field-coverage.ts",
+        "packages/export-unreal/src/field-coverage.ts"
+      ],
+      "name": "collectDroppedFieldFidelity",
+      "partLabels": [
+        "export-godot",
+        "export-unreal"
+      ],
+      "parts": [
+        "export-godot",
+        "export-unreal"
+      ]
+    },
+    {
+      "files": [
+        "packages/export-godot/src/migrations.ts",
+        "packages/export-unreal/src/migrations.ts"
+      ],
+      "name": "compareSemVer",
+      "partLabels": [
+        "export-godot",
+        "export-unreal"
+      ],
+      "parts": [
+        "export-godot",
+        "export-unreal"
+      ]
+    },
+    {
+      "contract": true,
+      "files": [
+        "packages/export-ai-rpg/src/convert-connections.ts",
+        "packages/export-godot/src/convert-connections.ts",
+        "packages/export-unreal/src/convert-connections.ts"
+      ],
+      "name": "convertConnections",
+      "partLabels": [
+        "export-ai-rpg",
+        "export-godot",
+        "export-unreal"
+      ],
+      "parts": [
+        "export-ai-rpg",
+        "export-godot",
+        "export-unreal"
+      ]
+    },
+    {
+      "files": [
+        "packages/export-ai-rpg/src/convert-dialogues.ts",
+        "packages/export-godot/src/convert-dialogues.ts"
+      ],
+      "name": "convertDialogues",
+      "partLabels": [
+        "export-ai-rpg",
+        "export-godot"
+      ],
+      "parts": [
+        "export-ai-rpg",
+        "export-godot"
+      ]
+    }
+  ],
+  "duplicatesLead": "These are candidates from names and call order, not a judgement.",
+  "duplicatesNote": [
+    "And 16 more candidates."
+  ],
+  "generated": [
+    {
+      "place": "README.md",
+      "writers": [
+        "scripts/sync-version.mjs"
+      ]
+    },
+    {
+      "place": "dogfood/",
+      "writers": [
+        "dogfood (6 files)",
+        "e2e/write-chapel-fixture.ts"
+      ]
+    }
+  ],
+  "generatedAt": "2026-09-23T17:36:18.043Z",
+  "limits": [
+    "4 writes and 18 reads use paths built at run time and are not named here.",
+    "Readers marked (found by text) come from scanning unparsed files.",
+    "Statistics confidence is low: fewer than 20 source files reach 10 revisions in the window."
+  ],
+  "mainDoor": ".github/workflows/ci.yml",
+  "parts": 15,
+  "readers": [
+    {
+      "readers": [
+        "root (7 README files)",
+        "editor (8 files)",
+        "export-ai-rpg (8 files)",
+        "packages/export-godot/package.json (found by text)",
+        "packages/export-unreal/package.json (found by text)",
+        "renderer-2d (8 files)",
+        "schema (8 files)",
+        "scripts/check-pack.mjs"
+      ],
+      "target": "README.md"
+    },
+    {
+      "readers": [
+        "scripts/run-proofs.mjs"
+      ],
+      "target": "dogfood/"
+    }
+  ],
+  "repo": "mcp-tool-shop-org/world-forge",
+  "sequences": [],
+  "startHere": [
+    ".github/workflows/ci.yml",
+    "packages/editor/src/",
+    "playwright.config.ts",
+    "README.md",
+    "scripts/check-pack.mjs"
+  ],
+  "summary": null,
+  "summaryFrom": null,
+  "testFiles": 231,
+  "testedBy": {
+    "dogfood": 4,
+    "e2e": 2,
+    "editor": 110,
+    "export-ai-rpg": 61,
+    "export-godot": 44,
+    "export-unreal": 35,
+    "renderer-2d": 10,
+    "schema": 196,
+    "scripts": 1
+  },
+  "unread": [],
+  "unreadNote": [],
+  "untested": [],
+  "untestedNote": [],
+  "written": 2
+}

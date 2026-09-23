@@ -43,6 +43,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      # The committed atlas/ map cannot differ by Node version, so like the
+      # other single-answer gates it runs on the Active LTS leg only.
+      - name: Atlas check
+        if: matrix.node-version == 24
+        run: npx --yes @dogfood-lab/atlas@1.14.0 check
       - run: npm ci
       # F-059ff1b5: SHIP_GATE D. Shipping Hygiene checks off "Dependency
       # scanning runs in CI (npm audit in verify)". verify is still
