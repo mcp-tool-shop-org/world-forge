@@ -89,7 +89,7 @@ describe('F-95295187: saveProjectFile does not markClean on failure', () => {
 
 describe('F-5c713675: resetFileInput always clears the value', () => {
   it('sets value to empty string on success, error, and empty-file paths', () => {
-    const input = { value: 'C:\\Users\\me\\world.json' };
+    const input = { value: 'C:\\Users\\<you>\\world.json' };
     resetFileInput(input);
     expect(input.value).toBe('');
     resetFileInput(null);
