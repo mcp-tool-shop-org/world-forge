@@ -1,0 +1,5 @@
+# Files the test suite regenerates. The generators write LF, so check them out as LF
+# on Windows too (core.autocrlf=true would otherwise check out CRLF and a test run
+# would then rewrite them, leaving five modified files and no content change).
+docs/c0-alignment/* text eol=lf
+dogfood/worlds/multi-target-proof.worldforge.json text eol=lf
