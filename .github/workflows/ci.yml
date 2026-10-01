@@ -37,6 +37,10 @@ jobs:
         # Supported LTS lines only: 22 = Maintenance LTS, 24 = Active LTS.
         # Node 20 "Iron" reached end-of-life 2026-04-30 and was dropped.
         node-version: [22, 24]
+    env:
+      # 'true' on the one leg whose coverage and test results go to Codecov,
+      # on a pull request or a push to the default branch.
+      COVERAGE_LEG: ${{ matrix.node-version == 22 && (github.event_name == 'pull_request' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -47,7 +51,7 @@ jobs:
       # other single-answer gates it runs on the Active LTS leg only.
       - name: Atlas check
         if: matrix.node-version == 24
-        run: npx --yes @dogfood-lab/atlas@1.14.0 check
+        run: npx --yes @dogfood-lab/atlas@1.24.0 check
       - run: npm ci
       # F-059ff1b5: SHIP_GATE D. Shipping Hygiene checks off "Dependency
       # scanning runs in CI (npm audit in verify)". verify is still
@@ -92,7 +96,31 @@ jobs:
       - name: Re-run suite with coverage
         id: coverage
         if: success() || failure()
-        run: npx vitest run --coverage
+        run: npx vitest run --coverage --reporter=default --reporter=junit --outputFile.junit=junit.xml
+      # The codecov job below uploads what these two steps save; this job
+      # never holds an OIDC token. Coverage is saved when the tests passed,
+      # and test results whenever they ran, failures included, because a
+      # failing test is what that report exists to show. A save step with no
+      # file to save fails the job. overwrite lets a re-run of this job
+      # replace the artifact its earlier attempt saved.
+      - name: Save coverage for Codecov
+        if: ${{ env.COVERAGE_LEG == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: codecov-coverage
+          path: coverage/coverage-final.json
+          if-no-files-found: error
+          retention-days: 3
+          overwrite: true
+      - name: Save test results for Codecov
+        if: ${{ !cancelled() && env.COVERAGE_LEG == 'true' && steps.coverage.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: codecov-test-results
+          path: junit.xml
+          if-no-files-found: error
+          retention-days: 3
+          overwrite: true
       # INF-B-004: Upload coverage artifacts every run so failing runs on older
       # Node versions still yield debuggable artifacts. Vitest does not produce a
       # separate "test output" directory by default — only the coverage/ directory
@@ -111,15 +139,64 @@ jobs:
           # sibling of the removed Codecov continue-on-error. Missing
           # coverage/ now fails the required check.
           if-no-files-found: error
-      # The Codecov upload step that used to follow was REMOVED in v4.6.0. It ran
-      # with `continue-on-error: true` and `fail_ci_if_error: false` against a
-      # `CODECOV_TOKEN` secret that does not exist on this repo, so it could never
-      # succeed and could never say so — the public badge rendered "unknown". A
-      # step that cannot work and cannot report that it isn't working is worse
-      # than no step: it reads as coverage reporting to anyone scanning the
-      # workflow. Coverage itself is unaffected and still runs on every leg; the
-      # artifacts above are the authoritative record. To restore external
-      # reporting, add the secret first, then re-add the step.
+
+  codecov:
+    # Uploads what the test job saved, from a job of its own, so the OIDC
+    # token that signs in to Codecov never exists beside the install and the
+    # tests. The checkout, which keeps no token, is there only so Codecov can
+    # match report paths to files: the job installs nothing and runs none of
+    # the repository's code. It runs whenever the test job ran, failures
+    # included, so failing tests still reach Codecov, and only on the events
+    # that collect coverage. A run the concurrency group cancels uploads
+    # nothing, and each run reads only its own artifacts.
+    needs: build-and-test
+    if: ${{ !cancelled() && needs.build-and-test.result != 'cancelled' && needs.build-and-test.result != 'skipped' && (github.event_name == 'pull_request' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      # Each artifact unpacks where the test job wrote its files. A pattern
+      # that matches nothing, unlike a name, does not fail: a failing test
+      # run saves test results and no coverage.
+      - name: Download coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: codecov-coverage
+          path: coverage
+      - name: Download test results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: codecov-test-results
+          path: .
+      # After a passing test job both artifacts exist, so each upload runs,
+      # and fails the job if its files are missing; after a failing one each
+      # runs when its files arrived. Both sign in with OIDC, fail the job when
+      # Codecov refuses the report, and run the Codecov CLI at a fixed version
+      # rather than whichever is newest.
+      - name: Upload coverage to Codecov
+        if: ${{ needs.build-and-test.result == 'success' || hashFiles('coverage/coverage-final.json') != '' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          version: v11.3.1
+          use_oidc: true
+          fail_ci_if_error: true
+          disable_search: true
+          files: ./coverage/coverage-final.json
+      - name: Upload test results to Codecov
+        if: ${{ needs.build-and-test.result == 'success' || hashFiles('junit.xml') != '' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          version: v11.3.1
+          use_oidc: true
+          fail_ci_if_error: true
+          report_type: test_results
+          disable_search: true
+          files: ./junit.xml
 
   # F-2ed74a5c: Playwright was in the paths filter; CI never ran test:e2e.
   # Node 24 only. reuseExistingServer is disabled by CI=true (harness owns
