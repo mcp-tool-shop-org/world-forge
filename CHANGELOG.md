@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.9.1] - 2026-11-05
+
+**Dependency security updates, a Godot stage fixture that is a join graph, handbook pages for Salt Road and the authoring levers, and the Atlas map.** No schema change; `SCHEMA_VERSION` follows the package version as it did for 4.4.x.
+
+- **Security: `devalue` 5.9.2 -> 5.9.4** in the site's lockfile (GHSA-j22f-vq7h-c4qm, GHSA-mcm9-63f2-9j32). `undici` in the same lockfile moves 8.10.0 -> 8.11.2.
+- **Security: `brace-expansion`** moves to its fixed releases in the root lockfile (5.0.9 -> 5.0.12 and 2.1.4 -> 2.1.7).
+- **Generated fixtures are checked out as LF.** `.gitattributes` marks `docs/c0-alignment/*` and `dogfood/worlds/multi-target-proof.worldforge.json` as `eol=lf`, so a test run on Windows with `core.autocrlf=true` no longer rewrites five tracked files with no content change.
+- **Scan-clean fixture.** The editor test fixture for the file input uses a `<you>` placeholder instead of an account-specific home path.
+- **Atlas.** The repository keeps an Atlas map (`atlas/`) and CI runs `atlas check`; the pin is Atlas 1.24.0.
+- **CI.** The test job uploads coverage and test results to Codecov with OIDC; both Codecov statuses are informational.
 - **Salt Road in the editor handbook.** The workflow page now says the
   playable harbour is `dogfood/worlds/salt-road.ts`, names the six zones,
   the warehouse gate, and the presentation block, and points the stage
