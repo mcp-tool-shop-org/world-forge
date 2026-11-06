@@ -245,7 +245,7 @@ describe('SCH-B-005 (v4.4): buildReviewSnapshot honours suppressUnknownPrefixWar
     const proj = withOverrides({});
     buildReviewSnapshot(proj, { suppressUnknownPrefixWarnings: true });
     __classifyValidationDomain('anotherUnknownPrefix.field', true);
-    expect(warnSpy.mock.calls.every((c) => !String(c[0]).includes('anotherUnknownPrefix'))).toBe(true);
+    expect(warnSpy.mock.calls.every((c: unknown[]) => !String(c[0]).includes('anotherUnknownPrefix'))).toBe(true);
   });
 
   it('accepts the option without breaking a healthy snapshot', () => {

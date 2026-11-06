@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   pack keys. Zone-standing items are not `itemPlacements` (those are giveItem
   and require `entityId`). `presentation` stays on the stage `pack.json`.
 
+### Security
+
+- **Test tooling moved to vitest 4.1.12** (`vitest` and `@vitest/coverage-v8`, dev only), which clears the open advisories in the test toolchain; `npm audit` reports 0 vulnerabilities.
+
 ## [4.9.0] - 2026-09-21
 
 **The harbour a client draws is now authored in the Forge.** A world may carry
