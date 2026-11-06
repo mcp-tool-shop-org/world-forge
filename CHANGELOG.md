@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Release workflow waits about 4 minutes for npm's provenance attestation** (it waited 50 s, and the 4.9.1 publish stopped after each package on registry lag). Its error now says to check the registry by hand before deprecating anything.
+
 ## [4.9.1] - 2026-11-05
 
 **Dependency security updates, a Godot stage fixture that is a join graph, handbook pages for Salt Road and the authoring levers, and the Atlas map.** No schema change; `SCHEMA_VERSION` follows the package version as it did for 4.4.x.

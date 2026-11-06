@@ -144,7 +144,9 @@ runs:
           fi
           rm -f "$VIEW_ERR"
           npm publish --provenance --access public
-          max=5
+          # npm can take several minutes to show a fresh attestation; 12 probes
+          # with 5..30 s back-off wait about 5 minutes before failing closed.
+          max=12
           URL=""
           for attempt in $(seq 1 "$max"); do
             URL="$(provenance_url "${SPEC}" || true)"
@@ -153,13 +155,13 @@ runs:
               break
             fi
             if [ "$attempt" -lt "$max" ]; then
-              wait_s=$((attempt * 5))
+              wait_s=$((attempt * 5)); [ "$wait_s" -gt 30 ] && wait_s=30
               echo "::warning::${SPEC} has no provenance attestation yet (attempt ${attempt}/${max}) — sleeping ${wait_s}s (registry lag)"
               sleep "$wait_s"
             fi
           done
           if [ -z "$URL" ]; then
-            echo "::error::${SPEC} published but registry has no provenance attestation after ${max} probes. Trusted-publisher/OIDC likely misconfigured; the tarball is live unsigned. Provenance cannot be attached after the fact. Next: npm deprecate ${SPEC} and cut a new version after fixing OIDC."
+            echo "::error::${SPEC} published but registry has no provenance attestation after ${max} probes. Check the registry by hand first (npm view ${SPEC} dist.attestations): if an attestation shows up, it was registry lag and a re-run publishes the remaining packages. If none ever appears, OIDC is misconfigured: npm deprecate ${SPEC} and cut a new version after fixing it."
             exit 1
           fi
         fi
