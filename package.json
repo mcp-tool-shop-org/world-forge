@@ -34,7 +34,7 @@
   "author": "mcp-tool-shop",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^25.3.5",
     "@vitest/coverage-v8": "^4.1.12",
     "tsx": "^4.23.5",

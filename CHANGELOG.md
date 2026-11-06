@@ -35,7 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- **`undici` in the site's lockfile** moves to its fixed release (GHSA-xjj6-f33q-929c).
 - **Test tooling moved to vitest 4.1.12** (`vitest` and `@vitest/coverage-v8`, dev only), which clears the open advisories in the test toolchain; `npm audit` reports 0 vulnerabilities.
+- **Playwright 1.65.0** for the editor smoke test; 1.59 cannot install Chromium on the current Ubuntu runner.
 
 ## [4.9.0] - 2026-09-21
 
