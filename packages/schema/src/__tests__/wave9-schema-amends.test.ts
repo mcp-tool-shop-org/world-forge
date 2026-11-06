@@ -257,7 +257,7 @@ describe('F-3c037170: buildings / lootTables prefixes do not warn', () => {
     }];
     p.lootTables = [{ id: 'lt1', entries: [] }];
     buildReviewSnapshot(p);
-    const text = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
+    const text = warnSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
     expect(text).not.toContain('"buildings"');
     expect(text).not.toContain('"lootTables"');
   });

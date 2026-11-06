@@ -261,7 +261,12 @@ console.log(
 function measureTestCount() {
   let vitestBin;
   try {
-    vitestBin = fileURLToPath(import.meta.resolve('vitest/vitest.mjs'));
+    // vitest 4 no longer exports './vitest.mjs'; './package.json' is exported in
+    // both 3 and 4, so read the bin entry from there.
+    const vitestPkgPath = fileURLToPath(import.meta.resolve('vitest/package.json'));
+    const vitestPkg = JSON.parse(readFileSync(vitestPkgPath, 'utf8'));
+    const binRel = typeof vitestPkg.bin === 'string' ? vitestPkg.bin : vitestPkg.bin.vitest;
+    vitestBin = resolve(dirname(vitestPkgPath), binRel);
   } catch (err) {
     console.error(`[sync-version] could not resolve vitest to measure the test count: ${err.message}`);
     process.exit(2);

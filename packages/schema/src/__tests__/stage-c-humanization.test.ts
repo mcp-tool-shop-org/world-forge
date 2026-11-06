@@ -280,7 +280,7 @@ describe('SCH-B-010: unknown validation path prefix warns once', () => {
     });
     buildReviewSnapshot(proj);
     // No warn for `zones` — it's documented as routing through 'world'.
-    const warnsForZones = warnSpy.mock.calls.filter((c) => String(c[0]).includes('"zones"'));
+    const warnsForZones = warnSpy.mock.calls.filter((c: unknown[]) => String(c[0]).includes('"zones"'));
     expect(warnsForZones).toHaveLength(0);
   });
 });
