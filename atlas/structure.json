@@ -32,11 +32,11 @@
       "externals": 0,
       "files": [
         {
-          "hash": "d0e3b9697f000e3c7d691aeaadef068fca439e079b8af9fde2879259976f389e",
+          "hash": "3f2b193094e2da515da4b759ff64c9c7f98dc3dcd00bae0f8d36d03fa8ff23b6",
           "path": ".github/actions/publish-if-missing/action.yml"
         },
         {
-          "hash": "4f9cdffc266f2e0dd1e5814529b028d90c0e35e5cba7505a7bc91710880a9a22",
+          "hash": "549ba40bacb8af9d0f265a3ebd8c4ffd0d3624c7767e58a8d475d7be9cf6d440",
           "path": ".github/workflows/ci.yml"
         },
         {
@@ -90,11 +90,11 @@
       "externals": 0,
       "files": [
         {
-          "hash": "0a850fc49709cf2b7ed0944ecf480babc6105a8517328990c2ee2eae1a2b70d3",
+          "hash": "a168e633bf3031522f159e760fd5f535ff7897fd3b3f65fe60680cb712bbedf8",
           "path": "docs/c0-alignment/export-table.json"
         },
         {
-          "hash": "9dc87456ef7639841b363d6d625b16c7c40e43c5f9991167cbfada38d6e16a8c",
+          "hash": "0ae080282bffd7d7ac5c34846dcf4a2c6db187f21997160a98de797f20fcd4e5",
           "path": "docs/c0-alignment/export-table.md"
         },
         {
@@ -102,7 +102,7 @@
           "path": "docs/c0-alignment/fixture-manifest.json"
         },
         {
-          "hash": "de657127fc0fbe296595f03f36f4f0dfcdb481cd787c1073a7695d25b27cd6a6",
+          "hash": "a9814ea0c1f12b60dc69d175c81d97a51484355b9d038bf1a05ec6deb23b8862",
           "path": "docs/c0-alignment/fixture-pack.json"
         },
         {
@@ -681,7 +681,7 @@
           "path": "packages/editor/logo.png"
         },
         {
-          "hash": "fba2550278fa1cddc470d220a8378416a684e386d5d6b80d9e6d8a1ed8c25b57",
+          "hash": "efc661dec3ddc5db3132f047d45c6cf1f59a4865879f9f92f49dc04b4c0df02c",
           "path": "packages/editor/package.json"
         },
         {
@@ -2176,7 +2176,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "cad19770ca56275b517106c5c777ad507aa1c418cd2db25fa56110d84a08de94",
+          "hash": "b429cdcd922e15abfeb8c9fdc1c431ea3e32f594f0d220a8d40f0ff3d4136664",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -5294,7 +5294,7 @@
           "path": "packages/export-ai-rpg/logo.png"
         },
         {
-          "hash": "82c46922c3a4272244a0899c15323c79844a98c1829800d229e16625b1ccb5b5",
+          "hash": "9cee217034cb09883b8b623649b66181ceea305b120a0084e3d412644f3a7732",
           "path": "packages/export-ai-rpg/package.json"
         },
         {
@@ -7587,7 +7587,7 @@
           "path": "packages/export-godot/logo.png"
         },
         {
-          "hash": "609e925de0c614a35c3abdb4e6f7f21eaf02791eb79321c1f529d1d7ba26e1ed",
+          "hash": "4bfb6c8049a1bc5ebb2174841afd5b3f79303fef4dcbfde81d0fcd1b02bf36e7",
           "path": "packages/export-godot/package.json"
         },
         {
@@ -8942,7 +8942,7 @@
           "path": "packages/export-unreal/logo.png"
         },
         {
-          "hash": "1890d793c277d01ec51b839bba666db54265f867e716ab9708fae2a679076119",
+          "hash": "08f16b303690df7df83e99dfb4bebbefeb43dd13d5053c8b157748cddfb522ce",
           "path": "packages/export-unreal/package.json"
         },
         {
@@ -10137,7 +10137,7 @@
           "path": "packages/renderer-2d/logo.png"
         },
         {
-          "hash": "e5addb6150931aa05d0d7364c33b521e17a1e137779aa7e199e0ec363fa467ef",
+          "hash": "9e72e5d2355445c7ac178100ffce9990770c23157529b09090c45c78d2c654ac",
           "path": "packages/renderer-2d/package.json"
         },
         {
@@ -10423,6 +10423,10 @@
           "path": ".editorconfig"
         },
         {
+          "hash": "104a2cce546a552fd60a8e8f58eec1f5152293fd683e79df9c3ed70f225c8d84",
+          "path": ".gitattributes"
+        },
+        {
           "hash": "5aefa63f49ea745bf27482008ad1e2468ad8a6a78c9128ea67447f7113fbac9d",
           "path": ".gitignore"
         },
@@ -10431,7 +10435,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "95a6103dbdfd844e3f84b40e7c79a50f2cb362842c4a175d9650dbbbc75c9632",
+          "hash": "0ef36006beddda1e50b2124987cb755c002bbed834f659868a516a3053bb9fc2",
           "path": "CHANGELOG.md"
         },
         {
@@ -10443,35 +10447,35 @@
           "path": "PLAN.md"
         },
         {
-          "hash": "1627292a5e3b0a9b300a5316e8369a04030b80fe38b953b37ae7d3be30c5e60b",
+          "hash": "4a7e53230541e690531bd851dd579cd724f33f7a0bc886e5ea16972d3fd5cccc",
           "path": "README.es.md"
         },
         {
-          "hash": "85ad0a012b7c1d942bda9272619a285cfa33be863d6eb87637306395eb0ac17b",
+          "hash": "ac9c9a5eaf52f6bbe8b931d8980f9ba8bced1378d9e37142bd4e9ca512ca4745",
           "path": "README.fr.md"
         },
         {
-          "hash": "a44eefe957aa1aa9dd0b55b7ec883b9383e05502ce9041b716774bb5462dc012",
+          "hash": "d5461097c51de66376294ab0cb7bb0b584f3ec10e06cc87fceb729518bbb32c9",
           "path": "README.hi.md"
         },
         {
-          "hash": "b21526d41483b5fffe0cef119598c645e24693b9c3a9ae2bff7edb38706d1d0b",
+          "hash": "06031d0b83d956bad4d35f41fb66a43a4b19fa709ecdbde0ff643bb62b86523d",
           "path": "README.it.md"
         },
         {
-          "hash": "45ec11a57c2105517316d326ef8f14b249e0d0502e6f33efbd14cc00db28d844",
+          "hash": "0b7094f231b5696f89eacebcc435dcd423d73b2dbeffafc61089a7d6cc989192",
           "path": "README.ja.md"
         },
         {
-          "hash": "a68cd4f50bdc19d3d4f50ac802a86f1725ce3008c226bfb2e3d7ec6a4fae3e84",
+          "hash": "fa68705cb0d0d21334c7c62f21bfd5567c46d474918b256a0d62eb63a1557a27",
           "path": "README.md"
         },
         {
-          "hash": "86718dff785a2b3bac7bd368210bf5e640318fa6b4aa7e86a0e1996569ff9f6f",
+          "hash": "6fa1a508a96b9b81ee6a0f32c17993e16cddde738e8edf24aacc75cdca732914",
           "path": "README.pt-BR.md"
         },
         {
-          "hash": "cfdec889b7c652ad78e9294210082bbc101a79d48d6ec09d2ad16e383ceef470",
+          "hash": "e39a710ce82165f928e9c3aca41f68188a16ef744f918362c6cb2ce921fd5e86",
           "path": "README.zh.md"
         },
         {
@@ -10499,11 +10503,11 @@
           "path": "multitask.md"
         },
         {
-          "hash": "d9f01b1827cb39f907b438e12c6424c85c510b4eac17b9eed945f94a07ff04d9",
+          "hash": "27dbb5347e07464bdc5a9c5a30448f32c8ce2942fa30ea7a8e6437e3232cd68f",
           "path": "package-lock.json"
         },
         {
-          "hash": "29af36aa0410a1b4478a19f609857d3483d2cfa34c88a4fc2054777a4015382e",
+          "hash": "33947aa38d6ab7507c359e4fdcd070ccd4c2a7e3a84038d35bc081d8fe658416",
           "path": "package.json"
         },
         {
@@ -10605,7 +10609,7 @@
           "path": "packages/schema/logo.png"
         },
         {
-          "hash": "96f3439208af9f72c70a36b85ad78ea71f7b166331c000411f974b02aba42a64",
+          "hash": "364495e878d5289c5ffa12e022b7bc46fbce8170b640ce630859d6024a9d5b4b",
           "path": "packages/schema/package.json"
         },
         {
@@ -10863,7 +10867,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "c1d0141ba0804d2bb27b0e9724a87b5b819bff9643a01e1a5f9ef8684089cbc4",
+          "hash": "2381854be19a67a781c91db94018b1e8681ebbddb38ef1a1183b0a3e7b446f95",
           "importOrder": [
             "packages/schema/src/validate.ts",
             "packages/schema/src/review.ts",
@@ -10886,7 +10890,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "631022808ccd0b41712c4777e34fd60c0b4d1b19ddcb914d16acaab6e6efde57",
+          "hash": "1687704a4fff5fed9556bdf39939b8ad02d76bc41e94be8076df59b9cc143298",
           "importOrder": [
             "packages/schema/src/dependencies.ts",
             "packages/schema/src/advisory.ts",
@@ -11015,7 +11019,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "671539c777424bf3fa757c752c77fac641b1907aedb58c153742a8cad8eb05a9",
+          "hash": "0149c2d336d45d52c0d36636106544d807d2ad6a6be6c7fabcdcac4a521c45ac",
           "importOrder": [
             "packages/schema/src/validate.ts",
             "packages/schema/src/review.ts",
@@ -11321,7 +11325,7 @@
             "stampProjectSchemaVersion",
             "validateProject"
           ],
-          "hash": "b6cfd2496bfc537ff9f735ef1a893c492fd39deb82a6c7c83f159e3a19e6ba34",
+          "hash": "f5de87f7252c7357d30bf5989ac32d5256bcc851df3d2d81c7a4d3979ee007f4",
           "importOrder": [
             "packages/schema/src/project.ts",
             "packages/schema/src/spatial.ts",
@@ -11379,7 +11383,7 @@
       "unresolvedSites": 0
     },
     {
-      "dynamicReads": 0,
+      "dynamicReads": 1,
       "dynamicSpawns": 1,
       "dynamicSpawnsInTests": 0,
       "dynamicWrites": 0,
@@ -11410,25 +11414,25 @@
             {
               "in": "measureTestCount",
               "kind": "catch",
-              "line": 265
+              "line": 270
             },
             {
               "in": "measureTestCount",
               "kind": "catch",
-              "line": 277
+              "line": 282
             },
             {
               "in": "measureTestCount",
               "kind": "catch",
-              "line": 292
+              "line": 297
             },
             {
               "in": "checkSubPackageVersions",
               "kind": "catch",
-              "line": 316
+              "line": 321
             }
           ],
-          "hash": "396f1d3839fcd4af07defcc69655be7acaa1bea52c7772f3b586c4136392a00c",
+          "hash": "4c584fc8a5ec5089d768e1884c2f74043659214798ebfe588c56e352b29094b3",
           "path": "scripts/sync-version.mjs",
           "sequences": []
         }
@@ -11459,7 +11463,7 @@
           "path": "site/astro.config.mjs"
         },
         {
-          "hash": "23eb7a07245b47ce63595792accddbfa79c7c251a37576cd3ba868e4a1f02eb8",
+          "hash": "4a3a88670fbef5e76e845d48b1c30341ed93537ae3c2ec39eee0ddf5e83986f0",
           "path": "site/package-lock.json"
         },
         {
@@ -14303,10 +14307,10 @@
       "to": "schema"
     }
   ],
-  "engine": "1.24.0",
+  "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "69358f1fca41d2428687dd1a35cbe54cce8f4f3d",
-    "tracked": 648
+    "commit": "ac9ae9815ce9e0753b64cd562cf055cfe308b935",
+    "tracked": 649
   },
   "landings": [
     {
