@@ -5,6 +5,10 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { invalidOrphanProject } from '../../../schema/src/__tests__/fixtures/invalid-orphan.js';
+import {
+  validGateWorldProject,
+  plantedBadKeyWorldProject,
+} from './fixtures/planted-bad-key-world.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -46,6 +50,10 @@ beforeAll(async () => {
     JSON.stringify(
       {
         ...minimalProject,
+        entityPlacements: [
+          ...minimalProject.entityPlacements,
+          { entityId: 'skeleton', zoneId: 'zone-cellar', role: 'enemy' },
+        ],
         encounterAnchors: minimalProject.encounterAnchors.map((ea) => ({
           ...ea,
           encounterType: 'patrol',
@@ -84,20 +92,67 @@ describe('CLI: world-forge-export', () => {
     expect(stdout).toContain('Usage: world-forge-export');
   });
 
-  it('validates a valid project with --validate-only', async () => {
+  it('validates a valid project with --validate-only and prints gate checks plus intake dropped entries', async () => {
     const { code, stdout } = await runCli([aiRpgValidJsonPath, '--validate-only']);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
+    expect(stdout).toContain('Engine load gate');
+    expect(stdout).toContain('engine-version');
+    expect(stdout).toContain('module-ids');
+    expect(stdout).toContain('content-hash');
+    expect(stdout).toContain('key-allowlist');
+    expect(stdout).toContain('Engine intake dry run');
+    expect(stdout).toMatch(/\[no-runtime-field\]|\[inert-without-pack-code\]|\[evaluated-not-mapped\]/);
   });
 
-  it('E2: --validate-only reports non-engine encounterType blocker by anchor id and exits non-zero', async () => {
+  it('--validate-only reports non-engine encounterType blocker and named refusal code, exiting non-zero', async () => {
     const { code, stderr } = await runCli([validJsonPath, '--validate-only']);
     expect(code).toBe(1);
+    expect(stderr).toMatch(/ENGINE_(?:INTAKE_REFUSED|ENCOUNTER_TYPE_BLOCKED)/);
     expect(stderr).toContain('enc-cellar');
     expect(stderr).toContain('ambush');
     expect(stderr).toContain('patrol');
     expect(stderr).toContain('horde');
     expect(stderr).toContain('duel');
+  });
+
+  it('--validate-only passes the clean companion world and refuses a planted misspelt top-level key with ENGINE_LOAD_GATE_REFUSED', async () => {
+    const cleanPath = join(tmpDir, 'gate-clean.json');
+    const badKeyPath = join(tmpDir, 'gate-bad-key.json');
+    await writeFile(cleanPath, JSON.stringify(validGateWorldProject, null, 2));
+    await writeFile(badKeyPath, JSON.stringify(plantedBadKeyWorldProject, null, 2));
+
+    const cleanRes = await runCli([cleanPath, '--validate-only']);
+    expect(cleanRes.code).toBe(0);
+    expect(cleanRes.stdout).toContain('Engine load gate');
+    expect(cleanRes.stdout).toContain('PASS');
+
+    const badRes = await runCli([badKeyPath, '--validate-only']);
+    expect(badRes.code).toBe(1);
+    expect(badRes.stderr).toContain('ENGINE_LOAD_GATE_REFUSED');
+    expect(badRes.stderr).toContain('ENGINE_GATE_KEY_ALLOWLIST');
+    expect(badRes.stderr).toContain('stronghlds');
+  });
+
+  it('--validate-only refuses dangling encounter anchor enemyIds via real engine intake with ENGINE_INTAKE_REFUSED', async () => {
+    const danglingEnemyPath = join(tmpDir, 'dangling-enemy.json');
+    await writeFile(
+      danglingEnemyPath,
+      JSON.stringify(
+        {
+          ...validGateWorldProject,
+          encounterAnchors: [
+            { id: 'enc-missing', zoneId: 'zone-vault', encounterType: 'patrol', enemyIds: ['ghost-not-placed'], probability: 0.5, cooldownTurns: 2, tags: [] },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    const { code, stderr } = await runCli([danglingEnemyPath, '--validate-only']);
+    expect(code).toBe(1);
+    expect(stderr).toContain('ENGINE_INTAKE_REFUSED');
+    expect(stderr).toContain('ghost-not-placed');
   });
 
   it('rejects an invalid project with exit code 1', async () => {

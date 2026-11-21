@@ -55,7 +55,15 @@ jobs:
         run: |
           set -euo pipefail
           npm run build
-          npx tsx dogfood/verify-golden-corpus.ts
+          npx tsx dogfood/verify-golden-corpus.ts --json-out /tmp/golden-corpus.json
+          node -e '
+            const fs = require("node:fs");
+            const r = JSON.parse(fs.readFileSync("/tmp/golden-corpus.json", "utf8"));
+            if (!r.ok || !(r.worldsChecked > 0) || !(r.totalGateChecksRun > 0)) {
+              console.error("Golden corpus structured verification failed:", r);
+              process.exit(1);
+            }
+          '
 
       - name: Format engine-bump issue payload
         if: steps.bump.outputs.status == 'bumped' || steps.bump.outputs.status == 'major-only'

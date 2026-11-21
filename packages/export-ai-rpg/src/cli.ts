@@ -14,6 +14,7 @@ import {
 import type { WorldProject } from '@world-forge/schema';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { listAiRpgEncounterBlockers } from './encounter-types.js';
+import { validateExportWithEngine } from './engine-gate.js';
 
 const USAGE = `Usage: world-forge-export <project.json> [options]
        world-forge-export --import <file-or-pack-dir> [--out <dir>]
@@ -523,12 +524,53 @@ async function main(): Promise<void> {
 
   const exportResult = result; // narrowed to ExportResult
 
-  // Non-engine encounter types block ALL AI RPG paths (--validate-only,
-  // --dry-run, and file exports), printing every blocker to stderr and exiting 1
-  // before writing any files.
+  if (validateOnly) {
+    const engineValidation = validateExportWithEngine(project, exportResult);
+    const { gate, intake } = engineValidation;
+    console.log(`Engine load gate (${engineValidation.engineVersion}): ${gate.ok ? 'PASS' : 'REFUSED'} (${gate.checks.length} checks)`);
+    for (const check of gate.checks) {
+      const statusLabel = check.skipped ? `SKIP(${check.skipped})` : check.ok ? 'PASS' : 'FAIL';
+      console.log(`  [${statusLabel}] ${check.check}${check.message ? ` — ${check.message}` : ''}`);
+    }
+    console.log(`Engine intake dry run: ${intake.ok ? 'PASS' : 'REFUSED'} (${intake.dropped.length} dropped)`);
+    for (const drop of intake.dropped) {
+      console.log(`  [${drop.reason}] ${drop.path}: ${drop.detail}`);
+    }
+
+    if (!engineValidation.ok) {
+      const checkSuffix = engineValidation.failedGateCheckCodes.length > 0
+        ? ` (${engineValidation.failedGateCheckCodes.join(', ')})`
+        : '';
+      console.error(`AI RPG validation refused [${engineValidation.refusalCode}]${checkSuffix}:`);
+      if (!gate.ok && engineValidation.gateFormattedReport) {
+        console.error(engineValidation.gateFormattedReport);
+      }
+      for (const b of engineValidation.encounterBlockers) {
+        console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
+      }
+      for (const err of intake.errors) {
+        console.error(`  [intake:${err.path}] ${err.message}`);
+      }
+      if (verbose) {
+        console.error('\n--- Verbose Diagnostics ---');
+        console.error(`  Refusal code: ${engineValidation.refusalCode}`);
+        console.error(`  Gate checks run: ${gate.checks.length}`);
+        console.error(`  Intake dropped entries: ${intake.dropped.length}`);
+      }
+      process.exit(1);
+    }
+
+    console.log('Validation passed.');
+    printWarningsAndFidelity(exportResult);
+    if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);
+    exitAfterExport(exportResult, strict);
+  }
+
+  // Non-engine encounter types block ALL AI RPG export/dry-run paths,
+  // printing every blocker to stderr and exiting 1 before writing any files.
   const encounterBlockers = listAiRpgEncounterBlockers(project);
   if (encounterBlockers.length > 0) {
-    console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
+    console.error('AI RPG export blocked:');
     for (const b of encounterBlockers) {
       console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
     }
@@ -537,13 +579,6 @@ async function main(): Promise<void> {
       console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
     }
     process.exit(1);
-  }
-
-  if (validateOnly) {
-    console.log('Validation passed.');
-    printWarningsAndFidelity(exportResult);
-    if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);
-    exitAfterExport(exportResult, strict);
   }
 
   // AIR-FT-005: --dry-run — report sizes, never touch disk
