@@ -10566,7 +10566,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "820543d2864b25138d1a6e9ceafe196d224a7829df80daa42e3228bf2d91f67b",
+          "hash": "595e0d3ee6c79bf036bc8cb09cef71df51459a1ca2aeec84e5639c974151005b",
           "path": "CHANGELOG.md"
         },
         {
@@ -10658,7 +10658,7 @@
           "path": "tsconfig.json"
         },
         {
-          "hash": "1352a5976c337c232ec8317ba40d4e00725b91c58d745a42d764e21c67bc7f66",
+          "hash": "b149a546c91c74717ad5f4ab1319605a8290450b3a501323044f5b72d3952833",
           "path": "vitest.config.ts"
         },
         {
@@ -14481,7 +14481,7 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "93eaee18e2cdb18dac80d4ee5ca8d6bbc98ebef2",
+    "commit": "3238a1badd2c62349ea18e85ac8dc5e1e4442026",
     "tracked": 653
   },
   "landings": [
