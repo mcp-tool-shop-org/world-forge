@@ -1,0 +1,120 @@
+name: Bump engine pins
+
+# Keeps @ai-rpg-engine/* dependencies within the current major fresh via a
+# weekly reviewable PR branch rather than letting published engine releases drift
+# unnoticed behind stale pins.
+#
+# Not push-triggered: runs weekly on Monday and via manual workflow_dispatch.
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install workspace dependencies
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --no-audit --no-fund
+
+      - name: Check npm and apply within-major engine bump
+        id: bump
+        run: |
+          set -euo pipefail
+          node scripts/engine-bump.mjs --json-out /tmp/engine-bump.json
+          node -e '
+            const fs = require("node:fs");
+            const r = JSON.parse(fs.readFileSync("/tmp/engine-bump.json", "utf8"));
+            const lines = [
+              `status=${r.status}`,
+              `current=${r.currentVersion}`,
+              `target=${r.targetVersion ?? ""}`,
+              `newer_major=${r.newerMajorVersion ?? ""}`,
+            ];
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n");
+          '
+
+      - name: Verify build and golden world corpus on bumped engine
+        if: steps.bump.outputs.status == 'bumped'
+        run: |
+          set -euo pipefail
+          npm run build
+          npx tsx dogfood/verify-golden-corpus.ts
+
+      - name: Format engine-bump issue payload
+        if: steps.bump.outputs.status == 'bumped' || steps.bump.outputs.status == 'major-only'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import { formatEngineBumpIssue } from "./scripts/engine-bump.mjs";
+            const plan = JSON.parse(fs.readFileSync("/tmp/engine-bump.json", "utf8"));
+            const issue = formatEngineBumpIssue({
+              plan,
+              repository: process.env.GITHUB_REPOSITORY,
+              branch: "chore/engine-bump",
+            });
+            fs.writeFileSync("/tmp/engine-bump-issue-title.txt", issue.title);
+            fs.writeFileSync("/tmp/engine-bump-issue-body.md", issue.body);
+          '
+
+      - name: Push chore/engine-bump branch and dispatch CI
+        if: steps.bump.outputs.status == 'bumped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_VERSION: ${{ steps.bump.outputs.target }}
+          OLD_VERSION: ${{ steps.bump.outputs.current }}
+        run: |
+          set -euo pipefail
+          BRANCH=chore/engine-bump
+
+          # Safeguard: GITHUB_TOKEN must never attempt to modify .github/workflows/.
+          if [ -n "$(git status --porcelain -- .github/workflows)" ]; then
+            echo "::error::engine-bump modified files under .github/workflows/ — aborting"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add package.json package-lock.json packages/
+          git commit -m "chore(deps): bump @ai-rpg-engine/* to ^${NEW_VERSION}" \
+                     -m "Within-major weekly bump from ^${OLD_VERSION} to ^${NEW_VERSION} with regenerated lockfile and engine lists."
+          git push -f origin "$BRANCH"
+
+          gh workflow run ci.yml --ref "$BRANCH" \
+            || echo "::warning::could not dispatch ci.yml on $BRANCH — trigger manually before merging"
+
+      - name: File or update engine-bump tracking issue
+        if: steps.bump.outputs.status == 'bumped' || steps.bump.outputs.status == 'major-only'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TITLE=$(cat /tmp/engine-bump-issue-title.txt)
+          existing=$(gh issue list --state open --label engine-bump --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --title "$TITLE" --body-file /tmp/engine-bump-issue-body.md
+            echo "updated issue #$existing"
+          else
+            gh label create engine-bump --description 'Weekly within-major @ai-rpg-engine/* pin bump' --color ededed 2>/dev/null || true
+            gh issue create --title "$TITLE" --label engine-bump --body-file /tmp/engine-bump-issue-body.md
+          fi
