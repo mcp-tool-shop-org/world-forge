@@ -1,6 +1,7 @@
 // convert-pack.ts — WorldProject metadata → engine GameManifest + PackMetadata
 
 import {
+  ENGINE_VERSION_RANGE,
   VALID_GENRES as SCHEMA_GENRES,
   VALID_TONES as SCHEMA_TONES,
   VALID_DIFFICULTIES as SCHEMA_DIFFICULTIES,
@@ -104,13 +105,11 @@ export const RETIRED_PHANTOM_MODULES: Readonly<Record<string, string | null>> = 
 /**
  * The engine versions a pack this exporter writes is compatible with.
  *
- * A RANGE, not a point. C0 found `engineVersion: '2.0.0'` hardcoded here and
- * read by nothing, so eight minor releases of drift went unnoticed; Minecraft
- * learned the same lesson the same way and replaced its single dismissible
- * `pack_format` int with a supported range. The engine's load gate now enforces
+ * Sourced from `@world-forge/schema`'s generated engine lists (bounded semver
+ * range `>=major.minor.patch <(major+1).0.0`). The engine's load gate enforces
  * this, so it is a checked claim rather than a comment.
  */
-export const ENGINE_VERSION_RANGE = '>=3.12.2 <4.0.0';
+export { ENGINE_VERSION_RANGE };
 
 /**
  * Convert project metadata → engine `GameManifest`.

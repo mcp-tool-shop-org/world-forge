@@ -2,33 +2,11 @@
 // pinned engine's load gate and applyContentPack intake without silent loss.
 
 import { describe, it, expect, vi } from 'vitest';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
-import {
-  runLoadGate,
-  applyContentPack,
-  type ContentPack as EngineContentPack,
-  type GateContext,
-} from '@ai-rpg-engine/content-schema';
-import { createStandardChannels } from '@ai-rpg-engine/modules';
-import { createGame } from '@ai-rpg-engine/starter-fantasy';
 import { createEmptyProject, validateProject, type WorldProject } from '@world-forge/schema';
 import { exportToEngine } from '../export.js';
 import { vocabularyCoverageProject } from './fixtures/vocabulary-coverage.js';
-
-function installedPackageVersion(pkg: string): string {
-  let dir = import.meta.dirname;
-  for (let i = 0; i < 8; i++) {
-    const candidate = path.join(dir, 'node_modules', pkg, 'package.json');
-    if (fs.existsSync(candidate)) {
-      return (JSON.parse(fs.readFileSync(candidate, 'utf-8')) as { version: string }).version;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  throw new Error(`${pkg} is not installed anywhere above ${import.meta.dirname}`);
-}
+import { runContractGateAndIntake } from './helpers/contract-host.js';
 
 function createSmallestValidWorldProject(): WorldProject {
   const base = createEmptyProject();
@@ -80,20 +58,7 @@ function runContractPipeline(project: WorldProject) {
   expect(exported.success).toBe(true);
   if (!exported.success) throw new Error('exportToEngine failed');
 
-  const engineVersion = installedPackageVersion('@ai-rpg-engine/content-schema');
-  const gateHost = createGame(71);
-  const gateCtx: GateContext = {
-    engineVersion,
-    registeredModuleIds: gateHost.moduleManager.getModules().map((m) => m.id),
-    manifest: exported.manifest,
-  };
-  const pack = exported.contentPack as unknown as EngineContentPack;
-  const gate = runLoadGate(pack, gateCtx);
-
-  const intakeHost = createGame(71);
-  const intake = applyContentPack(intakeHost, pack, {
-    channels: createStandardChannels(),
-  });
+  const { gate, intake } = runContractGateAndIntake(exported);
 
   const writtenNonEmptyKeys = Object.entries(exported.contentPack as Record<string, unknown>)
     .filter(([k, v]) => !METADATA_KEYS.has(k) && v !== undefined && !(Array.isArray(v) && v.length === 0))

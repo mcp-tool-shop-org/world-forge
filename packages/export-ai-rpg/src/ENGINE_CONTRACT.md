@@ -17,8 +17,10 @@ Everything below was verified against the installed 3.12.2 packages on
 
 ## The 3.x surface we rely on
 
-Types imported by this package (`import type` in every case — no engine
-value is imported at runtime by the production code):
+Types imported by the browser-safe surface (`import type` in every case — no
+engine value is imported at runtime by `src/index.ts` or any converter, while
+Node-only `src/engine-gate.ts` builds `createRuntimeValidationHost` from runtime
+`@ai-rpg-engine/*` packages for `--validate-only` and contract verification):
 
 | Type | Package | What we depend on |
 |---|---|---|
@@ -158,21 +160,27 @@ authority to publish, tag or bump.
 > duplicated engine in their tree or a resolution failure. The release that
 > ships it takes a **major** bump and says so in CHANGELOG.md.
 
-## Browser-safe content-hash twin
+## Generated mirror lists & browser-safe content-hash twin
 
-`src/content-hash.ts` implements `computeContentHash` synchronously over the
-12 `SIM_AFFECTING_KEYS`. It is a **deliberate duplicate** of
-`@ai-rpg-engine/content-schema`'s `computeContentHash`.
+Browser-safe engine constants (`INSTALLED_ENGINE_VERSION`, `ENGINE_VERSION_RANGE`,
+`SIM_AFFECTING_KEYS`, `ALLOWED_PACK_KEYS`, `ENCOUNTER_ANCHOR_TYPES`, and
+`EVALUATED_NOT_MAPPED_KEYS`) are generated into
+`packages/schema/src/generated/engine-lists.ts` by `scripts/gen-engine-lists.mjs`
+from the installed `@ai-rpg-engine/content-schema` package and re-exported by
+`@world-forge/schema` and `@world-forge/export-ai-rpg` (no hand-kept copies).
+CI regenerates that file and fails on `git diff --exit-code`.
+
+`src/content-hash.ts` imports `SIM_AFFECTING_KEYS` from `@world-forge/schema` and
+implements `computeContentHash` synchronously as a **deliberate standalone twin**
+of `@ai-rpg-engine/content-schema`'s `computeContentHash`.
 
 `@ai-rpg-engine/content-schema@3.12.2` exports `computeContentHash`,
 `runLoadGate`, `applyContentPack`, `ALLOWED_PACK_KEYS`, `SIM_AFFECTING_KEYS`,
 `EVALUATED_NOT_MAPPED_KEYS`, and `ENCOUNTER_ANCHOR_TYPES`. However, the engine's
 `gate.ts` imports `createHash` from `node:crypto`, and `exportToEngine` must
 stay browser-safe so editor and web bundles do not pull Node builtins or the
-`content-schema` runtime barrel.
-
-So `src/content-hash.ts` stays standalone, pinned by tests in
-`__tests__/engine-deps-3x.test.ts` and `__tests__/f-1d037344-browser-safe-hash.test.ts`:
+`content-schema` runtime barrel (`__tests__/browser-entry-safety.test.ts` and
+`__tests__/f-1d037344-browser-safe-hash.test.ts` assert this).
 
 - `src/content-hash.ts` stays byte-compatible with the engine's `gate.ts` —
   including the `undefined`-valued-key filter that agrees with JSON
@@ -180,8 +188,35 @@ So `src/content-hash.ts` stays standalone, pinned by tests in
 - The engine repo's cross-repo equivalence test (`c1-gate.test.ts`) verifies
   the committed forge fixture from the engine side.
 - `__tests__/engine-deps-3x.test.ts` verifies byte-identical digests across four
-  worlds and asserts that `src/content-hash.ts` imports neither `node:crypto`
-  nor `@ai-rpg-engine/*`.
+  worlds and asserts that `src/content-hash.ts` imports `@world-forge/schema`
+  rather than `node:crypto` or `@ai-rpg-engine/*`.
+
+## Real load gate (`--validate-only`) and shared runtime host
+
+`world-forge-export --validate-only` runs `validateExportWithEngine`
+(`src/engine-gate.ts`), using the single `createRuntimeValidationHost` factory
+built strictly from runtime `@ai-rpg-engine/*` dependencies (`core`,
+`modules`, `equipment`, `content-schema`). Both CLI `--validate-only` and the
+contract tests (`__tests__/engine-contract.test.ts`,
+`__tests__/item-placements-contract.test.ts`, and
+`dogfood/__tests__/cli-host-parity.test.ts`) run through this factory with a
+fresh `Engine` and unique per-world `gameId` (cleaned up via
+`unregisterEncounterSpawnContent` and `unregisterTypedHazards` in `finally`).
+Unknown top-level project keys are forwarded so `runLoadGate`'s key allowlist
+refuses misspelled fields (`ENGINE_LOAD_GATE_REFUSED` / `ENGINE_GATE_KEY_ALLOWLIST`),
+`dropped[]` entries are printed verbatim, and intake or encounter blockers exit
+non-zero with `ENGINE_INTAKE_REFUSED` or `ENGINE_ENCOUNTER_TYPE_BLOCKED`.
+
+## Weekly within-major engine bump
+
+`.github/workflows/engine-bump.yml` (`schedule` Mondays `07:00 UTC` and
+`workflow_dispatch`) runs `scripts/engine-bump.mjs` to check npm for newer
+releases within the current major across all `@ai-rpg-engine/*` dependencies,
+refreshes `package-lock.json`, regenerates `packages/schema/src/generated/engine-lists.ts`,
+runs the structured 31-world check via `dogfood/verify-golden-corpus.ts`, pushes
+`chore/engine-bump`, dispatches `ci.yml`, and opens/updates a tracking issue
+labelled `engine-bump`. Newer major releases are never bumped automatically and
+are reported in the tracking issue instead.
 
 ## When the engine cuts 4.x
 
@@ -191,9 +226,10 @@ against the compiler and the suite:
 
 1. [ ] Bump the six `@ai-rpg-engine/*` ranges, then verify what npm actually
        installed (`npm ls @ai-rpg-engine/core` — one copy, at the new major).
-2. [ ] Update `ENGINE_VERSION_RANGE` in `convert-pack.ts`; its floor must
-       match the new dep range (`engine-deps-3x.test.ts` asserts this).
-3. [ ] Re-run `c1-manifest-truth.test.ts` — the live boot resolves
+2. [ ] Run `node scripts/gen-engine-lists.mjs` to regenerate `ENGINE_VERSION_RANGE`
+       and the mirror lists in `packages/schema/src/generated/engine-lists.ts`
+       (`engine-deps-3x.test.ts` and `gen-engine-lists.test.ts` assert agreement).
+3. [ ] Re-run `c1-manifest-truth.test.ts` and `cli-host-parity.test.ts` — the live boot resolves
        `DEFAULT_MODULES` against the new registry and names anything renamed
        or removed.
 4. [ ] Re-verify `TONE_MAP` / `GENRE_MAP` / `DIFFICULTY_MAP` against the 4.x

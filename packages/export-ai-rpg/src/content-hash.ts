@@ -31,30 +31,18 @@
 // otherwise-valid export. SHA-256 below is a sync FIPS 180-4 implementation;
 // the digest prefix stays `sha256:` so the engine load gate still matches.
 
+import { SIM_AFFECTING_KEYS } from '@world-forge/schema';
+
 /**
  * The pack keys whose contents can change what the simulation computes.
  *
- * Must stay identical to `SIM_AFFECTING_KEYS` in the engine's gate.ts.
- * Deliberately EXCLUDES `schemaVersion` (metadata), `buildCatalog` /
- * `progressionTrees` (session-scoped — consumed before a world exists, so they
- * cannot change a simulation), and world-forge-only / uncarried keys.
+ * Sourced from `@world-forge/schema`'s generated engine lists (derived from
+ * `@ai-rpg-engine/content-schema` `SIM_AFFECTING_KEYS`). Deliberately EXCLUDES
+ * `schemaVersion` (metadata), `buildCatalog` / `progressionTrees` (session-scoped
+ * — consumed before a world exists, so they cannot change a simulation), and
+ * world-forge-only / uncarried keys.
  */
-// A key joins the hash only when the engine carries it: engine first, then
-// this mirror, then the measurement, in the same cycle.
-export const SIM_AFFECTING_KEYS = [
-  'entities',
-  'zones',
-  'dialogues',
-  'quests',
-  'abilities',
-  'statuses',
-  'verbs',
-  'itemUseEffects',
-  'districts',
-  'placements',
-  'encounterAnchors',
-  'hazardDefinitions',
-] as const;
+export { SIM_AFFECTING_KEYS };
 
 /**
  * Deterministic JSON: object keys sorted at every depth, array order preserved.

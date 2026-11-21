@@ -61,7 +61,7 @@ type ContentPack = {
 # Export to directory
 npx world-forge-export project.json --out ./my-pack
 
-# Validate only (no output files)
+# Validate against schema and run the real engine load gate + intake dry run (no output files)
 npx world-forge-export project.json --validate-only
 
 # Dry-run: validate + report sizes, never write (--out is mutually exclusive)
@@ -188,6 +188,12 @@ dropped or approximated with a reason. **A silent success is the failure mode th
 whole layer exists to prevent** — if the export does not tell you a field was lost,
 that is a bug in the export, not a detail of it.
 :::
+
+### Real load gate, generated lists, and weekly engine sync
+
+- **`--validate-only` runs the engine's gate:** In Node, `--validate-only` constructs an isolated runtime host (`createRuntimeValidationHost`, built only from runtime `@ai-rpg-engine/*` dependencies with per-world registry isolation), runs `runLoadGate` and `applyContentPack` in memory, prints all gate checks and `dropped[]` entries, and exits non-zero with a named refusal code (`ENGINE_LOAD_GATE_REFUSED`, `ENGINE_INTAKE_REFUSED`, or `ENGINE_ENCOUNTER_TYPE_BLOCKED`) when the engine refuses the pack. The browser entry `index.ts` and the editor bundle remain isolated from Node builtins and runtime engine modules.
+- **Generated mirror lists:** `scripts/gen-engine-lists.mjs` reads the installed `@ai-rpg-engine/content-schema` package and writes browser-safe static constants (`INSTALLED_ENGINE_VERSION`, `ENGINE_VERSION_RANGE`, `SIM_AFFECTING_KEYS`, `ALLOWED_PACK_KEYS`, `ENCOUNTER_ANCHOR_TYPES`, and `EVALUATED_NOT_MAPPED_KEYS`) to `packages/schema/src/generated/engine-lists.ts`. CI regenerates that file and fails on `git diff --exit-code`.
+- **Weekly within-major pin bumps:** `.github/workflows/engine-bump.yml` runs weekly via `scripts/engine-bump.mjs` to propose within-major updates to `@ai-rpg-engine/*`, regenerate the lockfile and engine lists, and verify all 31 sample, template, fixture, and dogfood worlds through `dogfood/verify-golden-corpus.ts` (requiring non-zero structured gate checks and an unchanged expected-blocker list).
 
 ## Fidelity Reporting
 

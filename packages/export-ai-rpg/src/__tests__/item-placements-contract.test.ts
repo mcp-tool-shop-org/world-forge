@@ -16,10 +16,10 @@ import {
   type ContentPack as EngineContentPack,
 } from '@ai-rpg-engine/content-schema';
 import { createStandardChannels } from '@ai-rpg-engine/modules';
-import { createGame } from '@ai-rpg-engine/starter-fantasy';
 import type { WorldProject } from '@world-forge/schema';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { exportToEngine } from '../export.js';
+import { withContractIntakeHost } from './helpers/contract-host.js';
 
 describe('itemPlacements container-entity vs zone-loose filtering', () => {
   it('container-entity placement sets entityId, arrives on that entity, and intake.applied.itemPlacements counts it', () => {
@@ -50,16 +50,17 @@ describe('itemPlacements container-entity vs zone-loose filtering', () => {
       exported.fidelity.entries.filter((f) => f.reason === 'engine-has-no-zone-items'),
     ).toEqual([]);
 
-    const engine = createGame(71);
-    const intake = applyContentPack(
-      engine,
-      exported.contentPack as unknown as EngineContentPack,
-      { channels: createStandardChannels() },
-    );
+    withContractIntakeHost(exported.manifest, (engine) => {
+      const intake = applyContentPack(
+        engine,
+        exported.contentPack as unknown as EngineContentPack,
+        { channels: createStandardChannels() },
+      );
 
-    expect(intake.ok, JSON.stringify(intake.errors, null, 2)).toBe(true);
-    expect(intake.applied.itemPlacements).toBe(1);
-    expect(engine.store.state.entities['npc-keeper']?.inventory).toContain('item-torch');
+      expect(intake.ok, JSON.stringify(intake.errors, null, 2)).toBe(true);
+      expect(intake.applied.itemPlacements).toBe(1);
+      expect(engine.store.state.entities['npc-keeper']?.inventory).toContain('item-torch');
+    });
   });
 
   it('zone-loose and non-entity-container placements are absent from pack and listed in fidelity with engine-has-no-zone-items citing gate.ts:91-110', () => {
@@ -141,14 +142,15 @@ describe('itemPlacements container-entity vs zone-loose filtering', () => {
     expect(hiddenApprox!.message).toContain('gives the item at boot');
     expect(hiddenApprox!.message).toContain('spawnCondition');
 
-    const engine = createGame(71);
-    const intake = applyContentPack(
-      engine,
-      exported.contentPack as unknown as EngineContentPack,
-      { channels: createStandardChannels() },
-    );
-    expect(intake.ok, JSON.stringify(intake.errors, null, 2)).toBe(true);
-    expect(intake.applied.itemPlacements).toBe(1);
-    expect(engine.store.state.entities['npc-keeper']?.inventory).toContain('item-torch');
+    withContractIntakeHost(exported.manifest, (engine) => {
+      const intake = applyContentPack(
+        engine,
+        exported.contentPack as unknown as EngineContentPack,
+        { channels: createStandardChannels() },
+      );
+      expect(intake.ok, JSON.stringify(intake.errors, null, 2)).toBe(true);
+      expect(intake.applied.itemPlacements).toBe(1);
+      expect(engine.store.state.entities['npc-keeper']?.inventory).toContain('item-torch');
+    });
   });
 });

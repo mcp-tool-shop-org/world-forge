@@ -210,6 +210,72 @@ export function createRuntimeValidationHost(
   });
 }
 
+export interface IsolatedGateAndIntakeResult {
+  engineVersion: string;
+  gate: GateResult;
+  intake: ApplyContentPackResult;
+}
+
+/**
+ * Run `runLoadGate` and `applyContentPack` against fresh, uniquely-identified hosts
+ * created by {@link createRuntimeValidationHost}, cleaning up module-global registries
+ * in `finally` so worlds never leak state into later runs in the same process.
+ */
+export function runIsolatedGateAndIntake(
+  exported: Pick<ExportResult, 'contentPack' | 'manifest'>,
+  extraTopLevelKeys?: Record<string, unknown>,
+  hostFactory: typeof createRuntimeValidationHost = createRuntimeValidationHost,
+): IsolatedGateAndIntakeResult {
+  const engineVersion = resolveInstalledEngineVersion('@ai-rpg-engine/content-schema');
+  const hasExtra = extraTopLevelKeys !== undefined && Object.keys(extraTopLevelKeys).length > 0;
+  const gatedPack = (
+    hasExtra ? { ...exported.contentPack, ...extraTopLevelKeys } : exported.contentPack
+  ) as unknown as EngineContentPack;
+
+  const gateGameId = `${exported.manifest.id}__wf_gate_${++validationSeq}`;
+  const intakeGameId = `${exported.manifest.id}__wf_intake_${++validationSeq}`;
+
+  try {
+    const gateHost = hostFactory(exported.manifest, gateGameId, 71);
+    const gateCtx: GateContext = {
+      engineVersion,
+      registeredModuleIds: gateHost.moduleManager.getModules().map((m) => m.id),
+      manifest: exported.manifest,
+    };
+    const gate = runLoadGate(gatedPack, gateCtx);
+
+    const intakeHost = hostFactory(exported.manifest, intakeGameId, 71);
+    const intake = applyContentPack(intakeHost, gatedPack, {
+      channels: createStandardChannels(),
+    });
+    return { engineVersion, gate, intake };
+  } finally {
+    unregisterEncounterSpawnContent(gateGameId);
+    unregisterTypedHazards(gateGameId);
+    unregisterEncounterSpawnContent(intakeGameId);
+    unregisterTypedHazards(intakeGameId);
+  }
+}
+
+/**
+ * Construct a single isolated intake host from {@link createRuntimeValidationHost}
+ * and unregister its module-global state once the callback finishes.
+ */
+export function withIsolatedIntakeHost<T>(
+  manifest: ExportResult['manifest'],
+  fn: (host: Engine, gameId: string) => T,
+  hostFactory: typeof createRuntimeValidationHost = createRuntimeValidationHost,
+): T {
+  const gameId = `${manifest.id}__wf_host_${++validationSeq}`;
+  const host = hostFactory(manifest, gameId, 71);
+  try {
+    return fn(host, gameId);
+  } finally {
+    unregisterEncounterSpawnContent(gameId);
+    unregisterTypedHazards(gameId);
+  }
+}
+
 export interface EngineValidationResult {
   ok: boolean;
   refusalCode: EngineRefusalCode | null;
@@ -230,41 +296,9 @@ export function validateExportWithEngine(
   project: WorldProject,
   exportResult: ExportResult,
 ): EngineValidationResult {
-  const engineVersion = resolveInstalledEngineVersion('@ai-rpg-engine/content-schema');
   const unknownExtra = collectUnknownTopLevelKeys(project);
   const unknownTopLevelKeys = Object.keys(unknownExtra).sort();
-
-  const gatedPack = (
-    unknownTopLevelKeys.length > 0
-      ? { ...exportResult.contentPack, ...unknownExtra }
-      : exportResult.contentPack
-  ) as unknown as EngineContentPack;
-
-  const gateGameId = `${exportResult.manifest.id}__wf_gate_${++validationSeq}`;
-  const intakeGameId = `${exportResult.manifest.id}__wf_intake_${++validationSeq}`;
-
-  let gate: GateResult;
-  let intake: ApplyContentPackResult;
-
-  try {
-    const gateHost = createRuntimeValidationHost(exportResult.manifest, gateGameId, 71);
-    const gateCtx: GateContext = {
-      engineVersion,
-      registeredModuleIds: gateHost.moduleManager.getModules().map((m) => m.id),
-      manifest: exportResult.manifest,
-    };
-    gate = runLoadGate(gatedPack, gateCtx);
-
-    const intakeHost = createRuntimeValidationHost(exportResult.manifest, intakeGameId, 71);
-    intake = applyContentPack(intakeHost, gatedPack, {
-      channels: createStandardChannels(),
-    });
-  } finally {
-    unregisterEncounterSpawnContent(gateGameId);
-    unregisterTypedHazards(gateGameId);
-    unregisterEncounterSpawnContent(intakeGameId);
-    unregisterTypedHazards(intakeGameId);
-  }
+  const { engineVersion, gate, intake } = runIsolatedGateAndIntake(exportResult, unknownExtra);
 
   const encounterBlockers = listAiRpgEncounterBlockers(project);
   const failedGateCheckCodes = gate.checks

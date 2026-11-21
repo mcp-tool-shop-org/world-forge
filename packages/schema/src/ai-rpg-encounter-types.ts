@@ -1,13 +1,13 @@
 // ai-rpg-encounter-types.ts — Browser-safe AI RPG Engine encounter anchor type allowlist.
 //
-// Pinned in `@world-forge/export-ai-rpg` (`__tests__/engine-deps-3x.test.ts`)
-// to `ENCOUNTER_ANCHOR_TYPES` from `@ai-rpg-engine/content-schema`, which
-// imports `node:crypto` via its barrel and therefore cannot be imported by
-// browser-safe `@world-forge/schema` or `@world-forge/editor`.
+// Sourced from `./generated/engine-lists.js` (generated from installed
+// `@ai-rpg-engine/content-schema`, which imports `node:crypto` via its barrel
+// and therefore cannot be imported directly by browser-safe packages).
+
+import { ENCOUNTER_ANCHOR_TYPES } from './generated/engine-lists.js';
 
 /** Encounter anchor types accepted at runtime by AI RPG Engine. */
-// A type joins this list only when the engine carries it: engine first, then this mirror, in the same cycle.
-export const AI_RPG_ENCOUNTER_ANCHOR_TYPES = ['ambush', 'patrol', 'horde', 'duel'] as const;
+export const AI_RPG_ENCOUNTER_ANCHOR_TYPES = ENCOUNTER_ANCHOR_TYPES;
 
 export type AiRpgEncounterAnchorType = (typeof AI_RPG_ENCOUNTER_ANCHOR_TYPES)[number];
 

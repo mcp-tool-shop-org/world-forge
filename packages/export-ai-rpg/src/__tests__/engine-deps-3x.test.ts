@@ -31,7 +31,12 @@ import {
 } from '@ai-rpg-engine/content-schema';
 import {
   AI_RPG_ENCOUNTER_ANCHOR_TYPES as SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  ALLOWED_PACK_KEYS as SCHEMA_ALLOWED_PACK_KEYS,
   createEmptyProject,
+  ENGINE_VERSION_RANGE as SCHEMA_ENGINE_VERSION_RANGE,
+  EVALUATED_NOT_MAPPED_KEYS as SCHEMA_EVALUATED_NOT_MAPPED_KEYS,
+  INSTALLED_ENGINE_VERSION as SCHEMA_INSTALLED_ENGINE_VERSION,
+  SIM_AFFECTING_KEYS as SCHEMA_SIM_AFFECTING_KEYS,
   validateProject,
   type WorldProject,
 } from '@world-forge/schema';
@@ -308,11 +313,18 @@ describe('content-hash decision — browser-safe twin stays standalone and pinne
     expect(typeof EVALUATED_NOT_MAPPED_KEYS).toBe('object');
     expect(Array.isArray(ENCOUNTER_ANCHOR_TYPES)).toBe(true);
 
+    expect([...SCHEMA_ALLOWED_PACK_KEYS]).toEqual([...ALLOWED_PACK_KEYS]);
+    expect([...SCHEMA_SIM_AFFECTING_KEYS]).toEqual([...ENGINE_SIM_AFFECTING_KEYS]);
+    expect(SCHEMA_EVALUATED_NOT_MAPPED_KEYS).toEqual(EVALUATED_NOT_MAPPED_KEYS);
+    expect(SCHEMA_ENGINE_VERSION_RANGE).toBe(ENGINE_VERSION_RANGE);
+    expect(SCHEMA_INSTALLED_ENGINE_VERSION).toBe(installedVersion('@ai-rpg-engine/content-schema'));
+
     const contentHashSrc = fs.readFileSync(
       path.resolve(import.meta.dirname, '../content-hash.ts'),
       'utf-8',
     );
     expect(contentHashSrc).not.toMatch(/from\s+['"]node:crypto['"]/);
     expect(contentHashSrc).not.toMatch(/from\s+['"]@ai-rpg-engine\//);
+    expect(contentHashSrc).toMatch(/from\s+['"]@world-forge\/schema['"]/);
   });
 });

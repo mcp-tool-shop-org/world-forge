@@ -3,3 +3,4 @@
 # would then rewrite them, leaving five modified files and no content change).
 docs/c0-alignment/* text eol=lf
 dogfood/worlds/multi-target-proof.worldforge.json text eol=lf
+packages/schema/src/generated/* text eol=lf

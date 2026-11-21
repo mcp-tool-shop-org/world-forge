@@ -51,6 +51,14 @@ export {
   isAiRpgEncounterAnchorType,
 } from './ai-rpg-encounter-types.js';
 export type { AiRpgEncounterAnchorType } from './ai-rpg-encounter-types.js';
+export {
+  INSTALLED_ENGINE_VERSION,
+  ENGINE_VERSION_RANGE,
+  SIM_AFFECTING_KEYS,
+  ALLOWED_PACK_KEYS,
+  ENCOUNTER_ANCHOR_TYPES,
+  EVALUATED_NOT_MAPPED_KEYS,
+} from './generated/engine-lists.js';
 
 export type { Building, Hub, Stronghold } from './town.js';
 

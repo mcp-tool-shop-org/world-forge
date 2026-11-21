@@ -1,32 +1,43 @@
 # world-forge: how it works
 
-Mapped at 2026-11-21 from commit 3238a1b by Atlas 1.26.0.
+Mapped at 2026-11-21 from commit 7168d6f by Atlas 1.26.0.
 
 ## What this is
 
-15 parts, mostly TypeScript (501 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.
+15 parts, mostly TypeScript (514 files), JavaScript (6), Astro (4), CSS (3), GDScript (1) and HTML (1). Work enters through 12 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.
 
-## What changed since 2026-11-21 (93eaee1)
+## What changed since 2026-11-21 (3238a1b)
 
-Nothing structural changed since 2026-11-21; 2 files changed content.
+- dogfood now imports editor.
+- dogfood now imports scripts.
+- CI now also runs dogfood/__tests__/chapel-threshold-gap-gate.test.ts, dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts, dogfood/__tests__/cli-host-parity.test.ts and 16 more.
+- CI now also checks dogfood/verify-golden-corpus.ts.
+- Bump engine pins (.github/workflows/engine-bump.yml) is a new door. It starts on a schedule (`0 7 * * 1`), Monday at 07:00 UTC; or by hand. It runs dogfood/verify-golden-corpus.ts, scripts/engine-bump.mjs and scripts/sync-version.mjs. It checks packages/editor/src/, packages/export-ai-rpg/src/, packages/export-godot/src/ and 3 more.
+- And 2 more changes to doors.
+- .github/workflows/ci.yml is now read by dogfood/__tests__/gen-engine-lists.test.ts.
+- package-lock.json is now read by packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts.
+- package.json is now also read by dogfood/__tests__/engine-bump.test.ts and scripts/engine-bump.mjs.
+- And 9 more new writers and readers of places.
+- 16 files added and 20 changed content, across 8 parts.
 
 ## What comes in
 
-1. **CI.** On a pull request; on a push; or by hand. Runs scripts/check-pack.mjs, scripts/sync-version.mjs, dogfood/__tests__/ and 213 more; checks dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts, dogfood/export-stage-fixture.ts and 479 more.
-2. **Release.** When a release is published. Runs scripts/sync-version.mjs, dogfood/__tests__/, packages/editor/src/__tests__/ and 119 more; checks dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts, dogfood/export-stage-fixture.ts and 479 more.
-3. **Deploy site to GitHub Pages.** On a push to main touching 3 paths; when a release is published; or by hand. On a push to main or by hand, it runs site/astro.config.mjs and site/src/.
-4. **@world-forge/export-ai-rpg** (the package people import). Loads packages/export-ai-rpg/src/index.ts.
-5. **@world-forge/export-godot** (the package people import). Loads packages/export-godot/src/index.ts.
-6. **@world-forge/export-unreal** (the package people import). Loads packages/export-unreal/src/index.ts, packages/export-unreal/src/diff.ts, packages/export-unreal/src/signing.ts and 1 more.
-7. **@world-forge/renderer-2d** (the package people import). Loads packages/renderer-2d/src/index.ts.
-8. **world-forge-export** (a command people run). Runs packages/export-ai-rpg/src/cli.ts.
-9. **world-forge-export-godot** (a command people run). Runs packages/export-godot/src/cli.ts.
-10. **world-forge-export-unreal** (a command people run). Runs packages/export-unreal/src/cli.ts.
-11. **@world-forge/schema** (the package people import). Loads packages/schema/src/index.ts.
+1. **CI.** On a pull request; on a push; or by hand. Runs scripts/check-pack.mjs, scripts/gen-engine-lists.mjs, scripts/sync-version.mjs and 231 more; checks dogfood/__tests__/, dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts and 486 more.
+2. **Release.** When a release is published. Runs scripts/sync-version.mjs, dogfood/__tests__/chapel-threshold-gap-gate.test.ts, dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts and 226 more; checks dogfood/__tests__/, dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts and 486 more.
+3. **Bump engine pins.** On a schedule (`0 7 * * 1`), Monday at 07:00 UTC; or by hand. Runs dogfood/verify-golden-corpus.ts, scripts/engine-bump.mjs and scripts/sync-version.mjs; checks packages/editor/src/, packages/export-ai-rpg/src/, packages/export-godot/src/ and 110 more.
+4. **Deploy site to GitHub Pages.** On a push to main touching 3 paths; when a release is published; or by hand. On a push to main or by hand, it runs site/astro.config.mjs and site/src/.
+5. **@world-forge/export-ai-rpg** (the package people import). Loads packages/export-ai-rpg/src/index.ts.
+6. **@world-forge/export-godot** (the package people import). Loads packages/export-godot/src/index.ts.
+7. **@world-forge/export-unreal** (the package people import). Loads packages/export-unreal/src/index.ts, packages/export-unreal/src/diff.ts, packages/export-unreal/src/signing.ts and 1 more.
+8. **@world-forge/renderer-2d** (the package people import). Loads packages/renderer-2d/src/index.ts.
+9. **world-forge-export** (a command people run). Runs packages/export-ai-rpg/src/cli.ts.
+10. **world-forge-export-godot** (a command people run). Runs packages/export-godot/src/cli.ts.
+11. **world-forge-export-unreal** (a command people run). Runs packages/export-unreal/src/cli.ts.
+12. **@world-forge/schema** (the package people import). Loads packages/schema/src/index.ts.
 
 ## What happens through CI
 
-1. The workflow runs scripts/check-pack.mjs and scripts/sync-version.mjs in scripts, dogfood/__tests__/ in dogfood, 112 files in editor, 24 files in export-ai-rpg, packages/export-godot/src/__tests__/ in export-godot, and 50 files in 4 more parts; it checks 11 files in dogfood, e2e/ in e2e, packages/editor/src/ in editor, packages/export-ai-rpg/src/ in export-ai-rpg, packages/export-godot/src/ in export-godot, and 109 files in 3 more parts.
+1. The workflow runs scripts/check-pack.mjs, scripts/gen-engine-lists.mjs and scripts/sync-version.mjs in scripts, 17 files in dogfood, 112 files in editor, 25 files in export-ai-rpg, packages/export-godot/src/__tests__/ in export-godot, and 50 files in 4 more parts; it checks 30 files in dogfood, e2e/ in e2e, packages/editor/src/ in editor, packages/export-ai-rpg/src/ in export-ai-rpg, packages/export-godot/src/ in export-godot, and 110 files in 3 more parts.
 2. That reaches the repository root (1 file).
 3. It writes to docs/c0-alignment/export-table.json, docs/c0-alignment/export-table.md, docs/c0-alignment/fixture-manifest.json and docs/c0-alignment/fixture-pack.json.
 4. It uploads coverage to Codecov.
@@ -37,7 +48,9 @@ Nothing structural changed since 2026-11-21; 2 files changed content.
 
 ## The other doors
 
-**Release** runs scripts/sync-version.mjs, dogfood/__tests__/, packages/editor/src/__tests__/ and 119 more, checks dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts, dogfood/export-stage-fixture.ts and 479 more, reaches the repository root, writes to docs/c0-alignment/export-table.json, docs/c0-alignment/export-table.md, docs/c0-alignment/fixture-manifest.json and docs/c0-alignment/fixture-pack.json, publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm, and uploads dist-tarballs/*.tgz to the release.
+**Release** runs scripts/sync-version.mjs, dogfood/__tests__/chapel-threshold-gap-gate.test.ts, dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts and 226 more, checks dogfood/__tests__/, dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts and 486 more, reaches the repository root, writes to docs/c0-alignment/export-table.json, docs/c0-alignment/export-table.md, docs/c0-alignment/fixture-manifest.json and docs/c0-alignment/fixture-pack.json, publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm, and uploads dist-tarballs/*.tgz to the release.
+
+**Bump engine pins** runs dogfood/verify-golden-corpus.ts, scripts/engine-bump.mjs and scripts/sync-version.mjs, checks packages/editor/src/, packages/export-ai-rpg/src/, packages/export-godot/src/ and 110 more, commits package-lock.json (written by people), package.json (written by people) and packages/ (written by people), then pushes to a branch for review, never to main, and opens an issue.
 
 **Deploy site to GitHub Pages** runs site/astro.config.mjs and site/src/ on a push to main or by hand, and deploys the site on a push to main or by hand.
 
@@ -59,24 +72,24 @@ Nothing structural changed since 2026-11-21; 2 files changed content.
 
 ## What breaks what
 
-- **schema** is imported by 7 parts (dogfood, e2e, editor, export-ai-rpg, export-godot, export-unreal, renderer-2d) and sits on the path of 10 doors.
-- **export-ai-rpg** is imported by 2 parts (dogfood, editor) and sits on the path of 4 doors.
-- **export-godot** is imported by 2 parts (dogfood, editor) and sits on the path of 4 doors.
-- **export-unreal** is imported by 2 parts (dogfood, editor) and sits on the path of 4 doors.
-- **renderer-2d** is imported by no other part and sits on the path of 3 doors.
-- **the repository root** is imported only from tests, by 1 part (dogfood), and sits on the path of 2 doors.
-- **dogfood** is imported by no other part and sits on the path of 2 doors.
-- **e2e** is imported by no other part and sits on the path of 2 doors.
+- **schema** is imported by 7 parts (dogfood, e2e, editor, export-ai-rpg, export-godot, export-unreal, renderer-2d) and sits on the path of 11 doors.
+- **export-ai-rpg** is imported by 2 parts (dogfood, editor) and sits on the path of 5 doors.
+- **export-godot** is imported by 2 parts (dogfood, editor) and sits on the path of 5 doors.
+- **export-unreal** is imported by 2 parts (dogfood, editor) and sits on the path of 5 doors.
+- **editor** is imported by 1 part (dogfood) and sits on the path of 3 doors.
+- **renderer-2d** is imported by no other part and sits on the path of 4 doors.
+- **scripts** is imported only from tests, by 1 part (dogfood), and sits on the path of 3 doors.
+- **dogfood** is imported by no other part and sits on the path of 3 doors.
 
 ## What tends to change together
 
+- **packages/editor/src/panels/ExportModal.tsx** and **packages/editor/src/panels/TemplateManager.tsx** changed together in 5 of 5 commits, inside the editor part.
+- **dogfood/godot-smoke/smoke_load_world.gd** and **dogfood/worlds/multi-target-proof.ts** changed together in 7 of 9 commits, inside the dogfood part.
 - **packages/export-godot/src/export.ts** and **packages/export-godot/src/index.ts** changed together in 10 of 13 commits, inside the export-godot part.
-- **packages/editor/src/panels/ExportModal.tsx** and **packages/editor/src/panels/TemplateManager.tsx** changed together in 5 of 7 commits, inside the editor part.
-- **dogfood/godot-smoke/smoke_load_world.gd** and **dogfood/worlds/multi-target-proof.ts** changed together in 7 of 10 commits, inside the dogfood part.
-- **packages/schema/src/index.ts** and **packages/schema/src/project.ts** changed together in 6 of 9 commits, inside the schema part.
-- **packages/export-ai-rpg/src/content-hash.ts** and **packages/export-ai-rpg/src/export.ts** changed together in 6 of 10 commits, inside the export-ai-rpg part.
+- **packages/export-ai-rpg/src/content-hash.ts** and **packages/export-ai-rpg/src/export.ts** changed together in 6 of 8 commits, inside the export-ai-rpg part.
+- **packages/schema/src/index.ts** and **packages/schema/src/project.ts** changed together in 6 of 8 commits, inside the schema part.
 
-3 files changed together with their own tests, as expected.
+2 files changed together with their own tests, as expected.
 
 Confidence is low: fewer than 25 source files reach 10 revisions in the window.
 
@@ -117,7 +130,7 @@ And 16 more candidates.
 
 ## Hand-authored
 
-People write .claude/, .github/, assets/ and site/; 3 writes with paths built at run time may land here.
+People write .claude/, .github/, assets/ and site/; 5 writes with paths built at run time may land here.
 
 ## Where to start
 
@@ -127,13 +140,13 @@ Read those in order to follow one run of world-forge-export end to end. This pat
 
 ## What this map cannot see
 
-- 10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.
-- 3 writes and 4 reads use paths built at run time and are not named here.
+- 12 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/__tests__/gen-engine-lists.test.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; and 9 more.
+- 5 writes and 4 reads use paths built at run time and are not named here.
 - 38 writes go to places this repository does not track, so they are not listed as generated.
-- 2 writes and 56 reads go to a path their caller passes, not to this repository.
+- 4 writes and 61 reads go to a path their caller passes, not to this repository.
 - 26 writes go to the directory the command is run in (GodotPack/ and UnrealPack/) or a path their caller passes, not to this repository.
-- 2 writes go to the directory the command is run in (export/), not to this repository.
-- 4 commands are built at run time and not followed.
+- 3 writes and 2 reads go to the directory the command is run in, not to this repository.
+- 7 commands are built at run time and not followed.
 - Statistics confidence is low: fewer than 25 source files reach 10 revisions in the window.
 
 Regenerate with `npx --yes @dogfood-lab/atlas map`.

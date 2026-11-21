@@ -36,8 +36,12 @@
           "path": ".github/actions/publish-if-missing/action.yml"
         },
         {
-          "hash": "549ba40bacb8af9d0f265a3ebd8c4ffd0d3624c7767e58a8d475d7be9cf6d440",
+          "hash": "75dbf9ae810b968302647cf16e2f75fe904fb6e114d32aeaef0850e27d30c98b",
           "path": ".github/workflows/ci.yml"
+        },
+        {
+          "hash": "c32ac1815d4e0e618f071f66f9b944a227a9767ce251bcaacd274d2c93c68e6a",
+          "path": ".github/workflows/engine-bump.yml"
         },
         {
           "hash": "5c9bb23ed429705d1444390a4f900761d77323a442000c11c96e2baf071d67ff",
@@ -180,6 +184,28 @@
           "testFramework": "vitest"
         },
         {
+          "hash": "f5667b0dc24d038b8c5c806e79845fddeedffdd4c8a5abf1809d40c387074ce5",
+          "importOrder": [
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/export-ai-rpg/src/engine-gate.ts",
+            "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts",
+            "dogfood/verify-golden-corpus.ts",
+            "dogfood/__tests__/fixtures/corpus-host-record.ts"
+          ],
+          "importsFiles": [
+            "dogfood/__tests__/fixtures/corpus-host-record.ts",
+            "dogfood/verify-golden-corpus.ts",
+            "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts",
+            "packages/export-ai-rpg/src/engine-gate.ts",
+            "packages/export-ai-rpg/src/index.ts"
+          ],
+          "names": [
+            "packages/export-ai-rpg/src/cli.ts"
+          ],
+          "path": "dogfood/__tests__/cli-host-parity.test.ts",
+          "testFramework": "vitest"
+        },
+        {
           "hash": "ff81e1419b87a7196efcb18ec42f7e8cfec70673164606ab6b1155c2e42b1bc2",
           "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts",
           "spawns": [
@@ -187,6 +213,14 @@
             "dogfood/run-ai-rpg-smoke.ts",
             "dogfood/run-godot-smoke.ts"
           ],
+          "testFramework": "vitest"
+        },
+        {
+          "hash": "4abdc1b4758549b579e68d914b83e59e2a403d7cb6a06a621d51f8df4de38747",
+          "importsFiles": [
+            "scripts/engine-bump.mjs"
+          ],
+          "path": "dogfood/__tests__/engine-bump.test.ts",
           "testFramework": "vitest"
         },
         {
@@ -198,11 +232,39 @@
           "testFramework": "vitest"
         },
         {
+          "hash": "2785e6b71a1c6850c0b75bbce5aad23beea922b87f76318555d66464d492a3a7",
+          "importsFiles": [
+            "packages/export-ai-rpg/src/engine-gate.ts"
+          ],
+          "path": "dogfood/__tests__/fixtures/corpus-host-record.ts"
+        },
+        {
+          "hash": "7e519080df223d56f70cce2a199b066bd4b96521328b5070442fa1c5366d5ffc",
+          "importsFiles": [
+            "packages/schema/src/index.ts",
+            "scripts/gen-engine-lists.mjs"
+          ],
+          "names": [
+            "packages/schema/src/generated/engine-lists.ts"
+          ],
+          "path": "dogfood/__tests__/gen-engine-lists.test.ts",
+          "testFramework": "vitest"
+        },
+        {
           "hash": "eeefb0dd6d4c5785c0f33b445b7f2a55aa1fcb1dec3c3750fd29bada18055623",
           "importsFiles": [
             "dogfood/godot-smoke-verdict.ts"
           ],
           "path": "dogfood/__tests__/godot-smoke-verdict.test.ts",
+          "testFramework": "vitest"
+        },
+        {
+          "hash": "291530722a462c72af6345241b105ee46367178fe4d617e89ffc321c45744a22",
+          "importsFiles": [
+            "dogfood/verify-golden-corpus.ts",
+            "packages/export-ai-rpg/src/engine-gate.ts"
+          ],
+          "path": "dogfood/__tests__/golden-corpus-gate.test.ts",
           "testFramework": "vitest"
         },
         {
@@ -495,6 +557,114 @@
           "path": "dogfood/run-unreal-smoke.ts"
         },
         {
+          "entry": "verifyGoldenCorpus",
+          "entryRule": 1,
+          "exports": [
+            "loadGoldenCorpusWorlds",
+            "verifyGoldenCorpus"
+          ],
+          "hash": "3fac9f8902648ce29fcc196072f329492326045370b142b7986bd9f6cf703898",
+          "importsFiles": [
+            "dogfood/worlds/multi-target-proof.ts",
+            "dogfood/worlds/salt-road.ts",
+            "dogfood/worlds/sandbox-scale.ts",
+            "packages/editor/src/templates/registry.ts",
+            "packages/export-ai-rpg/src/engine-gate.ts",
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/schema/src/__tests__/fixtures/chapel-authored.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "dogfood/verify-golden-corpus.ts",
+          "sequences": [
+            {
+              "calls": [
+                {
+                  "line": 59,
+                  "name": "map",
+                  "target": {
+                    "file": "packages/editor/src/templates/registry.ts"
+                  }
+                },
+                {
+                  "line": 65,
+                  "name": "scaleForSandbox",
+                  "target": {
+                    "file": "dogfood/worlds/sandbox-scale.ts"
+                  }
+                },
+                {
+                  "line": 65,
+                  "name": "saltRoadProject",
+                  "passed": true,
+                  "target": {
+                    "file": "dogfood/worlds/salt-road.ts"
+                  }
+                }
+              ],
+              "exported": true,
+              "invokedAtTopLevel": false,
+              "isDefaultExport": false,
+              "name": "loadGoldenCorpusWorlds"
+            },
+            {
+              "calls": [
+                {
+                  "line": 59,
+                  "name": "map",
+                  "target": {
+                    "file": "packages/editor/src/templates/registry.ts"
+                  },
+                  "via": "loadGoldenCorpusWorlds"
+                },
+                {
+                  "line": 65,
+                  "name": "scaleForSandbox",
+                  "target": {
+                    "file": "dogfood/worlds/sandbox-scale.ts"
+                  },
+                  "via": "loadGoldenCorpusWorlds"
+                },
+                {
+                  "line": 65,
+                  "name": "saltRoadProject",
+                  "passed": true,
+                  "target": {
+                    "file": "dogfood/worlds/salt-road.ts"
+                  },
+                  "via": "loadGoldenCorpusWorlds"
+                },
+                {
+                  "line": 96,
+                  "name": "exportToEngine",
+                  "target": {
+                    "file": "packages/export-ai-rpg/src/index.ts"
+                  }
+                },
+                {
+                  "inner": [
+                    {
+                      "line": 303,
+                      "name": "listAiRpgEncounterBlockers",
+                      "target": {
+                        "file": "packages/export-ai-rpg/src/encounter-types.ts"
+                      }
+                    }
+                  ],
+                  "line": 102,
+                  "name": "validateExportWithEngine",
+                  "target": {
+                    "file": "packages/export-ai-rpg/src/engine-gate.ts"
+                  }
+                }
+              ],
+              "exported": true,
+              "invokedAtTopLevel": true,
+              "isDefaultExport": false,
+              "name": "verifyGoldenCorpus"
+            }
+          ]
+        },
+        {
           "constantOnly": true,
           "hash": "ce6c9ca358b8e15e05bac5c86776f921190f271d65f53e3ded993650c46d7ad3",
           "importsFiles": [
@@ -508,7 +678,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "938c752fb2b71c642ce4fe3b9349581ec48435685891b72e64e4c8c05c050a47",
+          "hash": "76a482071339c217ec9a2ea91de7d39a1b3fb5e0149b08f5021d6b0de79c7fcd",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -522,7 +692,7 @@
           "exports": [
             "scaleForSandbox"
           ],
-          "hash": "2b6dc048214721183f5751e33f5acfe2a9ee1f3c14f1c0bb501da02cc823c14c",
+          "hash": "9b5cd77ec81df200a5bcacca37f9105cad919e45b41ad7f243af6ab2619d47c8",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -542,14 +712,22 @@
             "caller"
           ],
           "writes": 0
+        },
+        {
+          "reads": 0,
+          "where": [
+            "cwd"
+          ],
+          "writes": 1
         }
       ],
       "outsideReads": 3,
+      "outsideWrites": 1,
       "role": "code",
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 10,
+      "testedBy": 12,
       "unresolvedNamed": [
         {
           "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts",
@@ -557,17 +735,17 @@
           "why": "optional"
         },
         {
-          "path": "dogfood/export-stage-fixture.ts",
+          "path": "dogfood/__tests__/gen-engine-lists.test.ts",
           "specifier": "@ai-rpg-engine/content-schema",
           "why": "undeclared"
         },
         {
-          "path": "dogfood/godot-smoke/smoke_load_world.gd",
-          "specifier": "res://world.tscn",
-          "why": "other"
+          "path": "dogfood/export-stage-fixture.ts",
+          "specifier": "@ai-rpg-engine/content-schema",
+          "why": "undeclared"
         }
       ],
-      "unresolvedSites": 10
+      "unresolvedSites": 11
     },
     {
       "dynamicReads": 1,
@@ -1158,9 +1336,10 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "aa2d3399571c611b63efa7dc017867188f9815ea953a7648a3baa92f7cc0ec9d",
+          "hash": "166e0ea99b7edb0f8ea0d0fd61e2aaa54c8bbbf53b7c68b1296090aaa410c2b0",
           "importOrder": [
             "packages/schema/src/index.ts",
+            "packages/editor/src/ui/ModalFrame.tsx",
             "packages/editor/src/panels/export-handlers.ts",
             "packages/editor/src/panels/ExportModal.tsx",
             "packages/editor/src/templates/samples.ts",
@@ -1173,6 +1352,7 @@
             "packages/editor/src/panels/export-handlers.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/templates/samples.ts",
+            "packages/editor/src/ui/ModalFrame.tsx",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/__tests__/export-modal.test.ts",
@@ -5072,24 +5252,13 @@
           "path": "packages/editor/src/templates/mode-world.ts"
         },
         {
+          "entry": "createProjectFromWizard",
+          "entryRule": 4,
           "exports": [
             "createProjectFromModeStarter",
             "createProjectFromWizard"
           ],
           "hash": "edc6b118c46f685902295bf2b65d86e9792413d81e58cda247b8586f31d4ed0f",
-          "importOrder": [
-            "packages/schema/src/index.ts",
-            "packages/editor/src/store/project-store.ts",
-            "packages/editor/src/mode-profiles.ts",
-            "packages/editor/src/templates/genre-fantasy.ts",
-            "packages/editor/src/templates/genre-cyberpunk.ts",
-            "packages/editor/src/templates/genre-detective.ts",
-            "packages/editor/src/templates/genre-pirate.ts",
-            "packages/editor/src/templates/genre-zombie.ts",
-            "packages/editor/src/kits/index.ts",
-            "packages/editor/src/templates/samples.ts",
-            "packages/editor/src/templates/layout-templates.ts"
-          ],
           "importsFiles": [
             "packages/editor/src/kits/index.ts",
             "packages/editor/src/mode-profiles.ts",
@@ -5103,7 +5272,39 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/templates/registry.ts"
+          "path": "packages/editor/src/templates/registry.ts",
+          "sequences": [
+            {
+              "calls": [
+                {
+                  "line": 90,
+                  "name": "createEmptyProject",
+                  "target": {
+                    "file": "packages/editor/src/store/project-store.ts"
+                  }
+                },
+                {
+                  "line": 98,
+                  "name": "getModeProfile",
+                  "target": {
+                    "file": "packages/editor/src/mode-profiles.ts"
+                  }
+                },
+                {
+                  "line": 98,
+                  "name": "DEFAULT_MODE",
+                  "passed": true,
+                  "target": {
+                    "file": "packages/schema/src/index.ts"
+                  }
+                }
+              ],
+              "exported": true,
+              "invokedAtTopLevel": false,
+              "isDefaultExport": false,
+              "name": "createProjectFromWizard"
+            }
+          ]
         },
         {
           "hash": "adb4dd340f9f77a2337bb01e98068aa3facd42a7766d8965945f8411298b4d80",
@@ -5255,7 +5456,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 110,
+      "testedBy": 112,
       "unresolvedSites": 0
     },
     {
@@ -5314,8 +5515,16 @@
           "path": "packages/export-ai-rpg/package.json"
         },
         {
-          "hash": "f60598269d970b6ae5c1366cf12ccb2715770b1630b1e6026799a33da8fd541a",
+          "hash": "2d0021a44ef8432556f573309f0a5eabc8b166232177ff9eaabd3610614537c9",
           "path": "packages/export-ai-rpg/src/ENGINE_CONTRACT.md"
+        },
+        {
+          "hash": "f4787ba27e51b30c5e00e516db6f1f5c4d41b8931b3c16bd6dde1ab44d76b910",
+          "names": [
+            "packages/export-ai-rpg/src/engine-gate.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "047f5058b180fc00cbfe7d691af00b0b8682723014f3055ebc733c3fd4443e62",
@@ -5436,12 +5645,14 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "8e302225f96ff40871da72f08147a3392bfc9ba4f49d8c71782f1be382c3b94a",
+          "hash": "c3c730d4bcd79b3eceb2bfb70c53ad878ae92a882a5b1b2a580b0994fb6dbf55",
           "importOrder": [
             "packages/schema/src/__tests__/fixtures/minimal.ts",
-            "packages/schema/src/__tests__/fixtures/invalid-orphan.ts"
+            "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
+            "packages/export-ai-rpg/src/__tests__/fixtures/planted-bad-key-world.ts"
           ],
           "importsFiles": [
+            "packages/export-ai-rpg/src/__tests__/fixtures/planted-bad-key-world.ts",
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
@@ -5452,14 +5663,16 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "2efe7cb4dde30fc0ec7c64f3ed53a7f356336cd3e5ea578d9c6b2a86fbdbc4ab",
+          "hash": "89e5a18261d4459c5d9bef9e79c772c1278b42817cfaf60e7efc83255336c202",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/export.ts",
-            "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts"
+            "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts",
+            "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts"
           ],
           "importsFiles": [
             "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts",
+            "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts",
             "packages/export-ai-rpg/src/export.ts",
             "packages/schema/src/index.ts"
           ],
@@ -5472,7 +5685,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "97ca15d6e4e421118881403d73d57a047e8353ffd03041ef88778dde59e2935f",
+          "hash": "d336368e167b49794ec6899fbbd3b6d1cf6c3c8edd30b442ae88bd8d2f06e4e2",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/convert-pack.ts",
@@ -5575,11 +5788,30 @@
           "testFramework": "vitest"
         },
         {
+          "hash": "13eefc80138bffd645068fe29c2630d0b3be44c29db7f19b1d1ebb03dbb45702",
+          "importsFiles": [
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/fixtures/planted-bad-key-world.ts"
+        },
+        {
           "hash": "b8e3c9e3165a7fbd1c19b395b692dafa0de516ab0eec08f1adc1e4a3835b6b7e",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
           "path": "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts"
+        },
+        {
+          "exports": [
+            "runContractGateAndIntake",
+            "withContractIntakeHost"
+          ],
+          "hash": "8110809737120fca7f816aa5ab5e0beaa1b1053a58779360e7d421ff2b78ebdd",
+          "importsFiles": [
+            "packages/export-ai-rpg/src/engine-gate.ts",
+            "packages/export-ai-rpg/src/export.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts"
         },
         {
           "hash": "4cdbbd1fe6f7860a7817c1c9678a1735c0f6ee08961eee35f960730fc0e3b6e2",
@@ -5646,13 +5878,15 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "f3a542f7ec9ef03031cf8057873ad8ef296451c0d850f88954ce5552dcb273a7",
+          "hash": "c8e3aa1f4949fb17e7c66ad04257ad6c3b19d6a7adb324c8ab7ffe37aa652860",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts",
-            "packages/export-ai-rpg/src/export.ts"
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts"
           ],
           "importsFiles": [
+            "packages/export-ai-rpg/src/__tests__/helpers/contract-host.ts",
             "packages/export-ai-rpg/src/export.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
@@ -5891,62 +6125,63 @@
             {
               "in": "readJsonIfExists",
               "kind": "catch",
-              "line": 125
+              "line": 126
             },
             {
               "in": "readJsonIfExists",
               "kind": "throw",
-              "line": 128
+              "line": 129
             },
             {
               "in": "isDirectory",
               "kind": "catch",
-              "line": 136
+              "line": 137
             },
             {
               "in": "loadPackDirectory",
               "kind": "throw",
-              "line": 143
+              "line": 144
             },
             {
               "in": "loadPackDirectory",
               "kind": "throw",
-              "line": 146
+              "line": 147
             },
             {
               "in": "loadPackDirectory",
               "kind": "throw",
-              "line": 149
+              "line": 150
             },
             {
               "in": "runImport",
               "kind": "catch",
-              "line": 231
+              "line": 232
             },
             {
               "in": "runImport",
               "kind": "catch",
-              "line": 239
+              "line": 240
             },
             {
               "in": "runImport",
               "kind": "catch",
-              "line": 257
+              "line": 258
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 479
+              "line": 480
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 487
+              "line": 488
             }
           ],
-          "hash": "da2bae4286e2feb06da2e0555c1220b1c3cb6374ee1bea408c4a35f416684d4e",
+          "hash": "1eb532ff9f5f02ec8ca60ffd3c0d09ab7887aa2bee90f03edacb68c180c1dcf6",
           "importsFiles": [
             "packages/export-ai-rpg/src/encounter-types.ts",
+            "packages/export-ai-rpg/src/engine-gate.ts",
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/export-ai-rpg/src/import.ts",
@@ -5957,7 +6192,7 @@
             {
               "calls": [
                 {
-                  "line": 157,
+                  "line": 158,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -5972,7 +6207,7 @@
             {
               "calls": [
                 {
-                  "line": 157,
+                  "line": 158,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -5980,21 +6215,21 @@
                   "via": "loadPackDirectory"
                 },
                 {
-                  "line": 226,
+                  "line": 227,
                   "name": "importFromExportResult",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
                   }
                 },
                 {
-                  "line": 247,
+                  "line": 248,
                   "name": "detectImportFormat",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
                   }
                 },
                 {
-                  "line": 255,
+                  "line": 256,
                   "name": "importProject",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6010,7 +6245,7 @@
               "calls": [
                 {
                   "branch": "hasImport || hasFromPack",
-                  "line": 157,
+                  "line": 158,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -6118,7 +6353,7 @@
                     }
                   ],
                   "innerTruncated": true,
-                  "line": 226,
+                  "line": 227,
                   "name": "importFromExportResult",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6127,7 +6362,7 @@
                 },
                 {
                   "branch": "hasImport || hasFromPack",
-                  "line": 247,
+                  "line": 248,
                   "name": "detectImportFormat",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6245,7 +6480,7 @@
                     }
                   ],
                   "innerTruncated": true,
-                  "line": 255,
+                  "line": 256,
                   "name": "importProject",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6340,10 +6575,26 @@
                     }
                   ],
                   "innerTruncated": true,
-                  "line": 500,
+                  "line": 501,
                   "name": "exportToEngine",
                   "target": {
                     "file": "packages/export-ai-rpg/src/export.ts"
+                  }
+                },
+                {
+                  "inner": [
+                    {
+                      "line": 303,
+                      "name": "listAiRpgEncounterBlockers",
+                      "target": {
+                        "file": "packages/export-ai-rpg/src/encounter-types.ts"
+                      }
+                    }
+                  ],
+                  "line": 528,
+                  "name": "validateExportWithEngine",
+                  "target": {
+                    "file": "packages/export-ai-rpg/src/engine-gate.ts"
                   }
                 },
                 {
@@ -6363,7 +6614,7 @@
                       }
                     }
                   ],
-                  "line": 529,
+                  "line": 571,
                   "name": "listAiRpgEncounterBlockers",
                   "target": {
                     "file": "packages/export-ai-rpg/src/encounter-types.ts"
@@ -6382,7 +6633,10 @@
             "canonicalize",
             "computeContentHash"
           ],
-          "hash": "e905c3aae8711f3190964ca4492d99220461f91f10b3fb3c6a452ba5825e7af9",
+          "hash": "dfeb448129be8803ac8de3b70a803d18eae6299a9348cdea656af55c91ee12d0",
+          "importsFiles": [
+            "packages/schema/src/index.ts"
+          ],
           "path": "packages/export-ai-rpg/src/content-hash.ts"
         },
         {
@@ -6524,7 +6778,7 @@
             "convertManifest",
             "convertPackMeta"
           ],
-          "hash": "491811da98f659268464a5b72971de1a2d19e0b34e31d015270a2a7969464f28",
+          "hash": "70ffdf325a2d5129437ed0a2d328af874e70b3ded74dfc8ab55178405ce305e7",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/safe-lookup.ts"
@@ -6633,6 +6887,50 @@
               "invokedAtTopLevel": false,
               "isDefaultExport": false,
               "name": "listAiRpgEncounterBlockers"
+            }
+          ]
+        },
+        {
+          "entry": "validateExportWithEngine",
+          "entryRule": 4,
+          "exports": [
+            "collectUnknownTopLevelKeys",
+            "createRuntimeValidationHost",
+            "resolveInstalledEngineVersion",
+            "runIsolatedGateAndIntake",
+            "validateExportWithEngine",
+            "withIsolatedIntakeHost"
+          ],
+          "failurePaths": [
+            {
+              "in": "resolveInstalledEngineVersion",
+              "kind": "throw",
+              "line": 143
+            }
+          ],
+          "hash": "3474451e391f71bbf79fdcbbd8272817a17cd0f77ff28fd2fa5403a860a3ae5a",
+          "importsFiles": [
+            "packages/export-ai-rpg/src/convert-pack.ts",
+            "packages/export-ai-rpg/src/encounter-types.ts",
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/engine-gate.ts",
+          "sequences": [
+            {
+              "calls": [
+                {
+                  "line": 303,
+                  "name": "listAiRpgEncounterBlockers",
+                  "target": {
+                    "file": "packages/export-ai-rpg/src/encounter-types.ts"
+                  }
+                }
+              ],
+              "exported": true,
+              "invokedAtTopLevel": false,
+              "isDefaultExport": false,
+              "name": "validateExportWithEngine"
             }
           ]
         },
@@ -7683,15 +7981,22 @@
             "cwd:export/"
           ],
           "writes": 2
+        },
+        {
+          "reads": 2,
+          "where": [
+            "cwd:node_modules/"
+          ],
+          "writes": 0
         }
       ],
-      "outsideReads": 7,
+      "outsideReads": 9,
       "outsideWrites": 4,
       "role": "code",
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 68,
+      "testedBy": 72,
       "unresolvedSites": 0
     },
     {
@@ -10554,7 +10859,7 @@
           "path": ".editorconfig"
         },
         {
-          "hash": "104a2cce546a552fd60a8e8f58eec1f5152293fd683e79df9c3ed70f225c8d84",
+          "hash": "85d430388a0ba6b3d4cc961470b799304eced9d58889a0d35faf9945b6e9050d",
           "path": ".gitattributes"
         },
         {
@@ -10566,7 +10871,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "595e0d3ee6c79bf036bc8cb09cef71df51459a1ca2aeec84e5639c974151005b",
+          "hash": "b39407143b36af99fbb91bb78004bba1d779f9806b25d3c89ae5d7625ee7aa5f",
           "path": "CHANGELOG.md"
         },
         {
@@ -10598,7 +10903,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "492d65917bef059e4c3ea424eacdb57ab109fea2c5b29b5481edb68f20e9b271",
+          "hash": "c64325b7535ea232217cd470156d7a6130a34c4fdf7fd7f22a530d0b98789c6b",
           "path": "README.md"
         },
         {
@@ -10634,7 +10939,7 @@
           "path": "multitask.md"
         },
         {
-          "hash": "7261772151a5878387d82e69e47e484b87e751f321e08d9de4e31b87829a26fa",
+          "hash": "381c73994fdcd5cbb1cf9d4656021dcadddcafbecd08c172635ff4ed5254b415",
           "path": "package-lock.json"
         },
         {
@@ -11225,7 +11530,10 @@
           "exports": [
             "isAiRpgEncounterAnchorType"
           ],
-          "hash": "1e7a2893ff347863084fb1ad13fd2a182b6a9a5ee4c2b647c97fba3227e29210",
+          "hash": "d9ecda493a9c029ab9a144f9e9924858b797da3996a384a9968952f63026ca1d",
+          "importsFiles": [
+            "packages/schema/src/generated/engine-lists.ts"
+          ],
           "path": "packages/schema/src/ai-rpg-encounter-types.ts"
         },
         {
@@ -11282,16 +11590,21 @@
           "path": "packages/schema/src/flavor.ts"
         },
         {
+          "hash": "a93c3a7682d63e33d76512d7ea1fb71e39b0b2e37f696bf1030170de9343c509",
+          "path": "packages/schema/src/generated/engine-lists.ts"
+        },
+        {
           "hash": "4b1b72e92486af03b6f1b65cafd64f86416d0c4abf166899a5a64c426eda9424",
           "path": "packages/schema/src/hazard.ts"
         },
         {
-          "hash": "4161b9b77ee9469fbc25355312de8cbdc2f3742be8426e8b32aad0e35bbfa08e",
+          "hash": "7f6e120f00d3d072d459618da9a77c3b4db24e4e3f363edadf7b721286b9945e",
           "importOrder": [
             "packages/schema/src/spatial.ts",
             "packages/schema/src/districts.ts",
             "packages/schema/src/entities.ts",
             "packages/schema/src/ai-rpg-encounter-types.ts",
+            "packages/schema/src/generated/engine-lists.ts",
             "packages/schema/src/town.ts",
             "packages/schema/src/stratum.ts",
             "packages/schema/src/hazard.ts",
@@ -11325,6 +11638,7 @@
             "packages/schema/src/districts.ts",
             "packages/schema/src/entities.ts",
             "packages/schema/src/flavor.ts",
+            "packages/schema/src/generated/engine-lists.ts",
             "packages/schema/src/hazard.ts",
             "packages/schema/src/player-template.ts",
             "packages/schema/src/presentation.ts",
@@ -11523,14 +11837,14 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 203,
+      "testedBy": 209,
       "unresolvedSites": 0
     },
     {
       "dynamicReads": 1,
-      "dynamicSpawns": 1,
+      "dynamicSpawns": 4,
       "dynamicSpawnsInTests": 0,
-      "dynamicWrites": 0,
+      "dynamicWrites": 2,
       "entryPoints": [],
       "externals": 0,
       "files": [
@@ -11545,6 +11859,135 @@
           ],
           "hash": "06bae34f779b195d059159c4e9a249be546a78f486ae6a87d83fa09b7ade0fd9",
           "path": "scripts/check-pack.mjs",
+          "sequences": []
+        },
+        {
+          "hash": "9da8379fce4fa0a8c9ecf04eeed6e8a22698e4f0f0eff1607ecbc106bef17ecc",
+          "path": "scripts/engine-bump.d.mts"
+        },
+        {
+          "entry": "main",
+          "entryRule": 1,
+          "exports": [
+            "applyEngineBump",
+            "compareSemver",
+            "defaultFetchPublishedVersions",
+            "defaultRegenerateEngineLists",
+            "defaultRegenerateLockfile",
+            "findEnginePackagesInWorkspace",
+            "formatEngineBumpIssue",
+            "parseDeclaredRange",
+            "parseStableSemver",
+            "selectBumpPlan"
+          ],
+          "failurePaths": [
+            {
+              "in": "parseDeclaredRange",
+              "kind": "throw",
+              "line": 53
+            },
+            {
+              "in": "parseDeclaredRange",
+              "kind": "throw",
+              "line": 57
+            },
+            {
+              "in": "parseDeclaredRange",
+              "kind": "throw",
+              "line": 61
+            },
+            {
+              "in": "findEnginePackagesInWorkspace",
+              "kind": "throw",
+              "line": 111
+            },
+            {
+              "in": "findEnginePackagesInWorkspace",
+              "kind": "throw",
+              "line": 128
+            },
+            {
+              "in": "selectBumpPlan",
+              "kind": "throw",
+              "line": 147
+            },
+            {
+              "in": "selectBumpPlan",
+              "kind": "throw",
+              "line": 152
+            },
+            {
+              "in": "defaultFetchPublishedVersions",
+              "kind": "throw",
+              "line": 229
+            },
+            {
+              "in": "defaultFetchPublishedVersions",
+              "kind": "throw",
+              "line": 233
+            },
+            {
+              "in": "defaultRegenerateEngineLists",
+              "kind": "throw",
+              "line": 267
+            },
+            {
+              "in": "parseArgs",
+              "kind": "throw",
+              "line": 394
+            },
+            {
+              "in": "parseArgs",
+              "kind": "throw",
+              "line": 398
+            }
+          ],
+          "hash": "ee0052488b4fabeefbd7b67175a61af6494c9f85b26138f9553c268f37ff5d84",
+          "path": "scripts/engine-bump.mjs",
+          "sequences": []
+        },
+        {
+          "hash": "e488398981bcb640db7eff4201a6be3683f75f77ba6ef04977b234acefcbacda",
+          "path": "scripts/gen-engine-lists.d.mts"
+        },
+        {
+          "entry": "generateEngineLists",
+          "entryRule": 1,
+          "exports": [
+            "computeEngineVersionRange",
+            "generateEngineLists",
+            "renderEngineListsModule",
+            "resolveInstalledContentSchemaInfo"
+          ],
+          "failurePaths": [
+            {
+              "in": "assertNonEmptyStringArray",
+              "kind": "throw",
+              "line": 15
+            },
+            {
+              "in": "assertNonEmptyStringRecord",
+              "kind": "throw",
+              "line": 22
+            },
+            {
+              "in": "assertNonEmptyStringRecord",
+              "kind": "throw",
+              "line": 26
+            },
+            {
+              "in": "resolveInstalledContentSchemaInfo",
+              "kind": "throw",
+              "line": 45
+            },
+            {
+              "in": "computeEngineVersionRange",
+              "kind": "throw",
+              "line": 52
+            }
+          ],
+          "hash": "bac87023cd3f771018b76a1ba2bd0ccec299c1a2338a85f4db015322108ef416",
+          "path": "scripts/gen-engine-lists.mjs",
           "sequences": []
         },
         {
@@ -11587,12 +12030,30 @@
       "importConfidence": "full",
       "name": "scripts",
       "origin": "authored",
+      "outsidePlaces": [
+        {
+          "reads": 5,
+          "where": [
+            "caller"
+          ],
+          "writes": 2
+        }
+      ],
+      "outsideReads": 5,
+      "outsideWrites": 2,
       "role": "code",
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 1,
-      "unresolvedSites": 0
+      "testedBy": 3,
+      "unresolvedNamed": [
+        {
+          "path": "scripts/gen-engine-lists.mjs",
+          "specifier": null,
+          "why": "dynamic"
+        }
+      ],
+      "unresolvedSites": 1
     },
     {
       "dynamicReads": 0,
@@ -11682,7 +12143,7 @@
           "path": "site/src/content/docs/handbook/export-unreal.md"
         },
         {
-          "hash": "e8632fc3ace5dcaea1bdcff2108bf2196e07dced2b05ecc1761f4002e0d3ecc5",
+          "hash": "3ec84df467d2c62b1167abd02671545fdc2c3064261f0b2312e3c38c8b8e92bf",
           "path": "site/src/content/docs/handbook/export.md"
         },
         {
@@ -11694,7 +12155,7 @@
           "path": "site/src/content/docs/handbook/index.md"
         },
         {
-          "hash": "b4c39e12ff67a1d64ccb90fcb0cf4b5a39ee88826e591137e94290bae23f36e2",
+          "hash": "07ffcf7f7eeee275d99a84a80d35dc79483c835a7e25c6431c2200d0b3ac82d2",
           "path": "site/src/content/docs/handbook/levers.md"
         },
         {
@@ -11753,7 +12214,7 @@
   ],
   "doors": [
     {
-      "checksCount": 16,
+      "checksCount": 18,
       "commands": [
         {
           "dir": "",
@@ -11775,6 +12236,15 @@
           "dir": "",
           "job": "build-and-test",
           "programs": [
+            "git",
+            "node"
+          ],
+          "step": "Generated engine lists drift gate"
+        },
+        {
+          "dir": "",
+          "job": "build-and-test",
+          "programs": [
             "npm"
           ],
           "step": "Dependency audit"
@@ -11785,7 +12255,7 @@
           "programs": [
             "npm"
           ],
-          "step": "5"
+          "step": "6"
         },
         {
           "dir": "",
@@ -11793,7 +12263,7 @@
           "programs": [
             "npm"
           ],
-          "step": "6"
+          "step": "7"
         },
         {
           "dir": "",
@@ -12025,7 +12495,7 @@
         {
           "boundary": "dogfood",
           "depth": 0,
-          "files": 24
+          "files": 30
         },
         {
           "boundary": "e2e",
@@ -12040,7 +12510,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 61
+          "files": 65
         },
         {
           "boundary": "export-godot",
@@ -12060,12 +12530,12 @@
         {
           "boundary": "schema",
           "depth": 0,
-          "files": 54
+          "files": 55
         },
         {
           "boundary": "scripts",
           "depth": 0,
-          "files": 2
+          "files": 4
         },
         {
           "boundary": "site",
@@ -12089,8 +12559,127 @@
           "job": "build-and-test",
           "matched": true,
           "path": "dogfood/__tests__/",
-          "runKind": "executes",
+          "runKind": "checks",
           "via": "tsc tsconfig.dogfood.json"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/chapel-threshold-gap-gate.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/cli-host-parity.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/engine-bump.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/export-stage-fixture-presentation.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/gen-engine-lists.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/godot-smoke-verdict.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/golden-corpus-gate.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/multi-target-export-proof-exit-code.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/playwright-reporter.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/salt-road-presentation.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/salt-road-proof.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/sandbox-scale.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/sync-version.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/unreal-smoke-transitions.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/__tests__/vitest-include-floor.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
         },
         {
           "job": "build-and-test",
@@ -12145,6 +12734,13 @@
           "job": "build-and-test",
           "matched": true,
           "path": "dogfood/run-unreal-smoke.ts",
+          "runKind": "checks",
+          "via": "tsc tsconfig.dogfood.json"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "dogfood/verify-golden-corpus.ts",
           "runKind": "checks",
           "via": "tsc tsconfig.dogfood.json"
         },
@@ -12246,6 +12842,13 @@
           "path": "packages/export-ai-rpg/src/",
           "runKind": "checks",
           "via": "tsc tsconfig.json"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
         },
         {
           "job": "build-and-test",
@@ -12692,6 +13295,11 @@
         },
         {
           "job": "build-and-test",
+          "path": "scripts/gen-engine-lists.mjs",
+          "runKind": "executes"
+        },
+        {
+          "job": "build-and-test",
           "path": "scripts/sync-version.mjs",
           "runKind": "executes"
         },
@@ -12716,7 +13324,7 @@
           "via": "astro build"
         }
       ],
-      "runsCount": 81,
+      "runsCount": 101,
       "secrets": [],
       "sends": {
         "deploysPages": false,
@@ -12732,10 +13340,10 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 223,
+          "files": 228,
           "job": "build-and-test",
           "runner": "vitest",
-          "step": "6",
+          "step": "7",
           "through": [
             "npm test"
           ]
@@ -12743,7 +13351,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 223,
+          "files": 228,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -12777,6 +13385,252 @@
         "codecov/codecov-action"
       ],
       "usesWorkflowToken": false
+    },
+    {
+      "checksCount": 6,
+      "commands": [
+        {
+          "dir": "",
+          "job": "bump",
+          "programs": [
+            "npm"
+          ],
+          "step": "Install workspace dependencies"
+        },
+        {
+          "dir": "",
+          "job": "bump",
+          "programs": [
+            "node"
+          ],
+          "step": "Check npm and apply within-major engine bump"
+        },
+        {
+          "dir": "",
+          "job": "bump",
+          "programs": [
+            "node",
+            "npm",
+            "npx"
+          ],
+          "step": "Verify build and golden world corpus on bumped engine"
+        },
+        {
+          "dir": "",
+          "job": "bump",
+          "programs": [
+            "node"
+          ],
+          "step": "Format engine-bump issue payload"
+        },
+        {
+          "dir": "",
+          "job": "bump",
+          "programs": [
+            "echo",
+            "gh",
+            "git"
+          ],
+          "step": "Push chore/engine-bump branch and dispatch CI"
+        },
+        {
+          "dir": "",
+          "job": "bump",
+          "programs": [
+            "cat",
+            "echo",
+            "gh"
+          ],
+          "step": "File or update engine-bump tracking issue"
+        }
+      ],
+      "elsewhere": [],
+      "file": ".github/workflows/engine-bump.yml",
+      "jobs": [
+        {
+          "basis": "declared",
+          "name": "bump",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ],
+          "setup": [
+            {
+              "ranges": [
+                {
+                  "from": "24",
+                  "range": ">=24.0.0 <25.0.0-0"
+                }
+              ],
+              "step": "1",
+              "uses": "actions/setup-node",
+              "version": "24"
+            }
+          ]
+        }
+      ],
+      "landings": [],
+      "mentions": [],
+      "name": "Bump engine pins",
+      "permissions": [
+        "actions:write",
+        "contents:write",
+        "issues:write"
+      ],
+      "pushes": false,
+      "pushesForReview": true,
+      "reach": [
+        {
+          "boundary": "dogfood",
+          "depth": 0,
+          "files": 4
+        },
+        {
+          "boundary": "editor",
+          "depth": 0,
+          "files": 242
+        },
+        {
+          "boundary": "export-ai-rpg",
+          "depth": 0,
+          "files": 65
+        },
+        {
+          "boundary": "export-godot",
+          "depth": 0,
+          "files": 56
+        },
+        {
+          "boundary": "export-unreal",
+          "depth": 0,
+          "files": 35
+        },
+        {
+          "boundary": "renderer-2d",
+          "depth": 0,
+          "files": 20
+        },
+        {
+          "boundary": "schema",
+          "depth": 0,
+          "files": 55
+        },
+        {
+          "boundary": "scripts",
+          "depth": 0,
+          "files": 2
+        }
+      ],
+      "readers": [],
+      "runs": [
+        {
+          "job": "bump",
+          "path": "dogfood/verify-golden-corpus.ts",
+          "runKind": "executes"
+        },
+        {
+          "directory": true,
+          "job": "bump",
+          "matched": true,
+          "path": "packages/editor/src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.json"
+        },
+        {
+          "directory": true,
+          "job": "bump",
+          "matched": true,
+          "path": "packages/export-ai-rpg/src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.json"
+        },
+        {
+          "directory": true,
+          "job": "bump",
+          "matched": true,
+          "path": "packages/export-godot/src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.json"
+        },
+        {
+          "directory": true,
+          "job": "bump",
+          "matched": true,
+          "path": "packages/export-unreal/src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.json"
+        },
+        {
+          "directory": true,
+          "job": "bump",
+          "matched": true,
+          "path": "packages/renderer-2d/src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.json"
+        },
+        {
+          "directory": true,
+          "job": "bump",
+          "matched": true,
+          "path": "packages/schema/src/",
+          "runKind": "checks",
+          "via": "tsc tsconfig.json"
+        },
+        {
+          "job": "bump",
+          "path": "scripts/engine-bump.mjs",
+          "runKind": "executes"
+        },
+        {
+          "job": "bump",
+          "path": "scripts/sync-version.mjs",
+          "runKind": "executes"
+        }
+      ],
+      "runsCount": 9,
+      "secrets": [],
+      "sends": {
+        "deploysPages": false,
+        "dispatchesTo": [],
+        "opensIssues": true,
+        "opensIssuesOnFailure": false,
+        "opensPullRequests": false,
+        "publishes": false,
+        "publishesTo": [],
+        "releases": false
+      },
+      "stages": [
+        "package-lock.json",
+        "package.json",
+        "packages/"
+      ],
+      "triggers": [
+        {
+          "cron": "0 7 * * 1",
+          "event": "schedule"
+        },
+        {
+          "event": "workflow_dispatch"
+        }
+      ],
+      "unwrittenStages": [
+        "package-lock.json",
+        "package.json",
+        "packages"
+      ],
+      "uses": [
+        "actions/checkout",
+        "actions/setup-node"
+      ],
+      "usesWorkflowToken": true
     },
     {
       "checksCount": 0,
@@ -12982,7 +13836,7 @@
       "usesWorkflowToken": false
     },
     {
-      "checksCount": 16,
+      "checksCount": 18,
       "commands": [
         {
           "dir": "",
@@ -13290,7 +14144,7 @@
         {
           "boundary": "dogfood",
           "depth": 0,
-          "files": 24
+          "files": 30
         },
         {
           "boundary": "e2e",
@@ -13305,7 +14159,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 61
+          "files": 65
         },
         {
           "boundary": "export-godot",
@@ -13325,12 +14179,12 @@
         {
           "boundary": "schema",
           "depth": 0,
-          "files": 54
+          "files": 55
         },
         {
           "boundary": "scripts",
           "depth": 0,
-          "files": 1
+          "files": 3
         },
         {
           "boundary": "root",
@@ -13349,8 +14203,127 @@
           "job": "publish",
           "matched": true,
           "path": "dogfood/__tests__/",
-          "runKind": "executes",
+          "runKind": "checks",
           "via": "tsc tsconfig.dogfood.json"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/chapel-threshold-gap-gate.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/cli-host-parity.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/engine-bump.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/export-stage-fixture-presentation.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/gen-engine-lists.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/godot-smoke-verdict.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/golden-corpus-gate.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/multi-target-export-proof-exit-code.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/playwright-reporter.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/salt-road-presentation.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/salt-road-proof.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/sandbox-scale.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/sync-version.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/unreal-smoke-transitions.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/__tests__/vitest-include-floor.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
         },
         {
           "job": "publish",
@@ -13405,6 +14378,13 @@
           "job": "publish",
           "matched": true,
           "path": "dogfood/run-unreal-smoke.ts",
+          "runKind": "checks",
+          "via": "tsc tsconfig.dogfood.json"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "dogfood/verify-golden-corpus.ts",
           "runKind": "checks",
           "via": "tsc tsconfig.dogfood.json"
         },
@@ -13490,6 +14470,13 @@
           "path": "packages/export-ai-rpg/src/",
           "runKind": "checks",
           "via": "tsc tsconfig.json"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
         },
         {
           "job": "publish",
@@ -13903,7 +14890,7 @@
           "runKind": "executes"
         }
       ],
-      "runsCount": 78,
+      "runsCount": 97,
       "secrets": [],
       "sends": {
         "assets": [
@@ -13956,7 +14943,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 223,
+          "files": 228,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -14014,7 +15001,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/export-ai-rpg/src/convert-build-catalog.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14056,7 +15043,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 32
+          "files": 33
         },
         {
           "boundary": "schema",
@@ -14065,7 +15052,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/export-ai-rpg/src/cli.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14117,7 +15104,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/export-godot/src/convert-assets.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14168,7 +15155,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/export-godot/src/cli.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14220,7 +15207,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/export-unreal/src/convert-connections.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14283,7 +15270,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/export-unreal/src/cli.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14335,7 +15322,7 @@
             "file": "packages/schema/src/index.ts",
             "from": "packages/renderer-2d/src/connection-renderer.ts"
           },
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14378,7 +15365,7 @@
         {
           "boundary": "schema",
           "depth": 0,
-          "files": 25
+          "files": 26
         }
       ],
       "readers": [],
@@ -14410,6 +15397,11 @@
     {
       "from": "dogfood",
       "kind": "file",
+      "to": "editor"
+    },
+    {
+      "from": "dogfood",
+      "kind": "file",
       "to": "export-ai-rpg"
     },
     {
@@ -14432,6 +15424,12 @@
       "from": "dogfood",
       "kind": "file",
       "to": "schema"
+    },
+    {
+      "from": "dogfood",
+      "fromTests": true,
+      "kind": "file",
+      "to": "scripts"
     },
     {
       "from": "e2e",
@@ -14481,10 +15479,22 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "3238a1badd2c62349ea18e85ac8dc5e1e4442026",
-    "tracked": 653
+    "commit": "7168d6f38301413d77dcc32a31b775ab518894b3",
+    "tracked": 669
   },
   "landings": [
+    {
+      "readers": [
+        {
+          "by": "dogfood/__tests__/gen-engine-lists.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": ".github/workflows/ci.yml",
+      "writers": []
+    },
     {
       "readers": [
         {
@@ -15278,6 +16288,18 @@
     {
       "readers": [
         {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "package-lock.json",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
           "by": ".github/actions/publish-if-missing/action.yml",
           "call": "literal",
           "confidence": "text"
@@ -15287,10 +16309,26 @@
           "confidence": "config"
         },
         {
+          "by": "dogfood/__tests__/engine-bump.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
           "by": "packages/schema/src/__tests__/version.test.ts",
           "call": "readFileSync",
           "confidence": "ast",
           "fromTests": true
+        },
+        {
+          "by": "scripts/engine-bump.mjs",
+          "call": "readFileSync",
+          "confidence": "ast"
+        },
+        {
+          "by": "scripts/gen-engine-lists.mjs",
+          "call": "readFileSync",
+          "confidence": "weak"
         },
         {
           "by": "scripts/sync-version.mjs",
@@ -15326,6 +16364,16 @@
         },
         {
           "by": "scripts/check-pack.mjs",
+          "call": "readdirSync",
+          "confidence": "ast"
+        },
+        {
+          "by": "scripts/engine-bump.mjs",
+          "call": "existsSync",
+          "confidence": "ast"
+        },
+        {
+          "by": "scripts/engine-bump.mjs",
           "call": "readdirSync",
           "confidence": "ast"
         },
@@ -15457,6 +16505,24 @@
         }
       ],
       "target": "packages/editor/package.json",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "call": "readdirSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "packages/editor/src",
       "writers": []
     },
     {
@@ -15691,6 +16757,12 @@
           "confidence": "config"
         },
         {
+          "by": "dogfood/__tests__/engine-bump.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
           "by": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
           "call": "readFileSync",
           "confidence": "ast",
@@ -15698,6 +16770,22 @@
         }
       ],
       "target": "packages/export-ai-rpg/package.json",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "packages/export-ai-rpg/src/engine-gate.ts",
+          "call": "existsSync",
+          "confidence": "ast"
+        },
+        {
+          "by": "packages/export-ai-rpg/src/engine-gate.ts",
+          "call": "readFileSync",
+          "confidence": "ast"
+        }
+      ],
+      "target": "packages/export-ai-rpg/src",
       "writers": []
     },
     {
@@ -15714,6 +16802,42 @@
     },
     {
       "readers": [
+        {
+          "by": "dogfood/__tests__/cli-host-parity.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "dogfood/__tests__/cli-host-parity.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "dogfood/__tests__/cli-host-parity.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
         {
           "by": "packages/export-ai-rpg/src/__tests__/leftover-pack.test.ts",
           "call": "readFileSync",
@@ -15853,6 +16977,24 @@
     {
       "readers": [
         {
+          "by": "dogfood/__tests__/cli-host-parity.test.ts",
+          "call": "readFileSync",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "packages/export-ai-rpg/src/engine-gate.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
           "by": "packages/export-ai-rpg/src/__tests__/f-1d037344-browser-safe-hash.test.ts",
           "call": "readFileSync",
           "confidence": "ast",
@@ -15860,6 +17002,18 @@
         }
       ],
       "target": "packages/export-ai-rpg/src/export.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/browser-entry-safety.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "packages/export-ai-rpg/src/index.ts",
       "writers": []
     },
     {
@@ -16088,7 +17242,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 233,
+  "testFiles": 241,
   "unassigned": [],
   "workspaces": [
     "packages/editor",

@@ -53,6 +53,12 @@ jobs:
         if: matrix.node-version == 24
         run: npx --yes @dogfood-lab/atlas@1.26.0 check
       - run: npm ci
+      # Fail fast if generated engine contract lists in @world-forge/schema drifted from installed @ai-rpg-engine/content-schema.
+      - name: Generated engine lists drift gate
+        if: matrix.node-version == 24
+        run: |
+          node scripts/gen-engine-lists.mjs
+          git diff --exit-code -- packages/schema/src/generated/engine-lists.ts
       # F-059ff1b5: SHIP_GATE D. Shipping Hygiene checks off "Dependency
       # scanning runs in CI (npm audit in verify)". verify is still
       # build+test (package.json is out of this domain); this step is the
