@@ -389,8 +389,10 @@ export function exportToEngine(
 
     // 5. Convert items (F-1c1a6e56: warnings/fidelity report the slot/rarity fallback)
     items = convertItems(project, warnings, fidelityEntries);
-    // F-42772fc9: WHERE the items stand (zone / grid / container / lootTableId).
-    itemPlacements = convertItemPlacements(project, warnings, fidelityEntries);
+    // Part B: write ContentPack.itemPlacements only where container names an
+    // exported entity; zone-loose items are dropped to fidelity (gate.ts:91-110).
+    const exportedEntityIds = new Set(entities.map((e) => e.id));
+    itemPlacements = convertItemPlacements(project, warnings, fidelityEntries, exportedEntityIds);
 
     // 6. Convert dialogues
     dialogues = convertDialogues(project);
