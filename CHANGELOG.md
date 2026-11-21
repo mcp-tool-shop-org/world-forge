@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **`--validate-only` exits 1 on non-engine encounter types.** Encounter anchors outside `AI_RPG_ENCOUNTER_ANCHOR_TYPES` (`ambush`, `patrol`, `horde`, `duel`, now shared from `@world-forge/schema`) fail AI RPG validation and name each blocker on stderr.
 - **Zone-loose items leave the AI RPG pack.** `ContentPack.itemPlacements` is written only for items whose `container` names an exported entity; zone-loose placements are omitted with a `dropped` fidelity entry (`engine-has-no-zone-items`), and hidden entity placements emit an `approximated` fidelity entry (`hidden-item-placement-given-at-boot`) noting the engine gives the item at boot without reading `spawnCondition`.
 - **AI RPG export blocks on encounter-type blockers.** `"Export JSON"` in the editor Export modal is disabled while `!targetReadiness.aiRpg.ready` (leaving UE5 and Godot exports enabled), and CLI exports to the AI RPG target print each encounter blocker to stderr and exit 1 without writing output files.
-- **CI lines coverage ratchet.** Enforces a repository-wide Vitest lines threshold in CI (coverage 64.23%, floor 64 (target 90)); Codecov remains informational.
+- **CI lines coverage ratchet.** Enforces a repository-wide Vitest lines threshold in CI (coverage 64.62%, floor 64 (target 90)); Codecov remains informational.
 - **Release workflow waits about 4 minutes for npm's provenance attestation** (it waited 50 s, and the 4.9.1 publish stopped after each package on registry lag). Its error now says to check the registry by hand before deprecating anything.
 
 ## [4.9.1] - 2026-11-05
