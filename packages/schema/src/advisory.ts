@@ -4,6 +4,7 @@ import type { WorldProject } from './project.js';
 import type { AuthoringMode } from './authoring-mode.js';
 import type { PressureHotspot } from './districts.js';
 import { AUTHORING_MODES, DEFAULT_MODE } from './authoring-mode.js';
+import { AI_RPG_ENCOUNTER_ANCHOR_TYPES, isAiRpgEncounterAnchorType } from './ai-rpg-encounter-types.js';
 import { isValidDifficulty, isValidGenre, isValidTone, VALID_DIFFICULTIES, VALID_GENRES, VALID_TONES } from './flavor.js';
 
 export interface AdvisoryItem {
@@ -104,17 +105,17 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
   // ── Encounter anchor AI RPG Engine compatibility advisory ────
   // Schema permits any non-empty string for encounterType (Godot/UE5 are peer lanes);
   // surface an advisory when an anchor uses a type AI RPG Engine cannot load.
-  const aiRpgEncounterTypes = new Set(['ambush', 'patrol', 'horde', 'duel']);
+  const validEncounterTypeList = AI_RPG_ENCOUNTER_ANCHOR_TYPES.join(', ');
   for (const ea of encounterAnchors) {
     if (
       ea &&
       typeof ea.encounterType === 'string' &&
       ea.encounterType.trim().length > 0 &&
-      !aiRpgEncounterTypes.has(ea.encounterType)
+      !isAiRpgEncounterAnchorType(ea.encounterType)
     ) {
       items.push({
         path: `encounterAnchors.${ea.id}.encounterType`,
-        message: `Encounter anchor "${ea.id}" has encounterType "${ea.encounterType}" — not loadable by AI RPG Engine (valid types: ambush, patrol, horde, duel).`,
+        message: `Encounter anchor "${ea.id}" has encounterType "${ea.encounterType}" — not loadable by AI RPG Engine (valid types: ${validEncounterTypeList}).`,
         severity: 'info',
       });
     }

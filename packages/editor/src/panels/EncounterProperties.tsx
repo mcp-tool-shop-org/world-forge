@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { isAiRpgEncounterAnchorType } from '@world-forge/export-ai-rpg';
+import { isAiRpgEncounterAnchorType } from '@world-forge/schema';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { getModeProfile } from '../mode-profiles.js';

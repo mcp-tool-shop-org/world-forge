@@ -906,7 +906,7 @@ describe('SCH-A-004: project metadata type guards (author/license/category)', ()
     expect(result.errors.some((e) => e.path === 'category')).toBe(false);
   });
 
-  // --- E2 ruling: schema stays permissive on encounterType; hint names engine's four ---
+  // --- Schema stays permissive on encounterType; hint names engine's four ---
 
   it('permits free-string encounterType values outside the AI RPG Engine four', () => {
     const good: WorldProject = {

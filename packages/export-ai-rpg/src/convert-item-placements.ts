@@ -98,6 +98,16 @@ export function convertItemPlacements(
       if (compiled) {
         record.spawnCondition = { type: compiled.type, params: compiled.params ?? {} };
       }
+      const label = ip.name || ip.itemId;
+      fidelity?.push({
+        domain: 'items',
+        level: 'approximated',
+        severity: 'warning',
+        entityId: ip.itemId,
+        fieldPath: 'hidden',
+        message: `Hidden item "${ip.itemId}" (${label}) placed on entity "${containerEntityId}": the engine gives the item at boot and does not read spawnCondition.`,
+        reason: 'hidden-item-placement-given-at-boot',
+      });
     }
 
     out.push(record);

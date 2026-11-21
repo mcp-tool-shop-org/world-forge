@@ -348,7 +348,7 @@ describe('advisoryValidation', () => {
     },
   );
 
-  // --- E2 ruling: info advisory for non-engine encounterType ---
+  // --- Info advisory for non-engine encounterType ---
 
   it('emits an info advisory when encounterType is outside AI RPG Engine four types', () => {
     const project = emptyProject('ocean');

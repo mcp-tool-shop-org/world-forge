@@ -523,19 +523,23 @@ async function main(): Promise<void> {
 
   const exportResult = result; // narrowed to ExportResult
 
-  if (validateOnly) {
-    const encounterBlockers = listAiRpgEncounterBlockers(project);
-    if (encounterBlockers.length > 0) {
-      console.error('AI RPG validation blocked:');
-      for (const b of encounterBlockers) {
-        console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
-      }
-      if (verbose) {
-        console.error('\n--- Verbose Diagnostics ---');
-        console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
-      }
-      process.exit(1);
+  // Non-engine encounter types block ALL AI RPG paths (--validate-only,
+  // --dry-run, and file exports), printing every blocker to stderr and exiting 1
+  // before writing any files.
+  const encounterBlockers = listAiRpgEncounterBlockers(project);
+  if (encounterBlockers.length > 0) {
+    console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
+    for (const b of encounterBlockers) {
+      console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
     }
+    if (verbose) {
+      console.error('\n--- Verbose Diagnostics ---');
+      console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
+    }
+    process.exit(1);
+  }
+
+  if (validateOnly) {
     console.log('Validation passed.');
     printWarningsAndFidelity(exportResult);
     if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);

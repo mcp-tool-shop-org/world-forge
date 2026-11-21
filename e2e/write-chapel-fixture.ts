@@ -15,3 +15,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(here, '../dogfood/output');
 mkdirSync(outDir, { recursive: true });
 writeFileSync(resolve(outDir, 'chapel-project.json'), JSON.stringify(chapelProject, null, 2), 'utf-8');
+
+// AI RPG exportable variant for E2E download specs (keeps authored chapel-authored.ts unchanged).
+const chapelAiRpgProject = {
+  ...chapelProject,
+  encounterAnchors: chapelProject.encounterAnchors.map((ea) =>
+    ea.id === 'crypt-encounter' ? { ...ea, encounterType: 'duel' } : ea,
+  ),
+};
+writeFileSync(resolve(outDir, 'chapel-ai-rpg-project.json'), JSON.stringify(chapelAiRpgProject, null, 2), 'utf-8');

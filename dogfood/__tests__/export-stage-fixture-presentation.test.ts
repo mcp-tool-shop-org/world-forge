@@ -89,7 +89,7 @@ describe('export-stage-fixture.ts presentation carry', () => {
         expect(scene).toContain('mother in Dockward');
     }, 60_000);
 
-    it('--engine-out is a 3.12.0 pack: no presentation, no zone-stand itemPlacements', async () => {
+    it('--engine-out is a 3.12.2 pack: no presentation, no zone-stand itemPlacements', async () => {
         const out = tmpOut('wf-stage-engine-lane-');
         const engineOut = join(out, 'engine-pack.json');
         const { code, stderr } = await runScript(SCRIPT, {}, [
@@ -101,9 +101,9 @@ describe('export-stage-fixture.ts presentation carry', () => {
         expect(code).toBe(0);
         const engine = JSON.parse(readFileSync(engineOut, 'utf-8')) as Record<string, unknown>;
         expect(Object.prototype.hasOwnProperty.call(engine, 'presentation')).toBe(false);
-        expect(Object.prototype.hasOwnProperty.call(engine, 'connections')).toBe(false);
-        expect(Object.prototype.hasOwnProperty.call(engine, 'spawnPoints')).toBe(false);
-        expect(Object.prototype.hasOwnProperty.call(engine, 'lootTables')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'connections')).toBe(true);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'spawnPoints')).toBe(true);
+        expect(Object.prototype.hasOwnProperty.call(engine, 'lootTables')).toBe(true);
         expect(Object.prototype.hasOwnProperty.call(engine, 'itemPlacements')).toBe(false);
         expect(Array.isArray(engine.zones)).toBe(true);
         expect((engine.zones as unknown[]).length).toBe(6);

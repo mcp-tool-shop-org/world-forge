@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const CHAPEL_PROJECT = resolve(here, '../dogfood/output/chapel-project.json');
+export const CHAPEL_AI_RPG_PROJECT = resolve(here, '../dogfood/output/chapel-ai-rpg-project.json');
 export const CHAPEL_ID = 'chapel-threshold';
 export const CHAPEL_ZONE_COUNT = 5;
 
@@ -33,6 +34,12 @@ export { expect };
 export async function loadChapel(page: Page): Promise<void> {
   await page.goto('/');
   await page.locator('input[type="file"]').first().setInputFiles(CHAPEL_PROJECT);
+  await expect(page.locator('text=Chapel Threshold')).toBeVisible({ timeout: 5000 });
+}
+
+export async function loadChapelExportable(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.locator('input[type="file"]').first().setInputFiles(CHAPEL_AI_RPG_PROJECT);
   await expect(page.locator('text=Chapel Threshold')).toBeVisible({ timeout: 5000 });
 }
 

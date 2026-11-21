@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   test,
   expect,
-  loadChapel,
+  loadChapelExportable,
   openExportModal,
   clickExportAndDownload,
 } from './helpers';
@@ -22,7 +22,7 @@ test.describe('Import / round-trip UI (F-56ff55da)', () => {
   test.describe.configure({ timeout: 60_000 });
 
   test('Load Chapel → Export JSON → Import → fidelity report and Diff unchanged', async ({ page }) => {
-    await loadChapel(page);
+    await loadChapelExportable(page);
     await openExportModal(page);
 
     const download = await clickExportAndDownload(page, 'Export JSON');

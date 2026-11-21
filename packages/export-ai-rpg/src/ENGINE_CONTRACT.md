@@ -1,7 +1,8 @@
 # ai-rpg-engine — Engine API Contract
 
 This exporter depends on the **ai-rpg-engine 3.x** API and its dependency
-ranges say so: all six `@ai-rpg-engine/*` ranges are `^3.8.0`.
+ranges say so: all six `@ai-rpg-engine/*` runtime ranges (plus
+`@ai-rpg-engine/starter-fantasy` in `devDependencies`) are `^3.12.2`.
 
 They were `^2.x` from the engine's 3.0.0 release until 2026-07-29, through
 eight minor releases, because the checklist below said "work through these
@@ -11,9 +12,8 @@ what let nine nonexistent module ids ship in every manifest this exporter
 wrote. **When the engine cuts 4.x, bump the ranges first, then work the
 checklist against the compiler.**
 
-Everything below was verified against the installed 3.8.0 packages on
-2026-07-29 — read off the published `.d.ts` files and a booted engine, not
-transcribed from the previous revision.
+Everything below was verified against the installed 3.12.2 packages on
+2026-11-21 — read off the published `.d.ts` files and a booted engine.
 
 ## The 3.x surface we rely on
 
@@ -28,12 +28,15 @@ value is imported at runtime by the production code):
 | `PackMetadata`, `PackGenre`, `PackTone`, `PackDifficulty` | `pack-registry` | string enums, mapped in `convert-pack.ts` via `TONE_MAP` / `GENRE_MAP` / `DIFFICULTY_MAP` |
 | `ItemDefinition` | `equipment` | `slot`: `weapon\|armor\|accessory\|tool\|trinket`; `rarity`: `common\|uncommon\|rare\|legendary` |
 
-Runtime assumptions, as they stand at 3.8.0:
+Runtime assumptions, as they stand at 3.12.2:
 
 - `GameManifest.engineVersion` carries a **range**, `ENGINE_VERSION_RANGE =
-  '>=3.8.0 <4.0.0'` (`convert-pack.ts`), in both the manifest and the pack
+  '>=3.12.2 <4.0.0'` (`convert-pack.ts`), in both the manifest and the pack
   metadata. It used to be the literal `'2.0.0'` in both places. The engine's
   load gate reads it, so it is a checked claim rather than a comment.
+- The stage moves `ENGINE_REF` and `FORGE_REF` together, so a forge pack is
+  always checked against the engine it was built for, and the stage's CI is the
+  proof.
 - `DEFAULT_MODULES` names twelve modules, every one of which resolves against
   a booted engine. Enforced by a test, not by this sentence — see item 3.
 - `DialogueNode.text` is `string | TextBlock[]` (`schemas.d.ts:218`).
@@ -68,11 +71,12 @@ Worked as findings by C0 (`ai-rpg-engine/docs/c0-alignment/version-skew.json`,
 | 7 | Run the full suite; update fixtures if shapes changed | **CLOSED** — zero fixture churn |
 | 8 | Bump this package's major version | **DEFERRED — release bookkeeping**, see below |
 
-**1 — ranges.** All six at `^3.8.0`, all six resolving 3.8.0.
-`__tests__/engine-deps-3x.test.ts` asserts both, separately: a declared range
-is not an installed version, and this errand produced a tree where the six
-declared ranges were correct while `content-schema@3.8.0` still sat on
-`core@2.0.1`.
+**1 — ranges.** All six runtime dependencies and
+`@ai-rpg-engine/starter-fantasy` (`devDependencies`) at `^3.12.2`, all seven
+resolving `3.12.2`. `__tests__/engine-deps-3x.test.ts` asserts both,
+separately: a declared range is not an installed version, and a prior install
+produced a tree where declared ranges moved while `content-schema` still sat
+on `core@2.0.1`.
 
 **2 — engineVersion.** C1 replaced the stale literal with
 `ENGINE_VERSION_RANGE` in both places. The `>=` floor is checked against the
@@ -147,32 +151,30 @@ authority to publish, tag or bump.
 > duplicated engine in their tree or a resolution failure. The release that
 > ships it takes a **major** bump and says so in CHANGELOG.md.
 
-## Known blocker — the duplicated content hash
+## Browser-safe content-hash twin
 
-`src/content-hash.ts` reimplements the engine's `computeContentHash`. This is
-a deliberate duplicate and the errand of 2026-07-29 was briefed to delete it
-and import the canonical one. **It could not.**
+`src/content-hash.ts` implements `computeContentHash` synchronously over the
+12 `SIM_AFFECTING_KEYS`. It is a **deliberate duplicate** of
+`@ai-rpg-engine/content-schema`'s `computeContentHash`.
 
-The reasoning everyone had been carrying — "2.x has no such export, so
-importing it is a dependency bump" — was wrong. The bump happened and the
-import is still impossible: `computeContentHash` lives in
-`content-schema/src/gate.ts`, added to engine `main` by C1 (merge `00001de`)
-and **never released**. npm's `latest` is 3.8.0, published 2026-07-28, the night
-before C1. Verified across all 26 published 3.8.0 packages: no
-`computeContentHash`, no `runLoadGate`, no `applyContentPack`.
+`@ai-rpg-engine/content-schema@3.12.2` exports `computeContentHash`,
+`runLoadGate`, `applyContentPack`, `ALLOWED_PACK_KEYS`, `SIM_AFFECTING_KEYS`,
+`EVALUATED_NOT_MAPPED_KEYS`, and `ENCOUNTER_ANCHOR_TYPES`. However, the engine's
+`gate.ts` imports `createHash` from `node:crypto`, and `exportToEngine` must
+stay browser-safe so editor and web bundles do not pull Node builtins or the
+`content-schema` runtime barrel.
 
-So the blocker is a **release**, not a range. Until the engine ships the C1
-surface:
+So `src/content-hash.ts` stays standalone, pinned by tests in
+`__tests__/engine-deps-3x.test.ts` and `__tests__/f-1d037344-browser-safe-hash.test.ts`:
 
-- `content-hash.ts` stays, and stays byte-compatible with the engine's
-  `gate.ts` — including the `undefined`-valued-key filter that makes it agree
-  with a JSON round-trip (C1 REPORT §7.6).
-- The engine repo's cross-repo equivalence test stays. It was slated for
-  retirement here on the reasoning that one shared function makes it a
-  tautology; there is no shared function, so it is still the only thing
-  between two implementations and a silent divergence.
-- `engine-deps-3x.test.ts` fails the moment a published release makes the
-  de-duplication possible, and carries the four steps in its own comment.
+- `src/content-hash.ts` stays byte-compatible with the engine's `gate.ts` —
+  including the `undefined`-valued-key filter that agrees with JSON
+  round-trips and exact equality on the 12 `SIM_AFFECTING_KEYS`.
+- The engine repo's cross-repo equivalence test (`c1-gate.test.ts`) verifies
+  the committed forge fixture from the engine side.
+- `__tests__/engine-deps-3x.test.ts` verifies byte-identical digests across four
+  worlds and asserts that `src/content-hash.ts` imports neither `node:crypto`
+  nor `@ai-rpg-engine/*`.
 
 ## When the engine cuts 4.x
 

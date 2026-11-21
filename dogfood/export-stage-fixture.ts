@@ -521,7 +521,8 @@ if (engineOut !== undefined) {
     }
     const enginePath = resolve(engineOut);
     mkdirSync(dirname(enginePath), { recursive: true });
-    // Sidecar 3.12.0 loads this file. Its gate allowlist is narrower than
+    // The stage sidecar loads this file targeting the engine world-forge depends on
+    // (kept in step by the stage's paired pin bump). Its gate allowlist is narrower than
     // ContentPack, and itemPlacements means giveItem {itemId, entityId} —
     // a zone stand with no entity is SIDECAR_CONTENT_INVALID. Presentation
     // stays on the stage pack.json above and is not a ContentPack key.
@@ -532,7 +533,7 @@ if (engineOut !== undefined) {
         if (lane.itemPlacementsOmitted > 0) {
             bits.push(`omitted ${lane.itemPlacementsOmitted} itemPlacement(s) with no entityId`);
         }
-        console.log(`  · engine lane projected for 3.12.0: ${bits.join('; ')}`);
+        console.log(`  · engine lane projected for pinned engine (paired stage pin bump): ${bits.join('; ')}`);
     }
     writeFileSync(enginePath, `${JSON.stringify(lane.projected, null, 2)}\n`, 'utf-8');
 

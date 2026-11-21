@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { getModeProfile } from '../mode-profiles.js';
-import { AUTHORING_MODES } from '@world-forge/schema';
-import { AI_RPG_ENCOUNTER_ANCHOR_TYPES } from '@world-forge/export-ai-rpg';
+import { AI_RPG_ENCOUNTER_ANCHOR_TYPES, AUTHORING_MODES } from '@world-forge/schema';
 import { EncounterTypeInput } from '../panels/EncounterProperties.js';
 
 describe('encounter type suggestions', () => {

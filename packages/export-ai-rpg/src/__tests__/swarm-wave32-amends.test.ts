@@ -195,6 +195,38 @@ describe('F-42772fc9 + Step 1 Part B: entity-container itemPlacements carry enti
     expect(zoneLooseFidelity[0].reason).toBe('engine-has-no-zone-items');
     expect(zoneLooseFidelity[0].message).toContain('gate.ts:91-110');
   });
+
+  it('zone-loose item placement exports without itemPlacements[] and re-imports into the first zone with an approximated entry', () => {
+    const zoneLooseProject: WorldProject = {
+      ...minimalProject,
+      itemPlacements: [
+        {
+          itemId: 'item-torch',
+          name: 'Torch',
+          zoneId: minimalProject.zones[1].id,
+          hidden: false,
+          slot: 'tool',
+          rarity: 'common',
+        },
+      ],
+    };
+
+    const exported = requireExport(zoneLooseProject);
+    expect(exported.contentPack.itemPlacements).toEqual([]);
+
+    const imported = requireImport(importFromContentPack(exported.contentPack));
+    const torch = imported.project.itemPlacements.find((i) => i.itemId === 'item-torch');
+    expect(torch?.zoneId).toBe(minimalProject.zones[0].id);
+
+    const entry = imported.fidelityReport.entries.find(
+      (f) =>
+        f.domain === 'items' &&
+        f.entityId === 'item-torch' &&
+        f.fieldPath === 'zoneId' &&
+        f.reason === 'zone-placement-first-zone',
+    );
+    expect(entry?.level).toBe('approximated');
+  });
 });
 
 // --- F-5f16cf2e: town structures pass-through ---

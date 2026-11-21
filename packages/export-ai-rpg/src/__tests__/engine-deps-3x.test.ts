@@ -28,7 +28,12 @@ import {
   SIM_AFFECTING_KEYS as ENGINE_SIM_AFFECTING_KEYS,
   type ContentPack as EngineContentPack,
 } from '@ai-rpg-engine/content-schema';
-import { createEmptyProject, validateProject, type WorldProject } from '@world-forge/schema';
+import {
+  AI_RPG_ENCOUNTER_ANCHOR_TYPES as SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  createEmptyProject,
+  validateProject,
+  type WorldProject,
+} from '@world-forge/schema';
 import { ENGINE_VERSION_RANGE } from '../convert-pack.js';
 import { computeContentHash, SIM_AFFECTING_KEYS } from '../content-hash.js';
 import { AI_RPG_ENCOUNTER_ANCHOR_TYPES, listAiRpgEncounterBlockers } from '../encounter-types.js';
@@ -216,9 +221,10 @@ describe('H1 — world-forge browser-safe contentHash equals engine computeConte
   });
 });
 
-describe('E2 — ai-rpg encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', () => {
-  it('AI_RPG_ENCOUNTER_ANCHOR_TYPES matches ENCOUNTER_ANCHOR_TYPES from @ai-rpg-engine/content-schema', () => {
-    expect([...AI_RPG_ENCOUNTER_ANCHOR_TYPES]).toEqual([...ENCOUNTER_ANCHOR_TYPES]);
+describe('AI RPG encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', () => {
+  it('AI_RPG_ENCOUNTER_ANCHOR_TYPES in schema (and re-exported by export-ai-rpg) matches ENCOUNTER_ANCHOR_TYPES from @ai-rpg-engine/content-schema', () => {
+    expect(AI_RPG_ENCOUNTER_ANCHOR_TYPES).toBe(SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES);
+    expect([...SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES]).toEqual([...ENCOUNTER_ANCHOR_TYPES]);
   });
 
   it('listAiRpgEncounterBlockers flags non-engine encounter types by anchor id and names the four valid types', () => {

@@ -107,8 +107,9 @@ export function TargetReadinessSummary({ targetReadiness }: { targetReadiness: T
   );
 }
 
-export function ExportModal({ onClose }: { onClose: () => void }) {
-  const { project } = useProjectStore();
+export function ExportModal({ onClose, project: projectOverride }: { onClose: () => void; project?: WorldProject }) {
+  const { project: storeProject } = useProjectStore();
+  const project = projectOverride ?? storeProject;
   const { setRightTab, setBuildsSubTab, setFocusTarget, setSelectedZone, markExported } = useEditorStore();
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const importFidelity = useEditorStore((s) => s.importFidelity);
@@ -143,6 +144,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   }, [fallback]);
 
   const precheck = useMemo(() => validateProject(project), [project]);
+  // Per-target readiness with target-specific advisory counts and AI RPG blockers.
+  const targetReadiness = useMemo(
+    () => computeTargetReadiness(project, precheck.valid),
+    [project, precheck.valid],
+  );
+  const aiRpgCanExport = precheck.valid && targetReadiness.aiRpg.ready && !exporting;
 
   const handleValidate = () => {
     if (precheck.valid) {
@@ -169,6 +176,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleExport = () => {
+    if (!precheck.valid || !targetReadiness.aiRpg.ready) return;
     runExport(() => runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts));
   };
 
@@ -265,12 +273,6 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     }
     return items;
   }, [project]);
-
-  // 10C: Per-target readiness with target-specific advisory counts and AI RPG blockers
-  const targetReadiness = useMemo(
-    () => computeTargetReadiness(project, precheck.valid),
-    [project, precheck.valid],
-  );
 
   return (
     <ModalFrame title="Export" width={450} onClose={onClose}>
@@ -474,11 +476,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         <button onClick={handleValidate} style={buttonBase} disabled={exporting}>Validate</button>
         <button onClick={handleExport} style={{
           ...buttonBase,
-          background: precheck.valid && !exporting ? 'var(--wf-success)' : 'var(--wf-bg-control)',
-          color: precheck.valid && !exporting ? '#fff' : 'var(--wf-text-hint)',
-          cursor: precheck.valid && !exporting ? 'pointer' : 'not-allowed',
-          opacity: precheck.valid && !exporting ? 1 : 0.6,
-        }} disabled={!precheck.valid || exporting}>{exporting ? 'Exporting…' : 'Export JSON'}</button>
+          background: aiRpgCanExport ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+          color: aiRpgCanExport ? '#fff' : 'var(--wf-text-hint)',
+          cursor: aiRpgCanExport ? 'pointer' : 'not-allowed',
+          opacity: aiRpgCanExport ? 1 : 0.6,
+        }} disabled={!precheck.valid || !targetReadiness.aiRpg.ready || exporting}>{exporting ? 'Exporting…' : 'Export JSON'}</button>
         <button
           onClick={handleExportUnreal}
           title="Export a 2.5D-aware Unreal Engine 5 content pack"

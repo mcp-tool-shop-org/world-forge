@@ -1,9 +1,11 @@
-// item-placements-contract.test.ts — Part B tests for item placements.
+// item-placements-contract.test.ts — item placement export & engine intake tests.
 //
-// Proves card items 4-5:
+// Proves:
 //   - A placement whose `container` names an exported entity writes to
 //     `ContentPack.itemPlacements` with `entityId` set to that entity's id,
 //     and the engine's intake counts `applied.itemPlacements` + equips it.
+//   - A hidden entity placement emits an `approximated` fidelity entry noting
+//     that the engine gives the item at boot and does not read `spawnCondition`.
 //   - A zone-loose placement (or container naming no exported entity) is omitted
 //     from `ContentPack.itemPlacements` and reported in `fidelity` as dropped
 //     with reason `engine-has-no-zone-items`, citing `gate.ts:91-110`.
@@ -19,7 +21,7 @@ import type { WorldProject } from '@world-forge/schema';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { exportToEngine } from '../export.js';
 
-describe('Step 1 Part B — itemPlacements container-entity vs zone-loose filtering', () => {
+describe('itemPlacements container-entity vs zone-loose filtering', () => {
   it('container-entity placement sets entityId, arrives on that entity, and intake.applied.itemPlacements counts it', () => {
     const project: WorldProject = {
       ...minimalProject,
@@ -101,5 +103,52 @@ describe('Step 1 Part B — itemPlacements container-entity vs zone-loose filter
       expect(drop.message).toContain('gate.ts:91-110');
     }
     expect(drops.map((d) => d.entityId)).toEqual(['item-torch', 'item-rope']);
+  });
+
+  it('hidden placement written onto an entity emits an approximated fidelity entry noting boot delivery and ignored spawnCondition', () => {
+    const project: WorldProject = {
+      ...minimalProject,
+      encounterAnchors: [],
+      itemPlacements: [
+        {
+          itemId: 'item-torch',
+          name: 'Secret Torch',
+          zoneId: 'zone-entrance',
+          container: 'npc-keeper',
+          hidden: true,
+          slot: 'tool',
+          rarity: 'common',
+        },
+      ],
+    };
+
+    const exported = exportToEngine(project);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('export failed');
+
+    expect(exported.contentPack.itemPlacements).toHaveLength(1);
+    expect(exported.contentPack.itemPlacements[0].entityId).toBe('npc-keeper');
+    expect(exported.contentPack.itemPlacements[0].spawnCondition?.type).toBe('never');
+
+    const hiddenApprox = exported.fidelity.entries.find(
+      (f) => f.reason === 'hidden-item-placement-given-at-boot',
+    );
+    expect(hiddenApprox).toBeDefined();
+    expect(hiddenApprox!.domain).toBe('items');
+    expect(hiddenApprox!.level).toBe('approximated');
+    expect(hiddenApprox!.entityId).toBe('item-torch');
+    expect(hiddenApprox!.fieldPath).toBe('hidden');
+    expect(hiddenApprox!.message).toContain('gives the item at boot');
+    expect(hiddenApprox!.message).toContain('spawnCondition');
+
+    const engine = createGame(71);
+    const intake = applyContentPack(
+      engine,
+      exported.contentPack as unknown as EngineContentPack,
+      { channels: createStandardChannels() },
+    );
+    expect(intake.ok, JSON.stringify(intake.errors, null, 2)).toBe(true);
+    expect(intake.applied.itemPlacements).toBe(1);
+    expect(engine.store.state.entities['npc-keeper']?.inventory).toContain('item-torch');
   });
 });

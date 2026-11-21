@@ -1,25 +1,20 @@
-// encounter-types.ts — Browser-safe AI RPG Engine encounter anchor type allowlist and blocker checker.
+// encounter-types.ts — Browser-safe AI RPG Engine encounter anchor blocker checker.
 //
-// Why this list lives here rather than importing ENCOUNTER_ANCHOR_TYPES from
-// `@ai-rpg-engine/content-schema`: the content-schema barrel re-exports
-// `gate.ts`, which imports `node:crypto` at module load, and `@world-forge/editor`
-// bundles `@world-forge/export-ai-rpg` for the browser.
-// A Node test (`__tests__/engine-deps-3x.test.ts`) pins this list to
-// `ENCOUNTER_ANCHOR_TYPES` from `@ai-rpg-engine/content-schema`.
+// The canonical browser-safe list (`AI_RPG_ENCOUNTER_ANCHOR_TYPES` and
+// `isAiRpgEncounterAnchorType`) lives in `@world-forge/schema`, re-exported
+// here for compatibility, and pinned in `__tests__/engine-deps-3x.test.ts` to
+// `ENCOUNTER_ANCHOR_TYPES` from `@ai-rpg-engine/content-schema` (whose barrel
+// pulls `node:crypto`).
 
-import type { WorldProject } from '@world-forge/schema';
+import {
+  AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  isAiRpgEncounterAnchorType,
+  type AiRpgEncounterAnchorType,
+  type WorldProject,
+} from '@world-forge/schema';
 
-// A type joins the ai-rpg list only when the engine carries it: engine first, then this mirror, in the same cycle.
-export const AI_RPG_ENCOUNTER_ANCHOR_TYPES = ['ambush', 'patrol', 'horde', 'duel'] as const;
-
-export type AiRpgEncounterAnchorType = (typeof AI_RPG_ENCOUNTER_ANCHOR_TYPES)[number];
-
-const AI_RPG_ENCOUNTER_TYPE_SET = new Set<string>(AI_RPG_ENCOUNTER_ANCHOR_TYPES);
-
-/** Return true iff `value` is one of the four encounter types AI RPG Engine loads. */
-export function isAiRpgEncounterAnchorType(value: string): value is AiRpgEncounterAnchorType {
-  return AI_RPG_ENCOUNTER_TYPE_SET.has(value);
-}
+export { AI_RPG_ENCOUNTER_ANCHOR_TYPES, isAiRpgEncounterAnchorType };
+export type { AiRpgEncounterAnchorType };
 
 export interface AiRpgEncounterBlocker {
   anchorId: string;

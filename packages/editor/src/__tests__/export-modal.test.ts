@@ -13,7 +13,7 @@ import {
   type ExportEnv,
   type ExportStatus,
 } from '../panels/export-handlers.js';
-import { computeTargetReadiness, TargetReadinessSummary } from '../panels/ExportModal.js';
+import { computeTargetReadiness, ExportModal, TargetReadinessSummary } from '../panels/ExportModal.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 
 // ── Test doubles ───────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ describe('ED-A-013: speed panel Escape behaviour', () => {
   });
 });
 
-// ── E2 ruling: AI RPG encounterType readiness & blockers ────────────────
+// ── AI RPG encounterType readiness & Export JSON gating ───────────────
 
 describe('E2: ExportModal per-target readiness on encounterType', () => {
   it('computeTargetReadiness marks AI RPG not ready with blocker when encounterType is outside engine four, leaving UE5 and Godot ready', () => {
@@ -290,5 +290,37 @@ describe('E2: ExportModal per-target readiness on encounterType', () => {
     expect(r.aiRpg.blockers).toEqual([]);
     expect(r.unreal.ready).toBe(true);
     expect(r.godot.ready).toBe(true);
+  });
+
+  it('ExportModal disables Export JSON while !targetReadiness.aiRpg.ready, keeping UE5 and Godot enabled', () => {
+    const blocked: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-blocked', zoneId: validProject.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const html = renderToStaticMarkup(createElement(ExportModal, { onClose: () => {}, project: blocked }));
+    const exportJsonBtn = /<button[^>]*>Export JSON<\/button>/.exec(html)?.[0];
+    const exportUe5Btn = /<button[^>]*>Export Unreal Engine 5<\/button>/.exec(html)?.[0];
+    const exportGodotBtn = /<button[^>]*>Export Godot 4<\/button>/.exec(html)?.[0];
+    expect(exportJsonBtn).toBeDefined();
+    expect(exportJsonBtn).toContain('disabled=""');
+    expect(exportUe5Btn).toBeDefined();
+    expect(exportUe5Btn).not.toContain('disabled=""');
+    expect(exportGodotBtn).toBeDefined();
+    expect(exportGodotBtn).not.toContain('disabled=""');
+  });
+
+  it('ExportModal enables Export JSON when AI RPG readiness has no blockers', () => {
+    const ok: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-ok', zoneId: validProject.zones[0].id, encounterType: 'horde', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const html = renderToStaticMarkup(createElement(ExportModal, { onClose: () => {}, project: ok }));
+    const exportJsonBtn = /<button[^>]*>Export JSON<\/button>/.exec(html)?.[0];
+    expect(exportJsonBtn).toBeDefined();
+    expect(exportJsonBtn).not.toContain('disabled=""');
   });
 });
