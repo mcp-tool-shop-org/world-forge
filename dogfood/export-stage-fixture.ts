@@ -47,6 +47,7 @@ import { resolve, dirname } from 'node:path';
 
 import type { WorldProject } from '@world-forge/schema';
 import { presentationAdvisories, PRESENTATION_ADVISORY_PREFIX } from '@world-forge/schema';
+import { ALLOWED_PACK_KEYS } from '@ai-rpg-engine/content-schema';
 import { exportToGodot, convertGates } from '../packages/export-godot/src/index.js';
 import { exportToEngine } from '../packages/export-ai-rpg/src/index.js';
 import { vocabularyCoverageProject } from '../packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.js';
@@ -471,44 +472,10 @@ function gateMetadataOnZoneNode(scene: string, zoneId: string, mode: string): bo
 }
 
 /**
- * Top-level keys the stage's pinned engine loads (3.12.0,
- * content-schema gate.ts ALLOWED_PACK_KEYS at 97d6ef1).
- * presentation is not one of them.
- */
-const ENGINE_LANE_KEYS = [
-    'schemaVersion',
-    'entities',
-    'zones',
-    'dialogues',
-    'quests',
-    'abilities',
-    'statuses',
-    'verbs',
-    'archetypes',
-    'backgrounds',
-    'itemUseEffects',
-    'districts',
-    'buildCatalog',
-    'progressionTrees',
-    'placements',
-    'encounterAnchors',
-    'hazardDefinitions',
-    'itemPlacements',
-    'entityAi',
-    'ruleset',
-    'ruleProfiles',
-    'meta',
-    'manifest',
-    'factions',
-    'items',
-    'factionPresences',
-    'pressureHotspots',
-] as const;
-
-/**
- * The library ContentPack is wider than the engine gate. The file the sidecar
- * reads is the intersection, plus giveItem rows only: a zone stand has no
- * entityId, and the engine requires one.
+ * Project the exporter's ContentPack through the pinned engine's own
+ * `ALLOWED_PACK_KEYS` (imported from `@ai-rpg-engine/content-schema` so the
+ * stage script cannot drift from the engine allowlist), plus giveItem rows only:
+ * a zone stand has no entityId, and the engine requires one.
  */
 function projectEngineLane(pack: object): {
     projected: Record<string, unknown>;
@@ -516,11 +483,11 @@ function projectEngineLane(pack: object): {
     itemPlacementsOmitted: number;
 } {
     const raw = pack as Record<string, unknown>;
-    const allowed = new Set<string>(ENGINE_LANE_KEYS);
+    const allowed = new Set<string>(ALLOWED_PACK_KEYS);
     const dropped = Object.keys(raw).filter((k) => !allowed.has(k)).sort();
     const projected: Record<string, unknown> = {};
     let itemPlacementsOmitted = 0;
-    for (const key of ENGINE_LANE_KEYS) {
+    for (const key of ALLOWED_PACK_KEYS) {
         if (raw[key] === undefined) continue;
         if (key === 'itemPlacements') {
             const rows = Array.isArray(raw[key]) ? raw[key] as Array<Record<string, unknown>> : [];
