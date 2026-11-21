@@ -739,7 +739,7 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
     if (!isNonEmptyString(ea.encounterType)) {
       errors.push({
         path: `encounterAnchors.${ea.id}`,
-        message: `Encounter anchor "${ea.id}" has ${typeof ea.encounterType !== 'string' || !ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
+        message: `Encounter anchor "${ea.id}" has ${typeof ea.encounterType !== 'string' || !ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "ambush", "patrol", "horde", or "duel"`,
       });
     }
   }

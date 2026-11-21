@@ -34,3 +34,9 @@ export { importProject, importFromContentPack, importFromExportResult, detectImp
 export type { ImportResult, ImportError, ImportFormat } from './import.js';
 export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
 export type { FidelityLevel, FidelitySeverity, FidelityDomain, FidelityEntry, DomainSummary, FidelitySummary, FidelityReport } from './fidelity.js';
+export {
+  AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  isAiRpgEncounterAnchorType,
+  listAiRpgEncounterBlockers,
+} from './encounter-types.js';
+export type { AiRpgEncounterAnchorType, AiRpgEncounterBlocker } from './encounter-types.js';

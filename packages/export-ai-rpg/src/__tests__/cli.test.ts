@@ -30,15 +30,31 @@ function runCli(args: string[], extraEnv?: NodeJS.ProcessEnv): Promise<{ code: n
 
 let tmpDir: string;
 let validJsonPath: string;
+let aiRpgValidJsonPath: string;
 let invalidJsonPath: string;
 let badJsonPath: string;
 
 beforeAll(async () => {
   tmpDir = await mkdtemp(join(tmpdir(), 'wf-cli-'));
   validJsonPath = join(tmpDir, 'valid.json');
+  aiRpgValidJsonPath = join(tmpDir, 'ai-rpg-valid.json');
   invalidJsonPath = join(tmpDir, 'invalid.json');
   badJsonPath = join(tmpDir, 'bad.json');
   await writeFile(validJsonPath, JSON.stringify(minimalProject, null, 2));
+  await writeFile(
+    aiRpgValidJsonPath,
+    JSON.stringify(
+      {
+        ...minimalProject,
+        encounterAnchors: minimalProject.encounterAnchors.map((ea) => ({
+          ...ea,
+          encounterType: 'patrol',
+        })),
+      },
+      null,
+      2,
+    ),
+  );
   await writeFile(invalidJsonPath, JSON.stringify(invalidOrphanProject, null, 2));
   await writeFile(badJsonPath, 'not json at all {{{');
 });
@@ -69,9 +85,19 @@ describe('CLI: world-forge-export', () => {
   });
 
   it('validates a valid project with --validate-only', async () => {
-    const { code, stdout } = await runCli([validJsonPath, '--validate-only']);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--validate-only']);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
+  });
+
+  it('E2: --validate-only reports non-engine encounterType blocker by anchor id and exits non-zero', async () => {
+    const { code, stderr } = await runCli([validJsonPath, '--validate-only']);
+    expect(code).toBe(1);
+    expect(stderr).toContain('enc-cellar');
+    expect(stderr).toContain('ambush');
+    expect(stderr).toContain('patrol');
+    expect(stderr).toContain('horde');
+    expect(stderr).toContain('duel');
   });
 
   it('rejects an invalid project with exit code 1', async () => {
@@ -355,7 +381,7 @@ describe('CLI: world-forge-export', () => {
 
   // F-b2103ece: flag-first is not ENOENT on a path named --validate-only
   it('accepts --validate-only before the project path', async () => {
-    const { code, stdout, stderr } = await runCli(['--validate-only', validJsonPath]);
+    const { code, stdout, stderr } = await runCli(['--validate-only', aiRpgValidJsonPath]);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
     expect(stderr).not.toMatch(/ENOENT/);
@@ -382,7 +408,7 @@ describe('CLI: world-forge-export', () => {
 
   // F-f54a9f8b: --verbose is live on validate-only / dry-run / failure
   it('--validate-only --verbose prints verbose diagnostics', async () => {
-    const { code, stdout } = await runCli([validJsonPath, '--validate-only', '--verbose']);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--validate-only', '--verbose']);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
     expect(stdout).toContain('Verbose Diagnostics');

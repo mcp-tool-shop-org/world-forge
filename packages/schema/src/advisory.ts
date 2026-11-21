@@ -101,6 +101,25 @@ export function advisoryValidation(project: WorldProject): AdvisoryResult {
     items.push({ path: 'connections', message: 'Zones exist but none are connected. Consider linking them.', severity: 'suggestion' });
   }
 
+  // ── Encounter anchor AI RPG Engine compatibility advisory ────
+  // Schema permits any non-empty string for encounterType (Godot/UE5 are peer lanes);
+  // surface an advisory when an anchor uses a type AI RPG Engine cannot load.
+  const aiRpgEncounterTypes = new Set(['ambush', 'patrol', 'horde', 'duel']);
+  for (const ea of encounterAnchors) {
+    if (
+      ea &&
+      typeof ea.encounterType === 'string' &&
+      ea.encounterType.trim().length > 0 &&
+      !aiRpgEncounterTypes.has(ea.encounterType)
+    ) {
+      items.push({
+        path: `encounterAnchors.${ea.id}.encounterType`,
+        message: `Encounter anchor "${ea.id}" has encounterType "${ea.encounterType}" — not loadable by AI RPG Engine (valid types: ambush, patrol, horde, duel).`,
+        severity: 'info',
+      });
+    }
+  }
+
   // ── Asset naming advisories ────────────────────────────────
   for (const asset of assets) {
     const label = typeof asset.label === 'string' ? asset.label : '';

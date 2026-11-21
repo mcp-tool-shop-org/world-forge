@@ -353,7 +353,7 @@ export const proofProject: WorldProject = {
         {
             id: 'enc-cellar-rats',
             zoneId: 'zone-cellar',
-            encounterType: 'combat',
+            encounterType: 'horde',
             enemyIds: ['mob-rat'],
             probability: 0.8,
             cooldownTurns: 3,

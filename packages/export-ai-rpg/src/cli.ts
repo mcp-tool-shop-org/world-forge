@@ -13,6 +13,7 @@ import {
 } from './import.js';
 import type { WorldProject } from '@world-forge/schema';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
+import { listAiRpgEncounterBlockers } from './encounter-types.js';
 
 const USAGE = `Usage: world-forge-export <project.json> [options]
        world-forge-export --import <file-or-pack-dir> [--out <dir>]
@@ -523,6 +524,18 @@ async function main(): Promise<void> {
   const exportResult = result; // narrowed to ExportResult
 
   if (validateOnly) {
+    const encounterBlockers = listAiRpgEncounterBlockers(project);
+    if (encounterBlockers.length > 0) {
+      console.error('AI RPG validation blocked:');
+      for (const b of encounterBlockers) {
+        console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
+      }
+      if (verbose) {
+        console.error('\n--- Verbose Diagnostics ---');
+        console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
+      }
+      process.exit(1);
+    }
     console.log('Validation passed.');
     printWarningsAndFidelity(exportResult);
     if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);

@@ -60,16 +60,23 @@ describe('canvas encounter defaults', () => {
     expect(getModeProfile('dungeon').encounterTypes[0]).toBe('patrol');
   });
 
-  it('ocean → pirate encounter', () => {
-    expect(getModeProfile('ocean').encounterTypes[0]).toBe('pirate');
+  it('ocean → patrol encounter (E2: no mode defaults to pirate)', () => {
+    expect(getModeProfile('ocean').encounterTypes[0]).toBe('patrol');
   });
 
-  it('space → pirate encounter', () => {
-    expect(getModeProfile('space').encounterTypes[0]).toBe('pirate');
+  it('space → patrol encounter (E2: no mode defaults to pirate)', () => {
+    expect(getModeProfile('space').encounterTypes[0]).toBe('patrol');
   });
 
   it('wilderness → patrol encounter', () => {
     expect(getModeProfile('wilderness').encounterTypes[0]).toBe('patrol');
+  });
+
+  it('every authoring mode defaults to patrol and never defaults to pirate', () => {
+    for (const mode of AUTHORING_MODES) {
+      expect(getModeProfile(mode).encounterTypes[0]).toBe('patrol');
+      expect(getModeProfile(mode).encounterTypes[0]).not.toBe('pirate');
+    }
   });
 });
 

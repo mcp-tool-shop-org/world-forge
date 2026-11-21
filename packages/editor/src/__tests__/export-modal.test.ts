@@ -3,6 +3,8 @@
 // `runUnrealExport` extracted from ExportModal.tsx.
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { WorldProject } from '@world-forge/schema';
 import {
   runEngineExport,
@@ -11,6 +13,7 @@ import {
   type ExportEnv,
   type ExportStatus,
 } from '../panels/export-handlers.js';
+import { computeTargetReadiness, TargetReadinessSummary } from '../panels/ExportModal.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 
 // ── Test doubles ───────────────────────────────────────────────────────
@@ -230,5 +233,62 @@ describe('ED-A-013: speed panel Escape behaviour', () => {
     // No Ctrl/Shift modifiers — confirms it's the plain-Escape binding.
     expect(escape?.ctrl).toBeUndefined();
     expect(escape?.shift).toBeUndefined();
+  });
+});
+
+// ── E2 ruling: AI RPG encounterType readiness & blockers ────────────────
+
+describe('E2: ExportModal per-target readiness on encounterType', () => {
+  it('computeTargetReadiness marks AI RPG not ready with blocker when encounterType is outside engine four, leaving UE5 and Godot ready', () => {
+    const blocked: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-blocked', zoneId: validProject.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const r = computeTargetReadiness(blocked, true);
+    expect(r.aiRpg.ready).toBe(false);
+    expect(r.aiRpg.blockers).toHaveLength(1);
+    expect(r.aiRpg.blockers[0]).toContain('enc-blocked');
+    expect(r.aiRpg.blockers[0]).toContain('ambush');
+    expect(r.aiRpg.blockers[0]).toContain('patrol');
+    expect(r.aiRpg.blockers[0]).toContain('horde');
+    expect(r.aiRpg.blockers[0]).toContain('duel');
+    expect(r.unreal.ready).toBe(true);
+    expect(r.unreal.blockers).toEqual([]);
+    expect(r.godot.ready).toBe(true);
+    expect(r.godot.blockers).toEqual([]);
+  });
+
+  it('ExportModal renders AI RPG as Not ready with listed blockers while UE5 and Godot remain Ready', () => {
+    const blocked: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-blocked', zoneId: validProject.zones[0].id, encounterType: 'pirate', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const readiness = computeTargetReadiness(blocked, true);
+    const html = renderToStaticMarkup(createElement(TargetReadinessSummary, { targetReadiness: readiness }));
+    expect(html).toContain('AI RPG:');
+    expect(html).toContain('Not ready (1 blocker)');
+    expect(html).toContain('enc-blocked');
+    expect(html).toContain('ambush, patrol, horde, duel');
+    expect(html).toContain('UE5:');
+    expect(html).toContain('Godot:');
+    expect(html).toContain('Ready with 2 advisories');
+  });
+
+  it('computeTargetReadiness marks AI RPG ready when encounterAnchors use valid engine types', () => {
+    const ok: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-ok', zoneId: validProject.zones[0].id, encounterType: 'horde', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const r = computeTargetReadiness(ok, true);
+    expect(r.aiRpg.ready).toBe(true);
+    expect(r.aiRpg.blockers).toEqual([]);
+    expect(r.unreal.ready).toBe(true);
+    expect(r.godot.ready).toBe(true);
   });
 });

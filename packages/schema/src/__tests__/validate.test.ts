@@ -905,4 +905,38 @@ describe('SCH-A-004: project metadata type guards (author/license/category)', ()
     expect(result.errors.some((e) => e.path === 'license')).toBe(false);
     expect(result.errors.some((e) => e.path === 'category')).toBe(false);
   });
+
+  // --- E2 ruling: schema stays permissive on encounterType; hint names engine's four ---
+
+  it('permits free-string encounterType values outside the AI RPG Engine four', () => {
+    const good: WorldProject = {
+      ...minimalProject,
+      encounterAnchors: [
+        { id: 'enc-pirate', zoneId: 'zone-cellar', encounterType: 'pirate', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+        { id: 'enc-combat', zoneId: 'zone-cellar', encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const result = validateProject(good);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('empty encounterType hint names ambush, patrol, horde, duel instead of combat and random', () => {
+    const bad: WorldProject = {
+      ...minimalProject,
+      encounterAnchors: [
+        { id: 'enc-hint', zoneId: 'zone-cellar', encounterType: '', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const result = validateProject(bad);
+    expect(result.valid).toBe(false);
+    const err = result.errors.find((e) => e.path === 'encounterAnchors.enc-hint');
+    expect(err).toBeDefined();
+    expect(err!.message).toContain('"ambush"');
+    expect(err!.message).toContain('"patrol"');
+    expect(err!.message).toContain('"horde"');
+    expect(err!.message).toContain('"duel"');
+    expect(err!.message).not.toContain('"combat"');
+    expect(err!.message).not.toContain('"random"');
+  });
 });

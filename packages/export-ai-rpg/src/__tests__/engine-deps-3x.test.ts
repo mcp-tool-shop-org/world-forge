@@ -20,12 +20,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   computeContentHash as computeEngineContentHash,
+  ENCOUNTER_ANCHOR_TYPES,
   SIM_AFFECTING_KEYS as ENGINE_SIM_AFFECTING_KEYS,
   type ContentPack as EngineContentPack,
 } from '@ai-rpg-engine/content-schema';
 import { createEmptyProject, validateProject, type WorldProject } from '@world-forge/schema';
 import { ENGINE_VERSION_RANGE } from '../convert-pack.js';
 import { computeContentHash, SIM_AFFECTING_KEYS } from '../content-hash.js';
+import { AI_RPG_ENCOUNTER_ANCHOR_TYPES, listAiRpgEncounterBlockers } from '../encounter-types.js';
 import { exportToEngine } from '../export.js';
 import { vocabularyCoverageProject } from './fixtures/vocabulary-coverage.js';
 
@@ -203,5 +205,29 @@ describe('H1 — world-forge browser-safe contentHash equals engine computeConte
     const engineHash = computeEngineContentHash(exported.contentPack as unknown as EngineContentPack);
     expect(computeContentHash(exported.contentPack)).toBe(engineHash);
     expect(exported.manifest.contentHash).toBe(engineHash);
+  });
+});
+
+describe('E2 — ai-rpg encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', () => {
+  it('AI_RPG_ENCOUNTER_ANCHOR_TYPES matches ENCOUNTER_ANCHOR_TYPES from @ai-rpg-engine/content-schema', () => {
+    expect([...AI_RPG_ENCOUNTER_ANCHOR_TYPES]).toEqual([...ENCOUNTER_ANCHOR_TYPES]);
+  });
+
+  it('listAiRpgEncounterBlockers flags non-engine encounter types by anchor id and names the four valid types', () => {
+    const empty = createSmallestValidWorldProject();
+    const blockers = listAiRpgEncounterBlockers({
+      encounterAnchors: [
+        { id: 'enc-ok', zoneId: empty.zones[0].id, encounterType: 'patrol', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+        { id: 'enc-bad', zoneId: empty.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      ],
+    });
+    expect(blockers).toHaveLength(1);
+    expect(blockers[0].anchorId).toBe('enc-bad');
+    expect(blockers[0].encounterType).toBe('combat');
+    expect(blockers[0].validTypes).toEqual([...ENCOUNTER_ANCHOR_TYPES]);
+    expect(blockers[0].message).toContain('enc-bad');
+    for (const valid of ENCOUNTER_ANCHOR_TYPES) {
+      expect(blockers[0].message).toContain(valid);
+    }
   });
 });
