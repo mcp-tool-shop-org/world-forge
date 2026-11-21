@@ -30,7 +30,7 @@ A world you can play is three agreements that must not be converted into each ot
 | A thing in someone's inventory | engine `itemPlacements` of `{ itemId, entityId }` | engine. A zone-standing prop is not this. The guild seal on the counting-house floor is a stage marker, not a give-item. |
 | What the player hears | cue id on the felt payload, file `assets/felt/<cueId>.wav` in the stage | stage mixer. Missing file is a sine stand-in. The cue id is never hashed. |
 
-`presentation` is not a field on the engine `ContentPack`. The stage fixture writes it onto `pack.json`. The sidecar file keeps only the keys engine 3.12.0 loads.
+`presentation` is not a field on the engine `ContentPack`. The stage fixture writes it onto `pack.json`. The sidecar file targets the engine world-forge depends on (kept in step by the stage's paired pin bump) and keeps only the keys that engine loads.
 
 ## Salt Road, one change at a time
 

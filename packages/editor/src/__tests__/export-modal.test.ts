@@ -2,10 +2,37 @@
 // flows at the logic level (no DOM mount). Exercises `runEngineExport` and
 // `runUnrealExport` extracted from ExportModal.tsx.
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createElement } from 'react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createElement, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { WorldProject } from '@world-forge/schema';
+
+const modalHarness = vi.hoisted(() => ({
+  onModalChildren: null as ((children: unknown) => void) | null,
+  runEngineExportSpy: null as ReturnType<typeof vi.fn> | null,
+}));
+
+vi.mock('../ui/ModalFrame.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ui/ModalFrame.js')>();
+  return {
+    ...actual,
+    ModalFrame: (props: Parameters<typeof actual.ModalFrame>[0]) => {
+      modalHarness.onModalChildren?.(props.children);
+      return actual.ModalFrame(props);
+    },
+  };
+});
+
+vi.mock('../panels/export-handlers.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../panels/export-handlers.js')>();
+  const spy = vi.fn((...args: Parameters<typeof actual.runEngineExport>) => actual.runEngineExport(...args));
+  modalHarness.runEngineExportSpy = spy;
+  return {
+    ...actual,
+    runEngineExport: spy,
+  };
+});
+
 import {
   runEngineExport,
   runUnrealExport,
@@ -236,9 +263,36 @@ describe('ED-A-013: speed panel Escape behaviour', () => {
   });
 });
 
+function textContentOf(node: unknown): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textContentOf).join('');
+  if (isValidElement<{ children?: unknown }>(node)) return textContentOf(node.props.children);
+  return '';
+}
+
+function findButtonOnClick(node: unknown, label: string): (() => void) | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findButtonOnClick(child, label);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (!isValidElement<{ children?: unknown; onClick?: () => void }>(node)) return undefined;
+  if (node.type === 'button' && textContentOf(node.props.children) === label) {
+    return node.props.onClick;
+  }
+  return findButtonOnClick(node.props.children, label);
+}
+
 // ── AI RPG encounterType readiness & Export JSON gating ───────────────
 
-describe('E2: ExportModal per-target readiness on encounterType', () => {
+describe('ExportModal per-target readiness on encounterType', () => {
+  afterEach(() => {
+    modalHarness.onModalChildren = null;
+    modalHarness.runEngineExportSpy?.mockClear();
+  });
+
   it('computeTargetReadiness marks AI RPG not ready with blocker when encounterType is outside engine four, leaving UE5 and Godot ready', () => {
     const blocked: WorldProject = {
       ...validProject,
@@ -322,5 +376,49 @@ describe('E2: ExportModal per-target readiness on encounterType', () => {
     const exportJsonBtn = /<button[^>]*>Export JSON<\/button>/.exec(html)?.[0];
     expect(exportJsonBtn).toBeDefined();
     expect(exportJsonBtn).not.toContain('disabled=""');
+  });
+
+  it('handleExport guard blocks runEngineExport when !precheck.valid or !targetReadiness.aiRpg.ready, and invokes it when ready', async () => {
+    const spy = modalHarness.runEngineExportSpy!;
+    const captureOnClick = (proj: WorldProject): (() => void) => {
+      let captured: unknown = null;
+      modalHarness.onModalChildren = (children) => { captured = children; };
+      renderToStaticMarkup(createElement(ExportModal, { onClose: () => {}, project: proj }));
+      const handler = findButtonOnClick(captured, 'Export JSON');
+      expect(handler, 'Export JSON button onClick handler should be wired').toBeTypeOf('function');
+      return handler!;
+    };
+
+    // Case 1: valid schema, blocked by non-engine encounterType
+    const blocked: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-blocked', zoneId: validProject.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    spy.mockImplementationOnce(async () => {});
+    captureOnClick(blocked)();
+    expect(spy).not.toHaveBeenCalled();
+
+    // Case 2: invalid schema (!precheck.valid)
+    spy.mockReset();
+    spy.mockImplementation(async () => {});
+    captureOnClick(invalidProject)();
+    expect(spy).not.toHaveBeenCalled();
+
+    // Control: ready project triggers runEngineExport once
+    const ok: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-ok', zoneId: validProject.zones[0].id, encounterType: 'horde', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    spy.mockClear();
+    captureOnClick(ok)();
+    expect(spy).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    // Reset default passthrough implementation for any subsequent calls.
+    const actualHandlers = await vi.importActual<typeof import('../panels/export-handlers.js')>('../panels/export-handlers.js');
+    spy.mockImplementation((...args: Parameters<typeof actualHandlers.runEngineExport>) => actualHandlers.runEngineExport(...args));
   });
 });

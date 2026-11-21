@@ -39,7 +39,7 @@ Runtime assumptions, as they stand at 3.12.2:
   proof.
 - `DEFAULT_MODULES` names twelve modules, every one of which resolves against
   a booted engine. Enforced by a test, not by this sentence — see item 3.
-- `DialogueNode.text` is `string | TextBlock[]` (`schemas.d.ts:218`).
+- `DialogueNode.text` is `string | TextBlock[]` (`schemas.d.ts:272` at 3.12.2).
   `convert-dialogues.ts` writes a plain string, which the union admits.
 - `EntityBlueprint.type` is a bare `string` with no enum and no validation.
 
@@ -102,9 +102,11 @@ picker vs engine enum) is unchanged and still a C3 design question — see
 `[[2p5d-c3-space-vocabulary-kickoff]]` — but it is no longer a silent
 fallback.
 
-**5 — item slots and rarities.** Verified against the 3.8.0 exports:
-`EQUIPMENT_SLOTS` 5/5 and `ITEM_RARITIES` 4/4, unchanged across the major —
-the only checklist item the 3.x major did not invalidate.
+**5 — item slots and rarities.** Re-verified against installed
+`@ai-rpg-engine/equipment@3.12.2` (`types.d.ts:2-6` and runtime exports):
+`EQUIPMENT_SLOTS` is still 5/5 (`weapon`, `armor`, `accessory`, `tool`,
+`trinket`) and `ITEM_RARITIES` is still 4/4 (`common`, `uncommon`, `rare`,
+`legendary`), unchanged across 3.8.0 → 3.12.2.
 
 ⚠ These lists are guarded in ONE DIRECTION ONLY, which is worth stating
 because the type annotation makes them look safer than they are.
@@ -116,27 +118,32 @@ omits it — silently, exactly the shape of the `GENRE_MAP` gap in item 4.
 Deriving both sets from `EQUIPMENT_SLOTS` / `ITEM_RARITIES` (runtime exports
 that already exist) would close that direction.
 
-Beneath this item sits a forge-side hole C0 found independently and this
-errand did not touch: world-forge's own `ItemSlot` (`schema/src/entities.ts:49`)
-has a sixth member, `consumable`, which `narrowSlot` collapses to `trinket`
-with no warning and no fidelity entry. That is a forge concern, not an
-engine-contract item.
+Note on world-forge's sixth `ItemSlot` member, `consumable`
+(`schema/src/entities.ts:49`): `narrowSlot` (`convert-items.ts:37-74`) still
+collapses `'consumable'` to `'trinket'`, and since `F-1c1a6e56` it now emits
+a warning and an `approximated` fidelity entry (`item-slot-no-engine-target`)
+rather than doing so silently.
 
-**6 — role maps.** Re-verified, and the verification is the finding: at 3.8.0
-`EntityBlueprint.type` is still `type: string` with no enum and no validation
-(`schemas.d.ts`), and `aiProfile` is a free string. There is nothing for
-`ROLE_TO_TYPE`'s six-roles-onto-two-types collapse to be checked against, so
-the item reads clean when what it actually is, is unconstrained. Shipped
-starters use `npc` and `enemy` by convention.
+**6 — role maps.** Re-verified against installed
+`@ai-rpg-engine/content-schema@3.12.2` (`schemas.d.ts:2-12` and
+`validateEntityBlueprint` in `dist/validate.js`): `EntityBlueprint.type` is
+still `type: string` with no enum and no validation, and `aiProfile` is an
+optional free string (`resolveEntityAi` / `applyContentPack` resolve it
+against supplied profiles at intake). There is nothing for `ROLE_TO_TYPE`'s
+six-roles-onto-two-types collapse to be checked against, so the item reads
+clean when what it actually is, is unconstrained. Shipped starters use `npc`
+and `enemy` by convention.
 
-**7 — suite and fixtures.** Build clean, 133 files / 2412 tests green, and
-**not one fixture changed**. The 2.x note this document used to carry
-("Dialogue node `text` is an array of `{ text: string }` blocks on 2.x")
-never described what `convert-dialogues.ts` emits — it writes a plain string,
-and did so under the 2.x note as well. At 3.8.0 the type is
-`string | TextBlock[]`, so the constraint was widened out of existence rather
-than satisfied. The pack still disagrees with itself: zone descriptions are
-wrapped in `TextBlock` arrays while dialogue text is not.
+**7 — suite and fixtures.** Build clean at 3.12.2 (`tsc --build --force`),
+and the 3.12.2 alignment run passed 223 files / 3513 tests in CI (the original
+2.x → 3.8.0 bump passed 133 files / 2412 tests with zero fixture churn). The
+2.x note this document used to carry ("Dialogue node `text` is an array of
+`{ text: string }` blocks on 2.x") never described what
+`convert-dialogues.ts` emits — it writes a plain string, and did so under
+the 2.x note as well. Re-verified at 3.12.2 (`schemas.d.ts:272`):
+`DialogueNode.text` is `string | TextBlock[]`, so the union still admits
+plain strings while `ZoneDefinition.description` (`schemas.d.ts:203`) is
+`TextBlock[]`.
 
 **8 — major version bump: DEFERRED, deliberately.** `@world-forge/export-ai-rpg`
 is versioned with the World Forge monorepo (4.5.0), not against the engine

@@ -16,11 +16,11 @@
  *
  * ── THE PROSE LAW, WHICH IS BINDING HERE ─────────────────────────────────────
  *
- * Director, 2026-07-29: "let's make the game more human and less like they were
- * written by an engineer." The starter packs were authored backwards from systems —
- * starter-merchant literally so — and it shows in the content surface: descriptions
- * that enumerate a zone's mechanical affordances, one NPC per mechanic, names that
- * are their own function.
+ * The prose law (July 2026): starter content should read as written by people,
+ * not engineered from the systems. The starter packs were authored backwards from
+ * systems — starter-merchant literally so — and it shows in the content surface:
+ * descriptions that enumerate a zone's mechanical affordances, one NPC per
+ * mechanic, names that are their own function.
  *
  * So every player-facing string in this file was written as prose first and wired
  * to the system second. The rules it was written under:
@@ -32,25 +32,24 @@
  *     mechanic is present the prose shows its consequence, not its label.
  *   * NO SYMMETRY FOR COVERAGE'S SAKE. There is no NPC per mechanic and no
  *     interactable per verb. Two zones have nothing to talk to.
- *   * THE OATMEAL CHECK (Compton: combinatorial uniqueness still reads as
- *     oatmeal). Every description carries ONE hand-placed specific a reader could
- *     remember afterwards — the wax thumbprint on the third scale, the cage with a
- *     lock and an open door, the shed kept deliberately too warm. Perceptual, not
- *     structural: it is not enough that the strings differ.
+ *   * THE OATMEAL CHECK (combinatorial uniqueness alone still reads as
+ *     uniform porridge). Every description carries ONE hand-placed specific a
+ *     reader could remember afterwards — the wax thumbprint on the third scale,
+ *     the cage with a lock and an open door, the shed kept deliberately too warm.
+ *     Perceptual, not structural: it is not enough that the strings differ.
  *
  * The mechanics are unchanged by any of it. Salt is still weighed, the gate still
  * refuses, the stone is still slick. It just stops SOUNDING like the proof.
  *
- * ── ⚖ VOICE FROZEN BY THE DIRECTOR (2026-07-29) ──────────────────────────────
+ * ── ⚖ VOICE FROZEN AT REVIEW (2026-07-29) ────────────────────────────────────
  *
- * All 29 player-facing strings in this file were put in front of the Director at
- * C4/P2's voice gate — the cycle's one designed human checkpoint — and ruled:
- * "Freeze it — this is the voice."
+ * All 29 player-facing strings in this file were reviewed at the July 2026
+ * voice gate and frozen as the canonical harbour voice.
  *
  * So this is CANON, not a draft. Later content for Salt Road matches this register:
  * a ledger-keeper's voice, close and unhurried, with the drama left to the reader.
- * Changing it is a Director decision, not an editorial one, and rewriting a line
- * here on taste grounds without him is overwriting a ruling.
+ * Changing it is a canonical content decision, not an editorial polish pass;
+ * leave the wording intact unless the voice baseline itself is intentionally revised.
  *
  * ── WHAT THE DIORAMA NEEDS FROM THIS WORLD ───────────────────────────────────
  *

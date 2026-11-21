@@ -24,7 +24,7 @@
 // place to change when the next measurement says something different.
 //
 // WHAT IT DELIBERATELY DOES NOT TOUCH: prose, ids, tags, neighbours, gates,
-// hazards, descriptors, presentation — everything the Director froze. This
+// hazards, descriptors, presentation — everything frozen in the canonical world. This
 // function moves geometry and nothing else.
 
 import type { WorldProject } from '@world-forge/schema';

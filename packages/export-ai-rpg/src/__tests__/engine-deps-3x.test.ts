@@ -25,6 +25,7 @@ import {
   ENCOUNTER_ANCHOR_TYPES,
   EVALUATED_NOT_MAPPED_KEYS,
   runLoadGate,
+  satisfiesRange,
   SIM_AFFECTING_KEYS as ENGINE_SIM_AFFECTING_KEYS,
   type ContentPack as EngineContentPack,
 } from '@ai-rpg-engine/content-schema';
@@ -53,11 +54,31 @@ const ENGINE_DEPS = [
   '@ai-rpg-engine/pack-registry',
 ] as const;
 
-function declaredDeps(): Record<string, string> {
-  const pkg = JSON.parse(fs.readFileSync(OWN_PACKAGE_JSON, 'utf-8')) as {
+/** Root lockfile — source of truth for resolved direct and transitive versions. */
+const REPO_LOCKFILE = path.resolve(import.meta.dirname, '../../../../package-lock.json');
+
+function declaredPackageJson(): {
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
+} {
+  return JSON.parse(fs.readFileSync(OWN_PACKAGE_JSON, 'utf-8')) as {
     dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
   };
-  return pkg.dependencies;
+}
+
+function declaredDeps(): Record<string, string> {
+  return declaredPackageJson().dependencies;
+}
+
+function caretRangeBounds(caretRange: string): { floor: string; bounds: string } {
+  const m = /^\^(\d+)\.(\d+\.\d+)$/.exec(caretRange);
+  if (!m) {
+    throw new Error(`expected ^major.minor.patch range, got "${caretRange}"`);
+  }
+  const major = Number(m[1]);
+  const floor = `${m[1]}.${m[2]}`;
+  return { floor, bounds: `>=${floor} <${major + 1}.0.0` };
 }
 
 /**
@@ -87,32 +108,61 @@ function installedVersion(pkg: string): string {
 }
 
 describe('engine deps — the export lane targets the engine it claims to', () => {
-  it('declares all six @ai-rpg-engine ranges at ^3.12.2 — six is what the tree holds', () => {
+  it('declares all six @ai-rpg-engine runtime ranges and devDependency in lockstep — six is what the tree holds', () => {
     // The contract doc said "six". C0 repeated it. Both were right, but neither
     // had counted recently: this reads the manifest, so a seventh dependency
-    // added later cannot ride along undeclared.
-    const deps = declaredDeps();
+    // added later cannot ride along undeclared, and reads the target range from
+    // package.json so a bump branch is judged against what it declares.
+    const pkg = declaredPackageJson();
+    const deps = pkg.dependencies;
     const engineRanges = Object.keys(deps).filter((k) => k.startsWith('@ai-rpg-engine/')).sort();
     expect(engineRanges).toEqual([...ENGINE_DEPS]);
+
+    const targetRange = deps['@ai-rpg-engine/core'];
+    expect(targetRange).toMatch(/^\^3\.\d+\.\d+$/);
     for (const dep of ENGINE_DEPS) {
-      expect(deps[dep], `${dep} must target 3.12.2+`).toBe('^3.12.2');
+      expect(deps[dep], `${dep} must match @ai-rpg-engine/core declared range ${targetRange}`).toBe(targetRange);
     }
-    const pkg = JSON.parse(fs.readFileSync(OWN_PACKAGE_JSON, 'utf-8')) as {
-      devDependencies: Record<string, string>;
-    };
-    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe('^3.12.2');
+    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe(targetRange);
   });
 
-  it('resolves all seven at 3.12.2 — a declared range is not an installed version', () => {
+  it('resolves all direct and transitive @ai-rpg-engine packages to their lockfile versions within the declared range', () => {
     // C0's item 1 was a statement about package.json; what actually determines
     // which types the converters compile against is what npm put on disk. The
     // first install of this errand produced a tree where the DECLARED ranges
     // were all 3.8.0 and `content-schema@3.8.0` still sat on `core@2.0.1`,
     // because npm kept the 2.x copies it already had for the transitive `*`
-    // ranges. The lockfile diff looked correct. This assertion is what that
-    // near-miss earned.
+    // ranges. Reading the declared range + lockfile catches stale copies and
+    // disk/lockfile drift without pinning a hard-coded patch literal.
+    const targetRange = declaredDeps()['@ai-rpg-engine/core'];
+    const { bounds } = caretRangeBounds(targetRange);
+    const lock = JSON.parse(fs.readFileSync(REPO_LOCKFILE, 'utf-8')) as {
+      packages: Record<string, { version?: string }>;
+    };
+
     for (const dep of [...ENGINE_DEPS, '@ai-rpg-engine/starter-fantasy'] as const) {
-      expect(installedVersion(dep), `${dep} resolved below 3.12.2`).toBe('3.12.2');
+      const lockVersion = lock.packages[`node_modules/${dep}`]?.version;
+      expect(lockVersion, `${dep} missing from package-lock.json`).toBeDefined();
+      const diskVersion = installedVersion(dep);
+      expect(diskVersion, `${dep} on disk (${diskVersion}) diverges from lockfile (${lockVersion})`).toBe(lockVersion);
+      expect(
+        satisfiesRange(diskVersion, bounds),
+        `${dep}@${diskVersion} does not satisfy ${bounds} (declared ${targetRange})`,
+      ).toBe(true);
+    }
+
+    const engineLockKeys = Object.keys(lock.packages).filter((k) => k.startsWith('node_modules/@ai-rpg-engine/'));
+    expect(engineLockKeys.length).toBeGreaterThanOrEqual(ENGINE_DEPS.length + 1);
+    for (const lockKey of engineLockKeys) {
+      const pkgName = lockKey.slice('node_modules/'.length);
+      const lockVersion = lock.packages[lockKey]?.version;
+      expect(lockVersion, `${pkgName} missing version in package-lock.json`).toBeDefined();
+      const diskVersion = installedVersion(pkgName);
+      expect(diskVersion, `${pkgName} on disk diverges from lockfile`).toBe(lockVersion);
+      expect(
+        satisfiesRange(diskVersion, bounds),
+        `transitive/direct ${pkgName}@${diskVersion} does not satisfy ${bounds}`,
+      ).toBe(true);
     }
   });
 
@@ -171,7 +221,7 @@ async function loadDogfoodProject(relFromRepoRoot: string, exportName: string): 
   return mod[exportName] as WorldProject;
 }
 
-describe('H1 — world-forge browser-safe contentHash equals engine computeContentHash (Node equivalence)', () => {
+describe('world-forge browser-safe contentHash equals engine computeContentHash (Node equivalence)', () => {
   it('SIM_AFFECTING_KEYS matches the engine gate list (12 keys)', () => {
     expect([...SIM_AFFECTING_KEYS]).toEqual([...ENGINE_SIM_AFFECTING_KEYS]);
   });
@@ -246,8 +296,8 @@ describe('AI RPG encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', ()
   });
 });
 
-describe('3.12.2 content-hash decision — browser-safe twin stays standalone and pinned', () => {
-  it('content-schema@3.12.2 exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
+describe('content-hash decision — browser-safe twin stays standalone and pinned', () => {
+  it('installed content-schema exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
     expect(typeof computeEngineContentHash).toBe('function');
     expect(typeof runLoadGate).toBe('function');
     expect(typeof applyContentPack).toBe('function');
