@@ -90,19 +90,19 @@
       "externals": 0,
       "files": [
         {
-          "hash": "a168e633bf3031522f159e760fd5f535ff7897fd3b3f65fe60680cb712bbedf8",
+          "hash": "ce6717c360770221ebaf1db3d44f5839a15121b60ea1c7290ad2c46e3e2b0936",
           "path": "docs/c0-alignment/export-table.json"
         },
         {
-          "hash": "0ae080282bffd7d7ac5c34846dcf4a2c6db187f21997160a98de797f20fcd4e5",
+          "hash": "9cc088231e8e1e1192d740ebcb40b6bebda81f549e3353c31aca72606a761315",
           "path": "docs/c0-alignment/export-table.md"
         },
         {
-          "hash": "246fd0b10e4b06deb31fe3e94704a23236fa4f123ca857f6d365fff7afa0b4b5",
+          "hash": "436d3fe376bdd2ad97e59ac4f1e865d9abe13b5ebb7e9c11a89003572662b138",
           "path": "docs/c0-alignment/fixture-manifest.json"
         },
         {
-          "hash": "a9814ea0c1f12b60dc69d175c81d97a51484355b9d038bf1a05ec6deb23b8862",
+          "hash": "324c4b398c13ffa2a0038599956916f67d8608b980efdcafa2ae44f290f4ceb3",
           "path": "docs/c0-alignment/fixture-pack.json"
         },
         {
@@ -322,7 +322,7 @@
           "path": "dogfood/chapel-threshold.ts"
         },
         {
-          "hash": "1bd016e414cd25d748f1737ddf6ef208cf5ac7a3dd8849b8a8814b6d411402fe",
+          "hash": "510a8a384cf7d501dd8be957aafae81c4c54a978121433d6c9fa3b7c0b4c84ca",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-godot/src/index.ts",
@@ -411,35 +411,35 @@
             {
               "in": "main",
               "kind": "catch",
-              "line": 212
+              "line": 213
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 232
+              "line": 237
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 284
+              "line": 290
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 329
+              "line": 335
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 349
+              "line": 355
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 371
+              "line": 377
             }
           ],
-          "hash": "23047e66256e4ad72f83c3f66e307d41ec73e14d9171cbc39786b6e432906ee4",
+          "hash": "933689a7047323b160a262955bc104144f12454e4a9402022a0b1ced605eed3b",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -496,14 +496,14 @@
         },
         {
           "constantOnly": true,
-          "hash": "a25017594a92a68e4bab1fa3d51325a75b00223ea86dfa625deb21d11a0ee3c8",
+          "hash": "ce6c9ca358b8e15e05bac5c86776f921190f271d65f53e3ded993650c46d7ad3",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
           "path": "dogfood/worlds/multi-target-proof.ts"
         },
         {
-          "hash": "43fab2c1671066eadd9c46cfdd26be9b015ea7817968a6aacdbcfffb8cf334da",
+          "hash": "91d3302a4947bf92fc518c16c08d1085abd90cc8b4c940c8aa492c608b08958b",
           "path": "dogfood/worlds/multi-target-proof.worldforge.json"
         },
         {
@@ -557,17 +557,17 @@
           "why": "optional"
         },
         {
+          "path": "dogfood/export-stage-fixture.ts",
+          "specifier": "@ai-rpg-engine/content-schema",
+          "why": "undeclared"
+        },
+        {
           "path": "dogfood/godot-smoke/smoke_load_world.gd",
           "specifier": "res://world.tscn",
           "why": "other"
-        },
-        {
-          "path": "dogfood/run-ai-rpg-smoke.ts",
-          "specifier": "@ai-rpg-engine/content-schema",
-          "why": "undeclared"
         }
       ],
-      "unresolvedSites": 9
+      "unresolvedSites": 10
     },
     {
       "dynamicReads": 1,
@@ -959,7 +959,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "62e1d02230c88ec767b5d6b0671ecdca2e7b79f5a01ce0a0f668ddd9ea03cc72",
+          "hash": "6f4a95f0b7621868976d85b2dbd508193af02f1314210c2d2daa59e53486606a",
           "importsFiles": [
             "packages/editor/src/mode-profiles.ts",
             "packages/schema/src/index.ts"
@@ -1089,9 +1089,17 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "44768dae10a60d0edd2f2284042b685b3e8ee61d0b1eeadfef1087921effc138",
+          "hash": "f739f6d2b3b1d9ef072b397ff82bbc6f93882d4520780976b940052c3eafcd55",
+          "importOrder": [
+            "packages/editor/src/mode-profiles.ts",
+            "packages/schema/src/index.ts",
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/editor/src/panels/EncounterProperties.tsx"
+          ],
           "importsFiles": [
             "packages/editor/src/mode-profiles.ts",
+            "packages/editor/src/panels/EncounterProperties.tsx",
+            "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/__tests__/encounter-suggestions.test.ts",
@@ -1151,16 +1159,18 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "888721f61a9f952dcec7ae39863f91f4e9e3d81ebd293dddf039bc9b3b71b279",
+          "hash": "2fcf57077d3e50265e7eed311e879a14263df772993aae558b9badccd4cf5a0a",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/panels/export-handlers.ts",
+            "packages/editor/src/panels/ExportModal.tsx",
             "packages/editor/src/templates/samples.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/hotkeys.ts"
           ],
           "importsFiles": [
             "packages/editor/src/hotkeys.ts",
+            "packages/editor/src/panels/ExportModal.tsx",
             "packages/editor/src/panels/export-handlers.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/templates/samples.ts",
@@ -2666,7 +2676,7 @@
             "getDefaultConnectionKind",
             "getModeProfile"
           ],
-          "hash": "085bdf1c5d300d83210155b6024008833f0cfaeebba9e9a3cc86b84cf13efbe8",
+          "hash": "1d6e81be166832b18dd299682748a0b6f1b526ab0a217b7788d8fb53df09366c",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -2939,10 +2949,12 @@
         },
         {
           "exports": [
-            "EncounterProperties"
+            "EncounterProperties",
+            "EncounterTypeInput"
           ],
-          "hash": "075b01a94eab5243a93f26b9c55d283dc7163817688df5267543b718cf272209",
+          "hash": "6020a87e623464de66d72a27a60a63b26ac9814e419768475ee420d10d6037ab",
           "importOrder": [
+            "packages/export-ai-rpg/src/index.ts",
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/mode-profiles.ts",
@@ -2954,7 +2966,8 @@
             "packages/editor/src/panels/shared.tsx",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
-            "packages/editor/src/ui/styles.ts"
+            "packages/editor/src/ui/styles.ts",
+            "packages/export-ai-rpg/src/index.ts"
           ],
           "path": "packages/editor/src/panels/EncounterProperties.tsx"
         },
@@ -2983,26 +2996,29 @@
         },
         {
           "exports": [
-            "ExportModal"
+            "ExportModal",
+            "TargetReadinessSummary",
+            "computeTargetReadiness"
           ],
           "failurePaths": [
             {
               "in": "ExportModal",
               "kind": "catch",
-              "line": 55
+              "line": 140
             },
             {
               "in": "handleExportBundle",
               "kind": "catch",
-              "line": 117
+              "line": 202
             }
           ],
-          "hash": "24a9952053a758bdd7f7291e988fd04ead01720d2b726f3f39809b7afba8baad",
+          "hash": "97b82990a203c721d23f14ca7cddc2ed950cc4b28d071dcafeb12a2216dfb855",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/panels/export-handlers.ts",
             "packages/schema/src/index.ts",
+            "packages/export-ai-rpg/src/index.ts",
             "packages/editor/src/panels/validation-helpers.ts",
             "packages/editor/src/diff/diff-model.ts",
             "packages/editor/src/projects/index.ts",
@@ -3020,6 +3036,7 @@
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/ui/ModalFrame.tsx",
             "packages/editor/src/ui/styles.ts",
+            "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/panels/ExportModal.tsx"
@@ -5294,7 +5311,7 @@
           "path": "packages/export-ai-rpg/logo.png"
         },
         {
-          "hash": "9cee217034cb09883b8b623649b66181ceea305b120a0084e3d412644f3a7732",
+          "hash": "6738266ebef59d330351d30d4436e23412153d89bb24115f220344cc1f79ca78",
           "path": "packages/export-ai-rpg/package.json"
         },
         {
@@ -5302,7 +5319,7 @@
           "path": "packages/export-ai-rpg/src/ENGINE_CONTRACT.md"
         },
         {
-          "hash": "521c12f85f8b4c1dc2d2bf2c609d228b6564cd8dcc2cfa60f7caafc77ca5e74f",
+          "hash": "047f5058b180fc00cbfe7d691af00b0b8682723014f3055ebc733c3fd4443e62",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts",
@@ -5368,7 +5385,7 @@
           "path": "packages/export-ai-rpg/src/__tests__/c0/export-differ.ts"
         },
         {
-          "hash": "a40453ac507ff69c34af3d3ec0f2bcdea9c101c1cdca4279f42c1349ae45fe8a",
+          "hash": "a02d8415535821aa2cb0e30c20dd91c9c52745106e5302d53db9dbb878768832",
           "names": [
             "dogfood/export-stage-fixture.ts",
             "packages/export-ai-rpg/src/convert-pack.ts",
@@ -5420,7 +5437,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "6f34f555522bdd715397f8b1b60245ad2b88bdbcc0b50f10be12795ba5e91a5e",
+          "hash": "1c2991d703de3e629317686775c7a49b7113d5880e01b2266fd3a63d31b3632d",
           "importOrder": [
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts"
@@ -5436,9 +5453,47 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "4064662fcba67eceaf4defc57fb1440119b37f20f1fdc7a6da39b6caef396b42",
+          "hash": "2efe7cb4dde30fc0ec7c64f3ed53a7f356336cd3e5ea578d9c6b2a86fbdbc4ab",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts"
+          ],
           "importsFiles": [
-            "packages/export-ai-rpg/src/convert-pack.ts"
+            "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts",
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "names": [
+            "dogfood/worlds/multi-target-proof.ts",
+            "dogfood/worlds/salt-road.ts",
+            "dogfood/worlds/sandbox-scale.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "testFramework": "vitest"
+        },
+        {
+          "hash": "ffcab74f3dd96ae5df2fd122d09563843e3fca441f79a485bc790f043a3c2df4",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/export-ai-rpg/src/convert-pack.ts",
+            "packages/export-ai-rpg/src/content-hash.ts",
+            "packages/export-ai-rpg/src/encounter-types.ts",
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts"
+          ],
+          "importsFiles": [
+            "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts",
+            "packages/export-ai-rpg/src/content-hash.ts",
+            "packages/export-ai-rpg/src/convert-pack.ts",
+            "packages/export-ai-rpg/src/encounter-types.ts",
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "names": [
+            "dogfood/worlds/multi-target-proof.ts",
+            "dogfood/worlds/salt-road.ts",
+            "dogfood/worlds/sandbox-scale.ts"
           ],
           "path": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
           "testFramework": "vitest"
@@ -5592,6 +5647,21 @@
           "testFramework": "vitest"
         },
         {
+          "hash": "decfa06d23f768c71b00752ea1d932b9059c258a0ca928709d7cc1512925dd05",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/schema/src/__tests__/fixtures/minimal.ts",
+            "packages/export-ai-rpg/src/export.ts"
+          ],
+          "importsFiles": [
+            "packages/export-ai-rpg/src/export.ts",
+            "packages/schema/src/__tests__/fixtures/minimal.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
+          "testFramework": "vitest"
+        },
+        {
           "hash": "5c4bcdac2d247669c8b72bed68190df2e24f2c7259cb17b79ac97eab712a184c",
           "importsFiles": [
             "packages/export-ai-rpg/src/export.ts",
@@ -5704,7 +5774,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "006674926da293239f32b9722a2e7251852bbcc7d94ef7b10474b7b9befbee76",
+          "hash": "0b6f44b09e9797850e01c0b1f2c4b6858e370f2421a8b0a993bd9f0b0aed126d",
           "importOrder": [
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/convert-pack.ts",
@@ -5735,7 +5805,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "ef2633b77c37369dffa8dbee402721607b2d6530f6205d8118e556794d37f6bc",
+          "hash": "ac114cec72743b363161573c996901b87769cb6da02986e59ed0f84c6d517897",
           "importOrder": [
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/convert-connections.ts",
@@ -5768,7 +5838,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "79e7ea788f8c0a437635ea4687634f8b790e848f08d4260c71bb7d45433a134d",
+          "hash": "157cf793f0dc416430da52dc4296fa06852a8cf493abdd679695b7530708ada9",
           "importOrder": [
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/convert-pack.ts",
@@ -5789,7 +5859,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "0817c70a8b8822ba83271d0aeb261bd56837608b07476fcfee8082de4dcaf44f",
+          "hash": "b581f994c15cafcf1ad11f96621ffd3961485c6cdec9805d4292511a20438c54",
           "importOrder": [
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/convert-items.ts",
@@ -5822,61 +5892,62 @@
             {
               "in": "readJsonIfExists",
               "kind": "catch",
-              "line": 124
+              "line": 125
             },
             {
               "in": "readJsonIfExists",
               "kind": "throw",
-              "line": 127
+              "line": 128
             },
             {
               "in": "isDirectory",
               "kind": "catch",
-              "line": 135
+              "line": 136
             },
             {
               "in": "loadPackDirectory",
               "kind": "throw",
-              "line": 142
+              "line": 143
             },
             {
               "in": "loadPackDirectory",
               "kind": "throw",
-              "line": 145
+              "line": 146
             },
             {
               "in": "loadPackDirectory",
               "kind": "throw",
-              "line": 148
+              "line": 149
             },
             {
               "in": "runImport",
               "kind": "catch",
-              "line": 230
+              "line": 231
             },
             {
               "in": "runImport",
               "kind": "catch",
-              "line": 238
+              "line": 239
             },
             {
               "in": "runImport",
               "kind": "catch",
-              "line": 256
+              "line": 257
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 478
+              "line": 479
             },
             {
               "in": "main",
               "kind": "catch",
-              "line": 486
+              "line": 487
             }
           ],
-          "hash": "85f87fbeba1b305e4a300e519490c493ab81781429a92e92ee730bff21981e0a",
+          "hash": "a02c5975490ab75d1367817fb5690fd6a786a07c6dd06e5df52e83085745fc8f",
           "importsFiles": [
+            "packages/export-ai-rpg/src/encounter-types.ts",
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/export-ai-rpg/src/import.ts",
@@ -5887,7 +5958,7 @@
             {
               "calls": [
                 {
-                  "line": 156,
+                  "line": 157,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -5902,7 +5973,7 @@
             {
               "calls": [
                 {
-                  "line": 156,
+                  "line": 157,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -5910,21 +5981,21 @@
                   "via": "loadPackDirectory"
                 },
                 {
-                  "line": 225,
+                  "line": 226,
                   "name": "importFromExportResult",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
                   }
                 },
                 {
-                  "line": 246,
+                  "line": 247,
                   "name": "detectImportFormat",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
                   }
                 },
                 {
-                  "line": 254,
+                  "line": 255,
                   "name": "importProject",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -5940,7 +6011,7 @@
               "calls": [
                 {
                   "branch": "hasImport || hasFromPack",
-                  "line": 156,
+                  "line": 157,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -6048,7 +6119,7 @@
                     }
                   ],
                   "innerTruncated": true,
-                  "line": 225,
+                  "line": 226,
                   "name": "importFromExportResult",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6057,7 +6128,7 @@
                 },
                 {
                   "branch": "hasImport || hasFromPack",
-                  "line": 246,
+                  "line": 247,
                   "name": "detectImportFormat",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6175,7 +6246,7 @@
                     }
                   ],
                   "innerTruncated": true,
-                  "line": 254,
+                  "line": 255,
                   "name": "importProject",
                   "target": {
                     "file": "packages/export-ai-rpg/src/import.ts"
@@ -6234,35 +6305,35 @@
                       }
                     },
                     {
-                      "line": 393,
+                      "line": 395,
                       "name": "convertItemPlacements",
                       "target": {
                         "file": "packages/export-ai-rpg/src/convert-item-placements.ts"
                       }
                     },
                     {
-                      "line": 396,
+                      "line": 398,
                       "name": "convertDialogues",
                       "target": {
                         "file": "packages/export-ai-rpg/src/convert-dialogues.ts"
                       }
                     },
                     {
-                      "line": 399,
+                      "line": 401,
                       "name": "convertPlayerTemplate",
                       "target": {
                         "file": "packages/export-ai-rpg/src/convert-player-template.ts"
                       }
                     },
                     {
-                      "line": 401,
+                      "line": 403,
                       "name": "convertSpawnPoints",
                       "target": {
                         "file": "packages/export-ai-rpg/src/convert-spawn-points.ts"
                       }
                     },
                     {
-                      "line": 402,
+                      "line": 404,
                       "name": "convertLandmarks",
                       "target": {
                         "file": "packages/export-ai-rpg/src/convert-landmarks.ts"
@@ -6270,10 +6341,17 @@
                     }
                   ],
                   "innerTruncated": true,
-                  "line": 499,
+                  "line": 500,
                   "name": "exportToEngine",
                   "target": {
                     "file": "packages/export-ai-rpg/src/export.ts"
+                  }
+                },
+                {
+                  "line": 527,
+                  "name": "listAiRpgEncounterBlockers",
+                  "target": {
+                    "file": "packages/export-ai-rpg/src/encounter-types.ts"
                   }
                 }
               ],
@@ -6289,7 +6367,7 @@
             "canonicalize",
             "computeContentHash"
           ],
-          "hash": "6a95d89a1e2952d1fd964e3590666a5372feb54747955ff3ccf5d66506e6eaf7",
+          "hash": "e905c3aae8711f3190964ca4492d99220461f91f10b3fb3c6a452ba5825e7af9",
           "path": "packages/export-ai-rpg/src/content-hash.ts"
         },
         {
@@ -6370,7 +6448,7 @@
           "exports": [
             "convertItemPlacements"
           ],
-          "hash": "8b6a369f7a56b37430de2bbca3727135b2fb65d9c28a8abcad880ce47284a1eb",
+          "hash": "fb091b7498d8bff0da09ec0b60bd63152f454e1909e77e1e7b64714c1148ca39",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/fidelity.ts"
@@ -6431,7 +6509,7 @@
             "convertManifest",
             "convertPackMeta"
           ],
-          "hash": "fb7fd6d3f7f7aeb7441eaf190691339b91c5c9c0f028bdf930eb30aef43f26a5",
+          "hash": "83a96bb2ae516a3c2fef5a2eff447b91e8dd1d7b1d8b3b1b130257b29afaa0bd",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/safe-lookup.ts"
@@ -6508,6 +6586,17 @@
           "path": "packages/export-ai-rpg/src/convert-zones.ts"
         },
         {
+          "exports": [
+            "isAiRpgEncounterAnchorType",
+            "listAiRpgEncounterBlockers"
+          ],
+          "hash": "c4a61c0a75623b67cc0f067344b3d25d8e2cbf0448fd6a2b737ce932c4cbed0f",
+          "importsFiles": [
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/encounter-types.ts"
+        },
+        {
           "entry": "exportToEngine",
           "entryRule": 4,
           "exports": [
@@ -6517,10 +6606,10 @@
             {
               "in": "exportToEngine",
               "kind": "catch",
-              "line": 411
+              "line": 413
             }
           ],
-          "hash": "f2c5b359ad11db0385c6706cc97e315a98d517df5b8019499af221cdfa46c1cf",
+          "hash": "5924b8074ec6c147caccb63cc5b34f2f7614c7c817cbf38075b0efd5c1d41823",
           "importsFiles": [
             "packages/export-ai-rpg/src/content-hash.ts",
             "packages/export-ai-rpg/src/convert-build-catalog.ts",
@@ -6595,70 +6684,70 @@
                   }
                 },
                 {
-                  "line": 393,
+                  "line": 395,
                   "name": "convertItemPlacements",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-item-placements.ts"
                   }
                 },
                 {
-                  "line": 396,
+                  "line": 398,
                   "name": "convertDialogues",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-dialogues.ts"
                   }
                 },
                 {
-                  "line": 399,
+                  "line": 401,
                   "name": "convertPlayerTemplate",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-player-template.ts"
                   }
                 },
                 {
-                  "line": 401,
+                  "line": 403,
                   "name": "convertSpawnPoints",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-spawn-points.ts"
                   }
                 },
                 {
-                  "line": 402,
+                  "line": 404,
                   "name": "convertLandmarks",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-landmarks.ts"
                   }
                 },
                 {
-                  "line": 403,
+                  "line": 405,
                   "name": "convertLootTables",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-loot-tables.ts"
                   }
                 },
                 {
-                  "line": 404,
+                  "line": 406,
                   "name": "convertBuildCatalog",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-build-catalog.ts"
                   }
                 },
                 {
-                  "line": 405,
+                  "line": 407,
                   "name": "convertProgressionTrees",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-progression-trees.ts"
                   }
                 },
                 {
-                  "line": 408,
+                  "line": 410,
                   "name": "convertManifest",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-pack.ts"
                   }
                 },
                 {
-                  "line": 410,
+                  "line": 412,
                   "name": "convertPackMeta",
                   "target": {
                     "file": "packages/export-ai-rpg/src/convert-pack.ts"
@@ -6666,7 +6755,7 @@
                 },
                 {
                   "branch": "profile === 'debug' || emitSchemaVersion",
-                  "line": 716,
+                  "line": 718,
                   "name": "computeContentHash",
                   "target": {
                     "file": "packages/export-ai-rpg/src/content-hash.ts"
@@ -6674,21 +6763,21 @@
                 },
                 {
                   "branch": "profile === 'debug' || emitSchemaVersion",
-                  "line": 719,
+                  "line": 721,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
                   }
                 },
                 {
-                  "line": 729,
+                  "line": 731,
                   "name": "computeContentHash",
                   "target": {
                     "file": "packages/export-ai-rpg/src/content-hash.ts"
                   }
                 },
                 {
-                  "line": 732,
+                  "line": 734,
                   "name": "buildFidelityReport",
                   "target": {
                     "file": "packages/export-ai-rpg/src/fidelity.ts"
@@ -7480,7 +7569,7 @@
           ]
         },
         {
-          "hash": "f25336eb1f166c670cf499933504744489fd8b87a3e9d39b6e84dffd7182def4",
+          "hash": "2e2d67642f1b4bbc838ef8332c94aa25463011f2edc43a7d02514955d4264842",
           "importOrder": [
             "packages/export-ai-rpg/src/convert-zones.ts",
             "packages/export-ai-rpg/src/convert-districts.ts",
@@ -7497,7 +7586,8 @@
             "packages/export-ai-rpg/src/convert-pack.ts",
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/import.ts",
-            "packages/export-ai-rpg/src/fidelity.ts"
+            "packages/export-ai-rpg/src/fidelity.ts",
+            "packages/export-ai-rpg/src/encounter-types.ts"
           ],
           "importsFiles": [
             "packages/export-ai-rpg/src/convert-build-catalog.ts",
@@ -7513,6 +7603,7 @@
             "packages/export-ai-rpg/src/convert-progression-trees.ts",
             "packages/export-ai-rpg/src/convert-spawn-points.ts",
             "packages/export-ai-rpg/src/convert-zones.ts",
+            "packages/export-ai-rpg/src/encounter-types.ts",
             "packages/export-ai-rpg/src/export.ts",
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/export-ai-rpg/src/import.ts"
@@ -7560,7 +7651,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 66,
+      "testedBy": 69,
       "unresolvedSites": 0
     },
     {
@@ -10503,7 +10594,7 @@
           "path": "multitask.md"
         },
         {
-          "hash": "27dbb5347e07464bdc5a9c5a30448f32c8ce2942fa30ea7a8e6437e3232cd68f",
+          "hash": "62f56704592cbab83f3b8c51162d5518b55edc0d2659ad534a695b280532739b",
           "path": "package-lock.json"
         },
         {
@@ -10613,7 +10704,7 @@
           "path": "packages/schema/package.json"
         },
         {
-          "hash": "47d68102f00f586e07616485e2d3119a4d40584a9c508cc95ead68fee88614c0",
+          "hash": "622fdc0a85b5b3626a2824790df339a98b0e15f94e9467ab93a9762d7c55f1e1",
           "importOrder": [
             "packages/schema/src/advisory.ts",
             "packages/schema/src/validate.ts",
@@ -10955,7 +11046,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "4746035e4bc2271597d01c017bab4c82bb12f7e4dff67cdcd3c765c59fcb67af",
+          "hash": "2f3b6ce0a1c37077cbf4fc8663eb6d044da264f2da1f3eb191508a68b9492c66",
           "importOrder": [
             "packages/schema/src/validate.ts",
             "packages/schema/src/project.ts",
@@ -11073,7 +11164,7 @@
           "exports": [
             "advisoryValidation"
           ],
-          "hash": "6adb7c7b0d4c66105d0d3b8726327815fdc0ed204417e3847677590d5132f2e6",
+          "hash": "756e1ca50a91cf9538f3512628c49f09d45778d58aa9dc27c6948941b69d1f47",
           "importOrder": [
             "packages/schema/src/project.ts",
             "packages/schema/src/authoring-mode.ts",
@@ -11325,7 +11416,7 @@
             "stampProjectSchemaVersion",
             "validateProject"
           ],
-          "hash": "f5de87f7252c7357d30bf5989ac32d5256bcc851df3d2d81c7a4d3979ee007f4",
+          "hash": "6b4b98f0d33ae745938e5b6e7ab3cb3d8ccb5e833c81d6211582d5e13c3819eb",
           "importOrder": [
             "packages/schema/src/project.ts",
             "packages/schema/src/spatial.ts",
@@ -11379,7 +11470,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 201,
+      "testedBy": 203,
       "unresolvedSites": 0
     },
     {
@@ -11896,7 +11987,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 58
+          "files": 61
         },
         {
           "boundary": "export-godot",
@@ -12141,6 +12232,13 @@
         {
           "job": "build-and-test",
           "matched": true,
+          "path": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
           "path": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
           "runKind": "executes",
           "via": "vitest vitest.config.ts"
@@ -12184,6 +12282,13 @@
           "job": "build-and-test",
           "matched": true,
           "path": "packages/export-ai-rpg/src/__tests__/import.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "build-and-test",
+          "matched": true,
+          "path": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
           "runKind": "executes",
           "via": "vitest vitest.config.ts"
         },
@@ -12558,7 +12663,7 @@
           "via": "astro build"
         }
       ],
-      "runsCount": 79,
+      "runsCount": 81,
       "secrets": [],
       "sends": {
         "deploysPages": false,
@@ -12574,7 +12679,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 221,
+          "files": 223,
           "job": "build-and-test",
           "runner": "vitest",
           "step": "6",
@@ -12585,7 +12690,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 221,
+          "files": 223,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -13147,7 +13252,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 58
+          "files": 61
         },
         {
           "boundary": "export-godot",
@@ -13371,6 +13476,13 @@
         {
           "job": "publish",
           "matched": true,
+          "path": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
           "path": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
           "runKind": "executes",
           "via": "vitest vitest.config.ts"
@@ -13414,6 +13526,13 @@
           "job": "publish",
           "matched": true,
           "path": "packages/export-ai-rpg/src/__tests__/import.test.ts",
+          "runKind": "executes",
+          "via": "vitest vitest.config.ts"
+        },
+        {
+          "job": "publish",
+          "matched": true,
+          "path": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
           "runKind": "executes",
           "via": "vitest vitest.config.ts"
         },
@@ -13731,7 +13850,7 @@
           "runKind": "executes"
         }
       ],
-      "runsCount": 76,
+      "runsCount": 78,
       "secrets": [],
       "sends": {
         "assets": [
@@ -13784,7 +13903,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 221,
+          "files": 223,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -13833,7 +13952,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 31
+          "files": 32
         },
         {
           "boundary": "schema",
@@ -13884,7 +14003,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 31
+          "files": 32
         },
         {
           "boundary": "schema",
@@ -14309,8 +14428,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "ac9ae9815ce9e0753b64cd562cf055cfe308b935",
-    "tracked": 649
+    "commit": "26465ec128c2edae900c5061f62488168806fc99",
+    "tracked": 652
   },
   "landings": [
     {
@@ -15029,6 +15148,24 @@
       "writers": []
     },
     {
+      "readers": [
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "dogfood/worlds/multi-target-proof.ts",
+      "writers": []
+    },
+    {
       "readers": [],
       "target": "dogfood/worlds/multi-target-proof.worldforge.json",
       "writers": [
@@ -15037,6 +15174,42 @@
           "confidence": "ast"
         }
       ]
+    },
+    {
+      "readers": [
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "dogfood/worlds/salt-road.ts",
+      "writers": []
+    },
+    {
+      "readers": [
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        },
+        {
+          "by": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
+          "call": "literal",
+          "confidence": "ast",
+          "fromTests": true
+        }
+      ],
+      "target": "dogfood/worlds/sandbox-scale.ts",
+      "writers": []
     },
     {
       "readers": [
@@ -15845,7 +16018,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 231,
+  "testFiles": 233,
   "unassigned": [],
   "workspaces": [
     "packages/editor",
