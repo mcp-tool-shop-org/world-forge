@@ -146,6 +146,7 @@ async function main() {
         entities: result.contentPack.entities,
         zones: result.contentPack.zones,
         dialogues: result.contentPack.dialogues,
+        hazardDefinitions: result.contentPack.hazardDefinitions,
     };
     const loadResult = loadContent(enginePack);
     assert(loadResult.ok, 'loadContent_ok', loadResult.ok ? undefined : loadResult.summary);
@@ -225,12 +226,17 @@ async function main() {
         // and never invoked anywhere in this file, so it could never surface
         // as a failure. Call it for real.
         if (retrieved) {
-            try {
-                const game = retrieved.createGame(7);
-                assert(game instanceof EngineClass, 'createGame_boots_engine',
-                    `expected an Engine instance, got ${typeof game}`);
-            } catch (err) {
-                assert(false, 'createGame_boots_engine', String(err));
+            if (typeof retrieved.createGame !== 'function') {
+                assert(false, 'createGame_boots_engine',
+                    'PackEntry.createGame is absent — playable entry requires a createGame factory');
+            } else {
+                try {
+                    const game = retrieved.createGame(7);
+                    assert(game instanceof EngineClass, 'createGame_boots_engine',
+                        `expected an Engine instance, got ${typeof game}`);
+                } catch (err) {
+                    assert(false, 'createGame_boots_engine', String(err));
+                }
             }
         }
     }

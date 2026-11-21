@@ -110,7 +110,7 @@ export const RETIRED_PHANTOM_MODULES: Readonly<Record<string, string | null>> = 
  * `pack_format` int with a supported range. The engine's load gate now enforces
  * this, so it is a checked claim rather than a comment.
  */
-export const ENGINE_VERSION_RANGE = '>=3.8.0 <4.0.0';
+export const ENGINE_VERSION_RANGE = '>=3.12.1 <4.0.0';
 
 /**
  * Convert project metadata → engine `GameManifest`.

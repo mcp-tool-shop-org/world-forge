@@ -187,16 +187,17 @@ describe('F-64b9e73d: import consults schemaVersion and retired modules', () => 
   });
 });
 
-// --- F-8820cfd8: items / factionPresences / pressureHotspots participate in the hash ---
+// --- H1 (supersedes F-8820cfd8): world-forge-only channels do not change contentHash; engine keys do ---
 
-describe('F-8820cfd8: items/factionPresences/pressureHotspots change contentHash', () => {
-  it('SIM_AFFECTING_KEYS contains the three previously-omitted ContentPack channels', () => {
-    expect(SIM_AFFECTING_KEYS).toContain('items');
-    expect(SIM_AFFECTING_KEYS).toContain('factionPresences');
-    expect(SIM_AFFECTING_KEYS).toContain('pressureHotspots');
+describe('H1 (supersedes F-8820cfd8): items/factionPresences/pressureHotspots leave contentHash unchanged; engine keys change it', () => {
+  it('SIM_AFFECTING_KEYS excludes world-forge-only channels and includes engine keys', () => {
+    expect(SIM_AFFECTING_KEYS).not.toContain('items');
+    expect(SIM_AFFECTING_KEYS).not.toContain('factionPresences');
+    expect(SIM_AFFECTING_KEYS).not.toContain('pressureHotspots');
+    expect(SIM_AFFECTING_KEYS).toContain('zones');
   });
 
-  it('cloning a pack and mutating each of the three keys changes the digest', () => {
+  it('mutating world-forge-only keys leaves contentHash unchanged, while mutating zones changes it', () => {
     const exported = exportToEngine(minimalProject);
     if (!exported.success) throw new Error('export failed');
     const pack = exported.contentPack;
@@ -215,9 +216,14 @@ describe('F-8820cfd8: items/factionPresences/pressureHotspots change contentHash
       ...pack,
       pressureHotspots: [...pack.pressureHotspots, { id: 'ph-mutated', zoneId: 'zone-entrance', pressureType: 'mutated', baseProbability: 0.1, tags: [] }],
     });
-    expect(withItems).not.toBe(base);
-    expect(withFactions).not.toBe(base);
-    expect(withHotspots).not.toBe(base);
+    const withMutatedZone = computeContentHash({
+      ...pack,
+      zones: pack.zones.map((z, i) => (i === 0 ? { ...z, name: `${z.name} (mutated)` } : z)),
+    });
+    expect(withItems).toBe(base);
+    expect(withFactions).toBe(base);
+    expect(withHotspots).toBe(base);
+    expect(withMutatedZone).not.toBe(base);
   });
 });
 

@@ -350,10 +350,25 @@ describe('F-3162133c: ExportResult still carries fidelity/assets for the CLI to 
   });
 });
 
-describe('new ContentPack channels participate in the content hash', () => {
-  it('SIM_AFFECTING_KEYS lists the wave-32 channels', () => {
-    for (const k of ['connections', 'itemPlacements', 'spawnPoints', 'buildings', 'hubs', 'strongholds']) {
-      expect(SIM_AFFECTING_KEYS).toContain(k);
+describe('H1: wave-32 world-forge-only channels leave contentHash unchanged; engine keys change it', () => {
+  it('SIM_AFFECTING_KEYS omits wave-32 world-forge-only channels and includes engine keys', () => {
+    for (const k of ['connections', 'itemPlacements', 'spawnPoints', 'buildings', 'hubs', 'strongholds', 'landmarks', 'strata', 'stratumLinks', 'transitions']) {
+      expect(SIM_AFFECTING_KEYS).not.toContain(k);
     }
+    expect(SIM_AFFECTING_KEYS).toContain('zones');
+  });
+
+  it('editing connections leaves contentHash unchanged, while editing zones changes it', () => {
+    const base = requireExport(minimalProject);
+    const withConn = requireExport({
+      ...minimalProject,
+      connections: [{ fromZoneId: 'zone-entrance', toZoneId: 'zone-cellar', kind: 'secret', bidirectional: false }],
+    });
+    const editedZone = requireExport({
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) => (i === 0 ? { ...z, name: `${z.name} (edited)` } : z)),
+    });
+    expect(withConn.manifest.contentHash).toBe(base.manifest.contentHash);
+    expect(editedZone.manifest.contentHash).not.toBe(base.manifest.contentHash);
   });
 });
