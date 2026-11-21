@@ -142,7 +142,7 @@ describe('F-c2cdc36d: dialogueId crosses on placements[] and as a dialogue:<id> 
 
 // --- F-42772fc9: item placements zone/grid/lootTableId ---
 
-describe('F-42772fc9: item placements carry zone/grid/lootTableId instead of catalog-only', () => {
+describe('F-42772fc9 + Step 1 Part B: entity-container itemPlacements carry entityId/zone/grid/lootTableId; zone-loose items drop to fidelity', () => {
   const placed: WorldProject = {
     ...minimalProject,
     lootTables: [{ id: 'loot-shelf', rolls: 1, entries: [{ itemId: 'item-torch', weight: 1 }] }],
@@ -153,22 +153,24 @@ describe('F-42772fc9: item placements carry zone/grid/lootTableId instead of cat
         zoneId: 'zone-cellar',
         gridX: 4,
         gridY: 7,
-        container: 'shelf',
+        // 'npc-keeper' is an exported entity in minimalProject.entityPlacements
+        container: 'npc-keeper',
         hidden: false,
         lootTableId: 'loot-shelf',
       },
     ],
   };
 
-  it('ContentPack.itemPlacements carries location + reverse loot link; items[] stays the catalog', () => {
+  it('ContentPack.itemPlacements carries entityId + location + reverse loot link for container-entity placements', () => {
     const exported = requireExport(placed);
     expect(exported.contentPack.items[0].id).toBe('item-torch');
     const ip = exported.contentPack.itemPlacements[0];
     expect(ip.itemId).toBe('item-torch');
+    expect(ip.entityId).toBe('npc-keeper');
     expect(ip.zoneId).toBe('zone-cellar');
     expect(ip.gridX).toBe(4);
     expect(ip.gridY).toBe(7);
-    expect(ip.container).toBe('shelf');
+    expect(ip.container).toBe('npc-keeper');
     expect(ip.lootTableId).toBe('loot-shelf');
   });
 
@@ -179,13 +181,51 @@ describe('F-42772fc9: item placements carry zone/grid/lootTableId instead of cat
     expect(torch?.zoneId).toBe('zone-cellar');
     expect(torch?.gridX).toBe(4);
     expect(torch?.gridY).toBe(7);
-    expect(torch?.container).toBe('shelf');
+    expect(torch?.container).toBe('npc-keeper');
     expect(torch?.lootTableId).toBe('loot-shelf');
     expect(imported.warnings.some((w) => /Item zone placements reconstructed/i.test(w))).toBe(false);
   });
 
-  it('convertItemPlacements is 1:1 with authored itemPlacements', () => {
-    expect(convertItemPlacements(placed)).toHaveLength(placed.itemPlacements.length);
+  it('convertItemPlacements emits entity-container placements and drops non-entity containers to fidelity', () => {
+    expect(convertItemPlacements(placed)).toHaveLength(1);
+    const zoneLooseFidelity: FidelityEntry[] = [];
+    expect(convertItemPlacements(minimalProject, undefined, zoneLooseFidelity)).toHaveLength(0);
+    expect(zoneLooseFidelity).toHaveLength(1);
+    expect(zoneLooseFidelity[0].level).toBe('dropped');
+    expect(zoneLooseFidelity[0].reason).toBe('engine-has-no-zone-items');
+    expect(zoneLooseFidelity[0].message).toContain('gate.ts:91-110');
+  });
+
+  it('zone-loose item placement exports without itemPlacements[] and re-imports into the first zone with an approximated entry', () => {
+    const zoneLooseProject: WorldProject = {
+      ...minimalProject,
+      itemPlacements: [
+        {
+          itemId: 'item-torch',
+          name: 'Torch',
+          zoneId: minimalProject.zones[1].id,
+          hidden: false,
+          slot: 'tool',
+          rarity: 'common',
+        },
+      ],
+    };
+
+    const exported = requireExport(zoneLooseProject);
+    expect(exported.contentPack.itemPlacements).toEqual([]);
+
+    const imported = requireImport(importFromContentPack(exported.contentPack));
+    const torch = imported.project.itemPlacements.find((i) => i.itemId === 'item-torch');
+    expect(torch?.zoneId).toBe(minimalProject.zones[0].id);
+
+    const entry = imported.fidelityReport.entries.find(
+      (f) =>
+        f.domain === 'items' &&
+        f.entityId === 'item-torch' &&
+        f.fieldPath === 'zoneId' &&
+        f.reason === 'zone-placement-first-zone',
+    );
+    expect(entry?.level).toBe('approximated');
   });
 });
 
@@ -350,10 +390,25 @@ describe('F-3162133c: ExportResult still carries fidelity/assets for the CLI to 
   });
 });
 
-describe('new ContentPack channels participate in the content hash', () => {
-  it('SIM_AFFECTING_KEYS lists the wave-32 channels', () => {
-    for (const k of ['connections', 'itemPlacements', 'spawnPoints', 'buildings', 'hubs', 'strongholds']) {
-      expect(SIM_AFFECTING_KEYS).toContain(k);
+describe('H1: wave-32 world-forge-only channels leave contentHash unchanged; engine keys change it', () => {
+  it('SIM_AFFECTING_KEYS omits wave-32 world-forge-only channels and includes engine keys', () => {
+    for (const k of ['connections', 'itemPlacements', 'spawnPoints', 'buildings', 'hubs', 'strongholds', 'landmarks', 'strata', 'stratumLinks', 'transitions']) {
+      expect(SIM_AFFECTING_KEYS).not.toContain(k);
     }
+    expect(SIM_AFFECTING_KEYS).toContain('zones');
+  });
+
+  it('editing connections leaves contentHash unchanged, while editing zones changes it', () => {
+    const base = requireExport(minimalProject);
+    const withConn = requireExport({
+      ...minimalProject,
+      connections: [{ fromZoneId: 'zone-entrance', toZoneId: 'zone-cellar', kind: 'secret', bidirectional: false }],
+    });
+    const editedZone = requireExport({
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) => (i === 0 ? { ...z, name: `${z.name} (edited)` } : z)),
+    });
+    expect(withConn.manifest.contentHash).toBe(base.manifest.contentHash);
+    expect(editedZone.manifest.contentHash).not.toBe(base.manifest.contentHash);
   });
 });

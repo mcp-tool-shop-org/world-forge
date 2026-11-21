@@ -347,4 +347,37 @@ describe('advisoryValidation', () => {
       expect(Array.isArray(snap!.advisory.firstSuggestions)).toBe(true);
     },
   );
+
+  // --- Info advisory for non-engine encounterType ---
+
+  it('emits an info advisory when encounterType is outside AI RPG Engine four types', () => {
+    const project = emptyProject('ocean');
+    project.zones = [
+      { id: 'z1', name: 'Harbor', gridX: 0, gridY: 0, gridWidth: 5, gridHeight: 5, tags: [], description: '', neighbors: [], exits: [], light: 5, noise: 0, hazards: [], interactables: [] },
+    ];
+    project.encounterAnchors = [
+      { id: 'enc-pirate', zoneId: 'z1', encounterType: 'pirate', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    const item = result.items.find((i) => i.path === 'encounterAnchors.enc-pirate.encounterType');
+    expect(item).toBeDefined();
+    expect(item!.severity).toBe('info');
+    expect(item!.message).toContain('pirate');
+    expect(item!.message).toContain('ambush, patrol, horde, duel');
+  });
+
+  it('emits no encounterType advisory when using AI RPG Engine four types', () => {
+    const project = emptyProject('dungeon');
+    project.zones = [
+      { id: 'z1', name: 'Hall', gridX: 0, gridY: 0, gridWidth: 5, gridHeight: 5, tags: [], description: '', neighbors: [], exits: [], light: 5, noise: 0, hazards: [], interactables: [] },
+    ];
+    project.encounterAnchors = [
+      { id: 'enc-a', zoneId: 'z1', encounterType: 'ambush', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      { id: 'enc-b', zoneId: 'z1', encounterType: 'patrol', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      { id: 'enc-c', zoneId: 'z1', encounterType: 'horde', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      { id: 'enc-d', zoneId: 'z1', encounterType: 'duel', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+    ];
+    const result = advisoryValidation(project);
+    expect(result.items.filter((i) => i.path.startsWith('encounterAnchors.'))).toEqual([]);
+  });
 });

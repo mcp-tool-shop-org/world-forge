@@ -10,11 +10,13 @@ import { parseSpawnCondition } from '@world-forge/schema';
 import type { FidelityEntry } from './fidelity.js';
 
 /**
- * One item, placed in one zone. Catalog identity stays on ItemDefinition;
- * this channel is WHERE it stands (and which loot table / container owns it).
+ * One item placed on an exported entity container. Catalog identity stays on
+ * ItemDefinition; the engine's intake gives `itemId` to `entityId`
+ * (see @ai-rpg-engine/content-schema validate.ts:574-580, gate.ts:91-110).
  */
 export interface ExportedItemPlacement {
   itemId: string;
+  entityId: string;
   zoneId: string;
   container?: string;
   lootTableId?: string;
@@ -27,28 +29,50 @@ export interface ExportedItemPlacement {
 /**
  * Convert project.itemPlacements → ContentPack.itemPlacements.
  *
- * One record per ItemPlacement, in authored order. Catalog fields (name,
- * slot, rarity, modifiers) stay on convertItems; this channel carries
- * location, container, lootTableId, and hidden/spawn semantics.
- *
- * ItemPlacement has no authored spawnCondition field today; `hidden` is the
- * spawn-adjacent flag. When hidden, we also compile a `never` ConditionSpec
- * so engine intake that only reads spawnCondition still sees a gate.
+ * Writes a record ONLY when `ip.container` names an entity that the same export
+ * writes, setting `entityId` to that entity's exported id. Zone-loose items
+ * and containers naming no exported entity are omitted from `itemPlacements`
+ * and reported in `fidelity` as dropped with reason `engine-has-no-zone-items`,
+ * citing `gate.ts:91-110`.
  */
 export function convertItemPlacements(
   project: WorldProject,
   warnings?: string[],
   fidelity?: FidelityEntry[],
+  exportedEntityIds?: ReadonlySet<string>,
 ): ExportedItemPlacement[] {
   const lootTableIds = new Set((project.lootTables ?? []).map((t) => t.id));
+  const entityIds = exportedEntityIds ?? new Set(project.entityPlacements.map((ep) => ep.entityId));
+  const out: ExportedItemPlacement[] = [];
 
-  return project.itemPlacements.map((ip) => {
+  for (const ip of project.itemPlacements) {
+    const containerEntityId = typeof ip.container === 'string' && ip.container.length > 0 && entityIds.has(ip.container)
+      ? ip.container
+      : undefined;
+
+    if (!containerEntityId) {
+      const label = ip.name || ip.itemId;
+      fidelity?.push({
+        domain: 'items',
+        level: 'dropped',
+        severity: 'warning',
+        entityId: ip.itemId,
+        fieldPath: 'zoneId',
+        message: ip.container
+          ? `Item "${ip.itemId}" (${label}) in zone "${ip.zoneId}" has container "${ip.container}" naming no exported entity — omitted from ContentPack.itemPlacements because the engine has no zone-item vocabulary (gate.ts:91-110).`
+          : `Zone-loose item "${ip.itemId}" (${label}) in zone "${ip.zoneId}" omitted from ContentPack.itemPlacements because the engine has no zone-item vocabulary (gate.ts:91-110).`,
+        reason: 'engine-has-no-zone-items',
+      });
+      continue;
+    }
+
     const record: ExportedItemPlacement = {
       itemId: ip.itemId,
+      entityId: containerEntityId,
       zoneId: ip.zoneId,
       hidden: ip.hidden,
+      container: ip.container,
     };
-    if (ip.container) record.container = ip.container;
     if (ip.lootTableId) {
       record.lootTableId = ip.lootTableId;
       if (!lootTableIds.has(ip.lootTableId)) {
@@ -74,8 +98,20 @@ export function convertItemPlacements(
       if (compiled) {
         record.spawnCondition = { type: compiled.type, params: compiled.params ?? {} };
       }
+      const label = ip.name || ip.itemId;
+      fidelity?.push({
+        domain: 'items',
+        level: 'approximated',
+        severity: 'warning',
+        entityId: ip.itemId,
+        fieldPath: 'hidden',
+        message: `Hidden item "${ip.itemId}" (${label}) placed on entity "${containerEntityId}": the engine gives the item at boot and does not read spawnCondition.`,
+        reason: 'hidden-item-placement-given-at-boot',
+      });
     }
 
-    return record;
-  });
+    out.push(record);
+  }
+
+  return out;
 }

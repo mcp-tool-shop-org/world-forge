@@ -30,15 +30,31 @@ function runCli(args: string[], extraEnv?: NodeJS.ProcessEnv): Promise<{ code: n
 
 let tmpDir: string;
 let validJsonPath: string;
+let aiRpgValidJsonPath: string;
 let invalidJsonPath: string;
 let badJsonPath: string;
 
 beforeAll(async () => {
   tmpDir = await mkdtemp(join(tmpdir(), 'wf-cli-'));
   validJsonPath = join(tmpDir, 'valid.json');
+  aiRpgValidJsonPath = join(tmpDir, 'ai-rpg-valid.json');
   invalidJsonPath = join(tmpDir, 'invalid.json');
   badJsonPath = join(tmpDir, 'bad.json');
   await writeFile(validJsonPath, JSON.stringify(minimalProject, null, 2));
+  await writeFile(
+    aiRpgValidJsonPath,
+    JSON.stringify(
+      {
+        ...minimalProject,
+        encounterAnchors: minimalProject.encounterAnchors.map((ea) => ({
+          ...ea,
+          encounterType: 'patrol',
+        })),
+      },
+      null,
+      2,
+    ),
+  );
   await writeFile(invalidJsonPath, JSON.stringify(invalidOrphanProject, null, 2));
   await writeFile(badJsonPath, 'not json at all {{{');
 });
@@ -69,9 +85,19 @@ describe('CLI: world-forge-export', () => {
   });
 
   it('validates a valid project with --validate-only', async () => {
-    const { code, stdout } = await runCli([validJsonPath, '--validate-only']);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--validate-only']);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
+  });
+
+  it('E2: --validate-only reports non-engine encounterType blocker by anchor id and exits non-zero', async () => {
+    const { code, stderr } = await runCli([validJsonPath, '--validate-only']);
+    expect(code).toBe(1);
+    expect(stderr).toContain('enc-cellar');
+    expect(stderr).toContain('ambush');
+    expect(stderr).toContain('patrol');
+    expect(stderr).toContain('horde');
+    expect(stderr).toContain('duel');
   });
 
   it('rejects an invalid project with exit code 1', async () => {
@@ -103,7 +129,7 @@ describe('CLI: world-forge-export', () => {
 
   it('exports output files with --out', async () => {
     const outDir = join(tmpDir, 'export-out');
-    const { code, stdout } = await runCli([validJsonPath, '--out', outDir]);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--out', outDir]);
     expect(code).toBe(0);
     expect(stdout).toContain('Exported to');
 
@@ -123,9 +149,60 @@ describe('CLI: world-forge-export', () => {
     expect(Array.isArray(fidelity.entries)).toBe(true);
   });
 
+  it('AI RPG export with non-engine encounterType blocker prints to stderr, exits 1, and writes no files', async () => {
+    const outDir = join(tmpDir, 'export-blocked-out');
+    const { code, stderr } = await runCli([validJsonPath, '--out', outDir]);
+    expect(code).toBe(1);
+    expect(stderr).toContain('AI RPG export blocked:');
+    expect(stderr).toContain('enc-cellar');
+    expect(stderr).toContain('undead');
+    expect(stderr).toContain('ambush');
+    let existed = true;
+    try {
+      await access(outDir);
+    } catch {
+      existed = false;
+    }
+    expect(existed).toBe(false);
+  });
+
+  it('AI RPG export prints every encounter blocker to stderr across --out and --dry-run', async () => {
+    const multiBlockerPath = join(tmpDir, 'multi-blocker.json');
+    await writeFile(
+      multiBlockerPath,
+      JSON.stringify(
+        {
+          ...minimalProject,
+          encounterAnchors: [
+            { id: 'enc-one', zoneId: 'zone-cellar', encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+            { id: 'enc-two', zoneId: 'zone-cellar', encounterType: 'pirate', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+    const outDir = join(tmpDir, 'export-multi-blocked-out');
+    const outRes = await runCli([multiBlockerPath, '--out', outDir]);
+    expect(outRes.code).toBe(1);
+    expect(outRes.stderr).toContain('enc-one');
+    expect(outRes.stderr).toContain('combat');
+    expect(outRes.stderr).toContain('enc-two');
+    expect(outRes.stderr).toContain('pirate');
+
+    const dryRes = await runCli([multiBlockerPath, '--dry-run']);
+    expect(dryRes.code).toBe(1);
+    expect(dryRes.stderr).toContain('enc-one');
+    expect(dryRes.stderr).toContain('enc-two');
+  });
+
   it('F-3162133c: --out writes assets.json / asset-bindings.json when the project has assets', async () => {
     const withAssets = {
       ...minimalProject,
+      encounterAnchors: minimalProject.encounterAnchors.map((ea) => ({
+        ...ea,
+        encounterType: 'patrol',
+      })),
       assets: [{ id: 'bg-1', kind: 'background', label: 'Hall', path: 'assets/hall.png', tags: [] }],
       zones: minimalProject.zones.map((z: (typeof minimalProject.zones)[number], i: number) =>
         i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
@@ -144,7 +221,7 @@ describe('CLI: world-forge-export', () => {
 
   it('F-c5ed434d: --import of a pack directory writes world-project.json', async () => {
     const packDir = join(tmpDir, 'export-for-import');
-    const { code: exportCode } = await runCli([validJsonPath, '--out', packDir]);
+    const { code: exportCode } = await runCli([aiRpgValidJsonPath, '--out', packDir]);
     expect(exportCode).toBe(0);
     const importDir = join(tmpDir, 'imported-project');
     const { code, stdout } = await runCli(['--from-pack', packDir, '--out', importDir]);
@@ -160,7 +237,7 @@ describe('CLI: world-forge-export', () => {
 
   it('F-c5ed434d: --import of a ContentPack JSON file is accepted', async () => {
     const packDir = join(tmpDir, 'export-for-import-file');
-    const { code: exportCode } = await runCli([validJsonPath, '--out', packDir]);
+    const { code: exportCode } = await runCli([aiRpgValidJsonPath, '--out', packDir]);
     expect(exportCode).toBe(0);
     const importDir = join(tmpDir, 'imported-from-file');
     const { code, stdout } = await runCli(['--import', join(packDir, 'content-pack.json'), '--out', importDir]);
@@ -172,7 +249,7 @@ describe('CLI: world-forge-export', () => {
 
   it('F-c5ed434d: --import without --out writes WorldProject JSON to stdout', async () => {
     const packDir = join(tmpDir, 'export-for-import-stdout');
-    const { code: exportCode } = await runCli([validJsonPath, '--out', packDir]);
+    const { code: exportCode } = await runCli([aiRpgValidJsonPath, '--out', packDir]);
     expect(exportCode).toBe(0);
     const { code, stdout } = await runCli(['--import', join(packDir, 'content-pack.json')]);
     expect(code).toBe(0);
@@ -190,7 +267,7 @@ describe('CLI: world-forge-export', () => {
   // AIR-FT-001: --profile flag
   it('defaults to release profile (no _debug in content-pack.json)', async () => {
     const outDir = join(tmpDir, 'export-profile-default');
-    const { code } = await runCli([validJsonPath, '--out', outDir]);
+    const { code } = await runCli([aiRpgValidJsonPath, '--out', outDir]);
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(contentPack._debug).toBeUndefined();
@@ -198,7 +275,7 @@ describe('CLI: world-forge-export', () => {
 
   it('--profile debug emits _debug block in content-pack.json', async () => {
     const outDir = join(tmpDir, 'export-profile-debug');
-    const { code } = await runCli([validJsonPath, '--out', outDir, '--profile', 'debug']);
+    const { code } = await runCli([aiRpgValidJsonPath, '--out', outDir, '--profile', 'debug']);
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(contentPack._debug).toBeDefined();
@@ -221,7 +298,7 @@ describe('CLI: world-forge-export', () => {
   // AIR-FT-005: --dry-run
   it('--dry-run does NOT create the output dir', async () => {
     const outDir = join(tmpDir, 'export-dry-run-should-not-exist');
-    const { code, stdout } = await runCli([validJsonPath, '--dry-run']);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--dry-run']);
     expect(code).toBe(0);
     expect(stdout).toContain('Dry run');
     expect(stdout).toContain('bytes');
@@ -255,7 +332,7 @@ describe('CLI: world-forge-export', () => {
   // AIR-FT-005: --emit-schema-version (default on) / --no-emit-schema-version
   it('puts schemaVersion in the ContentPack by default', async () => {
     const outDir = join(tmpDir, 'export-schemaver-on');
-    const { code } = await runCli([validJsonPath, '--out', outDir]);
+    const { code } = await runCli([aiRpgValidJsonPath, '--out', outDir]);
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(typeof contentPack.schemaVersion).toBe('string');
@@ -264,7 +341,7 @@ describe('CLI: world-forge-export', () => {
 
   it('--no-emit-schema-version strips schemaVersion from the ContentPack', async () => {
     const outDir = join(tmpDir, 'export-schemaver-off');
-    const { code } = await runCli([validJsonPath, '--out', outDir, '--no-emit-schema-version']);
+    const { code } = await runCli([aiRpgValidJsonPath, '--out', outDir, '--no-emit-schema-version']);
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(contentPack.schemaVersion).toBeUndefined();
@@ -273,7 +350,7 @@ describe('CLI: world-forge-export', () => {
   // F-4ac43db0: --emit-schema-version wins over --no-emit-schema-version and env
   it('--emit-schema-version wins over --no-emit-schema-version when both appear', async () => {
     const outDir = join(tmpDir, 'export-schemaver-force-on');
-    const { code } = await runCli([validJsonPath, '--out', outDir, '--no-emit-schema-version', '--emit-schema-version']);
+    const { code } = await runCli([aiRpgValidJsonPath, '--out', outDir, '--no-emit-schema-version', '--emit-schema-version']);
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(typeof contentPack.schemaVersion).toBe('string');
@@ -282,7 +359,7 @@ describe('CLI: world-forge-export', () => {
 
   it('WORLD_FORGE_EMIT_SCHEMA_VERSION=0 strips schemaVersion unless --emit-schema-version is set', async () => {
     const outDir = join(tmpDir, 'export-schemaver-env-off');
-    const { code } = await runCli([validJsonPath, '--out', outDir], { WORLD_FORGE_EMIT_SCHEMA_VERSION: '0' });
+    const { code } = await runCli([aiRpgValidJsonPath, '--out', outDir], { WORLD_FORGE_EMIT_SCHEMA_VERSION: '0' });
     expect(code).toBe(0);
     const contentPack = JSON.parse(await readFile(join(outDir, 'content-pack.json'), 'utf-8'));
     expect(contentPack.schemaVersion).toBeUndefined();
@@ -291,7 +368,7 @@ describe('CLI: world-forge-export', () => {
   it('--emit-schema-version overrides WORLD_FORGE_EMIT_SCHEMA_VERSION=0', async () => {
     const outDir = join(tmpDir, 'export-schemaver-env-override');
     const { code } = await runCli(
-      [validJsonPath, '--out', outDir, '--emit-schema-version'],
+      [aiRpgValidJsonPath, '--out', outDir, '--emit-schema-version'],
       { WORLD_FORGE_EMIT_SCHEMA_VERSION: '0' },
     );
     expect(code).toBe(0);
@@ -317,7 +394,7 @@ describe('CLI: world-forge-export', () => {
   // F-08ce4899: unknown flags are errors, not silent no-ops
   it('F-43fdcc72: --strict is a known flag (exits 1 when the fixture has warnings)', async () => {
     const outDir = join(tmpDir, 'export-strict-known');
-    const { code, stderr } = await runCli([validJsonPath, '--out', outDir, '--strict']);
+    const { code, stderr } = await runCli([aiRpgValidJsonPath, '--out', outDir, '--strict']);
     expect(stderr).not.toContain("unknown option '--strict'");
     expect(code).toBe(1);
     expect(stderr).toContain('--strict:');
@@ -355,7 +432,7 @@ describe('CLI: world-forge-export', () => {
 
   // F-b2103ece: flag-first is not ENOENT on a path named --validate-only
   it('accepts --validate-only before the project path', async () => {
-    const { code, stdout, stderr } = await runCli(['--validate-only', validJsonPath]);
+    const { code, stdout, stderr } = await runCli(['--validate-only', aiRpgValidJsonPath]);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
     expect(stderr).not.toMatch(/ENOENT/);
@@ -382,7 +459,7 @@ describe('CLI: world-forge-export', () => {
 
   // F-f54a9f8b: --verbose is live on validate-only / dry-run / failure
   it('--validate-only --verbose prints verbose diagnostics', async () => {
-    const { code, stdout } = await runCli([validJsonPath, '--validate-only', '--verbose']);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--validate-only', '--verbose']);
     expect(code).toBe(0);
     expect(stdout).toContain('Validation passed');
     expect(stdout).toContain('Verbose Diagnostics');
@@ -390,7 +467,7 @@ describe('CLI: world-forge-export', () => {
   });
 
   it('--dry-run --verbose prints verbose diagnostics', async () => {
-    const { code, stdout } = await runCli([validJsonPath, '--dry-run', '--verbose']);
+    const { code, stdout } = await runCli([aiRpgValidJsonPath, '--dry-run', '--verbose']);
     expect(code).toBe(0);
     expect(stdout).toContain('Dry run');
     expect(stdout).toContain('Verbose Diagnostics');
@@ -410,7 +487,7 @@ describe('CLI: world-forge-export', () => {
   // any fidelity entry — landmarks on the minimal fixture is the on-disk case.
   it('prints Fidelity: on a successful export so dropped rows cannot hide behind Exported to', async () => {
     const outDir = join(tmpDir, 'export-fidelity-print');
-    const { code, stdout, stderr } = await runCli([validJsonPath, '--out', outDir]);
+    const { code, stdout, stderr } = await runCli([aiRpgValidJsonPath, '--out', outDir]);
     expect(code).toBe(0);
     expect(stdout).toContain('Exported to');
     const combined = `${stdout}\n${stderr}`;

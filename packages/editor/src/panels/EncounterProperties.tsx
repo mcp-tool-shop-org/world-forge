@@ -1,9 +1,36 @@
 import { useMemo } from 'react';
+import { isAiRpgEncounterAnchorType } from '@world-forge/schema';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { PanelHeader, VisibilityToggle } from './shared.js';
 import { labelText, inputCompact, labelText as sharedLabelStyle, inputBase as sharedInputStyle, buttonDangerFull as deleteBtnStyle } from '../ui/styles.js';
+
+export function EncounterTypeInput({
+  encounterType,
+  suggestions,
+  onChange,
+}: {
+  encounterType: string;
+  suggestions: string[];
+  onChange: (value: string) => void;
+}) {
+  const aiRpgLoadable = encounterType.trim().length === 0 || isAiRpgEncounterAnchorType(encounterType);
+  return (
+    <label style={labelStyle}>Encounter Type
+      <input style={inputStyle} value={encounterType} list="encounter-type-suggestions"
+        onChange={(e) => onChange(e.target.value)} />
+      <datalist id="encounter-type-suggestions">
+        {suggestions.map((t) => (
+          <option key={t} value={t} label={isAiRpgEncounterAnchorType(t) ? undefined : 'not loadable by AI RPG Engine'} />
+        ))}
+      </datalist>
+      {!aiRpgLoadable && (
+        <span style={{ color: 'var(--wf-warning)', fontSize: 11 }}>not loadable by AI RPG Engine</span>
+      )}
+    </label>
+  );
+}
 
 export function EncounterProperties() {
   const { project, updateEncounter, removeEncounter } = useProjectStore();
@@ -27,13 +54,11 @@ export function EncounterProperties() {
         {/* EUB-017: show zone-deleted indicator for orphaned encounters */}
         {!zone && <span style={{ color: 'var(--wf-danger-text)', fontSize: 11 }}>Zone deleted</span>}
       </label>
-      <label style={labelStyle}>Encounter Type
-        <input style={inputStyle} value={enc.encounterType} list="encounter-type-suggestions"
-          onChange={(e) => updateEncounter(enc.id, { encounterType: e.target.value })} />
-        <datalist id="encounter-type-suggestions">
-          {encounterSuggestions.map((t) => <option key={t} value={t} />)}
-        </datalist>
-      </label>
+      <EncounterTypeInput
+        encounterType={enc.encounterType}
+        suggestions={encounterSuggestions}
+        onChange={(value) => updateEncounter(enc.id, { encounterType: value })}
+      />
       <label style={labelStyle}>Enemy IDs (comma-separated)
         <input style={inputStyle} value={enc.enemyIds.join(', ')}
           onChange={(e) => updateEncounter(enc.id, { enemyIds: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />

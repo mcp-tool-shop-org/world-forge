@@ -760,7 +760,7 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'itemPlacements[].itemId', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].id', transform: 'renamed-key', note: '' },
   { path: 'itemPlacements[].name', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].name', note: 'Falls back to itemId when unset.' },
   { path: 'itemPlacements[].description', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].description', transform: 'synthesised-when-absent', note: 'When authored it crosses verbatim. When absent the exporter SYNTHESISES `Found in <container>` (or the literal `An item.`), so an unauthored description is indistinguishable from an authored one downstream.' },
-  { path: 'itemPlacements[].container', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].container', note: 'CLOSED BY swarm wave-32 (F-42772fc9). Placement channel. convertItems still folds container into a synthesised description when description is unset, and drops it from the catalog description when both are authored (F-06fd0fb3).' },
+  { path: 'itemPlacements[].container', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].description', transform: 'folded-into-synthesised-description', note: 'Part B narrowed ContentPack.itemPlacements to container-entity placements only (gate.ts:91-110); this fixture authors non-entity containers so itemPlacements[] is empty, while convertItems still folds container into a synthesised description when description is unset and drops it otherwise (F-06fd0fb3).' },
   // ⚠ FLIPPED BY swarm wave-2 (F-1c1a6e56, the pinned-test rule). C0 measured
   // this fallback as SILENT — no warnings param, no fidelity param on
   // convertItems at all, unlike every sibling converter. The VALUE still
@@ -778,24 +778,16 @@ export const EXPLICIT_ROWS: ExportRow[] = [
   { path: 'itemPlacements[].resourceModifiers{}', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].resourceModifiers{}', note: 'Omitted entirely when empty.' },
   { path: 'itemPlacements[].grantedTags[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].grantedTags[]', note: 'Omitted entirely when empty.' },
   { path: 'itemPlacements[].grantedVerbs[]', class: 'carried-lossless', channel: 'contentPack', packPath: 'items[].grantedVerbs[]', note: 'Omitted entirely when empty.' },
-  { path: 'itemPlacements[].hidden', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].hidden', note: 'CLOSED BY swarm wave-32 (F-42772fc9). The boolean now crosses on the placement channel. convertItems still ALSO re-encodes hidden:true as provenance flag contraband (F-06fd0fb3), reported separately.' },
+  { path: 'itemPlacements[].hidden', class: 'carried-approximated', channel: 'contentPack', packPath: 'items[].provenance.flags[]', transform: 'boolean-reencoded-as-contraband-flag', note: 'Part B omitted non-entity itemPlacements (gate.ts:91-110); hidden:true still re-encodes as contraband provenance flag on items[] (F-06fd0fb3).' },
   { path: 'itemPlacements[].iconId', class: 'carried-lossless', channel: 'assetBindings', packPath: 'items{}.iconId', note: 'Binding-map channel only; not in the ContentPack.' },
-  { path: 'itemPlacements[].zoneId', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].zoneId', note: 'CLOSED BY swarm wave-32 (F-42772fc9). Placement channel; ItemDefinition remains the catalog.' },
-  { path: 'itemPlacements[].gridX', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].gridX', note: 'CLOSED BY swarm wave-32 (F-42772fc9).' },
-  { path: 'itemPlacements[].gridY', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].gridY', note: 'CLOSED BY swarm wave-32 (F-42772fc9).' },
-  // ⚠ NOTE UPDATED BY swarm wave-2 (F-ee46a52c) — the CLASS is unchanged
-  // (still no-channel) but the OLD REASON is now false, AND the proof needed
-  // a SCOPE it didn't need before. The loot tables themselves are no longer
-  // dropped (see LOOT_TABLE_ROWS below); what has no channel is specifically
-  // the REVERSE link — `ItemDefinition` has no field to say which loot table
-  // can drop a given catalog item. The forward link
-  // (`lootTables[].entries[].itemId`) does cross. Scoped to `items[]`
-  // because the fixture's own loot table is now id `loot-vault-silt`, and an
-  // UNSCOPED value-absent proof reads that id's appearance in
-  // `contentPack.lootTables[].id` as if it were the item's back-reference
-  // leaking — the same collision-shape `entityPlacements[].ai.fears[]` above
-  // already documents for a different pair of fields.
-  { path: 'itemPlacements[].lootTableId', class: 'carried-lossless', channel: 'contentPack', packPath: 'itemPlacements[].lootTableId', note: 'CLOSED BY swarm wave-32 (F-42772fc9). The reverse item→lootTableId link now lives on the placement channel. The forward table→itemId link already crossed via ContentPack.lootTables (F-ee46a52c).' },
+  { path: 'itemPlacements[].zoneId', class: 'no-channel', absence: { kind: 'key-absent', key: 'zoneId', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'Part B (gate.ts:91-110): engine has no zone-item vocabulary, so non-entity placements are dropped with fidelity reason engine-has-no-zone-items rather than written to ContentPack.itemPlacements.' },
+  { path: 'itemPlacements[].gridX', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridX', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'Scoped to items[] because Part B drops non-entity itemPlacements (gate.ts:91-110) while spawnPoints/buildings keep gridX.' },
+  { path: 'itemPlacements[].gridY', class: 'no-channel', absence: { kind: 'key-absent', key: 'gridY', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'Scoped to items[] because Part B drops non-entity itemPlacements (gate.ts:91-110) while spawnPoints/buildings keep gridY.' },
+  // ⚠ NOTE UPDATED BY swarm wave-2 (F-ee46a52c) + Part B — the CLASS is unchanged
+  // (no-channel on items[]) because Part B omits non-entity placements from
+  // ContentPack.itemPlacements (gate.ts:91-110). Scoped to `items[]` because
+  // `contentPack.lootTables[].id` carries the forward id.
+  { path: 'itemPlacements[].lootTableId', class: 'no-channel', absence: { kind: 'value-absent', scope: [{ channel: 'contentPack', packPath: 'items[]' }] }, note: 'The loot-table BACK-reference has no target on ItemDefinition, and Part B drops non-entity itemPlacements (gate.ts:91-110). Forward lootTables[].entries[].itemId still crosses.' },
 
   // ── Assets / asset packs (World-Forge-side round-trip channels) ─────
   { path: 'assets[].id', class: 'carried-lossless', channel: 'assets', packPath: 'assets[].id', note: 'The whole `assets` array is passed through untouched into ExportResult.assets — a World Forge re-import channel with no engine reader.' },

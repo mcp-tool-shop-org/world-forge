@@ -542,37 +542,7 @@
       }
     }
   ],
-  "itemPlacements": [
-    {
-      "itemId": "item-rope",
-      "zoneId": "zone-surface-yard",
-      "hidden": false,
-      "container": "stall crate",
-      "lootTableId": "loot-vault-silt",
-      "gridX": 7,
-      "gridY": 3
-    },
-    {
-      "itemId": "item-lantern",
-      "zoneId": "zone-under-vault",
-      "hidden": true,
-      "container": "silt",
-      "gridX": 3,
-      "gridY": 19,
-      "spawnCondition": {
-        "type": "never",
-        "params": {}
-      }
-    },
-    {
-      "itemId": "item-tide-ration",
-      "zoneId": "zone-sky-gantry",
-      "hidden": false,
-      "container": "gantry locker",
-      "gridX": 19,
-      "gridY": 5
-    }
-  ],
+  "itemPlacements": [],
   "playerTemplate": {
     "name": "Surveyor",
     "defaultArchetypeId": "arch-delver",

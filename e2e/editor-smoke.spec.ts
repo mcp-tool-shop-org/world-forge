@@ -23,6 +23,7 @@ import {
   CHAPEL_ID,
   CHAPEL_ZONE_COUNT,
   loadChapel,
+  loadChapelExportable,
   openExportModal,
   clickExportAndDownload,
   readDownloadJson,
@@ -113,7 +114,7 @@ test.describe('Editor export downloads (F-624ed964)', () => {
   test.describe.configure({ timeout: 90_000 });
 
   test('Export JSON downloads a non-empty chapel engine pack', async ({ page }) => {
-    await loadChapel(page);
+    await loadChapelExportable(page);
     await openExportModal(page);
 
     const download = await clickExportAndDownload(page, 'Export JSON');
@@ -123,6 +124,17 @@ test.describe('Editor export downloads (F-624ed964)', () => {
     expect(asRecord(json.packMeta, 'packMeta').id).toBe(CHAPEL_ID);
     expect(asRecord(json.manifest, 'manifest').id).toBe(CHAPEL_ID);
     expect(asArray(asRecord(json.contentPack, 'contentPack').zones, 'contentPack.zones')).toHaveLength(CHAPEL_ZONE_COUNT);
+  });
+
+  test('Chapel as authored disables Export JSON and names the blocked encounterType', async ({ page }) => {
+    await loadChapel(page);
+    await openExportModal(page);
+
+    const dialog = page.getByRole('dialog', { name: 'Export' });
+    await expect(dialog.getByRole('button', { name: 'Export JSON', exact: true })).toBeDisabled();
+    await expect(dialog.getByText(/crypt-encounter.*combat/)).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Export Unreal Engine 5', exact: true })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: 'Export Godot 4', exact: true })).toBeEnabled();
   });
 
   test('Export Unreal Engine 5 downloads a non-empty chapel pack', async ({ page }) => {

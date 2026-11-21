@@ -1,7 +1,12 @@
 // mode-profiles.ts — per-mode defaults for grid, connections, guide text, etc.
 
 import type { AuthoringMode, ConnectionKind } from '@world-forge/schema';
-import { DEFAULT_MODE, isValidMode } from '@world-forge/schema';
+import { AI_RPG_ENCOUNTER_ANCHOR_TYPES, DEFAULT_MODE, isValidMode } from '@world-forge/schema';
+
+const ENGINE_ENCOUNTER_TYPES_PATROL_FIRST: readonly string[] = [
+  'patrol',
+  ...AI_RPG_ENCOUNTER_ANCHOR_TYPES.filter((t) => t !== 'patrol'),
+];
 
 /** Static configuration profile for an authoring mode. */
 export interface ModeProfile {
@@ -43,7 +48,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking creature', description: 'Add a creature or character the player can talk to.' },
     },
     modeTip: 'Design rooms and corridors, then connect them with doors and passages.',
-    encounterTypes: ['patrol', 'ambush', 'boss', 'trap'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'boss', 'trap'],
     defaultEntityRole: 'enemy',
     zoneNamePattern: 'Chamber',
   },
@@ -63,7 +68,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking NPC', description: 'Add a merchant, guard, or citizen the player can talk to.' },
     },
     modeTip: 'Define city blocks and connect them with roads and alleys.',
-    encounterTypes: ['patrol', 'pickpocket', 'brawl', 'riot'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'pickpocket', 'brawl', 'riot'],
     defaultEntityRole: 'npc',
     zoneNamePattern: 'Block',
   },
@@ -83,7 +88,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking NPC', description: 'Add a leader, scout, or diplomat the player can talk to.' },
     },
     modeTip: 'Map territories and connect them with roads and portals.',
-    encounterTypes: ['patrol', 'siege', 'invasion', 'caravan-raid'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'siege', 'invasion', 'caravan-raid'],
     defaultEntityRole: 'npc',
     zoneNamePattern: 'Territory',
   },
@@ -103,7 +108,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking NPC', description: 'Add a harbor master, sailor, or merchant the player can talk to.' },
     },
     modeTip: 'Chart sea zones and connect them with channels and routes.',
-    encounterTypes: ['pirate', 'kraken', 'storm', 'boarding'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'pirate', 'kraken', 'storm', 'boarding'],
     defaultEntityRole: 'enemy',
     zoneNamePattern: 'Waters',
   },
@@ -123,7 +128,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking contact', description: 'Add a commander, engineer, or contact the player can talk to.' },
     },
     modeTip: 'Define sectors and connect them with docking ports and warp routes.',
-    encounterTypes: ['pirate', 'asteroid', 'boarding', 'anomaly'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'pirate', 'asteroid', 'boarding', 'anomaly'],
     defaultEntityRole: 'npc',
     zoneNamePattern: 'Sector',
   },
@@ -143,7 +148,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking NPC', description: 'Add a resident or caretaker the player can talk to.' },
     },
     modeTip: 'Layout rooms and connect them with doors and stairs.',
-    encounterTypes: ['patrol', 'ambush', 'haunt', 'trap'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'haunt', 'trap'],
     defaultEntityRole: 'npc',
     zoneNamePattern: 'Room',
   },
@@ -163,7 +168,7 @@ export const MODE_PROFILES: Record<AuthoringMode, ModeProfile> = {
       npc: { label: 'Add a speaking guide', description: 'Add a ranger, hermit, or guide the player can talk to.' },
     },
     modeTip: 'Map terrain and connect it with trails and passages.',
-    encounterTypes: ['patrol', 'ambush', 'beast', 'hunt'],
+    encounterTypes: [...ENGINE_ENCOUNTER_TYPES_PATROL_FIRST, 'beast', 'hunt'],
     defaultEntityRole: 'enemy',
     zoneNamePattern: 'Area',
   },

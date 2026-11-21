@@ -15,15 +15,15 @@
   "tally": {
     "total": 389,
     "byClass": {
-      "no-channel": 88,
-      "carried-lossless": 283,
-      "carried-approximated": 18
+      "no-channel": 92,
+      "carried-lossless": 277,
+      "carried-approximated": 20
     },
     "byChannel": {
-      "none": 88,
+      "none": 92,
       "assetPacks": 11,
       "assets": 11,
-      "contentPack": 264,
+      "contentPack": 260,
       "packMeta": 6,
       "assetBindings": 6,
       "manifest": 3
@@ -31,11 +31,11 @@
   },
   "exporterSelfReport": {
     "fidelitySummary": {
-      "total": 23,
+      "total": 26,
       "lossless": 10,
       "approximated": 11,
-      "dropped": 2,
-      "losslessPercent": 43,
+      "dropped": 5,
+      "losslessPercent": 38,
       "observed": true,
       "byDomain": {
         "zones": {
@@ -57,10 +57,10 @@
           "dropped": 0
         },
         "items": {
-          "total": 4,
+          "total": 7,
           "lossless": 0,
           "approximated": 2,
-          "dropped": 2
+          "dropped": 5
         },
         "world": {
           "total": 9,
@@ -2145,14 +2145,14 @@
     },
     {
       "path": "itemPlacements[].container",
-      "class": "carried-lossless",
+      "class": "carried-approximated",
       "channel": "contentPack",
-      "packPath": "itemPlacements[].container",
-      "transform": null,
+      "packPath": "items[].description",
+      "transform": "folded-into-synthesised-description",
       "absenceProof": null,
       "verified": true,
-      "evidence": "3 authored values match contentPack:itemPlacements[].container exactly",
-      "note": "CLOSED BY swarm wave-32 (F-42772fc9). Placement channel. convertItems still folds container into a synthesised description when description is unset, and drops it from the catalog description when both are authored (F-06fd0fb3)."
+      "evidence": "transform \"folded-into-synthesised-description\" → contentPack:items[].description (3 values); semantics asserted separately",
+      "note": "Part B narrowed ContentPack.itemPlacements to container-entity placements only (gate.ts:91-110); this fixture authors non-entity containers so itemPlacements[] is empty, while convertItems still folds container into a synthesised description when description is unset and drops it otherwise (F-06fd0fb3)."
     },
     {
       "path": "itemPlacements[].description",
@@ -2189,36 +2189,36 @@
     },
     {
       "path": "itemPlacements[].gridX",
-      "class": "carried-lossless",
-      "channel": "contentPack",
-      "packPath": "itemPlacements[].gridX",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
       "transform": null,
-      "absenceProof": null,
+      "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "3 authored values match contentPack:itemPlacements[].gridX exactly",
-      "note": "CLOSED BY swarm wave-32 (F-42772fc9)."
+      "evidence": "key \"gridX\" absent from contentPack:items[]",
+      "note": "Scoped to items[] because Part B drops non-entity itemPlacements (gate.ts:91-110) while spawnPoints/buildings keep gridX."
     },
     {
       "path": "itemPlacements[].gridY",
-      "class": "carried-lossless",
-      "channel": "contentPack",
-      "packPath": "itemPlacements[].gridY",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
       "transform": null,
-      "absenceProof": null,
+      "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "3 authored values match contentPack:itemPlacements[].gridY exactly",
-      "note": "CLOSED BY swarm wave-32 (F-42772fc9)."
+      "evidence": "key \"gridY\" absent from contentPack:items[]",
+      "note": "Scoped to items[] because Part B drops non-entity itemPlacements (gate.ts:91-110) while spawnPoints/buildings keep gridY."
     },
     {
       "path": "itemPlacements[].hidden",
-      "class": "carried-lossless",
+      "class": "carried-approximated",
       "channel": "contentPack",
-      "packPath": "itemPlacements[].hidden",
-      "transform": null,
+      "packPath": "items[].provenance.flags[]",
+      "transform": "boolean-reencoded-as-contraband-flag",
       "absenceProof": null,
       "verified": true,
-      "evidence": "3 authored values match contentPack:itemPlacements[].hidden exactly",
-      "note": "CLOSED BY swarm wave-32 (F-42772fc9). The boolean now crosses on the placement channel. convertItems still ALSO re-encodes hidden:true as provenance flag contraband (F-06fd0fb3), reported separately."
+      "evidence": "transform \"boolean-reencoded-as-contraband-flag\" → contentPack:items[].provenance.flags[] (1 values); semantics asserted separately",
+      "note": "Part B omitted non-entity itemPlacements (gate.ts:91-110); hidden:true still re-encodes as contraband provenance flag on items[] (F-06fd0fb3)."
     },
     {
       "path": "itemPlacements[].iconId",
@@ -2244,14 +2244,14 @@
     },
     {
       "path": "itemPlacements[].lootTableId",
-      "class": "carried-lossless",
-      "channel": "contentPack",
-      "packPath": "itemPlacements[].lootTableId",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
       "transform": null,
-      "absenceProof": null,
+      "absenceProof": "value-absent",
       "verified": true,
-      "evidence": "1 authored values match contentPack:itemPlacements[].lootTableId exactly",
-      "note": "CLOSED BY swarm wave-32 (F-42772fc9). The reverse item→lootTableId link now lives on the placement channel. The forward table→itemId link already crossed via ContentPack.lootTables (F-ee46a52c)."
+      "evidence": "all 1 authored string values absent from contentPack:items[]",
+      "note": "The loot-table BACK-reference has no target on ItemDefinition, and Part B drops non-entity itemPlacements (gate.ts:91-110). Forward lootTables[].entries[].itemId still crosses."
     },
     {
       "path": "itemPlacements[].name",
@@ -2310,14 +2310,14 @@
     },
     {
       "path": "itemPlacements[].zoneId",
-      "class": "carried-lossless",
-      "channel": "contentPack",
-      "packPath": "itemPlacements[].zoneId",
+      "class": "no-channel",
+      "channel": "none",
+      "packPath": null,
       "transform": null,
-      "absenceProof": null,
+      "absenceProof": "key-absent",
       "verified": true,
-      "evidence": "3 authored values match contentPack:itemPlacements[].zoneId exactly",
-      "note": "CLOSED BY swarm wave-32 (F-42772fc9). Placement channel; ItemDefinition remains the catalog."
+      "evidence": "key \"zoneId\" absent from contentPack:items[]",
+      "note": "Part B (gate.ts:91-110): engine has no zone-item vocabulary, so non-entity placements are dropped with fidelity reason engine-has-no-zone-items rather than written to ContentPack.itemPlacements."
     },
     {
       "path": "landmarks[].description",

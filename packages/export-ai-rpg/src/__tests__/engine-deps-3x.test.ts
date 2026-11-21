@@ -1,32 +1,44 @@
 // engine-deps-3x.test.ts — the dep bump, pinned so it cannot silently regress,
-// and the ONE thing the bump was supposed to unlock and did not.
+// and the Node equivalence guard for world-forge's browser-safe contentHash.
 //
 // C0 checklist item 1 sat open from the engine's 3.0.0 through 3.8.0: this
 // package declared `@ai-rpg-engine/* ^2.x` and type-checked against a surface
 // one major behind, so every 3.x addition was invisible to it. The errand of
-// 2026-07-29 closed it. These assertions are the mechanism that keeps it closed
-// — a range that slides back to 2.x fails here rather than in a bug report
-// eight minor releases later.
+// 2026-07-29 closed it, and the 2026-11-21 bump moved the pin to ^3.12.2.
 //
-// ⚠ The second describe block is an ANDON, not a pass. It pins a BLOCKED state
-// and is written to fail loudly the moment the block lifts. Read its comment
-// before "fixing" it.
+// Why `src/content-hash.ts` stays duplicated even though 3.12.2 publishes
+// `computeContentHash` from `@ai-rpg-engine/content-schema`: the engine's
+// `gate.ts` imports `createHash` from `node:crypto`, and `exportToEngine`
+// must remain browser-safe (`f-1d037344-browser-safe-hash.test.ts`). So the
+// browser-safe mirror stays and hashes the exact 12 `SIM_AFFECTING_KEYS` the
+// engine hashes, while this Node test asserts byte-identical digests against
+// `@ai-rpg-engine/content-schema`'s `computeContentHash` (the engine repo's
+// `packages/cli/src/c1-gate.test.ts:425-470` is the other half of this check).
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { GameManifest } from '@ai-rpg-engine/core';
+import {
+  ALLOWED_PACK_KEYS,
+  applyContentPack,
+  computeContentHash as computeEngineContentHash,
+  ENCOUNTER_ANCHOR_TYPES,
+  EVALUATED_NOT_MAPPED_KEYS,
+  runLoadGate,
+  SIM_AFFECTING_KEYS as ENGINE_SIM_AFFECTING_KEYS,
+  type ContentPack as EngineContentPack,
+} from '@ai-rpg-engine/content-schema';
+import {
+  AI_RPG_ENCOUNTER_ANCHOR_TYPES as SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  createEmptyProject,
+  validateProject,
+  type WorldProject,
+} from '@world-forge/schema';
 import { ENGINE_VERSION_RANGE } from '../convert-pack.js';
-
-/**
- * Resolves to `'absent-from-published-manifest'` while the installed
- * `GameManifest` lacks `contentHash`, and to the other literal the moment a
- * published engine adds it — which breaks the assignment in the test below at
- * COMPILE time. See `export.ts`'s `ExportedManifest`.
- */
-type PinnedContentHashState = 'contentHash' extends keyof GameManifest
-  ? 'PUBLISHED — drop the ExportedManifest intersection in export.ts'
-  : 'absent-from-published-manifest';
+import { computeContentHash, SIM_AFFECTING_KEYS } from '../content-hash.js';
+import { AI_RPG_ENCOUNTER_ANCHOR_TYPES, listAiRpgEncounterBlockers } from '../encounter-types.js';
+import { exportToEngine } from '../export.js';
+import { vocabularyCoverageProject } from './fixtures/vocabulary-coverage.js';
 
 /** This package's own manifest — the source of truth for what it declares. */
 const OWN_PACKAGE_JSON = path.resolve(import.meta.dirname, '../../package.json');
@@ -75,7 +87,7 @@ function installedVersion(pkg: string): string {
 }
 
 describe('engine deps — the export lane targets the engine it claims to', () => {
-  it('declares all six @ai-rpg-engine ranges at ^3.8.0 — six is what the tree holds', () => {
+  it('declares all six @ai-rpg-engine ranges at ^3.12.2 — six is what the tree holds', () => {
     // The contract doc said "six". C0 repeated it. Both were right, but neither
     // had counted recently: this reads the manifest, so a seventh dependency
     // added later cannot ride along undeclared.
@@ -83,11 +95,15 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     const engineRanges = Object.keys(deps).filter((k) => k.startsWith('@ai-rpg-engine/')).sort();
     expect(engineRanges).toEqual([...ENGINE_DEPS]);
     for (const dep of ENGINE_DEPS) {
-      expect(deps[dep], `${dep} must target 3.x`).toBe('^3.8.0');
+      expect(deps[dep], `${dep} must target 3.12.2+`).toBe('^3.12.2');
     }
+    const pkg = JSON.parse(fs.readFileSync(OWN_PACKAGE_JSON, 'utf-8')) as {
+      devDependencies: Record<string, string>;
+    };
+    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe('^3.12.2');
   });
 
-  it('resolves all six at 3.8.x — a declared range is not an installed version', () => {
+  it('resolves all seven at 3.12.2 — a declared range is not an installed version', () => {
     // C0's item 1 was a statement about package.json; what actually determines
     // which types the converters compile against is what npm put on disk. The
     // first install of this errand produced a tree where the DECLARED ranges
@@ -95,14 +111,14 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     // because npm kept the 2.x copies it already had for the transitive `*`
     // ranges. The lockfile diff looked correct. This assertion is what that
     // near-miss earned.
-    for (const dep of ENGINE_DEPS) {
-      expect(installedVersion(dep), `${dep} resolved below 3.8`).toMatch(/^3\.8\./);
+    for (const dep of [...ENGINE_DEPS, '@ai-rpg-engine/starter-fantasy'] as const) {
+      expect(installedVersion(dep), `${dep} resolved below 3.12.2`).toBe('3.12.2');
     }
   });
 
   it('the emitted engineVersion range agrees with the range that is installed', () => {
     // Two independent claims about the same engine: the dep range in
-    // package.json, and the `>=3.8.0 <4.0.0` this exporter stamps into every
+    // package.json, and the `>=3.12.2 <4.0.0` this exporter stamps into every
     // manifest it writes. Nothing connected them, so bumping one and not the
     // other would ship packs advertising compatibility the exporter was never
     // compiled against.
@@ -110,68 +126,143 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     const ceiling = /<(\d+)\.\d+\.\d+/.exec(ENGINE_VERSION_RANGE)?.[1];
     expect(floor, `no floor in "${ENGINE_VERSION_RANGE}"`).toBeDefined();
     expect(declaredDeps()['@ai-rpg-engine/core']).toBe(`^${floor}`);
-    // `^3.8.0` admits <4.0.0; the stamped range must not promise more.
+    // `^3.12.2` admits <4.0.0; the stamped range must not promise more.
     expect(ceiling).toBe(`${Number(floor!.split('.')[0]) + 1}`);
   });
 });
 
-describe('⚠ ANDON — the content-hash de-duplication is BLOCKED', () => {
-  it('the canonical hasher is still not in any PUBLISHED engine package', async () => {
-    // THIS TEST IS EXPECTED TO FAIL EVENTUALLY. When it does, the block has
-    // lifted and the fix is:
-    //   1. delete `src/content-hash.ts`
-    //   2. import { computeContentHash } from '@ai-rpg-engine/content-schema'
-    //      in `export.ts`
-    //   3. retire the engine-side cross-repo equivalence test
-    //      (`ai-rpg-engine/packages/cli/src/c1-gate.test.ts`) with a dated note
-    //      — with one shared function it asserts a tautology
-    //   4. delete this test
-    //
-    // Why it is blocked. The 2026-07-29 errand was briefed to delete the
-    // duplicated hash and import the engine's canonical one, on the standing
-    // reasoning that only the 2.x dep ranges stood in the way. They did not.
-    // `computeContentHash` lives in `content-schema/src/gate.ts`, which C1
-    // added to engine `main` (merge `00001de`) and which has never been
-    // released. npm's `latest` for @ai-rpg-engine/content-schema is 3.8.0,
-    // published 2026-07-28 — the night before C1 existed. Verified by grepping all
-    // 26 published 3.8.0 packages: zero hits for `computeContentHash`,
-    // `runLoadGate` or `applyContentPack`.
-    //
-    // Publishing an engine release is not this errand's to do, so the duplicate
-    // stays and the equivalence test that guards it stays with it.
-    const cs = (await import('@ai-rpg-engine/content-schema')) as unknown as Record<string, unknown>;
-    // POSITIVE CONTROL, and not decoration: every assertion in this block is an
-    // absence, and absence is what a broken import looks like too. If the
-    // specifier ever resolved to nothing, `computeContentHash === undefined`
-    // would be true for the wrong reason and this ANDON would quietly report
-    // "still blocked" forever. So first prove the probe can see an export.
-    expect(typeof cs.validateGameContent, 'the import resolved to nothing').toBe('function');
-    expect(
-      cs.computeContentHash,
-      'computeContentHash is now published — see the steps in this test comment, then delete it',
-    ).toBeUndefined();
+function createSmallestValidWorldProject(): WorldProject {
+  const base = createEmptyProject();
+  return {
+    ...base,
+    zones: [
+      {
+        id: 'zone-empty',
+        name: 'Empty Zone',
+        tags: [],
+        description: '',
+        gridX: 0,
+        gridY: 0,
+        gridWidth: 4,
+        gridHeight: 4,
+        neighbors: [],
+        exits: [],
+        light: 5,
+        noise: 0,
+        hazards: [],
+        interactables: [],
+      },
+    ],
+    spawnPoints: [
+      {
+        id: 'sp-empty',
+        zoneId: 'zone-empty',
+        gridX: 1,
+        gridY: 1,
+        isDefault: true,
+      },
+    ],
+  };
+}
+
+async function loadDogfoodProject(relFromRepoRoot: string, exportName: string): Promise<WorldProject> {
+  const abs = path.resolve(import.meta.dirname, '../../../..', relFromRepoRoot);
+  const mod = await vi.importActual<Record<string, unknown>>(abs);
+  return mod[exportName] as WorldProject;
+}
+
+describe('H1 — world-forge browser-safe contentHash equals engine computeContentHash (Node equivalence)', () => {
+  it('SIM_AFFECTING_KEYS matches the engine gate list (12 keys)', () => {
+    expect([...SIM_AFFECTING_KEYS]).toEqual([...ENGINE_SIM_AFFECTING_KEYS]);
   });
 
-  it('GameManifest still has no contentHash, so ExportedManifest must keep declaring it', () => {
-    // A TYPE-level pin, and it is the build that enforces it, not this
-    // assertion. `contentHash` was added to `GameManifest` by the same
-    // unpublished C1 work (engine `bf496e7`); the published 3.8.0 type does not
-    // have it, which is why `export.ts` still intersects the field in locally.
-    //
-    // If a published engine ever carries it, `PinnedContentHashState` resolves
-    // to the other literal, this assignment stops compiling, and `npm run build`
-    // fails with the fix in the type's own name. The runtime `expect` below is
-    // only here so the constant is used and the pin cannot be lint-swept away.
-    const pin: PinnedContentHashState = 'absent-from-published-manifest';
-    expect(pin).toBe('absent-from-published-manifest');
+  it('empty project (smallest valid WorldProject) produces an identical digest to the engine hasher', () => {
+    const empty = createSmallestValidWorldProject();
+    expect(validateProject(empty).valid).toBe(true);
+    const exported = exportToEngine(empty);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('export failed');
+    const engineHash = computeEngineContentHash(exported.contentPack as unknown as EngineContentPack);
+    expect(computeContentHash(exported.contentPack)).toBe(engineHash);
+    expect(exported.manifest.contentHash).toBe(engineHash);
   });
 
-  it('…and the whole C1 gate surface is absent, so this is a release gap, not a rename', async () => {
-    // Named individually so a partial publish reads as a partial publish rather
-    // than as "the export was renamed".
-    const cs = (await import('@ai-rpg-engine/content-schema')) as unknown as Record<string, unknown>;
-    for (const symbol of ['canonicalize', 'SIM_AFFECTING_KEYS', 'runLoadGate', 'applyContentPack', 'ALLOWED_PACK_KEYS']) {
-      expect(cs[symbol], `${symbol} appeared — the C1 surface is shipping`).toBeUndefined();
+  it('vocabulary-coverage fixture produces an identical digest to the engine hasher', () => {
+    const exported = exportToEngine(vocabularyCoverageProject);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('export failed');
+    const engineHash = computeEngineContentHash(exported.contentPack as unknown as EngineContentPack);
+    expect(computeContentHash(exported.contentPack)).toBe(engineHash);
+    expect(exported.manifest.contentHash).toBe(engineHash);
+  });
+
+  it('dogfood multi-target-proof world produces an identical digest to the engine hasher', async () => {
+    const proofProject = await loadDogfoodProject('dogfood/worlds/multi-target-proof.ts', 'proofProject');
+    const exported = exportToEngine(proofProject);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('export failed');
+    const engineHash = computeEngineContentHash(exported.contentPack as unknown as EngineContentPack);
+    expect(computeContentHash(exported.contentPack)).toBe(engineHash);
+    expect(exported.manifest.contentHash).toBe(engineHash);
+  });
+
+  it('dogfood salt-road world produces an identical digest to the engine hasher', async () => {
+    const saltRoadProject = await loadDogfoodProject('dogfood/worlds/salt-road.ts', 'saltRoadProject');
+    const scaleMod = await vi.importActual<{ scaleForSandbox: (p: WorldProject) => WorldProject }>(
+      path.resolve(import.meta.dirname, '../../../../dogfood/worlds/sandbox-scale.ts'),
+    );
+    const scaled = scaleMod.scaleForSandbox(saltRoadProject);
+    const exported = exportToEngine(scaled);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('export failed');
+    const engineHash = computeEngineContentHash(exported.contentPack as unknown as EngineContentPack);
+    expect(computeContentHash(exported.contentPack)).toBe(engineHash);
+    expect(exported.manifest.contentHash).toBe(engineHash);
+  });
+});
+
+describe('AI RPG encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', () => {
+  it('AI_RPG_ENCOUNTER_ANCHOR_TYPES in schema (and re-exported by export-ai-rpg) matches ENCOUNTER_ANCHOR_TYPES from @ai-rpg-engine/content-schema', () => {
+    expect(AI_RPG_ENCOUNTER_ANCHOR_TYPES).toBe(SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES);
+    expect([...SCHEMA_AI_RPG_ENCOUNTER_ANCHOR_TYPES]).toEqual([...ENCOUNTER_ANCHOR_TYPES]);
+  });
+
+  it('listAiRpgEncounterBlockers flags non-engine encounter types by anchor id and names the four valid types', () => {
+    const empty = createSmallestValidWorldProject();
+    const blockers = listAiRpgEncounterBlockers({
+      encounterAnchors: [
+        { id: 'enc-ok', zoneId: empty.zones[0].id, encounterType: 'patrol', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+        { id: 'enc-bad', zoneId: empty.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      ],
+    });
+    expect(blockers).toHaveLength(1);
+    expect(blockers[0].anchorId).toBe('enc-bad');
+    expect(blockers[0].encounterType).toBe('combat');
+    expect(blockers[0].validTypes).toEqual([...ENCOUNTER_ANCHOR_TYPES]);
+    expect(blockers[0].message).toContain('enc-bad');
+    for (const valid of ENCOUNTER_ANCHOR_TYPES) {
+      expect(blockers[0].message).toContain(valid);
     }
+  });
+});
+
+describe('3.12.2 content-hash decision — browser-safe twin stays standalone and pinned', () => {
+  it('content-schema@3.12.2 exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
+    expect(typeof computeEngineContentHash).toBe('function');
+    expect(typeof runLoadGate).toBe('function');
+    expect(typeof applyContentPack).toBe('function');
+    expect(Array.isArray(ALLOWED_PACK_KEYS)).toBe(true);
+    expect(ALLOWED_PACK_KEYS).toContain('strongholds');
+    expect(Array.isArray(ENGINE_SIM_AFFECTING_KEYS)).toBe(true);
+    expect(ENGINE_SIM_AFFECTING_KEYS).toHaveLength(12);
+    expect(typeof EVALUATED_NOT_MAPPED_KEYS).toBe('object');
+    expect(Array.isArray(ENCOUNTER_ANCHOR_TYPES)).toBe(true);
+
+    const contentHashSrc = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../content-hash.ts'),
+      'utf-8',
+    );
+    expect(contentHashSrc).not.toMatch(/from\s+['"]node:crypto['"]/);
+    expect(contentHashSrc).not.toMatch(/from\s+['"]@ai-rpg-engine\//);
   });
 });

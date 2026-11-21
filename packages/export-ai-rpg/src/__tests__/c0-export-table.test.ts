@@ -173,14 +173,18 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     expect(entry!.entityId).toBe('item-tide-ration');
   });
 
-  it('item container survives ONLY when description is unset', () => {
+  it('item container survives ONLY when description is unset; non-entity containers drop from itemPlacements with fidelity note', () => {
     const withDesc = pack.items.find((i) => i.id === 'item-rope')!;
     const withoutDesc = pack.items.find((i) => i.id === 'item-tide-ration')!;
     expect(withDesc.description).toBe('Forty feet, tarred against the wet.');
     expect(withDesc.description).not.toContain('stall crate'); // container lost from catalog description
     expect(withoutDesc.description).toBe('Found in gantry locker'); // container folded in
-    // F-42772fc9: the placement channel carries container regardless.
-    expect(pack.itemPlacements.find((p) => p.itemId === 'item-rope')?.container).toBe('stall crate');
+    // Part B: non-entity containers ('stall crate', 'silt', 'gantry locker') leave ContentPack.itemPlacements
+    // and appear in fidelity with reason 'engine-has-no-zone-items' citing gate.ts:91-110.
+    expect(pack.itemPlacements).toEqual([]);
+    const drops = result.fidelity.entries.filter((f) => f.reason === 'engine-has-no-zone-items');
+    expect(drops).toHaveLength(3);
+    expect(drops[0].message).toContain('gate.ts:91-110');
   });
 
   it('item hidden re-encodes as the economic flag `contraband`, and only when true', () => {
@@ -188,9 +192,6 @@ describe('C0/P1 — the named transforms, asserted individually', () => {
     const visible = pack.items.find((i) => i.id === 'item-rope')!;
     expect((hidden as { provenance?: { flags?: string[] } }).provenance?.flags).toEqual(['contraband']);
     expect((visible as { provenance?: unknown }).provenance).toBeUndefined();
-    // F-42772fc9: the placement channel now carries the boolean too.
-    expect(pack.itemPlacements.find((p) => p.itemId === 'item-lantern')?.hidden).toBe(true);
-    expect(pack.itemPlacements.find((p) => p.itemId === 'item-rope')?.hidden).toBe(false);
   });
 
   it('authoring mode is encoded as a `mode:` tag prefix, not a field', () => {

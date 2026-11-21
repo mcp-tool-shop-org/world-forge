@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **AI RPG Engine 3.12.2 alignment & load-gate contract.** `@world-forge/export-ai-rpg` bumps `@ai-rpg-engine/*` ranges to `^3.12.2` (`ENGINE_VERSION_RANGE = '>=3.12.2 <4.0.0'`), keeps `src/content-hash.ts` as a browser-safe standalone twin pinned against `computeContentHash()`, and passes all 12 gate and intake contract checks across all reference packs.
+- **`contentHash` narrows to 12 simulation-affecting keys.** Canonical hashing in `@world-forge/export-ai-rpg` now hashes the 12 `SIM_AFFECTING_KEYS` instead of 28 keys, matching `@ai-rpg-engine/content-schema` and keeping cosmetic/world-modeling edits hash-invariant when they do not affect simulation.
+- **`--validate-only` exits 1 on non-engine encounter types.** Encounter anchors outside `AI_RPG_ENCOUNTER_ANCHOR_TYPES` (`ambush`, `patrol`, `horde`, `duel`, now shared from `@world-forge/schema`) fail AI RPG validation and name each blocker on stderr.
+- **Zone-loose items leave the AI RPG pack.** `ContentPack.itemPlacements` is written only for items whose `container` names an exported entity; zone-loose placements are omitted with a `dropped` fidelity entry (`engine-has-no-zone-items`), and hidden entity placements emit an `approximated` fidelity entry (`hidden-item-placement-given-at-boot`) noting the engine gives the item at boot without reading `spawnCondition`.
+- **AI RPG export blocks on encounter-type blockers.** `"Export JSON"` in the editor Export modal is disabled while `!targetReadiness.aiRpg.ready` (leaving UE5 and Godot exports enabled), and CLI exports to the AI RPG target print each encounter blocker to stderr and exit 1 without writing output files.
+- **CI lines coverage ratchet.** Enforces a repository-wide Vitest lines threshold in CI (coverage 64.23%, floor 64 (target 90)); Codecov remains informational.
 - **Release workflow waits about 4 minutes for npm's provenance attestation** (it waited 50 s, and the 4.9.1 publish stopped after each package on registry lag). Its error now says to check the registry by hand before deprecating anything.
 
 ## [4.9.1] - 2026-11-05
@@ -31,9 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   exporter for `joinGraph`: the scene the stage instances has zone nodes and
   gate metadata, and does not reference `scripts/player.gd`, `world_data/*.tres`,
   or a `CharacterBody2D` pawn. A full Godot project export still emits the pawn.
-  The engine-lane file written for sidecar 3.12.0 keeps only that engine's
-  pack keys. Zone-standing items are not `itemPlacements` (those are giveItem
-  and require `entityId`). `presentation` stays on the stage `pack.json`.
+  The engine-lane file targets the engine world-forge depends on (kept in step
+  by the stage's paired pin bump) and keeps only that engine's pack keys.
+  Zone-standing items are not `itemPlacements` (those are giveItem and require
+  `entityId`). `presentation` stays on the stage `pack.json`.
 
 ### Security
 

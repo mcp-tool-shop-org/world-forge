@@ -92,56 +92,26 @@
   ],
   "changes": {
     "fileCounts": {
-      "added": 1,
-      "changed": 29,
+      "added": 0,
+      "changed": 2,
       "moved": 0,
-      "parts": 11,
+      "parts": 1,
       "removed": 0
     },
     "items": [
       {
         "kind": "counts",
-        "sentence": "Nothing structural changed since 2026-09-30; 1 file added and 29 changed content.",
+        "sentence": "Nothing structural changed since 2026-11-21; 2 files changed content.",
         "subjects": []
       }
     ],
     "since": {
-      "commit": "69358f1fca41d2428687dd1a35cbe54cce8f4f3d",
-      "generatedAt": "2026-09-30T21:37:10.716Z"
+      "commit": "93eaee18e2cdb18dac80d4ee5ca8d6bbc98ebef2",
+      "generatedAt": "2026-11-21T16:09:16.865Z"
     },
     "unchanged": true
   },
   "changesTogether": [
-    {
-      "a": "packages/editor/src/panels/ExportModal.tsx",
-      "b": "packages/editor/src/panels/TemplateManager.tsx",
-      "either": 5,
-      "partLabels": [
-        "editor",
-        "editor"
-      ],
-      "parts": [
-        "editor",
-        "editor"
-      ],
-      "relation": "inside",
-      "shared": 5
-    },
-    {
-      "a": "dogfood/godot-smoke/smoke_load_world.gd",
-      "b": "dogfood/worlds/multi-target-proof.ts",
-      "either": 9,
-      "partLabels": [
-        "dogfood",
-        "dogfood"
-      ],
-      "parts": [
-        "dogfood",
-        "dogfood"
-      ],
-      "relation": "inside",
-      "shared": 7
-    },
     {
       "a": "packages/export-godot/src/export.ts",
       "b": "packages/export-godot/src/index.ts",
@@ -158,45 +128,75 @@
       "shared": 10
     },
     {
-      "a": "packages/export-ai-rpg/src/content-hash.ts",
-      "b": "packages/export-ai-rpg/src/export.ts",
-      "either": 8,
+      "a": "packages/editor/src/panels/ExportModal.tsx",
+      "b": "packages/editor/src/panels/TemplateManager.tsx",
+      "either": 7,
       "partLabels": [
-        "export-ai-rpg",
-        "export-ai-rpg"
+        "editor",
+        "editor"
       ],
       "parts": [
-        "export-ai-rpg",
-        "export-ai-rpg"
+        "editor",
+        "editor"
+      ],
+      "relation": "inside",
+      "shared": 5
+    },
+    {
+      "a": "dogfood/godot-smoke/smoke_load_world.gd",
+      "b": "dogfood/worlds/multi-target-proof.ts",
+      "either": 10,
+      "partLabels": [
+        "dogfood",
+        "dogfood"
+      ],
+      "parts": [
+        "dogfood",
+        "dogfood"
+      ],
+      "relation": "inside",
+      "shared": 7
+    },
+    {
+      "a": "packages/schema/src/index.ts",
+      "b": "packages/schema/src/project.ts",
+      "either": 9,
+      "partLabels": [
+        "schema",
+        "schema"
+      ],
+      "parts": [
+        "schema",
+        "schema"
       ],
       "relation": "inside",
       "shared": 6
     },
     {
-      "a": "packages/schema/src/index.ts",
-      "b": "packages/schema/src/project.ts",
-      "either": 8,
+      "a": "packages/export-ai-rpg/src/content-hash.ts",
+      "b": "packages/export-ai-rpg/src/export.ts",
+      "either": 10,
       "partLabels": [
-        "schema",
-        "schema"
+        "export-ai-rpg",
+        "export-ai-rpg"
       ],
       "parts": [
-        "schema",
-        "schema"
+        "export-ai-rpg",
+        "export-ai-rpg"
       ],
       "relation": "inside",
       "shared": 6
     }
   ],
   "changesTogetherNote": [
-    "2 files changed together with their own tests, as expected.",
+    "3 files changed together with their own tests, as expected.",
     "Confidence is low: fewer than 25 source files reach 10 revisions in the window.",
     "Window: 180 days; a pair counts from 3 shared commits, since 8 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
-  "changesTogetherWithTests": 2,
-  "commit": "ac9ae9815ce9e0753b64cd562cf055cfe308b935",
+  "changesTogetherWithTests": 3,
+  "commit": "3238a1badd2c62349ea18e85ac8dc5e1e4442026",
   "defaultBranch": "main",
-  "derived": "15 parts, mostly TypeScript (497 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
+  "derived": "15 parts, mostly TypeScript (501 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
   "doors": [
     {
       "checks": [
@@ -218,7 +218,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 475,
+      "checksMore": 479,
       "file": ".github/workflows/ci.yml",
       "id": ".github/workflows/ci.yml",
       "landings": [
@@ -248,7 +248,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 58
+          "files": 61
         },
         {
           "boundary": "export-godot",
@@ -268,7 +268,7 @@
         {
           "boundary": "schema",
           "depth": 0,
-          "files": 53
+          "files": 54
         },
         {
           "boundary": "scripts",
@@ -302,6 +302,7 @@
         "packages/export-ai-rpg/src/__tests__/c1-manifest-truth.test.ts",
         "packages/export-ai-rpg/src/__tests__/c3-condition-roundtrip.test.ts",
         "packages/export-ai-rpg/src/__tests__/cli.test.ts",
+        "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
         "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
         "packages/export-ai-rpg/src/__tests__/export.test.ts",
         "packages/export-ai-rpg/src/__tests__/extension-points.test.ts",
@@ -309,6 +310,7 @@
         "packages/export-ai-rpg/src/__tests__/fidelity.test.ts",
         "packages/export-ai-rpg/src/__tests__/humanization.test.ts",
         "packages/export-ai-rpg/src/__tests__/import.test.ts",
+        "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
         "packages/export-ai-rpg/src/__tests__/leftover-pack.test.ts",
         "packages/export-ai-rpg/src/__tests__/map-drift.test.ts",
         "packages/export-ai-rpg/src/__tests__/profiles.test.ts",
@@ -351,8 +353,8 @@
         "site/astro.config.mjs",
         "site/src/"
       ],
-      "runsCount": 63,
-      "runsMore": 211,
+      "runsCount": 65,
+      "runsMore": 213,
       "sends": [
         "uploads coverage to Codecov"
       ],
@@ -383,7 +385,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 475,
+      "checksMore": 479,
       "file": ".github/workflows/release.yml",
       "id": ".github/workflows/release.yml",
       "landings": [
@@ -413,7 +415,7 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 58
+          "files": 61
         },
         {
           "boundary": "export-godot",
@@ -433,7 +435,7 @@
         {
           "boundary": "schema",
           "depth": 0,
-          "files": 53
+          "files": 54
         },
         {
           "boundary": "scripts",
@@ -461,6 +463,7 @@
         "packages/export-ai-rpg/src/__tests__/c1-manifest-truth.test.ts",
         "packages/export-ai-rpg/src/__tests__/c3-condition-roundtrip.test.ts",
         "packages/export-ai-rpg/src/__tests__/cli.test.ts",
+        "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
         "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
         "packages/export-ai-rpg/src/__tests__/export.test.ts",
         "packages/export-ai-rpg/src/__tests__/extension-points.test.ts",
@@ -468,6 +471,7 @@
         "packages/export-ai-rpg/src/__tests__/fidelity.test.ts",
         "packages/export-ai-rpg/src/__tests__/humanization.test.ts",
         "packages/export-ai-rpg/src/__tests__/import.test.ts",
+        "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
         "packages/export-ai-rpg/src/__tests__/leftover-pack.test.ts",
         "packages/export-ai-rpg/src/__tests__/map-drift.test.ts",
         "packages/export-ai-rpg/src/__tests__/profiles.test.ts",
@@ -508,8 +512,8 @@
         "packages/schema/src/__tests__/world-array-fields-validation.test.ts",
         "packages/schema/src/__tests__/zone-exits-validation.test.ts"
       ],
-      "runsCount": 60,
-      "runsMore": 117,
+      "runsCount": 62,
+      "runsMore": 119,
       "sends": [
         "publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm",
         "uploads dist-tarballs/*.tgz to the release"
@@ -575,12 +579,12 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 31
+          "files": 32
         },
         {
           "boundary": "schema",
           "depth": 2,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -611,7 +615,7 @@
         {
           "boundary": "schema",
           "depth": 2,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -642,7 +646,7 @@
         {
           "boundary": "schema",
           "depth": 2,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -676,7 +680,7 @@
         {
           "boundary": "schema",
           "depth": 2,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -702,12 +706,12 @@
         {
           "boundary": "export-ai-rpg",
           "depth": 0,
-          "files": 31
+          "files": 32
         },
         {
           "boundary": "schema",
           "depth": 1,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -738,7 +742,7 @@
         {
           "boundary": "schema",
           "depth": 1,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -769,7 +773,7 @@
         {
           "boundary": "schema",
           "depth": 1,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -795,7 +799,7 @@
         {
           "boundary": "schema",
           "depth": 0,
-          "files": 24
+          "files": 25
         }
       ],
       "runs": [
@@ -989,11 +993,11 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-11T22:51:27.245Z",
+  "generatedAt": "2026-11-21T16:17:05.300Z",
   "limits": [
-    "9 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; `dogfood/run-ai-rpg-smoke.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; and 6 more.",
+    "10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.",
     "3 writes and 4 reads use paths built at run time and are not named here.",
-    "37 writes go to places this repository does not track, so they are not listed as generated.",
+    "38 writes go to places this repository does not track, so they are not listed as generated.",
     "2 writes and 56 reads go to a path their caller passes, not to this repository.",
     "26 writes go to the directory the command is run in (GodotPack/ and UnrealPack/) or a path their caller passes, not to this repository.",
     "2 writes go to the directory the command is run in (export/), not to this repository.",
@@ -1038,16 +1042,16 @@
   "startReason": "This path follows world-forge-export (a command people run) from its entry, since CI runs only tests, scripts that import no code here and checks.",
   "summary": null,
   "summaryFrom": null,
-  "testFiles": 231,
+  "testFiles": 233,
   "testedBy": {
     "dogfood": 10,
     "e2e": 2,
     "editor": 110,
-    "export-ai-rpg": 66,
+    "export-ai-rpg": 68,
     "export-godot": 47,
     "export-unreal": 38,
     "renderer-2d": 10,
-    "schema": 201,
+    "schema": 203,
     "scripts": 1
   },
   "testedCodeParts": 9,

@@ -72,13 +72,21 @@ describe('F-f216da1a: craftingStations/marketNodes cross into the ContentPack in
     expect(result.contentPack.marketNodes).toEqual(project.marketNodes);
   });
 
-  it('craftingStations and marketNodes participate in the content hash (SIM_AFFECTING_KEYS)', () => {
-    expect(SIM_AFFECTING_KEYS).toContain('craftingStations');
-    expect(SIM_AFFECTING_KEYS).toContain('marketNodes');
+  it('H1: craftingStations and marketNodes leave contentHash unchanged; engine keys (zones) change it', () => {
+    expect(SIM_AFFECTING_KEYS).not.toContain('craftingStations');
+    expect(SIM_AFFECTING_KEYS).not.toContain('marketNodes');
+    expect(SIM_AFFECTING_KEYS).toContain('zones');
     const withEconomy = exportToEngine(economyProject());
     const without = exportToEngine(minimalProject);
     if (!withEconomy.success || !without.success) throw new Error('export failed');
-    expect(withEconomy.manifest.contentHash).not.toBe(without.manifest.contentHash);
+    expect(withEconomy.manifest.contentHash).toBe(without.manifest.contentHash);
+
+    const editedZone = exportToEngine({
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) => (i === 0 ? { ...z, name: `${z.name} (edited)` } : z)),
+    });
+    if (!editedZone.success) throw new Error('export failed');
+    expect(editedZone.manifest.contentHash).not.toBe(without.manifest.contentHash);
   });
 
   // --- The warning: loud on non-empty, silent on empty ---

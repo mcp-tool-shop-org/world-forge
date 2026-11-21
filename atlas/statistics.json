@@ -78,12 +78,12 @@
         "importsAndCoChanges": [],
         "importsOnly": []
       },
-      "cohesion": 0.189774,
+      "cohesion": 0.178446,
       "cohesionDropped": false,
-      "confidence": "low",
+      "confidence": "full",
       "highWater": null,
       "name": "dogfood",
-      "qualifyingSourceCommits": 27,
+      "qualifyingSourceCommits": 31,
       "rebaseline": null
     },
     {
@@ -99,7 +99,7 @@
       "confidence": "low",
       "highWater": null,
       "name": "e2e",
-      "qualifyingSourceCommits": 9,
+      "qualifyingSourceCommits": 10,
       "rebaseline": null
     },
     {
@@ -115,7 +115,7 @@
       "confidence": "full",
       "highWater": null,
       "name": "editor",
-      "qualifyingSourceCommits": 39,
+      "qualifyingSourceCommits": 41,
       "rebaseline": null
     },
     {
@@ -134,7 +134,7 @@
       "confidence": "low",
       "highWater": null,
       "name": "export-ai-rpg",
-      "qualifyingSourceCommits": 13,
+      "qualifyingSourceCommits": 19,
       "rebaseline": null
     },
     {
@@ -149,7 +149,7 @@
           "editor"
         ]
       },
-      "cohesion": 0.628073,
+      "cohesion": 0.635037,
       "cohesionDropped": false,
       "confidence": "low",
       "highWater": null,
@@ -231,7 +231,7 @@
       "confidence": "low",
       "highWater": null,
       "name": "schema",
-      "qualifyingSourceCommits": 22,
+      "qualifyingSourceCommits": 24,
       "rebaseline": null
     },
     {
@@ -296,8 +296,8 @@
         "path": ".github/actions/publish-if-missing/action.yml"
       },
       {
-        "commits": 22,
-        "lines": 749,
+        "commits": 23,
+        "lines": 751,
         "path": ".github/workflows/ci.yml"
       },
       {
@@ -321,8 +321,8 @@
         "path": ".gitignore"
       },
       {
-        "commits": 16,
-        "lines": 375,
+        "commits": 17,
+        "lines": 387,
         "path": "CHANGELOG.md"
       },
       {
@@ -356,8 +356,8 @@
         "path": "README.ja.md"
       },
       {
-        "commits": 18,
-        "lines": 185,
+        "commits": 20,
+        "lines": 189,
         "path": "README.md"
       },
       {
@@ -386,8 +386,8 @@
         "path": "a11y-audit.md"
       },
       {
-        "commits": 5,
-        "lines": 525,
+        "commits": 8,
+        "lines": 611,
         "path": "atlas/README.md"
       },
       {
@@ -396,18 +396,18 @@
         "path": "atlas/boundaries.yaml"
       },
       {
-        "commits": 5,
-        "lines": 3730,
+        "commits": 8,
+        "lines": 4198,
         "path": "atlas/page.json"
       },
       {
-        "commits": 5,
-        "lines": 9472,
+        "commits": 8,
+        "lines": 11577,
         "path": "atlas/statistics.json"
       },
       {
-        "commits": 5,
-        "lines": 55821,
+        "commits": 8,
+        "lines": 56464,
         "path": "atlas/structure.json"
       },
       {
@@ -416,23 +416,23 @@
         "path": "codecov.yml"
       },
       {
-        "commits": 14,
-        "lines": 6765,
+        "commits": 15,
+        "lines": 6853,
         "path": "docs/c0-alignment/export-table.json"
       },
       {
-        "commits": 13,
-        "lines": 825,
+        "commits": 14,
+        "lines": 839,
         "path": "docs/c0-alignment/export-table.md"
       },
       {
-        "commits": 8,
-        "lines": 39,
+        "commits": 10,
+        "lines": 45,
         "path": "docs/c0-alignment/fixture-manifest.json"
       },
       {
-        "commits": 13,
-        "lines": 1398,
+        "commits": 14,
+        "lines": 1430,
         "path": "docs/c0-alignment/fixture-pack.json"
       },
       {
@@ -466,8 +466,8 @@
         "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts"
       },
       {
-        "commits": 2,
-        "lines": 132,
+        "commits": 3,
+        "lines": 140,
         "path": "dogfood/__tests__/export-stage-fixture-presentation.test.ts"
       },
       {
@@ -526,8 +526,8 @@
         "path": "dogfood/chapel-threshold.ts"
       },
       {
-        "commits": 9,
-        "lines": 970,
+        "commits": 11,
+        "lines": 1022,
         "path": "dogfood/export-stage-fixture.ts"
       },
       {
@@ -606,8 +606,8 @@
         "path": "dogfood/output/zones.json"
       },
       {
-        "commits": 5,
-        "lines": 221,
+        "commits": 6,
+        "lines": 239,
         "path": "dogfood/run-ai-rpg-smoke.ts"
       },
       {
@@ -621,13 +621,13 @@
         "path": "dogfood/run-unreal-smoke.ts"
       },
       {
-        "commits": 8,
-        "lines": 90,
+        "commits": 9,
+        "lines": 92,
         "path": "dogfood/worlds/multi-target-proof.ts"
       },
       {
-        "commits": 1,
-        "lines": 284,
+        "commits": 2,
+        "lines": 286,
         "path": "dogfood/worlds/multi-target-proof.worldforge.json"
       },
       {
@@ -646,8 +646,8 @@
         "path": "dogfood/worlds/sandbox-scale.ts"
       },
       {
-        "commits": 13,
-        "lines": 339,
+        "commits": 14,
+        "lines": 353,
         "path": "e2e/editor-smoke.spec.ts"
       },
       {
@@ -656,18 +656,18 @@
         "path": "e2e/global-setup.ts"
       },
       {
-        "commits": 5,
-        "lines": 262,
+        "commits": 6,
+        "lines": 269,
         "path": "e2e/helpers.ts"
       },
       {
-        "commits": 4,
-        "lines": 182,
+        "commits": 5,
+        "lines": 186,
         "path": "e2e/import-roundtrip.spec.ts"
       },
       {
-        "commits": 1,
-        "lines": 17,
+        "commits": 2,
+        "lines": 26,
         "path": "e2e/write-chapel-fixture.ts"
       },
       {
@@ -676,8 +676,8 @@
         "path": "multitask.md"
       },
       {
-        "commits": 16,
-        "lines": 3091,
+        "commits": 18,
+        "lines": 3218,
         "path": "package-lock.json"
       },
       {
@@ -741,6 +741,11 @@
         "path": "packages/editor/src/__tests__/autosave.test.ts"
       },
       {
+        "commits": 1,
+        "lines": 15,
+        "path": "packages/editor/src/__tests__/canvas-defaults.test.ts"
+      },
+      {
         "commits": 3,
         "lines": 12,
         "path": "packages/editor/src/__tests__/connection-lines.test.ts"
@@ -757,8 +762,18 @@
       },
       {
         "commits": 2,
+        "lines": 46,
+        "path": "packages/editor/src/__tests__/encounter-suggestions.test.ts"
+      },
+      {
+        "commits": 2,
         "lines": 8,
         "path": "packages/editor/src/__tests__/export-depth-regression.test.ts"
+      },
+      {
+        "commits": 2,
+        "lines": 96,
+        "path": "packages/editor/src/__tests__/export-modal.test.ts"
       },
       {
         "commits": 3,
@@ -981,8 +996,8 @@
         "path": "packages/editor/src/kits/kit-store.ts"
       },
       {
-        "commits": 1,
-        "lines": 36,
+        "commits": 3,
+        "lines": 71,
         "path": "packages/editor/src/mode-profiles.ts"
       },
       {
@@ -1046,8 +1061,8 @@
         "path": "packages/editor/src/panels/EditKitModal.tsx"
       },
       {
-        "commits": 3,
-        "lines": 6,
+        "commits": 5,
+        "lines": 47,
         "path": "packages/editor/src/panels/EncounterProperties.tsx"
       },
       {
@@ -1056,8 +1071,8 @@
         "path": "packages/editor/src/panels/EntityProperties.tsx"
       },
       {
-        "commits": 11,
-        "lines": 937,
+        "commits": 13,
+        "lines": 1109,
         "path": "packages/editor/src/panels/ExportModal.tsx"
       },
       {
@@ -1481,18 +1496,18 @@
         "path": "packages/export-ai-rpg/README.md"
       },
       {
-        "commits": 9,
-        "lines": 38,
+        "commits": 11,
+        "lines": 66,
         "path": "packages/export-ai-rpg/package.json"
       },
       {
-        "commits": 4,
-        "lines": 354,
+        "commits": 5,
+        "lines": 430,
         "path": "packages/export-ai-rpg/src/ENGINE_CONTRACT.md"
       },
       {
-        "commits": 8,
-        "lines": 487,
+        "commits": 9,
+        "lines": 500,
         "path": "packages/export-ai-rpg/src/__tests__/c0-export-table.test.ts"
       },
       {
@@ -1506,8 +1521,8 @@
         "path": "packages/export-ai-rpg/src/__tests__/c0/export-differ.ts"
       },
       {
-        "commits": 13,
-        "lines": 1255,
+        "commits": 14,
+        "lines": 1283,
         "path": "packages/export-ai-rpg/src/__tests__/c0/export-table-data.ts"
       },
       {
@@ -1526,13 +1541,18 @@
         "path": "packages/export-ai-rpg/src/__tests__/c3-condition-roundtrip.test.ts"
       },
       {
-        "commits": 8,
-        "lines": 739,
+        "commits": 10,
+        "lines": 852,
         "path": "packages/export-ai-rpg/src/__tests__/cli.test.ts"
       },
       {
         "commits": 1,
-        "lines": 177,
+        "lines": 198,
+        "path": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts"
+      },
+      {
+        "commits": 5,
+        "lines": 452,
         "path": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts"
       },
       {
@@ -1571,6 +1591,11 @@
         "path": "packages/export-ai-rpg/src/__tests__/import.test.ts"
       },
       {
+        "commits": 2,
+        "lines": 160,
+        "path": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts"
+      },
+      {
         "commits": 1,
         "lines": 97,
         "path": "packages/export-ai-rpg/src/__tests__/leftover-pack.test.ts"
@@ -1596,33 +1621,33 @@
         "path": "packages/export-ai-rpg/src/__tests__/swarm-wave18-amends.test.ts"
       },
       {
-        "commits": 9,
-        "lines": 860,
+        "commits": 10,
+        "lines": 871,
         "path": "packages/export-ai-rpg/src/__tests__/swarm-wave2-amends.test.ts"
       },
       {
-        "commits": 4,
-        "lines": 1081,
+        "commits": 7,
+        "lines": 1158,
         "path": "packages/export-ai-rpg/src/__tests__/swarm-wave32-amends.test.ts"
       },
       {
-        "commits": 5,
-        "lines": 234,
+        "commits": 6,
+        "lines": 250,
         "path": "packages/export-ai-rpg/src/__tests__/swarm-wave4-amends.test.ts"
       },
       {
-        "commits": 7,
-        "lines": 1082,
+        "commits": 8,
+        "lines": 1108,
         "path": "packages/export-ai-rpg/src/__tests__/swarm-wave9-amends.test.ts"
       },
       {
-        "commits": 8,
-        "lines": 1806,
+        "commits": 10,
+        "lines": 1847,
         "path": "packages/export-ai-rpg/src/cli.ts"
       },
       {
-        "commits": 13,
-        "lines": 421,
+        "commits": 14,
+        "lines": 531,
         "path": "packages/export-ai-rpg/src/content-hash.ts"
       },
       {
@@ -1641,8 +1666,8 @@
         "path": "packages/export-ai-rpg/src/convert-entities.ts"
       },
       {
-        "commits": 3,
-        "lines": 243,
+        "commits": 5,
+        "lines": 305,
         "path": "packages/export-ai-rpg/src/convert-item-placements.ts"
       },
       {
@@ -1661,8 +1686,8 @@
         "path": "packages/export-ai-rpg/src/convert-loot-tables.ts"
       },
       {
-        "commits": 8,
-        "lines": 332,
+        "commits": 10,
+        "lines": 336,
         "path": "packages/export-ai-rpg/src/convert-pack.ts"
       },
       {
@@ -1681,8 +1706,13 @@
         "path": "packages/export-ai-rpg/src/convert-zones.ts"
       },
       {
-        "commits": 13,
-        "lines": 714,
+        "commits": 2,
+        "lines": 89,
+        "path": "packages/export-ai-rpg/src/encounter-types.ts"
+      },
+      {
+        "commits": 14,
+        "lines": 720,
         "path": "packages/export-ai-rpg/src/export.ts"
       },
       {
@@ -1736,8 +1766,8 @@
         "path": "packages/export-ai-rpg/src/import.ts"
       },
       {
-        "commits": 4,
-        "lines": 23,
+        "commits": 5,
+        "lines": 29,
         "path": "packages/export-ai-rpg/src/index.ts"
       },
       {
@@ -2391,8 +2421,8 @@
         "path": "packages/schema/package.json"
       },
       {
-        "commits": 3,
-        "lines": 196,
+        "commits": 5,
+        "lines": 231,
         "path": "packages/schema/src/__tests__/advisory.test.ts"
       },
       {
@@ -2476,8 +2506,8 @@
         "path": "packages/schema/src/__tests__/valid-sets.test.ts"
       },
       {
-        "commits": 6,
-        "lines": 95,
+        "commits": 8,
+        "lines": 131,
         "path": "packages/schema/src/__tests__/validate.test.ts"
       },
       {
@@ -2511,9 +2541,14 @@
         "path": "packages/schema/src/__tests__/zone-exits-validation.test.ts"
       },
       {
-        "commits": 4,
-        "lines": 118,
+        "commits": 6,
+        "lines": 144,
         "path": "packages/schema/src/advisory.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 19,
+        "path": "packages/schema/src/ai-rpg-encounter-types.ts"
       },
       {
         "commits": 3,
@@ -2541,8 +2576,8 @@
         "path": "packages/schema/src/hazard.ts"
       },
       {
-        "commits": 12,
-        "lines": 156,
+        "commits": 13,
+        "lines": 162,
         "path": "packages/schema/src/index.ts"
       },
       {
@@ -2591,8 +2626,8 @@
         "path": "packages/schema/src/town.ts"
       },
       {
-        "commits": 22,
-        "lines": 3248,
+        "commits": 24,
+        "lines": 3261,
         "path": "packages/schema/src/validate.ts"
       },
       {
@@ -2771,9 +2806,9 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-11T22:51:27.245Z",
+  "generatedAt": "2026-11-21T16:17:05.300Z",
   "generatedFrom": {
-    "commit": "ac9ae9815ce9e0753b64cd562cf055cfe308b935"
+    "commit": "3238a1badd2c62349ea18e85ac8dc5e1e4442026"
   },
   "pairs": [
     {
@@ -2807,9 +2842,9 @@
     {
       "a": "README.es.md",
       "b": "README.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.es.md",
@@ -2856,9 +2891,9 @@
     {
       "a": "README.fr.md",
       "b": "README.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.fr.md",
@@ -2898,9 +2933,9 @@
     {
       "a": "README.hi.md",
       "b": "README.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.hi.md",
@@ -2933,9 +2968,9 @@
     {
       "a": "README.it.md",
       "b": "README.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.it.md",
@@ -2961,9 +2996,9 @@
     {
       "a": "README.ja.md",
       "b": "README.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.ja.md",
@@ -2989,16 +3024,16 @@
     {
       "a": "README.md",
       "b": "README.pt-BR.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.md",
       "b": "README.zh.md",
-      "either": 14,
+      "either": 16,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.5
     },
     {
       "a": "README.pt-BR.md",
@@ -3022,46 +3057,95 @@
       "strength": 0.5
     },
     {
+      "a": "atlas/README.md",
+      "b": "atlas/page.json",
+      "either": 5,
+      "shared": 5,
+      "strength": 1
+    },
+    {
+      "a": "atlas/README.md",
+      "b": "atlas/statistics.json",
+      "either": 5,
+      "shared": 5,
+      "strength": 1
+    },
+    {
+      "a": "atlas/README.md",
+      "b": "atlas/structure.json",
+      "either": 5,
+      "shared": 5,
+      "strength": 1
+    },
+    {
+      "a": "atlas/page.json",
+      "b": "atlas/statistics.json",
+      "either": 5,
+      "shared": 5,
+      "strength": 1
+    },
+    {
+      "a": "atlas/page.json",
+      "b": "atlas/structure.json",
+      "either": 5,
+      "shared": 5,
+      "strength": 1
+    },
+    {
+      "a": "atlas/statistics.json",
+      "b": "atlas/structure.json",
+      "either": 5,
+      "shared": 5,
+      "strength": 1
+    },
+    {
       "a": "docs/c0-alignment/export-table.json",
       "b": "docs/c0-alignment/export-table.md",
-      "either": 11,
-      "shared": 10,
-      "strength": 0.909091
+      "either": 12,
+      "shared": 11,
+      "strength": 0.916667
     },
     {
       "a": "docs/c0-alignment/export-table.json",
       "b": "docs/c0-alignment/fixture-pack.json",
-      "either": 11,
-      "shared": 10,
-      "strength": 0.909091
+      "either": 12,
+      "shared": 11,
+      "strength": 0.916667
+    },
+    {
+      "a": "docs/c0-alignment/export-table.json",
+      "b": "packages/export-ai-rpg/src/__tests__/c0/export-table-data.ts",
+      "either": 14,
+      "shared": 7,
+      "strength": 0.5
     },
     {
       "a": "docs/c0-alignment/export-table.md",
       "b": "docs/c0-alignment/fixture-pack.json",
-      "either": 11,
-      "shared": 9,
-      "strength": 0.818182
+      "either": 12,
+      "shared": 10,
+      "strength": 0.833333
     },
     {
       "a": "docs/c0-alignment/export-table.md",
       "b": "packages/export-ai-rpg/src/__tests__/c0/export-table-data.ts",
-      "either": 12,
-      "shared": 6,
-      "strength": 0.5
+      "either": 13,
+      "shared": 7,
+      "strength": 0.538462
     },
     {
       "a": "docs/c0-alignment/fixture-manifest.json",
-      "b": "docs/c0-alignment/fixture-pack.json",
-      "either": 10,
+      "b": "packages/export-ai-rpg/src/convert-pack.ts",
+      "either": 8,
       "shared": 5,
-      "strength": 0.5
+      "strength": 0.625
     },
     {
       "a": "dogfood/godot-smoke/smoke_load_world.gd",
       "b": "dogfood/worlds/multi-target-proof.ts",
-      "either": 9,
+      "either": 10,
       "shared": 7,
-      "strength": 0.777778
+      "strength": 0.7
     },
     {
       "a": "dogfood/godot-smoke/smoke_load_world.gd",
@@ -3094,65 +3178,37 @@
     {
       "a": "dogfood/worlds/multi-target-proof.ts",
       "b": "packages/export-godot/src/export.ts",
-      "either": 12,
+      "either": 13,
       "shared": 7,
-      "strength": 0.583333
+      "strength": 0.538462
     },
     {
       "a": "dogfood/worlds/multi-target-proof.ts",
       "b": "packages/export-godot/src/index.ts",
-      "either": 11,
-      "shared": 7,
-      "strength": 0.636364
-    },
-    {
-      "a": "package-lock.json",
-      "b": "package.json",
-      "either": 15,
-      "shared": 8,
-      "strength": 0.533333
-    },
-    {
-      "a": "package-lock.json",
-      "b": "packages/editor/package.json",
       "either": 12,
-      "shared": 6,
-      "strength": 0.5
+      "shared": 7,
+      "strength": 0.583333
     },
     {
       "a": "package-lock.json",
       "b": "packages/export-ai-rpg/package.json",
-      "either": 12,
-      "shared": 8,
-      "strength": 0.666667
-    },
-    {
-      "a": "package-lock.json",
-      "b": "packages/export-godot/package.json",
       "either": 14,
-      "shared": 7,
-      "strength": 0.5
-    },
-    {
-      "a": "package-lock.json",
-      "b": "packages/export-unreal/package.json",
-      "either": 14,
-      "shared": 7,
-      "strength": 0.5
+      "shared": 10,
+      "strength": 0.714286
     },
     {
       "a": "package-lock.json",
       "b": "packages/renderer-2d/package.json",
-      "either": 12,
+      "either": 14,
       "shared": 7,
-      "strength": 0.583333
+      "strength": 0.5
     },
     {
       "a": "package-lock.json",
       "b": "packages/schema/package.json",
-      "either": 12,
+      "either": 14,
       "shared": 7,
-      "strength": 0.583333
+      "strength": 0.5
     },
     {
       "a": "package.json",
@@ -3164,9 +3220,9 @@
     {
       "a": "package.json",
       "b": "packages/export-ai-rpg/package.json",
-      "either": 12,
+      "either": 14,
       "shared": 7,
-      "strength": 0.583333
+      "strength": 0.5
     },
     {
       "a": "package.json",
@@ -3199,9 +3255,9 @@
     {
       "a": "packages/editor/package.json",
       "b": "packages/export-ai-rpg/package.json",
-      "either": 8,
+      "either": 10,
       "shared": 6,
-      "strength": 0.75
+      "strength": 0.6
     },
     {
       "a": "packages/editor/package.json",
@@ -3255,44 +3311,51 @@
     {
       "a": "packages/editor/src/panels/ExportModal.tsx",
       "b": "packages/editor/src/panels/TemplateManager.tsx",
+      "either": 7,
+      "shared": 5,
+      "strength": 0.714286
+    },
+    {
+      "a": "packages/export-ai-rpg/package.json",
+      "b": "packages/export-godot/package.json",
+      "either": 12,
+      "shared": 7,
+      "strength": 0.583333
+    },
+    {
+      "a": "packages/export-ai-rpg/package.json",
+      "b": "packages/export-unreal/package.json",
+      "either": 12,
+      "shared": 7,
+      "strength": 0.583333
+    },
+    {
+      "a": "packages/export-ai-rpg/package.json",
+      "b": "packages/renderer-2d/package.json",
+      "either": 10,
+      "shared": 7,
+      "strength": 0.7
+    },
+    {
+      "a": "packages/export-ai-rpg/package.json",
+      "b": "packages/schema/package.json",
+      "either": 10,
+      "shared": 7,
+      "strength": 0.7
+    },
+    {
+      "a": "packages/export-ai-rpg/src/__tests__/cli.test.ts",
+      "b": "packages/export-ai-rpg/src/cli.ts",
       "either": 5,
       "shared": 5,
       "strength": 1
     },
     {
-      "a": "packages/export-ai-rpg/package.json",
-      "b": "packages/export-godot/package.json",
-      "either": 10,
-      "shared": 7,
-      "strength": 0.7
-    },
-    {
-      "a": "packages/export-ai-rpg/package.json",
-      "b": "packages/export-unreal/package.json",
-      "either": 10,
-      "shared": 7,
-      "strength": 0.7
-    },
-    {
-      "a": "packages/export-ai-rpg/package.json",
-      "b": "packages/renderer-2d/package.json",
-      "either": 8,
-      "shared": 7,
-      "strength": 0.875
-    },
-    {
-      "a": "packages/export-ai-rpg/package.json",
-      "b": "packages/schema/package.json",
-      "either": 8,
-      "shared": 7,
-      "strength": 0.875
-    },
-    {
       "a": "packages/export-ai-rpg/src/content-hash.ts",
       "b": "packages/export-ai-rpg/src/export.ts",
-      "either": 8,
+      "either": 10,
       "shared": 6,
-      "strength": 0.75
+      "strength": 0.6
     },
     {
       "a": "packages/export-godot/README.md",
@@ -3409,16 +3472,16 @@
     {
       "a": "packages/schema/src/index.ts",
       "b": "packages/schema/src/project.ts",
-      "either": 8,
+      "either": 9,
       "shared": 6,
-      "strength": 0.75
+      "strength": 0.666667
     },
     {
       "a": "packages/schema/src/index.ts",
       "b": "packages/schema/src/spatial.ts",
-      "either": 8,
+      "either": 9,
       "shared": 5,
-      "strength": 0.625
+      "strength": 0.555556
     },
     {
       "a": "packages/schema/src/project.ts",
@@ -3438,16 +3501,16 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-05T22:52:37-05:00",
-    "inScopeFiles": 654,
+    "headDate": "2026-11-21T11:12:11-05:00",
+    "inScopeFiles": 658,
     "pinnedStart": null,
     "priorFloor": "fallen",
-    "qualifyingCommits": 136,
+    "qualifyingCommits": 145,
     "qualifyingMinimum": 30,
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-10T03:52:37.000Z",
+    "since": "2026-05-25T16:12:11.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

@@ -18,5 +18,10 @@ export default defineConfig({
     // dogfood/__tests__/vitest-include-floor.test.ts is the belt-and-braces
     // check for the softer case (glob narrows to SOME files, not zero).
     setupFiles: ['./vitest.setup.ts'],
+    coverage: {
+      thresholds: {
+        lines: 64,
+      },
+    },
   },
 });

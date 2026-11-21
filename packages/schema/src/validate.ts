@@ -15,7 +15,15 @@ import type { AmbientLayer } from './visual.js';
 import { validateSpawnCondition } from './spawn-condition.js';
 import { AUTHORING_MODES, isValidMode } from './authoring-mode.js';
 import { PRESENTATION_FACINGS, PRESENTATION_VIEWS } from './presentation.js';
+import { AI_RPG_ENCOUNTER_ANCHOR_TYPES } from './ai-rpg-encounter-types.js';
 import { backfillOmittedRequiredArrays } from './project-shape.js';
+
+function formatEncounterTypeExamples(types: readonly string[]): string {
+  const quoted = types.map((t) => `"${t}"`);
+  if (quoted.length <= 1) return quoted[0] ?? '';
+  if (quoted.length === 2) return `${quoted[0]} or ${quoted[1]}`;
+  return `${quoted.slice(0, -1).join(', ')}, or ${quoted[quoted.length - 1]}`;
+}
 
 export type ValidationError = {
   path: string;
@@ -735,11 +743,12 @@ export function validateProject(project: WorldProject, options?: ValidateOptions
 
   // 13c. Encounter anchor encounterType must be a non-empty, non-whitespace string.
   // Non-strings (e.g. 123 from truncated JSON) must return ValidationResult, not throw on .trim().
+  const encounterTypeExamples = formatEncounterTypeExamples(AI_RPG_ENCOUNTER_ANCHOR_TYPES);
   for (const ea of project.encounterAnchors) {
     if (!isNonEmptyString(ea.encounterType)) {
       errors.push({
         path: `encounterAnchors.${ea.id}`,
-        message: `Encounter anchor "${ea.id}" has ${typeof ea.encounterType !== 'string' || !ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like "combat", "ambush", or "random"`,
+        message: `Encounter anchor "${ea.id}" has ${typeof ea.encounterType !== 'string' || !ea.encounterType ? 'missing' : 'whitespace-only'} encounterType — provide a type like ${encounterTypeExamples}`,
       });
     }
   }

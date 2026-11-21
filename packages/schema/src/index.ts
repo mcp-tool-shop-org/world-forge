@@ -46,6 +46,12 @@ export type {
   LootTable, LootTableEntry,
 } from './entities.js';
 
+export {
+  AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  isAiRpgEncounterAnchorType,
+} from './ai-rpg-encounter-types.js';
+export type { AiRpgEncounterAnchorType } from './ai-rpg-encounter-types.js';
+
 export type { Building, Hub, Stronghold } from './town.js';
 
 export type { Stratum, StratumLink } from './stratum.js';

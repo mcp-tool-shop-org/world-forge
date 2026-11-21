@@ -8,7 +8,8 @@ import {
   type ExportReceipt, type ExportStatus, type AiRpgExportOptions, type UnrealExportOptions, type GodotExportUIOptions,
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
-import { validateProject, scanDependencies } from '@world-forge/schema';
+import { validateProject, scanDependencies, type WorldProject } from '@world-forge/schema';
+import { listAiRpgEncounterBlockers } from '@world-forge/export-ai-rpg';
 import { classifyError, navigationForError } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
@@ -22,8 +23,93 @@ function formatSize(bytes: number): string {
   return kb < 1024 ? `${kb.toFixed(1)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
-export function ExportModal({ onClose }: { onClose: () => void }) {
-  const { project } = useProjectStore();
+export type TargetReadinessInfo = {
+  ready: boolean;
+  advisories: string[];
+  blockers: string[];
+};
+
+export type TargetReadiness = {
+  aiRpg: TargetReadinessInfo;
+  unreal: TargetReadinessInfo;
+  godot: TargetReadinessInfo;
+};
+
+/** Compute per-target readiness summary including AI RPG encounter-type blockers. */
+export function computeTargetReadiness(project: WorldProject, precheckValid: boolean): TargetReadiness {
+  const aiRpgAdvisories: string[] = [];
+  const unrealAdvisories: string[] = [];
+  const godotAdvisories: string[] = [];
+
+  if (project.entityPlacements.length === 0) {
+    aiRpgAdvisories.push('No entity placements');
+    unrealAdvisories.push('No entity placements');
+    godotAdvisories.push('No entity placements');
+  }
+  if (project.connections.length === 0 && project.zones.length > 1) {
+    unrealAdvisories.push('No connections — cannot stream between zones');
+    godotAdvisories.push('No connections — cannot generate transitions');
+  }
+  if (project.zones.every((z) => z.elevation === undefined && z.elevationRange === undefined)) {
+    unrealAdvisories.push('No elevation — exports at Z=0 (flat)');
+  }
+  if (project.zones.every((z) => !z.parallaxLayers || z.parallaxLayers.length === 0)) {
+    unrealAdvisories.push('No parallax layers — backdrops will be bare');
+  }
+  if (!project.playerTemplate) {
+    aiRpgAdvisories.push('No player template — pack will lack player data');
+  }
+
+  const aiRpgBlockers = listAiRpgEncounterBlockers(project).map((b) => b.message);
+
+  return {
+    aiRpg: { ready: precheckValid && aiRpgBlockers.length === 0, advisories: aiRpgAdvisories, blockers: aiRpgBlockers },
+    unreal: { ready: precheckValid, advisories: unrealAdvisories, blockers: [] },
+    godot: { ready: precheckValid, advisories: godotAdvisories, blockers: [] },
+  };
+}
+
+/** Per-target readiness banner shared by ExportModal and logic-level tests. */
+export function TargetReadinessSummary({ targetReadiness }: { targetReadiness: TargetReadiness }) {
+  return (
+    <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-success)', fontSize: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {([
+          { label: 'AI RPG', info: targetReadiness.aiRpg },
+          { label: 'UE5', info: targetReadiness.unreal },
+          { label: 'Godot', info: targetReadiness.godot },
+        ] as const).map(({ label, info }) => (
+          <div key={label}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: info.ready ? 'var(--wf-success-text)' : 'var(--wf-danger-text)' }}>
+                {info.ready ? '\u2713' : '\u2717'}
+              </span>
+              <span style={{ color: 'var(--wf-text-primary)', fontWeight: 500, minWidth: 52 }}>{label}:</span>
+              <span style={{ color: !info.ready ? 'var(--wf-danger-text)' : info.advisories.length > 0 ? 'var(--wf-warning)' : 'var(--wf-success-text)' }}>
+                {!info.ready
+                  ? `Not ready (${info.blockers.length} blocker${info.blockers.length !== 1 ? 's' : ''})`
+                  : info.advisories.length > 0
+                    ? `Ready with ${info.advisories.length} advisor${info.advisories.length !== 1 ? 'ies' : 'y'}`
+                    : 'Ready'}
+              </span>
+            </div>
+            {info.blockers.length > 0 && (
+              <div style={{ paddingLeft: 18, marginTop: 2, fontSize: 11, color: 'var(--wf-danger-text)' }}>
+                {info.blockers.map((b, i) => (
+                  <div key={i}>{b}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ExportModal({ onClose, project: projectOverride }: { onClose: () => void; project?: WorldProject }) {
+  const { project: storeProject } = useProjectStore();
+  const project = projectOverride ?? storeProject;
   const { setRightTab, setBuildsSubTab, setFocusTarget, setSelectedZone, markExported } = useEditorStore();
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const importFidelity = useEditorStore((s) => s.importFidelity);
@@ -58,6 +144,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   }, [fallback]);
 
   const precheck = useMemo(() => validateProject(project), [project]);
+  // Per-target readiness with target-specific advisory counts and AI RPG blockers.
+  const targetReadiness = useMemo(
+    () => computeTargetReadiness(project, precheck.valid),
+    [project, precheck.valid],
+  );
+  const aiRpgCanExport = precheck.valid && targetReadiness.aiRpg.ready && !exporting;
 
   const handleValidate = () => {
     if (precheck.valid) {
@@ -84,6 +176,7 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleExport = () => {
+    if (!precheck.valid || !targetReadiness.aiRpg.ready) return;
     runExport(() => runEngineExport(project, { setErrors, setWarnings, setStatus, markExported, setFallback, addReceipt }, undefined, aiRpgOpts));
   };
 
@@ -181,63 +274,12 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
     return items;
   }, [project]);
 
-  // 10C: Per-target readiness with target-specific advisory counts
-  const targetReadiness = useMemo(() => {
-    const base = precheck.valid;
-    const aiRpgAdvisories: string[] = [];
-    const unrealAdvisories: string[] = [];
-    const godotAdvisories: string[] = [];
-
-    if (project.entityPlacements.length === 0) {
-      aiRpgAdvisories.push('No entity placements');
-      unrealAdvisories.push('No entity placements');
-      godotAdvisories.push('No entity placements');
-    }
-    if (project.connections.length === 0 && project.zones.length > 1) {
-      unrealAdvisories.push('No connections — cannot stream between zones');
-      godotAdvisories.push('No connections — cannot generate transitions');
-    }
-    if (project.zones.every((z) => z.elevation === undefined && z.elevationRange === undefined)) {
-      unrealAdvisories.push('No elevation — exports at Z=0 (flat)');
-    }
-    if (project.zones.every((z) => !z.parallaxLayers || z.parallaxLayers.length === 0)) {
-      unrealAdvisories.push('No parallax layers — backdrops will be bare');
-    }
-    if (!project.playerTemplate) {
-      aiRpgAdvisories.push('No player template — pack will lack player data');
-    }
-
-    return {
-      aiRpg: { ready: base, advisories: aiRpgAdvisories },
-      unreal: { ready: base, advisories: unrealAdvisories },
-      godot: { ready: base, advisories: godotAdvisories },
-    };
-  }, [project, precheck.valid]);
-
   return (
     <ModalFrame title="Export" width={450} onClose={onClose}>
 
       {/* 10C: Per-target readiness */}
       {precheck.valid ? (
-        <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-success)', fontSize: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {([
-              { label: 'AI RPG', info: targetReadiness.aiRpg },
-              { label: 'UE5', info: targetReadiness.unreal },
-              { label: 'Godot', info: targetReadiness.godot },
-            ] as const).map(({ label, info }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ color: 'var(--wf-success-text)' }}>{'\u2713'}</span>
-                <span style={{ color: 'var(--wf-text-primary)', fontWeight: 500, minWidth: 52 }}>{label}:</span>
-                <span style={{ color: info.advisories.length > 0 ? 'var(--wf-warning)' : 'var(--wf-success-text)' }}>
-                  {info.advisories.length > 0
-                    ? `Ready with ${info.advisories.length} advisor${info.advisories.length !== 1 ? 'ies' : 'y'}`
-                    : 'Ready'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TargetReadinessSummary targetReadiness={targetReadiness} />
       ) : (
         <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: 'color-mix(in srgb, var(--wf-warning) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-warning)', fontSize: 12, color: 'var(--wf-warning)' }}>
           Not ready — {precheck.errors.length} issue{precheck.errors.length !== 1 ? 's' : ''} must be fixed first.
@@ -434,11 +476,11 @@ export function ExportModal({ onClose }: { onClose: () => void }) {
         <button onClick={handleValidate} style={buttonBase} disabled={exporting}>Validate</button>
         <button onClick={handleExport} style={{
           ...buttonBase,
-          background: precheck.valid && !exporting ? 'var(--wf-success)' : 'var(--wf-bg-control)',
-          color: precheck.valid && !exporting ? '#fff' : 'var(--wf-text-hint)',
-          cursor: precheck.valid && !exporting ? 'pointer' : 'not-allowed',
-          opacity: precheck.valid && !exporting ? 1 : 0.6,
-        }} disabled={!precheck.valid || exporting}>{exporting ? 'Exporting…' : 'Export JSON'}</button>
+          background: aiRpgCanExport ? 'var(--wf-success)' : 'var(--wf-bg-control)',
+          color: aiRpgCanExport ? '#fff' : 'var(--wf-text-hint)',
+          cursor: aiRpgCanExport ? 'pointer' : 'not-allowed',
+          opacity: aiRpgCanExport ? 1 : 0.6,
+        }} disabled={!precheck.valid || !targetReadiness.aiRpg.ready || exporting}>{exporting ? 'Exporting…' : 'Export JSON'}</button>
         <button
           onClick={handleExportUnreal}
           title="Export a 2.5D-aware Unreal Engine 5 content pack"

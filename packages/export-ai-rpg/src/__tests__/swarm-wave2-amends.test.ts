@@ -446,11 +446,16 @@ describe('F-ee46a52c: lootTables cross into the ContentPack instead of being sil
     expect(result.contentPack.lootTables[0].entries[0].condition).toEqual({ type: 'never', params: {} });
   });
 
-  it('lootTables participates in the content hash (SIM_AFFECTING_KEYS)', () => {
+  it('H1: lootTables leaves contentHash unchanged; engine keys (zones) change it', () => {
     const withTables = exportToEngine(lootTableProject());
     const without = exportToEngine(minimalProject);
-    if (!withTables.success || !without.success) throw new Error('export failed');
-    expect(withTables.manifest.contentHash).not.toBe(without.manifest.contentHash);
+    const editedZone = exportToEngine({
+      ...minimalProject,
+      zones: minimalProject.zones.map((z, i) => (i === 0 ? { ...z, name: `${z.name} (edited)` } : z)),
+    });
+    if (!withTables.success || !without.success || !editedZone.success) throw new Error('export failed');
+    expect(withTables.manifest.contentHash).toBe(without.manifest.contentHash);
+    expect(editedZone.manifest.contentHash).not.toBe(without.manifest.contentHash);
   });
 });
 

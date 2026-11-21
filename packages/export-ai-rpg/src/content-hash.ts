@@ -5,40 +5,24 @@
 // Paradox hashes only sim-affecting files so a comment or an asset path does not
 // invalidate a save).
 //
-// ⚠ THIS IS A DELIBERATE DUPLICATE, and duplication across repos is precisely
-// the failure C0 documented — `DEFAULT_MODULES` drifted into nine phantom ids
-// because a COMMENT asked a human to keep two repos in sync. So the duplication
-// is defended two ways:
+// ⚠ THIS IS A DELIBERATE DUPLICATE, and duplication across repos is
+// defended by a live cross-repo equivalence check rather than trust:
 //
-//   1. It cannot be avoided today, but ⚠ NOT for the reason this comment gave
-//      until 2026-07-29. The old text read: "the engine exports
-//      `computeContentHash` from @ai-rpg-engine/content-schema, but this repo's
-//      engine dependencies are installed at 2.x and 2.x has no such export.
-//      Importing it is a dependency bump, not an import." The dependency bump
-//      has now happened — all six ranges resolve 3.8.0 — and the import is
-//      STILL impossible. The measured reason: `computeContentHash` does not
-//      exist in any PUBLISHED @ai-rpg-engine package. It lives in
-//      `content-schema/src/gate.ts`, which C1 added to engine `main` (merge
-//      `00001de`, 2026-07-29) and which has never been released; npm's
-//      `latest` is 3.8.0, published 2026-07-28, the night before C1. Grepped
-//      across all 26 published 3.8.0 packages: zero hits for
-//      `computeContentHash`, `runLoadGate` or `applyContentPack`.
-//      So the blocker is a RELEASE, not a range. When the engine publishes the
-//      C1 surface, delete this file and import the canonical implementation —
-//      `engine-deps-3x.test.ts` fails the moment that becomes possible, so
-//      nobody has to remember.
-//   2. It is CHECKED, not trusted. The engine repo's
-//      `packages/cli/src/c1-gate.test.ts` recomputes the hash of the committed
-//      fixture pack with the ENGINE's implementation and asserts it equals the
-//      value this implementation stamped into the committed fixture manifest.
-//      If the two ever disagree, that test fails — the difference cannot hide.
-//      That test was slated for retirement in this errand, on the reasoning
-//      that one shared function makes it a tautology. It is NOT retired: there
-//      is still no shared function, so it is still the only thing standing
-//      between two implementations and a silent divergence.
+//   1. Why it stays duplicated after 3.12.1 published `@ai-rpg-engine/content-schema`'s
+//      `computeContentHash` (`gate.ts`): the engine's `gate.ts` imports
+//      `createHash` from `'node:crypto'`, whereas `exportToEngine` (and
+//      `computeContentHash` here) is the AIR-FT-005 browser-safe path
+//      (`f-1d037344-browser-safe-hash.test.ts` asserts `node:crypto` is never
+//      imported). So world-forge keeps its own sync FIPS 180-4 implementation.
+//   2. It is CHECKED, not trusted. `__tests__/engine-deps-3x.test.ts` (Node)
+//      asserts that this implementation produces the identical digest as
+//      `@ai-rpg-engine/content-schema`'s `computeContentHash` across the empty
+//      project, vocabulary-coverage, and both dogfood worlds, and the engine
+//      repo's `packages/cli/src/c1-gate.test.ts` checks the committed fixture
+//      the other way.
 //
-// Any change here must be mirrored in the engine's gate.ts, and the equivalence
-// test is what will say so.
+// Any change here must stay identical to the engine's gate.ts, and the
+// equivalence test is what will say so.
 //
 // F-1d037344: hashing MUST NOT import `node:crypto`. `exportToEngine` (re-exported
 // from the public `index.ts` entry) is the AIR-FT-005 browser-safe path —
@@ -51,10 +35,12 @@
  * The pack keys whose contents can change what the simulation computes.
  *
  * Must stay identical to `SIM_AFFECTING_KEYS` in the engine's gate.ts.
- * Deliberately EXCLUDES `schemaVersion` (metadata) and `buildCatalog` /
+ * Deliberately EXCLUDES `schemaVersion` (metadata), `buildCatalog` /
  * `progressionTrees` (session-scoped — consumed before a world exists, so they
- * cannot change a simulation).
+ * cannot change a simulation), and world-forge-only / uncarried keys.
  */
+// A key joins the hash only when the engine carries it: engine first, then
+// this mirror, then the measurement, in the same cycle.
 export const SIM_AFFECTING_KEYS = [
   'entities',
   'zones',
@@ -65,65 +51,9 @@ export const SIM_AFFECTING_KEYS = [
   'verbs',
   'itemUseEffects',
   'districts',
-  // C3/P1 — mirrored from the engine's gate.ts in the same cycle.
-  //
-  // ⚠ AND THE EQUIVALENCE TEST IS HOW I KNOW. Adding these two keys engine-side
-  // turned the engine's `c1-gate.test.ts` cross-repo assertion RED immediately:
-  // the engine hashed a pack subset that included `encounterAnchors` while this
-  // implementation still did not, so the stamped hash and the computed hash
-  // disagreed for byte-identical content. That is precisely the silent
-  // divergence the duplication was defended against, caught by the mechanism
-  // named in this file's header rather than by review — and it is the concrete
-  // argument for NOT retiring that test while two implementations exist.
   'placements',
   'encounterAnchors',
-  // C3/P3. Third time this mirror has been the thing that caught a divergence —
-  // the engine's cross-repo equivalence test went red on each of P1 and P3 the
-  // moment the engine's list grew and this one had not. Mirror, then measure.
   'hazardDefinitions',
-  // F-ee46a52c (swarm wave-2). Weighted loot drops affect simulation outcomes
-  // (which item a kill/chest/container actually yields) exactly as much as
-  // `entities`/`items` do, so a content-hash that ignored `lootTables` would
-  // let two packs with different drop tables hash identically. NOT yet
-  // mirrored into the engine's gate.ts (that file lives in the unpublished
-  // `ai-rpg-engine` repo, out of this package's reach) — when the engine
-  // publishes loot-table support, add the key there too, or the cross-repo
-  // equivalence test this file's header describes will go red for the same
-  // reason C3/P1 and C3/P3 did.
-  'lootTables',
-  // F-f216da1a (swarm wave-4). Same reasoning as lootTables immediately
-  // above: which crafting stations/market nodes exist changes what a player
-  // can craft or buy exactly as much as `entities`/`items` do, so a
-  // content-hash that ignored these two would let two packs with different
-  // stations/nodes hash identically. Also NOT yet mirrored into the engine's
-  // gate.ts for the same reason lootTables is not (unpublished, out of this
-  // package's reach) — mirror when the engine publishes support, or the
-  // cross-repo equivalence test goes red, same as above.
-  'craftingStations',
-  'marketNodes',
-  // F-8820cfd8 (swarm wave-9). The three ContentPack channels exportToEngine
-  // ALWAYS writes that were still missing from this list: `items` (the catalog
-  // this pack actually emits — engine-side quests/abilities/statuses/verbs/
-  // itemUseEffects were present while the local catalog was not), plus the
-  // two raw pass-through sim layers `factionPresences` / `pressureHotspots`.
-  // Two packs that differ only in item stats, faction influence, or hotspot
-  // probability must not stamp identical manifest.contentHash values.
-  // Same unpublished-engine-gate.ts discipline as lootTables above.
-  'items',
-  'factionPresences',
-  'pressureHotspots',
-  // Wave 32: new ContentPack channels that change what the simulation
-  // computes (typed graph, spawn locations, item whereabouts, town layer).
-  'connections',
-  'itemPlacements',
-  'spawnPoints',
-  'buildings',
-  'hubs',
-  'strongholds',
-  'landmarks',
-  'strata',
-  'stratumLinks',
-  'transitions',
 ] as const;
 
 /**

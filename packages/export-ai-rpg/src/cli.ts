@@ -13,6 +13,7 @@ import {
 } from './import.js';
 import type { WorldProject } from '@world-forge/schema';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
+import { listAiRpgEncounterBlockers } from './encounter-types.js';
 
 const USAGE = `Usage: world-forge-export <project.json> [options]
        world-forge-export --import <file-or-pack-dir> [--out <dir>]
@@ -521,6 +522,22 @@ async function main(): Promise<void> {
   }
 
   const exportResult = result; // narrowed to ExportResult
+
+  // Non-engine encounter types block ALL AI RPG paths (--validate-only,
+  // --dry-run, and file exports), printing every blocker to stderr and exiting 1
+  // before writing any files.
+  const encounterBlockers = listAiRpgEncounterBlockers(project);
+  if (encounterBlockers.length > 0) {
+    console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
+    for (const b of encounterBlockers) {
+      console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
+    }
+    if (verbose) {
+      console.error('\n--- Verbose Diagnostics ---');
+      console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
+    }
+    process.exit(1);
+  }
 
   if (validateOnly) {
     console.log('Validation passed.');
