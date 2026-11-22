@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- **README matches the editor as built.** Workspace tabs in their real order (Import and Diff appear after an import; Guide until dismissed), all 10 tools, 29 keyboard shortcuts with 10 tool keys, the real layer toggles, fit-to-content when the canvas first opens a project, and layout templates, dialogue templates and batch entity placement marked as not yet reachable from the editor UI.
+
 ### Behaviour Changes
 
 - **`exportToEngine` refuses engine-blocked worlds directly.** `@world-forge/export-ai-rpg`'s `exportToEngine` now returns `{ success: false, errors, encounterBlockers?, speakerBlockers? }` (with no `contentPack`) for projects carrying unmapped encounter types (`listAiRpgEncounterBlockers`) or unresolved dialogue speaker IDs (`listAiRpgDialogueSpeakerBlockers`), naming each blocker in `errors` and the typed blocker arrays instead of returning `{ success: true }`. No option or flag bypasses this refusal, and both the CLI (`world-forge-export`) and the editor's Export modal readiness (`computeTargetReadiness`) read this single `exportToEngine` result.
