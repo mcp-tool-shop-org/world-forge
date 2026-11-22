@@ -314,7 +314,7 @@
           "path": "dogfood/chapel-threshold-unreal.ts"
         },
         {
-          "hash": "0984d1fb1b3e91db663a1d0861d359a3923ad8f2fbc9e84cf96603730530828c",
+          "hash": "50619f75b4526d539fd459d9f6246dcbd7925b460d5aa339b7679ab2adf2a3e7",
           "importOrder": [
             "packages/schema/src/__tests__/fixtures/chapel-authored.ts",
             "packages/export-ai-rpg/src/export.ts"
@@ -720,20 +720,20 @@
             {
               "in": "App",
               "kind": "catch",
-              "line": 94
+              "line": 93
             },
             {
               "in": "reader.onload",
               "kind": "catch",
-              "line": 226
+              "line": 225
             },
             {
               "in": "reader.onload",
               "kind": "catch",
-              "line": 229
+              "line": 228
             }
           ],
-          "hash": "f36688cab623a36bfa9fbe3669fd86d6678ce9a043d295805acc62ee5649f1c4",
+          "hash": "ec98c0aa30716403d20c3f42691d8e42e2b4f3267d7e755c8b39eb9a0802b503",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/save-project.ts",
@@ -828,7 +828,7 @@
           "exports": [
             "Canvas"
           ],
-          "hash": "6ea5a24a82435a982d620af890872d05e4accdba3508e224e410cd372c7b83cf",
+          "hash": "acdbb496fd377455f19b01f512d0d5dfd7a696e6a811b89226e41bdc75d9b786",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -970,6 +970,29 @@
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/__tests__/canvas-defaults.test.ts",
+          "testFramework": "vitest"
+        },
+        {
+          "hash": "f9fe67c5dc6ae97b6f3c79c4f6babcc5333890d40e4e6c88e7030636764bab95",
+          "importOrder": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/hotkeys.ts",
+            "packages/editor/src/panels/ToolPalette.tsx",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/schema/src/__tests__/fixtures/minimal.ts",
+            "packages/editor/src/hit-testing.ts"
+          ],
+          "importsFiles": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/hotkeys.ts",
+            "packages/editor/src/panels/ToolPalette.tsx",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/schema/src/__tests__/fixtures/minimal.ts"
+          ],
+          "path": "packages/editor/src/__tests__/command-registry.test.ts",
           "testFramework": "vitest"
         },
         {
@@ -1162,7 +1185,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "16ffc36a6a1ba9f7aa2b80b0d2361ce048f825e0c4b55f7cb4fb143be1b08f88",
+          "hash": "a49403b1fa51891979619f2430e12c7ba88fa770e302f0aafb73675a13515a42",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -1994,6 +2017,11 @@
           "testFramework": "vitest"
         },
         {
+          "hash": "c41f4fdcf674f09c252ffe6591aa48078d37bc198227eae24ab1889bd75c20bc",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-c1-compat.test.ts"
+        },
+        {
           "hash": "dc83473a9ae0fcb134ccb21aa44087d8e2185c337cb33c53af88c2ff1236b525",
           "path": "packages/editor/src/__tests__/speed-panel-detection.test.ts",
           "testFramework": "vitest"
@@ -2342,6 +2370,41 @@
         },
         {
           "exports": [
+            "getCommandById",
+            "getCommandsForSurface",
+            "getContextMenuCommands",
+            "getHotkeyBindingsFromRegistry",
+            "getSpeedPanelCommands",
+            "getToolPaletteCommands",
+            "runCommand"
+          ],
+          "hash": "fe5b881f3e7288e3ad7e7d4d09b9f17c15425ee4f518f006fc9e5e9c6d226106",
+          "importOrder": [
+            "packages/editor/src/hit-testing.ts",
+            "packages/schema/src/index.ts",
+            "packages/editor/src/viewport.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/store/modal-store.ts",
+            "packages/editor/src/panels/ReviewPanel.tsx",
+            "packages/editor/src/review/export-summary.ts",
+            "packages/editor/src/save-project.ts",
+            "packages/editor/src/ui/Toast.tsx"
+          ],
+          "importsFiles": [
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/panels/ReviewPanel.tsx",
+            "packages/editor/src/review/export-summary.ts",
+            "packages/editor/src/save-project.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/store/modal-store.ts",
+            "packages/editor/src/ui/Toast.tsx",
+            "packages/editor/src/viewport.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/editor/src/command-registry.ts"
+        },
+        {
+          "exports": [
             "_resetDanglingConnectionWarnings",
             "connectionLabel",
             "connectionMidpoint",
@@ -2467,19 +2530,12 @@
             {
               "in": "isActivatingControl",
               "kind": "catch",
-              "line": 319
+              "line": 98
             }
           ],
-          "hash": "09f31ab9d5980c74392b443966e9914862b6ade67f4f45cc58882ca9229180a3",
-          "importOrder": [
-            "packages/schema/src/index.ts",
-            "packages/editor/src/store/editor-store.ts",
-            "packages/editor/src/store/modal-store.ts"
-          ],
+          "hash": "9ad30b14c5460ee63d88157b6abd7e17b9fb4105aa7c5c3e1f4b0dd39213db0e",
           "importsFiles": [
-            "packages/editor/src/store/editor-store.ts",
-            "packages/editor/src/store/modal-store.ts",
-            "packages/schema/src/index.ts"
+            "packages/editor/src/command-registry.ts"
           ],
           "path": "packages/editor/src/hotkeys.ts"
         },
@@ -2877,9 +2933,11 @@
         {
           "exports": [
             "DialoguePanel",
+            "createEmptyDialogue",
+            "createStarterDialogue",
             "parseSpeakersInput"
           ],
-          "hash": "166ba86b1a7401a27c68637a03fb4c9a4648588b73e87d180a8248fa4cfbf0f5",
+          "hash": "1d371e85d7a9f3eaa12f0668946cc6aba4d1a2ff7e0f129235f3d19b987e8dec",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/panels/shared.tsx",
@@ -3839,16 +3897,18 @@
               "line": 50
             }
           ],
-          "hash": "1f5747897e65b50d16baa43b453c79ace3bfef4f0e939eed378ac9a8b1bff0eb",
+          "hash": "37946e60c72333f3ca483c0932b76fdc1f4a4d4f5aee100e2a33c823403d0d60",
           "importOrder": [
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/viewport.ts",
             "packages/editor/src/ui/styles.ts",
             "packages/editor/src/panels/zone-2d5-helpers.ts",
-            "packages/editor/src/panels/shared.tsx"
+            "packages/editor/src/panels/shared.tsx",
+            "packages/editor/src/command-registry.ts"
           ],
           "importsFiles": [
+            "packages/editor/src/command-registry.ts",
             "packages/editor/src/panels/shared.tsx",
             "packages/editor/src/panels/zone-2d5-helpers.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -4383,7 +4443,7 @@
             "handleSpeedPanelExecuteResult",
             "productionExecuteStores"
           ],
-          "hash": "6eac4a6271b1f10cb8e91cd92f5995ba223414406b580357f0b3c10dffea0dcb",
+          "hash": "469f57c491791f6f0848baaabcbc1141c926b8c992b2ae5a9d6d35a9e1166846",
           "importOrder": [
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -4737,8 +4797,14 @@
             "getActionById",
             "getContextMenuActions"
           ],
-          "hash": "2f3150964ea9f12d012db470b442d1f6ac303c80dd0c20d2f9abd20665d69b59",
+          "hash": "4f9219d6496eb1c2766ad155b4c8394786dfe447e890bd4940f7763396ea75a4",
+          "importOrder": [
+            "packages/editor/src/hit-testing.ts",
+            "packages/schema/src/index.ts",
+            "packages/editor/src/command-registry.ts"
+          ],
           "importsFiles": [
+            "packages/editor/src/command-registry.ts",
             "packages/editor/src/hit-testing.ts",
             "packages/schema/src/index.ts"
           ],
@@ -4752,30 +4818,24 @@
             "executeMacro",
             "failReasonToUserMessage"
           ],
-          "hash": "366dc2c71ad1e35109d20d1fcb42bdea8b2ade68e48b551c93f2de3f87cd6740",
+          "hash": "66a4c6a87054f7f4f12a688146ee89845b74aae57309e303db54750c2d7f8b2c",
           "importOrder": [
             "packages/editor/src/hit-testing.ts",
             "packages/editor/src/speed-panel-actions.ts",
-            "packages/schema/src/index.ts",
-            "packages/editor/src/viewport.ts",
+            "packages/editor/src/command-registry.ts",
             "packages/editor/src/store/editor-store.ts",
-            "packages/editor/src/panels/ReviewPanel.tsx",
-            "packages/editor/src/review/export-summary.ts",
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/editor/src/save-project.ts"
           ],
           "importsFiles": [
+            "packages/editor/src/command-registry.ts",
             "packages/editor/src/hit-testing.ts",
-            "packages/editor/src/panels/ReviewPanel.tsx",
-            "packages/editor/src/review/export-summary.ts",
             "packages/editor/src/save-project.ts",
             "packages/editor/src/speed-panel-actions.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
-            "packages/editor/src/ui/Toast.tsx",
-            "packages/editor/src/viewport.ts",
-            "packages/schema/src/index.ts"
+            "packages/editor/src/ui/Toast.tsx"
           ],
           "path": "packages/editor/src/speed-panel-execute.ts"
         },
@@ -4790,34 +4850,34 @@
           "failurePaths": [
             {
               "kind": "catch",
-              "line": 296
+              "line": 299
             },
             {
               "in": "toggleElevation",
               "kind": "catch",
-              "line": 403
+              "line": 407
             },
             {
               "kind": "catch",
-              "line": 453
+              "line": 457
             },
             {
               "in": "toggleHidden",
               "kind": "catch",
-              "line": 463
+              "line": 467
             },
             {
               "in": "clearHiddenIds",
               "kind": "catch",
-              "line": 477
+              "line": 481
             },
             {
               "in": "hideSelected",
               "kind": "catch",
-              "line": 493
+              "line": 497
             }
           ],
-          "hash": "ac3fdf9232c13c0195a5f4671bb4654d2235a7f35a94f59bede4f28160fc54bd",
+          "hash": "46755d3d78f2ab68e6f27e64c6b24e88d56a32ee75e6f0c19bbd14384fa34e86",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -5294,19 +5354,19 @@
       "origin": "authored",
       "outsidePlaces": [
         {
-          "reads": 32,
+          "reads": 34,
           "where": [
             "caller"
           ],
           "writes": 0
         }
       ],
-      "outsideReads": 32,
+      "outsideReads": 34,
       "role": "code",
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 111,
+      "testedBy": 112,
       "unresolvedSites": 0
     },
     {
@@ -5503,7 +5563,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "09e50feaf872a35dbb709f371e4c546d79d32ab5182ca0628df8ebb96302ac1f",
+          "hash": "eff74d43cb929ae754fba412f636a5a581511ce0f9d2143d9b408c4830dd7495",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts",
@@ -5630,7 +5690,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "5ae709f8e2740b3f7ed219e16b49cc5deb488a5cc5a892b8a8f6286853b2e373",
+          "hash": "c6a3ce582af8197d31f8ec9d55d14c21c70172d148669cd1dd6fa6eb655dd233",
           "importOrder": [
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/export-ai-rpg/src/export.ts",
@@ -6034,7 +6094,7 @@
               "line": 488
             }
           ],
-          "hash": "3f036548dd25785271db98d3bad3ef571d948713f6e57e01da3bc38415159f11",
+          "hash": "71f7130f6b7787687c5d829ba5f093330f4c4b32e24d56cc600acd4cf4acec02",
           "importsFiles": [
             "packages/export-ai-rpg/src/convert-dialogues.ts",
             "packages/export-ai-rpg/src/encounter-types.ts",
@@ -6483,7 +6543,7 @@
             "convertDialogues",
             "listAiRpgDialogueSpeakerBlockers"
           ],
-          "hash": "c79c14ffb38fafc0657cbfa041ee7ff2a07e9fb44dded9a74a195c4fd5c3cdc1",
+          "hash": "cb9961437cc692a87ea4d64b05cba2609641fdd776c98f88e35c5bccabe6d796",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -6699,7 +6759,7 @@
               "line": 438
             }
           ],
-          "hash": "897490632bfd970a9aa6b935e052f733bdeac5800e895e3b330fed26e21c3fb3",
+          "hash": "e61b4b8fe25f3f4cdc5180c63a6c3fff7b01bb7d4219ac1d19cf855a57d74ea5",
           "importsFiles": [
             "packages/export-ai-rpg/src/content-hash.ts",
             "packages/export-ai-rpg/src/convert-build-catalog.ts",
@@ -7743,7 +7803,7 @@
       "origin": "authored",
       "outsidePlaces": [
         {
-          "reads": 7,
+          "reads": 8,
           "where": [
             "caller"
           ],
@@ -7757,13 +7817,13 @@
           "writes": 2
         }
       ],
-      "outsideReads": 7,
+      "outsideReads": 8,
       "outsideWrites": 4,
       "role": "code",
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 70,
+      "testedBy": 71,
       "unresolvedSites": 0
     },
     {
@@ -10638,7 +10698,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "028c0758dd8f86fca49973243a645abfde45d4d89f33823e38fde3964a6fd0e2",
+          "hash": "1b68da4d091eaeef2df359dbdadeb235195222fc314c79d2efc1a3f595a82175",
           "path": "CHANGELOG.md"
         },
         {
@@ -10670,7 +10730,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "5ede392f7bd12a1feb123a849bc3df6501e79a3b91c601cdc74c990a6aba4b45",
+          "hash": "76d5843e20eccd591bc94ef64d08c937979bbeffe88f62c4ed780b5ccb7a82e9",
           "path": "README.md"
         },
         {
@@ -11742,7 +11802,7 @@
           "path": "site/src/content/docs/handbook/beginners.md"
         },
         {
-          "hash": "b607d21f7409fefce8c29170cd2601be471a6ebdf1ee2d2af9c9013c9d839404",
+          "hash": "f3e039c6dc50d28f039ac186993b0f26868c238d6c6243afa3bab0f148a345c1",
           "path": "site/src/content/docs/handbook/editor-workflow.md"
         },
         {
@@ -11754,7 +11814,7 @@
           "path": "site/src/content/docs/handbook/export-unreal.md"
         },
         {
-          "hash": "ad2f7c28b5ad62ac568481535379fd9d581ca3a35851b9bb662e4cf78d7ede33",
+          "hash": "90e9b87a09d87f4d7fa9fb6dd0763e7a71081f80420af552ba9bd1908086787d",
           "path": "site/src/content/docs/handbook/export.md"
         },
         {
@@ -12107,7 +12167,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 243
+          "files": 246
         },
         {
           "boundary": "export-ai-rpg",
@@ -12811,7 +12871,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 225,
+          "files": 227,
           "job": "build-and-test",
           "runner": "vitest",
           "step": "6",
@@ -12822,7 +12882,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 225,
+          "files": 227,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -13379,7 +13439,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 243
+          "files": 246
         },
         {
           "boundary": "export-ai-rpg",
@@ -14042,7 +14102,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 225,
+          "files": 227,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -14567,8 +14627,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "55561964fa7280182724498c86e5937208989f4d",
-    "tracked": 657
+    "commit": "82c2352eb00e3a51d44df8c6ea51d0dd0f29e147",
+    "tracked": 660
   },
   "landings": [
     {
@@ -16186,7 +16246,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 236,
+  "testFiles": 238,
   "unassigned": [],
   "workspaces": [
     "packages/editor",

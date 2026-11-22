@@ -2,49 +2,15 @@
 
 import type { HitResult } from './hit-testing.js';
 import type { AuthoringMode, WorldProject } from '@world-forge/schema';
+import {
+  SPEED_PANEL_ICON_GLYPH,
+  getContextMenuCommands,
+  getSpeedPanelCommands,
+  type EditorCommand,
+  type SpeedPanelIconId,
+} from './command-registry.js';
 
-/** Closed icon enum so the palette/context menu can style a 16px glyph from tokens. */
-export type SpeedPanelIconId =
-  | 'plus'
-  | 'fit'
-  | 'edit'
-  | 'delete'
-  | 'duplicate'
-  | 'district'
-  | 'entity'
-  | 'connect'
-  | 'swap'
-  | 'merge'
-  | 'elevation'
-  | 'review'
-  | 'summary'
-  | 'encounter'
-  | 'connect-secret'
-  | 'connect-channel'
-  | 'connect-warp'
-  | 'connect-trail';
-
-/** Geometric glyphs — not emoji, not 1–3 letter codes. */
-export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
-  plus: '+',
-  fit: '\u25F1',
-  edit: '\u270E',
-  delete: '\u2715',
-  duplicate: '\u29C9',
-  district: '\u25A6',
-  entity: '\u25C9',
-  connect: '\u2192',
-  swap: '\u21C4',
-  merge: '\u22C8',
-  elevation: '\u25B2',
-  review: '\u2611',
-  summary: '\u25A4',
-  encounter: '\u25C7',
-  'connect-secret': '\u2726',
-  'connect-channel': '\u2248',
-  'connect-warp': '\u29C1',
-  'connect-trail': '\u2198',
-};
+export { SPEED_PANEL_ICON_GLYPH, type SpeedPanelIconId };
 
 export interface SpeedPanelAction {
   id: string;
@@ -112,44 +78,21 @@ export interface FilteredActions {
   contextual: SpeedPanelAction[];
 }
 
-const hasDuplicate = (h: HitResult | null) =>
-  h?.type === 'zone' || h?.type === 'entity' || h?.type === 'landmark';
+function toSpeedPanelAction(cmd: EditorCommand): SpeedPanelAction {
+  return {
+    id: cmd.id,
+    label: cmd.label ?? cmd.title,
+    icon: cmd.icon ?? '',
+    ...(cmd.iconId ? { iconId: cmd.iconId } : {}),
+    ...(cmd.description !== undefined ? { description: cmd.description } : {}),
+    category: cmd.speedPanelCategory ?? 'context',
+    contextFilter: cmd.contextFilter ?? ((h) => cmd.when({ hit: h })),
+    macroSafe: cmd.macroSafe ?? false,
+    ...(cmd.modeSuggested ? { modeSuggested: cmd.modeSuggested } : {}),
+  };
+}
 
-export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = [
-  // -- Global (empty canvas) --
-  { id: 'new-zone',        label: 'New Zone',           icon: SPEED_PANEL_ICON_GLYPH.plus,       iconId: 'plus',       description: 'Paint a new zone on the canvas',                    category: 'global',  contextFilter: (h) => h === null,            macroSafe: false },
-  { id: 'fit-content',     label: 'Fit to Content',     icon: SPEED_PANEL_ICON_GLYPH.fit,        iconId: 'fit',        description: 'Zoom the viewport to fit the whole map',            category: 'global',  contextFilter: (h) => h === null,            macroSafe: true },
-
-  // -- Any object --
-  { id: 'edit-props',      label: 'Edit Properties',    icon: SPEED_PANEL_ICON_GLYPH.edit,       iconId: 'edit',       description: 'Open properties for the selected object',           category: 'context', contextFilter: (h) => h !== null,            macroSafe: true },
-  { id: 'delete',          label: 'Delete',             icon: SPEED_PANEL_ICON_GLYPH.delete,     iconId: 'delete',     description: 'Remove the selected object',                        category: 'context', contextFilter: (h) => h !== null,            macroSafe: true },
-  { id: 'duplicate',       label: 'Duplicate',          icon: SPEED_PANEL_ICON_GLYPH.duplicate,  iconId: 'duplicate',  description: 'Copy the selected object nearby',                   category: 'context', contextFilter: hasDuplicate,                 macroSafe: true },
-
-  // -- Zone-only --
-  { id: 'assign-district',  label: 'Assign District',    icon: SPEED_PANEL_ICON_GLYPH.district,   iconId: 'district',   description: 'Set this zone’s parent district',                   category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: true },
-  { id: 'place-entity',     label: 'Place Entity Here',  icon: SPEED_PANEL_ICON_GLYPH.entity,     iconId: 'entity',     description: 'Drop an entity inside this zone',                   category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
-  { id: 'place-encounter',  label: 'Place Encounter Here', icon: SPEED_PANEL_ICON_GLYPH.encounter, iconId: 'encounter', description: 'Drop an encounter anchor inside this zone',         category: 'context', contextFilter: (h) => h?.type === 'zone',   macroSafe: false },
-  { id: 'connect-from',     label: 'Connect From Here',  icon: SPEED_PANEL_ICON_GLYPH.connect,    iconId: 'connect',    description: 'Start a connection from this zone',                 category: 'context', contextFilter: (h) => h?.type === 'zone',    macroSafe: false },
-
-  // -- Connection-only --
-  { id: 'swap-direction',   label: 'Swap Direction',     icon: SPEED_PANEL_ICON_GLYPH.swap,       iconId: 'swap',       description: 'Reverse this connection’s direction',               category: 'context', contextFilter: (h) => h?.type === 'connection', macroSafe: true },
-
-  { id: 'add-secret-conn', label: 'Draw Secret Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-secret'], iconId: 'connect-secret', description: 'Start a secret connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['dungeon', 'interior'] },
-  { id: 'add-channel-conn', label: 'Draw Channel Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-channel'], iconId: 'connect-channel', description: 'Start a channel connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['ocean'] },
-  { id: 'add-warp-conn', label: 'Draw Warp Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-warp'], iconId: 'connect-warp', description: 'Start a warp connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['space'] },
-  { id: 'add-trail-conn', label: 'Draw Trail Connection', icon: SPEED_PANEL_ICON_GLYPH['connect-trail'], iconId: 'connect-trail', description: 'Start a trail connection from this zone', category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false, modeSuggested: ['wilderness'] },
-
-  // -- Multi-zone --
-  { id: 'merge-zones',      label: 'Merge Zones',           icon: SPEED_PANEL_ICON_GLYPH.merge,      iconId: 'merge',      description: 'Combine this zone with another selected zone',     category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: true },
-
-  // ED-FT-005: single-zone elevation action. Uses native prompt() for speed; the
-  // full editor is in ZoneProperties.
-  { id: 'set-elevation',    label: 'Set Elevation',         icon: SPEED_PANEL_ICON_GLYPH.elevation,  iconId: 'elevation',  description: 'Set this zone’s elevation',                        category: 'context', contextFilter: (h) => h?.type === 'zone', macroSafe: false },
-
-  // -- Review --
-  { id: 'open-review',      label: 'Open Review',           icon: SPEED_PANEL_ICON_GLYPH.review,     iconId: 'review',     description: 'Open the project review panel',                    category: 'global',  contextFilter: (h) => h === null, macroSafe: true },
-  { id: 'export-summary',   label: 'Export Summary',        icon: SPEED_PANEL_ICON_GLYPH.summary,    iconId: 'summary',    description: 'Show a summary of the last export',                category: 'global',  contextFilter: (h) => h === null, macroSafe: true },
-];
+export const SPEED_PANEL_ACTIONS: SpeedPanelAction[] = getSpeedPanelCommands().map(toSpeedPanelAction);
 
 /**
  * Fuzzy-match: returns true when all characters in `query` appear in `text`
@@ -195,9 +138,6 @@ export function getActionById(id: string): SpeedPanelAction | undefined {
   return SPEED_PANEL_ACTIONS.find((a) => a.id === id);
 }
 
-/** Maximum number of actions returned by getContextMenuActions. */
-const CONTEXT_MENU_LIMIT = 7;
-
 /**
  * Return the top context-menu actions for a right-click hit result.
  * Context-sensitive: zone hit shows zone actions, entity hit shows entity actions,
@@ -207,14 +147,7 @@ export function getContextMenuActions(
   hitResult: HitResult | null,
   _project: WorldProject,
 ): SpeedPanelAction[] {
-  const matching = SPEED_PANEL_ACTIONS.filter((a) => a.contextFilter(hitResult));
-  // Prioritize: context actions first (more specific), then global
-  const sorted = [...matching].sort((a, b) => {
-    if (a.category === 'context' && b.category !== 'context') return -1;
-    if (a.category !== 'context' && b.category === 'context') return 1;
-    return 0;
-  });
-  return sorted.slice(0, CONTEXT_MENU_LIMIT);
+  return getContextMenuCommands(hitResult).map(toSpeedPanelAction);
 }
 
 /**

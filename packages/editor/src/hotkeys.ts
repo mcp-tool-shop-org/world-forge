@@ -1,110 +1,21 @@
 // hotkeys.ts — centralized keyboard shortcut dispatch
 
-import type { WorldProject } from '@world-forge/schema';
-import type { SelectionSet, RightTab, EditorTool } from './store/editor-store.js';
-import { getSelectionCount } from './store/editor-store.js';
-import type { ModalId } from './store/modal-store.js';
+import {
+  getCommandById,
+  getHotkeyBindingsFromRegistry,
+  type HotkeyBinding,
+  type HotkeyContext,
+  type HotkeyResult,
+} from './command-registry.js';
 
-export interface HotkeyBinding {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  action: string;
-  label: string;
-  description: string;
-}
+export type { HotkeyBinding, HotkeyContext, HotkeyResult };
 
-export const HOTKEY_BINDINGS: HotkeyBinding[] = [
-  { key: 'KeyK', ctrl: true, action: 'search', label: 'Ctrl+K', description: 'Open search overlay' },
-  { key: 'KeyS', ctrl: true, action: 'save', label: 'Ctrl+S', description: 'Save project' },
-  { key: 'KeyC', ctrl: true, action: 'copy', label: 'Ctrl+C', description: 'Copy selected objects' },
-  { key: 'KeyV', ctrl: true, action: 'paste', label: 'Ctrl+V', description: 'Paste from clipboard' },
-  { key: 'KeyD', ctrl: true, action: 'duplicate', label: 'Ctrl+D', description: 'Duplicate selected objects' },
-  { key: 'KeyZ', ctrl: true, action: 'undo', label: 'Ctrl+Z', description: 'Undo last action' },
-  { key: 'KeyZ', ctrl: true, shift: true, action: 'redo', label: 'Ctrl+Shift+Z', description: 'Redo last undone action' },
-  { key: 'KeyY', ctrl: true, action: 'redo', label: 'Ctrl+Y', description: 'Redo last undone action' },
-  { key: 'KeyA', ctrl: true, action: 'select-all', label: 'Ctrl+A', description: 'Select all visible objects' },
-  { key: 'Delete', action: 'delete', label: 'Del', description: 'Delete selected objects' },
-  { key: 'Backspace', action: 'delete', label: 'Backspace', description: 'Delete selected objects' },
-  { key: 'Escape', action: 'escape', label: 'Esc', description: 'Clear selection and cancel drag' },
-  { key: 'ArrowUp', action: 'nudge-up', label: 'Up', description: 'Nudge selected up (Shift for 5x)' },
-  { key: 'ArrowDown', action: 'nudge-down', label: 'Down', description: 'Nudge selected down (Shift for 5x)' },
-  { key: 'ArrowLeft', action: 'nudge-left', label: 'Left', description: 'Nudge selected left (Shift for 5x)' },
-  { key: 'ArrowRight', action: 'nudge-right', label: 'Right', description: 'Nudge selected right (Shift for 5x)' },
-  { key: 'Enter', action: 'open-details', label: 'Enter', description: 'Open details for selected object' },
-  { key: 'KeyP', action: 'apply-preset', label: 'P', description: 'Apply preset to selected district or zone' },
-  { key: 'KeyP', shift: true, action: 'save-preset', label: 'Shift+P', description: 'Save current selection as preset' },
-  // Tool switching — matches labels shown in ToolPalette
-  { key: 'KeyV', action: 'tool-select', label: 'V', description: 'Switch to Select tool' },
-  { key: 'KeyZ', action: 'tool-zone', label: 'Z', description: 'Switch to Zone tool' },
-  { key: 'KeyC', action: 'tool-connection', label: 'C', description: 'Switch to Connection tool' },
-  { key: 'KeyE', action: 'tool-entity', label: 'E', description: 'Switch to Entity tool' },
-  { key: 'KeyL', action: 'tool-landmark', label: 'L', description: 'Switch to Landmark tool' },
-  { key: 'KeyS', action: 'tool-spawn', label: 'S', description: 'Switch to Spawn tool' },
-  { key: 'KeyT', action: 'tool-tile', label: 'T', description: 'Switch to Tile Paint tool' },
-  { key: 'KeyO', action: 'tool-prop', label: 'O', description: 'Switch to Prop Place tool' },
-  { key: 'KeyN', action: 'tool-encounter', label: 'N', description: 'Switch to Encounter Place tool' },
-  { key: 'KeyI', action: 'tool-item', label: 'I', description: 'Switch to Item Place tool' },
-];
+export const HOTKEY_BINDINGS: HotkeyBinding[] = getHotkeyBindingsFromRegistry();
 
 /** Return a flat list of all registered hotkeys for display in a guide panel. */
 export function getHotkeyList(): { key: string; label: string; description: string }[] {
   return HOTKEY_BINDINGS.map((b) => ({ key: b.key, label: b.label, description: b.description }));
 }
-
-/** Context passed from the editor to the hotkey dispatcher. */
-export interface HotkeyContext {
-  selection: SelectionSet;
-  selectedConnection: { from: string; to: string } | null;
-  project: WorldProject;
-  showEntities: boolean;
-  showLandmarks: boolean;
-  showSpawns: boolean;
-  /** F-5515c044: optional so older test bags still type-check. Default true. */
-  showTown?: boolean;
-  /**
-   * F-340b4aff: id of the currently-open modal (Export/Import/Template
-   * Manager/Save Template/Save Kit), or `null` when none is open. Mirrors
-   * `useModalStore.getState().activeModal`.
-   */
-  activeModal: ModalId;
-  /**
-   * F-340b4aff: whether the Ctrl+K search overlay is currently open. Mirrors
-   * `useEditorStore.getState().showSearch`.
-   */
-  showSearch: boolean;
-  // Actions
-  clearSelection: () => void;
-  selectAll: (sel: SelectionSet, append: boolean) => void;
-  moveSelected: (sel: SelectionSet, dx: number, dy: number) => void;
-  removeSelected: (sel: SelectionSet) => void;
-  removeConnection: (from: string, to: string) => void;
-  duplicateSelected: (sel: SelectionSet) => SelectionSet;
-  copySelection?: (project: WorldProject) => void;
-  pasteClipboard?: () => void;
-  /** F-f2564ffa: undo/redo — optional so existing test bags still type-check. */
-  undo?: () => void;
-  redo?: () => void;
-  setShowSearch: (show: boolean) => void;
-  setRightTab: (tab: RightTab) => void;
-  setTool: (tool: EditorTool) => void;
-  showSpeedPanel: boolean;
-  closeSpeedPanel: () => void;
-  /** F-bde2ece7: Ctrl+S. Optional so older test bags still type-check. */
-  save?: () => void;
-  /** F-fabda31a: P applies a preset; Shift+P saves one. Optional for older tests. */
-  applyPreset?: () => void;
-  savePreset?: () => void;
-  /**
-   * F-eb7fc5ef: Escape must drop an in-progress connection, not only the
-   * SelectionSet. Optional so older test bags still type-check.
-   */
-  setConnectionStart?: (zoneId: string | null) => void;
-}
-
-export type HotkeyResult =
-  | { handled: true; action: string }
-  | { handled: false };
 
 /**
  * Match an incoming keyboard event against hotkey bindings.
@@ -126,7 +37,7 @@ export function matchHotkey(e: KeyboardEvent): string | null {
 }
 
 /**
- * Dispatch a hotkey action. Returns whether it was handled.
+ * Dispatch a hotkey action through the central command registry. Returns whether it was handled.
  * Space and key-up events are handled separately by Canvas (they depend on refs).
  */
 export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResult {
@@ -150,148 +61,16 @@ export function dispatchHotkey(e: KeyboardEvent, ctx: HotkeyContext): HotkeyResu
   const action = matchHotkey(e);
   if (!action) return { handled: false };
 
-  switch (action) {
-    case 'search':
-      e.preventDefault();
-      ctx.setShowSearch(true);
-      return { handled: true, action };
-
-    case 'copy': {
-      // F-ef6c82dc: only swallow Ctrl+C when there is something to copy;
-      // otherwise let the browser copy selected non-input text (e.g. project name).
-      if (getSelectionCount(ctx.selection) === 0) return { handled: false };
-      e.preventDefault();
-      if (ctx.copySelection) ctx.copySelection(ctx.project);
-      return { handled: true, action };
-    }
-
-    case 'paste': {
-      e.preventDefault();
-      if (ctx.pasteClipboard) ctx.pasteClipboard();
-      return { handled: true, action };
-    }
-
-    case 'duplicate': {
-      e.preventDefault();
-      if (getSelectionCount(ctx.selection) > 0) {
-        const newSel = ctx.duplicateSelected(ctx.selection);
-        ctx.selectAll(newSel, false);
-      }
-      return { handled: true, action };
-    }
-
-    case 'select-all': {
-      e.preventDefault();
-      const zones = ctx.project.zones.map((z) => z.id);
-      const entities = ctx.showEntities ? ctx.project.entityPlacements.map((ent) => ent.entityId) : [];
-      const landmarks = ctx.showLandmarks ? ctx.project.landmarks.map((l) => l.id) : [];
-      const spawns = ctx.showSpawns ? ctx.project.spawnPoints.map((s) => s.id) : [];
-      const encounters = ctx.project.encounterAnchors.map((enc) => enc.id);
-      const items = (ctx.project.itemPlacements ?? []).map((i) => i.itemId);
-      const showTown = ctx.showTown !== false;
-      const markets = showTown ? (ctx.project.marketNodes ?? []).map((m) => m.id) : [];
-      const stations = showTown ? (ctx.project.craftingStations ?? []).map((s) => s.id) : [];
-      const buildings = showTown ? (ctx.project.buildings ?? []).map((b) => b.id) : [];
-      const hubs = showTown ? (ctx.project.hubs ?? []).map((h) => h.id) : [];
-      const strongholds = showTown ? (ctx.project.strongholds ?? []).map((s) => s.id) : [];
-      ctx.selectAll({ zones, entities, landmarks, spawns, encounters, items, markets, stations, buildings, hubs, strongholds }, false);
-      return { handled: true, action };
-    }
-
-    case 'delete': {
-      if (ctx.selectedConnection) {
-        ctx.removeConnection(ctx.selectedConnection.from, ctx.selectedConnection.to);
-        ctx.clearSelection();
-        return { handled: true, action };
-      }
-      const count = getSelectionCount(ctx.selection);
-      if (count === 0) return { handled: true, action };
-      if (count > 3 && typeof confirm !== 'undefined' && !confirm(`Delete ${count} objects?`)) {
-        return { handled: true, action };
-      }
-      ctx.removeSelected(ctx.selection);
-      ctx.clearSelection();
-      return { handled: true, action };
-    }
-
-    case 'escape':
-      if (ctx.showSpeedPanel) { ctx.closeSpeedPanel(); }
-      else { ctx.clearSelection(); }
-      // F-eb7fc5ef: connectionStart is store state (not a Canvas drag ref),
-      // so the advertised Esc-to-cancel must clear it even when a speed panel
-      // was closed. setTool() is otherwise the only production clear.
-      ctx.setConnectionStart?.(null);
-      return { handled: true, action };
-
-    case 'nudge-up':
-    case 'nudge-down':
-    case 'nudge-left':
-    case 'nudge-right': {
-      if (getSelectionCount(ctx.selection) === 0) return { handled: false };
-      e.preventDefault();
-      const mult = e.shiftKey ? 5 : 1;
-      const dirs: Record<string, [number, number]> = {
-        'nudge-up': [0, -1], 'nudge-down': [0, 1],
-        'nudge-left': [-1, 0], 'nudge-right': [1, 0],
-      };
-      const [dx, dy] = dirs[action];
-      ctx.moveSelected(ctx.selection, dx * mult, dy * mult);
-      return { handled: true, action };
-    }
-
-    case 'open-details': {
-      e.preventDefault();
-      // Switch to map tab to show properties for current selection
-      ctx.setRightTab('map');
-      return { handled: true, action };
-    }
-
-    case 'save': {
-      e.preventDefault();
-      ctx.save?.();
-      return { handled: true, action };
-    }
-
-    case 'apply-preset': {
-      e.preventDefault();
-      ctx.applyPreset?.();
-      ctx.setRightTab('presets');
-      return { handled: true, action };
-    }
-
-    case 'save-preset': {
-      e.preventDefault();
-      ctx.savePreset?.();
-      ctx.setRightTab('presets');
-      return { handled: true, action };
-    }
-
-    case 'undo': {
-      e.preventDefault();
-      ctx.undo?.();
-      return { handled: true, action };
-    }
-
-    case 'redo': {
-      e.preventDefault();
-      ctx.redo?.();
-      return { handled: true, action };
-    }
-
-    case 'tool-select':    { ctx.setTool('select');       return { handled: true, action }; }
-    case 'tool-zone':      { ctx.setTool('zone-paint');   return { handled: true, action }; }
-    case 'tool-connection':{ ctx.setTool('connection');    return { handled: true, action }; }
-    case 'tool-entity':    { ctx.setTool('entity-place'); return { handled: true, action }; }
-    case 'tool-landmark':  { ctx.setTool('landmark');     return { handled: true, action }; }
-    case 'tool-spawn':     { ctx.setTool('spawn');        return { handled: true, action }; }
-    case 'tool-tile':      { ctx.setTool('tile-paint');   return { handled: true, action }; }
-    case 'tool-prop':      { ctx.setTool('prop-place');   return { handled: true, action }; }
-    case 'tool-encounter': { ctx.setTool('encounter-place'); return { handled: true, action }; }
-    case 'tool-item':      { ctx.setTool('item-place');    return { handled: true, action }; }
-
-    default:
-      return { handled: false };
-  }
+  const cmd = getCommandById(action);
+  if (!cmd || !cmd.surfaces.includes('hotkey')) return { handled: false };
+  const result = cmd.run({
+    hotkeyCtx: ctx,
+    event: e,
+    selection: ctx.selection,
+    selectedConnection: ctx.selectedConnection,
+    project: ctx.project,
+  });
+  return result.handled ? { handled: true, action: result.action ?? action } : { handled: false };
 }
 
 /**

@@ -6,19 +6,19 @@ import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { buttonBase } from '../ui/styles.js';
 import { defaultShowElevation } from './zone-2d5-helpers.js';
 import { LayerChip } from './shared.js';
+import { getToolPaletteCommands, runCommand } from '../command-registry.js';
 
-export const TOOL_PALETTE_TOOLS: { id: EditorTool; label: string; key: string; icon: string }[] = [
-  { id: 'select', label: 'Select', key: 'V', icon: '\u25C7' },
-  { id: 'zone-paint', label: 'Zone', key: 'Z', icon: '\u25A6' },
-  { id: 'connection', label: 'Connect', key: 'C', icon: '\u2194' },
-  { id: 'entity-place', label: 'Entity', key: 'E', icon: '\u25C9' },
-  { id: 'landmark', label: 'Landmark', key: 'L', icon: '\u25B2' },
-  { id: 'spawn', label: 'Spawn', key: 'S', icon: '\u2605' },
-  { id: 'tile-paint', label: 'Tiles', key: 'T', icon: '\u25A3' },
-  { id: 'prop-place', label: 'Prop', key: 'O', icon: '\u25A2' },
-  { id: 'encounter-place', label: 'Encounter', key: 'N', icon: '\u2694' },
-  { id: 'item-place', label: 'Item', key: 'I', icon: '\u2726' },
-];
+const toolPaletteCommands = getToolPaletteCommands();
+const TOOL_COMMAND_ID_BY_TOOL = new Map<EditorTool, string>(
+  toolPaletteCommands.map((cmd) => [cmd.tool!, cmd.id]),
+);
+
+export const TOOL_PALETTE_TOOLS: { id: EditorTool; label: string; key: string; icon: string }[] = toolPaletteCommands.map((cmd) => ({
+  id: cmd.tool!,
+  label: cmd.toolLabel!,
+  key: cmd.toolKey!,
+  icon: cmd.toolIcon!,
+}));
 
 const tools = TOOL_PALETTE_TOOLS;
 
@@ -122,7 +122,7 @@ export function ToolPalette() {
       {tools.map((t) => (
         <button
           key={t.id}
-          onClick={() => setTool(t.id)}
+          onClick={() => runCommand(TOOL_COMMAND_ID_BY_TOOL.get(t.id)!, { setTool })}
           style={{
             display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
             padding: '4px 8px', marginBottom: 2, cursor: 'pointer', fontSize: 12,

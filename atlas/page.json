@@ -92,26 +92,41 @@
   ],
   "changes": {
     "fileCounts": {
-      "added": 1,
-      "changed": 26,
+      "added": 3,
+      "changed": 20,
       "moved": 0,
-      "parts": 4,
+      "parts": 5,
       "removed": 0
     },
     "items": [
       {
         "kind": "counts",
-        "sentence": "Nothing structural changed since 2026-11-22; 1 file added and 26 changed content.",
+        "sentence": "Nothing structural changed since 2026-11-22; 3 files added and 20 changed content.",
         "subjects": []
       }
     ],
     "since": {
-      "commit": "c944509c2168586ccd567dc100331b5f2548a7da",
-      "generatedAt": "2026-11-22T04:10:45.894Z"
+      "commit": "55561964fa7280182724498c86e5937208989f4d",
+      "generatedAt": "2026-11-22T04:58:31.386Z"
     },
     "unchanged": true
   },
   "changesTogether": [
+    {
+      "a": "packages/editor/src/panels/ExportModal.tsx",
+      "b": "packages/editor/src/panels/TemplateManager.tsx",
+      "either": 6,
+      "partLabels": [
+        "editor",
+        "editor"
+      ],
+      "parts": [
+        "editor",
+        "editor"
+      ],
+      "relation": "inside",
+      "shared": 5
+    },
     {
       "a": "dogfood/godot-smoke/smoke_load_world.gd",
       "b": "dogfood/worlds/multi-target-proof.ts",
@@ -158,45 +173,30 @@
       "shared": 6
     },
     {
-      "a": "packages/editor/src/panels/ExportModal.tsx",
-      "b": "packages/editor/src/panels/TemplateManager.tsx",
-      "either": 7,
+      "a": "dogfood/worlds/multi-target-proof.ts",
+      "b": "packages/export-godot/src/index.ts",
+      "either": 11,
       "partLabels": [
-        "editor",
-        "editor"
+        "dogfood",
+        "export-godot"
       ],
       "parts": [
-        "editor",
-        "editor"
+        "dogfood",
+        "export-godot"
       ],
-      "relation": "inside",
-      "shared": 5
-    },
-    {
-      "a": "packages/export-ai-rpg/src/content-hash.ts",
-      "b": "packages/export-ai-rpg/src/export.ts",
-      "either": 9,
-      "partLabels": [
-        "export-ai-rpg",
-        "export-ai-rpg"
-      ],
-      "parts": [
-        "export-ai-rpg",
-        "export-ai-rpg"
-      ],
-      "relation": "inside",
-      "shared": 6
+      "relation": "a-imports-b",
+      "shared": 7
     }
   ],
   "changesTogetherNote": [
-    "3 files changed together with their own tests, as expected.",
+    "2 files changed together with their own tests, as expected.",
     "Confidence is low: fewer than 25 source files reach 10 revisions in the window.",
     "Window: 180 days; a pair counts from 3 shared commits, since 8 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
-  "changesTogetherWithTests": 3,
-  "commit": "55561964fa7280182724498c86e5937208989f4d",
+  "changesTogetherWithTests": 2,
+  "commit": "82c2352eb00e3a51d44df8c6ea51d0dd0f29e147",
   "defaultBranch": "main",
-  "derived": "15 parts, mostly TypeScript (504 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
+  "derived": "15 parts, mostly TypeScript (507 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
   "doors": [
     {
       "checks": [
@@ -218,7 +218,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 482,
+      "checksMore": 485,
       "file": ".github/workflows/ci.yml",
       "id": ".github/workflows/ci.yml",
       "landings": [
@@ -243,7 +243,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 243
+          "files": 246
         },
         {
           "boundary": "export-ai-rpg",
@@ -355,7 +355,7 @@
         "site/src/"
       ],
       "runsCount": 66,
-      "runsMore": 215,
+      "runsMore": 217,
       "sends": [
         "uploads coverage to Codecov"
       ],
@@ -386,7 +386,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 482,
+      "checksMore": 485,
       "file": ".github/workflows/release.yml",
       "id": ".github/workflows/release.yml",
       "landings": [
@@ -411,7 +411,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 243
+          "files": 246
         },
         {
           "boundary": "export-ai-rpg",
@@ -995,12 +995,13 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-22T04:58:31.386Z",
+  "generatedAt": "2026-11-22T15:40:35.462Z",
   "limits": [
     "10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.",
+    "1 file uses syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts), so what it imports is not known.",
     "3 writes and 4 reads use paths built at run time and are not named here.",
     "38 writes go to places this repository does not track, so they are not listed as generated.",
-    "2 writes and 56 reads go to a path their caller passes, not to this repository.",
+    "2 writes and 59 reads go to a path their caller passes, not to this repository.",
     "26 writes go to the directory the command is run in (GodotPack/ and UnrealPack/) or a path their caller passes, not to this repository.",
     "2 writes go to the directory the command is run in (export/), not to this repository.",
     "4 commands are built at run time and not followed.",
@@ -1044,12 +1045,12 @@
   "startReason": "This path follows world-forge-export (a command people run) from its entry, since CI runs only tests, scripts that import no code here and checks.",
   "summary": null,
   "summaryFrom": null,
-  "testFiles": 236,
+  "testFiles": 238,
   "testedBy": {
     "dogfood": 10,
     "e2e": 2,
-    "editor": 111,
-    "export-ai-rpg": 70,
+    "editor": 112,
+    "export-ai-rpg": 71,
     "export-godot": 48,
     "export-unreal": 39,
     "renderer-2d": 10,
@@ -1090,7 +1091,7 @@
       ]
     }
   ],
-  "unreadFiles": 0,
+  "unreadFiles": 1,
   "unreadNote": [],
   "untested": [],
   "untestedNote": [],

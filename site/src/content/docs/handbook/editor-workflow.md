@@ -372,7 +372,7 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | Ctrl+Z | Undo (bound in HOTKEY_BINDINGS; KeyZ without Ctrl is the zone tool) |
 | Ctrl+Shift+Z | Redo |
 | Arrow keys | Nudge selected objects by 1 grid cell (Shift = 5×) |
-| Enter | Open details panel for selected object |
+| Enter | Open properties for the selected object (switches to the Map tab and expands the right sidebar if collapsed) |
 | P | Apply preset to selected district/zone |
 | Shift+P | Save current selection as preset |
 | V | Switch to Select tool |
@@ -486,6 +486,8 @@ The Speed Panel is context-aware. Actions change based on what's under the curso
 | Spawn | Edit Properties, Delete |
 | Encounter | Edit Properties, Delete |
 | Connection | Edit Properties, Delete, Swap Direction |
+
+**Edit Properties** selects the target object, switches to the **Map** tab (even from **Guide** or another tab), expands the right sidebar if collapsed, and displays its properties inspector (including selected entities regardless of active tool).
 
 ### Pinned Favorites
 
