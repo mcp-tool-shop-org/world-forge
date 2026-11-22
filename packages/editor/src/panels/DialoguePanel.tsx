@@ -4,11 +4,20 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '../store/project-store.js';
 import { EmptyState, useFocusHighlight } from './shared.js';
 import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, buttonRemove as xBtnStyle, cardItem as itemStyle, hintText as hintStyle } from '../ui/styles.js';
-import type { DialogueNode, DialogueChoice, DialogueEffect } from '@world-forge/schema';
+import type { DialogueDefinition, DialogueNode, DialogueChoice, DialogueEffect } from '@world-forge/schema';
 
 /** Parse the comma-separated Speakers field in DialoguePanel into trimmed entity IDs. */
 export function parseSpeakersInput(value: string): string[] {
   return value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function nextDialogueId(existingIds: Iterable<string> = []): string {
+  const taken = new Set(existingIds);
+  const base = `dlg-${Date.now()}`;
+  if (!taken.has(base)) return base;
+  let suffix = 2;
+  while (taken.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
 }
 
 export const STARTER_DIALOGUE = {
@@ -16,17 +25,36 @@ export const STARTER_DIALOGUE = {
   speakers: [] as string[],
   entryNodeId: 'greeting',
   nodes: {
-    greeting: { id: 'greeting', speaker: 'keeper', text: 'Welcome, traveler. What brings you here?', choices: [
+    greeting: { id: 'greeting', speaker: '', text: 'Welcome, traveler. What brings you here?', choices: [
       { id: 'c1', text: 'I seek knowledge.', nextNodeId: 'knowledge' },
       { id: 'c2', text: 'Just passing through.', nextNodeId: 'farewell' },
     ] },
-    knowledge: { id: 'knowledge', speaker: 'keeper', text: 'Knowledge has a price. Are you prepared?', choices: [
+    knowledge: { id: 'knowledge', speaker: '', text: 'Knowledge has a price. Are you prepared?', choices: [
       { id: 'c3', text: 'I am ready.', nextNodeId: 'farewell' },
       { id: 'c4', text: 'Not yet.', nextNodeId: 'farewell' },
     ] },
-    farewell: { id: 'farewell', speaker: 'keeper', text: 'Safe travels.', choices: [] },
+    farewell: { id: 'farewell', speaker: '', text: 'Safe travels.', choices: [] },
   },
 };
+
+/** Create an empty dialogue with a unique ID and an empty-speaker entry node. */
+export function createEmptyDialogue(existingIds: Iterable<string> = []): DialogueDefinition {
+  const entryId = 'node-start';
+  return {
+    id: nextDialogueId(existingIds),
+    speakers: [],
+    entryNodeId: entryId,
+    nodes: { [entryId]: { id: entryId, speaker: '', text: 'Hello.', choices: [] } },
+  };
+}
+
+/** Clone the Keeper starter dialogue with a unique ID so repeated adds remain distinct. */
+export function createStarterDialogue(existingIds: Iterable<string> = []): DialogueDefinition {
+  return {
+    ...structuredClone(STARTER_DIALOGUE),
+    id: nextDialogueId(existingIds),
+  };
+}
 
 export function DialoguePanel() {
   const { project, addDialogue, updateDialogue, removeDialogue,
@@ -39,18 +67,15 @@ export function DialoguePanel() {
   const selected = dialogues.find((d) => d.id === selectedId);
 
   const handleAdd = () => {
-    const id = `dlg-${Date.now()}`;
-    const entryId = 'node-start';
-    addDialogue({
-      id, speakers: [], entryNodeId: entryId,
-      nodes: { [entryId]: { id: entryId, speaker: '', text: 'Hello.', choices: [] } },
-    });
-    setSelectedId(id);
+    const next = createEmptyDialogue(dialogues.map((d) => d.id));
+    addDialogue(next);
+    setSelectedId(next.id);
   };
 
   const handleAddStarter = () => {
-    addDialogue(STARTER_DIALOGUE);
-    setSelectedId(STARTER_DIALOGUE.id);
+    const starter = createStarterDialogue(dialogues.map((d) => d.id));
+    addDialogue(starter);
+    setSelectedId(starter.id);
   };
 
   const brokenRefs = useMemo(() => {

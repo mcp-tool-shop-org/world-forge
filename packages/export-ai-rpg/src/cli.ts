@@ -534,9 +534,11 @@ async function main(): Promise<void> {
 
     printAiRpgBlockers(validateOnly, encounterBlockers, speakerBlockers);
     if (verbose) {
+      const unresolvedSpeakerCount = speakerBlockers.filter((b) => !b.nodeId).length;
+      const emptyNodeSpeakerCount = speakerBlockers.filter((b) => Boolean(b.nodeId)).length;
       console.error('\n--- Verbose Diagnostics ---');
       console.error(
-        `  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s) and ${speakerBlockers.length} unresolved speaker(s).`,
+        `  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s), ${unresolvedSpeakerCount} unresolved speaker entry/entries, and ${emptyNodeSpeakerCount} empty node speaker(s).`,
       );
     }
     process.exit(1);
@@ -622,7 +624,8 @@ function printAiRpgBlockers(
     console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
   }
   for (const b of speakerBlockers) {
-    console.error(`  [dialogues.${b.dialogueId}.speakers] ${b.message}`);
+    const path = b.nodeId ? `dialogues.${b.dialogueId}.nodes.${b.nodeId}.speaker` : `dialogues.${b.dialogueId}.speakers`;
+    console.error(`  [${path}] ${b.message}`);
   }
 }
 

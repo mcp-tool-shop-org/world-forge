@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   applyContentPack,
   ENCOUNTER_ANCHOR_TYPES,
+  loadContent,
   runLoadGate,
   validateEncounterAnchorRecord,
   type ContentPack as EngineContentPack,
@@ -18,7 +19,12 @@ import { createGame } from '@ai-rpg-engine/starter-fantasy';
 import type { WorldProject } from '@world-forge/schema';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 // Samples loaded via vi.importActual below to avoid a rootDir cycle with editor.
-import { exportToEngine, listAiRpgEncounterAdjustments, listAiRpgEncounterBlockers } from '../index.js';
+import {
+  exportToEngine,
+  listAiRpgDialogueSpeakerBlockers,
+  listAiRpgEncounterAdjustments,
+  listAiRpgEncounterBlockers,
+} from '../index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -421,5 +427,245 @@ describe('exportToEngine refuses engine-blocked worlds', () => {
     if (res.success) {
       expect(res.contentPack.encounterAnchors).toHaveLength(1);
     }
+  });
+});
+
+describe('empty dialogue node speaker handling', () => {
+  it('refuses a dialogue with two speakers and an empty node speaker by dialogue id and node id', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      entityPlacements: [
+        ...base.entityPlacements.map((e) => ({ ...e, dialogueId: undefined })),
+        { entityId: 'npc-guard', zoneId: 'zone-entrance', role: 'npc', name: 'Guard' },
+      ],
+      dialogues: [
+        {
+          id: 'dlg-duo',
+          speakers: ['npc-keeper', 'npc-guard'],
+          entryNodeId: 'greet',
+          nodes: {
+            greet: { id: 'greet', speaker: '', text: 'Who goes there?', choices: [] },
+          },
+        },
+      ],
+    };
+
+    const blockers = listAiRpgDialogueSpeakerBlockers(project);
+    expect(blockers.some((b) => b.dialogueId === 'dlg-duo' && b.nodeId === 'greet')).toBe(true);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(
+        res.errors.some((e) => e.message.includes('dlg-duo') && e.message.includes('greet')),
+      ).toBe(true);
+    }
+  });
+
+  it('exports an existing non-empty node speaker unchanged', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      dialogues: [
+        {
+          id: 'dlg-keeper',
+          speakers: ['npc-keeper'],
+          entryNodeId: 'intro',
+          nodes: {
+            intro: { id: 'intro', speaker: 'narrator', text: 'The lantern flickers.', choices: [] },
+          },
+        },
+      ],
+    };
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+
+    const dlg = res.contentPack.dialogues[0];
+    expect(dlg.nodes.intro.speaker).toBe('narrator');
+    const pack = res.contentPack as unknown as EngineContentPack;
+    expect(loadContent(pack).ok).toBe(true);
+  });
+
+  it('fills an empty node speaker while leaving a sibling non-empty node speaker unchanged', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      dialogues: [
+        {
+          id: 'dlg-keeper',
+          speakers: ['npc-keeper'],
+          entryNodeId: 'intro',
+          nodes: {
+            intro: { id: 'intro', speaker: 'narrator', text: 'The lantern flickers.', nextNodeId: 'reply', choices: [] },
+            reply: { id: 'reply', speaker: '', text: 'State your business.', choices: [] },
+          },
+        },
+      ],
+    };
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+
+    const dlg = res.contentPack.dialogues[0];
+    expect(dlg.nodes.intro.speaker).toBe('narrator');
+    expect(dlg.nodes.reply.speaker).toBe('npc-keeper');
+    const pack = res.contentPack as unknown as EngineContentPack;
+    expect(loadContent(pack).ok).toBe(true);
+  });
+
+  it('fills an empty node speaker when the sole carrying entity matches the listed speaker', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      dialogues: [
+        {
+          id: 'dlg-keeper',
+          speakers: ['npc-keeper'],
+          entryNodeId: 'greet',
+          nodes: {
+            greet: { id: 'greet', speaker: '', text: 'Stay awhile.', choices: [] },
+          },
+        },
+      ],
+    };
+
+    expect(listAiRpgDialogueSpeakerBlockers(project)).toEqual([]);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+
+    expect(res.contentPack.dialogues[0].nodes.greet.speaker).toBe('npc-keeper');
+    const pack = res.contentPack as unknown as EngineContentPack;
+    expect(loadContent(pack).ok).toBe(true);
+  });
+
+  it('refuses an empty node speaker when carried by a different entity, naming the carrier id', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      entityPlacements: [
+        ...base.entityPlacements.map((e) => ({ ...e, dialogueId: undefined })),
+        { entityId: 'npc-guard', zoneId: 'zone-entrance', role: 'npc', name: 'Guard', dialogueId: 'dlg-keeper' },
+      ],
+      dialogues: [
+        {
+          id: 'dlg-keeper',
+          speakers: ['npc-keeper'],
+          entryNodeId: 'greet',
+          nodes: {
+            greet: { id: 'greet', speaker: '', text: 'Hold there.', choices: [] },
+          },
+        },
+      ],
+    };
+
+    const blockers = listAiRpgDialogueSpeakerBlockers(project);
+    expect(
+      blockers.some(
+        (b) =>
+          b.dialogueId === 'dlg-keeper' &&
+          b.nodeId === 'greet' &&
+          (b as { carrierEntityId?: string }).carrierEntityId === 'npc-guard' &&
+          b.message.includes('npc-guard'),
+      ),
+    ).toBe(true);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(
+        res.errors.some(
+          (e) =>
+            e.message.includes('dlg-keeper') &&
+            e.message.includes('greet') &&
+            e.message.includes('npc-guard'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('refuses an empty node speaker when two entities carry the dialogue and one is different', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      entityPlacements: [
+        ...base.entityPlacements,
+        { entityId: 'npc-guard', zoneId: 'zone-entrance', role: 'npc', name: 'Guard', dialogueId: 'dlg-keeper' },
+      ],
+      dialogues: [
+        {
+          id: 'dlg-keeper',
+          speakers: ['npc-keeper'],
+          entryNodeId: 'greet',
+          nodes: {
+            greet: { id: 'greet', speaker: '', text: 'Stay alert.', choices: [] },
+          },
+        },
+      ],
+    };
+
+    const blockers = listAiRpgDialogueSpeakerBlockers(project);
+    expect(
+      blockers.some(
+        (b) =>
+          b.dialogueId === 'dlg-keeper' &&
+          b.nodeId === 'greet' &&
+          (b as { carrierEntityId?: string }).carrierEntityId === 'npc-guard' &&
+          b.message.includes('npc-guard'),
+      ),
+    ).toBe(true);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(
+        res.errors.some(
+          (e) =>
+            e.message.includes('dlg-keeper') &&
+            e.message.includes('greet') &&
+            e.message.includes('npc-guard'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('fills an empty node speaker when no entity carries the dialogue', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      entityPlacements: base.entityPlacements.map((e) => ({ ...e, dialogueId: undefined })),
+      dialogues: [
+        {
+          id: 'dlg-keeper',
+          speakers: ['npc-keeper'],
+          entryNodeId: 'greet',
+          nodes: {
+            greet: { id: 'greet', speaker: '', text: 'Welcome.', choices: [] },
+          },
+        },
+      ],
+    };
+
+    expect(listAiRpgDialogueSpeakerBlockers(project)).toEqual([]);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(true);
+    if (!res.success) return;
+
+    expect(res.contentPack.dialogues[0].nodes.greet.speaker).toBe('npc-keeper');
+    const pack = res.contentPack as unknown as EngineContentPack;
+    expect(loadContent(pack).ok).toBe(true);
   });
 });
