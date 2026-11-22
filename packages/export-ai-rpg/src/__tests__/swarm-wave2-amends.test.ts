@@ -17,7 +17,7 @@ function requireImport(r: ImportResult | ImportError): ImportResult {
   if (!r.success) throw new Error(r.message);
   return r;
 }
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from '../fidelity.js';
@@ -109,6 +109,7 @@ describe('unrecognized entity role no longer crashes the export (unguarded array
       entityPlacements: [
         { entityId: 'npc-x', zoneId: 'zone-entrance', role: 'villager' as never, name: 'Villager' },
       ],
+      dialogues: [],
     };
     expect(() => exportToEngine(project)).not.toThrow();
     const result = exportToEngine(project);

@@ -17,8 +17,7 @@ import { importDialogues } from '../import-dialogues.js';
 import { importPlayerTemplate } from '../import-player-template.js';
 import { importBuildCatalog } from '../import-build-catalog.js';
 import { importProgressionTrees } from '../import-progression-trees.js';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
-import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
+import { engineMinimalProject as minimalProject, engineChapelProject as chapelProject } from './fixtures/engine-fixtures.js';
 
 // --- detectImportFormat ---
 
@@ -528,6 +527,7 @@ describe('asset preservation', () => {
     entityPlacements: [
       { entityId: 'guard-1', zoneId: 'zone-entrance', role: 'npc' as const, portraitId: 'portrait-1' },
     ],
+    dialogues: [],
   };
 
   it('ExportResult round-trip recovers assets', () => {

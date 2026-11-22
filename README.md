@@ -300,9 +300,9 @@ a number instead of an assumption.
 | `boarding`, `brawl` | `horde` | `approximated`, `worldforge-type:<original>` |
 | `hazard`, `discovery` | omitted from `ContentPack.encounterAnchors` | `dropped` |
 | `ambush`, `patrol`, `horde`, `duel` | unchanged | unchanged, no fidelity entry |
-| any other custom string | refused (`listAiRpgEncounterBlockers`, CLI exit 1) | blocked |
+| any other custom string | refused (`exportToEngine` returns `success: false` alongside `listAiRpgEncounterBlockers`, CLI exit 1) | blocked |
 
-- **Dialogue speaker IDs on AI RPG export** — `@world-forge/export-ai-rpg` refuses unresolved `dialogues[].speakers` entries by name (`listAiRpgDialogueSpeakerBlockers`, Export modal blocked, CLI exit `1`), naming both the dialogue ID and the unresolved speaker.
+- **Dialogue speaker IDs on AI RPG export** — `@world-forge/export-ai-rpg` refuses unresolved `dialogues[].speakers` entries by name (`exportToEngine` returns `success: false` with `speakerBlockers` alongside `listAiRpgDialogueSpeakerBlockers`, Export modal blocked, CLI exit `1`), naming both the dialogue ID and the unresolved speaker.
 
 Requires `ai-rpg-engine` `^3.12.2`.
 

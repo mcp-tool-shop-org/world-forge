@@ -14,7 +14,7 @@ function requireImport(r: ImportResult | ImportError): ImportResult {
   return r;
 }
 import { SIM_AFFECTING_KEYS } from '../content-hash.js';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 import type { WorldProject } from '@world-forge/schema';
 import type { ContentPack } from '../export.js';
 

@@ -25,7 +25,7 @@ import {
   type ExportStatus,
 } from '../panels/export-handlers.js';
 import { computeTargetReadiness, ExportModal, TargetReadinessSummary } from '../panels/ExportModal.js';
-import { STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
+import { parseSpeakersInput, STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 import { BUILTIN_KITS } from '../kits/built-ins.js';
 import { prepareKitImport, serializeKit } from '../kits/bundle.js';
@@ -166,6 +166,40 @@ describe('ED-A-008/009: runEngineExport', () => {
     expect(harness.getStatus()).toBe('exported');
     // Status history should include an 'idle' reset between runs.
     expect(harness.statusHistory()).toContain('idle');
+  });
+
+  it('sets status=invalid and surfaces blockers without downloading when engine blockers exist', async () => {
+    const blockedProject: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        {
+          id: 'enc-custom',
+          zoneId: validProject.zones[0].id,
+          encounterType: 'custom-type',
+          enemyIds: [],
+          probability: 0.5,
+          cooldownTurns: 0,
+          tags: [],
+        },
+      ],
+      dialogues: [
+        {
+          id: 'dlg-test',
+          speakers: ['ghost-speaker'],
+          entryNodeId: 'n1',
+          nodes: {
+            n1: { id: 'n1', speaker: 'ghost-speaker', text: 'Hello.', choices: [] },
+          },
+        },
+      ],
+    };
+    await runEngineExport(blockedProject, harness.cb, env);
+    expect(harness.getStatus()).toBe('invalid');
+    const errs = harness.getErrors();
+    expect(errs.some((e) => e.includes('enc-custom') && e.includes('custom-type'))).toBe(true);
+    expect(errs.some((e) => e.includes('dlg-test') && e.includes('ghost-speaker'))).toBe(true);
+    expect(env.count).toBe(0);
+    expect(harness.exportedCount()).toBe(0);
   });
 
   it('catches serialization failure and surfaces it as errors[] + invalid status (ED-A-011)', async () => {
@@ -446,7 +480,7 @@ describe('E2+: prototype-key encounter types block editor readiness', () => {
   });
 });
 
-describe('PR #57 fix 1: unresolved dialogue speakers refused by readiness and CLI', () => {
+describe('unresolved dialogue speakers refused by readiness and CLI', () => {
   let tmpDir: string;
 
   beforeAll(async () => {
@@ -481,11 +515,11 @@ describe('PR #57 fix 1: unresolved dialogue speakers refused by readiness and CL
     expect(cli.stderr).toContain(speaker);
   }
 
-  it('refuses a free-typed speaker name in readiness and CLI', async () => {
+  it('refuses a free-typed speaker name from the Speakers comma-split input path in readiness and CLI', async () => {
     const store = useProjectStore.getState();
     store.loadProject(structuredClone(validProject));
     const firstDlg = useProjectStore.getState().project.dialogues[0];
-    store.updateDialogue(firstDlg.id, { speakers: ['Tavern Keeper'] });
+    store.updateDialogue(firstDlg.id, { speakers: parseSpeakersInput('fence-marlo, Tavern Keeper') });
     await assertSpeakerRefused('free-typed', useProjectStore.getState().project, firstDlg.id, 'Tavern Keeper');
   });
 
@@ -548,7 +582,7 @@ describe('PR #57 fix 1: unresolved dialogue speakers refused by readiness and CL
   });
 });
 
-describe('PR #57 fix 1: Keeper starter dialogue in a fresh project', () => {
+describe('Keeper starter dialogue in a fresh project', () => {
   it('fresh project + Keeper starter exports to AI RPG without an engine-refused pack', () => {
     const store = useProjectStore.getState();
     store.newProject();

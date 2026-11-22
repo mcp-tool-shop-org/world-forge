@@ -18,13 +18,13 @@ import {
 import { createStandardChannels } from '@ai-rpg-engine/modules';
 import { createGame } from '@ai-rpg-engine/starter-fantasy';
 import type { WorldProject } from '@world-forge/schema';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject } from './fixtures/engine-fixtures.js';
 import { exportToEngine } from '../export.js';
 
 describe('itemPlacements container-entity vs zone-loose filtering', () => {
   it('container-entity placement sets entityId, arrives on that entity, and intake.applied.itemPlacements counts it', () => {
     const project: WorldProject = {
-      ...minimalProject,
+      ...engineMinimalProject,
       encounterAnchors: [],
       itemPlacements: [
         {
@@ -64,7 +64,7 @@ describe('itemPlacements container-entity vs zone-loose filtering', () => {
 
   it('zone-loose and non-entity-container placements are absent from pack and listed in fidelity with engine-has-no-zone-items citing gate.ts:91-110', () => {
     const project: WorldProject = {
-      ...minimalProject,
+      ...engineMinimalProject,
       encounterAnchors: [],
       itemPlacements: [
         {
@@ -107,7 +107,7 @@ describe('itemPlacements container-entity vs zone-loose filtering', () => {
 
   it('hidden placement written onto an entity emits an approximated fidelity entry noting boot delivery and ignored spawnCondition', () => {
     const project: WorldProject = {
-      ...minimalProject,
+      ...engineMinimalProject,
       encounterAnchors: [],
       itemPlacements: [
         {

@@ -352,7 +352,8 @@ describe('prototype-key encounter types are refused', () => {
     expect(blockers[0].message).toContain('enc-proto');
     expect(blockers[0].message).toContain(badType);
     const exported = exportToEngine(project);
-    expect(exported.success && typeof exported.contentPack.encounterAnchors[0].encounterType).toBe('string');
+    expect(exported.success).toBe(false);
+    expect(exported.success ? '' : exported.errors.map((e) => e.message).join('\n')).toContain(badType);
   });
 
   it.each(PROTOTYPE_KEY_TYPES)('CLI --validate-only exits 1 for %s and names it on stderr', async (badType) => {
@@ -361,5 +362,64 @@ describe('prototype-key encounter types are refused', () => {
     expect(res.code).toBe(1);
     expect(res.stderr).toContain('enc-proto');
     expect(res.stderr).toContain(badType);
+  });
+});
+
+describe('exportToEngine refuses engine-blocked worlds', () => {
+  it('returns success: false with speaker blocker named and no contentPack when dialogue speaker is unresolved', () => {
+    const base = structuredClone(minimalProject);
+    const project: WorldProject = {
+      ...base,
+      encounterAnchors: [],
+      dialogues: base.dialogues.map((d) => ({ ...d, speakers: ['ghost-speaker'] })),
+    };
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(false);
+    expect('contentPack' in res).toBe(false);
+    if (!res.success) {
+      expect(
+        res.errors.some(
+          (e) =>
+            e.path === 'dialogues.dlg-keeper.speakers' &&
+            e.message.includes('dlg-keeper') &&
+            e.message.includes('ghost-speaker'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('returns success: false with encounter blocker named and no contentPack when encounter type is unmapped', () => {
+    const zoneId = minimalProject.zones[0].id;
+    const project = projectWithAnchors([
+      { id: 'enc-custom', zoneId, encounterType: 'custom-skirmish', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+    ]);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(false);
+    expect('contentPack' in res).toBe(false);
+    if (!res.success) {
+      expect(
+        res.errors.some(
+          (e) =>
+            e.path === 'encounterAnchors.enc-custom.encounterType' &&
+            e.message.includes('enc-custom') &&
+            e.message.includes('custom-skirmish'),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('still succeeds when encounter types and dialogue speakers are valid', () => {
+    const zoneId = minimalProject.zones[0].id;
+    const project = projectWithAnchors([
+      { id: 'enc-patrol', zoneId, encounterType: 'patrol', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+    ]);
+
+    const res = exportToEngine(project);
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.contentPack.encounterAnchors).toHaveLength(1);
+    }
   });
 });

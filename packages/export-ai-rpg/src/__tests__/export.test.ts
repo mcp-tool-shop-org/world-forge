@@ -12,6 +12,7 @@ import { convertManifest, convertPackMeta } from '../convert-pack.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
 import { invalidOrphanProject } from '../../../schema/src/__tests__/fixtures/invalid-orphan.js';
+import { engineMinimalProject, engineChapelProject } from './fixtures/engine-fixtures.js';
 
 describe('convertZones', () => {
   it('converts minimal project zones', () => {
@@ -228,7 +229,7 @@ describe('convertProgressionTrees', () => {
 
 describe('exportToEngine', () => {
   it('exports minimal project successfully', () => {
-    const result = exportToEngine(minimalProject);
+    const result = exportToEngine(engineMinimalProject);
     expect(result.success).toBe(true); // not an error
     if (result.success) {
       expect(result.contentPack.zones).toHaveLength(2);
@@ -239,8 +240,18 @@ describe('exportToEngine', () => {
     }
   });
 
+  it('refuses minimalProject directly because it carries unmapped encounter and unresolved speaker blockers', () => {
+    const result = exportToEngine(minimalProject);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect('contentPack' in result).toBe(false);
+      expect(result.encounterBlockers?.some((b) => b.encounterType === 'undead')).toBe(true);
+      expect(result.speakerBlockers?.some((b) => b.speaker === 'keeper')).toBe(true);
+    }
+  });
+
   it('exports chapel project successfully with all v1.2 domains', () => {
-    const result = exportToEngine(chapelProject);
+    const result = exportToEngine(engineChapelProject);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.contentPack.zones).toHaveLength(5);
@@ -271,8 +282,9 @@ describe('exportToEngine', () => {
   });
 
   it('warns on missing v1.2 features', () => {
-    const bare = { ...minimalProject, playerTemplate: undefined, buildCatalog: undefined, progressionTrees: [] as any[] };
+    const bare = { ...engineMinimalProject, playerTemplate: undefined, buildCatalog: undefined, progressionTrees: [] as any[] };
     const result = exportToEngine(bare);
+    expect(result.success).toBe(true);
     if (result.success) {
       expect(result.warnings.some((w) => w.includes('player template'))).toBe(true);
       expect(result.warnings.some((w) => w.includes('build catalog'))).toBe(true);
@@ -281,37 +293,41 @@ describe('exportToEngine', () => {
   });
 
   it('does not warn on empty landmarks (F-aa2c07bb: silent when empty)', () => {
-    const noLandmarks = { ...minimalProject, landmarks: [] };
+    const noLandmarks = { ...engineMinimalProject, landmarks: [] };
     const result = exportToEngine(noLandmarks);
+    expect(result.success).toBe(true);
     if (result.success) {
       expect(result.warnings.some((w) => /landmark/i.test(w))).toBe(false);
     }
   });
 
   it('converts authored landmarks onto ContentPack.landmarks (F-3c90bcc5)', () => {
-    const result = exportToEngine(minimalProject);
+    const result = exportToEngine(engineMinimalProject);
+    expect(result.success).toBe(true);
     if (result.success) {
-      expect(minimalProject.landmarks.length).toBeGreaterThan(0);
-      expect(result.contentPack.landmarks.length).toBe(minimalProject.landmarks.length);
+      expect(engineMinimalProject.landmarks.length).toBeGreaterThan(0);
+      expect(result.contentPack.landmarks.length).toBe(engineMinimalProject.landmarks.length);
       expect(result.fidelity.entries.some((e) => e.reason === 'landmarks-converted')).toBe(true);
     }
   });
 
   it('includes assets and assetBindings when project has assets', () => {
     const withAssets = {
-      ...minimalProject,
+      ...engineMinimalProject,
       assets: [
         { id: 'bg-1', kind: 'background' as const, label: 'BG', path: 'bg.png', tags: [] },
         { id: 'portrait-1', kind: 'portrait' as const, label: 'NPC', path: 'npc.png', tags: [] },
       ],
-      zones: minimalProject.zones.map((z, i) =>
+      zones: engineMinimalProject.zones.map((z, i) =>
         i === 0 ? { ...z, backgroundId: 'bg-1' } : z,
       ),
       entityPlacements: [
         { entityId: 'npc-1', zoneId: 'zone-entrance', role: 'npc' as const, portraitId: 'portrait-1' },
       ],
+      dialogues: [],
     };
     const result = exportToEngine(withAssets);
+    expect(result.success).toBe(true);
     if (result.success) {
       expect(result.assets).toHaveLength(2);
       expect(result.assetBindings?.zones?.['zone-entrance']?.backgroundId).toBe('bg-1');
@@ -320,7 +336,8 @@ describe('exportToEngine', () => {
   });
 
   it('omits assets and assetBindings when project has no assets', () => {
-    const result = exportToEngine(minimalProject);
+    const result = exportToEngine(engineMinimalProject);
+    expect(result.success).toBe(true);
     if (result.success) {
       expect(result.assets).toBeUndefined();
       expect(result.assetBindings).toBeUndefined();

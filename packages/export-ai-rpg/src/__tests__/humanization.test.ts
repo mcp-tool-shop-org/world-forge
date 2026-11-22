@@ -14,13 +14,14 @@ function requireImport(r: ImportResult | ImportError): ImportResult {
   return r;
 }
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject } from './fixtures/engine-fixtures.js';
 import type { WorldProject } from '@world-forge/schema';
 
 // --- EB-001: Guard/warning when entityPlacements is empty before conversion ---
 
 describe('EB-001: empty entityPlacements warning', () => {
   it('warns when entityPlacements is empty', () => {
-    const project: WorldProject = { ...minimalProject, entityPlacements: [] };
+    const project: WorldProject = { ...engineMinimalProject, entityPlacements: [], dialogues: [] };
     const result = exportToEngine(project);
     if (!result.success) throw new Error('export failed');
     expect(result.warnings.some((w) => w.includes('No entities found'))).toBe(true);
@@ -28,7 +29,7 @@ describe('EB-001: empty entityPlacements warning', () => {
   });
 
   it('does not warn about empty entityPlacements when entities exist', () => {
-    const result = exportToEngine(minimalProject);
+    const result = exportToEngine(engineMinimalProject);
     if (!result.success) throw new Error('export failed');
     expect(result.warnings.some((w) => w.includes('No entities found'))).toBe(false);
   });
@@ -192,7 +193,7 @@ describe('EB-007: empty zones spawn point guard', () => {
   });
 
   it('does not emit no-zones-no-spawn when zones exist', () => {
-    const exported = exportToEngine(minimalProject);
+    const exported = exportToEngine(engineMinimalProject);
     if (!exported.success) throw new Error('export failed');
     const result = requireImport(importFromContentPack(exported.contentPack));
     expect(result.fidelityReport.entries.some((f) => f.reason === 'no-zones-no-spawn')).toBe(false);
@@ -286,7 +287,7 @@ describe('EB-010: exhaustive format detection error path', () => {
 
 describe('EB-013: verbose flag exists in USAGE', () => {
   it('exportToEngine returns contentPack with diagnostic-friendly structure', () => {
-    const result = exportToEngine(minimalProject);
+    const result = exportToEngine(engineMinimalProject);
     if (!result.success) throw new Error('export failed');
     // All keys that verbose mode reports should exist
     expect(result.contentPack).toHaveProperty('zones');
@@ -316,7 +317,7 @@ describe('EB-014: importItems early return for empty input', () => {
 
 describe('EB-015: null-coalescing for meta fields', () => {
   it('handles undefined meta.tones gracefully', () => {
-    const exported = exportToEngine(minimalProject);
+    const exported = exportToEngine(engineMinimalProject);
     if (!exported.success) throw new Error('export failed');
     // Import with meta that has no tones field
     const result = requireImport(importFromContentPack(exported.contentPack, 'Test', {
@@ -329,7 +330,7 @@ describe('EB-015: null-coalescing for meta fields', () => {
   });
 
   it('handles undefined meta.genres gracefully', () => {
-    const exported = exportToEngine(minimalProject);
+    const exported = exportToEngine(engineMinimalProject);
     if (!exported.success) throw new Error('export failed');
     const result = requireImport(importFromContentPack(exported.contentPack, 'Test', {
       id: 'test', name: 'Test', tagline: '', genres: undefined as never,

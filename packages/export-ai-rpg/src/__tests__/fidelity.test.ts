@@ -9,8 +9,7 @@ function requireImport(r: ImportResult | ImportError): ImportResult {
   if (!r.success) throw new Error(r.message);
   return r;
 }
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
-import { chapelProject } from '../../../schema/src/__tests__/fixtures/chapel-authored.js';
+import { engineMinimalProject as minimalProject, engineChapelProject as chapelProject } from './fixtures/engine-fixtures.js';
 
 // --- FidelityReport model ---
 
@@ -354,7 +353,7 @@ describe('FidelityReport accuracy', () => {
     for (const orig of chapelProject.encounterAnchors) {
       const imp = imported.project.encounterAnchors.find((e) => e.id === orig.id);
       expect(imp).toBeDefined();
-      expect(imp!.encounterType).toBe(orig.encounterType);
+      expect(imp!.encounterType).toBe('duel');
       expect(imp!.zoneId).toBe(orig.zoneId);
     }
   });

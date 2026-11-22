@@ -56,14 +56,14 @@ import { convertConnections, type ExportedConnection } from './convert-connectio
 import { convertSpawnPoints, type ExportedSpawnPoint } from './convert-spawn-points.js';
 import { convertLandmarks, type ExportedLandmark } from './convert-landmarks.js';
 import { convertLootTables, type ExportedLootTable } from './convert-loot-tables.js';
-import { convertDialogues } from './convert-dialogues.js';
+import { convertDialogues, listAiRpgDialogueSpeakerBlockers, type AiRpgDialogueSpeakerBlocker } from './convert-dialogues.js';
 import { convertPlayerTemplate, type ExportedPlayerTemplate } from './convert-player-template.js';
 import { convertBuildCatalog, type ExportedBuildCatalog } from './convert-build-catalog.js';
 import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 import { computeContentHash } from './content-hash.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
-import { convertEncounterAnchors } from './encounter-types.js';
+import { convertEncounterAnchors, listAiRpgEncounterBlockers, type AiRpgEncounterBlocker } from './encounter-types.js';
 
 // AIR-FT-005: Schema version is imported directly from @world-forge/schema
 // as SCHEMA_VERSION. This is browser-safe (no node:module dependency) and
@@ -292,10 +292,15 @@ export type ExportResult = {
 export type ExportError = {
   success: false;
   errors: ValidationError[];
+  encounterBlockers?: AiRpgEncounterBlocker[];
+  speakerBlockers?: AiRpgDialogueSpeakerBlocker[];
 };
 
 /**
  * Export a WorldProject to engine-compatible ContentPack, GameManifest, and PackMetadata.
+ *
+ * Refuses any project that fails structural validation or carries unmapped encounter types
+ * or unresolved dialogue speaker IDs, returning `ExportError` with no `contentPack`.
  *
  * @param project The authored world.
  * @param options Optional export settings. Backward compatible — omitting
@@ -308,10 +313,27 @@ export function exportToEngine(
   const profile: ExportProfile = options?.profile ?? 'release';
   const emitSchemaVersion = options?.emitSchemaVersion ?? true;
 
-  // 1. Validate the project
+  // 1. Validate the project and refuse engine-incompatible encounter/speaker blockers
   const validation = validateProject(project);
-  if (!validation.valid) {
-    return { success: false, errors: validation.errors };
+  const encounterBlockers = listAiRpgEncounterBlockers(project);
+  const speakerBlockers = listAiRpgDialogueSpeakerBlockers(project);
+  if (!validation.valid || encounterBlockers.length > 0 || speakerBlockers.length > 0) {
+    const blockerErrors: ValidationError[] = [
+      ...encounterBlockers.map((b) => ({
+        path: `encounterAnchors.${b.anchorId}.encounterType`,
+        message: b.message,
+      })),
+      ...speakerBlockers.map((b) => ({
+        path: `dialogues.${b.dialogueId}.speakers`,
+        message: b.message,
+      })),
+    ];
+    return {
+      success: false,
+      errors: [...validation.errors, ...blockerErrors],
+      ...(encounterBlockers.length > 0 ? { encounterBlockers } : {}),
+      ...(speakerBlockers.length > 0 ? { speakerBlockers } : {}),
+    };
   }
 
   const warnings: string[] = [];

@@ -16,7 +16,7 @@ import type { ImportResult, ImportError } from '../import.js';
 import { SIM_AFFECTING_KEYS } from '../content-hash.js';
 import { parseSpawnCondition } from '@world-forge/schema';
 import type { WorldProject } from '@world-forge/schema';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 import type { FidelityEntry } from '../fidelity.js';
 
 function requireImport(r: ImportResult | ImportError): ImportResult {
