@@ -17,8 +17,6 @@ import {
 import type { ModalId } from './store/modal-store.js';
 import type { EnrichedReviewSnapshot } from './panels/ReviewPanel.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
-import { defaultDownloadViaAnchor } from './save-project.js';
-import { pushToast } from './ui/Toast.js';
 
 /** Closed icon enum so the palette/context menu can style a 16px glyph from tokens. */
 export type SpeedPanelIconId =
@@ -203,7 +201,6 @@ export interface EditorCommand {
   iconId?: SpeedPanelIconId;
   description?: string;
   speedPanelCategory?: 'context' | 'global';
-  contextFilter?: (hit: HitResult | null) => boolean;
   macroSafe?: boolean;
   modeSuggested?: AuthoringMode[];
   // Hotkey metadata
@@ -219,14 +216,6 @@ const CONTEXT_MENU_LIMIT = 7;
 
 function fail(reason: string): CommandRunResult {
   return { executed: false, handled: false, reason };
-}
-
-function browserDownload(filename: string, content: string, mimeType: string): void {
-  void defaultDownloadViaAnchor(content, filename, 1000, mimeType).then((ok) => {
-    if (!ok) {
-      pushToast('Download was blocked or aborted. Click Export in the top bar to try again.', 'error');
-    }
-  });
 }
 
 function parseConnectionId(id: string): [string, string] | null {
@@ -300,7 +289,6 @@ function createTypedConnectionCommand(spec: {
     iconId: spec.iconId,
     description: spec.description,
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: false,
     modeSuggested: spec.modeSuggested,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
@@ -382,7 +370,7 @@ function createToolCommand(spec: {
     when: () => true,
     disabledReason: () => null,
     run: (ctx) => {
-      const setToolFn = ctx.hotkeyCtx?.setTool ?? ctx.stores?.setTool ?? ctx.setTool;
+      const setToolFn = ctx.hotkeyCtx?.setTool ?? ctx.setTool;
       if (!setToolFn) return fail('setTool unavailable');
       setToolFn(spec.tool);
       return { executed: true, handled: true, action: spec.id };
@@ -420,7 +408,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'plus',
     description: 'Paint a new zone on the canvas',
     speedPanelCategory: 'global',
-    contextFilter: (h) => h === null,
     macroSafe: false,
     when: (ctx) => effectiveHit(ctx) === null,
     disabledReason: (ctx) => (effectiveHit(ctx) === null ? null : 'Only available on empty canvas'),
@@ -441,7 +428,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'fit',
     description: 'Zoom the viewport to fit the whole map',
     speedPanelCategory: 'global',
-    contextFilter: (h) => h === null,
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx) === null,
     disabledReason: (ctx) => (effectiveHit(ctx) === null ? null : 'Only available on empty canvas'),
@@ -469,26 +455,15 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'edit',
     description: 'Open properties for the selected object',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h !== null,
     macroSafe: true,
-    hotkeyId: 'open-details',
     when: (ctx) => hasAnyTarget(ctx),
     disabledReason: (ctx) => (hasAnyTarget(ctx) ? null : 'Select or target an object to inspect properties'),
     run: (ctx) => {
-      if (ctx.stores) {
-        if (!ctx.hit) return fail('context mismatch');
-        if (!selectFromContext(ctx.hit, ctx.stores)) return fail('context mismatch');
-        ctx.stores.setRightTab('map');
-        ctx.stores.setRightCollapsed?.(false);
-        return { executed: true };
-      }
-      if (ctx.hotkeyCtx) {
-        ctx.event?.preventDefault();
-        ctx.hotkeyCtx.setRightTab('map');
-        ctx.hotkeyCtx.setRightCollapsed?.(false);
-        return { executed: true, handled: true, action: 'open-details' };
-      }
-      return fail('stores unavailable');
+      if (!ctx.stores || !ctx.hit) return fail('context mismatch');
+      if (!selectFromContext(ctx.hit, ctx.stores)) return fail('context mismatch');
+      ctx.stores.setRightTab('map');
+      ctx.stores.setRightCollapsed?.(false);
+      return { executed: true };
     },
   },
   {
@@ -502,7 +477,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'delete',
     description: 'Remove the selected object',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h !== null,
     macroSafe: true,
     hotkeyId: 'delete',
     hotkeyBindings: [
@@ -560,7 +534,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'duplicate',
     description: 'Copy the selected object nearby',
     speedPanelCategory: 'context',
-    contextFilter: hasDuplicateHit,
     macroSafe: true,
     hotkeyId: 'duplicate',
     hotkeyBindings: [
@@ -612,7 +585,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'district',
     description: 'Set this zone’s parent district',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
     disabledReason: (ctx) => (effectiveHit(ctx)?.type === 'zone' ? null : 'Target a zone to assign a district'),
@@ -634,7 +606,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'entity',
     description: 'Drop an entity inside this zone',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: false,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
     disabledReason: (ctx) => (effectiveHit(ctx)?.type === 'zone' ? null : 'Target a zone to place an entity'),
@@ -655,7 +626,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'encounter',
     description: 'Drop an encounter anchor inside this zone',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: false,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
     disabledReason: (ctx) => (effectiveHit(ctx)?.type === 'zone' ? null : 'Target a zone to place an encounter'),
@@ -676,7 +646,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'connect',
     description: 'Start a connection from this zone',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: false,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
     disabledReason: (ctx) => (effectiveHit(ctx)?.type === 'zone' ? null : 'Target a zone to start a connection'),
@@ -698,7 +667,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'swap',
     description: 'Reverse this connection’s direction',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'connection',
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx)?.type === 'connection',
     disabledReason: (ctx) => (effectiveHit(ctx)?.type === 'connection' ? null : 'Target a connection to reverse it'),
@@ -764,7 +732,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'merge',
     description: 'Combine this zone with another selected zone',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
     disabledReason: (ctx) => {
@@ -795,7 +762,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'elevation',
     description: 'Set this zone’s elevation',
     speedPanelCategory: 'context',
-    contextFilter: (h) => h?.type === 'zone',
     macroSafe: false,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
     disabledReason: (ctx) => {
@@ -833,7 +799,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'review',
     description: 'Open the project review panel',
     speedPanelCategory: 'global',
-    contextFilter: (h) => h === null,
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx) === null,
     disabledReason: (ctx) => (effectiveHit(ctx) === null ? null : 'Only available on empty canvas'),
@@ -854,17 +819,16 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'summary',
     description: 'Show a summary of the last export',
     speedPanelCategory: 'global',
-    contextFilter: (h) => h === null,
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx) === null,
     disabledReason: (ctx) => (effectiveHit(ctx) === null ? null : 'Only available on empty canvas'),
     run: ({ stores }) => {
       if (!stores) return fail('stores unavailable');
+      if (!stores.downloadFile) return fail('downloadFile unavailable');
       const snapshot: EnrichedReviewSnapshot = { ...buildReviewSnapshot(stores.project), hasExported: false };
       const markdown = reviewSnapshotToMarkdown(snapshot);
       const filename = summaryFilename(stores.project.name, 'md');
-      const download = stores.downloadFile ?? browserDownload;
-      download(filename, markdown, 'text/markdown');
+      stores.downloadFile(filename, markdown, 'text/markdown');
       return { executed: true };
     },
   },
@@ -1042,19 +1006,12 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     hotkeyBindings: [{ key: 'Enter', label: 'Enter', description: 'Open details for selected object', order: 16 }],
     when: () => true,
     disabledReason: (ctx) => (hasAnyTarget(ctx) ? null : 'Select an object to inspect details'),
-    run: ({ hotkeyCtx, stores, event }) => {
-      if (hotkeyCtx) {
-        event?.preventDefault();
-        hotkeyCtx.setRightTab('map');
-        hotkeyCtx.setRightCollapsed?.(false);
-        return { executed: true, handled: true, action: 'open-details' };
-      }
-      if (stores) {
-        stores.setRightTab('map');
-        stores.setRightCollapsed?.(false);
-        return { executed: true, handled: true, action: 'open-details' };
-      }
-      return fail('context unavailable');
+    run: ({ hotkeyCtx, event }) => {
+      if (!hotkeyCtx) return fail('hotkeyCtx unavailable');
+      event?.preventDefault();
+      hotkeyCtx.setRightTab('map');
+      hotkeyCtx.setRightCollapsed?.(false);
+      return { executed: true, handled: true, action: 'open-details' };
     },
   },
   {
@@ -1120,7 +1077,7 @@ export function getSpeedPanelCommands(): EditorCommand[] {
 /** Return up to 7 context-menu commands matching `hit`, prioritizing `context` before `global`. */
 export function getContextMenuCommands(hit: HitResult | null): EditorCommand[] {
   const matching = COMMAND_REGISTRY.filter(
-    (cmd) => cmd.surfaces.includes('context-menu') && (cmd.contextFilter ? cmd.contextFilter(hit) : cmd.when({ hit })),
+    (cmd) => cmd.surfaces.includes('context-menu') && cmd.when({ hit }),
   );
   const sorted = [...matching].sort((a, b) => {
     const ac = a.speedPanelCategory ?? 'context';
@@ -1135,6 +1092,31 @@ export function getContextMenuCommands(hit: HitResult | null): EditorCommand[] {
 /** Return all tool-palette tool commands in exact toolbar order. */
 export function getToolPaletteCommands(): EditorCommand[] {
   return getCommandsForSurface('tool-palette');
+}
+
+export interface ToolPaletteEntry {
+  commandId: string;
+  id: EditorTool;
+  label: string;
+  key: string;
+  icon: string;
+}
+
+/** Typed projection of tool-palette commands for UI consumption without non-null assertions. */
+export function getToolPaletteEntries(): ToolPaletteEntry[] {
+  const entries: ToolPaletteEntry[] = [];
+  for (const cmd of getToolPaletteCommands()) {
+    if (cmd.tool && cmd.toolLabel && cmd.toolKey && cmd.toolIcon) {
+      entries.push({
+        commandId: cmd.id,
+        id: cmd.tool,
+        label: cmd.toolLabel,
+        key: cmd.toolKey,
+        icon: cmd.toolIcon,
+      });
+    }
+  }
+  return entries;
 }
 
 /** Reconstruct all registered hotkey bindings in exact base-table order. */

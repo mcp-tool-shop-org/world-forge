@@ -295,6 +295,15 @@ export function App() {
           {getModeProfile(project.mode).icon} {getModeProfile(project.mode).label}
         </span>
         <div style={{ flex: 1, minWidth: 8 }} />
+        <button
+          onClick={() => openModal('options')}
+          style={buttonBase}
+          title="Options"
+          aria-label="Editor options"
+          data-testid="wf-options-btn"
+        >
+          Options
+        </button>
         {/* FT-030: Theme toggle button */}
         <button
           onClick={() => setTheme((t) => t === 'dark' ? 'light' : 'dark')}

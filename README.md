@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.9.1</strong> — 3608 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.9.1</strong> — 3619 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architecture
@@ -173,7 +173,7 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 
 - **Viewport** — pan/zoom camera, mousewheel zoom (cursor-anchored), spacebar/middle-mouse/right-click drag-pan, fit-to-content when the canvas first opens a project with zones (and on demand from the Speed Panel's Fit to Content), double-click to center
 - **Search** — Ctrl+K opens overlay to find any object by name/ID with fuzzy matching, keyboard navigation, and recent search history (localStorage)
-- **Speed Panel** — double-right-click for a floating command palette with context-aware actions, pinnable favorites, macros, and mode-suggested quick actions
+- **Speed Panel** — press `Q` (configurable in Options) with the pointer over the canvas (or with the canvas focused, anchored at the selection or centre) or double-right-click to grow the instant single-right-click compact menu in place into the floating command palette with context-aware actions, pinnable favorites, macros, and mode-suggested quick actions
 - **Hotkeys** — 29 keyboard shortcuts including tool switching (V/Z/C/E/L/S/T/O/N/I), Enter (open properties in the Map tab and expand the right sidebar), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste), arrow nudge (Shift = 5×)
 - **Accessibility** — modal focus traps with Escape-to-close, ARIA labels on all icon-only buttons, keyboard-navigable object tree, screen-reader-announced dirty indicator. Spatial canvas operations (placement, box-select, resize, connection drawing, panning) remain pointer-based
 

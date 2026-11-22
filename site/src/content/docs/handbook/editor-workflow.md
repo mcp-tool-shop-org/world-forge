@@ -386,7 +386,8 @@ The Selection Actions panel also includes zone-specific batch operations when zo
 | N | Switch to Encounter place tool |
 | I | Switch to Item place tool |
 | Double-click | Select object and open its details panel |
-| Double-right-click | Open Speed Panel (floating command palette at cursor) |
+| Q (configurable) | Open Speed Panel at the pointer over the canvas (or at selection/centre when canvas is focused) |
+| Double-right-click | Upgrade the compact right-click menu into the Speed Panel in place |
 
 Tool-switching keys (V/Z/C/E/L/S) are bare single keys with no modifier. They are ignored when focus is in a text input, so typing in property fields or search never triggers a tool switch.
 
@@ -473,7 +474,7 @@ Search uses **fuzzy matching** — characters must appear in order but don't nee
 
 ## 11. Speed Panel
 
-**Double-right-click** anywhere on the canvas to open the Speed Panel — a floating command palette positioned at your cursor.
+Press **Q** (configurable in top-bar **Options**) with the pointer over the canvas — or with the canvas focused and no pointer over it (anchoring at the current selection or canvas centre) — to open the Speed Panel immediately with focus in its search box. A single right-click (or `Ctrl+Click` on macOS) opens the compact context menu immediately on pointer release with a discovery footer showing active triggers; a second right-click within the window and radius (default `320 ms`, `18 px`, `6 px` click drift; `360 ms`, `24 px`, `8 px` for `pen`) grows that open menu in place into the full Speed Panel, while dragging pans the canvas with no menu. Both triggers and thresholds are configurable in **Options** (refusing keys used by canvas navigation or existing hotkeys).
 
 The Speed Panel is context-aware. Actions change based on what's under the cursor:
 

@@ -66,8 +66,8 @@ export function SpeedPanel() {
     return items;
   }, [filtered, collapsedGroups]);
 
-  // Auto-focus
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Auto-focus without scrolling the viewport on mount
+  useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
 
   // Clamp active index
   useEffect(() => { setActiveIdx(0); }, [query]);
@@ -160,10 +160,16 @@ export function SpeedPanel() {
   return (
     <>
       {/* Backdrop — click to dismiss */}
-      <div onClick={closeSpeedPanel} style={{ position: 'absolute', inset: 0, zIndex: 'var(--wf-z-speed)' as unknown as number }} />
+      <div
+        onClick={closeSpeedPanel}
+        onContextMenu={(e) => e.preventDefault()}
+        style={{ position: 'absolute', inset: 0, zIndex: 'var(--wf-z-speed)' as unknown as number }}
+      />
       {/* Panel */}
       <div
         ref={panelRef}
+        data-testid="wf-speed-panel"
+        onContextMenu={(e) => e.preventDefault()}
         onKeyDown={handleKeyDown}
         style={{
           position: 'absolute',
@@ -185,6 +191,8 @@ export function SpeedPanel() {
         <div style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)' }}>
           <input
             ref={inputRef}
+            data-testid="wf-speed-panel-search"
+            aria-label="Search Speed Panel actions"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}

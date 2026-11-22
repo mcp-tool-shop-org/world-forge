@@ -7,7 +7,7 @@ import { create } from 'zustand';
  * new modals — the type system will surface any switch/if branches that need
  * updating. `null` means no modal is active.
  */
-export type ModalId = 'export' | 'import' | 'template-manager' | 'save-template' | 'save-kit' | null;
+export type ModalId = 'export' | 'import' | 'template-manager' | 'save-template' | 'save-kit' | 'options' | null;
 
 interface ModalState {
   activeModal: ModalId;

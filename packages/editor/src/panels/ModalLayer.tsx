@@ -8,6 +8,7 @@ import { TemplateManager } from '../panels/TemplateManager.js';
 import { SaveTemplateModal } from '../panels/SaveTemplateModal.js';
 import { SaveKitModal } from '../panels/SaveKitModal.js';
 import { SearchOverlay } from '../panels/SearchOverlay.js';
+import { OptionsModal } from '../panels/OptionsModal.js';
 
 export function ModalLayer() {
   const { activeModal, closeModal } = useModalStore();
@@ -20,6 +21,7 @@ export function ModalLayer() {
       {activeModal === 'import' && <ImportModal onClose={closeModal} />}
       {activeModal === 'save-template' && <SaveTemplateModal onClose={closeModal} />}
       {activeModal === 'save-kit' && <SaveKitModal onClose={closeModal} />}
+      {activeModal === 'options' && <OptionsModal onClose={closeModal} />}
       {showSearch && <SearchOverlay />}
     </>
   );
