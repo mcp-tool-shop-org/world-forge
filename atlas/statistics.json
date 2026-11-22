@@ -134,7 +134,7 @@
       "confidence": "low",
       "highWater": null,
       "name": "export-ai-rpg",
-      "qualifyingSourceCommits": 13,
+      "qualifyingSourceCommits": 14,
       "rebaseline": null
     },
     {
@@ -321,8 +321,8 @@
         "path": ".gitignore"
       },
       {
-        "commits": 17,
-        "lines": 388,
+        "commits": 18,
+        "lines": 390,
         "path": "CHANGELOG.md"
       },
       {
@@ -357,7 +357,7 @@
       },
       {
         "commits": 20,
-        "lines": 190,
+        "lines": 205,
         "path": "README.md"
       },
       {
@@ -387,7 +387,7 @@
       },
       {
         "commits": 8,
-        "lines": 613,
+        "lines": 616,
         "path": "atlas/README.md"
       },
       {
@@ -397,7 +397,7 @@
       },
       {
         "commits": 8,
-        "lines": 4192,
+        "lines": 4230,
         "path": "atlas/page.json"
       },
       {
@@ -407,7 +407,7 @@
       },
       {
         "commits": 8,
-        "lines": 56459,
+        "lines": 56676,
         "path": "atlas/structure.json"
       },
       {
@@ -417,7 +417,7 @@
       },
       {
         "commits": 1,
-        "lines": 232,
+        "lines": 233,
         "path": "docs/audit/2026-11-21-truth-reconciliation.md"
       },
       {
@@ -776,8 +776,8 @@
         "path": "packages/editor/src/__tests__/export-depth-regression.test.ts"
       },
       {
-        "commits": 1,
-        "lines": 92,
+        "commits": 2,
+        "lines": 181,
         "path": "packages/editor/src/__tests__/export-modal.test.ts"
       },
       {
@@ -1081,8 +1081,8 @@
         "path": "packages/editor/src/panels/EntityProperties.tsx"
       },
       {
-        "commits": 12,
-        "lines": 1099,
+        "commits": 13,
+        "lines": 1132,
         "path": "packages/editor/src/panels/ExportModal.tsx"
       },
       {
@@ -1551,9 +1551,14 @@
         "path": "packages/export-ai-rpg/src/__tests__/c3-condition-roundtrip.test.ts"
       },
       {
-        "commits": 9,
-        "lines": 852,
+        "commits": 10,
+        "lines": 856,
         "path": "packages/export-ai-rpg/src/__tests__/cli.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 363,
+        "path": "packages/export-ai-rpg/src/__tests__/encounter-mapping.test.ts"
       },
       {
         "commits": 1,
@@ -1651,8 +1656,8 @@
         "path": "packages/export-ai-rpg/src/__tests__/swarm-wave9-amends.test.ts"
       },
       {
-        "commits": 9,
-        "lines": 1823,
+        "commits": 10,
+        "lines": 1829,
         "path": "packages/export-ai-rpg/src/cli.ts"
       },
       {
@@ -1716,13 +1721,13 @@
         "path": "packages/export-ai-rpg/src/convert-zones.ts"
       },
       {
-        "commits": 1,
-        "lines": 51,
+        "commits": 2,
+        "lines": 228,
         "path": "packages/export-ai-rpg/src/encounter-types.ts"
       },
       {
-        "commits": 14,
-        "lines": 720,
+        "commits": 15,
+        "lines": 725,
         "path": "packages/export-ai-rpg/src/export.ts"
       },
       {
@@ -1776,8 +1781,8 @@
         "path": "packages/export-ai-rpg/src/import.ts"
       },
       {
-        "commits": 5,
-        "lines": 29,
+        "commits": 6,
+        "lines": 39,
         "path": "packages/export-ai-rpg/src/index.ts"
       },
       {
@@ -2731,13 +2736,13 @@
         "path": "site/src/content/docs/handbook/architecture.md"
       },
       {
-        "commits": 4,
-        "lines": 28,
+        "commits": 5,
+        "lines": 30,
         "path": "site/src/content/docs/handbook/beginners.md"
       },
       {
-        "commits": 5,
-        "lines": 52,
+        "commits": 6,
+        "lines": 58,
         "path": "site/src/content/docs/handbook/editor-workflow.md"
       },
       {
@@ -2751,8 +2756,8 @@
         "path": "site/src/content/docs/handbook/export-unreal.md"
       },
       {
-        "commits": 5,
-        "lines": 110,
+        "commits": 6,
+        "lines": 126,
         "path": "site/src/content/docs/handbook/export.md"
       },
       {
@@ -2816,9 +2821,9 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-22T03:27:43.011Z",
+  "generatedAt": "2026-11-22T04:10:45.894Z",
   "generatedFrom": {
-    "commit": "ce54e8d033a1f4930e448bf96e2c62c65a377e95"
+    "commit": "c944509c2168586ccd567dc100331b5f2548a7da"
   },
   "pairs": [
     {
@@ -3300,9 +3305,9 @@
     {
       "a": "packages/editor/src/panels/ExportModal.tsx",
       "b": "packages/editor/src/panels/TemplateManager.tsx",
-      "either": 5,
+      "either": 6,
       "shared": 5,
-      "strength": 1
+      "strength": 0.833333
     },
     {
       "a": "packages/export-ai-rpg/package.json",
@@ -3335,9 +3340,9 @@
     {
       "a": "packages/export-ai-rpg/src/content-hash.ts",
       "b": "packages/export-ai-rpg/src/export.ts",
-      "either": 8,
+      "either": 9,
       "shared": 6,
-      "strength": 0.75
+      "strength": 0.666667
     },
     {
       "a": "packages/export-godot/README.md",
@@ -3483,7 +3488,7 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-21T21:59:40-05:00",
+    "headDate": "2026-11-21T23:00:16-05:00",
     "inScopeFiles": 661,
     "pinnedStart": null,
     "priorFloor": "fallen",
@@ -3492,7 +3497,7 @@
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-26T02:59:40.000Z",
+    "since": "2026-05-26T04:00:16.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

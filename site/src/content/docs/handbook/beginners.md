@@ -142,7 +142,7 @@ Select the **Spawn** tool. Click on a zone to place a spawn point. Mark one spaw
 
 Open the **Review** tab to check your project's health. The health banner shows one of four states: Ready (green), Healthy (green), Degraded (amber), or Blocked (red). Fix any blocking validation errors shown in the Issues tab.
 
-When the project is Ready or Healthy, click **Export** to open the Export modal. The per-target readiness summary shows red when blocked (listing blockers), amber when ready with advisories such as translated or dropped encounter types (listing each adjustment), and green when ready with nothing to report, across all three targets: AI RPG Engine, Unreal Engine 5, and Godot 4. Expand **Target Options** to configure engine-specific settings, then click the appropriate download button. Post-export receipts show file size, counts, and fidelity details.
+When the project is Ready or Healthy, click **Export** to open the Export modal. The per-target readiness box shows the worst state across the three targets (AI RPG Engine, Unreal Engine 5, and Godot 4): red when blocked (listing blockers), amber when ready with advisories such as encounter-type translations/drops, missing entity placements, no player template, or missing UE5 elevation or parallax settings (listing each advisory), and green when ready with nothing to report. Expand **Target Options** to configure engine-specific settings, then click the appropriate download button. Post-export receipts show file size, counts, and fidelity details.
 
 ## 6. Common Pitfalls
 

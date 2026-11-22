@@ -1,7 +1,7 @@
 # World Forge Truth-Reconciliation Audit
 
 **Baseline:** `70d4403` (`SCHEMA_VERSION = '4.9.1'`, `packages/schema/src/validate.ts:73`)  
-**Status note:** Measured at `70d4403`; the readiness-box finding and the AI RPG and preset FAIL rows in this report are superseded by the encounter-type translation in this same PR.  
+**Status note:** Measured at `70d4403`; only the encounter-type checks in the AI RPG and preset rows (not claiming those rows pass other engine checks), the readiness-box finding, and the readiness docs row (`:153`) are superseded by PR #56.  
 **Scope:** Code inventory, documentation diff (`README.md` and `site/src/content/docs/handbook/*.md`), and headless validation/export-lane audit across built-in samples, starter kits, templates, and presets. Audit report only — no behavioral or content changes are included here.
 
 ---

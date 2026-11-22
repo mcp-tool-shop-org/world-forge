@@ -45,7 +45,7 @@ export const cyberpunkTemplate: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'broker-talk', speakers: ['broker'], entryNodeId: 'greeting',
+    id: 'broker-talk', speakers: ['info-broker'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'broker', text: 'You look like someone who needs information. I sell that.', choices: [
         { id: 'c1', text: 'What do you know?', nextNodeId: 'offer' },

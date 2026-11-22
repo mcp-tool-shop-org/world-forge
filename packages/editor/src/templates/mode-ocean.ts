@@ -47,7 +47,7 @@ export const oceanStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'lira-talk', speakers: ['lira'], entryNodeId: 'greeting',
+    id: 'lira-talk', speakers: ['harbor-master'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'lira', text: 'Another vessel lost to the corsairs last night. We need someone to chart their patrol routes.', choices: [
         { id: 'c1', text: 'Where do they strike?', nextNodeId: 'details' },

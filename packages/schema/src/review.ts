@@ -438,16 +438,17 @@ export function buildReviewSnapshot(
   });
 
   // Encounter summary
-  const byType: Record<string, number> = {};
+  const byTypeCounts = new Map<string, number>();
   let totalProbability = 0;
   const zonesWithEncounters = new Set<string>();
   let bossEncounters = 0;
   for (const ea of encounterAnchors) {
-    byType[ea.encounterType] = (byType[ea.encounterType] || 0) + 1;
+    byTypeCounts.set(ea.encounterType, (byTypeCounts.get(ea.encounterType) ?? 0) + 1);
     totalProbability += ea.probability;
     zonesWithEncounters.add(ea.zoneId);
     if (asArray(ea.tags).includes('boss')) bossEncounters++;
   }
+  const byType: Record<string, number> = Object.fromEntries(byTypeCounts);
   const encounters: EncounterSummary = {
     byType,
     totalCount: encounterAnchors.length,

@@ -45,7 +45,7 @@ export const fantasyTemplate: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'elder-talk', speakers: ['elder'], entryNodeId: 'greeting',
+    id: 'elder-talk', speakers: ['village-elder'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'elder', text: 'Ah, a new face. The forest grows restless. Will you hear an old man out?', choices: [
         { id: 'c1', text: 'Tell me more.', nextNodeId: 'quest' },

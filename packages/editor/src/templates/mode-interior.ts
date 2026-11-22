@@ -47,7 +47,7 @@ export const interiorStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'caretaker-talk', speakers: ['caretaker'], entryNodeId: 'greeting',
+    id: 'caretaker-talk', speakers: ['old-caretaker'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'caretaker', text: 'You should not be here. The manor... it does not welcome visitors. Things move in the walls.', choices: [
         { id: 'c1', text: 'What moves in the walls?', nextNodeId: 'explain' },

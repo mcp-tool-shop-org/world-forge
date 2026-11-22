@@ -90,7 +90,7 @@
       "externals": 0,
       "files": [
         {
-          "hash": "4114ff0a87c7736e23b53ba34a67ba363d9f8d515fb259c0ea2fa7d2204aecba",
+          "hash": "4754d8cab8deb6a0a726703570b2c7d492ea8626970bda94e75f3ec8477cf7e3",
           "path": "docs/audit/2026-11-21-truth-reconciliation.md"
         },
         {
@@ -686,7 +686,7 @@
           "path": "packages/editor/logo.png"
         },
         {
-          "hash": "efc661dec3ddc5db3132f047d45c6cf1f59a4865879f9f92f49dc04b4c0df02c",
+          "hash": "d047f6f4c5bc5dd8479e9e71d315f23556219a5cc53a4570adbd85718c535dac",
           "path": "packages/editor/package.json"
         },
         {
@@ -1162,7 +1162,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "bfe98dfb99003481ff9616ddbae7a27994891b9d1ff25010f850417ea2d063b9",
+          "hash": "f6c1938fc0e71f68c0f0218317ff5166ba159d01c780a1fa3793a9b22fd53b21",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/panels/export-handlers.ts",
@@ -1863,7 +1863,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "8c461d35b2a244b72f45c12bf28a4670f1754f68fe34874616cca69c68ca4ea5",
+          "hash": "418bbe7981974e054e084695c3c79a147c4b5c34571658a79c0f9dbbbb64861d",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/export-ai-rpg/src/index.ts",
@@ -4996,7 +4996,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "116e3672b645794c59eadeb85d73044e3308be415e0c31eabda22b13f3b492db",
+          "hash": "5242d9e03aaf2d68cf6aba9e759904a3783a302924c06ddbc14e450cc64b58b1",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5012,7 +5012,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "dfbab639f5a82dd81eca72d736fffb6c823d917a083e5f0e1e7f421f68b15ace",
+          "hash": "7bda927334c1990d23543a4ff6ab1c9c259b7818710a8f5f33583b3857116aaa",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5020,7 +5020,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "64f30e4590a59c1366d49bbe8084ba851571c0cfd3c7d28e125a15496fdc85ac",
+          "hash": "5910ac9c0691cacdb202be3c03df4b4fd3c7473c7b45aeb206ab93aeb7741dfe",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5028,7 +5028,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "66df03f0d63552efa09a79eab949dccfa10a54d6d6c559d9cccfd0004e8f84e8",
+          "hash": "f643a262c2d63b989dc59906c652b837753ad9bf3144b765e10fb42ca3396020",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5048,7 +5048,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "caf7355cff30ef8b0726ef5ae9a1861f465a64a7c6499139b722f46d9d805a1e",
+          "hash": "80a9de558af1b97d53d63b2f4dce8aeb5d243895e7319d930fcbf00d5278fa5a",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5056,7 +5056,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "350adc34bf4abb8570e0178bc71fa4c5a63f6de779b758282f7880400bc551ce",
+          "hash": "ee9e64335cb36e57124976d18aeff604cab849f1f5b05871c3d4cbe0d8732a33",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5064,7 +5064,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "7b457e5f43d0ffc634e1d0e30a60ce3f049ee996df5477d67c609a0c1737870b",
+          "hash": "a56cf76ac0d2c7048fef64cb09abf84a4223ea99edeeba91c9f599c58678e8e6",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5072,7 +5072,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "44629f5fd23f55fd9d719c166263ed4ba1eea463e21189ae284ed4a9a83538a8",
+          "hash": "010302e31c577058ae2f475e4af778f122fbe339eda6d7e7d6f38072632c9650",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5080,7 +5080,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "583ee9806fe0f591f58b7c0b2e2b6f147a88825b7e087c83d7a6dc04376b4260",
+          "hash": "65d0231a9c483352e541e9a801ae5d8bb1c2c4fcd66b13de411ea4970d353702",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5088,7 +5088,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "5fdd8506b646de58e979e033ce08b636221596ef123de55cf5681fee594afc35",
+          "hash": "09f49ee617535f8fe8740928f9cc93f5db23b5f6d91f040c2c5080875c18b151",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5096,7 +5096,7 @@
         },
         {
           "constantOnly": true,
-          "hash": "d51315db5fea456380f94fb855f03e65436dad42a30f908eaee7cf0b8077085a",
+          "hash": "f5c37c2b75c9d70e78040e8a77a3bb094958a87b660cf769733a3a72ce2e9c79",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
@@ -5137,7 +5137,7 @@
           "path": "packages/editor/src/templates/registry.ts"
         },
         {
-          "hash": "adb4dd340f9f77a2337bb01e98068aa3facd42a7766d8965945f8411298b4d80",
+          "hash": "8164a7a98927de3acf7811967e8b20559f789ea749650cbbe0c6de11887db0ca",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/templates/registry.ts"
@@ -5483,7 +5483,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "a2aa1fabbaf4845c80644a955136f9654e24077da68a5bd576835370ff9f3b03",
+          "hash": "e0a14cbaadde1f517092090fd4b7a25b465e2afd650c82d940c7e582bc71353e",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts",
@@ -6401,14 +6401,14 @@
                 {
                   "inner": [
                     {
-                      "line": 129,
+                      "line": 136,
                       "name": "join",
                       "target": {
                         "file": "packages/schema/src/index.ts"
                       }
                     },
                     {
-                      "line": 69,
+                      "line": 71,
                       "name": "isAiRpgEncounterAnchorType",
                       "target": {
                         "file": "packages/schema/src/index.ts"
@@ -6661,7 +6661,7 @@
             "listAiRpgEncounterAdjustments",
             "listAiRpgEncounterBlockers"
           ],
-          "hash": "0cb4cd4bb7ebc71a61f4b0b28b2e0efe596b588680b63ab7e6c95411a50d5d71",
+          "hash": "0906f5371597bdf999c72d4b5c6fc00dfadc2b76432e0c7b1f8baff0b25665dd",
           "importsFiles": [
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/schema/src/index.ts"
@@ -6671,7 +6671,7 @@
             {
               "calls": [
                 {
-                  "line": 69,
+                  "line": 71,
                   "name": "isAiRpgEncounterAnchorType",
                   "target": {
                     "file": "packages/schema/src/index.ts"
@@ -6686,7 +6686,7 @@
             {
               "calls": [
                 {
-                  "line": 69,
+                  "line": 71,
                   "name": "isAiRpgEncounterAnchorType",
                   "target": {
                     "file": "packages/schema/src/index.ts"
@@ -6702,14 +6702,14 @@
             {
               "calls": [
                 {
-                  "line": 129,
+                  "line": 136,
                   "name": "join",
                   "target": {
                     "file": "packages/schema/src/index.ts"
                   }
                 },
                 {
-                  "line": 69,
+                  "line": 71,
                   "name": "isAiRpgEncounterAnchorType",
                   "target": {
                     "file": "packages/schema/src/index.ts"
@@ -6725,7 +6725,7 @@
             {
               "calls": [
                 {
-                  "line": 69,
+                  "line": 71,
                   "name": "isAiRpgEncounterAnchorType",
                   "target": {
                     "file": "packages/schema/src/index.ts"
@@ -10678,7 +10678,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "2912b957950113f0ca8175eadd254fa05acb88758557b963b914ea3e8a37fa47",
+          "hash": "1dc0f034f2b634980825f1f37be4cdc69f5896de4b7a229bcb9d40884aa9b446",
           "path": "CHANGELOG.md"
         },
         {
@@ -10710,7 +10710,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "5504306bc35f1ed65a9b9aa44045db498279403b8bb617267c6f366635462095",
+          "hash": "f68bfba163af5c527813aeac4f40b9a063d8684ecb6fc434c7c4e50ae603df5f",
           "path": "README.md"
         },
         {
@@ -10746,7 +10746,7 @@
           "path": "multitask.md"
         },
         {
-          "hash": "7261772151a5878387d82e69e47e484b87e751f321e08d9de4e31b87829a26fa",
+          "hash": "265d9616bae922451cf651fb707d13ebf52bc0ebcf17902044611247f79e5b3e",
           "path": "package-lock.json"
         },
         {
@@ -11083,7 +11083,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "17e09b2d5121778e92e449e070f80fcd717b30c0a627ced174dbe196cfb32f34",
+          "hash": "0cb366f724f9e60d7ed8aa580672edf5345cf836801bbbdadbd778e90ce4783c",
           "importOrder": [
             "packages/schema/src/review.ts",
             "packages/schema/src/project.ts",
@@ -11532,7 +11532,7 @@
             "buildReviewSnapshot",
             "classifyHealth"
           ],
-          "hash": "bec76657cb62d0bfdf415c151854288766b568f804f3bfdc3ebf482bee7ddb80",
+          "hash": "0fcb16683c2dfb3c662d652d77d9cceca5466d0a5d085fb8f3474032b6bc3759",
           "importOrder": [
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts",
@@ -11778,7 +11778,7 @@
           "path": "site/src/content/docs/handbook/architecture.md"
         },
         {
-          "hash": "9c8392cf93c54b595f2198386d3f9806b8533e21f793b6ed07bb4d7ff6a82ef1",
+          "hash": "c11784e389cadc031f030f3fee9c23a8b3f03e07529045717aeda13616c35307",
           "path": "site/src/content/docs/handbook/beginners.md"
         },
         {
@@ -11794,7 +11794,7 @@
           "path": "site/src/content/docs/handbook/export-unreal.md"
         },
         {
-          "hash": "001aac7a1f44362bb531ed8261fca43c10c086da670c62ec2aa8855f8306adde",
+          "hash": "ad2f7c28b5ad62ac568481535379fd9d581ca3a35851b9bb662e4cf78d7ede33",
           "path": "site/src/content/docs/handbook/export.md"
         },
         {
@@ -14607,7 +14607,7 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "ce54e8d033a1f4930e448bf96e2c62c65a377e95",
+    "commit": "c944509c2168586ccd567dc100331b5f2548a7da",
     "tracked": 656
   },
   "landings": [

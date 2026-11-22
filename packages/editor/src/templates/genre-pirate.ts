@@ -45,7 +45,7 @@ export const pirateTemplate: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'briggs-talk', speakers: ['briggs'], entryNodeId: 'greeting',
+    id: 'briggs-talk', speakers: ['first-mate'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'briggs', text: 'New blood? The captain is looking for hands. Interested in a crew that pays well?', choices: [
         { id: 'c1', text: 'What is the job?', nextNodeId: 'offer' },

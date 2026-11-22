@@ -45,7 +45,7 @@ export const zombieTemplate: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'shaw-talk', speakers: ['shaw'], entryNodeId: 'greeting',
+    id: 'shaw-talk', speakers: ['medic'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'shaw', text: 'Supplies are running thin. We have maybe three days before we need to make a run.', choices: [
         { id: 'c1', text: 'Where should we look?', nextNodeId: 'plan' },

@@ -47,7 +47,7 @@ export const worldStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'thane-talk', speakers: ['thane'], entryNodeId: 'greeting',
+    id: 'thane-talk', speakers: ['border-captain'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'thane', text: 'You picked a bad time to cross the frontier. Caravan raids have doubled this season.', choices: [
         { id: 'c1', text: 'Who is behind the raids?', nextNodeId: 'details' },

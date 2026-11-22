@@ -47,7 +47,7 @@ export const spaceStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'vex-talk', speakers: ['vex'], entryNodeId: 'greeting',
+    id: 'vex-talk', speakers: ['station-commander'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'vex', text: 'You arrived just in time. We lost contact with the sensor array — and something out there is jamming our signals.', choices: [
         { id: 'c1', text: 'What kind of jamming?', nextNodeId: 'details' },

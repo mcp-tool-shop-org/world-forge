@@ -1,17 +1,14 @@
 # world-forge: how it works
 
-Mapped at 2026-11-22 from commit ce54e8d by Atlas 1.26.0.
+Mapped at 2026-11-22 from commit c944509 by Atlas 1.26.0.
 
 ## What this is
 
 15 parts, mostly TypeScript (503 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.
 
-## What changed since 2026-11-22 (70d4403)
+## What changed since 2026-11-22 (ce54e8d)
 
-- CI now also runs packages/export-ai-rpg/src/__tests__/encounter-mapping.test.ts.
-- Release now also runs packages/export-ai-rpg/src/__tests__/encounter-mapping.test.ts.
-- packages/editor/src/templates/samples.ts is now read by packages/export-ai-rpg/src/__tests__/encounter-mapping.test.ts.
-- 1 file added and 11 changed content, across 4 parts.
+Nothing structural changed since 2026-11-22; 25 files changed content.
 
 ## What comes in
 
@@ -73,11 +70,11 @@ Mapped at 2026-11-22 from commit ce54e8d by Atlas 1.26.0.
 
 ## What tends to change together
 
-- **packages/editor/src/panels/ExportModal.tsx** and **packages/editor/src/panels/TemplateManager.tsx** changed together in 5 of 5 commits, inside the editor part.
+- **packages/editor/src/panels/ExportModal.tsx** and **packages/editor/src/panels/TemplateManager.tsx** changed together in 5 of 6 commits, inside the editor part.
 - **dogfood/godot-smoke/smoke_load_world.gd** and **dogfood/worlds/multi-target-proof.ts** changed together in 7 of 9 commits, inside the dogfood part.
 - **packages/export-godot/src/export.ts** and **packages/export-godot/src/index.ts** changed together in 10 of 13 commits, inside the export-godot part.
-- **packages/export-ai-rpg/src/content-hash.ts** and **packages/export-ai-rpg/src/export.ts** changed together in 6 of 8 commits, inside the export-ai-rpg part.
 - **packages/schema/src/index.ts** and **packages/schema/src/project.ts** changed together in 6 of 8 commits, inside the schema part.
+- **packages/export-ai-rpg/src/content-hash.ts** and **packages/export-ai-rpg/src/export.ts** changed together in 6 of 9 commits, inside the export-ai-rpg part.
 
 2 files changed together with their own tests, as expected.
 
