@@ -319,7 +319,7 @@ describe('Edit Properties / Enter opens properties (Part 3 — changed)', () => 
     expect(html).toContain('data-testid="wf-entity-inspector"');
   });
 
-  it('changed: Edit Properties and Enter expand a collapsed right sidebar when Guide tab is showing', () => {
+  it('unchanged: Edit Properties and Enter expand a collapsed right sidebar when Guide tab is showing', () => {
     const editorWithCollapse = useEditorStore.getState() as unknown as {
       rightCollapsed?: boolean;
       setRightCollapsed?: (collapsed: boolean) => void;

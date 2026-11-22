@@ -25,13 +25,19 @@ import { usePresetStore } from './presets/preset-store.js';
 import { useSpeedPanelOptions, formatSpeedPanelTriggerFooter } from './store/speed-panel-options-store.js';
 import {
   beginRightPointer,
+  computeRightPanViewport,
   createInitialRightClickGestureState,
   endRightPointer,
   getKeyboardSpeedPanelAnchor,
+  isMacCtrlClickPointer,
   isMacPlatform,
+  isNodeInsideCanvasOrMenu,
   isRightClickPointer,
   moveRightPointer,
-  shouldTriggerSpeedPanelKey,
+  resolveCanvasContextMenu,
+  resolveCanvasKeyTriggerDecision,
+  resolveRightPointerEndEffect,
+  shouldIgnoreLeftMouseUp,
 } from './speed-panel-gesture.js';
 
 export { generateZoneId };
@@ -53,7 +59,7 @@ const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
  * handleMouseUp accept either, so a gesture release outside the canvas
  * (caught by a window `mouseup` listener) can still be committed/cleared.
  */
-type MouseLike = { clientX: number; clientY: number; shiftKey: boolean };
+type MouseLike = { clientX: number; clientY: number; shiftKey: boolean; button?: number; ctrlKey?: boolean };
 
 /** FT-021: When selection exceeds this count, use simplified outline-only rendering */
 export const LARGE_SELECTION_THRESHOLD = 50;
@@ -114,6 +120,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const lastRightMoveEvent = useRef<Event | null>(null);
   const contextMenuHandledInPress = useRef(false);
   const suppressNextCanvasContextMenu = useRef(false);
+  const suppressNextLeftMouseUp = useRef(false);
   const pointerOverCanvasRef = useRef(false);
   const lastPointerRegionRef = useRef<'none' | 'canvas' | 'other'>('none');
   const lastPointerStampRef = useRef(0);
@@ -1120,8 +1127,11 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     pointerType?: string;
     preventDefault: () => void;
   }): boolean => {
-    if (!isRightClickPointer(e, isMacPlatform())) return false;
+    const mac = isMacPlatform();
+    if (!isRightClickPointer(e, mac)) return false;
     e.preventDefault();
+    const macCtrl = isMacCtrlClickPointer(e, mac);
+    suppressNextLeftMouseUp.current = macCtrl;
     contextMenuHandledInPress.current = false;
     const { sx, sy } = getScreenXY(e);
     lastPointerRef.current = { sx, sy };
@@ -1133,12 +1143,15 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       sy,
       pointerId: e.pointerId,
       pointerType: e.pointerType,
+      isMacCtrlClick: macCtrl,
     });
     rightPanStart.current = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
     return true;
   };
 
-  const moveRightPointerHandler = (e: Event & { clientX: number; clientY: number; pointerId: number }): boolean => {
+  const moveRightPointerHandler = (
+    e: Event & { clientX: number; clientY: number; pointerId: number; buttons?: number },
+  ): boolean => {
     if (lastRightMoveEvent.current === e) {
       return rightClickGesture.current.active?.pointerId === e.pointerId;
     }
@@ -1148,16 +1161,20 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     }
     const { sx, sy } = getScreenXY(e);
     const opts = useSpeedPanelOptions.getState().options;
-    const moved = moveRightPointer(rightClickGesture.current, { sx, sy, pointerId: e.pointerId }, opts);
+    const moved = moveRightPointer(
+      rightClickGesture.current,
+      { sx, sy, pointerId: e.pointerId, buttons: e.buttons },
+      opts,
+    );
     rightClickGesture.current = moved.state;
+    if (moved.cancelled) {
+      rightPanStart.current = null;
+      suppressNextLeftMouseUp.current = false;
+      return false;
+    }
     if (moved.isDragging && rightPanStart.current) {
       if (contextMenuRef.current) setContextMenu(null);
-      const dx = (e.clientX - rightPanStart.current.x) / viewport.zoom;
-      const dy = (e.clientY - rightPanStart.current.y) / viewport.zoom;
-      setViewport({
-        panX: rightPanStart.current.panX - dx,
-        panY: rightPanStart.current.panY - dy,
-      });
+      setViewport(computeRightPanViewport(rightPanStart.current, e.clientX, e.clientY, viewport.zoom));
     }
     return true;
   };
@@ -1184,60 +1201,43 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     rightClickGesture.current = outcome.state;
     rightPanStart.current = null;
 
-    if (outcome.kind === 'drag-end' || outcome.kind === 'ignore') {
-      return true;
-    }
-    if (outcome.kind === 'open-speed-panel') {
-      const prevHit = contextMenuRef.current?.hit;
+    const effect = resolveRightPointerEndEffect(outcome, Boolean(contextMenuRef.current), contextMenuRef.current?.hit);
+    if (effect.action === 'open-speed-panel') {
       setContextMenu(null);
-      const hit = prevHit !== undefined
-        ? prevHit
-        : filterHitSingle(findHitAt(outcome.x, outcome.y, viewport, project, tileSize, visibility));
-      openSpeedPanel(outcome.x, outcome.y, hit);
-      return true;
+      const hit = effect.prevHit !== undefined
+        ? effect.prevHit
+        : filterHitSingle(findHitAt(effect.x, effect.y, viewport, project, tileSize, visibility));
+      openSpeedPanel(effect.x, effect.y, hit);
+    } else if (effect.action === 'open-compact-menu') {
+      openObjectContextMenu(effect.x, effect.y);
     }
-    if (outcome.kind === 'keep-compact-menu') {
-      if (!contextMenuRef.current) {
-        openObjectContextMenu(outcome.x, outcome.y);
-      }
-      return true;
-    }
-    openObjectContextMenu(outcome.x, outcome.y);
     return true;
   };
 
   const speedPanelKeyTriggerRef = useRef<((e: KeyboardEvent) => boolean) | null>(null);
   speedPanelKeyTriggerRef.current = (e: KeyboardEvent): boolean => {
     const editorState = useEditorStore.getState();
-    const activeModal = useModalStore.getState().activeModal;
-    const opts = useSpeedPanelOptions.getState().options;
     const canvasEl = canvasRef.current;
-    const canvasFocusedNow = Boolean(canvasEl && typeof document !== 'undefined' && document.activeElement === canvasEl);
-    const pointerOverCanvas = pointerOverCanvasRef.current;
-    const allowCanvasFocused =
-      canvasFocusedNow &&
-      (lastPointerRegionRef.current !== 'other' || lastCanvasFocusStampRef.current >= lastPointerStampRef.current);
-
-    if (
-      !shouldTriggerSpeedPanelKey(e, {
-        options: opts,
-        pointerOverCanvas,
-        canvasFocused: allowCanvasFocused,
-        activeModal,
-        showSearch: editorState.showSearch,
-        showSpeedPanel: editorState.showSpeedPanel,
-        activeElement: typeof document !== 'undefined' ? document.activeElement : null,
-      })
-    ) {
-      return false;
-    }
+    const decision = resolveCanvasKeyTriggerDecision(e, {
+      options: useSpeedPanelOptions.getState().options,
+      pointerOverCanvas: pointerOverCanvasRef.current,
+      canvasFocusedNow: Boolean(canvasEl && typeof document !== 'undefined' && document.activeElement === canvasEl),
+      lastPointerRegion: lastPointerRegionRef.current,
+      lastCanvasFocusStamp: lastCanvasFocusStampRef.current,
+      lastPointerStamp: lastPointerStampRef.current,
+      activeModal: useModalStore.getState().activeModal,
+      showSearch: editorState.showSearch,
+      showSpeedPanel: editorState.showSpeedPanel,
+      activeElement: typeof document !== 'undefined' ? document.activeElement : null,
+    });
+    if (!decision.trigger) return false;
 
     e.preventDefault();
     e.stopPropagation();
     setContextMenu(null);
     rightClickGesture.current = createInitialRightClickGestureState();
 
-    if (pointerOverCanvas) {
+    if (decision.source === 'pointer') {
       const { sx, sy } = lastPointerRef.current;
       const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
       openSpeedPanel(sx, sy, hit);
@@ -1379,6 +1379,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       e.preventDefault();
       return;
     }
+    suppressNextLeftMouseUp.current = false;
 
     // FT-005: Close context menu on non-right click
     if (contextMenu) setContextMenu(null);
@@ -1555,6 +1556,12 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   };
 
   const handleMouseUp = (e: MouseLike) => {
+    if (shouldIgnoreLeftMouseUp(e, isMacPlatform(), suppressNextLeftMouseUp.current)) {
+      if ((e.button ?? 0) === 0) suppressNextLeftMouseUp.current = false;
+      return;
+    }
+    suppressNextLeftMouseUp.current = false;
+
     // Commit an in-progress tile brush stroke as a single undo step.
     if (tilePaint.current) {
       const stroke = tilePaint.current;
@@ -1674,14 +1681,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   useEffect(() => {
     const onWindowMouseUp = (e: MouseEvent) => handleMouseUpRef.current(e);
     const onWindowPointerMove = (e: PointerEvent) => {
-      const canvasEl = canvasRef.current;
-      const targetNode = e.target as Node | null;
-      const inCanvas = Boolean(
-        canvasEl &&
-          targetNode &&
-          (targetNode === canvasEl || canvasEl.contains(targetNode) || contextMenuElRef.current?.contains(targetNode)),
-      );
-      if (!inCanvas) {
+      if (!isNodeInsideCanvasOrMenu(canvasRef.current, contextMenuElRef.current, e.target as Node | null)) {
         pointerOverCanvasRef.current = false;
         lastPointerRegionRef.current = 'other';
         lastPointerStampRef.current = performance.now();
@@ -1691,19 +1691,22 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     const onWindowPointerUp = (e: PointerEvent) => {
       finishRightPointerRef.current(e);
     };
-    const onWindowPointerCancel = () => {
+    const resetRightPress = () => {
       rightClickGesture.current = { ...rightClickGesture.current, active: null };
       rightPanStart.current = null;
+      suppressNextLeftMouseUp.current = false;
     };
     window.addEventListener('mouseup', onWindowMouseUp);
     window.addEventListener('pointermove', onWindowPointerMove);
     window.addEventListener('pointerup', onWindowPointerUp);
-    window.addEventListener('pointercancel', onWindowPointerCancel);
+    window.addEventListener('pointercancel', resetRightPress);
+    window.addEventListener('blur', resetRightPress);
     return () => {
       window.removeEventListener('mouseup', onWindowMouseUp);
       window.removeEventListener('pointermove', onWindowPointerMove);
       window.removeEventListener('pointerup', onWindowPointerUp);
-      window.removeEventListener('pointercancel', onWindowPointerCancel);
+      window.removeEventListener('pointercancel', resetRightPress);
+      window.removeEventListener('blur', resetRightPress);
     };
   }, []);
 
@@ -1866,28 +1869,26 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   // on pointerdown/pointermove/pointerup so Windows and macOS event orders behave identically.
   const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    const mac = isMacPlatform();
-    if (rightClickGesture.current.active !== null) {
+    const decision = resolveCanvasContextMenu({
+      hasActiveRightGesture: rightClickGesture.current.active !== null,
+      isRightPointerEvent: isRightClickPointer(e, isMacPlatform()),
+      suppressNext: suppressNextCanvasContextMenu.current,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      rect: canvasRef.current?.getBoundingClientRect() ?? null,
+      lastPointer: lastPointerRef.current,
+    });
+    if (decision.kind === 'handled-in-press') {
       contextMenuHandledInPress.current = true;
       return;
     }
-    if (isRightClickPointer(e, mac)) return;
-    if (suppressNextCanvasContextMenu.current) {
+    if (decision.kind === 'consume-suppressed') {
       suppressNextCanvasContextMenu.current = false;
       return;
     }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    let sx = e.clientX - rect.left;
-    let sy = e.clientY - rect.top;
-    const offCanvas = (e.clientX === 0 && e.clientY === 0)
-      || sx < 0 || sy < 0 || sx > rect.width || sy > rect.height;
-    if (offCanvas) {
-      sx = lastPointerRef.current.sx;
-      sy = lastPointerRef.current.sy;
+    if (decision.kind === 'open') {
+      openObjectContextMenu(decision.sx, decision.sy);
     }
-    openObjectContextMenu(sx, sy);
   };
 
   // --- Double-click to open details for clicked object ---

@@ -99,7 +99,7 @@
       "confidence": "low",
       "highWater": null,
       "name": "e2e",
-      "qualifyingSourceCommits": 9,
+      "qualifyingSourceCommits": 10,
       "rebaseline": null
     },
     {
@@ -115,7 +115,7 @@
       "confidence": "full",
       "highWater": null,
       "name": "editor",
-      "qualifyingSourceCommits": 42,
+      "qualifyingSourceCommits": 43,
       "rebaseline": null
     },
     {
@@ -321,8 +321,8 @@
         "path": ".gitignore"
       },
       {
-        "commits": 22,
-        "lines": 406,
+        "commits": 25,
+        "lines": 416,
         "path": "CHANGELOG.md"
       },
       {
@@ -356,8 +356,8 @@
         "path": "README.ja.md"
       },
       {
-        "commits": 24,
-        "lines": 247,
+        "commits": 25,
+        "lines": 251,
         "path": "README.md"
       },
       {
@@ -386,8 +386,13 @@
         "path": "a11y-audit.md"
       },
       {
-        "commits": 10,
-        "lines": 664,
+        "commits": 2,
+        "lines": 0,
+        "path": "assets/logo.png"
+      },
+      {
+        "commits": 11,
+        "lines": 682,
         "path": "atlas/README.md"
       },
       {
@@ -396,18 +401,18 @@
         "path": "atlas/boundaries.yaml"
       },
       {
-        "commits": 10,
-        "lines": 4433,
+        "commits": 11,
+        "lines": 4473,
         "path": "atlas/page.json"
       },
       {
-        "commits": 10,
-        "lines": 12595,
+        "commits": 11,
+        "lines": 12744,
         "path": "atlas/statistics.json"
       },
       {
-        "commits": 10,
-        "lines": 57328,
+        "commits": 11,
+        "lines": 57486,
         "path": "atlas/structure.json"
       },
       {
@@ -671,6 +676,11 @@
         "path": "e2e/import-roundtrip.spec.ts"
       },
       {
+        "commits": 1,
+        "lines": 370,
+        "path": "e2e/speed-panel-triggers.spec.ts"
+      },
+      {
         "commits": 2,
         "lines": 26,
         "path": "e2e/write-chapel-fixture.ts"
@@ -701,6 +711,11 @@
         "path": "packages/editor/index.html"
       },
       {
+        "commits": 2,
+        "lines": 0,
+        "path": "packages/editor/logo.png"
+      },
+      {
         "commits": 9,
         "lines": 17,
         "path": "packages/editor/package.json"
@@ -711,18 +726,23 @@
         "path": "packages/editor/public/favicon.svg"
       },
       {
+        "commits": 2,
+        "lines": 0,
+        "path": "packages/editor/public/logo.png"
+      },
+      {
         "commits": 3,
         "lines": 39,
         "path": "packages/editor/public/mark.svg"
       },
       {
-        "commits": 20,
-        "lines": 1139,
+        "commits": 21,
+        "lines": 1148,
         "path": "packages/editor/src/App.tsx"
       },
       {
-        "commits": 23,
-        "lines": 1777,
+        "commits": 24,
+        "lines": 2196,
         "path": "packages/editor/src/Canvas.tsx"
       },
       {
@@ -751,8 +771,8 @@
         "path": "packages/editor/src/__tests__/canvas-defaults.test.ts"
       },
       {
-        "commits": 1,
-        "lines": 119,
+        "commits": 2,
+        "lines": 276,
         "path": "packages/editor/src/__tests__/command-registry.test.ts"
       },
       {
@@ -881,9 +901,14 @@
         "path": "packages/editor/src/__tests__/speed-panel-actions.test.ts"
       },
       {
-        "commits": 1,
-        "lines": 399,
+        "commits": 2,
+        "lines": 405,
         "path": "packages/editor/src/__tests__/speed-panel-c1-compat.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 362,
+        "path": "packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts"
       },
       {
         "commits": 8,
@@ -961,8 +986,8 @@
         "path": "packages/editor/src/canvas-placement.ts"
       },
       {
-        "commits": 1,
-        "lines": 1166,
+        "commits": 2,
+        "lines": 1264,
         "path": "packages/editor/src/command-registry.ts"
       },
       {
@@ -1136,9 +1161,19 @@
         "path": "packages/editor/src/panels/LootTablePanel.tsx"
       },
       {
+        "commits": 1,
+        "lines": 2,
+        "path": "packages/editor/src/panels/ModalLayer.tsx"
+      },
+      {
         "commits": 5,
         "lines": 363,
         "path": "packages/editor/src/panels/ObjectListPanel.tsx"
+      },
+      {
+        "commits": 1,
+        "lines": 241,
+        "path": "packages/editor/src/panels/OptionsModal.tsx"
       },
       {
         "commits": 7,
@@ -1196,8 +1231,8 @@
         "path": "packages/editor/src/panels/SpawnProperties.tsx"
       },
       {
-        "commits": 7,
-        "lines": 513,
+        "commits": 8,
+        "lines": 527,
         "path": "packages/editor/src/panels/SpeedPanel.tsx"
       },
       {
@@ -1216,8 +1251,8 @@
         "path": "packages/editor/src/panels/TilePalette.tsx"
       },
       {
-        "commits": 10,
-        "lines": 390,
+        "commits": 11,
+        "lines": 412,
         "path": "packages/editor/src/panels/ToolPalette.tsx"
       },
       {
@@ -1436,8 +1471,8 @@
         "path": "packages/editor/src/snap.ts"
       },
       {
-        "commits": 8,
-        "lines": 354,
+        "commits": 9,
+        "lines": 356,
         "path": "packages/editor/src/speed-panel-actions.ts"
       },
       {
@@ -1446,14 +1481,29 @@
         "path": "packages/editor/src/speed-panel-execute.ts"
       },
       {
+        "commits": 1,
+        "lines": 335,
+        "path": "packages/editor/src/speed-panel-gesture.ts"
+      },
+      {
         "commits": 12,
         "lines": 495,
         "path": "packages/editor/src/store/editor-store.ts"
       },
       {
+        "commits": 1,
+        "lines": 2,
+        "path": "packages/editor/src/store/modal-store.ts"
+      },
+      {
         "commits": 21,
         "lines": 1334,
         "path": "packages/editor/src/store/project-store.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 349,
+        "path": "packages/editor/src/store/speed-panel-options-store.ts"
       },
       {
         "commits": 3,
@@ -1574,6 +1624,11 @@
         "commits": 5,
         "lines": 66,
         "path": "packages/export-ai-rpg/README.md"
+      },
+      {
+        "commits": 2,
+        "lines": 0,
+        "path": "packages/export-ai-rpg/logo.png"
       },
       {
         "commits": 10,
@@ -1881,7 +1936,7 @@
         "path": "packages/export-godot/README.md"
       },
       {
-        "commits": 3,
+        "commits": 5,
         "lines": 0,
         "path": "packages/export-godot/logo.png"
       },
@@ -2171,7 +2226,7 @@
         "path": "packages/export-unreal/README.md"
       },
       {
-        "commits": 3,
+        "commits": 5,
         "lines": 0,
         "path": "packages/export-unreal/logo.png"
       },
@@ -2371,6 +2426,11 @@
         "path": "packages/renderer-2d/README.zh.md"
       },
       {
+        "commits": 2,
+        "lines": 0,
+        "path": "packages/renderer-2d/logo.png"
+      },
+      {
         "commits": 8,
         "lines": 19,
         "path": "packages/renderer-2d/package.json"
@@ -2514,6 +2574,11 @@
         "commits": 3,
         "lines": 18,
         "path": "packages/schema/README.zh.md"
+      },
+      {
+        "commits": 2,
+        "lines": 0,
+        "path": "packages/schema/logo.png"
       },
       {
         "commits": 8,
@@ -2781,6 +2846,11 @@
         "path": "site/public/favicon.svg"
       },
       {
+        "commits": 2,
+        "lines": 0,
+        "path": "site/public/logo.png"
+      },
+      {
         "commits": 3,
         "lines": 0,
         "path": "site/public/og-image.jpg"
@@ -2796,7 +2866,7 @@
         "path": "site/public/screenshots/editor-canvas.jpg"
       },
       {
-        "commits": 3,
+        "commits": 5,
         "lines": 0,
         "path": "site/src/assets/logo.png"
       },
@@ -2811,8 +2881,8 @@
         "path": "site/src/components/starlight/ThemeSelect.astro"
       },
       {
-        "commits": 1,
-        "lines": 50,
+        "commits": 2,
+        "lines": 57,
         "path": "site/src/content/docs/handbook/accessibility.md"
       },
       {
@@ -2826,8 +2896,8 @@
         "path": "site/src/content/docs/handbook/beginners.md"
       },
       {
-        "commits": 7,
-        "lines": 62,
+        "commits": 8,
+        "lines": 67,
         "path": "site/src/content/docs/handbook/editor-workflow.md"
       },
       {
@@ -2906,17 +2976,17 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-22T22:29:59.824Z",
+  "generatedAt": "2026-11-22T23:03:12.363Z",
   "generatedFrom": {
-    "commit": "389a512384ae66f48ddf2861f3f077f9a2a56844"
+    "commit": "7c03aa0f2216162043bd636aa8b537945818a38b"
   },
   "pairs": [
     {
       "a": "CHANGELOG.md",
       "b": "README.md",
-      "either": 22,
-      "shared": 12,
-      "strength": 0.545455
+      "either": 24,
+      "shared": 13,
+      "strength": 0.541667
     },
     {
       "a": "README.es.md",
@@ -3117,43 +3187,43 @@
     {
       "a": "atlas/README.md",
       "b": "atlas/page.json",
-      "either": 5,
-      "shared": 5,
+      "either": 6,
+      "shared": 6,
       "strength": 1
     },
     {
       "a": "atlas/README.md",
       "b": "atlas/statistics.json",
-      "either": 5,
-      "shared": 5,
+      "either": 6,
+      "shared": 6,
       "strength": 1
     },
     {
       "a": "atlas/README.md",
       "b": "atlas/structure.json",
-      "either": 5,
-      "shared": 5,
+      "either": 6,
+      "shared": 6,
       "strength": 1
     },
     {
       "a": "atlas/page.json",
       "b": "atlas/statistics.json",
-      "either": 5,
-      "shared": 5,
+      "either": 6,
+      "shared": 6,
       "strength": 1
     },
     {
       "a": "atlas/page.json",
       "b": "atlas/structure.json",
-      "either": 5,
-      "shared": 5,
+      "either": 6,
+      "shared": 6,
       "strength": 1
     },
     {
       "a": "atlas/statistics.json",
       "b": "atlas/structure.json",
-      "either": 5,
-      "shared": 5,
+      "either": 6,
+      "shared": 6,
       "strength": 1
     },
     {
@@ -3374,11 +3444,18 @@
       "strength": 0.5
     },
     {
+      "a": "packages/editor/src/App.tsx",
+      "b": "packages/editor/src/Canvas.tsx",
+      "either": 18,
+      "shared": 9,
+      "strength": 0.5
+    },
+    {
       "a": "packages/editor/src/Canvas.tsx",
       "b": "packages/editor/src/store/editor-store.ts",
-      "either": 13,
+      "either": 14,
       "shared": 7,
-      "strength": 0.538462
+      "strength": 0.5
     },
     {
       "a": "packages/editor/src/hotkeys.ts",
@@ -3580,16 +3657,16 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-22T17:01:37-05:00",
-    "inScopeFiles": 670,
+    "headDate": "2026-11-22T17:47:32-05:00",
+    "inScopeFiles": 671,
     "pinnedStart": null,
     "priorFloor": "fallen",
-    "qualifyingCommits": 140,
+    "qualifyingCommits": 142,
     "qualifyingMinimum": 30,
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-26T22:01:37.000Z",
+    "since": "2026-05-26T22:47:32.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

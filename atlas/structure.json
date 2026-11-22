@@ -67,7 +67,7 @@
       "externals": 0,
       "files": [
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "assets/logo.png"
         }
       ],
@@ -616,7 +616,7 @@
           "path": "e2e/import-roundtrip.spec.ts"
         },
         {
-          "hash": "2a5193e7be6b8d7307fe4c3a321b53b71495911aef1f0e6aa7064f58034911cf",
+          "hash": "b7eb763b0072e54580b5684bdea7bdf0cf3515f2eb0c4c4ab989eb9bf1bd879f",
           "importsFiles": [
             "e2e/helpers.ts"
           ],
@@ -690,7 +690,7 @@
           "path": "packages/editor/index.html"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/editor/logo.png"
         },
         {
@@ -702,7 +702,7 @@
           "path": "packages/editor/public/favicon.svg"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/editor/public/logo.png"
         },
         {
@@ -836,7 +836,7 @@
           "exports": [
             "Canvas"
           ],
-          "hash": "cc1cb53d1e3fb63e2d258529769dc6b1d40fe7abdf303321d1cf872ab4d0a2c1",
+          "hash": "c555af1e212aedd4906f9721adf4d5f712a5904bd250f3b51ba404cccfa7b884",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -2029,12 +2029,17 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "a7a549667965fca3acc1b95f9cf2614d54437780a2c1144ad29e27383e3ce485",
+          "hash": "8635c404979ad163f2ea8629ae778bd995af73aec0a478b9cebe92207f160360",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c1-compat.test.ts"
         },
         {
-          "hash": "303358db9b786b286e363fd16b4bcb4705e70e0b052204d2a940c75eaf8e796a",
+          "hash": "a169412cd8994d6874a6b804be0bdc7c1c2f31b9c617f0b53cc11f36aba254d3",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-c2-compat.test.ts"
+        },
+        {
+          "hash": "c4d39d16ec69a4a146d3318c368c624dcaaf65eb6efe73a8f97f0cc4938ea3b5",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts"
         },
@@ -3420,9 +3425,14 @@
         },
         {
           "exports": [
-            "OptionsModal"
+            "OptionsModal",
+            "applyKeyCaptureEvent",
+            "clampThresholdDraftValue",
+            "commitThresholdDraft",
+            "handleThresholdFieldKeyDown",
+            "parseThresholdDraft"
           ],
-          "hash": "91ee1ed6cd20fb6d41ff0614a26e2ffa1b505dcdda515db780a940aa27cff713",
+          "hash": "f4075d2fa7612cc2f95cb31b69c54be624f1ee82a118ec16db77fe4e4a8487ed",
           "importOrder": [
             "packages/editor/src/ui/ModalFrame.tsx",
             "packages/editor/src/ui/styles.ts",
@@ -4875,15 +4885,23 @@
         {
           "exports": [
             "beginRightPointer",
+            "computeRightPanViewport",
             "createInitialRightClickGestureState",
             "endRightPointer",
             "getKeyboardSpeedPanelAnchor",
+            "isMacCtrlClickPointer",
             "isMacPlatform",
+            "isNodeInsideCanvasOrMenu",
             "isRightClickPointer",
+            "isRightPointerStillPressed",
             "moveRightPointer",
+            "resolveCanvasContextMenu",
+            "resolveCanvasKeyTriggerDecision",
+            "resolveRightPointerEndEffect",
+            "shouldIgnoreLeftMouseUp",
             "shouldTriggerSpeedPanelKey"
           ],
-          "hash": "2d21583e6a6b6a7586924614bbe557dbf98a329970313322272d08f3d9fa2925",
+          "hash": "a32232430e051e274fb8fcd244e8f89e3a9ebe2415184fabe6bc02925f8900a0",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/hit-testing.ts",
@@ -5509,7 +5527,7 @@
           "path": "packages/export-ai-rpg/README.zh.md"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/export-ai-rpg/logo.png"
         },
         {
@@ -7938,7 +7956,7 @@
           "path": "packages/export-godot/README.md"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/export-godot/logo.png"
         },
         {
@@ -9293,7 +9311,7 @@
           "path": "packages/export-unreal/README.md"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/export-unreal/logo.png"
         },
         {
@@ -10488,7 +10506,7 @@
           "path": "packages/renderer-2d/README.zh.md"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/renderer-2d/logo.png"
         },
         {
@@ -10790,7 +10808,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "baaad2f9cba3c2e145a82d93022bc21b604e67cdbe73c0e78959764a4e96c266",
+          "hash": "6a896b3ddbcfd11a526287b118adb9d47f188633a12431906b48472acee11928",
           "path": "CHANGELOG.md"
         },
         {
@@ -10822,7 +10840,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "d77782c4bf45a9ff63f582a2a9f33accda4b8f51ba44988fb66509b191bf2cce",
+          "hash": "2d6dc2787940dc4e1407ac3bbf866d49036e9f0a14aae0461c4d9c552902e26e",
           "path": "README.md"
         },
         {
@@ -10960,7 +10978,7 @@
           "path": "packages/schema/README.zh.md"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "packages/schema/logo.png"
         },
         {
@@ -11847,7 +11865,7 @@
           "path": "site/public/favicon.svg"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "site/public/logo.png"
         },
         {
@@ -11863,7 +11881,7 @@
           "path": "site/public/screenshots/editor-canvas.jpg"
         },
         {
-          "hash": "d235a6188133d66dca163f9714ca4bac84c58ca7a8b11c45beb8f9ca3d71a27e",
+          "hash": "5dc2f2bf01367b961fa91d813e8276d8051088792bbb57c37d8e21fea341894f",
           "path": "site/src/assets/logo.png"
         },
         {
@@ -12259,7 +12277,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 250
+          "files": 251
         },
         {
           "boundary": "export-ai-rpg",
@@ -12963,7 +12981,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 228,
+          "files": 229,
           "job": "build-and-test",
           "runner": "vitest",
           "step": "6",
@@ -12974,7 +12992,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 228,
+          "files": 229,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -13531,7 +13549,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 250
+          "files": 251
         },
         {
           "boundary": "export-ai-rpg",
@@ -14194,7 +14212,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 228,
+          "files": 229,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -14719,8 +14737,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "389a512384ae66f48ddf2861f3f077f9a2a56844",
-    "tracked": 665
+    "commit": "7c03aa0f2216162043bd636aa8b537945818a38b",
+    "tracked": 666
   },
   "landings": [
     {
@@ -16338,7 +16356,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 240,
+  "testFiles": 241,
   "unassigned": [],
   "workspaces": [
     "packages/editor",

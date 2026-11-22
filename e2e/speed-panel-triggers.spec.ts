@@ -286,40 +286,116 @@ test.describe('Speed Panel triggers & instant open (C2)', () => {
     await page.keyboard.press('q');
     await expect(page.getByTestId('wf-speed-panel')).toHaveCount(0);
 
-    // Does not open when a visible text input is focused
+    // Does not open when a visible text input is focused — EVEN while pointer hovers the canvas
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     const filterInput = page.locator('input:visible').first();
     await filterInput.focus();
     await page.keyboard.press('q');
     await expect(page.getByTestId('wf-speed-panel')).toHaveCount(0);
 
-    // With canvas focused via keyboard and no pointer over it, Q opens at centre/selection
+    // Move pointer off canvas, focus canvas with nothing selected -> Q opens near canvas centre
+    await page.mouse.move(40, 180);
     await canvas.focus();
     await page.keyboard.press('q');
-    await expect(page.getByTestId('wf-speed-panel')).toBeVisible();
+    const panel = page.getByTestId('wf-speed-panel');
+    await expect(panel).toBeVisible();
     await expect(search).toHaveValue('');
+    const panelBox = await panel.boundingBox();
+    expect(panelBox).toBeTruthy();
+    const expectedCentreX = box!.x + Math.min(Math.round(box!.width / 2), Math.max(4, box!.width - panelBox!.width - 4));
+    const expectedCentreY = box!.y + Math.min(Math.round(box!.height / 2), Math.max(4, box!.height - panelBox!.height - 4));
+    expect(Math.abs(panelBox!.x - expectedCentreX)).toBeLessThanOrEqual(4);
+    expect(Math.abs(panelBox!.y - expectedCentreY)).toBeLessThanOrEqual(4);
+    // Global empty-canvas actions are present
+    await expect(panel).toContainText('New Zone');
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+
+    // Select a zone ("Chapel Alcove" sits left/above map centre), keep pointer off canvas, focus canvas -> Q opens at selection's centre
+    await page.mouse.click(box!.x + box!.width / 2 - box!.height * 0.22, box!.y + box!.height / 2 - box!.height * 0.11);
+    await expect(page.getByText('Zone Properties')).toBeVisible();
+    await page.mouse.move(40, 180);
+    await canvas.evaluate((el) => (el as HTMLElement).blur());
+    await canvas.focus();
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    const selPanelBox = await panel.boundingBox();
+    expect(selPanelBox).toBeTruthy();
+    // Speed Panel shows zone context actions and anchors at the selected zone's left-shifted centroid rather than canvas centre
+    await expect(panel).toContainText('Assign District');
+    expect(selPanelBox!.x).toBeLessThan(expectedCentreX - 20);
   });
 
-  test('changed: Options refuses clashing keys, persists changed key/switches, and updates compact menu footer', async ({ page }) => {
+  test('changed: real page.mouse right-button down/up opens compact menu immediately and upgrades on second real click', async ({ page }) => {
+    await loadChapel(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+    const cx = box!.x + box!.width / 2;
+    const cy = box!.y + box!.height / 2;
+
+    await page.mouse.move(cx, cy);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.up({ button: 'right' });
+    await expect(page.getByTestId('wf-context-menu')).toBeVisible();
+    await expect(page.getByTestId('wf-speed-panel')).toHaveCount(0);
+
+    await page.mouse.move(cx + 4, cy + 2);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.up({ button: 'right' });
+    await expect(page.getByTestId('wf-speed-panel')).toBeVisible();
+    await expect(page.getByTestId('wf-context-menu')).toHaveCount(0);
+  });
+
+  test('changed: Options refuses clashing keys, allows multi-digit numeric editing, persists switches, and updates compact menu footer', async ({ page }) => {
     await loadChapel(page);
 
     await page.getByTestId('wf-options-btn').click();
     await expect(page.getByTestId('wf-options-modal')).toBeVisible();
 
-    // Refuses V (tool key) and Space (canvas pan) with clear reason
+    // Refuses V (tool key) and Space (canvas pan) with clear reason and aria-invalid / aria-describedby
     const keyField = page.getByTestId('wf-opt-trigger-key');
     await keyField.focus();
+    await expect(keyField).not.toHaveAttribute('aria-invalid', 'true');
     await page.keyboard.press('v');
     await expect(page.getByTestId('wf-opt-trigger-key-error')).toContainText(/Select|already used/i);
+    await expect(keyField).toHaveAttribute('aria-invalid', 'true');
+    await expect(keyField).toHaveAttribute('aria-describedby', 'wf-opt-trigger-key-error');
     await expect(keyField).toHaveValue('Q');
 
     await page.keyboard.press(' ');
     await expect(page.getByTestId('wf-opt-trigger-key-error')).toContainText(/Space/i);
     await expect(keyField).toHaveValue('Q');
 
-    // Change trigger key to K
+    // Change trigger key to K clears error and aria attributes
     await page.keyboard.press('k');
     await expect(page.getByTestId('wf-opt-trigger-key-error')).toHaveCount(0);
+    await expect(keyField).not.toHaveAttribute('aria-invalid', 'true');
     await expect(keyField).toHaveValue('K');
+
+    // Multi-digit numeric threshold fields can be typed without immediate mid-typing clamping; Escape reverts, Enter/blur commits
+    const driftInput = page.getByTestId('wf-opt-click-drift');
+    const radiusInput = page.getByTestId('wf-opt-dbl-radius');
+    const windowInput = page.getByTestId('wf-opt-dbl-window');
+
+    await driftInput.fill('9');
+    await driftInput.press('Escape');
+    await expect(page.getByTestId('wf-options-modal')).toBeVisible();
+    await expect(driftInput).toHaveValue('6');
+
+    await driftInput.fill('12');
+    await driftInput.press('Enter');
+    await expect(driftInput).toHaveValue('12');
+
+    await radiusInput.fill('35');
+    await radiusInput.blur();
+    await expect(radiusInput).toHaveValue('35');
+
+    await windowInput.fill('999');
+    await windowInput.press('Enter');
+    await expect(windowInput).toHaveValue('500');
+
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('wf-options-modal')).toHaveCount(0);
 

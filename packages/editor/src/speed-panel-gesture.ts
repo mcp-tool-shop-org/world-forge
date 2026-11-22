@@ -19,6 +19,7 @@ export interface ActiveRightPress {
   pointerId: number;
   pointerType: string;
   dragged: boolean;
+  isMacCtrlClick: boolean;
 }
 
 export interface LastRightClick {
@@ -42,17 +43,46 @@ export function isMacPlatform(platform?: string, userAgent?: string): boolean {
   return /mac/i.test(plat) || /macintosh|mac os x/i.test(ua);
 }
 
+/** True when the event is a macOS Ctrl+click secondary press/release. */
+export function isMacCtrlClickPointer(
+  e: { button?: number; ctrlKey?: boolean },
+  isMac: boolean,
+): boolean {
+  return isMac && (e.button ?? 0) === 0 && Boolean(e.ctrlKey);
+}
+
 /** True when the pointer event represents a secondary/context-click press (RMB, or Ctrl+click on macOS). */
 export function isRightClickPointer(
   e: { button: number; ctrlKey?: boolean },
   isMac: boolean,
 ): boolean {
-  return e.button === 2 || (isMac && e.button === 0 && Boolean(e.ctrlKey));
+  return e.button === 2 || isMacCtrlClickPointer(e, isMac);
+}
+
+/** True when the button that started a right-click gesture is still held according to PointerEvent.buttons. */
+export function isRightPointerStillPressed(active: ActiveRightPress, buttons: number): boolean {
+  return active.isMacCtrlClick ? (buttons & 1) !== 0 : (buttons & 2) !== 0;
+}
+
+/**
+ * True when mouseup must not run left-button commit logic (drag/resize/box-select/zone-paint):
+ * right mouse button, macOS Ctrl+click, or the matching left-button release of a macOS Ctrl press.
+ */
+export function shouldIgnoreLeftMouseUp(
+  e: { button?: number; ctrlKey?: boolean },
+  isMac: boolean,
+  activeMacCtrlPress: boolean,
+): boolean {
+  const button = e.button ?? 0;
+  if (button === 2) return true;
+  if (isRightClickPointer({ button, ctrlKey: e.ctrlKey }, isMac)) return true;
+  if (button === 0 && activeMacCtrlPress) return true;
+  return false;
 }
 
 export function beginRightPointer(
   state: RightClickGestureState,
-  event: { sx: number; sy: number; pointerId: number; pointerType?: string },
+  event: { sx: number; sy: number; pointerId: number; pointerType?: string; isMacCtrlClick?: boolean },
 ): RightClickGestureState {
   return {
     ...state,
@@ -62,28 +92,38 @@ export function beginRightPointer(
       pointerId: event.pointerId,
       pointerType: event.pointerType || 'mouse',
       dragged: false,
+      isMacCtrlClick: Boolean(event.isMacCtrlClick),
     },
   };
 }
 
 export function moveRightPointer(
   state: RightClickGestureState,
-  event: { sx: number; sy: number; pointerId: number },
+  event: { sx: number; sy: number; pointerId: number; buttons?: number },
   options: SpeedPanelOptions,
-): { state: RightClickGestureState; isDragging: boolean; thresholds: ResolvedGestureThresholds } {
+): { state: RightClickGestureState; isDragging: boolean; cancelled: boolean; thresholds: ResolvedGestureThresholds } {
   const active = state.active;
   if (!active || active.pointerId !== event.pointerId) {
     return {
       state,
       isDragging: false,
+      cancelled: false,
       thresholds: resolveGestureThresholds(options, active?.pointerType),
     };
   }
   const thresholds = resolveGestureThresholds(options, active.pointerType);
+  if (typeof event.buttons === 'number' && !isRightPointerStillPressed(active, event.buttons)) {
+    return {
+      state: { ...state, active: null },
+      isDragging: false,
+      cancelled: true,
+      thresholds,
+    };
+  }
   const dist = Math.hypot(event.sx - active.startSX, event.sy - active.startSY);
   const dragged = active.dragged || dist > thresholds.driftPx;
   if (dragged === active.dragged) {
-    return { state, isDragging: dragged, thresholds };
+    return { state, isDragging: dragged, cancelled: false, thresholds };
   }
   return {
     state: {
@@ -91,7 +131,20 @@ export function moveRightPointer(
       active: { ...active, dragged: true },
     },
     isDragging: true,
+    cancelled: false,
     thresholds,
+  };
+}
+
+export function computeRightPanViewport(
+  panStart: { x: number; y: number; panX: number; panY: number },
+  clientX: number,
+  clientY: number,
+  zoom: number,
+): { panX: number; panY: number } {
+  return {
+    panX: panStart.panX - (clientX - panStart.x) / zoom,
+    panY: panStart.panY - (clientY - panStart.y) / zoom,
   };
 }
 
@@ -332,4 +385,120 @@ export function getKeyboardSpeedPanelAnchor(
     sy: Math.round(canvasSize.h / 2),
     hit: null,
   };
+}
+
+export interface CanvasKeyTriggerEnv {
+  options: SpeedPanelOptions;
+  pointerOverCanvas: boolean;
+  canvasFocusedNow: boolean;
+  lastPointerRegion: 'none' | 'canvas' | 'other';
+  lastCanvasFocusStamp: number;
+  lastPointerStamp: number;
+  activeModal: ModalId;
+  showSearch: boolean;
+  showSpeedPanel: boolean;
+  activeElement?: unknown;
+}
+
+export type CanvasKeyTriggerDecision =
+  | { trigger: false }
+  | { trigger: true; source: 'pointer' | 'keyboard' };
+
+/** Evaluate Canvas keyboard focus/hover recency and key guards for opening the Speed Panel. */
+export function resolveCanvasKeyTriggerDecision(
+  e: KeyTriggerEventLike,
+  env: CanvasKeyTriggerEnv,
+): CanvasKeyTriggerDecision {
+  const allowCanvasFocused =
+    env.canvasFocusedNow &&
+    (env.lastPointerRegion !== 'other' || env.lastCanvasFocusStamp >= env.lastPointerStamp);
+
+  if (
+    !shouldTriggerSpeedPanelKey(e, {
+      options: env.options,
+      pointerOverCanvas: env.pointerOverCanvas,
+      canvasFocused: allowCanvasFocused,
+      activeModal: env.activeModal,
+      showSearch: env.showSearch,
+      showSpeedPanel: env.showSpeedPanel,
+      activeElement: env.activeElement,
+    })
+  ) {
+    return { trigger: false };
+  }
+  return { trigger: true, source: env.pointerOverCanvas ? 'pointer' : 'keyboard' };
+}
+
+export type CanvasContextMenuDecision =
+  | { kind: 'handled-in-press' }
+  | { kind: 'suppress' }
+  | { kind: 'consume-suppressed' }
+  | { kind: 'open'; sx: number; sy: number };
+
+/** Resolve whether a canvas `contextmenu` event should be suppressed or open the compact menu. */
+export function resolveCanvasContextMenu(params: {
+  hasActiveRightGesture: boolean;
+  isRightPointerEvent: boolean;
+  suppressNext: boolean;
+  clientX: number;
+  clientY: number;
+  rect: { left: number; top: number; width: number; height: number } | null;
+  lastPointer: { sx: number; sy: number };
+}): CanvasContextMenuDecision {
+  if (params.hasActiveRightGesture) return { kind: 'handled-in-press' };
+  if (params.isRightPointerEvent) return { kind: 'suppress' };
+  if (params.suppressNext) return { kind: 'consume-suppressed' };
+  if (!params.rect) return { kind: 'suppress' };
+
+  let sx = params.clientX - params.rect.left;
+  let sy = params.clientY - params.rect.top;
+  const offCanvas =
+    (params.clientX === 0 && params.clientY === 0) ||
+    sx < 0 ||
+    sy < 0 ||
+    sx > params.rect.width ||
+    sy > params.rect.height;
+  if (offCanvas) {
+    sx = params.lastPointer.sx;
+    sy = params.lastPointer.sy;
+  }
+  return { kind: 'open', sx, sy };
+}
+
+export type RightPointerEndDispatch =
+  | { action: 'none' }
+  | { action: 'open-speed-panel'; x: number; y: number; prevHit: HitResult | null | undefined }
+  | { action: 'open-compact-menu'; x: number; y: number };
+
+/** Map an endRightPointer outcome to the canvas UI side effect without duplicating menu/panel branching. */
+export function resolveRightPointerEndEffect(
+  outcome: RightClickEndOutcome,
+  hasOpenContextMenu: boolean,
+  prevHit: HitResult | null | undefined,
+): RightPointerEndDispatch {
+  if (outcome.kind === 'drag-end' || outcome.kind === 'ignore') {
+    return { action: 'none' };
+  }
+  if (outcome.kind === 'open-speed-panel') {
+    return { action: 'open-speed-panel', x: outcome.x, y: outcome.y, prevHit };
+  }
+  if (outcome.kind === 'keep-compact-menu') {
+    return hasOpenContextMenu
+      ? { action: 'none' }
+      : { action: 'open-compact-menu', x: outcome.x, y: outcome.y };
+  }
+  return { action: 'open-compact-menu', x: outcome.x, y: outcome.y };
+}
+
+/** True when a DOM event target sits inside either the canvas element or the open context menu. */
+export function isNodeInsideCanvasOrMenu<TNode>(
+  canvasEl: { contains: (node: TNode) => boolean } | null,
+  contextMenuEl: { contains: (node: TNode) => boolean } | null,
+  targetNode: TNode,
+): boolean {
+  return Boolean(
+    canvasEl &&
+      targetNode &&
+      (targetNode === (canvasEl as unknown) || canvasEl.contains(targetNode) || contextMenuEl?.contains(targetNode)),
+  );
 }
