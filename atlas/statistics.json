@@ -115,7 +115,7 @@
       "confidence": "full",
       "highWater": null,
       "name": "editor",
-      "qualifyingSourceCommits": 39,
+      "qualifyingSourceCommits": 40,
       "rebaseline": null
     },
     {
@@ -356,8 +356,8 @@
         "path": "README.ja.md"
       },
       {
-        "commits": 19,
-        "lines": 187,
+        "commits": 20,
+        "lines": 190,
         "path": "README.md"
       },
       {
@@ -386,8 +386,8 @@
         "path": "a11y-audit.md"
       },
       {
-        "commits": 7,
-        "lines": 587,
+        "commits": 8,
+        "lines": 613,
         "path": "atlas/README.md"
       },
       {
@@ -396,24 +396,29 @@
         "path": "atlas/boundaries.yaml"
       },
       {
-        "commits": 7,
-        "lines": 4096,
+        "commits": 8,
+        "lines": 4192,
         "path": "atlas/page.json"
       },
       {
-        "commits": 7,
-        "lines": 11571,
+        "commits": 8,
+        "lines": 11905,
         "path": "atlas/statistics.json"
       },
       {
-        "commits": 7,
-        "lines": 56400,
+        "commits": 8,
+        "lines": 56459,
         "path": "atlas/structure.json"
       },
       {
         "commits": 3,
         "lines": 54,
         "path": "codecov.yml"
+      },
+      {
+        "commits": 1,
+        "lines": 232,
+        "path": "docs/audit/2026-11-21-truth-reconciliation.md"
       },
       {
         "commits": 15,
@@ -849,6 +854,11 @@
         "commits": 1,
         "lines": 149,
         "path": "packages/editor/src/__tests__/remove-selected-orphans.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 71,
+        "path": "packages/editor/src/__tests__/sample-gate.test.ts"
       },
       {
         "commits": 1,
@@ -2806,9 +2816,9 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-22T02:58:45.029Z",
+  "generatedAt": "2026-11-22T03:27:43.011Z",
   "generatedFrom": {
-    "commit": "70d4403ea0b62726f02946ce52ae61a31606d442"
+    "commit": "ce54e8d033a1f4930e448bf96e2c62c65a377e95"
   },
   "pairs": [
     {
@@ -2842,9 +2852,9 @@
     {
       "a": "README.es.md",
       "b": "README.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.es.md",
@@ -2891,9 +2901,9 @@
     {
       "a": "README.fr.md",
       "b": "README.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.fr.md",
@@ -2933,9 +2943,9 @@
     {
       "a": "README.hi.md",
       "b": "README.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.hi.md",
@@ -2968,9 +2978,9 @@
     {
       "a": "README.it.md",
       "b": "README.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.it.md",
@@ -2996,9 +3006,9 @@
     {
       "a": "README.ja.md",
       "b": "README.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.ja.md",
@@ -3024,16 +3034,16 @@
     {
       "a": "README.md",
       "b": "README.pt-BR.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.md",
       "b": "README.zh.md",
-      "either": 14,
+      "either": 15,
       "shared": 8,
-      "strength": 0.571429
+      "strength": 0.533333
     },
     {
       "a": "README.pt-BR.md",
@@ -3473,16 +3483,16 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-21T11:33:35-05:00",
-    "inScopeFiles": 660,
+    "headDate": "2026-11-21T21:59:40-05:00",
+    "inScopeFiles": 661,
     "pinnedStart": null,
     "priorFloor": "fallen",
-    "qualifyingCommits": 137,
+    "qualifyingCommits": 138,
     "qualifyingMinimum": 30,
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-25T16:33:35.000Z",
+    "since": "2026-05-26T02:59:40.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

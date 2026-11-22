@@ -540,6 +540,12 @@ async function main(): Promise<void> {
   }
 
   if (validateOnly) {
+    const encounterFidelity = exportResult.fidelity.entries.filter(
+      (e) => e.reason === 'encounter-type-translated' || e.reason === 'encounter-type-dropped',
+    );
+    for (const entry of encounterFidelity) {
+      console.error(`  [${entry.fieldPath ?? 'encounterAnchors'}] (${entry.level}) ${entry.message}`);
+    }
     console.log('Validation passed.');
     printWarningsAndFidelity(exportResult);
     if (verbose) printVerboseSuccess(exportResult, profile, emitSchemaVersion);

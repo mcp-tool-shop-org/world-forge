@@ -63,6 +63,7 @@ import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 import { computeContentHash } from './content-hash.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
+import { convertEncounterAnchors } from './encounter-types.js';
 
 // AIR-FT-005: Schema version is imported directly from @world-forge/schema
 // as SCHEMA_VERSION. This is browser-safe (no node:module dependency) and
@@ -332,6 +333,7 @@ export function exportToEngine(
   let convertedLootTables: ReturnType<typeof convertLootTables>;
   let buildCatalog: ReturnType<typeof convertBuildCatalog>;
   let progressionTrees: ReturnType<typeof convertProgressionTrees>;
+  let encounterAnchors: EncounterAnchor[];
   let manifest: ReturnType<typeof convertManifest>;
   let packMeta: ReturnType<typeof convertPackMeta>;
 
@@ -405,6 +407,7 @@ export function exportToEngine(
     convertedLootTables = convertLootTables(project, warnings, fidelityEntries);
     buildCatalog = convertBuildCatalog(project);
     progressionTrees = convertProgressionTrees(project);
+    encounterAnchors = convertEncounterAnchors(project, warnings, fidelityEntries);
 
     // 8. Build manifest and pack metadata
     manifest = convertManifest(project);
@@ -609,7 +612,7 @@ export function exportToEngine(
     spawnPoints,
     buildCatalog,
     progressionTrees,
-    encounterAnchors: project.encounterAnchors,
+    encounterAnchors,
     factionPresences: project.factionPresences,
     pressureHotspots: project.pressureHotspots,
     // C3/P3. `?? []` because `hazardDefinitions` is optional on WorldProject

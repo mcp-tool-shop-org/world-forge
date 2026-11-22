@@ -175,7 +175,7 @@ describe('CLI: world-forge-export', () => {
           ...minimalProject,
           encounterAnchors: [
             { id: 'enc-one', zoneId: 'zone-cellar', encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
-            { id: 'enc-two', zoneId: 'zone-cellar', encounterType: 'pirate', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+            { id: 'enc-two', zoneId: 'zone-cellar', encounterType: 'skirmish', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
           ],
         },
         null,
@@ -188,7 +188,7 @@ describe('CLI: world-forge-export', () => {
     expect(outRes.stderr).toContain('enc-one');
     expect(outRes.stderr).toContain('combat');
     expect(outRes.stderr).toContain('enc-two');
-    expect(outRes.stderr).toContain('pirate');
+    expect(outRes.stderr).toContain('skirmish');
 
     const dryRes = await runCli([multiBlockerPath, '--dry-run']);
     expect(dryRes.code).toBe(1);

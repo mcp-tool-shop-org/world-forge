@@ -113,6 +113,22 @@ Role-based defaults are applied when the author hasn't specified values:
 
 Authored values always override defaults. For example, if you set `ai.profileId: 'aggressive'` on a boss, it uses that instead of the default `'territorial'`.
 
+## Encounter Type Mapping
+
+`@ai-rpg-engine/content-schema` accepts four encounter anchor types: `ambush`, `patrol`, `horde`, and `duel`. `@world-forge/export-ai-rpg` translates World Forge's richer authoring types during AI RPG export only (editor authoring, `@world-forge/schema`, Unreal Engine 5, and Godot 4 exports keep all authored types unchanged):
+
+| World Forge type | AI RPG `ContentPack` writes | `tags[]` & fidelity entry |
+|---|---|---|
+| `boss` | `duel` | adds `worldforge-type:boss`; `approximated` (`encounter-type-translated`) |
+| `beast`, `haunt`, `caravan-raid` | `ambush` | adds `worldforge-type:<original>`; `approximated` (`encounter-type-translated`) |
+| `pirate` | `patrol` | adds `worldforge-type:pirate`; `approximated` (`encounter-type-translated`) |
+| `boarding`, `brawl` | `horde` | adds `worldforge-type:<original>`; `approximated` (`encounter-type-translated`) |
+| `hazard`, `discovery` | left out of `ContentPack.encounterAnchors` | `dropped` (`encounter-type-dropped`) |
+| `ambush`, `patrol`, `horde`, `duel` | unchanged | unchanged |
+| any other custom string | refused by name (Export modal blocked, CLI exit `1`) | blocker (`listAiRpgEncounterBlockers`) |
+
+When running `world-forge-export --validate-only`, mapped and dropped types pass with each approximation and drop named on stderr; unmapped custom strings still exit `1`.
+
 ## Import Pipeline
 
 World Forge can import exported JSON back into the editor. The import pipeline reverses the export process with 8 converters:

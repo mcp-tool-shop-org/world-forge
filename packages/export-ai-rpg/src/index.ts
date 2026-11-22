@@ -36,7 +36,15 @@ export { summarizeFidelity, buildFidelityReport } from './fidelity.js';
 export type { FidelityLevel, FidelitySeverity, FidelityDomain, FidelityEntry, DomainSummary, FidelitySummary, FidelityReport } from './fidelity.js';
 export {
   AI_RPG_ENCOUNTER_ANCHOR_TYPES,
+  AI_RPG_ENCOUNTER_TYPE_MAP,
+  AI_RPG_DROPPED_ENCOUNTER_TYPES,
   isAiRpgEncounterAnchorType,
+  listAiRpgEncounterAdjustments,
   listAiRpgEncounterBlockers,
+  convertEncounterAnchors,
 } from './encounter-types.js';
-export type { AiRpgEncounterAnchorType, AiRpgEncounterBlocker } from './encounter-types.js';
+export type {
+  AiRpgEncounterAnchorType,
+  AiRpgEncounterAdjustment,
+  AiRpgEncounterBlocker,
+} from './encounter-types.js';

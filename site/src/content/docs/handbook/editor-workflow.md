@@ -669,13 +669,13 @@ Click **Export** in the top bar to open the Export modal. The modal provides a t
 
 ### Per-Target Readiness
 
-At the top of the modal, each export target shows a readiness badge:
+At the top of the modal, each export target shows a readiness badge inside a status-colored summary box (green when clean, amber when any target has advisories, red when any target is blocked):
 
-- **✓ AI RPG: Ready** — project passes all structural checks
+- **✓ AI RPG: Ready** (or **Ready with N advisories**) — accepts `ambush`, `patrol`, `horde`, and `duel`, translates built-in authoring types (`boss` → `duel`; `beast`, `haunt`, `caravan-raid` → `ambush`; `pirate` → `patrol`; `boarding`, `brawl` → `horde`, tagged `worldforge-type:<original>`), and omits `hazard` / `discovery` with advisories; custom unmapped encounter types block AI RPG export (**✗ AI RPG: Not ready**)
 - **✓ UE5: Ready with N advisories** — exportable, but some data (elevation, parallax) is missing
 - **✓ Godot: Ready** — project passes all structural checks
 
-Advisories are not blockers — they warn about missing optional data that affects the downstream engine (e.g., "No zone elevation authored — everything exports at Z=0").
+Advisories are not blockers — they list AI RPG encounter translations/drops or warn about missing optional data that affects the downstream engine (e.g., "No zone elevation authored — everything exports at Z=0").
 
 ### Export Contents
 
