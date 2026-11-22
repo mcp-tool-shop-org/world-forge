@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Branding
+
+- **New logo.** The World Forge logo (`assets/logo.png`, the site's and editor's `logo.png`, and the `logo.png` shipped in each package) is replaced with the new artwork, at the same 1024 × 1024 size.
+
 ### Documentation
 
 - **README matches the editor as built.** Workspace tabs in their real order (Import and Diff appear after an import; Guide until dismissed), all 10 tools, 29 keyboard shortcuts with 10 tool keys, the real layer toggles, fit-to-content when the canvas first opens a project, and layout templates, dialogue templates and batch entity placement marked as not yet reachable from the editor UI.
