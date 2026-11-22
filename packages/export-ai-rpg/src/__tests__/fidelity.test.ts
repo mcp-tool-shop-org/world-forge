@@ -345,16 +345,43 @@ describe('FidelityReport accuracy', () => {
   });
 
   it('encounter anchors round-trip preserved', () => {
+    const nativeChapel = {
+      ...chapelProject,
+      encounterAnchors: chapelProject.encounterAnchors.map((a) => ({
+        ...a,
+        encounterType: 'duel',
+      })),
+    };
+    const exported = exportToEngine(nativeChapel);
+    if (!exported.success) throw new Error('export failed');
+    expect(exported.contentPack.encounterAnchors).toHaveLength(nativeChapel.encounterAnchors.length);
+    const imported = requireImport(importFromExportResult(exported));
+    expect(imported.project.encounterAnchors).toHaveLength(nativeChapel.encounterAnchors.length);
+    for (const orig of nativeChapel.encounterAnchors) {
+      const imp = imported.project.encounterAnchors.find((e) => e.id === orig.id);
+      expect(imp).toBeDefined();
+      expect(imp!.encounterType).toBe(orig.encounterType);
+      expect(imp!.zoneId).toBe(orig.zoneId);
+    }
+  });
+
+  it('boss encounter anchors export as duel with worldforge-type:boss tag and approximated fidelity entry', () => {
     const exported = exportToEngine(chapelProject);
     if (!exported.success) throw new Error('export failed');
     expect(exported.contentPack.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
-    const imported = requireImport(importFromExportResult(exported));
-    expect(imported.project.encounterAnchors).toHaveLength(chapelProject.encounterAnchors.length);
     for (const orig of chapelProject.encounterAnchors) {
-      const imp = imported.project.encounterAnchors.find((e) => e.id === orig.id);
-      expect(imp).toBeDefined();
-      expect(imp!.encounterType).toBe('duel');
-      expect(imp!.zoneId).toBe(orig.zoneId);
+      expect(orig.encounterType).toBe('boss');
+      const expAnchor = exported.contentPack.encounterAnchors.find((e) => e.id === orig.id);
+      expect(expAnchor).toBeDefined();
+      expect(expAnchor!.encounterType).toBe('duel');
+      expect(expAnchor!.tags).toContain('worldforge-type:boss');
+      const entry = exported.fidelity.entries.find(
+        (e) =>
+          e.level === 'approximated' &&
+          e.reason === 'encounter-type-translated' &&
+          e.entityId === orig.id,
+      );
+      expect(entry).toBeDefined();
     }
   });
 
