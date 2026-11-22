@@ -25,12 +25,8 @@ import {
   type ExportStatus,
 } from '../panels/export-handlers.js';
 import { computeTargetReadiness, ExportModal, TargetReadinessSummary } from '../panels/ExportModal.js';
-import {
-  createEmptyDialogue,
-  createStarterDialogue,
-  parseSpeakersInput,
-  STARTER_DIALOGUE,
-} from '../panels/DialoguePanel.js';
+import * as dialoguePanel from '../panels/DialoguePanel.js';
+import { parseSpeakersInput, STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 import { BUILTIN_KITS } from '../kits/built-ins.js';
 import { prepareKitImport, serializeKit } from '../kits/bundle.js';
@@ -648,10 +644,18 @@ describe('Keeper starter dialogue in a fresh project', () => {
     return store;
   }
 
+  function starterWithEmptyNodeSpeakers(speakers: string[]): WorldProject['dialogues'][number] {
+    const cloned = structuredClone(STARTER_DIALOGUE);
+    const nodes = Object.fromEntries(
+      Object.entries(cloned.nodes).map(([nodeId, node]) => [nodeId, { ...node, speaker: '' }]),
+    );
+    return { ...cloned, speakers, nodes };
+  }
+
   it('starter attached to one NPC exports a pack passing validateGameContent and loadContent', () => {
     const store = setupFreshWorldWithNpc();
-    const starter = createStarterDialogue([]);
-    store.addDialogue({ ...starter, speakers: ['npc-guide'] });
+    const starter = starterWithEmptyNodeSpeakers(['npc-guide']);
+    store.addDialogue(starter);
     store.updateEntity('npc-guide', { dialogueId: starter.id });
 
     const project = useProjectStore.getState().project;
@@ -675,7 +679,7 @@ describe('Keeper starter dialogue in a fresh project', () => {
 
   it('starter with no speaker attached is refused by dialogue id and node id', () => {
     const store = setupFreshWorldWithNpc();
-    const starter = createStarterDialogue([]);
+    const starter = starterWithEmptyNodeSpeakers([]);
     store.addDialogue(starter);
 
     const project = useProjectStore.getState().project;
@@ -700,9 +704,15 @@ describe('Keeper starter dialogue in a fresh project', () => {
 
   it('adding the starter twice produces two dialogues with distinct ids', () => {
     const store = setupFreshWorldWithNpc();
-    const first = createStarterDialogue([]);
+    const createStarter = (
+      dialoguePanel as unknown as {
+        createStarterDialogue?: (existingIds?: Iterable<string>) => WorldProject['dialogues'][number];
+      }
+    ).createStarterDialogue;
+    expect(typeof createStarter).toBe('function');
+    const first = createStarter!([]);
     store.addDialogue(first);
-    const second = createStarterDialogue(useProjectStore.getState().project.dialogues.map((d) => d.id));
+    const second = createStarter!(useProjectStore.getState().project.dialogues.map((d) => d.id));
     store.addDialogue(second);
 
     const ids = useProjectStore.getState().project.dialogues.map((d) => d.id);
@@ -712,8 +722,13 @@ describe('Keeper starter dialogue in a fresh project', () => {
 
   it('"+ Empty Dialogue" attached to one NPC exports and loads', () => {
     const store = setupFreshWorldWithNpc();
-    const emptyDlg = createEmptyDialogue([]);
-    store.addDialogue({ ...emptyDlg, speakers: ['npc-guide'] });
+    const emptyDlg: WorldProject['dialogues'][number] = {
+      id: 'dlg-empty-1',
+      speakers: ['npc-guide'],
+      entryNodeId: 'node-start',
+      nodes: { 'node-start': { id: 'node-start', speaker: '', text: 'Hello.', choices: [] } },
+    };
+    store.addDialogue(emptyDlg);
     store.updateEntity('npc-guide', { dialogueId: emptyDlg.id });
 
     const project = useProjectStore.getState().project;

@@ -132,8 +132,8 @@ When running `world-forge-export --validate-only`, mapped and dropped types pass
 ## Dialogue Speaker Rules
 
 - Any entry in `dialogues[].speakers` that does not match an exported entity's `entityId` is refused by name (`listAiRpgDialogueSpeakerBlockers`, `exportToEngine` returns `success: false`, Export modal blocked, CLI exit `1`).
-- A node with `speaker: ''` exports with its `speaker` filled from the dialogue's single entry in `dialogues[].speakers` when `speakers.length === 1` (matching the engine runtime fallback with no extra fidelity entry).
-- A node with `speaker: ''` when `dialogues[].speakers` has zero or multiple entries is refused by dialogue ID and node ID (`listAiRpgDialogueSpeakerBlockers` and `exportToEngine`).
+- A node with `speaker: ''` exports with its `speaker` filled from the dialogue's single entry in `dialogues[].speakers` (with no extra fidelity entry) only when every entity whose `dialogueId` references that dialogue is that listed speaker, or when no entity carries the dialogue.
+- A node with `speaker: ''` is refused when any entity carrying that dialogue is a different entity (naming the dialogue ID, node ID, and carrier entity ID), or when `dialogues[].speakers` has zero or multiple entries (naming the dialogue ID and node ID).
 - Any non-empty node `speaker` exports unchanged.
 
 ## Import Pipeline
