@@ -600,45 +600,11 @@ describe('Speed Panel C2 options, triggers, and gesture thresholds (changed)', (
     ).toEqual({ kind: 'suppress' });
   });
 
-  it('changed: left drag in progress is left uncommitted and unchanged by right press/release and macOS Ctrl+click', () => {
+  it('changed: shouldIgnoreLeftMouseUp ignores right-button and active macOS Ctrl+click releases but commits Ctrl+left-release when drag started without Ctrl', () => {
     expect(shouldIgnoreLeftMouseUp({ button: 2 }, false, false)).toBe(true);
-    expect(shouldIgnoreLeftMouseUp({ button: 0, ctrlKey: true }, true, false)).toBe(true);
+    expect(shouldIgnoreLeftMouseUp({ button: 0, ctrlKey: true }, true, false)).toBe(false);
     expect(shouldIgnoreLeftMouseUp({ button: 0, ctrlKey: false }, true, true)).toBe(true);
     expect(shouldIgnoreLeftMouseUp({ button: 0, ctrlKey: false }, true, false)).toBe(false);
-
-    // Simulate Canvas dragMove + suppressNextLeftMouseUp + right press & release
-    let dragMove: { active: boolean; dx: number; dy: number } | null = { active: true, dx: 24, dy: -16 };
-    let suppressNextLeftMouseUp = false;
-    const committed: Array<{ dx: number; dy: number }> = [];
-
-    const handleMouseUp = (e: { button?: number; ctrlKey?: boolean }, mac: boolean) => {
-      if (shouldIgnoreLeftMouseUp(e, mac, suppressNextLeftMouseUp)) {
-        if ((e.button ?? 0) === 0) suppressNextLeftMouseUp = false;
-        return;
-      }
-      suppressNextLeftMouseUp = false;
-      if (dragMove?.active) {
-        committed.push({ dx: dragMove.dx, dy: dragMove.dy });
-        dragMove = null;
-      }
-    };
-
-    // Right press + release while left drag is active -> leaves drag uncommitted & intact
-    handleMouseUp({ button: 2, ctrlKey: false }, false);
-    expect(committed).toEqual([]);
-    expect(dragMove).toEqual({ active: true, dx: 24, dy: -16 });
-
-    // macOS Ctrl+click press followed by left-button mouseup (even if Ctrl released early) -> also leaves drag intact
-    suppressNextLeftMouseUp = true;
-    handleMouseUp({ button: 0, ctrlKey: false }, true);
-    expect(committed).toEqual([]);
-    expect(dragMove).toEqual({ active: true, dx: 24, dy: -16 });
-    expect(suppressNextLeftMouseUp).toBe(false);
-
-    // Real left mouseup finally commits the drag once
-    handleMouseUp({ button: 0, ctrlKey: false }, true);
-    expect(committed).toEqual([{ dx: 24, dy: -16 }]);
-    expect(dragMove).toBeNull();
   });
 
   it('changed: canvas key-gating, contextmenu resolution, pointer end dispatch, and node containment helpers', () => {

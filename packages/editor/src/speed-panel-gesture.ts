@@ -66,16 +66,15 @@ export function isRightPointerStillPressed(active: ActiveRightPress, buttons: nu
 
 /**
  * True when mouseup must not run left-button commit logic (drag/resize/box-select/zone-paint):
- * right mouse button, macOS Ctrl+click, or the matching left-button release of a macOS Ctrl press.
+ * right mouse button or the matching left-button release of a macOS Ctrl+click press.
  */
 export function shouldIgnoreLeftMouseUp(
   e: { button?: number; ctrlKey?: boolean },
-  isMac: boolean,
+  _isMac: boolean,
   activeMacCtrlPress: boolean,
 ): boolean {
   const button = e.button ?? 0;
   if (button === 2) return true;
-  if (isRightClickPointer({ button, ctrlKey: e.ctrlKey }, isMac)) return true;
   if (button === 0 && activeMacCtrlPress) return true;
   return false;
 }
