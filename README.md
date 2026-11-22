@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.9.1</strong> — 3513 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.9.1</strong> — 3541 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architecture
@@ -289,6 +289,7 @@ a number instead of an assumption.
 - **Fidelity reporting stays the contract.** Every lane reports what was lossless,
   approximated, or dropped. Where a field cannot cross, the export says so — it
   does not quietly succeed.
+- **Registry sample gate** (`packages/editor/src/__tests__/sample-gate.test.ts`) — dynamically loads every entry from `SAMPLE_WORLDS`, `BUILTIN_KITS`, `GENRE_TEMPLATES`, and `MODE_STARTERS`, asserting clean `validateProject()` and zero blockers across the AI RPG Engine, Unreal Engine 5, and Godot 4 validation lanes.
 
 Requires `ai-rpg-engine` `^3.8.0`.
 

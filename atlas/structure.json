@@ -90,6 +90,10 @@
       "externals": 0,
       "files": [
         {
+          "hash": "4114ff0a87c7736e23b53ba34a67ba363d9f8d515fb259c0ea2fa7d2204aecba",
+          "path": "docs/audit/2026-11-21-truth-reconciliation.md"
+        },
+        {
           "hash": "ce6717c360770221ebaf1db3d44f5839a15121b60ea1c7290ad2c46e3e2b0936",
           "path": "docs/c0-alignment/export-table.json"
         },
@@ -1856,6 +1860,33 @@
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/__tests__/review-panel.test.ts",
+          "testFramework": "vitest"
+        },
+        {
+          "hash": "8c461d35b2a244b72f45c12bf28a4670f1754f68fe34874616cca69c68ca4ea5",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/export-unreal/src/index.ts",
+            "packages/export-godot/src/index.ts",
+            "packages/editor/src/templates/samples.ts",
+            "packages/editor/src/kits/built-ins.ts",
+            "packages/editor/src/panels/TemplateManager.tsx",
+            "packages/editor/src/templates/registry.ts",
+            "packages/editor/src/store/project-store.ts"
+          ],
+          "importsFiles": [
+            "packages/editor/src/kits/built-ins.ts",
+            "packages/editor/src/panels/TemplateManager.tsx",
+            "packages/editor/src/store/project-store.ts",
+            "packages/editor/src/templates/registry.ts",
+            "packages/editor/src/templates/samples.ts",
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/export-godot/src/index.ts",
+            "packages/export-unreal/src/index.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/editor/src/__tests__/sample-gate.test.ts",
           "testFramework": "vitest"
         },
         {
@@ -5255,7 +5286,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 110,
+      "testedBy": 111,
       "unresolvedSites": 0
     },
     {
@@ -7691,7 +7722,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 68,
+      "testedBy": 69,
       "unresolvedSites": 0
     },
     {
@@ -9046,7 +9077,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 47,
+      "testedBy": 48,
       "unresolvedSites": 0
     },
     {
@@ -10214,7 +10245,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 38,
+      "testedBy": 39,
       "unresolvedSites": 0
     },
     {
@@ -10598,7 +10629,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "492d65917bef059e4c3ea424eacdb57ab109fea2c5b29b5481edb68f20e9b271",
+          "hash": "0d18dfe9862ba56fbe1450b165bd9c5cec84eff368c02e2144eccea7493b6b09",
           "path": "README.md"
         },
         {
@@ -11523,7 +11554,7 @@
       "testRunners": [
         "vitest"
       ],
-      "testedBy": 203,
+      "testedBy": 204,
       "unresolvedSites": 0
     },
     {
@@ -12035,7 +12066,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 242
+          "files": 243
         },
         {
           "boundary": "export-ai-rpg",
@@ -12732,7 +12763,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 223,
+          "files": 224,
           "job": "build-and-test",
           "runner": "vitest",
           "step": "6",
@@ -12743,7 +12774,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 223,
+          "files": 224,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -13300,7 +13331,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 242
+          "files": 243
         },
         {
           "boundary": "export-ai-rpg",
@@ -13956,7 +13987,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 223,
+          "files": 224,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -14481,8 +14512,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "3238a1badd2c62349ea18e85ac8dc5e1e4442026",
-    "tracked": 653
+    "commit": "70d4403ea0b62726f02946ce52ae61a31606d442",
+    "tracked": 655
   },
   "landings": [
     {
@@ -16088,7 +16119,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 233,
+  "testFiles": 234,
   "unassigned": [],
   "workspaces": [
     "packages/editor",
