@@ -91,7 +91,7 @@ import { exportToEngine } from '@world-forge/export-ai-rpg';
 const result = exportToEngine(myProject);
 
 if (!result.success) {
-  // Validation failed
+  // Validation failed, or refused for engine blockers (unmapped encounter types or unresolved dialogue speakers)
   console.error(result.errors);
 } else {
   // Success

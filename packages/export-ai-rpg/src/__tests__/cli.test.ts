@@ -50,6 +50,10 @@ beforeAll(async () => {
           ...ea,
           encounterType: 'patrol',
         })),
+        dialogues: minimalProject.dialogues.map((d) => ({
+          ...d,
+          speakers: ['npc-keeper'],
+        })),
       },
       null,
       2,
@@ -202,6 +206,10 @@ describe('CLI: world-forge-export', () => {
       encounterAnchors: minimalProject.encounterAnchors.map((ea) => ({
         ...ea,
         encounterType: 'patrol',
+      })),
+      dialogues: minimalProject.dialogues.map((d) => ({
+        ...d,
+        speakers: ['npc-keeper'],
       })),
       assets: [{ id: 'bg-1', kind: 'background', label: 'Hall', path: 'assets/hall.png', tags: [] }],
       zones: minimalProject.zones.map((z: (typeof minimalProject.zones)[number], i: number) =>

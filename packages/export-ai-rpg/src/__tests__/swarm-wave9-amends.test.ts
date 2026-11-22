@@ -18,7 +18,7 @@ import type { ContentPack } from '../export.js';
 import type { FidelityEntry } from '../fidelity.js';
 import type { WorldProject } from '@world-forge/schema';
 import type { PackMetadata } from '@ai-rpg-engine/pack-registry';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 import { invalidOrphanProject } from '../../../schema/src/__tests__/fixtures/invalid-orphan.js';
 
 function requireImport(r: ImportResult | ImportError): ImportResult {

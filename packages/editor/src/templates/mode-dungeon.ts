@@ -47,7 +47,7 @@ export const dungeonStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'scholar-talk', speakers: ['scholar'], entryNodeId: 'greeting',
+    id: 'scholar-talk', speakers: ['trapped-scholar'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'scholar', text: 'Thank the gods! I have been trapped here for days. The vault guardian blocks the only way out.', choices: [
         { id: 'c1', text: 'How did you get in?', nextNodeId: 'explain' },

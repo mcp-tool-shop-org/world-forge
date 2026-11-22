@@ -417,3 +417,20 @@ describe('buildReviewSnapshot', () => {
     expect(snap.encounters.zonesWithEncounters).toBe(1);
   });
 });
+
+describe('encounter byType prototype-key safety', () => {
+  it.each(['constructor', '__proto__', 'toString'] as const)(
+    'counts encounterType %s as a number',
+    (key) => {
+      const proj = clone({
+        encounterAnchors: [
+          { id: 'ea1', zoneId: 'z1', encounterType: key, enemyIds: [], probability: 0.5, cooldownTurns: 0, tags: [] },
+          { id: 'ea2', zoneId: 'z1', encounterType: key, enemyIds: [], probability: 0.5, cooldownTurns: 0, tags: [] },
+        ],
+      });
+      const snap = buildReviewSnapshot(proj);
+      expect(Object.hasOwn(snap.encounters.byType, key)).toBe(true);
+      expect(snap.encounters.byType[key]).toBe(2);
+    },
+  );
+});

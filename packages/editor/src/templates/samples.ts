@@ -96,7 +96,7 @@ const chapelThreshold: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'pilgrim-talk', speakers: ['pilgrim'], entryNodeId: 'greeting',
+    id: 'pilgrim-talk', speakers: ['suspicious-pilgrim'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'pilgrim', text: 'This chapel... it is not what it seems. The brothers hide something beneath the altar.', choices: [
         { id: 'c1', text: 'What do you mean?', nextNodeId: 'reveal' },
@@ -243,7 +243,7 @@ const tavernCrossroads: WorldProject = {
     { entityId: 'innkeeper', name: 'Innkeeper Darla', zoneId: 'tavern-hall', role: 'npc', dialogueId: 'darla-talk', tags: ['innkeeper', 'friendly'] },
   ],
   dialogues: [{
-    id: 'darla-talk', speakers: ['darla'], entryNodeId: 'greeting',
+    id: 'darla-talk', speakers: ['innkeeper'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'darla', text: 'Welcome, traveler. Sit down and warm yourself. What brings you to the crossroads?', choices: [
         { id: 'c1', text: 'Just passing through.', nextNodeId: 'passing' },
@@ -349,7 +349,7 @@ const oceanHarbor: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'marlo-talk', speakers: ['marlo'], entryNodeId: 'greeting',
+    id: 'marlo-talk', speakers: ['fence-marlo'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'marlo', text: 'Keep your voice down. The patrol is circling closer every day. I need cargo moved before dawn.', choices: [
         { id: 'c1', text: 'What kind of cargo?', nextNodeId: 'details' },
@@ -467,7 +467,7 @@ const spaceStation: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'jin-talk', speakers: ['jin'], entryNodeId: 'greeting',
+    id: 'jin-talk', speakers: ['foreman-jin'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'jin', text: 'The drill bot in shaft three went haywire. Corporate wants output, not excuses. Get down there and sort it.', choices: [
         { id: 'c1', text: 'What happened to it?', nextNodeId: 'details' },
@@ -586,7 +586,7 @@ const wildernessTrail: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'tess-talk', speakers: ['tess'], entryNodeId: 'greeting',
+    id: 'tess-talk', speakers: ['warden-tess'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'tess', text: 'Something in the deep wood is driving the animals out. The thornback bear has been seen near the ruins — far from its usual range.', choices: [
         { id: 'c1', text: 'What could be causing it?', nextNodeId: 'details' },
@@ -703,7 +703,7 @@ const cityMarket: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'hale-talk', speakers: ['hale'], entryNodeId: 'greeting',
+    id: 'hale-talk', speakers: ['merchant-hale'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'hale', text: 'Third shipment stolen this week. The gangs in the back alleys are getting bold.', choices: [
         { id: 'c1', text: 'What are they taking?', nextNodeId: 'details' },
@@ -822,7 +822,7 @@ const worldMap: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'rider-talk', speakers: ['rider'], entryNodeId: 'greeting',
+    id: 'rider-talk', speakers: ['khan-rider'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'rider', text: 'The Khan demands tribute from the Ironhold settlers. They have refused. War rides on the wind.', choices: [
         { id: 'c1', text: 'Is there room for negotiation?', nextNodeId: 'details' },
@@ -941,7 +941,7 @@ const cabinInterior: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'bryn-talk', speakers: ['bryn'], entryNodeId: 'greeting',
+    id: 'bryn-talk', speakers: ['old-keeper'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'bryn', text: 'Welcome to the lodge. Mind where you step — not everything here is what it seems.', choices: [
         { id: 'c1', text: 'What do you mean?', nextNodeId: 'details' },

@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { exportToEngine } from '../export.js';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 
 describe('AIR-FT-001: export profiles', () => {
   it('release profile (default) produces NO _debug key', () => {

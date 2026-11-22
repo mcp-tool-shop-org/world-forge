@@ -20,7 +20,7 @@ vi.mock('node:crypto', async (importOriginal) => {
 
 import { exportToEngine } from '../export.js';
 import { computeContentHash } from '../content-hash.js';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject } from './fixtures/engine-fixtures.js';
 
 const srcDir = dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +39,7 @@ describe('F-1d037344: exportToEngine is browser-safe (no node:crypto on the publ
   });
 
   it('exportToEngine succeeds when node:crypto.createHash throws and still returns a well-formed ExportResult', () => {
-    const result = exportToEngine(minimalProject);
+    const result = exportToEngine(engineMinimalProject);
     expect(result.success).toBe(true);
     if (!result.success) throw new Error('export failed');
     expect(result.contentPack).toBeDefined();

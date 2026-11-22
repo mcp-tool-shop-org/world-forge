@@ -13,7 +13,8 @@ import {
 } from './import.js';
 import type { WorldProject } from '@world-forge/schema';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
-import { listAiRpgEncounterBlockers } from './encounter-types.js';
+import type { AiRpgEncounterBlocker } from './encounter-types.js';
+import type { AiRpgDialogueSpeakerBlocker } from './convert-dialogues.js';
 
 const USAGE = `Usage: world-forge-export <project.json> [options]
        world-forge-export --import <file-or-pack-dir> [--out <dir>]
@@ -496,48 +497,52 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Export
+  // Export (single source of truth for schema validation plus encounter & speaker blockers)
   const result = exportToEngine(project, { profile, emitSchemaVersion });
 
   if (!result.success) {
-    // F-3b0e3f5f: converter throws are not schema validation.
-    const converter = isConverterFailure(result.errors);
-    console.error(converter ? 'Export failed (converter):' : 'Validation failed:');
-    for (const e of result.errors) {
-      console.error(`  [${e.path}] ${e.message}`);
-    }
-    // F-f54a9f8b: --verbose must fire on the failure path, not only after a write.
-    if (verbose) {
-      console.error('\n--- Verbose Diagnostics ---');
-      if (converter) {
-        console.error('  This is a converter crash, not a project-schema error. Report this as a bug.');
-      } else {
-        console.error(`  Export did not succeed (${result.errors.length} error(s) listed above).`);
-      }
-      for (const e of result.errors) {
+    const encounterBlockers = result.encounterBlockers ?? [];
+    const speakerBlockers = result.speakerBlockers ?? [];
+    const blockerCount = encounterBlockers.length + speakerBlockers.length;
+    const schemaOrConverterErrors =
+      blockerCount > 0 ? result.errors.slice(0, result.errors.length - blockerCount) : result.errors;
+
+    if (schemaOrConverterErrors.length > 0) {
+      // F-3b0e3f5f: converter throws are not schema validation.
+      const converter = isConverterFailure(schemaOrConverterErrors);
+      console.error(converter ? 'Export failed (converter):' : 'Validation failed:');
+      for (const e of schemaOrConverterErrors) {
         console.error(`  [${e.path}] ${e.message}`);
       }
+      if (blockerCount > 0) {
+        printAiRpgBlockers(validateOnly, encounterBlockers, speakerBlockers);
+      }
+      // F-f54a9f8b: --verbose must fire on the failure path, not only after a write.
+      if (verbose) {
+        console.error('\n--- Verbose Diagnostics ---');
+        if (converter) {
+          console.error('  This is a converter crash, not a project-schema error. Report this as a bug.');
+        } else {
+          console.error(`  Export did not succeed (${schemaOrConverterErrors.length} error(s) listed above).`);
+        }
+        for (const e of schemaOrConverterErrors) {
+          console.error(`  [${e.path}] ${e.message}`);
+        }
+      }
+      process.exit(1);
+    }
+
+    printAiRpgBlockers(validateOnly, encounterBlockers, speakerBlockers);
+    if (verbose) {
+      console.error('\n--- Verbose Diagnostics ---');
+      console.error(
+        `  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s) and ${speakerBlockers.length} unresolved speaker(s).`,
+      );
     }
     process.exit(1);
   }
 
   const exportResult = result; // narrowed to ExportResult
-
-  // Non-engine encounter types block ALL AI RPG paths (--validate-only,
-  // --dry-run, and file exports), printing every blocker to stderr and exiting 1
-  // before writing any files.
-  const encounterBlockers = listAiRpgEncounterBlockers(project);
-  if (encounterBlockers.length > 0) {
-    console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
-    for (const b of encounterBlockers) {
-      console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
-    }
-    if (verbose) {
-      console.error('\n--- Verbose Diagnostics ---');
-      console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
-    }
-    process.exit(1);
-  }
 
   if (validateOnly) {
     const encounterFidelity = exportResult.fidelity.entries.filter(
@@ -605,6 +610,20 @@ async function main(): Promise<void> {
     printVerboseSuccess(exportResult, profile, emitSchemaVersion);
   }
   exitAfterExport(exportResult, strict);
+}
+
+function printAiRpgBlockers(
+  validateOnly: boolean,
+  encounterBlockers: AiRpgEncounterBlocker[],
+  speakerBlockers: AiRpgDialogueSpeakerBlocker[],
+): void {
+  console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
+  for (const b of encounterBlockers) {
+    console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
+  }
+  for (const b of speakerBlockers) {
+    console.error(`  [dialogues.${b.dialogueId}.speakers] ${b.message}`);
+  }
 }
 
 function exitAfterExport(exportResult: ExportResult, strict: boolean): void {

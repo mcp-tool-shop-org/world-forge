@@ -13,7 +13,7 @@ import { importZones } from '../import-zones.js';
 import { exportToEngine } from '../export.js';
 import { convertEntities } from '../convert-entities.js';
 import { convertPackMeta } from '../convert-pack.js';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 import type { WorldProject } from '@world-forge/schema';
 
 // --- E-001: import-entities custom field runtime validation ---

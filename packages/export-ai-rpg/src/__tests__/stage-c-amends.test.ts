@@ -6,7 +6,7 @@ import { exportToEngine } from '../export.js';
 import { convertEntities } from '../convert-entities.js';
 import { convertZones } from '../convert-zones.js';
 import { convertPackMeta } from '../convert-pack.js';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 import type { WorldProject } from '@world-forge/schema';
 import type { FidelityEntry } from '../fidelity.js';
 
@@ -64,6 +64,7 @@ describe('AIR-B-001: deterministic assetBindings JSON output', () => {
         { entityId: 'npc-zeta', zoneId: zoneIdOrder[0], role: 'npc', portraitId: 'port-z' },
         { entityId: 'npc-alpha', zoneId: zoneIdOrder[0], role: 'npc', portraitId: 'port-a' },
       ],
+      dialogues: [],
       itemPlacements: [
         { itemId: 'item-zinc', zoneId: zoneIdOrder[0], container: 'shelf', hidden: false, iconId: 'icon-zinc' },
         { itemId: 'item-apple', zoneId: zoneIdOrder[0], container: 'shelf', hidden: false, iconId: 'icon-apple' },
@@ -325,6 +326,7 @@ describe('AIR-B-003: entity factionId validation', () => {
           name: 'Stray',
         },
       ],
+      dialogues: [],
     };
     const result = exportToEngine(project);
     if (!result.success) throw new Error('export failed');

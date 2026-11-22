@@ -10,7 +10,7 @@ import { convertZones } from '../convert-zones.js';
 import { convertEntities } from '../convert-entities.js';
 import type { FidelityEntry } from '../fidelity.js';
 import type { WorldProject } from '@world-forge/schema';
-import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { engineMinimalProject as minimalProject } from './fixtures/engine-fixtures.js';
 
 // --- F-b372b7e0: zone interactables name-only collapse reports type/description drops ---
 

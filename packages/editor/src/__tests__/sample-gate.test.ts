@@ -1,4 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import {
+  loadContent,
+  validateGameContent,
+  type ContentPack as EngineContentPack,
+} from '@ai-rpg-engine/content-schema';
 import { validateProject, type WorldProject } from '@world-forge/schema';
 import { exportToEngine, listAiRpgEncounterBlockers } from '@world-forge/export-ai-rpg';
 import { exportToUnreal } from '@world-forge/export-unreal';
@@ -28,6 +33,12 @@ function assertSampleGate(project: WorldProject): void {
   expect(aiRpg.success).toBe(true);
   const aiRpgBlockers = listAiRpgEncounterBlockers(stored);
   expect(aiRpgBlockers).toEqual([]);
+  if (!aiRpg.success) throw new Error('exportToEngine failed');
+  const enginePack = aiRpg.contentPack as unknown as EngineContentPack;
+  const contentCheck = validateGameContent(enginePack);
+  expect(contentCheck.ok, `validateGameContent failed: ${JSON.stringify(contentCheck.errors)}`).toBe(true);
+  const loadedPack = loadContent(enginePack);
+  expect(loadedPack.ok, `loadContent failed: ${JSON.stringify(loadedPack.errors)}`).toBe(true);
 
   const unreal = exportToUnreal(stored);
   expect(unreal.success).toBe(true);
@@ -67,5 +78,46 @@ describe('sample gate: GENRE_TEMPLATES', () => {
 describe('sample gate: MODE_STARTERS', () => {
   it.each(MODE_STARTERS)('$id ($name) loads, validates, and passes all export lanes', (starter) => {
     assertSampleGate(createProjectFromModeStarter(starter.name, starter));
+  });
+});
+
+describe('user-authored world via editor store actions', () => {
+  it('world authored through editor store actions exports an AI RPG pack passing loadContent and validateGameContent', () => {
+    const store = useProjectStore.getState();
+    store.loadProject(createProjectFromModeStarter('User District', MODE_STARTERS[0]));
+    store.addZone({
+      id: 'user-archive',
+      name: 'User Archive',
+      tags: ['indoor'],
+      description: 'An archive wing added via editor actions.',
+      gridX: 25,
+      gridY: 0,
+      gridWidth: 8,
+      gridHeight: 8,
+      neighbors: [],
+      exits: [],
+      light: 5,
+      noise: 1,
+      hazards: [],
+      interactables: [],
+    });
+    store.addEntity({
+      entityId: 'npc-archivist',
+      name: 'Archivist',
+      zoneId: 'user-archive',
+      role: 'npc',
+    });
+    store.addDialogue({
+      id: 'dlg-archivist',
+      speakers: [],
+      entryNodeId: 'node-start',
+      nodes: {
+        'node-start': { id: 'node-start', speaker: 'Archivist', text: 'Cataloging records.', choices: [] },
+      },
+    });
+    store.updateDialogue('dlg-archivist', { speakers: ['npc-archivist'] });
+    store.updateEntity('npc-archivist', { dialogueId: 'dlg-archivist' });
+
+    assertSampleGate(useProjectStore.getState().project);
   });
 });

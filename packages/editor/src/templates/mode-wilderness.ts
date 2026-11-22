@@ -47,7 +47,7 @@ export const wildernessStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'nara-talk', speakers: ['nara'], entryNodeId: 'greeting',
+    id: 'nara-talk', speakers: ['ranger-nara'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'nara', text: 'Keep your voice down. A pack of wolves has claimed the cave up the trail. The alpha is unusually aggressive.', choices: [
         { id: 'c1', text: 'How dangerous?', nextNodeId: 'details' },

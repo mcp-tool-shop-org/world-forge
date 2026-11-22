@@ -48,3 +48,5 @@ export type {
   AiRpgEncounterAdjustment,
   AiRpgEncounterBlocker,
 } from './encounter-types.js';
+export { listAiRpgDialogueSpeakerBlockers } from './convert-dialogues.js';
+export type { AiRpgDialogueSpeakerBlocker } from './convert-dialogues.js';

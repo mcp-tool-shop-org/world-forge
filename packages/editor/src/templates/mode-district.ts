@@ -47,7 +47,7 @@ export const districtStarter: WorldProject = {
   ],
 
   dialogues: [{
-    id: 'voss-talk', speakers: ['voss'], entryNodeId: 'greeting',
+    id: 'voss-talk', speakers: ['guild-master'], entryNodeId: 'greeting',
     nodes: {
       greeting: { id: 'greeting', speaker: 'voss', text: 'Welcome to the guild hall. We could use someone capable — shipments have been going missing.', choices: [
         { id: 'c1', text: 'What kind of shipments?', nextNodeId: 'details' },
