@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.9.1</strong> — 3513 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.9.1</strong> — 3569 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architecture
@@ -52,7 +52,7 @@ Open `http://localhost:5173` to launch the editor.
 3. **Paint zones** — drag on the canvas to create zones, connect them, assign districts
 4. **Place entities** — drop NPCs, enemies, merchants, encounters, and items onto zones
 5. **Review** — open the Review tab for health status, content overview, and summary export (Markdown/JSON)
-6. **Export** — open the Export modal to see per-target readiness (✓ Ready / ⚠ advisories), configure target options, then download AI RPG Engine, UE5, or Godot 4 packs. Post-export receipts stack with size, counts, and fidelity details. Also: project bundles (.wfproject.json) and review summaries
+6. **Export** — open the Export modal to inspect per-target readiness (red when blocked, amber with listed advisories for encounter-type translations and drops, green when ready with nothing to report), configure target options, then download AI RPG Engine, UE5, or Godot 4 packs. Post-export receipts stack with size, counts, and fidelity details. Also: project bundles (.wfproject.json) and review summaries
 
 ### CLI Export
 
@@ -116,7 +116,7 @@ Converts a `WorldProject` into a Godot 4 content pack with `.tscn` scene text.
 
 Converts a `WorldProject` into ai-rpg-engine's `ContentPack` format.
 
-- **Export** — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, encounters, factions, hotspots, manifest, and pack metadata
+- **Export** — zones, districts, entities, items, dialogues, player template, build catalog, progression trees, encounters (translating World Forge encounter types to the engine's four), factions, hotspots, manifest, and pack metadata
 - **Import** — 8 reverse converters reconstruct a WorldProject from exported JSON; CLI `--import` / `--from-pack` write `world-project.json` (or stdout)
 - **Fidelity reporting** — structured tracking of what was lossless, approximated, or dropped during conversion; `--out` writes `fidelity.json` beside the pack
 - **Format detection** — auto-detects WorldProject, ExportResult, ContentPack, and ProjectBundle formats
@@ -289,6 +289,18 @@ a number instead of an assumption.
 - **Fidelity reporting stays the contract.** Every lane reports what was lossless,
   approximated, or dropped. Where a field cannot cross, the export says so — it
   does not quietly succeed.
+- **Registry sample gate** (`packages/editor/src/__tests__/sample-gate.test.ts`) — dynamically loads every entry from `SAMPLE_WORLDS`, `BUILTIN_KITS`, `GENRE_TEMPLATES`, and `MODE_STARTERS`, asserting store load, `validateProject()`, AI RPG export succeeding with zero encounter blockers (`exportToEngine` + `listAiRpgEncounterBlockers`), and Unreal Engine 5 (`exportToUnreal`) and Godot 4 (`exportToGodot`) exports. Note: it does not yet run the AI RPG engine's full content validation on the exported pack.
+- **Encounter type translation on AI RPG export** — the AI RPG exporter alone translates World Forge's authoring encounter types to `@ai-rpg-engine/content-schema`'s four (`ambush`, `patrol`, `horde`, `duel`), preserving `worldforge-type:<original>` on `tags[]` and recording an `approximated` fidelity entry (`encounter-type-translated`), leaves `hazard` and `discovery` anchors out of the pack with a `dropped` fidelity entry (`encounter-type-dropped`), and still refuses unmapped custom strings by name:
+
+| World Forge `encounterType` | AI RPG `ContentPack` output | Fidelity & tag |
+|---|---|---|
+| `boss` | `duel` | `approximated`, `worldforge-type:boss` |
+| `beast`, `haunt`, `caravan-raid` | `ambush` | `approximated`, `worldforge-type:<original>` |
+| `pirate` | `patrol` | `approximated`, `worldforge-type:pirate` |
+| `boarding`, `brawl` | `horde` | `approximated`, `worldforge-type:<original>` |
+| `hazard`, `discovery` | omitted from `ContentPack.encounterAnchors` | `dropped` |
+| `ambush`, `patrol`, `horde`, `duel` | unchanged | unchanged, no fidelity entry |
+| any other custom string | refused (`listAiRpgEncounterBlockers`, CLI exit 1) | blocked |
 
 Requires `ai-rpg-engine` `^3.8.0`.
 

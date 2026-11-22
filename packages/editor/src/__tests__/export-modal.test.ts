@@ -264,7 +264,7 @@ describe('E2: ExportModal per-target readiness on encounterType', () => {
     const blocked: WorldProject = {
       ...validProject,
       encounterAnchors: [
-        { id: 'enc-blocked', zoneId: validProject.zones[0].id, encounterType: 'pirate', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+        { id: 'enc-blocked', zoneId: validProject.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
       ],
     };
     const readiness = computeTargetReadiness(blocked, true);
@@ -322,5 +322,92 @@ describe('E2: ExportModal per-target readiness on encounterType', () => {
     const exportJsonBtn = /<button[^>]*>Export JSON<\/button>/.exec(html)?.[0];
     expect(exportJsonBtn).toBeDefined();
     expect(exportJsonBtn).not.toContain('disabled=""');
+  });
+});
+
+describe('E2+: mapped/dropped encounter readiness and TargetReadinessSummary color', () => {
+  it('computeTargetReadiness marks AI RPG ready for translated and dropped encounter types, listing approximations and drops', () => {
+    const zoneId = validProject.zones[0].id;
+    const mapped: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-boss', zoneId, encounterType: 'boss', enemyIds: [], probability: 1, cooldownTurns: 0, tags: [] },
+        { id: 'enc-hazard', zoneId, encounterType: 'hazard', enemyIds: [], probability: 0.6, cooldownTurns: 2, tags: [] },
+        { id: 'enc-discovery', zoneId, encounterType: 'discovery', enemyIds: [], probability: 0.4, cooldownTurns: 5, tags: [] },
+      ],
+    };
+
+    const r = computeTargetReadiness(mapped, true);
+    expect(r.aiRpg.ready).toBe(true);
+    expect(r.aiRpg.blockers).toEqual([]);
+    expect(r.aiRpg.advisories.some((a) => a.includes('enc-boss') && a.includes('duel'))).toBe(true);
+    expect(r.aiRpg.advisories.some((a) => a.includes('enc-hazard') && a.includes('left out'))).toBe(true);
+    expect(r.aiRpg.advisories.some((a) => a.includes('enc-discovery') && a.includes('left out'))).toBe(true);
+
+    const html = renderToStaticMarkup(createElement(TargetReadinessSummary, { targetReadiness: r }));
+    expect(html).not.toContain('Not ready');
+    expect(html).toContain('Ready with 3 advisories');
+    expect(html).toContain('enc-boss');
+    expect(html).toContain('enc-hazard');
+    expect(html).toContain('enc-discovery');
+  });
+
+  it('TargetReadinessSummary renders danger styling when blocked, warning when advisory-only, and success when clean ready', () => {
+    const blocked: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-custom', zoneId: validProject.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 2, tags: [] },
+      ],
+    };
+    const blockedHtml = renderToStaticMarkup(
+      createElement(TargetReadinessSummary, { targetReadiness: computeTargetReadiness(blocked, true) }),
+    );
+    const blockedOuterStyle = /^<div style="([^"]+)"/.exec(blockedHtml)?.[1] ?? '';
+    expect(blockedOuterStyle).toContain('var(--wf-danger)');
+    expect(blockedOuterStyle).not.toContain('var(--wf-success)');
+
+    const advisoryReadiness = {
+      aiRpg: { ready: true, advisories: ['Encounter anchor "enc-boss" maps "boss" to "duel".'], blockers: [] },
+      unreal: { ready: true, advisories: [], blockers: [] },
+      godot: { ready: true, advisories: [], blockers: [] },
+    };
+    const advisoryHtml = renderToStaticMarkup(
+      createElement(TargetReadinessSummary, { targetReadiness: advisoryReadiness }),
+    );
+    const advisoryOuterStyle = /^<div style="([^"]+)"/.exec(advisoryHtml)?.[1] ?? '';
+    expect(advisoryOuterStyle).toContain('var(--wf-warning)');
+    expect(advisoryOuterStyle).not.toContain('var(--wf-success)');
+
+    const cleanReadiness = {
+      aiRpg: { ready: true, advisories: [], blockers: [] },
+      unreal: { ready: true, advisories: [], blockers: [] },
+      godot: { ready: true, advisories: [], blockers: [] },
+    };
+    const cleanHtml = renderToStaticMarkup(
+      createElement(TargetReadinessSummary, { targetReadiness: cleanReadiness }),
+    );
+    const cleanOuterStyle = /^<div style="([^"]+)"/.exec(cleanHtml)?.[1] ?? '';
+    expect(cleanOuterStyle).toContain('var(--wf-success)');
+    expect(cleanOuterStyle).not.toContain('var(--wf-danger)');
+    expect(cleanOuterStyle).not.toContain('var(--wf-warning)');
+  });
+});
+
+const PROTOTYPE_KEY_TYPES = ['constructor', 'toString', 'hasOwnProperty', '__proto__'] as const;
+
+describe('E2+: prototype-key encounter types block editor readiness', () => {
+  it.each(PROTOTYPE_KEY_TYPES)('computeTargetReadiness blocks AI RPG export for %s by name', (badType) => {
+    const project: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-proto', zoneId: validProject.zones[0].id, encounterType: badType, enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      ],
+    };
+
+    const readiness = computeTargetReadiness(project, true);
+    expect(readiness.aiRpg.ready).toBe(false);
+    expect(readiness.aiRpg.blockers.join('\n')).toContain('enc-proto');
+    expect(readiness.aiRpg.blockers.join('\n')).toContain(badType);
+    expect(readiness.aiRpg.advisories.join('\n')).not.toContain('enc-proto');
   });
 });

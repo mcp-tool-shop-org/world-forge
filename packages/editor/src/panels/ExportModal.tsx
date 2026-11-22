@@ -9,7 +9,7 @@ import {
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
 import { validateProject, scanDependencies, type WorldProject } from '@world-forge/schema';
-import { listAiRpgEncounterBlockers } from '@world-forge/export-ai-rpg';
+import { listAiRpgEncounterAdjustments, listAiRpgEncounterBlockers } from '@world-forge/export-ai-rpg';
 import { classifyError, navigationForError } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
@@ -61,6 +61,9 @@ export function computeTargetReadiness(project: WorldProject, precheckValid: boo
   }
 
   const aiRpgBlockers = listAiRpgEncounterBlockers(project).map((b) => b.message);
+  for (const adj of listAiRpgEncounterAdjustments(project)) {
+    aiRpgAdvisories.push(adj.message);
+  }
 
   return {
     aiRpg: { ready: precheckValid && aiRpgBlockers.length === 0, advisories: aiRpgAdvisories, blockers: aiRpgBlockers },
@@ -71,14 +74,23 @@ export function computeTargetReadiness(project: WorldProject, precheckValid: boo
 
 /** Per-target readiness banner shared by ExportModal and logic-level tests. */
 export function TargetReadinessSummary({ targetReadiness }: { targetReadiness: TargetReadiness }) {
+  const targets = [
+    { label: 'AI RPG', info: targetReadiness.aiRpg },
+    { label: 'UE5', info: targetReadiness.unreal },
+    { label: 'Godot', info: targetReadiness.godot },
+  ] as const;
+  const anyBlocked = targets.some(({ info }) => !info.ready);
+  const anyAdvisories = targets.some(({ info }) => info.advisories.length > 0);
+  const boxTone = anyBlocked
+    ? 'var(--wf-danger)'
+    : anyAdvisories
+      ? 'var(--wf-warning)'
+      : 'var(--wf-success)';
+
   return (
-    <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: 'color-mix(in srgb, var(--wf-success) 18%, var(--wf-bg-panel))', border: '1px solid var(--wf-success)', fontSize: 12 }}>
+    <div style={{ padding: '8px 12px', borderRadius: 4, marginBottom: 12, background: `color-mix(in srgb, ${boxTone} 18%, var(--wf-bg-panel))`, border: `1px solid ${boxTone}`, fontSize: 12 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {([
-          { label: 'AI RPG', info: targetReadiness.aiRpg },
-          { label: 'UE5', info: targetReadiness.unreal },
-          { label: 'Godot', info: targetReadiness.godot },
-        ] as const).map(({ label, info }) => (
+        {targets.map(({ label, info }) => (
           <div key={label}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ color: info.ready ? 'var(--wf-success-text)' : 'var(--wf-danger-text)' }}>
@@ -97,6 +109,13 @@ export function TargetReadinessSummary({ targetReadiness }: { targetReadiness: T
               <div style={{ paddingLeft: 18, marginTop: 2, fontSize: 11, color: 'var(--wf-danger-text)' }}>
                 {info.blockers.map((b, i) => (
                   <div key={i}>{b}</div>
+                ))}
+              </div>
+            )}
+            {info.ready && info.advisories.length > 0 && (
+              <div style={{ paddingLeft: 18, marginTop: 2, fontSize: 11, color: 'var(--wf-warning-text)' }}>
+                {info.advisories.map((a, i) => (
+                  <div key={i}>{a}</div>
                 ))}
               </div>
             )}
