@@ -137,21 +137,23 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 | Tab | Purpose |
 |-----|---------|
 | Map | Zone/entity/district editing on the 2D canvas |
-| Objects | Hierarchical tree: districts → zones → entities/landmarks/spawns |
 | Player | Player template with stats, inventory, equipment, spawn |
 | Builds | Archetypes, backgrounds, traits, disciplines, combos |
 | Trees | Progression nodes with requirements and effects |
 | Dialogue | Node editing, choice linking, broken-ref detection |
+| Objects | Hierarchical tree: districts → zones → entities/landmarks/spawns |
 | Presets | Region and encounter preset browser with merge/overwrite |
 | Assets | Asset library with kind-filtered search, orphan detection, asset packs |
 | Issues | Live grouped validation with click-to-focus navigation |
 | Deps | Dependency scanner with inline repair buttons |
 | Review | Health dashboard, content overview, summary export |
-| Guide | First-run checklist with hotkey reference |
+| Guide | First-run checklist with hotkey reference (shown until dismissed) |
+| Import | Fidelity report for the last import (shown after an import) |
+| Diff | Semantic diff against the imported snapshot (shown after an import) |
 
 #### Canvas & Editing
 
-- **Tools** — select, zone-paint, connection, entity-place, landmark, spawn, item-place, encounter-place
+- **Tools** — 10 tools: select, zone-paint, connection, entity-place, landmark, spawn, tile-paint, prop-place, encounter-place, item-place
 - **Multi-select** — shift-click, box-select, Ctrl+A; drag-move with atomic undo
 - **Alignment** — 6-way align (left/right/top/bottom/center-h/center-v) and horizontal/vertical distribution
 - **Snapping** — drag-time snap to edges/centers of nearby objects with visual guide lines
@@ -165,14 +167,14 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 - **Viewport culling** — only renders objects within visible bounds (64px margin)
 - **Performance stats** — toggle FPS/object count/render time overlay
 - **Per-object visibility** — hide/show individual objects (persisted in localStorage)
-- **Layers** — visibility toggles (grid, connections, entities, landmarks, spawns, town, tiles, props, ambient; items hit-test with the item layer)
+- **Layers** — visibility toggles (grid, connections, entities, landmarks, spawns, backgrounds, tiles, props, ambient, elevation; items hit-test with the item layer), plus toggles for the minimap, snap-to-objects, performance stats and renderer diagnostics
 
 #### Navigation & Shortcuts
 
-- **Viewport** — pan/zoom camera, mousewheel zoom (cursor-anchored), spacebar/middle-mouse/right-click drag-pan, auto fit-to-content, double-click to center
+- **Viewport** — pan/zoom camera, mousewheel zoom (cursor-anchored), spacebar/middle-mouse/right-click drag-pan, fit-to-content when the canvas first opens a project with zones (and on demand from the Speed Panel's Fit to Content), double-click to center
 - **Search** — Ctrl+K opens overlay to find any object by name/ID with fuzzy matching, keyboard navigation, and recent search history (localStorage)
 - **Speed Panel** — double-right-click for a floating command palette with context-aware actions, pinnable favorites, macros, and mode-suggested quick actions
-- **Hotkeys** — 21 keyboard shortcuts including tool switching (V/Z/C/E/L/S), Enter (open details), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste), arrow nudge (Shift = 5×)
+- **Hotkeys** — 29 keyboard shortcuts including tool switching (V/Z/C/E/L/S/T/O/N/I), Enter (open details), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste), arrow nudge (Shift = 5×)
 - **Accessibility** — modal focus traps with Escape-to-close, ARIA labels on all icon-only buttons, keyboard-navigable object tree, screen-reader-announced dirty indicator. Spatial canvas operations (placement, box-select, resize, connection drawing, panning) remain pointer-based
 
 #### Import & Export
@@ -244,12 +246,12 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 
 - Region presets (9 built-in, mode-filtered) and encounter presets (10 built-in) with merge/overwrite application and custom preset CRUD
 - Starter kits (7 built-in, mode-specific) with kit export/import (`.wfkit.json`), collision handling, and provenance tracking
-- Layout templates (6 prebuilt zone arrangements) and dialogue templates (5 conversation starters)
-- Zone merge and batch entity placement (grid/random/circle patterns)
+- Zone merge from the Speed Panel
+- Layout templates, dialogue templates and batch entity placement (grid/random/circle) exist in the code but are not yet reachable from the editor UI
 - Auto-save with 30-second throttle and 3-version recovery history
 - Ctrl+K search across all object types with fuzzy matching and recent history
 - Speed Panel command palette with pinnable favorites, macros, custom groups, and mode suggestions
-- 21 centralized keyboard shortcuts (including 6 tool-switching keys)
+- 29 centralized keyboard shortcuts (including 10 tool-switching keys)
 - Project metadata editor (author, license, category, tags)
 - Review statistics (role distribution, connection kinds, encounter types, zones per district)
 - Export to ContentPack JSON, project bundles, and review summaries
