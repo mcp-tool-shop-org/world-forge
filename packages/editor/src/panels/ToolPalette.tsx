@@ -6,21 +6,13 @@ import { activeTabBg as ACTIVE_TAB_BG } from '../ui/styles.js';
 import { buttonBase } from '../ui/styles.js';
 import { defaultShowElevation } from './zone-2d5-helpers.js';
 import { LayerChip } from './shared.js';
-import { getToolPaletteCommands, runCommand } from '../command-registry.js';
+import { getToolPaletteEntries, runCommand, type ToolPaletteEntry } from '../command-registry.js';
 
-const toolPaletteCommands = getToolPaletteCommands();
-const TOOL_COMMAND_ID_BY_TOOL = new Map<EditorTool, string>(
-  toolPaletteCommands.map((cmd) => [cmd.tool!, cmd.id]),
+const toolEntries: ToolPaletteEntry[] = getToolPaletteEntries();
+
+export const TOOL_PALETTE_TOOLS: { id: EditorTool; label: string; key: string; icon: string }[] = toolEntries.map(
+  ({ id, label, key, icon }) => ({ id, label, key, icon }),
 );
-
-export const TOOL_PALETTE_TOOLS: { id: EditorTool; label: string; key: string; icon: string }[] = toolPaletteCommands.map((cmd) => ({
-  id: cmd.tool!,
-  label: cmd.toolLabel!,
-  key: cmd.toolKey!,
-  icon: cmd.toolIcon!,
-}));
-
-const tools = TOOL_PALETTE_TOOLS;
 
 export function ToolPalette() {
   const {
@@ -119,10 +111,10 @@ export function ToolPalette() {
   return (
     <div>
       <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginBottom: 4 }}>Tools</div>
-      {tools.map((t) => (
+      {toolEntries.map((t) => (
         <button
           key={t.id}
-          onClick={() => runCommand(TOOL_COMMAND_ID_BY_TOOL.get(t.id)!, { setTool })}
+          onClick={() => runCommand(t.commandId, { setTool })}
           style={{
             display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
             padding: '4px 8px', marginBottom: 2, cursor: 'pointer', fontSize: 12,

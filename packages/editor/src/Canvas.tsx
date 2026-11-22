@@ -22,6 +22,23 @@ import { applyPlacementClick } from './canvas-placement.js';
 import { collectTownMarkers } from './town-markers.js';
 import { applyPresetFromSelection, savePresetFromSelection } from './preset-actions.js';
 import { usePresetStore } from './presets/preset-store.js';
+import { useSpeedPanelOptions, formatSpeedPanelTriggerFooter } from './store/speed-panel-options-store.js';
+import {
+  beginRightPointer,
+  computeRightPanViewport,
+  createInitialRightClickGestureState,
+  endRightPointer,
+  getKeyboardSpeedPanelAnchor,
+  isMacCtrlClickPointer,
+  isMacPlatform,
+  isNodeInsideCanvasOrMenu,
+  isRightClickPointer,
+  moveRightPointer,
+  resolveCanvasContextMenu,
+  resolveCanvasKeyTriggerDecision,
+  resolveRightPointerEndEffect,
+  shouldIgnoreLeftMouseUp,
+} from './speed-panel-gesture.js';
 
 export { generateZoneId };
 
@@ -42,12 +59,10 @@ const DRAG_THRESHOLD = 3; // screen pixels before drag-move activates
  * handleMouseUp accept either, so a gesture release outside the canvas
  * (caught by a window `mouseup` listener) can still be committed/cleared.
  */
-type MouseLike = { clientX: number; clientY: number; shiftKey: boolean };
+type MouseLike = { clientX: number; clientY: number; shiftKey: boolean; button?: number; ctrlKey?: boolean };
 
 /** FT-021: When selection exceeds this count, use simplified outline-only rendering */
 export const LARGE_SELECTION_THRESHOLD = 50;
-const DBL_RIGHT_INTERVAL = 300; // ms between right-clicks for speed panel
-const DBL_RIGHT_RADIUS = 5;     // px proximity for double-right-click
 
 export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -98,10 +113,19 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const lastClickPos = useRef<{ sx: number; sy: number } | null>(null);
   const cycleIndex = useRef(0);
 
-  // Double-right-click detection for speed panel
-  const rightClickTracker = useRef<{ time: number; sx: number; sy: number } | null>(null);
+  // Pointer-based right-click + trigger state for compact menu & Speed Panel
+  const speedPanelOptions = useSpeedPanelOptions((s) => s.options);
+  const rightClickGesture = useRef(createInitialRightClickGestureState());
+  const rightPanStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const lastRightMoveEvent = useRef<Event | null>(null);
+  const contextMenuHandledInPress = useRef(false);
+  const suppressNextCanvasContextMenu = useRef(false);
+  const suppressNextLeftMouseUp = useRef(false);
+  const pointerOverCanvasRef = useRef(false);
+  const lastPointerRegionRef = useRef<'none' | 'canvas' | 'other'>('none');
+  const lastPointerStampRef = useRef(0);
+  const lastCanvasFocusStampRef = useRef(0);
   const panButton = useRef(-1);
-  const panStartScreen = useRef<{ sx: number; sy: number } | null>(null);
 
   // FT-005: Right-click context menu state. Hit is stored so a later menu-item
   // click can execute against the object that was under the cursor (F-ef5cce21).
@@ -1064,8 +1088,182 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     },
   };
 
+  const getScreenXY = (e: { clientX: number; clientY: number }) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return { sx: 0, sy: 0 };
+    return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
+  };
+
+  const visibility = { showEntities, showLandmarks, showSpawns, showConnections, showTown, showItems: true, showProps, showTiles };
+
+  const filterHidden = useCallback((hits: import('./hit-testing.js').HitResult[]): import('./hit-testing.js').HitResult[] =>
+    hits.filter((h) => !hiddenIds.has(h.id)), [hiddenIds]);
+  const filterHitSingle = useCallback((hit: import('./hit-testing.js').HitResult | null): import('./hit-testing.js').HitResult | null =>
+    hit && !hiddenIds.has(hit.id) ? hit : null, [hiddenIds]);
+
+  const openObjectContextMenu = (sx: number, sy: number) => {
+    const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
+    const actions = getContextMenuActions(hit, project)
+      .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
+    if (actions.length > 0) {
+      setContextMenu({ x: sx, y: sy, actions, hit });
+    }
+  };
+
+  const upgradeContextMenuToSpeedPanel = () => {
+    if (!contextMenu) return;
+    const { x, y, hit } = contextMenu;
+    setContextMenu(null);
+    rightClickGesture.current = createInitialRightClickGestureState();
+    openSpeedPanel(x, y, hit);
+  };
+
+  const startRightPointer = (e: {
+    button: number;
+    ctrlKey?: boolean;
+    clientX: number;
+    clientY: number;
+    pointerId: number;
+    pointerType?: string;
+    preventDefault: () => void;
+  }): boolean => {
+    const mac = isMacPlatform();
+    if (!isRightClickPointer(e, mac)) return false;
+    e.preventDefault();
+    const macCtrl = isMacCtrlClickPointer(e, mac);
+    suppressNextLeftMouseUp.current = macCtrl;
+    contextMenuHandledInPress.current = false;
+    const { sx, sy } = getScreenXY(e);
+    lastPointerRef.current = { sx, sy };
+    pointerOverCanvasRef.current = true;
+    lastPointerRegionRef.current = 'canvas';
+    lastPointerStampRef.current = performance.now();
+    rightClickGesture.current = beginRightPointer(rightClickGesture.current, {
+      sx,
+      sy,
+      pointerId: e.pointerId,
+      pointerType: e.pointerType,
+      isMacCtrlClick: macCtrl,
+    });
+    rightPanStart.current = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
+    return true;
+  };
+
+  const moveRightPointerHandler = (
+    e: Event & { clientX: number; clientY: number; pointerId: number; buttons?: number },
+  ): boolean => {
+    if (lastRightMoveEvent.current === e) {
+      return rightClickGesture.current.active?.pointerId === e.pointerId;
+    }
+    lastRightMoveEvent.current = e;
+    if (rightClickGesture.current.active?.pointerId !== e.pointerId) {
+      return false;
+    }
+    const { sx, sy } = getScreenXY(e);
+    const opts = useSpeedPanelOptions.getState().options;
+    const moved = moveRightPointer(
+      rightClickGesture.current,
+      { sx, sy, pointerId: e.pointerId, buttons: e.buttons },
+      opts,
+    );
+    rightClickGesture.current = moved.state;
+    if (moved.cancelled) {
+      rightPanStart.current = null;
+      suppressNextLeftMouseUp.current = false;
+      return false;
+    }
+    if (moved.isDragging && rightPanStart.current) {
+      if (contextMenuRef.current) setContextMenu(null);
+      setViewport(computeRightPanViewport(rightPanStart.current, e.clientX, e.clientY, viewport.zoom));
+    }
+    return true;
+  };
+
+  const finishRightPointer = (e: {
+    clientX: number;
+    clientY: number;
+    pointerId: number;
+    pointerType?: string;
+  }): boolean => {
+    if (rightClickGesture.current.active?.pointerId !== e.pointerId) return false;
+    if (!contextMenuHandledInPress.current) {
+      suppressNextCanvasContextMenu.current = true;
+    }
+    contextMenuHandledInPress.current = false;
+
+    const { sx, sy } = getScreenXY(e);
+    const opts = useSpeedPanelOptions.getState().options;
+    const outcome = endRightPointer(
+      rightClickGesture.current,
+      { sx, sy, pointerId: e.pointerId, pointerType: e.pointerType, now: Date.now() },
+      opts,
+    );
+    rightClickGesture.current = outcome.state;
+    rightPanStart.current = null;
+
+    const effect = resolveRightPointerEndEffect(outcome, Boolean(contextMenuRef.current), contextMenuRef.current?.hit);
+    if (effect.action === 'open-speed-panel') {
+      setContextMenu(null);
+      const hit = effect.prevHit !== undefined
+        ? effect.prevHit
+        : filterHitSingle(findHitAt(effect.x, effect.y, viewport, project, tileSize, visibility));
+      openSpeedPanel(effect.x, effect.y, hit);
+    } else if (effect.action === 'open-compact-menu') {
+      openObjectContextMenu(effect.x, effect.y);
+    }
+    return true;
+  };
+
+  const speedPanelKeyTriggerRef = useRef<((e: KeyboardEvent) => boolean) | null>(null);
+  speedPanelKeyTriggerRef.current = (e: KeyboardEvent): boolean => {
+    const editorState = useEditorStore.getState();
+    const canvasEl = canvasRef.current;
+    const decision = resolveCanvasKeyTriggerDecision(e, {
+      options: useSpeedPanelOptions.getState().options,
+      pointerOverCanvas: pointerOverCanvasRef.current,
+      canvasFocusedNow: Boolean(canvasEl && typeof document !== 'undefined' && document.activeElement === canvasEl),
+      lastPointerRegion: lastPointerRegionRef.current,
+      lastCanvasFocusStamp: lastCanvasFocusStampRef.current,
+      lastPointerStamp: lastPointerStampRef.current,
+      activeModal: useModalStore.getState().activeModal,
+      showSearch: editorState.showSearch,
+      showSpeedPanel: editorState.showSpeedPanel,
+      activeElement: typeof document !== 'undefined' ? document.activeElement : null,
+    });
+    if (!decision.trigger) return false;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu(null);
+    rightClickGesture.current = createInitialRightClickGestureState();
+
+    if (decision.source === 'pointer') {
+      const { sx, sy } = lastPointerRef.current;
+      const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
+      openSpeedPanel(sx, sy, hit);
+      return true;
+    }
+
+    const canvasSize = {
+      w: canvasEl?.clientWidth ?? 800,
+      h: canvasEl?.clientHeight ?? 600,
+    };
+    const anchor = getKeyboardSpeedPanelAnchor(
+      canvasSize,
+      selection,
+      selectedConnection,
+      project,
+      viewport,
+      tileSize,
+    );
+    openSpeedPanel(anchor.sx, anchor.sy, anchor.hit);
+    return true;
+  };
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      suppressNextCanvasContextMenu.current = false;
+
       // Space handled locally (depends on ref)
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -1076,6 +1274,10 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
           e.preventDefault();
           spaceHeld.current = true;
         }
+        return;
+      }
+
+      if (speedPanelKeyTriggerRef.current?.(e)) {
         return;
       }
 
@@ -1123,13 +1325,6 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     };
   }, []);
 
-  // --- Mouse coordinate helpers ---
-  const getScreenXY = (e: MouseLike) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return { sx: 0, sy: 0 };
-    return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
-  };
-
   const gridPos = (e: MouseLike) => {
     const { sx, sy } = getScreenXY(e);
     return screenToGrid(sx, sy);
@@ -1140,24 +1335,6 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       gx >= z.gridX && gx < z.gridX + z.gridWidth &&
       gy >= z.gridY && gy < z.gridY + z.gridHeight,
     );
-
-  const visibility = { showEntities, showLandmarks, showSpawns, showConnections, showTown, showItems: true, showProps, showTiles };
-
-  // FT-009: Filter hidden objects from hit test results
-  const filterHidden = useCallback((hits: import('./hit-testing.js').HitResult[]): import('./hit-testing.js').HitResult[] =>
-    hits.filter((h) => !hiddenIds.has(h.id)), [hiddenIds]);
-  const filterHitSingle = useCallback((hit: import('./hit-testing.js').HitResult | null): import('./hit-testing.js').HitResult | null =>
-    hit && !hiddenIds.has(hit.id) ? hit : null, [hiddenIds]);
-
-  /** F-77c70524: shared open path for mouse right-click and keyboard contextmenu. */
-  const openObjectContextMenu = (sx: number, sy: number) => {
-    const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
-    const actions = getContextMenuActions(hit, project)
-      .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
-    if (actions.length > 0) {
-      setContextMenu({ x: sx, y: sy, actions, hit });
-    }
-  };
 
   const runContextMenuAction = (actionId: string) => {
     if (!contextMenu) return;
@@ -1198,19 +1375,21 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
 
   // --- Mouse handlers ---
   const handleMouseDown = (e: React.MouseEvent) => {
-    // FT-005: Close context menu on any click
+    if (isRightClickPointer(e, isMacPlatform())) {
+      e.preventDefault();
+      return;
+    }
+    suppressNextLeftMouseUp.current = false;
+
+    // FT-005: Close context menu on non-right click
     if (contextMenu) setContextMenu(null);
 
-    // Pan: middle mouse, right mouse, or space+left
-    if (e.button === 1 || e.button === 2 || (e.button === 0 && spaceHeld.current)) {
+    // Pan: middle mouse or space+left (right-button pan is handled on pointer events)
+    if (e.button === 1 || (e.button === 0 && spaceHeld.current)) {
       e.preventDefault();
       isPanning.current = true;
       panButton.current = e.button;
       panStart.current = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
-      if (e.button === 2) {
-        const { sx, sy } = getScreenXY(e);
-        panStartScreen.current = { sx, sy };
-      }
       return;
     }
 
@@ -1377,6 +1556,12 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   };
 
   const handleMouseUp = (e: MouseLike) => {
+    if (shouldIgnoreLeftMouseUp(e, isMacPlatform(), suppressNextLeftMouseUp.current)) {
+      if ((e.button ?? 0) === 0) suppressNextLeftMouseUp.current = false;
+      return;
+    }
+    suppressNextLeftMouseUp.current = false;
+
     // Commit an in-progress tile brush stroke as a single undo step.
     if (tilePaint.current) {
       const stroke = tilePaint.current;
@@ -1387,45 +1572,8 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       return;
     }
     if (isPanning.current) {
-      const wasRight = panButton.current === 2;
       isPanning.current = false;
       panButton.current = -1;
-
-      // Double-right-click detection: if right-click released with no drag
-      if (wasRight && panStartScreen.current) {
-        const { sx, sy } = getScreenXY(e);
-        const dx = sx - panStartScreen.current.sx;
-        const dy = sy - panStartScreen.current.sy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        panStartScreen.current = null;
-
-        if (dist < DBL_RIGHT_RADIUS) {
-          const now = Date.now();
-          const prev = rightClickTracker.current;
-          if (prev && (now - prev.time) < DBL_RIGHT_INTERVAL &&
-              Math.sqrt((sx - prev.sx) ** 2 + (sy - prev.sy) ** 2) < DBL_RIGHT_RADIUS) {
-            // Double-right-click detected — open speed panel
-            rightClickTracker.current = null;
-            setContextMenu(null); // close any open context menu
-            const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
-            openSpeedPanel(sx, sy, hit);
-          } else {
-            rightClickTracker.current = { time: now, sx, sy };
-            // FT-005: Single right-click — show context menu after a delay to distinguish from double
-            const clickSx = sx;
-            const clickSy = sy;
-            setTimeout(() => {
-              // Only show if not consumed by a double-right-click
-              if (rightClickTracker.current && rightClickTracker.current.time === now) {
-                openObjectContextMenu(clickSx, clickSy);
-              }
-            }, DBL_RIGHT_INTERVAL + 20);
-          }
-        } else {
-          rightClickTracker.current = null;
-        }
-      }
-
       panStart.current = null;
       return;
     }
@@ -1526,17 +1674,47 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   // listener every render.
   const handleMouseUpRef = useRef(handleMouseUp);
   handleMouseUpRef.current = handleMouseUp;
+  const moveRightPointerRef = useRef(moveRightPointerHandler);
+  moveRightPointerRef.current = moveRightPointerHandler;
+  const finishRightPointerRef = useRef(finishRightPointer);
+  finishRightPointerRef.current = finishRightPointer;
   useEffect(() => {
     const onWindowMouseUp = (e: MouseEvent) => handleMouseUpRef.current(e);
+    const onWindowPointerMove = (e: PointerEvent) => {
+      if (!isNodeInsideCanvasOrMenu(canvasRef.current, contextMenuElRef.current, e.target as Node | null)) {
+        pointerOverCanvasRef.current = false;
+        lastPointerRegionRef.current = 'other';
+        lastPointerStampRef.current = performance.now();
+      }
+      moveRightPointerRef.current(e);
+    };
+    const onWindowPointerUp = (e: PointerEvent) => {
+      finishRightPointerRef.current(e);
+    };
+    const resetRightPress = () => {
+      rightClickGesture.current = { ...rightClickGesture.current, active: null };
+      rightPanStart.current = null;
+      suppressNextLeftMouseUp.current = false;
+    };
     window.addEventListener('mouseup', onWindowMouseUp);
-    return () => window.removeEventListener('mouseup', onWindowMouseUp);
+    window.addEventListener('pointermove', onWindowPointerMove);
+    window.addEventListener('pointerup', onWindowPointerUp);
+    window.addEventListener('pointercancel', resetRightPress);
+    window.addEventListener('blur', resetRightPress);
+    return () => {
+      window.removeEventListener('mouseup', onWindowMouseUp);
+      window.removeEventListener('pointermove', onWindowPointerMove);
+      window.removeEventListener('pointerup', onWindowPointerUp);
+      window.removeEventListener('pointercancel', resetRightPress);
+      window.removeEventListener('blur', resetRightPress);
+    };
   }, []);
 
   // F-77c70524: focus the first menuitem when the object-actions menu opens.
   useEffect(() => {
     if (!contextMenu) return;
     const first = contextMenuElRef.current?.querySelector('[role="menuitem"]') as HTMLElement | null;
-    first?.focus();
+    first?.focus({ preventScroll: true });
   }, [contextMenu]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -1687,23 +1865,30 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   }, [handleWheel]);
 
   // F-77c70524: Shift+F10 / ContextMenu key fire a contextmenu event with
-  // button !== 2. Mouse right-click still uses the delayed mouseup path so
-  // double-right-click can open the speed panel without a flash.
+  // button === 0 and no active pointer press. Right-click timing runs strictly
+  // on pointerdown/pointermove/pointerup so Windows and macOS event orders behave identically.
   const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    if (e.button === 2) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    let sx = e.clientX - rect.left;
-    let sy = e.clientY - rect.top;
-    const offCanvas = (e.clientX === 0 && e.clientY === 0)
-      || sx < 0 || sy < 0 || sx > rect.width || sy > rect.height;
-    if (offCanvas) {
-      sx = lastPointerRef.current.sx;
-      sy = lastPointerRef.current.sy;
+    const decision = resolveCanvasContextMenu({
+      hasActiveRightGesture: rightClickGesture.current.active !== null,
+      isRightPointerEvent: isRightClickPointer(e, isMacPlatform()),
+      suppressNext: suppressNextCanvasContextMenu.current,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      rect: canvasRef.current?.getBoundingClientRect() ?? null,
+      lastPointer: lastPointerRef.current,
+    });
+    if (decision.kind === 'handled-in-press') {
+      contextMenuHandledInPress.current = true;
+      return;
     }
-    openObjectContextMenu(sx, sy);
+    if (decision.kind === 'consume-suppressed') {
+      suppressNextCanvasContextMenu.current = false;
+      return;
+    }
+    if (decision.kind === 'open') {
+      openObjectContextMenu(decision.sx, decision.sy);
+    }
   };
 
   // --- Double-click to open details for clicked object ---
@@ -1756,7 +1941,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     se: 'se-resize', s: 's-resize', sw: 'sw-resize', w: 'w-resize',
   };
   let cursor = 'crosshair';
-  if (isPanning.current || spaceHeld.current) cursor = 'grabbing';
+  if (isPanning.current || rightClickGesture.current.active?.dragged || spaceHeld.current) cursor = 'grabbing';
   else if (resizeMove.current?.active) cursor = handleCursors[resizeMove.current.handleKind];
   else if (dragMove.current?.active) cursor = 'grabbing';
   else if (boxSelect.current) cursor = 'crosshair';
@@ -1862,6 +2047,38 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
         tabIndex={0}
         style={{ width: '100%', height: '100%', cursor, background: 'var(--wf-bg-app)' }}
         onDoubleClick={handleDoubleClick}
+        onPointerDown={(e) => {
+          pointerOverCanvasRef.current = true;
+          lastPointerRegionRef.current = 'canvas';
+          lastPointerStampRef.current = performance.now();
+          lastPointerRef.current = getScreenXY(e);
+          startRightPointer(e);
+        }}
+        onPointerMove={(e) => {
+          pointerOverCanvasRef.current = true;
+          lastPointerRegionRef.current = 'canvas';
+          lastPointerStampRef.current = performance.now();
+          lastPointerRef.current = getScreenXY(e);
+          moveRightPointerHandler(e.nativeEvent);
+        }}
+        onPointerUp={(e) => {
+          finishRightPointer(e);
+        }}
+        onPointerEnter={(e) => {
+          pointerOverCanvasRef.current = true;
+          lastPointerRegionRef.current = 'canvas';
+          lastPointerStampRef.current = performance.now();
+          lastPointerRef.current = getScreenXY(e);
+        }}
+        onPointerLeave={(e) => {
+          const related = e.relatedTarget as Node | null;
+          if (!related || !contextMenuElRef.current?.contains(related)) {
+            pointerOverCanvasRef.current = false;
+          }
+        }}
+        onFocus={() => {
+          lastCanvasFocusStampRef.current = performance.now();
+        }}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
@@ -1872,6 +2089,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       {contextMenu && (
         <div
           ref={contextMenuElRef}
+          data-testid="wf-context-menu"
           role="menu"
           aria-label="Object actions"
           style={{
@@ -1886,8 +2104,26 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
             zIndex: 100,
             minWidth: 160,
           }}
+          onContextMenu={(e) => e.preventDefault()}
+          onPointerDown={(e) => {
+            if (startRightPointer(e)) {
+              e.stopPropagation();
+            }
+          }}
+          onPointerMove={(e) => {
+            moveRightPointerHandler(e.nativeEvent);
+          }}
+          onPointerUp={(e) => {
+            if (finishRightPointer(e)) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
           onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
+            if (speedPanelKeyTriggerRef.current?.(e.nativeEvent)) {
+              return;
+            }
             e.stopPropagation();
             const items = Array.from(e.currentTarget.querySelectorAll('[role="menuitem"]')) as HTMLElement[];
             const idx = items.indexOf(document.activeElement as HTMLElement);
@@ -1950,6 +2186,30 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
               </span>
             </button>
           ))}
+          <button
+            type="button"
+            role="menuitem"
+            data-testid="wf-context-menu-footer"
+            onClick={upgradeContextMenuToSpeedPanel}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--wf-bg-hover)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            style={{
+              padding: '5px 12px',
+              marginTop: 4,
+              fontSize: 10,
+              color: 'var(--wf-text-muted)',
+              cursor: 'pointer',
+              display: 'block',
+              width: '100%',
+              background: 'transparent',
+              border: 'none',
+              borderTop: '1px solid var(--wf-border-subtle)',
+              textAlign: 'left',
+              font: 'inherit',
+            }}
+          >
+            {formatSpeedPanelTriggerFooter(speedPanelOptions)}
+          </button>
         </div>
       )}
 

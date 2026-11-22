@@ -92,22 +92,22 @@
   ],
   "changes": {
     "fileCounts": {
-      "added": 3,
-      "changed": 20,
+      "added": 1,
+      "changed": 18,
       "moved": 0,
-      "parts": 5,
+      "parts": 10,
       "removed": 0
     },
     "items": [
       {
         "kind": "counts",
-        "sentence": "Nothing structural changed since 2026-11-22; 3 files added and 20 changed content.",
+        "sentence": "Nothing structural changed since 2026-11-22; 1 file added and 18 changed content.",
         "subjects": []
       }
     ],
     "since": {
-      "commit": "55561964fa7280182724498c86e5937208989f4d",
-      "generatedAt": "2026-11-22T04:58:31.386Z"
+      "commit": "389a512384ae66f48ddf2861f3f077f9a2a56844",
+      "generatedAt": "2026-11-22T22:29:59.824Z"
     },
     "unchanged": true
   },
@@ -194,9 +194,9 @@
     "Window: 180 days; a pair counts from 3 shared commits, since 8 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
   "changesTogetherWithTests": 2,
-  "commit": "82c2352eb00e3a51d44df8c6ea51d0dd0f29e147",
+  "commit": "7c03aa0f2216162043bd636aa8b537945818a38b",
   "defaultBranch": "main",
-  "derived": "15 parts, mostly TypeScript (507 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
+  "derived": "15 parts, mostly TypeScript (513 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
   "doors": [
     {
       "checks": [
@@ -218,7 +218,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 485,
+      "checksMore": 491,
       "file": ".github/workflows/ci.yml",
       "id": ".github/workflows/ci.yml",
       "landings": [
@@ -238,12 +238,12 @@
         {
           "boundary": "e2e",
           "depth": 0,
-          "files": 4
+          "files": 5
         },
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 246
+          "files": 251
         },
         {
           "boundary": "export-ai-rpg",
@@ -355,7 +355,7 @@
         "site/src/"
       ],
       "runsCount": 66,
-      "runsMore": 217,
+      "runsMore": 219,
       "sends": [
         "uploads coverage to Codecov"
       ],
@@ -386,7 +386,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 485,
+      "checksMore": 491,
       "file": ".github/workflows/release.yml",
       "id": ".github/workflows/release.yml",
       "landings": [
@@ -406,12 +406,12 @@
         {
           "boundary": "e2e",
           "depth": 0,
-          "files": 4
+          "files": 5
         },
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 246
+          "files": 251
         },
         {
           "boundary": "export-ai-rpg",
@@ -995,10 +995,10 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-22T15:40:35.462Z",
+  "generatedAt": "2026-11-22T23:03:12.363Z",
   "limits": [
     "10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.",
-    "1 file uses syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts), so what it imports is not known.",
+    "3 files in editor use syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-compat.test.ts and packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts), so what they import is not known.",
     "3 writes and 4 reads use paths built at run time and are not named here.",
     "38 writes go to places this repository does not track, so they are not listed as generated.",
     "2 writes and 59 reads go to a path their caller passes, not to this repository.",
@@ -1045,10 +1045,10 @@
   "startReason": "This path follows world-forge-export (a command people run) from its entry, since CI runs only tests, scripts that import no code here and checks.",
   "summary": null,
   "summaryFrom": null,
-  "testFiles": 238,
+  "testFiles": 241,
   "testedBy": {
     "dogfood": 10,
-    "e2e": 2,
+    "e2e": 3,
     "editor": 112,
     "export-ai-rpg": 71,
     "export-godot": 48,
@@ -1091,7 +1091,7 @@
       ]
     }
   ],
-  "unreadFiles": 1,
+  "unreadFiles": 3,
   "unreadNote": [],
   "untested": [],
   "untestedNote": [],

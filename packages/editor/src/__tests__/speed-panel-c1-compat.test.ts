@@ -318,13 +318,26 @@ describe('Edit Properties / Enter opens properties (Part 3 — changed)', () => 
     const html = renderToStaticMarkup(createElement(App));
     expect(html).toContain('data-testid="wf-entity-inspector"');
   });
+});
 
-  it('changed: Edit Properties and Enter expand a collapsed right sidebar when Guide tab is showing', () => {
+describe('Edit Properties / Enter collapsed sidebar (unchanged)', () => {
+  beforeEach(() => {
+    storage.clear();
+    useProjectStore.getState().loadProject(structuredClone(minimalProject));
+    useEditorStore.getState().clearSelection();
+    useEditorStore.getState().setTool('select');
+    useEditorStore.getState().resetChecklist(); // Forces rightTab = 'guide', matching template load
+  });
+
+  it('unchanged: Edit Properties and Enter expand a collapsed right sidebar when Guide tab is showing', () => {
     const editorWithCollapse = useEditorStore.getState() as unknown as {
       rightCollapsed?: boolean;
       setRightCollapsed?: (collapsed: boolean) => void;
     };
     editorWithCollapse.setRightCollapsed?.(true);
+    const collapsedHtml = renderToStaticMarkup(createElement(App));
+    expect(collapsedHtml).toContain('Expand right sidebar');
+    expect(collapsedHtml).not.toContain('Zone Properties');
 
     const res = executeAction('edit-props', { type: 'zone', id: 'zone-entrance' }, buildExecuteStores());
     expect(res.executed).toBe(true);
@@ -335,6 +348,9 @@ describe('Edit Properties / Enter opens properties (Part 3 — changed)', () => 
     useEditorStore.getState().resetChecklist();
     useEditorStore.getState().selectEntity('npc-keeper', false);
     editorWithCollapse.setRightCollapsed?.(true);
+    const collapsedBeforeEnter = renderToStaticMarkup(createElement(App));
+    expect(collapsedBeforeEnter).toContain('Expand right sidebar');
+    expect(collapsedBeforeEnter).not.toContain('data-testid="wf-entity-inspector"');
 
     const enterEvent = {
       code: 'Enter',

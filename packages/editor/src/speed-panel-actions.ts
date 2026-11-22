@@ -86,7 +86,7 @@ function toSpeedPanelAction(cmd: EditorCommand): SpeedPanelAction {
     ...(cmd.iconId ? { iconId: cmd.iconId } : {}),
     ...(cmd.description !== undefined ? { description: cmd.description } : {}),
     category: cmd.speedPanelCategory ?? 'context',
-    contextFilter: cmd.contextFilter ?? ((h) => cmd.when({ hit: h })),
+    contextFilter: (h) => cmd.when({ hit: h }),
     macroSafe: cmd.macroSafe ?? false,
     ...(cmd.modeSuggested ? { modeSuggested: cmd.modeSuggested } : {}),
   };
