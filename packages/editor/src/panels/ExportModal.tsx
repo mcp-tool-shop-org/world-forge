@@ -9,7 +9,11 @@ import {
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
 import { validateProject, scanDependencies, type WorldProject } from '@world-forge/schema';
-import { listAiRpgEncounterAdjustments, listAiRpgEncounterBlockers } from '@world-forge/export-ai-rpg';
+import {
+  listAiRpgDialogueSpeakerBlockers,
+  listAiRpgEncounterAdjustments,
+  listAiRpgEncounterBlockers,
+} from '@world-forge/export-ai-rpg';
 import { classifyError, navigationForError } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
@@ -60,7 +64,10 @@ export function computeTargetReadiness(project: WorldProject, precheckValid: boo
     aiRpgAdvisories.push('No player template — pack will lack player data');
   }
 
-  const aiRpgBlockers = listAiRpgEncounterBlockers(project).map((b) => b.message);
+  const aiRpgBlockers = [
+    ...listAiRpgEncounterBlockers(project).map((b) => b.message),
+    ...listAiRpgDialogueSpeakerBlockers(project).map((b) => b.message),
+  ];
   for (const adj of listAiRpgEncounterAdjustments(project)) {
     aiRpgAdvisories.push(adj.message);
   }

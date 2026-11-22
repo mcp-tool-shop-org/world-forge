@@ -2,9 +2,20 @@
 // flows at the logic level (no DOM mount). Exercises `runEngineExport` and
 // `runUnrealExport` extracted from ExportModal.tsx.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { execFile } from 'node:child_process';
+import { writeFile, rm, mkdtemp, access } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import {
+  loadContent,
+  validateGameContent,
+  type ContentPack as EngineContentPack,
+} from '@ai-rpg-engine/content-schema';
+import { exportToEngine } from '@world-forge/export-ai-rpg';
 import type { WorldProject } from '@world-forge/schema';
 import {
   runEngineExport,
@@ -14,7 +25,30 @@ import {
   type ExportStatus,
 } from '../panels/export-handlers.js';
 import { computeTargetReadiness, ExportModal, TargetReadinessSummary } from '../panels/ExportModal.js';
+import { STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
+import { BUILTIN_KITS } from '../kits/built-ins.js';
+import { prepareKitImport, serializeKit } from '../kits/bundle.js';
+import { createProjectFromKit } from '../panels/TemplateManager.js';
+import { prepareProjectImport, serializeProject } from '../projects/bundle.js';
+import { createProjectFromWizard } from '../templates/registry.js';
+import { useProjectStore } from '../store/project-store.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const AI_RPG_CLI_PATH = resolve(__dirname, '../../../export-ai-rpg/dist/cli.js');
+
+function runAiRpgCli(args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  return new Promise((resolvePromise) => {
+    execFile('node', [AI_RPG_CLI_PATH, ...args], { timeout: 10_000 }, (error, stdout, stderr) => {
+      resolvePromise({
+        code: error?.code !== undefined ? (error.code as unknown as number) : error ? 1 : 0,
+        stdout,
+        stderr,
+      });
+    });
+  });
+}
 
 // ── Test doubles ───────────────────────────────────────────────────────
 
@@ -409,5 +443,145 @@ describe('E2+: prototype-key encounter types block editor readiness', () => {
     expect(readiness.aiRpg.blockers.join('\n')).toContain('enc-proto');
     expect(readiness.aiRpg.blockers.join('\n')).toContain(badType);
     expect(readiness.aiRpg.advisories.join('\n')).not.toContain('enc-proto');
+  });
+});
+
+describe('PR #57 fix 1: unresolved dialogue speakers refused by readiness and CLI', () => {
+  let tmpDir: string;
+
+  beforeAll(async () => {
+    await access(AI_RPG_CLI_PATH);
+    tmpDir = await mkdtemp(join(tmpdir(), 'wf-spk-blocker-'));
+  });
+
+  afterAll(async () => {
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  async function assertSpeakerRefused(
+    name: string,
+    project: WorldProject,
+    dialogueId: string,
+    speaker: string,
+  ): Promise<void> {
+    const readiness = computeTargetReadiness(project, true);
+    expect(readiness.aiRpg.ready).toBe(false);
+    expect(readiness.aiRpg.blockers.join('\n')).toContain(dialogueId);
+    expect(readiness.aiRpg.blockers.join('\n')).toContain(speaker);
+
+    const html = renderToStaticMarkup(createElement(TargetReadinessSummary, { targetReadiness: readiness }));
+    const outerStyle = /^<div style="([^"]+)"/.exec(html)?.[1] ?? '';
+    expect(outerStyle).toContain('var(--wf-danger)');
+
+    const jsonPath = join(tmpDir, `${name}.json`);
+    await writeFile(jsonPath, JSON.stringify(project, null, 2));
+    const cli = await runAiRpgCli([jsonPath, '--validate-only']);
+    expect(cli.code).toBe(1);
+    expect(cli.stderr).toContain(dialogueId);
+    expect(cli.stderr).toContain(speaker);
+  }
+
+  it('refuses a free-typed speaker name in readiness and CLI', async () => {
+    const store = useProjectStore.getState();
+    store.loadProject(structuredClone(validProject));
+    const firstDlg = useProjectStore.getState().project.dialogues[0];
+    store.updateDialogue(firstDlg.id, { speakers: ['Tavern Keeper'] });
+    await assertSpeakerRefused('free-typed', useProjectStore.getState().project, firstDlg.id, 'Tavern Keeper');
+  });
+
+  it('refuses a speaker left dangling after removeEntity', async () => {
+    const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold')!;
+    const store = useProjectStore.getState();
+    store.loadProject(structuredClone(chapel.project));
+    store.removeEntity('suspicious-pilgrim');
+    await assertSpeakerRefused('remove-entity', useProjectStore.getState().project, 'pilgrim-talk', 'suspicious-pilgrim');
+  });
+
+  it('refuses an unresolved speaker loaded from a .wfkit.json kit bundle', async () => {
+    const baseKit = BUILTIN_KITS[0];
+    const badProject: WorldProject = {
+      ...structuredClone(baseKit.project),
+      dialogues: [
+        ...structuredClone(baseKit.project.dialogues),
+        { id: 'kit-dlg', speakers: ['kit-ghost'], entryNodeId: 'n1', nodes: { n1: { id: 'n1', speaker: 'kit-ghost', text: 'Hello.', choices: [] } } },
+      ],
+    };
+    const serialized = serializeKit({ ...baseKit, project: badProject });
+    const imported = prepareKitImport(JSON.parse(JSON.stringify(serialized)));
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) throw new Error(imported.error);
+    const created = createProjectFromKit({
+      ...imported.kit,
+      id: 'imported-kit-1',
+      builtIn: false,
+      createdAt: serialized.exportedAt,
+      updatedAt: serialized.exportedAt,
+    });
+    await assertSpeakerRefused('kit-import', created, 'kit-dlg', 'kit-ghost');
+  });
+
+  it('refuses an unresolved speaker loaded from a .wfproject.json project bundle', async () => {
+    const firstDlg = validProject.dialogues[0];
+    const badProject: WorldProject = {
+      ...structuredClone(validProject),
+      dialogues: validProject.dialogues.map((d, i) => (i === 0 ? { ...d, speakers: ['bundle-ghost'] } : d)),
+    };
+    const serialized = serializeProject(badProject);
+    const imported = prepareProjectImport(JSON.parse(JSON.stringify(serialized)));
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) throw new Error(imported.error);
+    await assertSpeakerRefused('bundle-import', imported.project, firstDlg.id, 'bundle-ghost');
+  });
+
+  it('refuses starter dialogue speakers when wizard creates a world without sample NPCs', async () => {
+    const project = createProjectFromWizard({
+      name: 'Wizard No NPCs',
+      genre: 'fantasy',
+      mode: 'district',
+      includePlayer: true,
+      includeBuildCatalog: false,
+      includeProgressionTree: false,
+      includeDialogue: true,
+      includeSampleNPCs: false,
+    });
+    await assertSpeakerRefused('wizard-no-npcs', project, 'elder-talk', 'village-elder');
+  });
+});
+
+describe('PR #57 fix 1: Keeper starter dialogue in a fresh project', () => {
+  it('fresh project + Keeper starter exports to AI RPG without an engine-refused pack', () => {
+    const store = useProjectStore.getState();
+    store.newProject();
+    store.addZone({
+      id: 'zone-start',
+      name: 'Entry Hall',
+      tags: ['indoor'],
+      description: 'Starting chamber.',
+      gridX: 0,
+      gridY: 0,
+      gridWidth: 10,
+      gridHeight: 10,
+      neighbors: [],
+      exits: [],
+      light: 5,
+      noise: 1,
+      hazards: [],
+      interactables: [],
+    });
+    store.addSpawnPoint({ id: 'sp-start', zoneId: 'zone-start', gridX: 2, gridY: 2, isDefault: true });
+    store.addDialogue(structuredClone(STARTER_DIALOGUE));
+
+    const project = useProjectStore.getState().project;
+    const readiness = computeTargetReadiness(project, true);
+    if (readiness.aiRpg.ready) {
+      const exported = exportToEngine(project);
+      expect(exported.success).toBe(true);
+      if (!exported.success) throw new Error('exportToEngine failed');
+      const enginePack = exported.contentPack as unknown as EngineContentPack;
+      expect(validateGameContent(enginePack).ok).toBe(true);
+      expect(loadContent(enginePack).ok).toBe(true);
+    } else {
+      expect(readiness.aiRpg.blockers.length).toBeGreaterThan(0);
+    }
   });
 });

@@ -3,6 +3,46 @@
 import type { WorldProject } from '@world-forge/schema';
 import type { DialogueDefinition } from '@ai-rpg-engine/content-schema';
 
+export interface AiRpgDialogueSpeakerBlocker {
+  dialogueId: string;
+  speaker: string;
+  message: string;
+}
+
+/**
+ * List `dialogues[].speakers` entries that do not match any exported entity's `entityId`.
+ * Refuse only — never guess, resolve by display name, or default.
+ */
+export function listAiRpgDialogueSpeakerBlockers(
+  project: Pick<WorldProject, 'dialogues' | 'entityPlacements'>,
+): AiRpgDialogueSpeakerBlocker[] {
+  const exportedEntityIds = new Set<string>();
+  const placements = Array.isArray(project.entityPlacements) ? project.entityPlacements : [];
+  for (const ep of placements) {
+    if (typeof ep?.entityId === 'string' && ep.entityId.length > 0) {
+      exportedEntityIds.add(ep.entityId);
+    }
+  }
+
+  const dialogues = Array.isArray(project.dialogues) ? project.dialogues : [];
+  const blockers: AiRpgDialogueSpeakerBlocker[] = [];
+  for (const dlg of dialogues) {
+    const dialogueId = typeof dlg?.id === 'string' && dlg.id.length > 0 ? dlg.id : '(unknown)';
+    const speakers = Array.isArray(dlg?.speakers) ? dlg.speakers : [];
+    for (const speaker of speakers) {
+      if (typeof speaker !== 'string' || !exportedEntityIds.has(speaker)) {
+        const speakerLabel = typeof speaker === 'string' ? speaker : String(speaker);
+        blockers.push({
+          dialogueId,
+          speaker: speakerLabel,
+          message: `Dialogue "${dialogueId}" references unresolved speaker "${speakerLabel}" — not found in exported entity IDs.`,
+        });
+      }
+    }
+  }
+  return blockers;
+}
+
 /**
  * Convert project dialogues → engine `DialogueDefinition[]`.
  *

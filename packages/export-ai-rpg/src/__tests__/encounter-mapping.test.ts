@@ -41,8 +41,10 @@ function installedPackageVersion(pkg: string): string {
 function projectWithAnchors(
   encounterAnchors: WorldProject['encounterAnchors'],
 ): WorldProject {
+  const cloned = structuredClone(minimalProject);
   return {
-    ...structuredClone(minimalProject),
+    ...cloned,
+    dialogues: cloned.dialogues.map((d) => ({ ...d, speakers: ['npc-keeper'] })),
     encounterAnchors,
   };
 }

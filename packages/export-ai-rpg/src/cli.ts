@@ -14,6 +14,7 @@ import {
 import type { WorldProject } from '@world-forge/schema';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
 import { listAiRpgEncounterBlockers } from './encounter-types.js';
+import { listAiRpgDialogueSpeakerBlockers } from './convert-dialogues.js';
 
 const USAGE = `Usage: world-forge-export <project.json> [options]
        world-forge-export --import <file-or-pack-dir> [--out <dir>]
@@ -496,6 +497,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const encounterBlockers = listAiRpgEncounterBlockers(project);
+  const speakerBlockers = listAiRpgDialogueSpeakerBlockers(project);
+
   // Export
   const result = exportToEngine(project, { profile, emitSchemaVersion });
 
@@ -505,6 +509,9 @@ async function main(): Promise<void> {
     console.error(converter ? 'Export failed (converter):' : 'Validation failed:');
     for (const e of result.errors) {
       console.error(`  [${e.path}] ${e.message}`);
+    }
+    if (encounterBlockers.length > 0 || speakerBlockers.length > 0) {
+      printAiRpgBlockers(validateOnly, encounterBlockers, speakerBlockers);
     }
     // F-f54a9f8b: --verbose must fire on the failure path, not only after a write.
     if (verbose) {
@@ -523,18 +530,16 @@ async function main(): Promise<void> {
 
   const exportResult = result; // narrowed to ExportResult
 
-  // Non-engine encounter types block ALL AI RPG paths (--validate-only,
-  // --dry-run, and file exports), printing every blocker to stderr and exiting 1
-  // before writing any files.
-  const encounterBlockers = listAiRpgEncounterBlockers(project);
-  if (encounterBlockers.length > 0) {
-    console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
-    for (const b of encounterBlockers) {
-      console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
-    }
+  // Unmapped encounter types and unresolved dialogue speakers block ALL AI RPG paths
+  // (--validate-only, --dry-run, and file exports), printing every blocker to stderr
+  // and exiting 1 before writing any files.
+  if (encounterBlockers.length > 0 || speakerBlockers.length > 0) {
+    printAiRpgBlockers(validateOnly, encounterBlockers, speakerBlockers);
     if (verbose) {
       console.error('\n--- Verbose Diagnostics ---');
-      console.error(`  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s).`);
+      console.error(
+        `  AI RPG readiness blocked by ${encounterBlockers.length} encounter anchor(s) and ${speakerBlockers.length} unresolved speaker(s).`,
+      );
     }
     process.exit(1);
   }
@@ -605,6 +610,20 @@ async function main(): Promise<void> {
     printVerboseSuccess(exportResult, profile, emitSchemaVersion);
   }
   exitAfterExport(exportResult, strict);
+}
+
+function printAiRpgBlockers(
+  validateOnly: boolean,
+  encounterBlockers: ReturnType<typeof listAiRpgEncounterBlockers>,
+  speakerBlockers: ReturnType<typeof listAiRpgDialogueSpeakerBlockers>,
+): void {
+  console.error(validateOnly ? 'AI RPG validation blocked:' : 'AI RPG export blocked:');
+  for (const b of encounterBlockers) {
+    console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
+  }
+  for (const b of speakerBlockers) {
+    console.error(`  [dialogues.${b.dialogueId}.speakers] ${b.message}`);
+  }
 }
 
 function exitAfterExport(exportResult: ExportResult, strict: boolean): void {

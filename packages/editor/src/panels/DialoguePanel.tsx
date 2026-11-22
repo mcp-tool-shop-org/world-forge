@@ -6,9 +6,9 @@ import { EmptyState, useFocusHighlight } from './shared.js';
 import { sectionHeader as sectionTitle, labelText as labelStyle, inputBase as inputStyle, buttonFullWidth as addBtnStyle, buttonCompact as smallBtnStyle, buttonRemove as xBtnStyle, cardItem as itemStyle, hintText as hintStyle } from '../ui/styles.js';
 import type { DialogueNode, DialogueChoice, DialogueEffect } from '@world-forge/schema';
 
-const STARTER_DIALOGUE = {
+export const STARTER_DIALOGUE = {
   id: 'keeper-greeting',
-  speakers: ['keeper'],
+  speakers: [] as string[],
   entryNodeId: 'greeting',
   nodes: {
     greeting: { id: 'greeting', speaker: 'keeper', text: 'Welcome, traveler. What brings you here?', choices: [
@@ -101,7 +101,7 @@ export function DialoguePanel() {
             <input style={{ ...inputStyle, color: 'var(--wf-text-muted)' }} value={selected.id} disabled />
           </label>
           <label style={labelStyle}>Speakers
-            <input style={inputStyle} value={selected.speakers.join(', ')} placeholder="e.g. keeper, merchant"
+            <input style={inputStyle} value={selected.speakers.join(', ')} placeholder="e.g. suspicious-pilgrim, npc-merchant"
               onChange={(e) => updateDialogue(selected.id, {
                 speakers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
               })} />
@@ -198,7 +198,7 @@ function DialogueNodeEditor({ node, dialogueId, allNodeIds, brokenRefs, onUpdate
   return (
     <>
       <label style={labelStyle}>Speaker
-        <input style={inputStyle} value={node.speaker} placeholder="e.g. keeper"
+        <input style={inputStyle} value={node.speaker} placeholder="e.g. suspicious-pilgrim"
           onChange={(e) => update({ speaker: e.target.value })} />
       </label>
       <label style={labelStyle}>Text
