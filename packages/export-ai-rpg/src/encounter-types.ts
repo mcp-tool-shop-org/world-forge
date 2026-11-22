@@ -19,15 +19,17 @@ export { AI_RPG_ENCOUNTER_ANCHOR_TYPES, isAiRpgEncounterAnchorType };
 export type { AiRpgEncounterAnchorType };
 
 /** World Forge encounter types translated to one of the four engine anchor types on AI RPG export. */
-export const AI_RPG_ENCOUNTER_TYPE_MAP: Readonly<Record<string, AiRpgEncounterAnchorType>> = {
-  boss: 'duel',
-  beast: 'ambush',
-  haunt: 'ambush',
-  'caravan-raid': 'ambush',
-  pirate: 'patrol',
-  boarding: 'horde',
-  brawl: 'horde',
-};
+export const AI_RPG_ENCOUNTER_TYPE_MAP: Readonly<Record<string, AiRpgEncounterAnchorType>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<string, AiRpgEncounterAnchorType>, {
+    boss: 'duel',
+    beast: 'ambush',
+    haunt: 'ambush',
+    'caravan-raid': 'ambush',
+    pirate: 'patrol',
+    boarding: 'horde',
+    brawl: 'horde',
+  }),
+);
 
 /** World Forge encounter types intentionally omitted from exported AI RPG ContentPacks. */
 export const AI_RPG_DROPPED_ENCOUNTER_TYPES: ReadonlySet<string> = new Set([
@@ -69,9 +71,14 @@ function classifyAnchor(ea: EncounterAnchor | null | undefined): AnchorClassific
   if (isAiRpgEncounterAnchorType(rawType)) {
     return { kind: 'native', anchorId, zoneId, encounterType: rawType };
   }
-  const mapped = AI_RPG_ENCOUNTER_TYPE_MAP[rawType];
-  if (mapped) {
-    return { kind: 'mapped', anchorId, zoneId, encounterType: rawType, targetType: mapped };
+  if (Object.hasOwn(AI_RPG_ENCOUNTER_TYPE_MAP, rawType)) {
+    return {
+      kind: 'mapped',
+      anchorId,
+      zoneId,
+      encounterType: rawType,
+      targetType: AI_RPG_ENCOUNTER_TYPE_MAP[rawType],
+    };
   }
   if (AI_RPG_DROPPED_ENCOUNTER_TYPES.has(rawType)) {
     return { kind: 'dropped', anchorId, zoneId, encounterType: rawType };

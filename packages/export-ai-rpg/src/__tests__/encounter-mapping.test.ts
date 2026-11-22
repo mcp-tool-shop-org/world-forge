@@ -18,7 +18,7 @@ import { createGame } from '@ai-rpg-engine/starter-fantasy';
 import type { WorldProject } from '@world-forge/schema';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 // Samples loaded via vi.importActual below to avoid a rootDir cycle with editor.
-import { exportToEngine, listAiRpgEncounterBlockers } from '../index.js';
+import { exportToEngine, listAiRpgEncounterAdjustments, listAiRpgEncounterBlockers } from '../index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -302,5 +302,62 @@ describe('CLI --validate-only with mapped and dropped encounter types', () => {
     expect(res.stderr).toContain('enc-custom');
     expect(res.stderr).toContain('custom-skirmish');
     expect(res.stderr).not.toContain('enc-boss');
+  });
+});
+
+const PROTOTYPE_KEY_TYPES = ['constructor', 'toString', 'hasOwnProperty', '__proto__'] as const;
+
+describe('prototype-key encounter types are refused', () => {
+  let tmpDir: string;
+  const fileByType = new Map<string, string>();
+
+  beforeAll(async () => {
+    await access(CLI_PATH);
+    tmpDir = await mkdtemp(join(tmpdir(), 'wf-enc-proto-cli-'));
+    const zoneId = minimalProject.zones[0].id;
+    for (let i = 0; i < PROTOTYPE_KEY_TYPES.length; i++) {
+      const badType = PROTOTYPE_KEY_TYPES[i];
+      const filePath = join(tmpDir, `proto-${i}.json`);
+      await writeFile(
+        filePath,
+        JSON.stringify(
+          projectWithAnchors([
+            { id: 'enc-proto', zoneId, encounterType: badType, enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+          ]),
+          null,
+          2,
+        ),
+      );
+      fileByType.set(badType, filePath);
+    }
+  });
+
+  afterAll(async () => {
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it.each(PROTOTYPE_KEY_TYPES)('exporter refuses %s by name', (badType) => {
+    const zoneId = minimalProject.zones[0].id;
+    const project = projectWithAnchors([
+      { id: 'enc-proto', zoneId, encounterType: badType, enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+    ]);
+
+    const blockers = listAiRpgEncounterBlockers(project);
+    expect(blockers.map((b) => b.encounterType)).toEqual([badType]);
+    expect(blockers[0].anchorId).toBe('enc-proto');
+    expect(listAiRpgEncounterAdjustments(project)).toEqual([]);
+
+    expect(blockers[0].message).toContain('enc-proto');
+    expect(blockers[0].message).toContain(badType);
+    const exported = exportToEngine(project);
+    expect(exported.success && typeof exported.contentPack.encounterAnchors[0].encounterType).toBe('string');
+  });
+
+  it.each(PROTOTYPE_KEY_TYPES)('CLI --validate-only exits 1 for %s and names it on stderr', async (badType) => {
+    const filePath = fileByType.get(badType)!;
+    const res = await runCli([filePath, '--validate-only']);
+    expect(res.code).toBe(1);
+    expect(res.stderr).toContain('enc-proto');
+    expect(res.stderr).toContain(badType);
   });
 });

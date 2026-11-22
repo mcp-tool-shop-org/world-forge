@@ -392,3 +392,22 @@ describe('E2+: mapped/dropped encounter readiness and TargetReadinessSummary col
     expect(cleanOuterStyle).not.toContain('var(--wf-warning)');
   });
 });
+
+const PROTOTYPE_KEY_TYPES = ['constructor', 'toString', 'hasOwnProperty', '__proto__'] as const;
+
+describe('E2+: prototype-key encounter types block editor readiness', () => {
+  it.each(PROTOTYPE_KEY_TYPES)('computeTargetReadiness blocks AI RPG export for %s by name', (badType) => {
+    const project: WorldProject = {
+      ...validProject,
+      encounterAnchors: [
+        { id: 'enc-proto', zoneId: validProject.zones[0].id, encounterType: badType, enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+      ],
+    };
+
+    const readiness = computeTargetReadiness(project, true);
+    expect(readiness.aiRpg.ready).toBe(false);
+    expect(readiness.aiRpg.blockers.join('\n')).toContain('enc-proto');
+    expect(readiness.aiRpg.blockers.join('\n')).toContain(badType);
+    expect(readiness.aiRpg.advisories.join('\n')).not.toContain('enc-proto');
+  });
+});
