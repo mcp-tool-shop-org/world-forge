@@ -324,7 +324,7 @@ export function exportToEngine(
         message: b.message,
       })),
       ...speakerBlockers.map((b) => ({
-        path: `dialogues.${b.dialogueId}.speakers`,
+        path: b.nodeId ? `dialogues.${b.dialogueId}.nodes.${b.nodeId}.speaker` : `dialogues.${b.dialogueId}.speakers`,
         message: b.message,
       })),
     ];

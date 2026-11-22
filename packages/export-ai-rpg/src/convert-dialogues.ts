@@ -5,12 +5,14 @@ import type { DialogueDefinition } from '@ai-rpg-engine/content-schema';
 
 export interface AiRpgDialogueSpeakerBlocker {
   dialogueId: string;
+  nodeId?: string;
   speaker: string;
   message: string;
 }
 
 /**
- * List `dialogues[].speakers` entries that do not match any exported entity's `entityId`.
+ * List unresolved `dialogues[].speakers` entries and empty node speakers (`speaker: ''`)
+ * when a dialogue does not have a single listed speaker to inherit on export.
  * Refuse only — never guess, resolve by display name, or default.
  */
 export function listAiRpgDialogueSpeakerBlockers(
@@ -39,6 +41,23 @@ export function listAiRpgDialogueSpeakerBlockers(
         });
       }
     }
+
+    if (speakers.length !== 1 && dlg?.nodes && typeof dlg.nodes === 'object') {
+      const reason =
+        speakers.length === 0
+          ? 'no speaker is listed on dialogues[].speakers'
+          : `${speakers.length} speakers are listed on dialogues[].speakers`;
+      for (const [nodeId, node] of Object.entries(dlg.nodes)) {
+        if (node?.speaker === '') {
+          blockers.push({
+            dialogueId,
+            nodeId,
+            speaker: '',
+            message: `Dialogue "${dialogueId}" node "${nodeId}" has an empty speaker and ${reason}.`,
+          });
+        }
+      }
+    }
   }
   return blockers;
 }
@@ -52,12 +71,13 @@ export function listAiRpgDialogueSpeakerBlockers(
  */
 export function convertDialogues(project: WorldProject): DialogueDefinition[] {
   return project.dialogues.map((dlg) => {
+    const fallbackSpeaker = dlg.speakers.length === 1 ? dlg.speakers[0] : undefined;
     const nodes: Record<string, DialogueDefinition['nodes'][string]> = {};
 
     for (const [nodeId, node] of Object.entries(dlg.nodes)) {
       nodes[nodeId] = {
         id: node.id,
-        speaker: node.speaker,
+        speaker: node.speaker === '' && fallbackSpeaker !== undefined ? fallbackSpeaker : node.speaker,
         text: node.text,
         nextNodeId: node.nextNodeId,
         choices: node.choices?.map((ch) => ({

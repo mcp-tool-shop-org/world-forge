@@ -129,6 +129,13 @@ Authored values always override defaults. For example, if you set `ai.profileId:
 
 When running `world-forge-export --validate-only`, mapped and dropped types pass with each approximation and drop named on stderr; unmapped custom strings still exit `1`.
 
+## Dialogue Speaker Rules
+
+- Any entry in `dialogues[].speakers` that does not match an exported entity's `entityId` is refused by name (`listAiRpgDialogueSpeakerBlockers`, `exportToEngine` returns `success: false`, Export modal blocked, CLI exit `1`).
+- A node with `speaker: ''` exports with its `speaker` filled from the dialogue's single entry in `dialogues[].speakers` when `speakers.length === 1` (matching the engine runtime fallback with no extra fidelity entry).
+- A node with `speaker: ''` when `dialogues[].speakers` has zero or multiple entries is refused by dialogue ID and node ID (`listAiRpgDialogueSpeakerBlockers` and `exportToEngine`).
+- Any non-empty node `speaker` exports unchanged.
+
 ## Import Pipeline
 
 World Forge can import exported JSON back into the editor. The import pipeline reverses the export process with 8 converters:

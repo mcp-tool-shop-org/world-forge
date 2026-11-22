@@ -622,7 +622,8 @@ function printAiRpgBlockers(
     console.error(`  [encounterAnchors.${b.anchorId}.encounterType] ${b.message}`);
   }
   for (const b of speakerBlockers) {
-    console.error(`  [dialogues.${b.dialogueId}.speakers] ${b.message}`);
+    const path = b.nodeId ? `dialogues.${b.dialogueId}.nodes.${b.nodeId}.speaker` : `dialogues.${b.dialogueId}.speakers`;
+    console.error(`  [${path}] ${b.message}`);
   }
 }
 

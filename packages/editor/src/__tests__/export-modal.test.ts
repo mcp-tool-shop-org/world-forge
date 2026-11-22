@@ -25,7 +25,12 @@ import {
   type ExportStatus,
 } from '../panels/export-handlers.js';
 import { computeTargetReadiness, ExportModal, TargetReadinessSummary } from '../panels/ExportModal.js';
-import { parseSpeakersInput, STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
+import {
+  createEmptyDialogue,
+  createStarterDialogue,
+  parseSpeakersInput,
+  STARTER_DIALOGUE,
+} from '../panels/DialoguePanel.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 import { BUILTIN_KITS } from '../kits/built-ins.js';
 import { prepareKitImport, serializeKit } from '../kits/bundle.js';
@@ -617,5 +622,109 @@ describe('Keeper starter dialogue in a fresh project', () => {
     } else {
       expect(readiness.aiRpg.blockers.length).toBeGreaterThan(0);
     }
+  });
+
+  function setupFreshWorldWithNpc() {
+    const store = useProjectStore.getState();
+    store.newProject();
+    store.addZone({
+      id: 'zone-start',
+      name: 'Entry Hall',
+      tags: ['indoor'],
+      description: 'Starting chamber.',
+      gridX: 0,
+      gridY: 0,
+      gridWidth: 10,
+      gridHeight: 10,
+      neighbors: [],
+      exits: [],
+      light: 5,
+      noise: 1,
+      hazards: [],
+      interactables: [],
+    });
+    store.addSpawnPoint({ id: 'sp-start', zoneId: 'zone-start', gridX: 2, gridY: 2, isDefault: true });
+    store.addEntity({ entityId: 'npc-guide', zoneId: 'zone-start', role: 'npc', name: 'Guide' });
+    return store;
+  }
+
+  it('starter attached to one NPC exports a pack passing validateGameContent and loadContent', () => {
+    const store = setupFreshWorldWithNpc();
+    const starter = createStarterDialogue([]);
+    store.addDialogue({ ...starter, speakers: ['npc-guide'] });
+    store.updateEntity('npc-guide', { dialogueId: starter.id });
+
+    const project = useProjectStore.getState().project;
+    const readiness = computeTargetReadiness(project, true);
+    expect(readiness.aiRpg.ready).toBe(true);
+
+    const exported = exportToEngine(project);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('exportToEngine failed');
+
+    const dlg = exported.contentPack.dialogues.find((d) => d.id === starter.id);
+    expect(dlg).toBeDefined();
+    for (const node of Object.values(dlg!.nodes)) {
+      expect(node.speaker).toBe('npc-guide');
+    }
+
+    const enginePack = exported.contentPack as unknown as EngineContentPack;
+    expect(validateGameContent(enginePack).ok).toBe(true);
+    expect(loadContent(enginePack).ok).toBe(true);
+  });
+
+  it('starter with no speaker attached is refused by dialogue id and node id', () => {
+    const store = setupFreshWorldWithNpc();
+    const starter = createStarterDialogue([]);
+    store.addDialogue(starter);
+
+    const project = useProjectStore.getState().project;
+    const readiness = computeTargetReadiness(project, true);
+    expect(readiness.aiRpg.ready).toBe(false);
+    const blockersText = readiness.aiRpg.blockers.join('\n');
+    expect(blockersText).toContain(starter.id);
+    expect(blockersText).toContain('greeting');
+    expect(blockersText).toContain('knowledge');
+    expect(blockersText).toContain('farewell');
+
+    const exported = exportToEngine(project);
+    expect(exported.success).toBe(false);
+    if (!exported.success) {
+      const errText = exported.errors.map((e) => e.message).join('\n');
+      expect(errText).toContain(starter.id);
+      expect(errText).toContain('greeting');
+      expect(errText).toContain('knowledge');
+      expect(errText).toContain('farewell');
+    }
+  });
+
+  it('adding the starter twice produces two dialogues with distinct ids', () => {
+    const store = setupFreshWorldWithNpc();
+    const first = createStarterDialogue([]);
+    store.addDialogue(first);
+    const second = createStarterDialogue(useProjectStore.getState().project.dialogues.map((d) => d.id));
+    store.addDialogue(second);
+
+    const ids = useProjectStore.getState().project.dialogues.map((d) => d.id);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it('"+ Empty Dialogue" attached to one NPC exports and loads', () => {
+    const store = setupFreshWorldWithNpc();
+    const emptyDlg = createEmptyDialogue([]);
+    store.addDialogue({ ...emptyDlg, speakers: ['npc-guide'] });
+    store.updateEntity('npc-guide', { dialogueId: emptyDlg.id });
+
+    const project = useProjectStore.getState().project;
+    const exported = exportToEngine(project);
+    expect(exported.success).toBe(true);
+    if (!exported.success) throw new Error('exportToEngine failed');
+
+    const dlg = exported.contentPack.dialogues.find((d) => d.id === emptyDlg.id);
+    expect(dlg?.nodes['node-start'].speaker).toBe('npc-guide');
+    const enginePack = exported.contentPack as unknown as EngineContentPack;
+    expect(validateGameContent(enginePack).ok).toBe(true);
+    expect(loadContent(enginePack).ok).toBe(true);
   });
 });
