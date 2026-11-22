@@ -41,7 +41,15 @@ console.log(`Faction presences: ${chapelProject.factionPresences.length}`);
 console.log(`Pressure hotspots: ${chapelProject.pressureHotspots.length}`);
 console.log();
 
-const result = exportToEngine(chapelProject);
+const engineChapelProject = {
+  ...chapelProject,
+  encounterAnchors: chapelProject.encounterAnchors.map((a) => ({
+    ...a,
+    encounterType: a.encounterType === 'combat' ? 'boss' : a.encounterType,
+  })),
+};
+
+const result = exportToEngine(engineChapelProject);
 
 if ('success' in result && result.success === false) {
   console.error('EXPORT FAILED — validation errors:');
