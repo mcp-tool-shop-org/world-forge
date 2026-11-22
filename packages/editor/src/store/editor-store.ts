@@ -133,6 +133,7 @@ function toggleInArray(arr: string[], id: string): string[] {
 interface EditorState {
   activeTool: EditorTool;
   rightTab: RightTab;
+  rightCollapsed: boolean;
   buildsSubTab: BuildsSubTab;
   focusTarget: FocusTarget | null;
   gridSnap: boolean;
@@ -171,6 +172,7 @@ interface EditorState {
 
   setTool: (tool: EditorTool) => void;
   setRightTab: (tab: RightTab) => void;
+  setRightCollapsed: (collapsed: boolean) => void;
   setBuildsSubTab: (tab: BuildsSubTab) => void;
   setFocusTarget: (target: FocusTarget | null) => void;
   setSelection: (sel: SelectionSet) => void;
@@ -270,6 +272,7 @@ let _warnedHiddenWrite = false;
 export const useEditorStore = create<EditorState>((set, get) => ({
   activeTool: 'select',
   rightTab: 'map',
+  rightCollapsed: false,
   buildsSubTab: 'config',
   focusTarget: null,
   gridSnap: true,
@@ -315,6 +318,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     pendingConnectionKind: tool === 'connection' ? s.pendingConnectionKind : null,
   })),
   setRightTab: (tab) => set({ rightTab: tab }),
+  setRightCollapsed: (collapsed) => set({ rightCollapsed: collapsed }),
   setBuildsSubTab: (tab) => set({ buildsSubTab: tab }),
   setFocusTarget: (target) => set({ focusTarget: target }),
 

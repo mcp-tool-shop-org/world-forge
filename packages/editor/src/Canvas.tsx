@@ -12,7 +12,7 @@ import { getHandles, findHandleAt, applyResize, HANDLE_SCREEN_RADIUS, type Handl
 import type { Zone, Tileset, TileDefinition } from '@world-forge/schema';
 import { dispatchHotkey, shouldArmSpacePan, type HotkeyContext } from './hotkeys.js';
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
-import { SPEED_PANEL_ACTIONS } from './speed-panel-actions.js';
+import { getContextMenuActions } from './speed-panel-actions.js';
 import { executeContextMenuAction } from './speed-panel-execute.js';
 import { fallbackTileColor, elevationDrawOffset, zoneElevationAt } from './tile-render.js';
 import { nextId, generateZoneId } from './ids.js';
@@ -59,7 +59,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     selectedConnection,
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart, pendingConnectionKind, setPendingConnectionKind,
-    viewport, setViewport, setShowSearch, setRightTab,
+    viewport, setViewport, setShowSearch, setRightTab, setRightCollapsed,
     openSpeedPanel, showSpeedPanel, closeSpeedPanel,
     hiddenIds, showPerfStats, showElevation, setTool,
   } = useEditorStore();
@@ -1025,7 +1025,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     activeModal: useModalStore.getState().activeModal,
     showSearch: useEditorStore.getState().showSearch,
     clearSelection, selectAll, moveSelected, removeSelected, removeConnection,
-    duplicateSelected, setShowSearch, setRightTab, setTool,
+    duplicateSelected, setShowSearch, setRightTab, setRightCollapsed, setTool,
     showSpeedPanel, closeSpeedPanel,
     undo: () => useProjectStore.getState().undo(),
     redo: () => useProjectStore.getState().redo(),
@@ -1152,9 +1152,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   /** F-77c70524: shared open path for mouse right-click and keyboard contextmenu. */
   const openObjectContextMenu = (sx: number, sy: number) => {
     const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
-    const actions = SPEED_PANEL_ACTIONS
-      .filter((a) => a.contextFilter(hit))
-      .slice(0, 7)
+    const actions = getContextMenuActions(hit, project)
       .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
     if (actions.length > 0) {
       setContextMenu({ x: sx, y: sy, actions, hit });

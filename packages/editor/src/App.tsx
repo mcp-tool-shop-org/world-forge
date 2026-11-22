@@ -67,14 +67,13 @@ export function getInitialTheme(): 'dark' | 'light' {
 
 export function App() {
   const { project, dirty, loadProject, markClean, undo, redo, getUndoCount, getRedoCount, getUndoLabel, getRedoLabel } = useProjectStore();
-  const { activeTool, selection, selectedConnection, rightTab, setRightTab, viewport, checklistDismissed, showSpeedPanel, showMinimap } = useEditorStore();
+  const { activeTool, selection, selectedConnection, rightTab, setRightTab, rightCollapsed, setRightCollapsed, viewport, checklistDismissed, showSpeedPanel, showMinimap } = useEditorStore();
   const selectedZoneId = getSelectedZoneId(selection);
   const selectionCount = getSelectionCount(selection);
   const importFidelity = useEditorStore((s) => s.importFidelity);
   const importSnapshot = useEditorStore((s) => s.importSnapshot);
   const openModal = useModalStore((s) => s.openModal);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -574,7 +573,7 @@ export function App() {
           position: 'relative', zIndex: 1, flexShrink: 0,
         }}>
           <button
-            onClick={() => setRightCollapsed((c) => !c)}
+            onClick={() => setRightCollapsed(!rightCollapsed)}
             title={rightCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={rightCollapsed ? 'Expand right sidebar' : 'Collapse right sidebar'}
             style={{
@@ -680,10 +679,10 @@ export function App() {
                     {selectedZoneId && <ZoneProperties />}
                     {selectedZoneId && <EconomyPanel />}
                     {selectedZoneId && <TownStructuresPanel />}
-                    {activeTool === 'entity-place' && <EntityProperties />}
-                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <StrataPanel />}
-                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <HazardLibraryPanel />}
-                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && (
+                    {(activeTool === 'entity-place' || selection.entities.length === 1) && <EntityProperties />}
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.entities.length !== 1 && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <StrataPanel />}
+                    {!selectedZoneId && getSelectionCount(selection) < 2 && activeTool !== 'entity-place' && selection.entities.length !== 1 && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && <HazardLibraryPanel />}
+                    {!selectedZoneId && selection.zones.length <= 1 && activeTool !== 'entity-place' && selection.entities.length !== 1 && selection.landmarks.length !== 1 && selection.spawns.length !== 1 && selection.encounters.length !== 1 && !selectedConnection && (
                       <div style={{ fontSize: 12, color: 'var(--wf-text-muted)', padding: '8px 0' }}>
                         Select a zone or use a tool to see properties.
                       </div>

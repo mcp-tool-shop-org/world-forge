@@ -23,6 +23,7 @@ export function productionExecuteStores(): ExecuteStores {
     selectConnection: editor.selectConnection,
     clearSelection: editor.clearSelection,
     setRightTab: editor.setRightTab,
+    setRightCollapsed: editor.setRightCollapsed,
     setTool: editor.setTool,
     setConnectionStart: editor.setConnectionStart,
     setPendingConnectionKind: editor.setPendingConnectionKind,
