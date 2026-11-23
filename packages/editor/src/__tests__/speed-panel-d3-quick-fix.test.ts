@@ -52,12 +52,18 @@ import {
 import { buildSpeedPanelView } from '../speed-panel-layout.js';
 import {
   buildNavigableEntries,
+  createSpeedPanelCallbacks,
+  dispatchSpeedPanelKeyAction,
   resolveSpeedPanelKeyAction,
 } from '../speed-panel-ui.js';
 import { COMMAND_REGISTRY, getCommandById } from '../command-registry.js';
 import type { SpeedPanelMacro } from '../speed-panel-actions.js';
-import { executeMacro, buildExecuteStores } from '../speed-panel-execute.js';
-import { productionHotkeyContext } from '../panels/speed-panel-stores.js';
+import { executeMacro, executeRegistryCommand, buildExecuteStores } from '../speed-panel-execute.js';
+import {
+  productionExecuteStores,
+  productionHotkeyContext,
+  productionStepStores,
+} from '../panels/speed-panel-stores.js';
 import { SpeedPanel } from '../panels/SpeedPanel.js';
 import { repairsForEdge } from '../repairs.js';
 import { parseKitBundle } from '../kits/bundle.js';
@@ -292,6 +298,24 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
       type: 'open-quick-fix',
       quickFix: viewWithFix.quickFix!,
     });
+    const openedQuickFix = vi.fn();
+    expect(
+      dispatchSpeedPanelKeyAction(
+        { ...enterKey, preventDefault: vi.fn(), stopPropagation: vi.fn() },
+        {
+          view: viewWithFix,
+          allNavigable: entriesWithFix,
+          activeIdx: 0,
+          closeSpeedPanel: vi.fn(),
+          reorderPin: vi.fn(),
+          setActiveIdx: vi.fn(),
+          execute: vi.fn(),
+          runMacro: vi.fn(),
+          openQuickFix: openedQuickFix,
+        },
+      ),
+    ).toBe('open-quick-fix');
+    expect(openedQuickFix).toHaveBeenCalledWith(viewWithFix.quickFix);
 
     // SSR check of Quick Fix row presence vs absence
     useEditorStore.setState({
@@ -450,6 +474,122 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
     expect(formatQuickFixTargetLabel({ type: 'landmark', id: 'lm-broken' }, baseProject)).toBe('Altar');
     expect(formatQuickFixTargetLabel({ type: 'district', id: 'd1' }, baseProject)).toBe('Broken District');
 
+    // District fallback without selectAll selects first district zone, plus defensive option guards
+    const fallbackZoneSpy = vi.fn();
+    selectQuickFixTarget(
+      { type: 'district', id: 'd1' },
+      { ...useEditorStore.getState(), project: baseProject, selectAll: undefined, selectZone: fallbackZoneSpy },
+    );
+    expect(fallbackZoneSpy).toHaveBeenCalledWith('z1', false);
+
+    const guardFlowSetter = vi.fn();
+    expect(
+      selectQuickFixOption(
+        { ...flow, selectedProblemId: 'missing-problem-id' },
+        { id: 'repair:0', label: 'missing', kind: 'option' },
+        {
+          stores: { ...useEditorStore.getState(), project: baseProject, updateProject: useProjectStore.getState().updateProject },
+          setQuickFixFlow: guardFlowSetter,
+          closeSpeedPanel: () => {},
+        },
+      ),
+    ).toBe(false);
+    expect(guardFlowSetter).toHaveBeenCalledWith(null);
+    expect(
+      selectQuickFixOption(
+        { ...flow, selectedProblemId: depProblem.id },
+        { id: 'repair:99', label: 'bad idx', kind: 'option' },
+        {
+          stores: { ...useEditorStore.getState(), project: baseProject, updateProject: useProjectStore.getState().updateProject },
+          setQuickFixFlow: () => {},
+          closeSpeedPanel: () => {},
+        },
+      ),
+    ).toBe(false);
+    expect(
+      selectQuickFixOption(
+        { ...flow, selectedProblemId: depProblem.id },
+        { id: 'unrecognized-option', label: 'other', kind: 'option' },
+        {
+          stores: { ...useEditorStore.getState(), project: baseProject, updateProject: useProjectStore.getState().updateProject },
+          setQuickFixFlow: () => {},
+          closeSpeedPanel: () => {},
+        },
+      ),
+    ).toBe(false);
+
+    // Quick Fix keyboard lifecycle via createSpeedPanelCallbacks (open, move, select, back, Esc cancel)
+    useProjectStore.getState().loadProject(structuredClone(baseProject));
+    useEditorStore.getState().clearSelection();
+    const cbView = buildSpeedPanelView(
+      COMMAND_REGISTRY,
+      { ...productionHotkeyContext(), hit: target },
+      '',
+      { quickFixProblems: problems },
+    );
+    const cbEntries = buildNavigableEntries(cbView, new Set());
+    let cbQuickFixFlow: ReturnType<typeof openQuickFixFlow> | null = null;
+    const cbCloseSpy = vi.fn();
+    const mkCallbacks = (activeFlowState: ReturnType<typeof openQuickFixFlow> | null) =>
+      createSpeedPanelCallbacks({
+        context: target,
+        selection: useEditorStore.getState().selection,
+        zones: baseProject.zones,
+        query: '',
+        view: cbView,
+        allNavigable: cbEntries,
+        activeIdx: 0,
+        lastPanelAction: null,
+        stepFlow: null,
+        filteredStepOptions: [],
+        stepActiveIdx: 0,
+        stepFilter: '',
+        stepInputDraft: '',
+        scalarPill: null,
+        scalarPillRef: { current: null },
+        quickFixFlow: activeFlowState,
+        setQuickFixFlow: (next) => { cbQuickFixFlow = next; },
+        executeCommand: executeRegistryCommand,
+        runMacroSteps: executeMacro,
+        stores: productionExecuteStores(),
+        stepStores: productionStepStores(),
+        hotkeyCtx: productionHotkeyContext(),
+        closeSpeedPanel: cbCloseSpy,
+        setActiveIdx: () => {},
+        reorderPin: () => {},
+        setStepFlow: () => {},
+        setStepFilter: () => {},
+        setStepActiveIdx: () => {},
+        setScalarPill: () => {},
+        setMacroStatus: () => {},
+        recordCommandUsage: () => {},
+        pushToast: () => {},
+        refocusSearch: refocusSpy,
+      });
+    const mkKey = (key: string, opts: { altKey?: boolean } = {}) => ({
+      key,
+      code: key,
+      altKey: opts.altKey ?? false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      target: null,
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    });
+
+    mkCallbacks(null).handleKeyDown(mkKey('Enter'));
+    expect(cbQuickFixFlow).not.toBeNull();
+    mkCallbacks(cbQuickFixFlow).handleKeyDown(mkKey('ArrowDown'));
+    expect(cbQuickFixFlow!.activeIdx).toBe(1);
+    mkCallbacks(cbQuickFixFlow).handleKeyDown(mkKey('Enter'));
+    expect(cbQuickFixFlow!.selectedProblemId).not.toBeNull();
+    mkCallbacks(cbQuickFixFlow).handleKeyDown(mkKey('ArrowLeft', { altKey: true }));
+    expect(cbQuickFixFlow!.selectedProblemId).toBeNull();
+    mkCallbacks(cbQuickFixFlow).handleKeyDown(mkKey('Escape'));
+    expect(cbQuickFixFlow).toBeNull();
+    expect(cbCloseSpy).toHaveBeenCalled();
+
     // Esc leaves project, undo stack, and selection unchanged
     useProjectStore.getState().loadProject(structuredClone(baseProject));
     useEditorStore.getState().selectZone('z1', false);
@@ -547,10 +687,11 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
         id: 'm-unsupported',
         name: 'Contains Unsupported',
         steps: [
+          { actionId: 'no-such-command' },
           { actionId: 'new-zone' },
           { actionId: 'set-elevation' }, // missing required args
           { actionId: 'assign-district', args: { kind: 'assign-district', districtId: 123 } }, // bad args
-          { actionId: 'fit-content' },
+          { actionId: 'fit-content', commandId: 'fit-content' },
         ],
       },
       {
@@ -566,7 +707,8 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
     ], warnings);
 
     expect(cleaned.map((m) => m.id)).toEqual(['m-unsupported', 'm-legacy-ok']);
-    expect(cleaned[0].steps).toEqual([{ actionId: 'fit-content' }]);
+    expect(cleaned[0].steps).toEqual([{ actionId: 'fit-content', commandId: 'fit-content' }]);
+    expect(warnings.some((w) => w.includes('Unknown macro step command dropped') && w.includes('no-such-command'))).toBe(true);
     expect(warnings.some((w) => w.includes('Unsupported macro step command dropped') && w.includes('new-zone'))).toBe(true);
     expect(warnings.some((w) => w.includes('Dropped macro step "set-elevation"') && w.includes('missing required parameters'))).toBe(true);
     expect(warnings.some((w) => w.includes('Dropped macro step "assign-district"') && w.includes('invalid args'))).toBe(true);

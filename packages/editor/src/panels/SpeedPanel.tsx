@@ -413,7 +413,6 @@ export function SpeedPanel({
             filteredOptions={filteredReplaceOptions}
             activeIdx={macroReplaceFlow.activeIdx}
             stepInputDraft=""
-            setStepInputDraft={() => {}}
             stepInputRef={stepInputRef}
             onBack={onStepBackReplace}
             onCancel={() => {
@@ -421,7 +420,6 @@ export function SpeedPanel({
               closeSpeedPanel();
             }}
             onSelectOption={onSelectReplaceOption}
-            onSubmitInput={() => {}}
           />
         ) : quickFixView && quickFixCurrentStep && quickFixFlow ? (
           <SpeedPanelStepView
@@ -432,7 +430,6 @@ export function SpeedPanel({
             filteredOptions={filteredQuickFixOptions}
             activeIdx={quickFixFlow.activeIdx}
             stepInputDraft=""
-            setStepInputDraft={() => {}}
             stepInputRef={stepInputRef}
             onBack={onStepBackQuickFix}
             onCancel={() => {
@@ -440,7 +437,6 @@ export function SpeedPanel({
               closeSpeedPanel();
             }}
             onSelectOption={onSelectQuickFixOption}
-            onSubmitInput={() => {}}
           />
         ) : stepFlow && currentStep ? (
           <SpeedPanelStepView
@@ -1341,12 +1337,12 @@ export function SpeedPanelStepView({
   filteredOptions: readonly StepChoiceOption[];
   activeIdx: number;
   stepInputDraft: string;
-  setStepInputDraft: (v: string) => void;
+  setStepInputDraft?: (v: string) => void;
   stepInputRef: React.RefObject<HTMLInputElement | null>;
   onBack: () => void;
   onCancel: () => void;
   onSelectOption: (opt: StepChoiceOption) => void;
-  onSubmitInput: () => void;
+  onSubmitInput?: () => void;
 }) {
   return (
     <div data-testid="wf-sp-step-view" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -1462,7 +1458,7 @@ export function SpeedPanelStepView({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmitInput();
+            onSubmitInput?.();
           }}
           style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 'var(--wf-space-2)' }}
         >
@@ -1474,7 +1470,7 @@ export function SpeedPanelStepView({
               aria-label={currentStep.label}
               value={stepInputDraft}
               placeholder={currentStep.placeholder}
-              onChange={(e) => setStepInputDraft(e.target.value)}
+              onChange={(e) => setStepInputDraft?.(e.target.value)}
               style={{
                 background: 'var(--wf-bg-app)',
                 color: 'var(--wf-text-primary)',
