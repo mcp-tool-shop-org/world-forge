@@ -1,4 +1,4 @@
-// speed-panel-layout.ts — Four-Band Ordering Contract (§3) and two-state view builder (§4)
+// speed-panel-layout.ts — Four-Band layout and two-state view builder
 
 import type { AuthoringMode } from '@world-forge/schema';
 import {
@@ -26,7 +26,7 @@ import {
   type MatchTier,
 } from './speed-panel-search.js';
 
-/** Maximum non-pinned commands shown in Band 3 (§3). */
+/** Maximum non-pinned commands shown in Band 3. */
 export const MAX_BAND3_RECENTS = 3;
 
 export interface PaletteRow {
@@ -112,7 +112,7 @@ function toRow(
 }
 
 /**
- * Build the unsearched Speed Panel following the §3 Four-Band Ordering Contract:
+ * Build the unsearched Speed Panel following the Four-Band ordering:
  * 1. Fixed Context Deck (4–5 slots per hit type, never reordered)
  * 2. Pinned Favorites & applicable Macros (user-ordered copies; originals stay below)
  * 3. Recents (0–3 non-pinned, non-deck items ranked by exponential-decay frecency; toggleable)
@@ -271,7 +271,7 @@ export function buildUnsearchedSpeedPanel(
 }
 
 /**
- * Build either the unsearched Four-Band layout (empty query) or the tiered search view (§4).
+ * Build either the unsearched Four-Band layout (empty query) or the tiered search view.
  * When searching, matching commands blocked by context are placed into `unavailable`
  * with their registry `disabledReason` rather than hidden.
  */

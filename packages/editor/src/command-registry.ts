@@ -225,9 +225,9 @@ export type ContextDeckKey =
   | 'empty';
 
 /**
- * Fixed 4–5 slot context decks for Band 1 (Four-Band Ordering Contract, §3).
+ * Fixed 4–5 slot context decks for Band 1 (Four-Band Ordering).
  * Slot order for each target type never shifts with recency, frequency, or mode.
- * Zone follows the §3 reference deck: Inspect Properties, Connect From Zone,
+ * Zone uses the default deck: Inspect Properties, Connect From Zone,
  * Place Entity Here, Place Encounter Here, Duplicate Zone.
  */
 export const CONTEXT_DECKS: Readonly<Record<ContextDeckKey, readonly string[]>> = {
@@ -320,7 +320,7 @@ function createTypedConnectionCommand(spec: {
   iconId: SpeedPanelIconId;
   description: string;
   keywords: readonly string[];
-  uiPath: string;
+  uiPath?: string;
   modeSuggested: AuthoringMode[];
   kind: ConnectionKind;
 }): EditorCommand {
@@ -331,7 +331,7 @@ function createTypedConnectionCommand(spec: {
     category: 'connect',
     surfaces: ['speed-panel', 'context-menu'],
     keywords: spec.keywords,
-    uiPath: spec.uiPath,
+    ...(spec.uiPath ? { uiPath: spec.uiPath } : {}),
     icon: SPEED_PANEL_ICON_GLYPH[spec.iconId],
     iconId: spec.iconId,
     description: spec.description,
@@ -646,7 +646,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
       if (!stores || hit?.type !== 'zone') return fail('context mismatch');
       stores.selectZone(hit.id, false);
       stores.setRightTab('map');
-      stores.setRightCollapsed?.(false);
       return { executed: true };
     },
   },
@@ -721,7 +720,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     category: 'connect',
     surfaces: ['speed-panel', 'context-menu'],
     keywords: ['reverse', 'flip', 'invert', 'one-way', 'bidirectional'],
-    uiPath: 'Right Sidebar \u2192 Map \u2192 Reverse',
+    uiPath: 'Right Sidebar \u2192 Map \u2192 Swap Direction',
     icon: SPEED_PANEL_ICON_GLYPH.swap,
     iconId: 'swap',
     description: 'Reverse this connection\u2019s direction',
@@ -754,7 +753,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'connect-secret',
     description: 'Start a secret connection from this zone',
     keywords: ['hidden door', 'trapdoor', 'secret passage', 'concealed'],
-    uiPath: 'Canvas \u2192 Connection (Secret)',
     modeSuggested: ['dungeon', 'interior'],
     kind: 'secret',
   }),
@@ -764,7 +762,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'connect-channel',
     description: 'Start a channel connection from this zone',
     keywords: ['sea lane', 'waterway', 'strait', 'voyage', 'ocean'],
-    uiPath: 'Canvas \u2192 Connection (Channel)',
     modeSuggested: ['ocean'],
     kind: 'channel',
   }),
@@ -773,8 +770,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Draw Warp Connection',
     iconId: 'connect-warp',
     description: 'Start a warp connection from this zone',
-    keywords: ['hyperspace', 'jumpgate', 'ftL', 'starlane', 'space'],
-    uiPath: 'Canvas \u2192 Connection (Warp)',
+    keywords: ['hyperspace', 'jumpgate', 'ftl', 'starlane', 'space'],
     modeSuggested: ['space'],
     kind: 'warp',
   }),
@@ -784,7 +780,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     iconId: 'connect-trail',
     description: 'Start a trail connection from this zone',
     keywords: ['footpath', 'track', 'wilderness path', 'forest trail'],
-    uiPath: 'Canvas \u2192 Connection (Trail)',
     modeSuggested: ['wilderness'],
     kind: 'trail',
   }),
@@ -795,7 +790,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     category: 'author',
     surfaces: ['speed-panel', 'context-menu'],
     keywords: ['combine', 'join', 'unite', 'weld'],
-    uiPath: 'Right Sidebar \u2192 Map \u2192 Merge',
     icon: SPEED_PANEL_ICON_GLYPH.merge,
     iconId: 'merge',
     description: 'Combine this zone with another selected zone',
@@ -875,7 +869,6 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     run: ({ stores }) => {
       if (!stores) return fail('stores unavailable');
       stores.setRightTab('review');
-      stores.setRightCollapsed?.(false);
       return { executed: true };
     },
   },
@@ -886,7 +879,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     category: 'export',
     surfaces: ['speed-panel', 'context-menu'],
     keywords: ['markdown', 'download', 'brief', 'output', 'share'],
-    uiPath: 'Right Sidebar \u2192 Review \u2192 Summary',
+    uiPath: 'Right Sidebar \u2192 Review \u2192 Export MD',
     icon: SPEED_PANEL_ICON_GLYPH.summary,
     iconId: 'summary',
     description: 'Show a summary of the last export',

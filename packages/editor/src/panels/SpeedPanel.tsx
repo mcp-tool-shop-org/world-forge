@@ -7,12 +7,10 @@ import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 import {
   COMMAND_REGISTRY,
   type CommandBadge,
-  type EditorCommand,
 } from '../command-registry.js';
 import { HOTKEY_BINDINGS } from '../hotkeys.js';
 import {
   SPEED_PANEL_ACTIONS,
-  type SpeedPanelMacro,
 } from '../speed-panel-actions.js';
 import {
   buildSpeedPanelView,
@@ -24,43 +22,24 @@ import { executeRegistryCommand, executeMacro } from '../speed-panel-execute.js'
 import {
   productionExecuteStores,
   productionHotkeyContext,
-  handleSpeedPanelExecuteResult,
-  formatSpeedPanelFailure,
 } from './speed-panel-stores.js';
+import {
+  SP_HEADING_IDS,
+  buildNavigableEntries,
+  buildPinRowHandlers,
+  catalogueGroupHeadingId,
+  clampActiveIndex,
+  commandGlyph,
+  computeEdgeClampedOffset,
+  customGroupHeadingId,
+  dispatchSpeedPanelKeyAction,
+  executeSpeedPanelMacro,
+  executeSpeedPanelRow,
+  splitHighlightSegments,
+  type NavEntry,
+} from '../speed-panel-ui.js';
 import { pushToast } from '../ui/Toast.js';
 import { EmptyState } from './shared.js';
-
-const SPEED_GLYPH: Record<string, string> = {
-  'new-zone': '+',
-  'fit-content': '\u25A1',
-  'edit-props': '\u270E',
-  'delete': '\u2715',
-  'duplicate': '\u2398',
-  'assign-district': '\u25A6',
-  'place-entity': '\u25C9',
-  'place-encounter': '\u25C7',
-  'connect-from': '\u2192',
-  'swap-direction': '\u21C4',
-  'merge-zones': '\u29C9',
-  'set-elevation': '\u2191',
-  'open-review': '\u2630',
-  'export-summary': '\u2913',
-  search: '\u2315',
-  save: '\u2913',
-  copy: '\u2398',
-  paste: '\u2399',
-  undo: '\u21B6',
-  redo: '\u21B7',
-  'select-all': '\u25A3',
-  escape: '\u2715',
-  'nudge-up': '\u2191',
-  'nudge-down': '\u2193',
-  'nudge-left': '\u2190',
-  'nudge-right': '\u2192',
-  'open-details': '\u270E',
-  'apply-preset': '\u25C6',
-  'save-preset': '\u25C7',
-};
 
 const SECTION_STYLE: React.CSSProperties = {
   padding: 'var(--wf-space-1) var(--wf-space-2)',
@@ -70,27 +49,21 @@ const SECTION_STYLE: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-interface NavEntryAction {
-  kind: 'row';
-  domId: string;
-  row: PaletteRow;
-  isPinnedCopy?: boolean;
-  visiblePinIndex?: number;
-}
-
-interface NavEntryMacro {
-  kind: 'macro';
-  domId: string;
-  macro: SpeedPanelMacro;
-}
-
-type NavEntry = NavEntryAction | NavEntryMacro;
-
-interface SpeedPanelProps {
+export interface SpeedPanelProps {
   onSave?: () => void;
+  initialQuery?: string;
+  initialExpandedMacro?: string | null;
+  initialMacroStatus?: string | null;
+  initialCollapsedGroups?: readonly string[];
 }
 
-export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
+export function SpeedPanel({
+  onSave,
+  initialQuery = '',
+  initialExpandedMacro = null,
+  initialMacroStatus = null,
+  initialCollapsedGroups = [],
+}: SpeedPanelProps) {
   const {
     speedPanelPosition,
     speedPanelContext,
@@ -124,11 +97,11 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
     reorderMacroStep,
   } = useSpeedPanelPins();
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [expandedMacro, setExpandedMacro] = useState<string | null>(null);
-  const [macroStatus, setMacroStatus] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(initialCollapsedGroups));
+  const [expandedMacro, setExpandedMacro] = useState<string | null>(initialExpandedMacro);
+  const [macroStatus, setMacroStatus] = useState<string | null>(initialMacroStatus);
   const [dragPinIndex, setDragPinIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -149,76 +122,29 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
         pinnedIds,
         frecency,
         recentIds,
+        adaptiveHistory,
         groups,
         macros,
         mode: project.mode,
         showRecents,
         hotkeyBindings: HOTKEY_BINDINGS,
       }),
-    [cmdCtx, query, pinnedIds, frecency, recentIds, groups, macros, project.mode, showRecents],
+    [cmdCtx, query, pinnedIds, frecency, recentIds, adaptiveHistory, groups, macros, project.mode, showRecents],
   );
 
   const pinnedIdSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
 
-  const allNavigable: NavEntry[] = useMemo(() => {
-    const items: NavEntry[] = [];
-    if (view.kind === 'unsearched') {
-      view.band1Deck.forEach((row, i) => {
-        items.push({ kind: 'row', domId: `wf-sp-opt-b1-${i}-${row.command.id}`, row });
-      });
-      view.band2Pinned.forEach((row, i) => {
-        items.push({
-          kind: 'row',
-          domId: `wf-sp-opt-b2-${i}-${row.command.id}`,
-          row,
-          isPinnedCopy: true,
-          visiblePinIndex: i,
-        });
-      });
-      view.band2Macros.forEach((macro) => {
-        items.push({ kind: 'macro', domId: `wf-sp-opt-macro-${macro.id}`, macro });
-      });
-      view.band3Recents.forEach((row, i) => {
-        items.push({ kind: 'row', domId: `wf-sp-opt-b3-${i}-${row.command.id}`, row });
-      });
-      view.band4ModeSuggested.forEach((row, i) => {
-        items.push({ kind: 'row', domId: `wf-sp-opt-ms-${i}-${row.command.id}`, row });
-      });
-      view.band4CustomGroups.forEach((g) => {
-        if (!collapsedGroups.has(g.group.id)) {
-          g.rows.forEach((row, i) => {
-            items.push({ kind: 'row', domId: `wf-sp-opt-cg-${g.group.id}-${i}-${row.command.id}`, row });
-          });
-        }
-      });
-      view.band4Catalogue.forEach((sec) => {
-        sec.rows.forEach((row, i) => {
-          items.push({ kind: 'row', domId: `wf-sp-opt-cat-${sec.group}-${i}-${row.command.id}`, row });
-        });
-      });
-    } else {
-      view.enabled.forEach((row, i) => {
-        items.push({ kind: 'row', domId: `wf-sp-opt-hit-${i}-${row.command.id}`, row });
-      });
-      view.macros.forEach((macro) => {
-        items.push({ kind: 'macro', domId: `wf-sp-opt-macro-${macro.id}`, macro });
-      });
-      view.unavailable.forEach((row, i) => {
-        items.push({ kind: 'row', domId: `wf-sp-opt-unavail-${i}-${row.command.id}`, row });
-      });
-    }
-    return items;
-  }, [view, collapsedGroups]);
+  const allNavigable: NavEntry[] = useMemo(
+    () => buildNavigableEntries(view, collapsedGroups),
+    [view, collapsedGroups],
+  );
 
   // Auto-focus without scrolling viewport on mount
   useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
 
   // Clamp active index when list changes
   useEffect(() => {
-    setActiveIdx((prev) => {
-      if (allNavigable.length === 0) return 0;
-      return prev >= allNavigable.length ? 0 : prev;
-    });
+    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length));
   }, [allNavigable.length]);
 
   useEffect(() => { setActiveIdx(0); }, [query]);
@@ -227,8 +153,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
   useEffect(() => {
     const active = allNavigable[activeIdx];
     if (!active || typeof document === 'undefined') return;
-    const el = document.getElementById(active.domId);
-    el?.scrollIntoView?.({ block: 'nearest' });
+    document.getElementById(active.domId)?.scrollIntoView?.({ block: 'nearest' });
   }, [activeIdx, allNavigable]);
 
   // Edge clamping
@@ -238,130 +163,52 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
     const parent = panelRef.current.parentElement;
     if (!parent) return;
     const pRect = parent.getBoundingClientRect();
-    const pw = panelRef.current.offsetWidth || 260;
-    const ph = panelRef.current.offsetHeight || 420;
-    let left = speedPanelPosition.x;
-    let top = speedPanelPosition.y;
-    if (left + pw > pRect.width) left = pRect.width - pw - 4;
-    if (top + ph > pRect.height) top = pRect.height - ph - 4;
-    if (left < 0) left = 4;
-    if (top < 0) top = 4;
-    setOffset({ left, top });
+    setOffset(
+      computeEdgeClampedOffset(
+        speedPanelPosition,
+        panelRef.current.offsetWidth || 260,
+        panelRef.current.offsetHeight || 420,
+        pRect.width,
+        pRect.height,
+      ),
+    );
   }, [speedPanelPosition]);
 
   const execute = useCallback((row: PaletteRow) => {
-    const cmd = row.command;
-    const actionLabel = cmd.label ?? cmd.title;
-    if (row.disabledReason !== null) {
-      pushToast(formatSpeedPanelFailure(actionLabel, row.disabledReason), 'warning');
-      return;
-    }
-    try {
-      const result = executeRegistryCommand(
-        cmd.id,
-        speedPanelContext,
-        productionExecuteStores(),
-        productionHotkeyContext(onSave),
-      );
-      handleSpeedPanelExecuteResult(result, cmd.id, {
-        closeSpeedPanel,
-        addRecent: (id) => recordCommandUsage(id, query),
-        toast: pushToast,
-        actionLabel,
-      });
-    } catch (err) {
-      console.error(`[SpeedPanel] Action "${cmd.id}" threw an error:`, err);
-      const reason = err instanceof Error ? err.message : String(err);
-      pushToast(formatSpeedPanelFailure(actionLabel, reason), 'error');
-    }
+    executeSpeedPanelRow(row, {
+      context: speedPanelContext,
+      query,
+      executeCommand: executeRegistryCommand,
+      stores: productionExecuteStores(),
+      hotkeyCtx: productionHotkeyContext(onSave),
+      closeSpeedPanel,
+      recordCommandUsage,
+      pushToast,
+    });
   }, [speedPanelContext, onSave, closeSpeedPanel, recordCommandUsage, query]);
 
-  const runMacro = useCallback((macro: SpeedPanelMacro) => {
-    const result = executeMacro(macro, speedPanelContext, productionExecuteStores());
-    if (result.abortedAt !== undefined) {
-      setMacroStatus(`Macro "${macro.name}" aborted at step ${result.abortedAt + 1}: ${result.reason}`);
-    } else {
-      recordCommandUsage('macro:' + macro.id, '');
-      closeSpeedPanel();
-    }
+  const runMacro = useCallback((macro: Parameters<typeof executeSpeedPanelMacro>[0]) => {
+    executeSpeedPanelMacro(macro, {
+      context: speedPanelContext,
+      runMacroSteps: executeMacro,
+      stores: productionExecuteStores(),
+      setMacroStatus,
+      recordCommandUsage,
+      closeSpeedPanel,
+    });
   }, [speedPanelContext, recordCommandUsage, closeSpeedPanel]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      closeSpeedPanel();
-      return;
-    }
-
-    // Band 2 Pin Reorder via Alt+Up / Alt+Down
-    if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      const active = allNavigable[activeIdx];
-      if (
-        view.kind === 'unsearched' &&
-        active?.kind === 'row' &&
-        active.isPinnedCopy &&
-        active.row.pinIndex !== undefined &&
-        active.visiblePinIndex !== undefined
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        const vi = active.visiblePinIndex;
-        if (e.key === 'ArrowUp' && vi > 0) {
-          const targetPinIndex = view.band2Pinned[vi - 1].pinIndex;
-          if (targetPinIndex !== undefined) {
-            reorderPin(active.row.pinIndex, targetPinIndex);
-            setActiveIdx((i) => Math.max(0, i - 1));
-          }
-        } else if (e.key === 'ArrowDown' && vi < view.band2Pinned.length - 1) {
-          const targetPinIndex = view.band2Pinned[vi + 1].pinIndex;
-          if (targetPinIndex !== undefined) {
-            reorderPin(active.row.pinIndex, targetPinIndex);
-            setActiveIdx((i) => i + 1);
-          }
-        }
-        return;
-      }
-    }
-
-    // Band 1 Ordinal Quick-Execute via Alt+1..Alt+5 when unsearched
-    if (view.kind === 'unsearched' && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      const m = /^Digit([1-5])$/.exec(e.code) ?? /^([1-5])$/.exec(e.key);
-      if (m) {
-        const slot = Number(m[1]) - 1;
-        const target = view.band1Deck[slot];
-        if (target) {
-          e.preventDefault();
-          e.stopPropagation();
-          execute(target);
-          return;
-        }
-      }
-    }
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      e.stopPropagation();
-      if (allNavigable.length > 0) {
-        setActiveIdx((i) => Math.min(i + 1, allNavigable.length - 1));
-      }
-      return;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      e.stopPropagation();
-      if (allNavigable.length > 0) {
-        setActiveIdx((i) => Math.max(i - 1, 0));
-      }
-      return;
-    }
-    if (e.key === 'Enter' && allNavigable[activeIdx]) {
-      if ((e.target as HTMLElement | null)?.tagName === 'BUTTON') return;
-      e.preventDefault();
-      e.stopPropagation();
-      const item = allNavigable[activeIdx];
-      if (item.kind === 'row') execute(item.row);
-      else runMacro(item.macro);
-    }
+    dispatchSpeedPanelKeyAction(e, {
+      view,
+      allNavigable,
+      activeIdx,
+      closeSpeedPanel,
+      reorderPin,
+      setActiveIdx,
+      execute,
+      runMacro,
+    });
   };
 
   const toggleGroupCollapse = (id: string) => {
@@ -476,8 +323,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
           {view.kind === 'unsearched' ? (
             <>
               {/* === BAND 1: FIXED CONTEXT DECK === */}
-              <div data-testid="wf-sp-band-1">
-                <div style={SECTION_STYLE}>
+              <div data-testid="wf-sp-band-1" role="group" aria-labelledby={SP_HEADING_IDS.band1}>
+                <div id={SP_HEADING_IDS.band1} role="presentation" style={SECTION_STYLE}>
                   {speedPanelContext ? `${view.deckKey} DECK` : 'CANVAS DECK'}
                 </div>
                 {view.band1Deck.map((row, i) => {
@@ -490,8 +337,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                       row={row}
                       active={idx === activeIdx}
                       isPinned={pinnedIdSet.has(row.command.id)}
-                      onTogglePin={() => togglePin(row.command.id)}
-                      onExecute={() => execute(row)}
+                      onTogglePin={togglePin}
+                      onExecute={execute}
                     />
                   );
                 })}
@@ -499,14 +346,22 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
 
               {/* === BAND 2: PINNED & MACROS === */}
               {(view.band2Pinned.length > 0 || view.band2Macros.length > 0 || speedPanelEditMode) && (
-                <div data-testid="wf-sp-band-2">
-                  <div style={SECTION_STYLE}>PINNED</div>
+                <div data-testid="wf-sp-band-2" role="group" aria-labelledby={SP_HEADING_IDS.band2}>
+                  <div id={SP_HEADING_IDS.band2} role="presentation" style={SECTION_STYLE}>PINNED</div>
                   {view.band2Pinned.map((row, i) => {
                     const idx = navIdx++;
                     const domId = `wf-sp-opt-b2-${i}-${row.command.id}`;
                     const storeIdx = row.pinIndex;
                     const prevStoreIdx = i > 0 ? view.band2Pinned[i - 1].pinIndex : undefined;
                     const nextStoreIdx = i < view.band2Pinned.length - 1 ? view.band2Pinned[i + 1].pinIndex : undefined;
+                    const pinHandlers = buildPinRowHandlers({
+                      storeIdx,
+                      prevStoreIdx,
+                      nextStoreIdx,
+                      dragPinIndex,
+                      setDragPinIndex,
+                      reorderPin,
+                    });
                     return (
                       <CommandRow
                         key={domId}
@@ -515,32 +370,11 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                         row={row}
                         active={idx === activeIdx}
                         isPinned
-                        onTogglePin={() => togglePin(row.command.id)}
-                        onExecute={() => execute(row)}
+                        onTogglePin={togglePin}
+                        onExecute={execute}
                         editMode={speedPanelEditMode}
                         draggable={!speedPanelEditMode && storeIdx !== undefined}
-                        onDragStart={storeIdx !== undefined ? (e) => {
-                          setDragPinIndex(storeIdx);
-                          e.dataTransfer?.setData('text/plain', String(storeIdx));
-                        } : undefined}
-                        onDragOver={storeIdx !== undefined ? (e) => {
-                          if (dragPinIndex !== null) e.preventDefault();
-                        } : undefined}
-                        onDrop={storeIdx !== undefined ? (e) => {
-                          e.preventDefault();
-                          const from = dragPinIndex ?? Number(e.dataTransfer?.getData('text/plain'));
-                          if (Number.isInteger(from) && from !== storeIdx) {
-                            reorderPin(from, storeIdx);
-                          }
-                          setDragPinIndex(null);
-                        } : undefined}
-                        onDragEnd={() => setDragPinIndex(null)}
-                        onMoveUp={storeIdx !== undefined && prevStoreIdx !== undefined
-                          ? () => reorderPin(storeIdx, prevStoreIdx)
-                          : undefined}
-                        onMoveDown={storeIdx !== undefined && nextStoreIdx !== undefined
-                          ? () => reorderPin(storeIdx, nextStoreIdx)
-                          : undefined}
+                        {...pinHandlers}
                       />
                     );
                   })}
@@ -550,7 +384,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                     const domId = `wf-sp-opt-macro-${m.id}`;
                     const isExpanded = expandedMacro === m.id && speedPanelEditMode;
                     return (
-                      <div key={domId}>
+                      <div key={domId} role="presentation">
                         <div
                           id={domId}
                           role="option"
@@ -567,6 +401,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                           {speedPanelEditMode ? (
                             <input
                               value={m.name}
+                              aria-label={`Macro name for ${m.name}`}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) => updateMacro(m.id, { name: e.target.value })}
                               style={{ background: 'transparent', border: '1px solid var(--wf-border-default)', color: 'var(--wf-text-primary)', fontSize: 12, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
@@ -596,7 +431,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                           )}
                         </div>
                         {isExpanded && (
-                          <div style={{ padding: '2px 16px 4px', borderLeft: '2px solid var(--wf-border-default)', marginLeft: 12 }}>
+                          <div role="presentation" style={{ padding: '2px 16px 4px', borderLeft: '2px solid var(--wf-border-default)', marginLeft: 12 }}>
                             {m.steps.map((step, si) => {
                               const action = COMMAND_REGISTRY.find((c) => c.id === step.actionId);
                               return (
@@ -643,7 +478,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                   })}
 
                   {speedPanelEditMode && (
-                    <div style={{ padding: '2px 8px' }}>
+                    <div role="presentation" style={{ padding: '2px 8px' }}>
                       <button
                         type="button"
                         onClick={handleNewMacro}
@@ -656,8 +491,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
 
               {/* === BAND 3: FRECENCY RECENTS (UP TO 3, TOGGLEABLE IN OPTIONS) === */}
               {view.band3Recents.length > 0 && (
-                <div data-testid="wf-sp-band-3">
-                  <div style={SECTION_STYLE}>RECENT</div>
+                <div data-testid="wf-sp-band-3" role="group" aria-labelledby={SP_HEADING_IDS.band3}>
+                  <div id={SP_HEADING_IDS.band3} role="presentation" style={SECTION_STYLE}>RECENT</div>
                   {view.band3Recents.map((row, i) => {
                     const idx = navIdx++;
                     const domId = `wf-sp-opt-b3-${i}-${row.command.id}`;
@@ -668,8 +503,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                         row={row}
                         active={idx === activeIdx}
                         isPinned={pinnedIdSet.has(row.command.id)}
-                        onTogglePin={() => togglePin(row.command.id)}
-                        onExecute={() => execute(row)}
+                        onTogglePin={togglePin}
+                        onExecute={execute}
                       />
                     );
                   })}
@@ -677,10 +512,10 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
               )}
 
               {/* === BAND 4: MODE SUGGESTIONS, CUSTOM GROUPS, & CANONICAL CATALOGUE === */}
-              <div data-testid="wf-sp-band-4">
+              <div data-testid="wf-sp-band-4" role="presentation">
                 {view.band4ModeSuggested.length > 0 && (
-                  <div data-testid="wf-sp-band-4-mode">
-                    <div style={SECTION_STYLE}>MODE SUGGESTED</div>
+                  <div data-testid="wf-sp-band-4-mode" role="group" aria-labelledby={SP_HEADING_IDS.band4Mode}>
+                    <div id={SP_HEADING_IDS.band4Mode} role="presentation" style={SECTION_STYLE}>MODE SUGGESTED</div>
                     {view.band4ModeSuggested.map((row, i) => {
                       const idx = navIdx++;
                       const domId = `wf-sp-opt-ms-${i}-${row.command.id}`;
@@ -691,8 +526,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                           row={row}
                           active={idx === activeIdx}
                           isPinned={pinnedIdSet.has(row.command.id)}
-                          onTogglePin={() => togglePin(row.command.id)}
-                          onExecute={() => execute(row)}
+                          onTogglePin={togglePin}
+                          onExecute={execute}
                         />
                       );
                     })}
@@ -701,9 +536,13 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
 
                 {view.band4CustomGroups.map((g) => {
                   const collapsed = collapsedGroups.has(g.group.id);
+                  const headingId = customGroupHeadingId(g.group.id);
                   return (
-                    <div key={'grp-' + g.group.id}>
+                    <div key={'grp-' + g.group.id} role="group" aria-labelledby={headingId}>
                       <div
+                        id={headingId}
+                        role="presentation"
+                        aria-label={g.group.name}
                         style={{ ...SECTION_STYLE, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => toggleGroupCollapse(g.group.id)}
                       >
@@ -711,6 +550,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                         {speedPanelEditMode ? (
                           <input
                             value={g.group.name}
+                            aria-label={`Group name for ${g.group.name}`}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => updateGroup(g.group.id, { name: e.target.value })}
                             style={{ background: 'transparent', border: '1px solid var(--wf-border-default)', color: 'var(--wf-text-primary)', fontSize: 10, padding: '1px 4px', flex: 1, outline: 'none', minWidth: 0 }}
@@ -738,8 +578,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                             row={row}
                             active={idx === activeIdx}
                             isPinned={pinnedIdSet.has(row.command.id)}
-                            onTogglePin={() => togglePin(row.command.id)}
-                            onExecute={() => execute(row)}
+                            onTogglePin={togglePin}
+                            onExecute={execute}
                             groupEditMode={speedPanelEditMode}
                             onRemoveFromGroup={() => removeActionFromGroup(g.group.id, row.command.id)}
                           />
@@ -749,7 +589,7 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                   );
                 })}
                 {speedPanelEditMode && (
-                  <div style={{ padding: '2px 8px' }}>
+                  <div role="presentation" style={{ padding: '2px 8px' }}>
                     <button
                       type="button"
                       onClick={handleNewGroup}
@@ -758,26 +598,29 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                   </div>
                 )}
 
-                {view.band4Catalogue.map((sec) => (
-                  <div key={'cat-' + sec.group} data-testid={`wf-sp-cat-${sec.group}`}>
-                    <div style={SECTION_STYLE}>{sec.group}</div>
-                    {sec.rows.map((row, i) => {
-                      const idx = navIdx++;
-                      const domId = `wf-sp-opt-cat-${sec.group}-${i}-${row.command.id}`;
-                      return (
-                        <CommandRow
-                          key={domId}
-                          domId={domId}
-                          row={row}
-                          active={idx === activeIdx}
-                          isPinned={pinnedIdSet.has(row.command.id)}
-                          onTogglePin={() => togglePin(row.command.id)}
-                          onExecute={() => execute(row)}
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
+                {view.band4Catalogue.map((sec) => {
+                  const headingId = catalogueGroupHeadingId(sec.group);
+                  return (
+                    <div key={'cat-' + sec.group} data-testid={`wf-sp-cat-${sec.group}`} role="group" aria-labelledby={headingId}>
+                      <div id={headingId} role="presentation" style={SECTION_STYLE}>{sec.group}</div>
+                      {sec.rows.map((row, i) => {
+                        const idx = navIdx++;
+                        const domId = `wf-sp-opt-cat-${sec.group}-${i}-${row.command.id}`;
+                        return (
+                          <CommandRow
+                            key={domId}
+                            domId={domId}
+                            row={row}
+                            active={idx === activeIdx}
+                            isPinned={pinnedIdSet.has(row.command.id)}
+                            onTogglePin={togglePin}
+                            onExecute={execute}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             </>
           ) : (
@@ -795,42 +638,46 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                     matchedKeyword={row.matchedKeyword}
                     active={idx === activeIdx}
                     isPinned={pinnedIdSet.has(row.command.id)}
-                    onTogglePin={() => togglePin(row.command.id)}
-                    onExecute={() => execute(row)}
+                    onTogglePin={togglePin}
+                    onExecute={execute}
                   />
                 );
               })}
 
               {/* === SEARCHED: MACROS === */}
-              {view.macros.length > 0 && <div style={SECTION_STYLE}>MACROS</div>}
-              {view.macros.map((m) => {
-                const idx = navIdx++;
-                const domId = `wf-sp-opt-macro-${m.id}`;
-                return (
-                  <div
-                    key={domId}
-                    id={domId}
-                    role="option"
-                    aria-selected={idx === activeIdx}
-                    onClick={() => runMacro(m)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 'var(--wf-space-2)',
-                      padding: 'var(--wf-space-1) var(--wf-space-2)', cursor: 'pointer', fontSize: 12,
-                      background: idx === activeIdx ? 'var(--wf-bg-hover)' : 'transparent',
-                      color: 'var(--wf-text-primary)',
-                    }}
-                  >
-                    <span style={{ color: 'var(--wf-success-text)', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
-                    <span style={{ flex: 1 }}>{m.name}</span>
-                    <span style={{ color: 'var(--wf-text-muted)', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
-                  </div>
-                );
-              })}
+              {view.macros.length > 0 && (
+                <div role="group" aria-labelledby={SP_HEADING_IDS.searchMacros}>
+                  <div id={SP_HEADING_IDS.searchMacros} role="presentation" style={SECTION_STYLE}>MACROS</div>
+                  {view.macros.map((m) => {
+                    const idx = navIdx++;
+                    const domId = `wf-sp-opt-macro-${m.id}`;
+                    return (
+                      <div
+                        key={domId}
+                        id={domId}
+                        role="option"
+                        aria-selected={idx === activeIdx}
+                        onClick={() => runMacro(m)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 'var(--wf-space-2)',
+                          padding: 'var(--wf-space-1) var(--wf-space-2)', cursor: 'pointer', fontSize: 12,
+                          background: idx === activeIdx ? 'var(--wf-bg-hover)' : 'transparent',
+                          color: 'var(--wf-text-primary)',
+                        }}
+                      >
+                        <span style={{ color: 'var(--wf-success-text)', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
+                        <span style={{ flex: 1 }}>{m.name}</span>
+                        <span style={{ color: 'var(--wf-text-muted)', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* === SEARCHED: UNAVAILABLE HERE (NEVER HIDDEN) === */}
               {view.unavailable.length > 0 && (
-                <div data-testid="wf-sp-unavailable-group">
-                  <div style={SECTION_STYLE}>Unavailable here</div>
+                <div data-testid="wf-sp-unavailable-group" role="group" aria-labelledby={SP_HEADING_IDS.unavailable}>
+                  <div id={SP_HEADING_IDS.unavailable} role="presentation" style={SECTION_STYLE}>Unavailable here</div>
                   {view.unavailable.map((row, i) => {
                     const idx = navIdx++;
                     const domId = `wf-sp-opt-unavail-${i}-${row.command.id}`;
@@ -844,8 +691,8 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
                         matchedKeyword={row.matchedKeyword}
                         active={idx === activeIdx}
                         isPinned={pinnedIdSet.has(row.command.id)}
-                        onTogglePin={() => togglePin(row.command.id)}
-                        onExecute={() => execute(row)}
+                        onTogglePin={togglePin}
+                        onExecute={execute}
                       />
                     );
                   })}
@@ -853,11 +700,13 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
               )}
 
               {allNavigable.length === 0 && (
-                <EmptyState
-                  title="No actions"
-                  description="Nothing matches this query. Try another search or press Esc."
-                  icon={'\u2630'}
-                />
+                <div role="presentation">
+                  <EmptyState
+                    title="No actions"
+                    description="Nothing matches this query. Try another search or press Esc."
+                    icon={'\u2630'}
+                  />
+                </div>
               )}
             </>
           )}
@@ -867,26 +716,11 @@ export function SpeedPanel({ onSave }: SpeedPanelProps = {}) {
   );
 }
 
-function commandGlyph(cmd: EditorCommand): string {
-  return SPEED_GLYPH[cmd.id] ?? cmd.icon ?? cmd.toolIcon ?? '\u25CB';
-}
-
 export function HighlightedText({ text, ranges }: { text: string; ranges?: Array<[number, number]> }) {
   if (!ranges || ranges.length === 0) {
     return <>{text}</>;
   }
-  const parts: Array<{ str: string; matched: boolean }> = [];
-  let cursor = 0;
-  for (const [start, end] of ranges) {
-    const s = Math.max(cursor, Math.min(text.length, start));
-    const e = Math.max(s, Math.min(text.length, end));
-    if (s > cursor) parts.push({ str: text.slice(cursor, s), matched: false });
-    if (e > s) parts.push({ str: text.slice(s, e), matched: true });
-    cursor = e;
-  }
-  if (cursor < text.length) {
-    parts.push({ str: text.slice(cursor), matched: false });
-  }
+  const parts = splitHighlightSegments(text, ranges);
   return (
     <>
       {parts.map((p, i) =>
@@ -979,8 +813,8 @@ function CommandRow({
   matchedKeyword?: MatchedText;
   active: boolean;
   isPinned: boolean;
-  onTogglePin: () => void;
-  onExecute: () => void;
+  onTogglePin: (commandId: string) => void;
+  onExecute: (row: PaletteRow) => void;
   editMode?: boolean;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
@@ -1010,7 +844,7 @@ function CommandRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      onClick={onExecute}
+      onClick={() => onExecute(row)}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -1026,7 +860,7 @@ function CommandRow({
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--wf-space-2)', minWidth: 0 }}>
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+          onClick={(e) => { e.stopPropagation(); onTogglePin(command.id); }}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 11,
             color: isPinned ? 'var(--wf-warning)' : 'var(--wf-text-muted)', userSelect: 'none', flexShrink: 0, padding: 0,

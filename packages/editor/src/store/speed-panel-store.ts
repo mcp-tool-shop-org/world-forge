@@ -6,6 +6,7 @@ import type { SpeedPanelGroup, SpeedPanelMacro } from '../speed-panel-actions.js
 import {
   bumpAdaptiveHistory,
   bumpFrecency,
+  computeDecayedAdaptiveScore,
   normalizeSearchQuery,
   type AdaptiveHistoryEntry,
   type FrecencyEntry,
@@ -19,6 +20,7 @@ const MACROS_KEY = 'world-forge-speed-panel-macros';
 export const SPEED_PANEL_STATE_V2_KEY = 'wf.speedPanel.v2';
 
 const MAX_RECENTS = 5;
+export const MAX_ADAPTIVE_HISTORY = 200;
 /** F-e57095f8: drop persisted macro steps whose actionId is no longer registered. */
 const KNOWN_ACTION_IDS = new Set(COMMAND_REGISTRY.map((c) => c.id));
 
@@ -115,7 +117,30 @@ function sanitizeFrecency(raw: unknown): Record<string, FrecencyEntry> {
   return out;
 }
 
-function sanitizeAdaptiveHistory(raw: unknown): Record<string, AdaptiveHistoryEntry> {
+/** Evict the lowest decayed-score entries when query history exceeds `maxEntries`. */
+export function pruneAdaptiveHistory(
+  history: Readonly<Record<string, AdaptiveHistoryEntry>>,
+  nowMs = Date.now(),
+  maxEntries = MAX_ADAPTIVE_HISTORY,
+): Record<string, AdaptiveHistoryEntry> {
+  if (maxEntries <= 0) return {};
+  const entries = Object.entries(history);
+  if (entries.length <= maxEntries) {
+    return { ...history };
+  }
+  entries.sort(([, a], [, b]) => {
+    const scoreDiff = computeDecayedAdaptiveScore(b, nowMs) - computeDecayedAdaptiveScore(a, nowMs);
+    if (scoreDiff !== 0) return scoreDiff;
+    return b.lastUsedAt - a.lastUsedAt;
+  });
+  const out: Record<string, AdaptiveHistoryEntry> = {};
+  for (const [query, entry] of entries.slice(0, maxEntries)) {
+    out[query] = entry;
+  }
+  return out;
+}
+
+function sanitizeAdaptiveHistory(raw: unknown, nowMs = Date.now()): Record<string, AdaptiveHistoryEntry> {
   if (!isPlainObject(raw)) return {};
   const out: Record<string, AdaptiveHistoryEntry> = {};
   for (const [query, entry] of Object.entries(raw)) {
@@ -135,34 +160,13 @@ function sanitizeAdaptiveHistory(raw: unknown): Record<string, AdaptiveHistoryEn
       };
     }
   }
-  return out;
+  return pruneAdaptiveHistory(out, nowMs);
 }
 
-/**
- * Load persisted v2 Speed Panel state from `wf.speedPanel.v2`, or perform a
- * lossless migration from the legacy pre-v2 `world-forge-speed-panel-*` keys.
- */
-export function loadSpeedPanelStateV2(nowMs = Date.now()): SpeedPanelStateV2 {
-  const v2Raw = loadJson<Record<string, unknown> | null>(SPEED_PANEL_STATE_V2_KEY, null, isPlainObject);
-  if (v2Raw && v2Raw.version === 2) {
-    return {
-      version: 2,
-      pinnedIds: isStringArray(v2Raw.pinnedIds) ? [...v2Raw.pinnedIds] : [],
-      recentIds: isStringArray(v2Raw.recentIds) ? [...v2Raw.recentIds] : [],
-      frecency: sanitizeFrecency(v2Raw.frecency),
-      adaptiveHistory: sanitizeAdaptiveHistory(v2Raw.adaptiveHistory),
-      groups: sanitizeGroups(v2Raw.groups),
-      macros: sanitizeMacros(v2Raw.macros),
-      showRecents: typeof v2Raw.showRecents === 'boolean' ? v2Raw.showRecents : true,
-    };
-  }
-
-  // Lossless migration from legacy keys
-  const pinnedIds = loadJson<string[]>(PINS_KEY, [], isStringArray);
-  const recentIds = loadJson<string[]>(RECENTS_KEY, [], isStringArray);
-  const groups = sanitizeGroups(loadJson<unknown[]>(GROUPS_KEY, [], isArray));
-  const macros = sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray));
-
+function seedFrecencyFromRecents(
+  recentIds: readonly string[],
+  nowMs: number,
+): Record<string, FrecencyEntry> {
   const frecency: Record<string, FrecencyEntry> = {};
   for (let i = 0; i < recentIds.length; i++) {
     const id = recentIds[i];
@@ -174,12 +178,56 @@ export function loadSpeedPanelStateV2(nowMs = Date.now()): SpeedPanelStateV2 {
       };
     }
   }
+  return frecency;
+}
+
+/**
+ * Load persisted v2 Speed Panel state from `wf.speedPanel.v2`, or perform a
+ * lossless migration from the legacy pre-v2 `world-forge-speed-panel-*` keys.
+ * If any individual v2 field fails validation, fall back to its legacy key
+ * rather than discarding intact legacy data.
+ */
+export function loadSpeedPanelStateV2(nowMs = Date.now()): SpeedPanelStateV2 {
+  const v2Raw = loadJson<Record<string, unknown> | null>(SPEED_PANEL_STATE_V2_KEY, null, isPlainObject);
+  if (v2Raw && v2Raw.version === 2) {
+    const pinnedIds = isStringArray(v2Raw.pinnedIds)
+      ? [...v2Raw.pinnedIds]
+      : loadJson<string[]>(PINS_KEY, [], isStringArray);
+    const recentIds = isStringArray(v2Raw.recentIds)
+      ? [...v2Raw.recentIds]
+      : loadJson<string[]>(RECENTS_KEY, [], isStringArray);
+    const groups = isArray(v2Raw.groups)
+      ? sanitizeGroups(v2Raw.groups)
+      : sanitizeGroups(loadJson<unknown[]>(GROUPS_KEY, [], isArray));
+    const macros = isArray(v2Raw.macros)
+      ? sanitizeMacros(v2Raw.macros)
+      : sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray));
+    const frecency = isPlainObject(v2Raw.frecency)
+      ? sanitizeFrecency(v2Raw.frecency)
+      : seedFrecencyFromRecents(recentIds, nowMs);
+    return {
+      version: 2,
+      pinnedIds,
+      recentIds,
+      frecency,
+      adaptiveHistory: sanitizeAdaptiveHistory(v2Raw.adaptiveHistory, nowMs),
+      groups,
+      macros,
+      showRecents: typeof v2Raw.showRecents === 'boolean' ? v2Raw.showRecents : true,
+    };
+  }
+
+  // Lossless migration from legacy keys
+  const pinnedIds = loadJson<string[]>(PINS_KEY, [], isStringArray);
+  const recentIds = loadJson<string[]>(RECENTS_KEY, [], isStringArray);
+  const groups = sanitizeGroups(loadJson<unknown[]>(GROUPS_KEY, [], isArray));
+  const macros = sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray));
 
   return {
     version: 2,
     pinnedIds,
     recentIds,
-    frecency,
+    frecency: seedFrecencyFromRecents(recentIds, nowMs),
     adaptiveHistory: {},
     groups,
     macros,
@@ -295,7 +343,10 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
     };
     const norm = normalizeSearchQuery(query);
     const adaptiveHistory = norm
-      ? { ...s.adaptiveHistory, [norm]: bumpAdaptiveHistory(s.adaptiveHistory[norm], commandId, nowMs) }
+      ? pruneAdaptiveHistory(
+          { ...s.adaptiveHistory, [norm]: bumpAdaptiveHistory(s.adaptiveHistory[norm], commandId, nowMs) },
+          nowMs,
+        )
       : s.adaptiveHistory;
     saveJson(RECENTS_KEY, recentIds);
     saveJson(SPEED_PANEL_STATE_V2_KEY, snapshotV2({ ...s, recentIds, frecency, adaptiveHistory }));

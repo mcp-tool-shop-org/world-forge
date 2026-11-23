@@ -61,8 +61,10 @@ import {
   buildUnsearchedSpeedPanel,
 } from '../speed-panel-layout.js';
 import {
+  MAX_ADAPTIVE_HISTORY,
   SPEED_PANEL_STATE_V2_KEY,
   loadSpeedPanelStateV2,
+  pruneAdaptiveHistory,
   useSpeedPanelPins,
 } from '../store/speed-panel-store.js';
 import { executeRegistryCommand, buildExecuteStores } from '../speed-panel-execute.js';
@@ -105,7 +107,6 @@ describe('Speed Panel C3 Four-Band layout, frecency, and pins (changed)', () => 
   beforeEach(resetAllStores);
 
   it('changed: Band 1 defines a fixed 4–5 slot deck per hit type matching the zone spec and never shifts across 100 simulated runs', () => {
-    // Zone deck follows report §3 example verbatim
     expect(CONTEXT_DECKS.zone).toEqual([
       'edit-props',
       'connect-from',
@@ -556,8 +557,8 @@ describe('Speed Panel C3 search tiers, synonyms, highlighting, unavailable rules
       showRecents: 'bad',
     }));
     const sanitized = loadSpeedPanelStateV2();
-    expect(sanitized.pinnedIds).toEqual([]);
-    expect(sanitized.recentIds).toEqual([]);
+    expect(sanitized.pinnedIds).toEqual(['delete']);
+    expect(sanitized.recentIds).toEqual(['fit-content', 'assign-district']);
     expect(sanitized.showRecents).toBe(true);
     expect(sanitized.frecency).toEqual({ ok: { score: 2, lastUsedAt: 1000, count: 1 } });
     expect(sanitized.adaptiveHistory.fit?.commandId).toBe('fit-content');
@@ -574,5 +575,169 @@ describe('Speed Panel C3 search tiers, synonyms, highlighting, unavailable rules
       expect(searchedView.enabled).toEqual([]);
       expect(searchedView.unavailable[0].matchRanges).toEqual([[0, 4]]);
     }
+  });
+
+  it('changed: adaptiveHistory caps at MAX_ADAPTIVE_HISTORY (200) evicting lowest decayed score', () => {
+    const now = 1_700_000_000_000;
+    const many: Record<string, { commandId: string; score: number; lastUsedAt: number }> = {};
+    for (let i = 0; i < MAX_ADAPTIVE_HISTORY + 15; i++) {
+      many[`q-${i}`] = {
+        commandId: 'fit-content',
+        score: i === 5 ? 99 : 1,
+        lastUsedAt: i < 20 && i !== 5 ? now - (20 - i) * 30 * MS_PER_DAY : now - i,
+      };
+    }
+    const pruned = pruneAdaptiveHistory(many, now);
+    expect(Object.keys(pruned)).toHaveLength(MAX_ADAPTIVE_HISTORY);
+    expect(pruned['q-5']).toBeDefined();
+    expect(pruned['q-0']).toBeUndefined();
+
+    expect(MAX_ADAPTIVE_HISTORY).toBe(200);
+    for (let i = 0; i < MAX_ADAPTIVE_HISTORY + 5; i++) {
+      useSpeedPanelPins.getState().recordCommandUsage('fit-content', `hist-${i}`, now + i * 100);
+    }
+    expect(Object.keys(useSpeedPanelPins.getState().adaptiveHistory).length).toBeLessThanOrEqual(MAX_ADAPTIVE_HISTORY);
+  });
+
+  it('changed: loadSpeedPanelStateV2 falls back per-field to legacy keys on partial v2 corruption without losing data', () => {
+    const now = 1_700_000_000_000;
+    storage.set('world-forge-speed-panel-pins', JSON.stringify(['edit-props', 'duplicate']));
+    storage.set('world-forge-speed-panel-recents', JSON.stringify(['fit-content', 'open-review']));
+    storage.set('world-forge-speed-panel-groups', JSON.stringify([
+      { id: 'g-legacy', name: 'Legacy Group', actionIds: ['assign-district'] },
+    ]));
+    storage.set('world-forge-speed-panel-macros', JSON.stringify([
+      { id: 'm-legacy', name: 'Legacy Macro', steps: [{ actionId: 'duplicate' }] },
+    ]));
+    storage.set(SPEED_PANEL_STATE_V2_KEY, JSON.stringify({
+      version: 2,
+      pinnedIds: 'corrupt',
+      recentIds: [42],
+      frecency: 'corrupt',
+      adaptiveHistory: { fit: { commandId: 'fit-content', score: 2, lastUsedAt: now } },
+      groups: 'corrupt',
+      macros: null,
+      showRecents: false,
+    }));
+
+    const recovered = loadSpeedPanelStateV2(now);
+    expect(recovered.pinnedIds).toEqual(['edit-props', 'duplicate']);
+    expect(recovered.recentIds).toEqual(['fit-content', 'open-review']);
+    expect(recovered.groups).toEqual([{ id: 'g-legacy', name: 'Legacy Group', actionIds: ['assign-district'] }]);
+    expect(recovered.macros).toEqual([{ id: 'm-legacy', name: 'Legacy Macro', steps: [{ actionId: 'duplicate' }] }]);
+    expect(recovered.frecency['fit-content']?.score).toBe(2);
+    expect(recovered.adaptiveHistory.fit?.commandId).toBe('fit-content');
+    expect(recovered.showRecents).toBe(false);
+  });
+
+  it('changed: assign-district and open-review do not force right sidebar open, and uiPaths match real UI controls', () => {
+    const setRightCollapsed = vi.fn();
+    const setRightTab = vi.fn();
+    const selectZone = vi.fn();
+    const stores = { ...buildExecuteStores(), setRightCollapsed, setRightTab, selectZone };
+
+    expect(executeRegistryCommand('assign-district', DECK_HIT_SAMPLES.zone, stores)).toEqual({ executed: true });
+    expect(selectZone).toHaveBeenCalledWith('zone-entrance', false);
+    expect(setRightTab).toHaveBeenCalledWith('map');
+    expect(setRightCollapsed).not.toHaveBeenCalled();
+
+    expect(executeRegistryCommand('open-review', null, stores)).toEqual({ executed: true });
+    expect(setRightTab).toHaveBeenCalledWith('review');
+    expect(setRightCollapsed).not.toHaveBeenCalled();
+
+    expect(getCommandById('swap-direction')?.uiPath).toBe('Right Sidebar \u2192 Map \u2192 Swap Direction');
+    expect(getCommandById('export-summary')?.uiPath).toBe('Right Sidebar \u2192 Review \u2192 Export MD');
+    expect(getCommandById('merge-zones')?.uiPath).toBeUndefined();
+    expect(getCommandById('add-secret-conn')?.uiPath).toBeUndefined();
+    expect(getCommandById('add-channel-conn')?.uiPath).toBeUndefined();
+    expect(getCommandById('add-warp-conn')?.uiPath).toBeUndefined();
+    expect(getCommandById('add-trail-conn')?.uiPath).toBeUndefined();
+    expect(getCommandById('add-warp-conn')?.keywords).toContain('ftl');
+    expect(getCommandById('add-warp-conn')?.keywords).not.toContain('ftL');
+  });
+
+  it('changed: covers exact title, group-only search, cross-keyword tokens, late initials, swapConnection, and frecency/mode tie-breaks', () => {
+    const now = 1_700_000_000_000;
+    const zoneCtx: CommandContext = { hit: DECK_HIT_SAMPLES.zone, selection: emptySelection() };
+
+    // Exact title match => Tier 1 subRank 0
+    const exactMatch = matchCommand(getCommandById('duplicate')!, 'duplicate', { nowMs: now });
+    expect(exactMatch).toMatchObject({ tier: 1, subRank: 0 });
+
+    // Bracket group only without text query => Tier 3 subRank 1 across that group
+    const groupOnly = searchCommands(COMMAND_REGISTRY, zoneCtx, '[connect]', { nowMs: now });
+    expect(groupOnly.enabled.some((m) => m.command.id === 'connect-from')).toBe(true);
+
+    // Late-word contiguous initials (`sc` -> Draw [S]ecret [C]onnection) => Tier 2 subRank 2
+    const scMatch = matchCommand(getCommandById('add-secret-conn')!, 'sc', { nowMs: now });
+    expect(scMatch).toMatchObject({ tier: 2, subRank: 2 });
+
+    // Word-start subsequence (`ssp` -> Save Selection as Preset) => Tier 2 subRank 3
+    const sspMatch = matchCommand(getCommandById('save-preset')!, 'ssp', { nowMs: now });
+    expect(sspMatch).toMatchObject({ tier: 2, subRank: 3 });
+
+    // Multi-word across title + keyword (`npc place` -> Place Entity Here with keyword `npc`) => Tier 4 subRank 1
+    const multiKw = searchCommands(COMMAND_REGISTRY, zoneCtx, 'npc place', { nowMs: now });
+    expect(multiKw.enabled[0]?.command.id).toBe('place-entity');
+    expect(multiKw.enabled[0]?.matchedKeyword?.text).toBe('npc');
+
+    // Same-command adaptive history bump decays and adds 1
+    const firstBump = bumpAdaptiveHistory(undefined, 'fit-content', now);
+    const secondBump = bumpAdaptiveHistory(firstBump, 'fit-content', now + MS_PER_DAY);
+    expect(secondBump.score).toBeGreaterThan(1);
+    expect(computeDecayedAdaptiveScore({ commandId: 'x', score: -1, lastUsedAt: now }, now)).toBe(0);
+
+    // Damerau-Levenshtein exact equality returns true
+    expect(damerauLevenshteinAtMostOne('warp', 'warp')).toBe(true);
+
+    // Unsearched recentIds fallback when frecency is omitted + empty-step macro visibility + searched macro filter
+    const fallbackView = buildUnsearchedSpeedPanel(COMMAND_REGISTRY, zoneCtx, {
+      recentIds: ['export-summary', 'set-elevation'],
+      macros: [{ id: 'm-empty', name: 'Quick Macro', steps: [] }],
+      nowMs: now,
+    });
+    expect(fallbackView.band2Macros.map((m) => m.id)).toEqual(['m-empty']);
+    expect(fallbackView.band3Recents.some((r) => r.command.id === 'set-elevation')).toBe(true);
+
+    const macroSearch = buildSpeedPanelView(COMMAND_REGISTRY, zoneCtx, 'quick', {
+      macros: [{ id: 'm-empty', name: 'Quick Macro', steps: [] }],
+      nowMs: now,
+    });
+    expect(macroSearch.kind).toBe('searched');
+    if (macroSearch.kind === 'searched') {
+      expect(macroSearch.macros.map((m) => m.id)).toEqual(['m-empty']);
+    }
+
+    // swap-direction uses stores.swapConnection when supplied
+    const swapConnection = vi.fn();
+    expect(
+      executeRegistryCommand('swap-direction', DECK_HIT_SAMPLES.connection, {
+        ...buildExecuteStores(),
+        swapConnection,
+      }),
+    ).toEqual({ executed: true });
+    expect(swapConnection).toHaveBeenCalledWith('zone-entrance', 'zone-cellar');
+
+    // modeMatch tie-breaker inside searchCommands
+    const modeRanked = searchCommands(COMMAND_REGISTRY, zoneCtx, 'conn', { mode: 'space', nowMs: now });
+    expect(modeRanked.enabled.some((m) => m.modeMatch)).toBe(true);
+
+    // Band 3 tie-break by lastUsedAt & regIdx when scores are equal
+    const band3Tie = buildUnsearchedSpeedPanel(COMMAND_REGISTRY, { hit: null, selection: emptySelection() }, {
+      frecency: {
+        'tool-spawn': { score: 2, lastUsedAt: now, count: 1 },
+        'tool-tile': { score: 2, lastUsedAt: now, count: 1 },
+        'tool-prop': { score: 2, lastUsedAt: now - 10, count: 1 },
+      },
+      nowMs: now,
+    });
+    expect(band3Tie.band3Recents.map((r) => r.command.id)).toEqual(['tool-spawn', 'tool-tile', 'tool-prop']);
+
+    // Default save() callback + open-details fallback + pruneAdaptiveHistory(..., 0)
+    expect(pruneAdaptiveHistory({ q: { commandId: 'x', score: 1, lastUsedAt: now } }, now, 0)).toEqual({});
+    expect(() => productionHotkeyContext().save?.()).not.toThrow();
+    expect(
+      executeRegistryCommand('open-details', DECK_HIT_SAMPLES.zone, buildExecuteStores(), productionHotkeyContext()),
+    ).toEqual({ executed: true });
   });
 });

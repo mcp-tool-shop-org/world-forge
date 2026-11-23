@@ -13,7 +13,7 @@ export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const FRECENCY_HALF_LIFE_MS = FRECENCY_HALF_LIFE_DAYS * MS_PER_DAY;
 export const FRECENCY_LAMBDA = Math.LN2 / FRECENCY_HALF_LIFE_DAYS;
 
-/** Adaptive input-history daily decay factor (report §4 / Firefox Adaptive History). */
+/** Adaptive input-history daily decay factor (Firefox-style adaptive history). */
 export const ADAPTIVE_DAILY_DECAY = 0.975;
 
 export interface FrecencyEntry {
@@ -28,7 +28,7 @@ export interface AdaptiveHistoryEntry {
   lastUsedAt: number;
 }
 
-/** Strict lexicographic ranking tiers (§4): smaller value always beats larger value. */
+/** Strict lexicographic ranking tiers: smaller value always beats larger value. */
 export type MatchTier = 0 | 1 | 2 | 3 | 4;
 
 export interface MatchedText {
@@ -303,21 +303,21 @@ function matchesBaseTiers(
       }
     }
 
-    // 2.2 Word-start subsequence from word 0 (allows skipping connector words like `ssp` -> Save Selection as Preset)
-    if (q.length >= 2) {
-      const subFromStart = matchInitialsSubsequence(words, q, 0, false);
-      if (subFromStart) {
-        return { tier: 2, subRank: 2, matchRanges: mergeRanges(subFromStart) };
-      }
-    }
-
-    // 2.3 Contiguous initials starting at a later word (e.g., `sc` -> Draw [S]ecret [C]onnection)
+    // 2.2 Contiguous initials starting at a later word (e.g., `sc` -> Draw [S]ecret [C]onnection)
     if (q.length >= 2) {
       for (let wi = 1; wi < words.length; wi++) {
         const tailInitials = matchInitialsSubsequence(words, q, wi, true);
         if (tailInitials) {
-          return { tier: 2, subRank: 3, matchRanges: mergeRanges(tailInitials) };
+          return { tier: 2, subRank: 2, matchRanges: mergeRanges(tailInitials) };
         }
+      }
+    }
+
+    // 2.3 Word-start subsequence from word 0 (allows skipping connector words like `ssp` -> Save Selection as Preset)
+    if (q.length >= 2) {
+      const subFromStart = matchInitialsSubsequence(words, q, 0, false);
+      if (subFromStart) {
+        return { tier: 2, subRank: 3, matchRanges: mergeRanges(subFromStart) };
       }
     }
   }
@@ -461,7 +461,7 @@ function matchesBaseTiers(
 }
 
 /**
- * Match `cmd` against `rawQuery` using the strict 5-tier hierarchy (§4):
+ * Match `cmd` against `rawQuery` using the strict 5-tier hierarchy:
  * Tier 0 (Adaptive history, gated on still matching Tiers 1–4)
  * -> Tier 1 (Exact & Prefix)
  * -> Tier 2 (Initials & Word-Starts)

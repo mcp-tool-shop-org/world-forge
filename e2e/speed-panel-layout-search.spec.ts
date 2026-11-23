@@ -235,4 +235,126 @@ test.describe('Speed Panel layout & search (C3)', () => {
     await expect(panel.getByTestId('wf-sp-band-1')).toBeVisible();
     await expect(panel.getByTestId('wf-sp-band-3')).toHaveCount(0);
   });
+
+  test('changed: adaptive query history promotes picked command to Tier 0 on same query', async ({ page }) => {
+    await loadChapel(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+    const alcove = computeFittedChapelZoneAnchor('chapel-alcove', box!);
+    const zx = box!.x + alcove.sx;
+    const zy = box!.y + alcove.sy;
+
+    // Open over chapel-alcove and search `place`: `Place Entity Here` ranks #1 before `Place Encounter Here`
+    await page.mouse.move(zx, zy);
+    await page.keyboard.press('q');
+    const panel = page.getByTestId('wf-speed-panel');
+    await expect(panel).toBeVisible();
+    const search = page.getByTestId('wf-speed-panel-search');
+    await search.fill('place');
+
+    const options = panel.locator('[role="option"]');
+    await expect(options.nth(0)).toHaveAttribute('data-testid', 'wf-sp-row-place-entity');
+    await expect(options.nth(1)).toHaveAttribute('data-testid', 'wf-sp-row-place-encounter');
+
+    // Execute the 2nd match (`Place Encounter Here`)
+    await panel.getByTestId('wf-sp-row-place-encounter').click();
+    await expect(panel).toHaveCount(0);
+
+    // Reopen over chapel-alcove and type the same query -> `Place Encounter Here` now ranks #1 via Tier 0
+    await page.mouse.move(zx, zy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await search.fill('place');
+    await expect(panel.locator('[role="option"]').nth(0)).toHaveAttribute('data-testid', 'wf-sp-row-place-encounter');
+  });
+
+  test('changed: blocked rows stay inert on Enter and click, Alt+n runs Band 1 slot, Alt+ArrowUp reorders pins, and Alt+1 is dead in secondary text inputs', async ({ page }) => {
+    await loadChapel(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+
+    // Verify ARIA band semantics on open
+    await page.mouse.move(box!.x + 12, box!.y + 12);
+    await page.keyboard.press('q');
+    const panel = page.getByTestId('wf-speed-panel');
+    await expect(panel).toBeVisible();
+    const band1 = panel.getByTestId('wf-sp-band-1');
+    await expect(band1).toHaveAttribute('role', 'group');
+    const headingId = await band1.getAttribute('aria-labelledby');
+    expect(headingId).toBeTruthy();
+    await expect(panel.locator(`#${headingId}`)).toHaveAttribute('role', 'presentation');
+
+    // Search `swap` on empty canvas -> test BOTH Enter and click on blocked row `wf-sp-unavailable-swap-direction`
+    const search = page.getByTestId('wf-speed-panel-search');
+    await search.fill('swap');
+    const swapRow = panel.getByTestId('wf-sp-unavailable-swap-direction');
+    await expect(swapRow).toBeVisible();
+    await expect(swapRow).toHaveAttribute('aria-selected', 'true');
+
+    // Press Enter while active -> project unchanged, nothing executed, panel remains open
+    const undoBtn = page.getByRole('button', { name: 'Undo' });
+    await expect(undoBtn).toBeDisabled();
+    await search.press('Enter');
+    await expect(panel).toBeVisible();
+    await expect(undoBtn).toBeDisabled();
+    await expect(page.getByText('Swap Direction: Target a connection to reverse it').last()).toBeVisible();
+
+    // Real pointer click on the aria-disabled="true" blocked row -> project unchanged, nothing executed, panel stays open
+    const swapBox = await swapRow.boundingBox();
+    expect(swapBox).toBeTruthy();
+    await page.mouse.click(swapBox!.x + swapBox!.width / 2, swapBox!.y + swapBox!.height / 2);
+    await expect(panel).toBeVisible();
+    await expect(undoBtn).toBeDisabled();
+    await expect(page.getByText('Swap Direction: Target a connection to reverse it').last()).toBeVisible();
+    const v2AfterBlocked = await page.evaluate(() => localStorage.getItem('wf.speedPanel.v2'));
+    expect(v2AfterBlocked ?? '').not.toContain('swap-direction');
+
+    // Clear search and test Alt+1 while typing inside a secondary macro name input in edit mode
+    await search.fill('');
+    await panel.getByRole('button', { name: 'Edit favorites & groups' }).click();
+    await panel.getByRole('button', { name: '+ New Macro' }).click();
+    const macroInput = panel.getByRole('textbox', { name: /Macro name/ });
+    await macroInput.focus();
+    await page.keyboard.press('Alt+1');
+    // Alt+1 inside the macro name input MUST NOT execute Band 1 slot 1 (`New Zone`) or close the panel
+    await expect(panel).toBeVisible();
+
+    // Exit edit mode and use Alt+4 from search box on empty canvas (`Open Review` in Band 1 slot 4)
+    await panel.getByRole('button', { name: 'Exit edit mode' }).click();
+    await search.focus();
+    await search.press('Alt+4');
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Export MD' })).toBeVisible();
+
+    // Alt+ArrowUp reorder on pinned items persists across reopen
+    await page.mouse.move(box!.x + 12, box!.y + 12);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await band1.getByTestId('wf-sp-row-new-zone').getByRole('button', { name: 'Pin New Zone' }).click();
+    await band1.getByTestId('wf-sp-row-fit-content').getByRole('button', { name: 'Pin Fit to Content' }).click();
+
+    const band2 = panel.getByTestId('wf-sp-band-2');
+    await search.focus();
+    // 5 Band 1 items + index 0 pin + index 1 pin (`fit-content`) = 6 ArrowDown presses
+    for (let i = 0; i < 6; i++) {
+      await search.press('ArrowDown');
+    }
+    await expect(band2.getByTestId('wf-sp-pin-fit-content')).toHaveAttribute('aria-selected', 'true');
+    await search.press('Alt+ArrowUp');
+    await expect(band2.locator('[role="option"]').nth(0)).toHaveAttribute('data-testid', 'wf-sp-pin-fit-content');
+    await expect(band2.locator('[role="option"]').nth(1)).toHaveAttribute('data-testid', 'wf-sp-pin-new-zone');
+
+    // Close and reopen -> persisted Alt+ArrowUp pin order holds
+    await search.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await page.mouse.move(box!.x + 12, box!.y + 12);
+    await page.keyboard.press('q');
+    const reopenedBand2 = page.getByTestId('wf-speed-panel').getByTestId('wf-sp-band-2');
+    await expect(reopenedBand2.locator('[role="option"]').nth(0)).toHaveAttribute('data-testid', 'wf-sp-pin-fit-content');
+    await expect(reopenedBand2.locator('[role="option"]').nth(1)).toHaveAttribute('data-testid', 'wf-sp-pin-new-zone');
+  });
 });

@@ -616,7 +616,7 @@
           "path": "e2e/import-roundtrip.spec.ts"
         },
         {
-          "hash": "515011e3d770b1d5b0bc702deabc957aa030ed7ccda35018eafbcbffbd73ae6e",
+          "hash": "0aa63cc4a580d36a1b93dcb1a77359a7cf6f88d9b69d7d3cccccd10f5238fdec",
           "importsFiles": [
             "e2e/helpers.ts"
           ],
@@ -2051,14 +2051,19 @@
           "path": "packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts"
         },
         {
-          "hash": "877a54790489d8938131d785561b0a184e645b0a15b83ef13a6cf05b373cf38f",
+          "hash": "501783f77c5845549dd094c9989f9eada1e052e0f0d3f62e0e13040130f22426",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c3-compat.test.ts"
         },
         {
-          "hash": "4e0d0ff06dca7f9e62a789d71964affac88e8f1b4a50e367498fd5c82defefc4",
+          "hash": "281e74e9f015b59bd9fd5dc38b2dba8c0d59c7ff1598d3db2f53783bca008176",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c3-layout-search.test.ts"
+        },
+        {
+          "hash": "cd3cb013374cb6ee8b88dc36ffb128be371c2270849c52674df4d9d1e6aee499",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-c3-ui.test.ts"
         },
         {
           "hash": "dc83473a9ae0fcb134ccb21aa44087d8e2185c337cb33c53af88c2ff1236b525",
@@ -2423,7 +2428,7 @@
             "getToolPaletteEntries",
             "runCommand"
           ],
-          "hash": "5ee5578eba4af0010fdceff7ec2bdb589b085f7c5f547df31f66bc871bc372cb",
+          "hash": "31eefa99d26a56e53cb3365ca01c6db4ee998c6feb1b9e355ffa1b0ab4fa2f8c",
           "importOrder": [
             "packages/editor/src/hit-testing.ts",
             "packages/schema/src/index.ts",
@@ -3813,16 +3818,11 @@
         },
         {
           "exports": [
+            "CommandBadgeLabel",
+            "HighlightedText",
             "SpeedPanel"
           ],
-          "failurePaths": [
-            {
-              "in": "SpeedPanel",
-              "kind": "catch",
-              "line": 272
-            }
-          ],
-          "hash": "510648e0f66ad91d754059fe4e2df9cb0d25667a271e884ece4c5477cba293c7",
+          "hash": "c73ffaed0cab1e2e7e849ca9d7b32cdae631cc12d08c34b8068757bb562efee1",
           "importOrder": [
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -3834,6 +3834,7 @@
             "packages/editor/src/speed-panel-search.ts",
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/panels/speed-panel-stores.ts",
+            "packages/editor/src/speed-panel-ui.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/editor/src/panels/shared.tsx"
           ],
@@ -3846,6 +3847,7 @@
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-layout.ts",
             "packages/editor/src/speed-panel-search.ts",
+            "packages/editor/src/speed-panel-ui.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/speed-panel-store.ts",
@@ -4973,7 +4975,7 @@
             "buildSpeedPanelView",
             "buildUnsearchedSpeedPanel"
           ],
-          "hash": "9de66207a419c4a299453fdfdc2d2856f6d16f1e09772cb9c3a10dbbb3bb5f8f",
+          "hash": "3e27e109bcdeabbb3299c874be65f2151ff3c5e84506d8ba0c597c89d7c0eea7",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/command-registry.ts",
@@ -4999,7 +5001,7 @@
             "normalizeSearchQuery",
             "searchCommands"
           ],
-          "hash": "65f193df2d9ab9c8d95bcb1d77b5cb6e26579fac3cd2509cd58bd54329ea1c51",
+          "hash": "d2db70ddaeef9d4afb7192d0ba11d16424e0c3cd8758c00def7d559697d10a1f",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/command-registry.ts"
@@ -5009,6 +5011,49 @@
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/speed-panel-search.ts"
+        },
+        {
+          "exports": [
+            "buildNavigableEntries",
+            "buildPinRowHandlers",
+            "catalogueGroupHeadingId",
+            "clampActiveIndex",
+            "commandGlyph",
+            "computeEdgeClampedOffset",
+            "customGroupHeadingId",
+            "dispatchSpeedPanelKeyAction",
+            "executeSpeedPanelMacro",
+            "executeSpeedPanelRow",
+            "isNonSearchTextInput",
+            "resolvePinDropSourceIndex",
+            "resolveSpeedPanelKeyAction",
+            "splitHighlightSegments"
+          ],
+          "failurePaths": [
+            {
+              "in": "executeSpeedPanelRow",
+              "kind": "catch",
+              "line": 467
+            }
+          ],
+          "hash": "d47d73acede61a5dcd1c32e4b43c5ed0d2779e37fa22f1679f927a3efa48711c",
+          "importOrder": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/speed-panel-execute.ts",
+            "packages/editor/src/speed-panel-layout.ts",
+            "packages/editor/src/panels/speed-panel-stores.ts"
+          ],
+          "importsFiles": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/panels/speed-panel-stores.ts",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/speed-panel-execute.ts",
+            "packages/editor/src/speed-panel-layout.ts"
+          ],
+          "path": "packages/editor/src/speed-panel-ui.ts"
         },
         {
           "exports": [
@@ -5198,21 +5243,22 @@
         {
           "exports": [
             "loadJson",
-            "loadSpeedPanelStateV2"
+            "loadSpeedPanelStateV2",
+            "pruneAdaptiveHistory"
           ],
           "failurePaths": [
             {
               "in": "loadJson",
               "kind": "catch",
-              "line": 46
+              "line": 48
             },
             {
               "in": "saveJson",
               "kind": "catch",
-              "line": 63
+              "line": 65
             }
           ],
-          "hash": "d91a6d4934bc356e8d364e618a9c9692fdab9f15e0d02aeaefaecf804437a894",
+          "hash": "d761b03c076a54c5831e0d8aa8852a1b20742c160ecdb5b8ec22b46fb9fad95b",
           "importsFiles": [
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/speed-panel-actions.ts",
@@ -10899,7 +10945,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "397844954f9b5c97ff002c6c87430d537a6188e63dc873bf3d94336c51da53fc",
+          "hash": "62074d90162e91d0f9a0e56fcb3b471e57a77c03169632926d022ebd396965ea",
           "path": "CHANGELOG.md"
         },
         {
@@ -10931,7 +10977,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "39c37e399f011e53a3edccb8e94092dc28b4033ec67ba904a50f12f1540919a6",
+          "hash": "5dddfce4b35e8d84d72315abdd981ffb08d1a1940abceb83101f6a875f5a4f16",
           "path": "README.md"
         },
         {
@@ -12368,7 +12414,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 255
+          "files": 257
         },
         {
           "boundary": "export-ai-rpg",
@@ -13072,7 +13118,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 231,
+          "files": 232,
           "job": "build-and-test",
           "runner": "vitest",
           "step": "6",
@@ -13083,7 +13129,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 231,
+          "files": 232,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -13640,7 +13686,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 255
+          "files": 257
         },
         {
           "boundary": "export-ai-rpg",
@@ -14303,7 +14349,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 231,
+          "files": 232,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -14828,8 +14874,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "e2138c27f37f9f39767e6d8583ebe041a20744c3",
-    "tracked": 671
+    "commit": "de1f8450396d5e4dea432cbf6ad6d966863b780e",
+    "tracked": 673
   },
   "landings": [
     {
@@ -16447,7 +16493,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 244,
+  "testFiles": 245,
   "unassigned": [],
   "workspaces": [
     "packages/editor",

@@ -76,11 +76,118 @@ describe('Speed Panel C3 compatibility contracts (unchanged)', () => {
     expect(opts.doubleClickWindowMs).toBe(320);
   });
 
-  it('unchanged: command registry IDs, 18 Speed Panel action IDs, 29 hotkey bindings, and 10 tool-palette entries remain intact', () => {
-    expect(COMMAND_REGISTRY).toHaveLength(43);
-    expect(SPEED_PANEL_ACTIONS).toHaveLength(18);
-    expect(HOTKEY_BINDINGS).toHaveLength(29);
-    expect(TOOL_PALETTE_TOOLS).toHaveLength(10);
+  it('unchanged: command registry IDs, 18 Speed Panel actions, 29 hotkey bindings, and 10 tool-palette entries match base order and values', () => {
+    expect(COMMAND_REGISTRY.map((c) => c.id)).toEqual([
+      'new-zone',
+      'fit-content',
+      'edit-props',
+      'delete',
+      'duplicate',
+      'assign-district',
+      'place-entity',
+      'place-encounter',
+      'connect-from',
+      'swap-direction',
+      'add-secret-conn',
+      'add-channel-conn',
+      'add-warp-conn',
+      'add-trail-conn',
+      'merge-zones',
+      'set-elevation',
+      'open-review',
+      'export-summary',
+      'search',
+      'save',
+      'copy',
+      'paste',
+      'undo',
+      'redo',
+      'select-all',
+      'escape',
+      'nudge-up',
+      'nudge-down',
+      'nudge-left',
+      'nudge-right',
+      'open-details',
+      'apply-preset',
+      'save-preset',
+      'tool-select',
+      'tool-zone',
+      'tool-connection',
+      'tool-entity',
+      'tool-landmark',
+      'tool-spawn',
+      'tool-tile',
+      'tool-prop',
+      'tool-encounter',
+      'tool-item',
+    ]);
+
+    expect(SPEED_PANEL_ACTIONS.map((a) => [a.id, a.label])).toEqual([
+      ['new-zone', 'New Zone'],
+      ['fit-content', 'Fit to Content'],
+      ['edit-props', 'Edit Properties'],
+      ['delete', 'Delete'],
+      ['duplicate', 'Duplicate'],
+      ['assign-district', 'Assign District'],
+      ['place-entity', 'Place Entity Here'],
+      ['place-encounter', 'Place Encounter Here'],
+      ['connect-from', 'Connect From Here'],
+      ['swap-direction', 'Swap Direction'],
+      ['add-secret-conn', 'Draw Secret Connection'],
+      ['add-channel-conn', 'Draw Channel Connection'],
+      ['add-warp-conn', 'Draw Warp Connection'],
+      ['add-trail-conn', 'Draw Trail Connection'],
+      ['merge-zones', 'Merge Zones'],
+      ['set-elevation', 'Set Elevation'],
+      ['open-review', 'Open Review'],
+      ['export-summary', 'Export Summary'],
+    ]);
+
+    expect(HOTKEY_BINDINGS.map((b) => [b.key, Boolean(b.ctrl), Boolean(b.shift), b.label])).toEqual([
+      ['KeyK', true, false, 'Ctrl+K'],
+      ['KeyS', true, false, 'Ctrl+S'],
+      ['KeyC', true, false, 'Ctrl+C'],
+      ['KeyV', true, false, 'Ctrl+V'],
+      ['KeyD', true, false, 'Ctrl+D'],
+      ['KeyZ', true, false, 'Ctrl+Z'],
+      ['KeyZ', true, true, 'Ctrl+Shift+Z'],
+      ['KeyY', true, false, 'Ctrl+Y'],
+      ['KeyA', true, false, 'Ctrl+A'],
+      ['Delete', false, false, 'Del'],
+      ['Backspace', false, false, 'Backspace'],
+      ['Escape', false, false, 'Esc'],
+      ['ArrowUp', false, false, 'Up'],
+      ['ArrowDown', false, false, 'Down'],
+      ['ArrowLeft', false, false, 'Left'],
+      ['ArrowRight', false, false, 'Right'],
+      ['Enter', false, false, 'Enter'],
+      ['KeyP', false, false, 'P'],
+      ['KeyP', false, true, 'Shift+P'],
+      ['KeyV', false, false, 'V'],
+      ['KeyZ', false, false, 'Z'],
+      ['KeyC', false, false, 'C'],
+      ['KeyE', false, false, 'E'],
+      ['KeyL', false, false, 'L'],
+      ['KeyS', false, false, 'S'],
+      ['KeyT', false, false, 'T'],
+      ['KeyO', false, false, 'O'],
+      ['KeyN', false, false, 'N'],
+      ['KeyI', false, false, 'I'],
+    ]);
+
+    expect(TOOL_PALETTE_TOOLS.map((t) => [t.id, t.label, t.key])).toEqual([
+      ['select', 'Select', 'V'],
+      ['zone-paint', 'Zone', 'Z'],
+      ['connection', 'Connect', 'C'],
+      ['entity-place', 'Entity', 'E'],
+      ['landmark', 'Landmark', 'L'],
+      ['spawn', 'Spawn', 'S'],
+      ['tile-paint', 'Tiles', 'T'],
+      ['prop-place', 'Prop', 'O'],
+      ['encounter-place', 'Encounter', 'N'],
+      ['item-place', 'Item', 'I'],
+    ]);
 
     const hit: HitResult = { type: 'zone', id: 'zone-entrance' };
     const filtered = filterActions(SPEED_PANEL_ACTIONS, hit, 'dup', []);
