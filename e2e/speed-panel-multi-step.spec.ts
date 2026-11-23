@@ -463,7 +463,7 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     await expect(highlight).toHaveAttribute('data-target-id', 'chapel-lantern');
     await expect(panel.getByTestId('wf-sp-live-region')).toContainText('Item: Chapel Lantern');
 
-    // 3) Tab from the focused last chip leaves the chip row in normal focus order onto the first Band 1 pin button
+    // 3) Tab from the focused last chip leaves the chip row and moves onto the first Band 1 pin button
     await canvasChip.focus();
     await expect(canvasChip).toBeFocused();
     await page.keyboard.press('Tab');
@@ -474,6 +474,7 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
       return {
         inChips: Boolean(active && chips && chips.contains(active)),
         inBand1: Boolean(active && band1 && band1.contains(active)),
+        isFirstBand1Button: Boolean(active && band1 && band1.querySelector('button') === active),
         notBody: Boolean(active && active !== document.body),
         tagName: active?.tagName ?? '',
         accessibleLabel: (active?.getAttribute('aria-label') || active?.textContent || '').trim(),
@@ -481,6 +482,7 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     });
     expect(leftChipRow.inChips).toBe(false);
     expect(leftChipRow.inBand1).toBe(true);
+    expect(leftChipRow.isFirstBand1Button).toBe(true);
     expect(leftChipRow.notBody).toBe(true);
     expect(leftChipRow.tagName).toBe('BUTTON');
     expect(leftChipRow.accessibleLabel).toMatch(/^(Pin|Unpin) /);

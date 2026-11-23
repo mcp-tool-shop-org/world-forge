@@ -16,7 +16,7 @@ import {
   type ContentPack as EngineContentPack,
 } from '@ai-rpg-engine/content-schema';
 import { exportToEngine } from '@world-forge/export-ai-rpg';
-import type { WorldProject } from '@world-forge/schema';
+import { validateProject, type WorldProject } from '@world-forge/schema';
 import {
   runEngineExport,
   runUnrealExport,
@@ -26,7 +26,7 @@ import {
 } from '../panels/export-handlers.js';
 import { computeTargetReadiness, ExportModal, TargetReadinessSummary } from '../panels/ExportModal.js';
 import * as dialoguePanel from '../panels/DialoguePanel.js';
-import { parseSpeakersInput, STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
+import { DialogueSpeakersInput, STARTER_DIALOGUE } from '../panels/DialoguePanel.js';
 import { SAMPLE_WORLDS } from '../templates/samples.js';
 import { BUILTIN_KITS } from '../kits/built-ins.js';
 import { prepareKitImport, serializeKit } from '../kits/bundle.js';
@@ -520,7 +520,21 @@ describe('unresolved dialogue speakers refused by readiness and CLI', () => {
     const store = useProjectStore.getState();
     store.loadProject(structuredClone(validProject));
     const firstDlg = useProjectStore.getState().project.dialogues[0];
-    store.updateDialogue(firstDlg.id, { speakers: parseSpeakersInput('fence-marlo, Tavern Keeper') });
+    const props = {
+      speakers: firstDlg.speakers,
+      onSpeakersChange: (speakers: string[]) => store.updateDialogue(firstDlg.id, { speakers }),
+    };
+    const renderedHtml = renderToStaticMarkup(createElement(DialogueSpeakersInput, props));
+    expect(renderedHtml).toContain('data-testid="wf-dialogue-speakers-input"');
+    const element = DialogueSpeakersInput(props);
+    expect(element.type).toBe('input');
+    expect(element.props['data-testid']).toBe('wf-dialogue-speakers-input');
+    expect(element.props.value).toBe(firstDlg.speakers.join(', '));
+    (element.props.onChange as (e: { target: { value: string } }) => void)({
+      target: { value: 'fence-marlo, Tavern Keeper' },
+    });
+    const updatedDlg = useProjectStore.getState().project.dialogues[0];
+    expect(renderToStaticMarkup(createElement(DialogueSpeakersInput, { ...props, speakers: updatedDlg.speakers }))).toContain('fence-marlo, Tavern Keeper');
     await assertSpeakerRefused('free-typed', useProjectStore.getState().project, firstDlg.id, 'Tavern Keeper');
   });
 
@@ -741,5 +755,113 @@ describe('Keeper starter dialogue in a fresh project', () => {
     const enginePack = exported.contentPack as unknown as EngineContentPack;
     expect(validateGameContent(enginePack).ok).toBe(true);
     expect(loadContent(enginePack).ok).toBe(true);
+  });
+});
+
+describe('readiness parity and combined blockers with encounter advisories', () => {
+  it('computeTargetReadiness matches exportToEngine verdict and blocker messages across every sample world and blocked fixture', () => {
+    const blockedFixtures: WorldProject[] = [
+      invalidProject,
+      {
+        ...validProject,
+        encounterAnchors: [
+          { id: 'enc-custom', zoneId: validProject.zones[0].id, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+        ],
+      },
+      {
+        ...validProject,
+        encounterAnchors: [
+          { id: 'enc-proto', zoneId: validProject.zones[0].id, encounterType: '__proto__', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+        ],
+      },
+      {
+        ...validProject,
+        dialogues: [
+          {
+            id: 'dlg-missing-speaker',
+            speakers: ['ghost-speaker'],
+            entryNodeId: 'n1',
+            nodes: { n1: { id: 'n1', speaker: 'ghost-speaker', text: 'Hello.', choices: [] } },
+          },
+        ],
+      },
+      {
+        ...structuredClone(validProject),
+        dialogues: [structuredClone(STARTER_DIALOGUE)],
+      },
+    ];
+
+    const expectedBlockersFromExport = (project: WorldProject, precheckValid: boolean): string[] => {
+      const res = exportToEngine(project);
+      if (res.success) return [];
+      const typed = [
+        ...(res.encounterBlockers ?? []).map((b) => b.message),
+        ...(res.speakerBlockers ?? []).map((b) => b.message),
+      ];
+      if (typed.length === 0 && precheckValid) {
+        return res.errors.map((e) => e.message);
+      }
+      return typed;
+    };
+
+    for (const sample of SAMPLE_WORLDS) {
+      const precheck = validateProject(sample.project);
+      const readiness = computeTargetReadiness(sample.project, precheck.valid);
+      const fullExport = exportToEngine(sample.project);
+      expect(readiness.aiRpg.ready, `sample ${sample.id} ready`).toBe(precheck.valid && fullExport.success);
+      expect(readiness.aiRpg.blockers, `sample ${sample.id} blockers`).toEqual(
+        expectedBlockersFromExport(sample.project, precheck.valid),
+      );
+    }
+
+    for (let i = 0; i < blockedFixtures.length; i++) {
+      const fixture = blockedFixtures[i];
+      const precheck = validateProject(fixture);
+      const readiness = computeTargetReadiness(fixture, precheck.valid);
+      const fullExport = exportToEngine(fixture);
+      expect(readiness.aiRpg.ready, `blocked fixture #${i} ready`).toBe(precheck.valid && fullExport.success);
+      expect(readiness.aiRpg.blockers, `blocked fixture #${i} blockers`).toEqual(
+        expectedBlockersFromExport(fixture, precheck.valid),
+      );
+    }
+  });
+
+  it('lists encounter translation and drop advisories beneath blockers when blocked, without changing export output', () => {
+    const zoneId = validProject.zones[0].id;
+    const mixedProject: WorldProject = {
+      ...structuredClone(validProject),
+      encounterAnchors: [
+        { id: 'enc-custom-block', zoneId, encounterType: 'combat', enemyIds: [], probability: 0.5, cooldownTurns: 1, tags: [] },
+        { id: 'enc-boss-map', zoneId, encounterType: 'boss', enemyIds: [], probability: 0.8, cooldownTurns: 0, tags: [] },
+        { id: 'enc-hazard-drop', zoneId, encounterType: 'hazard', enemyIds: [], probability: 0.4, cooldownTurns: 2, tags: [] },
+      ],
+      dialogues: [
+        {
+          id: 'dlg-ghost',
+          speakers: ['missing-npc'],
+          entryNodeId: 'n1',
+          nodes: { n1: { id: 'n1', speaker: 'missing-npc', text: 'Wait.', choices: [] } },
+        },
+      ],
+    };
+
+    const readiness = computeTargetReadiness(mixedProject, true);
+    expect(readiness.aiRpg.ready).toBe(false);
+    expect(readiness.aiRpg.blockers.some((b) => b.includes('enc-custom-block') && b.includes('combat'))).toBe(true);
+    expect(readiness.aiRpg.blockers.some((b) => b.includes('dlg-ghost') && b.includes('missing-npc'))).toBe(true);
+    expect(readiness.aiRpg.advisories.some((a) => a.includes('enc-boss-map') && a.includes('duel'))).toBe(true);
+    expect(readiness.aiRpg.advisories.some((a) => a.includes('enc-hazard-drop') && a.includes('left out'))).toBe(true);
+
+    const html = renderToStaticMarkup(createElement(TargetReadinessSummary, { targetReadiness: readiness }));
+    expect(html).toContain('Not ready (2 blockers)');
+    expect(html).toContain('enc-custom-block');
+    expect(html).toContain('missing-npc');
+    expect(html).toContain('Advisories once blockers are fixed:');
+    expect(html).toContain('enc-boss-map');
+    expect(html).toContain('enc-hazard-drop');
+
+    // Display-only change: exportToEngine still refuses without a contentPack
+    const exported = exportToEngine(mixedProject);
+    expect(exported.success).toBe(false);
   });
 });

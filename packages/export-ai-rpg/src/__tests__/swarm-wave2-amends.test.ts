@@ -114,6 +114,14 @@ describe('unrecognized entity role no longer crashes the export (unguarded array
     expect(() => exportToEngine(project)).not.toThrow();
     const result = exportToEngine(project);
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.encounterBlockers).toBeUndefined();
+      expect(result.speakerBlockers).toBeUndefined();
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].path).toBe('entityPlacements.npc-x.role');
+      expect(result.errors[0].message).toContain('npc-x');
+      expect(result.errors[0].message).toContain('villager');
+    }
   });
 
   it('recognized roles are completely unaffected by the guard', () => {

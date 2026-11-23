@@ -15,7 +15,7 @@
 //   3. Add a documented refresh path (`npm run dogfood:refresh` or similar) so
 //      intentional changes are a one-command regeneration, not a manual diff.
 
-import { chapelProject } from '../packages/schema/src/__tests__/fixtures/chapel-authored.js';
+import { chapelExportableProject } from '../packages/schema/src/__tests__/fixtures/chapel-exportable.js';
 import { exportToEngine } from '../packages/export-ai-rpg/src/export.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -25,31 +25,23 @@ const __dirname = typeof import.meta.dirname === 'string' ? import.meta.dirname 
 const outDir = join(__dirname, 'output');
 mkdirSync(outDir, { recursive: true });
 
-// Also write the input project for reference
-writeFileSync(join(outDir, 'chapel-project.json'), JSON.stringify(chapelProject, null, 2));
+// Write the exact project copy passed into exportToEngine
+writeFileSync(join(outDir, 'chapel-project.json'), JSON.stringify(chapelExportableProject, null, 2));
 
 console.log('=== Chapel Threshold Dogfood Export ===\n');
-console.log(`Project: ${chapelProject.name}`);
-console.log(`Zones: ${chapelProject.zones.length}`);
-console.log(`Districts: ${chapelProject.districts.length}`);
-console.log(`Entities: ${chapelProject.entityPlacements.length}`);
-console.log(`Items: ${chapelProject.itemPlacements.length}`);
-console.log(`Connections: ${chapelProject.connections.length}`);
-console.log(`Landmarks: ${chapelProject.landmarks.length}`);
-console.log(`Spawn points: ${chapelProject.spawnPoints.length}`);
-console.log(`Faction presences: ${chapelProject.factionPresences.length}`);
-console.log(`Pressure hotspots: ${chapelProject.pressureHotspots.length}`);
+console.log(`Project: ${chapelExportableProject.name}`);
+console.log(`Zones: ${chapelExportableProject.zones.length}`);
+console.log(`Districts: ${chapelExportableProject.districts.length}`);
+console.log(`Entities: ${chapelExportableProject.entityPlacements.length}`);
+console.log(`Items: ${chapelExportableProject.itemPlacements.length}`);
+console.log(`Connections: ${chapelExportableProject.connections.length}`);
+console.log(`Landmarks: ${chapelExportableProject.landmarks.length}`);
+console.log(`Spawn points: ${chapelExportableProject.spawnPoints.length}`);
+console.log(`Faction presences: ${chapelExportableProject.factionPresences.length}`);
+console.log(`Pressure hotspots: ${chapelExportableProject.pressureHotspots.length}`);
 console.log();
 
-const engineChapelProject = {
-  ...chapelProject,
-  encounterAnchors: chapelProject.encounterAnchors.map((a) => ({
-    ...a,
-    encounterType: a.encounterType === 'combat' ? 'boss' : a.encounterType,
-  })),
-};
-
-const result = exportToEngine(engineChapelProject);
+const result = exportToEngine(chapelExportableProject);
 
 if ('success' in result && result.success === false) {
   console.error('EXPORT FAILED — validation errors:');
@@ -137,7 +129,7 @@ for (const i of contentPack.items) {
 }
 
 // Dialogues: entity-dialogue binding
-for (const e of chapelProject.entityPlacements) {
+for (const e of chapelExportableProject.entityPlacements) {
   if (e.dialogueId && !contentPack.dialogues.some((d) => d.id === e.dialogueId)) {
     gaps.push(`Entity "${e.entityId}" references dialogue "${e.dialogueId}" but it was not exported`);
   }

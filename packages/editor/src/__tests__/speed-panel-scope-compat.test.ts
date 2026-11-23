@@ -106,7 +106,12 @@ import {
 import { createCanvasSpatialPickHandlers, dispatchPickOverlayInputKeyDown } from '../speed-panel-steps.js';
 import { productionHotkeyContext, productionStepStores } from '../panels/speed-panel-stores.js';
 import { SpeedPanel } from '../panels/SpeedPanel.js';
-import { createCanvasRightPointerHandlers } from '../speed-panel-gesture.js';
+import {
+  createCanvasRightPointerHandlers,
+  createInitialRightClickGestureState,
+  type CanvasContextMenuState,
+  type RightClickGestureState,
+} from '../speed-panel-gesture.js';
 import { DEFAULT_SPEED_PANEL_OPTIONS } from '../store/speed-panel-options-store.js';
 import { collectTownMarkers } from '../town-markers.js';
 import { findAllHitsAt, findHitAt, type HitResult } from '../hit-testing.js';
@@ -382,8 +387,8 @@ describe('Speed Panel Default Target, Deck & Tab Baseline Compatibility', () => 
     const z1Center = { sx: (z1.gridX + z1.gridWidth / 2) * tileSize, sy: (z1.gridY + z1.gridHeight / 2) * tileSize };
 
     const makeHandlersFor = (getPt: () => { sx: number; sy: number }) => {
-      let gestureState = { rightButtonDown: false, rightPressStart: null as null | { sx: number; sy: number; pointerId: number; t: number }, lastRightUp: null as null | { sx: number; sy: number; t: number }, dragging: false };
-      let menuState: { x: number; y: number; hit: HitResult | null; actions: Array<{ id: string; label: string; icon: string }> } | null = null;
+      let gestureState: RightClickGestureState = createInitialRightClickGestureState();
+      let menuState: CanvasContextMenuState | null = null;
       let now = 1000;
       const filterSingle = (hit: HitResult | null): HitResult | null =>
         hit && !useEditorStore.getState().hiddenIds.has(hit.id) ? hit : null;
@@ -393,7 +398,8 @@ describe('Speed Panel Default Target, Deck & Tab Baseline Compatibility', () => 
         advanceTime: (ms: number) => { now += ms; },
         handlers: createCanvasRightPointerHandlers({
           isMacPlatform: () => false,
-          nowFn: () => now,
+          nowMs: () => now,
+          perfNowMs: () => now,
           getScreenXY: getPt,
           getViewport: () => viewport,
           setViewport: () => {},
@@ -429,7 +435,7 @@ describe('Speed Panel Default Target, Deck & Tab Baseline Compatibility', () => 
             activeModal: null, showSearch: false, showSpeedPanel: false, activeElement: null,
             selection: useEditorStore.getState().selection, selectedConnection: null, project: curProject, tileSize,
           }),
-        } as never),
+        }),
       };
     };
 
@@ -505,12 +511,20 @@ describe('Speed Panel Default Target, Deck & Tab Baseline Compatibility', () => 
       hookIdx = 0;
       const tree = expandNodes(createElement(SpeedPanel, {}));
       flushEffects();
+      expect(useEditorStore.getState().speedPanelContext).toBeNull();
       const chips = collectCompatNodes(tree, (el) => typeof el.props['data-testid'] === 'string' && (el.props['data-testid'] as string).startsWith('wf-sp-scope-chip-'));
       expect(chips.length).toBe(5);
       expect(chips[0].props['data-testid']).toBe('wf-sp-scope-chip-landmark:lm-overlap');
       expect(chips[0].props['aria-pressed']).toBe(false);
       expect(chips[4].props['data-testid']).toBe('wf-sp-scope-chip-canvas');
       expect(chips[4].props['aria-pressed']).toBe(true);
+
+      hookIdx = 0;
+      const rerendered = expandNodes(createElement(SpeedPanel, {}));
+      const chipsAfter = collectCompatNodes(rerendered, (el) => typeof el.props['data-testid'] === 'string' && (el.props['data-testid'] as string).startsWith('wf-sp-scope-chip-'));
+      expect(chipsAfter.length).toBe(5);
+      expect(chipsAfter[0].props['aria-pressed']).toBe(false);
+      expect(chipsAfter[4].props['aria-pressed']).toBe(true);
     }
   });
 });
