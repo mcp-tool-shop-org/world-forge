@@ -321,8 +321,8 @@
         "path": ".gitignore"
       },
       {
-        "commits": 25,
-        "lines": 416,
+        "commits": 24,
+        "lines": 412,
         "path": "CHANGELOG.md"
       },
       {
@@ -386,7 +386,7 @@
         "path": "a11y-audit.md"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "assets/logo.png"
       },
@@ -407,12 +407,12 @@
       },
       {
         "commits": 11,
-        "lines": 12744,
+        "lines": 12835,
         "path": "atlas/statistics.json"
       },
       {
         "commits": 11,
-        "lines": 57486,
+        "lines": 57524,
         "path": "atlas/structure.json"
       },
       {
@@ -677,7 +677,7 @@
       },
       {
         "commits": 1,
-        "lines": 370,
+        "lines": 625,
         "path": "e2e/speed-panel-triggers.spec.ts"
       },
       {
@@ -711,7 +711,7 @@
         "path": "packages/editor/index.html"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "packages/editor/logo.png"
       },
@@ -726,7 +726,7 @@
         "path": "packages/editor/public/favicon.svg"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "packages/editor/public/logo.png"
       },
@@ -742,7 +742,7 @@
       },
       {
         "commits": 24,
-        "lines": 2196,
+        "lines": 2221,
         "path": "packages/editor/src/Canvas.tsx"
       },
       {
@@ -902,12 +902,17 @@
       },
       {
         "commits": 2,
-        "lines": 405,
+        "lines": 417,
         "path": "packages/editor/src/__tests__/speed-panel-c1-compat.test.ts"
       },
       {
         "commits": 1,
-        "lines": 362,
+        "lines": 136,
+        "path": "packages/editor/src/__tests__/speed-panel-c2-compat.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 885,
         "path": "packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts"
       },
       {
@@ -1172,7 +1177,7 @@
       },
       {
         "commits": 1,
-        "lines": 241,
+        "lines": 342,
         "path": "packages/editor/src/panels/OptionsModal.tsx"
       },
       {
@@ -1482,7 +1487,7 @@
       },
       {
         "commits": 1,
-        "lines": 335,
+        "lines": 503,
         "path": "packages/editor/src/speed-panel-gesture.ts"
       },
       {
@@ -1626,7 +1631,7 @@
         "path": "packages/export-ai-rpg/README.md"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "packages/export-ai-rpg/logo.png"
       },
@@ -1936,7 +1941,7 @@
         "path": "packages/export-godot/README.md"
       },
       {
-        "commits": 5,
+        "commits": 4,
         "lines": 0,
         "path": "packages/export-godot/logo.png"
       },
@@ -2226,7 +2231,7 @@
         "path": "packages/export-unreal/README.md"
       },
       {
-        "commits": 5,
+        "commits": 4,
         "lines": 0,
         "path": "packages/export-unreal/logo.png"
       },
@@ -2426,7 +2431,7 @@
         "path": "packages/renderer-2d/README.zh.md"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "packages/renderer-2d/logo.png"
       },
@@ -2576,7 +2581,7 @@
         "path": "packages/schema/README.zh.md"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "packages/schema/logo.png"
       },
@@ -2846,7 +2851,7 @@
         "path": "site/public/favicon.svg"
       },
       {
-        "commits": 2,
+        "commits": 1,
         "lines": 0,
         "path": "site/public/logo.png"
       },
@@ -2866,7 +2871,7 @@
         "path": "site/public/screenshots/editor-canvas.jpg"
       },
       {
-        "commits": 5,
+        "commits": 4,
         "lines": 0,
         "path": "site/src/assets/logo.png"
       },
@@ -2976,9 +2981,9 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-22T23:03:12.363Z",
+  "generatedAt": "2026-11-23T00:18:34.545Z",
   "generatedFrom": {
-    "commit": "7c03aa0f2216162043bd636aa8b537945818a38b"
+    "commit": "e2138c27f37f9f39767e6d8583ebe041a20744c3"
   },
   "pairs": [
     {
@@ -3657,8 +3662,8 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-22T17:47:32-05:00",
-    "inScopeFiles": 671,
+    "headDate": "2026-11-22T18:29:32-05:00",
+    "inScopeFiles": 676,
     "pinnedStart": null,
     "priorFloor": "fallen",
     "qualifyingCommits": 142,
@@ -3666,7 +3671,7 @@
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-26T22:47:32.000Z",
+    "since": "2026-05-26T23:29:32.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

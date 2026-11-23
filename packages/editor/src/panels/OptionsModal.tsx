@@ -12,6 +12,7 @@ import {
   resolveGestureThresholds,
   useSpeedPanelOptions,
 } from '../store/speed-panel-options-store.js';
+import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 
 export const TRIGGER_KEY_ERROR_ID = 'wf-opt-trigger-key-error';
 
@@ -192,6 +193,8 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
     setDoubleClickWindowMs,
     resetOptions,
   } = useSpeedPanelOptions();
+  const showRecents = useSpeedPanelPins((s) => s.showRecents);
+  const setShowRecents = useSpeedPanelPins((s) => s.setShowRecents);
 
   const [keyError, setKeyError] = useState<string | null>(initialKeyError);
   const [resetToken, setResetToken] = useState(0);
@@ -274,6 +277,16 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
           />
         </label>
 
+        <label style={ROW_STYLE}>
+          <span style={LABEL_STYLE}>Show recent commands in Speed Panel</span>
+          <input
+            type="checkbox"
+            data-testid="wf-opt-show-recents"
+            checked={showRecents}
+            onChange={(e) => setShowRecents(e.target.checked)}
+          />
+        </label>
+
         <div style={{ borderTop: '1px solid var(--wf-border-subtle)', paddingTop: 8 }}>
           <div style={{ ...HINT_STYLE, marginBottom: 4 }}>
             Right-click thresholds (pen adjusts automatically to {penThresholds.driftPx} px drift / {penThresholds.radiusPx} px radius / {penThresholds.windowMs} ms window)
@@ -328,6 +341,7 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
             data-testid="wf-opt-reset"
             onClick={() => {
               resetOptions();
+              setShowRecents(true);
               setKeyError(null);
               setResetToken((n) => n + 1);
             }}

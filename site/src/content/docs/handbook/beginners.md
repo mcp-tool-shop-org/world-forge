@@ -175,7 +175,7 @@ When the project is Ready or Healthy, click **Export** to open the Export modal.
 | **Preset** | A reusable template for districts (region presets) or encounters (encounter presets). Can be built-in or custom. |
 | **ProjectBundle** | A portable `.wfproject.json` file containing an entire project with metadata, for sharing or backup. |
 | **SpawnPoint** | A location where the player or entities can appear. One must be marked as default for the player start. |
-| **Speed Panel** | A floating command palette opened with double-right-click. Context-aware, supports pinned favorites, custom groups, and macros. |
+| **Speed Panel** | A floating pointer-anchored command palette (`Q` or double-right-click) with a fixed four-band layout, copied reorderable pins, toggleable frecency recents, tiered RPG search, and live shortcut badges. |
 | **StarterKit** | A pre-built project template (one per mode) that includes zones, entities, dialogues, and a player template. Exportable as `.wfkit.json`. |
 | **WorldProject** | The top-level container holding an entire authored world. Everything in the editor is part of this structure. |
 | **Zone** | A rectangular area on the canvas representing a distinct location (room, territory, sector) with spatial coordinates and environmental properties. |

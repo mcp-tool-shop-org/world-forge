@@ -24,6 +24,8 @@ This page is the living contract. The repo-root [`a11y-audit.md`](https://github
 | Enter | Open the details panel for the selection |
 | P / Shift+P | Apply preset to the selected district or zone / save the current selection as a preset |
 | Q (configurable) | Open the Speed Panel at the pointer (or at the selected object / canvas centre when canvas has focus) |
+| Alt+1..5 (in open Speed Panel) | Run Band 1 quick-deck slots directly when search is empty |
+| Alt+Up / Alt+Down (in open Speed Panel) | Reorder the active pinned command inside Band 2 |
 | V Z C E L S T O N I | Select, Zone, Connect, Entity, Landmark, Spawn, Tiles, Prop, Encounter, Item |
 
 Tool keys are ignored while focus is in an `INPUT`, `TEXTAREA`, or `SELECT`, and the Speed Panel trigger key also skips composing IME events, dead keys, key repeats, and modifiers. Modals and the search overlay swallow canvas hotkeys so Delete cannot mutate a map you cannot see.
@@ -48,4 +50,4 @@ Object List rows are `tabIndex={0}` with Enter/Space to select. A filter input n
 
 ## Known gaps
 
-See [`a11y-audit.md`](https://github.com/mcp-tool-shop-org/world-forge/blob/main/a11y-audit.md). Placement, box-select, zone resize, connection drawing, and canvas pan remain pointer-only; the Speed Panel now also opens from keyboard focus on the canvas via `Q` (at selection or canvas centre) or from `Shift+F10` / `ContextMenu` and its discovery footer.
+See [`a11y-audit.md`](https://github.com/mcp-tool-shop-org/world-forge/blob/main/a11y-audit.md). Placement, box-select, zone resize, connection drawing, and canvas pan remain pointer-only; the Speed Panel uses an ARIA combobox/listbox with `aria-activedescendant`, keeps unavailable search matches keyboard-reachable with `aria-disabled="true"` and inline reasons, and opens from keyboard focus on the canvas via `Q` (at selection or canvas centre) or from `Shift+F10` / `ContextMenu` and its discovery footer.
