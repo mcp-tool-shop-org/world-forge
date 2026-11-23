@@ -7,7 +7,16 @@ import type { ExecuteResult, ExecuteStores } from './speed-panel-execute.js';
 import type { PaletteRow, SpeedPanelView } from './speed-panel-layout.js';
 import { formatSpeedPanelFailure, handleSpeedPanelExecuteResult } from './panels/speed-panel-stores.js';
 import {
+  createMacroFromRecentEntries,
+  executeMacroAtomic,
+  validateMacroExecution,
+  type MacroExecutionStores,
+  type MacroMissingRefPrompt,
+  type MacroReplacementMap,
+} from './speed-panel-macros.js';
+import {
   advanceStepChoice,
+  formatMergeZonesUndoLabel,
   openCommandStepFlow,
   popPanelStep,
   replayLastPanelAction,
@@ -17,7 +26,14 @@ import {
   type StepExecutionStores,
   type StepStackState,
 } from './speed-panel-steps.js';
-import type { LastPanelAction, SelectionSet } from './store/editor-store.js';
+import {
+  emptySelection,
+  isReplayableSessionAction,
+  MAX_RECENT_PANEL_ACTIONS,
+  type LastPanelAction,
+  type SelectionSet,
+  type SessionActionLogEntry,
+} from './store/editor-store.js';
 import type { WorldProject } from '@world-forge/schema';
 
 export const SPEED_GLYPH: Readonly<Record<string, string>> = {
@@ -50,12 +66,14 @@ export const SPEED_GLYPH: Readonly<Record<string, string>> = {
   'open-details': '\u270E',
   'apply-preset': '\u25C6',
   'save-preset': '\u25C7',
+  'create-macro-from-recent': '\u229E',
 };
 
 export const SP_HEADING_IDS = {
   band1: 'wf-sp-heading-band-1',
   band2: 'wf-sp-heading-band-2',
   band3: 'wf-sp-heading-band-3',
+  band4Macros: 'wf-sp-heading-band-4-macros',
   band4Mode: 'wf-sp-heading-band-4-mode',
   searchMacros: 'wf-sp-heading-search-macros',
   unavailable: 'wf-sp-heading-unavailable',
@@ -117,6 +135,9 @@ export function buildNavigableEntries(
     }
     view.band3Recents.forEach((row, i) => {
       items.push({ kind: 'row', domId: `wf-sp-opt-b3-${i}-${row.command.id}`, row });
+    });
+    view.band4Macros?.forEach((macro) => {
+      items.push({ kind: 'macro', domId: `wf-sp-opt-b4-macro-${macro.id}`, macro });
     });
     view.band4ModeSuggested.forEach((row, i) => {
       items.push({ kind: 'row', domId: `wf-sp-opt-ms-${i}-${row.command.id}`, row });
@@ -502,7 +523,187 @@ export function executeSpeedPanelRow(
   }
 }
 
-/** Execute a Speed Panel macro and either report the aborted step or record usage and close. */
+export interface CreateMacroViewState {
+  entries: SessionActionLogEntry[];
+  selectedIds: string[];
+  name: string;
+  pinToPanel: boolean;
+  error: string | null;
+}
+
+/** Build initial state for inline "Create Macro from Recent Actions…" panel view. */
+export function openCreateMacroState(entries: readonly SessionActionLogEntry[]): CreateMacroViewState {
+  const replayable = entries
+    .filter((e) => isReplayableSessionAction(e.commandId, e.args))
+    .slice(0, MAX_RECENT_PANEL_ACTIONS);
+  return {
+    entries: replayable,
+    selectedIds: replayable.map((e) => e.id),
+    name: '',
+    pinToPanel: true,
+    error: null,
+  };
+}
+
+/** Toggle selection of a single session log entry inside the inline macro creator. */
+export function toggleCreateMacroSelection(
+  state: CreateMacroViewState,
+  entryId: string,
+): CreateMacroViewState {
+  const exists = state.selectedIds.includes(entryId);
+  return {
+    ...state,
+    selectedIds: exists
+      ? state.selectedIds.filter((id) => id !== entryId)
+      : [...state.selectedIds, entryId],
+    error: null,
+  };
+}
+
+/** Validate and save the created macro to `useSpeedPanelPins`, preserving pane focus cleanly. */
+export function submitCreateMacroState(
+  state: CreateMacroViewState,
+  deps: {
+    addMacro: (macro: SpeedPanelMacro) => void;
+    setCreateMacroState: (next: CreateMacroViewState | null) => void;
+    setMacroStatus: (status: string | null) => void;
+    refocusSearch?: () => void;
+  },
+): SpeedPanelMacro | null {
+  const res = createMacroFromRecentEntries(
+    state.name,
+    state.entries,
+    new Set(state.selectedIds),
+    { pinned: state.pinToPanel },
+  );
+  if (!res.ok) {
+    deps.setCreateMacroState({ ...state, error: res.error });
+    return null;
+  }
+  deps.addMacro(res.macro);
+  deps.setCreateMacroState(null);
+  deps.setMacroStatus(`Saved macro "${res.macro.name}"`);
+  deps.refocusSearch?.();
+  return res.macro;
+}
+
+export interface MacroReplaceFlowState {
+  macro: SpeedPanelMacro;
+  context: HitResult | null;
+  missingRefs: MacroMissingRefPrompt[];
+  currentIndex: number;
+  replacements: MacroReplacementMap;
+  filter: string;
+  activeIdx: number;
+}
+
+/** Project the active missing-reference prompt into a `StepStackState` so SpeedPanelStepView can render it. */
+export function buildMacroReplaceStepView(flow: MacroReplaceFlowState): {
+  stepStack: StepStackState;
+  currentPrompt: MacroMissingRefPrompt;
+} {
+  const currentPrompt = flow.missingRefs[flow.currentIndex];
+  return {
+    currentPrompt,
+    stepStack: {
+      commandId: 'macro:' + flow.macro.id,
+      commandLabel: flow.macro.name,
+      context: flow.context,
+      targetZoneIds: [],
+      steps: [
+        {
+          kind: 'choice',
+          stepId: 'macro-replace-ref',
+          title: currentPrompt.title,
+          placeholder: 'Filter replacement\u2026',
+          options: currentPrompt.options,
+        },
+      ],
+      error: null,
+    },
+  };
+}
+
+/** Advance or finish the inline macro missing-ID replacement prompt flow. */
+export function selectMacroReplacementOption(
+  flow: MacroReplaceFlowState,
+  option: StepChoiceOption,
+  deps: {
+    stores: ExecuteStores;
+    runMacroSteps: (
+      macro: SpeedPanelMacro,
+      context: HitResult | null,
+      stores: ExecuteStores,
+      replacements?: MacroReplacementMap,
+    ) => MacroExecutionResult;
+    setMacroReplaceFlow: (next: MacroReplaceFlowState | null) => void;
+    setMacroStatus: (status: string | null) => void;
+    recordCommandUsage: (id: string, query: string) => void;
+    closeSpeedPanel: () => void;
+  },
+): boolean {
+  const prompt = flow.missingRefs[flow.currentIndex];
+  if (!prompt) return false;
+  const nextReplacements: MacroReplacementMap =
+    prompt.key === 'target-zone'
+      ? { ...flow.replacements, targetZoneId: option.id }
+      : {
+          ...flow.replacements,
+          byStepKey: { ...(flow.replacements.byStepKey ?? {}), [prompt.key]: option.id },
+        };
+
+  if (flow.currentIndex + 1 < flow.missingRefs.length) {
+    deps.setMacroReplaceFlow({
+      ...flow,
+      currentIndex: flow.currentIndex + 1,
+      replacements: nextReplacements,
+      filter: '',
+      activeIdx: 0,
+    });
+    return false;
+  }
+
+  deps.setMacroReplaceFlow(null);
+  const result = deps.stores.updateProject
+    ? executeMacroAtomic(
+        flow.macro,
+        flow.context,
+        { ...deps.stores, updateProject: deps.stores.updateProject } as MacroExecutionStores,
+        nextReplacements,
+      )
+    : deps.runMacroSteps(flow.macro, flow.context, deps.stores, nextReplacements);
+
+  if (result.abortedAt !== undefined) {
+    deps.setMacroStatus(`Macro "${flow.macro.name}" aborted at step ${result.abortedAt + 1}: ${result.reason}`);
+    return false;
+  }
+  deps.recordCommandUsage('macro:' + flow.macro.id, '');
+  deps.closeSpeedPanel();
+  return true;
+}
+
+/** Step back within the macro missing-ID replacement prompt flow or return cleanly to the root palette. */
+export function stepBackMacroReplaceFlow(
+  flow: MacroReplaceFlowState,
+  deps: {
+    setMacroReplaceFlow: (next: MacroReplaceFlowState | null) => void;
+    refocusSearch?: () => void;
+  },
+): void {
+  if (flow.currentIndex <= 0) {
+    deps.setMacroReplaceFlow(null);
+    deps.refocusSearch?.();
+    return;
+  }
+  deps.setMacroReplaceFlow({
+    ...flow,
+    currentIndex: flow.currentIndex - 1,
+    filter: '',
+    activeIdx: 0,
+  });
+}
+
+/** Execute a Speed Panel macro and either open replacement prompts, report failure, or commit and close. */
 export function executeSpeedPanelMacro(
   macro: SpeedPanelMacro,
   deps: {
@@ -511,13 +712,41 @@ export function executeSpeedPanelMacro(
       macro: SpeedPanelMacro,
       context: HitResult | null,
       stores: ExecuteStores,
+      replacements?: MacroReplacementMap,
     ) => MacroExecutionResult;
     stores: ExecuteStores;
     setMacroStatus: (status: string | null) => void;
+    setMacroReplaceFlow?: (next: MacroReplaceFlowState | null) => void;
     recordCommandUsage: (commandId: string, query: string) => void;
     closeSpeedPanel: () => void;
   },
 ): boolean {
+  if (deps.stores.updateProject) {
+    const validation = validateMacroExecution(
+      macro,
+      deps.stores.project,
+      deps.stores.regionPresets ?? [],
+      deps.stores.encounterPresets ?? [],
+      deps.context,
+      deps.stores.selection ?? emptySelection(),
+    );
+    if (!validation.ok) {
+      if (validation.missingRefs.length > 0 && deps.setMacroReplaceFlow) {
+        deps.setMacroReplaceFlow({
+          macro,
+          context: deps.context,
+          missingRefs: validation.missingRefs,
+          currentIndex: 0,
+          replacements: {},
+          filter: '',
+          activeIdx: 0,
+        });
+        return false;
+      }
+      deps.setMacroStatus(`Macro "${macro.name}": ${validation.error ?? 'cannot execute in this context'}`);
+      return false;
+    }
+  }
   const result = deps.runMacroSteps(macro, deps.context, deps.stores);
   if (result.abortedAt !== undefined) {
     deps.setMacroStatus(`Macro "${macro.name}" aborted at step ${result.abortedAt + 1}: ${result.reason}`);
@@ -667,6 +896,7 @@ export function executeSpeedPanelRowOrStep(
     setStepFlow: (flow: StepStackState | null) => void;
     setStepFilter: (value: string) => void;
     setStepActiveIdx: (idx: number) => void;
+    onOpenCreateMacro?: () => void;
     recordCommandUsage: (commandId: string, query: string) => void;
     pushToast: (message: string, kind?: 'warning' | 'error' | 'info' | 'success') => void;
   },
@@ -677,6 +907,11 @@ export function executeSpeedPanelRowOrStep(
   if (row.disabledReason !== null) {
     deps.pushToast(formatSpeedPanelFailure(actionLabel, row.disabledReason), 'warning');
     return 'blocked';
+  }
+
+  if (cmd.id === 'create-macro-from-recent') {
+    deps.onOpenCreateMacro?.();
+    return 'kept-open';
   }
 
   if (cmd.id === 'repeat-last') {
@@ -699,6 +934,12 @@ export function executeSpeedPanelRowOrStep(
       deps.pushToast(replay.message, 'warning');
       return 'kept-open';
     }
+    deps.stepStores.recordSessionAction?.({
+      commandId: deps.lastPanelAction.commandId,
+      label: deps.lastPanelAction.label,
+      timestamp: Date.now(),
+      ...(deps.lastPanelAction.params ? { args: deps.lastPanelAction.params } : {}),
+    });
     deps.recordCommandUsage(deps.lastPanelAction.commandId, deps.query);
     deps.closeSpeedPanel();
     return 'closed';
@@ -721,6 +962,25 @@ export function executeSpeedPanelRowOrStep(
     return 'blocked';
   }
 
+  if (cmd.id === 'merge-zones' && deps.stepStores.selection.zones.length >= 2) {
+    const selectedZoneIds = [...deps.stepStores.selection.zones];
+    const mergeLabel = formatMergeZonesUndoLabel(selectedZoneIds, deps.stepStores.project);
+    const mergedId = deps.stepStores.mergeZones(selectedZoneIds, mergeLabel);
+    if (!mergedId) {
+      deps.pushToast(formatSpeedPanelFailure(actionLabel, 'Could not merge zones'), 'warning');
+      return 'blocked';
+    }
+    deps.stepStores.selectZone(mergedId, false);
+    deps.stepStores.setLastPanelAction({
+      commandId: 'merge-zones',
+      label: mergeLabel,
+      timestamp: Date.now(),
+    });
+    deps.recordCommandUsage('merge-zones', deps.query);
+    deps.closeSpeedPanel();
+    return 'closed';
+  }
+
   const outcome = executeSpeedPanelRow(row, {
     context: deps.context,
     query: deps.query,
@@ -732,11 +992,13 @@ export function executeSpeedPanelRowOrStep(
     pushToast: deps.pushToast,
   });
   if (outcome === 'closed') {
-    deps.stepStores.setLastPanelAction({
+    const finished = {
       commandId: cmd.id,
       label: actionLabel,
       timestamp: Date.now(),
-    });
+    };
+    deps.stepStores.setLastPanelAction(finished);
+    deps.stepStores.recordSessionAction?.(finished);
   }
   return outcome;
 }
@@ -906,6 +1168,12 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
   stepInputDraft: string;
   scalarPill: ScalarPillState | null;
   scalarPillRef: TRef;
+  recentPanelActions?: readonly SessionActionLogEntry[];
+  createMacroState?: CreateMacroViewState | null;
+  setCreateMacroState?: (next: CreateMacroViewState | null) => void;
+  addMacro?: (macro: SpeedPanelMacro) => void;
+  macroReplaceFlow?: MacroReplaceFlowState | null;
+  setMacroReplaceFlow?: (next: MacroReplaceFlowState | null) => void;
   executeCommand: (
     commandId: string,
     context: HitResult | null,
@@ -916,6 +1184,7 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
     macro: SpeedPanelMacro,
     context: HitResult | null,
     stores: ExecuteStores,
+    replacements?: MacroReplacementMap,
   ) => MacroExecutionResult;
   stores: ExecuteStores;
   stepStores: StepExecutionStores;
@@ -932,6 +1201,11 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
   pushToast: (message: string, kind?: 'warning' | 'error' | 'info' | 'success') => void;
   refocusSearch: () => void;
 }) {
+  const onOpenCreateMacro = () => {
+    deps.setMacroStatus(null);
+    deps.setCreateMacroState?.(openCreateMacroState(deps.recentPanelActions ?? []));
+  };
+
   const execute = (row: PaletteRow) =>
     executeSpeedPanelRowOrStep(row, {
       context: deps.context,
@@ -945,6 +1219,7 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
       setStepFlow: deps.setStepFlow,
       setStepFilter: deps.setStepFilter,
       setStepActiveIdx: deps.setStepActiveIdx,
+      onOpenCreateMacro,
       recordCommandUsage: deps.recordCommandUsage,
       pushToast: deps.pushToast,
     });
@@ -1006,9 +1281,30 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
       runMacroSteps: deps.runMacroSteps,
       stores: deps.stores,
       setMacroStatus: deps.setMacroStatus,
+      setMacroReplaceFlow: deps.setMacroReplaceFlow,
       recordCommandUsage: deps.recordCommandUsage,
       closeSpeedPanel: deps.closeSpeedPanel,
     });
+
+  const onSelectReplaceOption = (option: StepChoiceOption) => {
+    if (!deps.macroReplaceFlow || !deps.setMacroReplaceFlow) return;
+    selectMacroReplacementOption(deps.macroReplaceFlow, option, {
+      stores: deps.stores,
+      runMacroSteps: deps.runMacroSteps,
+      setMacroReplaceFlow: deps.setMacroReplaceFlow,
+      setMacroStatus: deps.setMacroStatus,
+      recordCommandUsage: deps.recordCommandUsage,
+      closeSpeedPanel: deps.closeSpeedPanel,
+    });
+  };
+
+  const onStepBackReplace = () => {
+    if (!deps.macroReplaceFlow || !deps.setMacroReplaceFlow) return;
+    stepBackMacroReplaceFlow(deps.macroReplaceFlow, {
+      setMacroReplaceFlow: deps.setMacroReplaceFlow,
+      refocusSearch: deps.refocusSearch,
+    });
+  };
 
   const scalarPropsFor = (row: PaletteRow, domId: string) => {
     if (row.command.id !== 'set-elevation' || row.disabledReason !== null) return {};
@@ -1034,6 +1330,41 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
   };
 
   const handleKeyDown = (e: SpeedPanelKeyDispatchEvent) => {
+    if (deps.createMacroState) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        deps.setCreateMacroState?.(null);
+        deps.closeSpeedPanel();
+      }
+      return;
+    }
+    if (deps.macroReplaceFlow && deps.setMacroReplaceFlow) {
+      const replaceFlow = deps.macroReplaceFlow;
+      const setMacroReplaceFlow = deps.setMacroReplaceFlow;
+      const replaceView = buildMacroReplaceStepView(replaceFlow);
+      const filteredReplaceOptions = filterStepOptions(
+        replaceView.currentPrompt.options,
+        replaceFlow.filter,
+      );
+      dispatchStepKeyAction(e, {
+        flow: replaceView.stepStack,
+        filteredOptions: filteredReplaceOptions,
+        activeStepIdx: replaceFlow.activeIdx,
+        stepFilter: replaceFlow.filter,
+        onCancel: () => {
+          setMacroReplaceFlow(null);
+          deps.closeSpeedPanel();
+        },
+        onBack: onStepBackReplace,
+        onSetActiveIdx: (idx) => {
+          setMacroReplaceFlow({ ...replaceFlow, activeIdx: idx });
+        },
+        onSelectOption: onSelectReplaceOption,
+        onSubmitInput: () => {},
+      });
+      return;
+    }
     if (deps.stepFlow) {
       const currentStep = deps.stepFlow.steps[deps.stepFlow.steps.length - 1];
       const activeText = currentStep?.kind === 'input' ? deps.stepInputDraft : deps.stepFilter;
@@ -1070,6 +1401,8 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
     onSubmitStep,
     onStepBack,
     runMacro,
+    onSelectReplaceOption,
+    onStepBackReplace,
     scalarPropsFor,
     handleKeyDown,
   };

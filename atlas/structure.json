@@ -623,7 +623,7 @@
           "path": "e2e/speed-panel-layout-search.spec.ts"
         },
         {
-          "hash": "b3916c4a6ef1f351f65e2d6a220ad3b903a5c1c3ed8bafec7663f8ac75a8f0bd",
+          "hash": "37c131e09870344a4793019ed68594ce56fbe206ee413c6d4c2f6c4fbc831a94",
           "importsFiles": [
             "e2e/helpers.ts"
           ],
@@ -851,7 +851,7 @@
             "Canvas",
             "CanvasSpatialPickOverlay"
           ],
-          "hash": "a851ed654b50b0d984df4e4cf43470057d81c8aa464d0a29143d30631bcf905d",
+          "hash": "29af03004d6b10d698c978f315286591d1a8c5cfad4e8fca0884463cb2d72bdf",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -1006,7 +1006,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "35f51fa253b7797daf453dc192f709d9f120d28ed173689c092c82fdbc484a27",
+          "hash": "667016792a5f80e6c72d3c313d32a23469520cfac959e2dd136d05b4e388a80f",
           "importOrder": [
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/speed-panel-actions.ts",
@@ -2050,12 +2050,12 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "bf02533b63536507a27422335d2e12be574f44beb41270701778c7857aca2e42",
+          "hash": "c7d3d3227b5856a8d3a530aafaf4c546fcc0921bffa31ecd3b267dc4bcb9eea4",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c1-compat.test.ts"
         },
         {
-          "hash": "a169412cd8994d6874a6b804be0bdc7c1c2f31b9c617f0b53cc11f36aba254d3",
+          "hash": "7a261fb8c87af0070c40b54a7878c1c70fbe795ed1898589b8491d972663b1a8",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c2-compat.test.ts"
         },
@@ -2065,12 +2065,12 @@
           "path": "packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts"
         },
         {
-          "hash": "501783f77c5845549dd094c9989f9eada1e052e0f0d3f62e0e13040130f22426",
+          "hash": "8abcc6c912db4fef51ce50628d1186aba1f157fbbcdfe838346717981c59a888",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c3-compat.test.ts"
         },
         {
-          "hash": "7634c1e939393432fc5355fbeb73637561ad0af582d551a507fbf94035aafcda",
+          "hash": "44821b77a2471dcb24020160bc1813fe0948b7f13a2a0dfe1d7116ed2a7414ff",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c3-layout-search.test.ts"
         },
@@ -2080,19 +2080,29 @@
           "path": "packages/editor/src/__tests__/speed-panel-c3-ui.test.ts"
         },
         {
-          "hash": "3a0c4de66df73365f6819eeb544cd5712fbd7d05f60fdb01444872d007359189",
+          "hash": "c792ee5c64e7f00881cd2780ad0cbfad9ab0a9cc2135922be38b7a53f2ecbe46",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c4-compat.test.ts"
         },
         {
-          "hash": "8d91cd897bedc15a55fec60f3efe75d92f701aa052d94a69930ce99c7328caad",
+          "hash": "d89561d1ec56b0305d4a9e6cd436c035942ed48beb81b4a5f7f21c47ef1ec91b",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c4-handlers.test.ts"
         },
         {
-          "hash": "5bbfdba8c168fa0a255a1863405fb9c86e1349de3d222475979cafaaf23a5b85",
+          "hash": "b0512a4b8dd9c169af2782704cc4f260e5d195b8d9e3221f895cdb884da3eb0d",
           "parseError": true,
           "path": "packages/editor/src/__tests__/speed-panel-c4-multistep.test.ts"
+        },
+        {
+          "hash": "5cb4b7a99e393cae34f8c2f0f4f639f4b22ba0c33e62d39b8f4aa00bfc132122",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-d2-compat.test.ts"
+        },
+        {
+          "hash": "c1a9e58edfcca68ba84d5a144bbeffabb2e139012322c6be9515f31715c3bed6",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-d2-macros-kits.test.ts"
         },
         {
           "hash": "dc83473a9ae0fcb134ccb21aa44087d8e2185c337cb33c53af88c2ff1236b525",
@@ -2125,7 +2135,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "e32c6a7a5a9b00c89d3a4ef13813c8b89f4da1303589588e21b107ddf85cc626",
+          "hash": "bc355d6df58cb523da447c526d1190744f02c6cf1f095abe4c5cf30aa3e42979",
           "importOrder": [
             "packages/editor/src/speed-panel-actions.ts",
             "packages/editor/src/hit-testing.ts",
@@ -2457,7 +2467,7 @@
             "getToolPaletteEntries",
             "runCommand"
           ],
-          "hash": "b186c75f60e4c6895d176f094fb0b5adbaebf3586ed8f2fd52ab93946d75a390",
+          "hash": "f1142dd18e787f1f72859b0fdb44f4f6ca8a9f13548aef5b72190bc0691a653f",
           "importOrder": [
             "packages/editor/src/hit-testing.ts",
             "packages/schema/src/index.ts",
@@ -2465,11 +2475,13 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/modal-store.ts",
             "packages/editor/src/panels/ReviewPanel.tsx",
-            "packages/editor/src/review/export-summary.ts"
+            "packages/editor/src/review/export-summary.ts",
+            "packages/editor/src/presets/types.ts"
           ],
           "importsFiles": [
             "packages/editor/src/hit-testing.ts",
             "packages/editor/src/panels/ReviewPanel.tsx",
+            "packages/editor/src/presets/types.ts",
             "packages/editor/src/review/export-summary.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/modal-store.ts",
@@ -2670,27 +2682,33 @@
         },
         {
           "exports": [
+            "buildExportBundleForKit",
+            "buildKitWithSpeedPanelPresets",
             "kitFilename",
+            "mergeKitSpeedPanelPresetsIfEnabled",
             "migrateKitBundle",
             "parseKitBundle",
             "prepareKitImport",
+            "sanitizeKitSpeedPanelPresets",
             "serializeKit"
           ],
-          "hash": "07bf35c60b621614a854e60e4cd1e344f66bc55558ce7ba62a97b8d6a448fc33",
+          "hash": "b9f6e092e2294b51b6ef0034f3511c21d865455a7518163639a3a2e779a05b2f",
           "importOrder": [
             "packages/editor/src/kits/types.ts",
             "packages/schema/src/index.ts",
-            "packages/editor/src/kits/validate-kit.ts"
+            "packages/editor/src/kits/validate-kit.ts",
+            "packages/editor/src/store/speed-panel-store.ts"
           ],
           "importsFiles": [
             "packages/editor/src/kits/types.ts",
             "packages/editor/src/kits/validate-kit.ts",
+            "packages/editor/src/store/speed-panel-store.ts",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/kits/bundle.ts"
         },
         {
-          "hash": "640a72f281451924c77d07db604b04e68568e35546dbb0a137346050f2afc4ac",
+          "hash": "553bf02ab7ca7932e5bfd2bc88b9fe08809054ca1b1afa76cceee8c529e54d9c",
           "importOrder": [
             "packages/editor/src/kits/types.ts",
             "packages/editor/src/kits/built-ins.ts",
@@ -2781,8 +2799,13 @@
           "path": "packages/editor/src/kits/kit-store.ts"
         },
         {
-          "hash": "e43833645f5bf414a541e9ad36a9d53949cf0cd4e47f46f94fc51b9a62448dc6",
+          "hash": "1a976b489515b64ac59030b5d9862c912ba56631e2b45811f10f0e3435d81889",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/editor/src/speed-panel-actions.ts"
+          ],
           "importsFiles": [
+            "packages/editor/src/speed-panel-actions.ts",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/kits/types.ts"
@@ -2791,15 +2814,17 @@
           "exports": [
             "validateKit"
           ],
-          "hash": "2c544c42cad1caae8392848c7e4d8534446d1ea8cc7917f9c57b65fe9b8ba9ec",
+          "hash": "715f529668dbf9cb918bcfe16832dbf4394b84d8a0615f55c55ea4719793e10e",
           "importOrder": [
             "packages/editor/src/kits/types.ts",
             "packages/schema/src/index.ts",
-            "packages/editor/src/presets/built-ins.ts"
+            "packages/editor/src/presets/built-ins.ts",
+            "packages/editor/src/store/speed-panel-store.ts"
           ],
           "importsFiles": [
             "packages/editor/src/kits/types.ts",
             "packages/editor/src/presets/built-ins.ts",
+            "packages/editor/src/store/speed-panel-store.ts",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/kits/validate-kit.ts"
@@ -3266,7 +3291,7 @@
               "line": 97
             }
           ],
-          "hash": "15a7127e5067b379682750758ebb498538a41867ca02294bc5c49d3cebc82cf9",
+          "hash": "07660e3379046efebc6fda3f300b57c0e15133ec14c3906e57e6722c229ffbfb",
           "importOrder": [
             "packages/editor/src/kits/index.ts",
             "packages/editor/src/ui/Toast.tsx",
@@ -3485,11 +3510,13 @@
             "applyKeyCaptureEvent",
             "clampThresholdDraftValue",
             "commitThresholdDraft",
+            "createOptionsModalHandlers",
+            "createThresholdFieldHandlers",
             "handleThresholdFieldKeyDown",
             "parseThresholdDraft",
             "resetOptionsModalState"
           ],
-          "hash": "89df57cb0d0e191a6ee09b6808c607bb0e4e3cead671792565e00390d736b4c2",
+          "hash": "8ed12d9b97ddfe602dce535e94491888725a0363ac5b696f8ae661b731405275",
           "importOrder": [
             "packages/editor/src/ui/ModalFrame.tsx",
             "packages/editor/src/ui/styles.ts",
@@ -3673,12 +3700,13 @@
             {
               "in": "SaveKitModal",
               "kind": "catch",
-              "line": 51
+              "line": 65
             }
           ],
-          "hash": "81ec76c422b8c3268258bfbdd375c90469c81ebd121bfde33f3284655cd49c37",
+          "hash": "0d6ec53724c1d9b8758fe62461cf757ee46db1a16a99cec1817d425a650c0d2a",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
+            "packages/editor/src/store/speed-panel-store.ts",
             "packages/editor/src/kits/index.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/schema/src/index.ts",
@@ -3690,6 +3718,7 @@
             "packages/editor/src/kits/index.ts",
             "packages/editor/src/mode-profiles.ts",
             "packages/editor/src/store/project-store.ts",
+            "packages/editor/src/store/speed-panel-store.ts",
             "packages/editor/src/ui/ModalFrame.tsx",
             "packages/editor/src/ui/Toast.tsx",
             "packages/editor/src/ui/styles.ts",
@@ -3854,7 +3883,7 @@
             "SpeedPanelStepView",
             "StepExportBadge"
           ],
-          "hash": "7da0d3c26416c87bc059bf71981ef82bceea16021e41f16791b2c1c98db12136",
+          "hash": "6bbfc5d7054e2f007bddc27be52cd95363cb38495c88d4ecae0a5cb4eb4babb0",
           "importOrder": [
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -3917,31 +3946,32 @@
             {
               "in": "TemplateManager",
               "kind": "catch",
-              "line": 97
+              "line": 106
             },
             {
               "in": "TemplateManager",
               "kind": "catch",
-              "line": 179
+              "line": 194
             },
             {
               "in": "TemplateManager",
               "kind": "catch",
-              "line": 189
+              "line": 204
             },
             {
               "in": "TemplateManager",
               "kind": "catch",
-              "line": 201
+              "line": 220
             }
           ],
-          "hash": "59a9b2bf9241a125c4e480c15c4a7eb647b861fbf924450a8831a7a2e186f6b3",
+          "hash": "86125916a2d8b6cc6582d5df5b79cc56c13e268b80b5a8ff9de341f02fd60f1b",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/template-store.ts",
             "packages/editor/src/templates/registry.ts",
             "packages/editor/src/kits/index.ts",
+            "packages/editor/src/store/speed-panel-store.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/schema/src/index.ts",
             "packages/editor/src/mode-profiles.ts",
@@ -3965,6 +3995,7 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/modal-store.ts",
             "packages/editor/src/store/project-store.ts",
+            "packages/editor/src/store/speed-panel-store.ts",
             "packages/editor/src/store/template-store.ts",
             "packages/editor/src/templates/registry.ts",
             "packages/editor/src/ui/ModalFrame.tsx",
@@ -4556,7 +4587,7 @@
             "productionHotkeyContext",
             "productionStepStores"
           ],
-          "hash": "f5851bd13f5dddd45bd0b64271069c2ab3369d7580057b935d5577acc50efc63",
+          "hash": "2b53d0bd1cc8cdade4982bbea7893d5467e9b45598104174792fb802b95a5bee",
           "importOrder": [
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -4782,6 +4813,32 @@
         },
         {
           "exports": [
+            "applyRegionPresetToProject",
+            "createEncounterFromPresetInProject",
+            "mergeZonesInProject",
+            "removeSelectedFromProject"
+          ],
+          "hash": "77259e3d9adacc99779ebf68eb3d11d983458d65442870e4c88ded3852dfe81e",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/ids.ts",
+            "packages/editor/src/presets/types.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/zone-attached.ts"
+          ],
+          "importsFiles": [
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/ids.ts",
+            "packages/editor/src/presets/types.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/zone-attached.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/editor/src/project-ops.ts"
+        },
+        {
+          "exports": [
             "extractDependencies",
             "migrateBundle",
             "parseProjectBundle",
@@ -4922,17 +4979,20 @@
             "filterActions",
             "fuzzyMatch",
             "getActionById",
-            "getContextMenuActions"
+            "getContextMenuActions",
+            "getMacroStepCommandId"
           ],
-          "hash": "5a187167aa15fcd25e954be849f53705f0317c1f9a6857add275a53f9fd2f1cd",
+          "hash": "45189b2f617be9183936edf80f33c522f216ef890d161b288f0a9b090120e4bb",
           "importOrder": [
             "packages/editor/src/hit-testing.ts",
             "packages/schema/src/index.ts",
+            "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/command-registry.ts"
           ],
           "importsFiles": [
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/speed-panel-actions.ts"
@@ -4946,21 +5006,25 @@
             "executeRegistryCommand",
             "failReasonToUserMessage"
           ],
-          "hash": "ebc20c25160fd641d0d886cece2334a641d32ae03d1abb96b6503bc930ac076b",
+          "hash": "e17a277612d6623c88260451eb07c127a1b75e02e93761e51e0742b2384ded9d",
           "importOrder": [
             "packages/editor/src/hit-testing.ts",
             "packages/editor/src/speed-panel-actions.ts",
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
+            "packages/editor/src/presets/preset-store.ts",
+            "packages/editor/src/speed-panel-macros.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/editor/src/save-project.ts"
           ],
           "importsFiles": [
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/presets/preset-store.ts",
             "packages/editor/src/save-project.ts",
             "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/speed-panel-macros.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/ui/Toast.tsx"
@@ -5014,7 +5078,7 @@
             "buildSpeedPanelView",
             "buildUnsearchedSpeedPanel"
           ],
-          "hash": "ac394701d25b9e135779f6cef270815c8c7812111c8174f9bd9698d53a77814e",
+          "hash": "a6130580fdc80d552fe0fd530896bdfb9df848635488817dba11e287e7bfc170",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/command-registry.ts",
@@ -5028,6 +5092,45 @@
             "packages/schema/src/index.ts"
           ],
           "path": "packages/editor/src/speed-panel-layout.ts"
+        },
+        {
+          "exports": [
+            "createMacroFromRecentEntries",
+            "executeMacroAtomic",
+            "validateMacroExecution"
+          ],
+          "hash": "47a5942736d339e98214bef45fb87081c48de7d7a5ea1a07a17ea198fd019822",
+          "importOrder": [
+            "packages/schema/src/index.ts",
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/duplicate.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/ids.ts",
+            "packages/editor/src/preset-actions.ts",
+            "packages/editor/src/presets/types.ts",
+            "packages/editor/src/project-ops.ts",
+            "packages/editor/src/review/export-summary.ts",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/speed-panel-steps.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/viewport.ts"
+          ],
+          "importsFiles": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/duplicate.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/ids.ts",
+            "packages/editor/src/preset-actions.ts",
+            "packages/editor/src/presets/types.ts",
+            "packages/editor/src/project-ops.ts",
+            "packages/editor/src/review/export-summary.ts",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/speed-panel-steps.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/viewport.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/editor/src/speed-panel-macros.ts"
         },
         {
           "exports": [
@@ -5054,6 +5157,7 @@
         {
           "exports": [
             "advanceStepChoice",
+            "buildEncounterAnchor",
             "cancelSpatialPick",
             "classifyEncounterTypeForExport",
             "cloneLastPanelActionParams",
@@ -5065,14 +5169,15 @@
             "computePickPreviewLine",
             "createCanvasSpatialPickHandlers",
             "createRepeatLastCommand",
-            "createValidationGuard",
             "cyclePickConnectionKind",
             "dispatchPickOverlayInputKeyDown",
             "drawPickPreviewLine",
             "finalizeMergePick",
+            "formatMergeZonesUndoLabel",
             "formatPickCursorBadge",
             "getPickOrderedKinds",
             "isMultiStepCommand",
+            "isPickSourceMissing",
             "isSpatialPickCommand",
             "openCommandStepFlow",
             "popPanelStep",
@@ -5085,7 +5190,7 @@
             "validateEncounterTypeInput",
             "validatePickTarget"
           ],
-          "hash": "f79508f3270a1856b9a38bb6ff5d9b2309afa5a86e6bc4d5a39eb28f898259cb",
+          "hash": "c643094010e1c269cff567ea3650069b4c3382ef40b6f88398c9a6f09786dd1a",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -5094,6 +5199,7 @@
             "packages/editor/src/ids.ts",
             "packages/editor/src/mode-profiles.ts",
             "packages/editor/src/panels/ConnectionProperties.tsx",
+            "packages/editor/src/zone-attached.ts",
             "packages/editor/src/preset-actions.ts",
             "packages/editor/src/presets/types.ts",
             "packages/editor/src/store/editor-store.ts"
@@ -5107,6 +5213,7 @@
             "packages/editor/src/preset-actions.ts",
             "packages/editor/src/presets/types.ts",
             "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/zone-attached.ts",
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts"
           ],
@@ -5114,6 +5221,7 @@
         },
         {
           "exports": [
+            "buildMacroReplaceStepView",
             "buildNavigableEntries",
             "buildPinRowHandlers",
             "catalogueGroupHeadingId",
@@ -5132,21 +5240,26 @@
             "handleStepChoiceSelect",
             "handleStepInputSubmit",
             "isNonSearchTextInput",
+            "openCreateMacroState",
             "resolvePinDropSourceIndex",
             "resolveSpeedPanelKeyAction",
             "resolveStepKeyAction",
+            "selectMacroReplacementOption",
             "splitHighlightSegments",
+            "stepBackMacroReplaceFlow",
             "stepBackOrRoot",
-            "submitScalarPill"
+            "submitCreateMacroState",
+            "submitScalarPill",
+            "toggleCreateMacroSelection"
           ],
           "failurePaths": [
             {
               "in": "executeSpeedPanelRow",
               "kind": "catch",
-              "line": 497
+              "line": 518
             }
           ],
-          "hash": "7205e9c894ae137d7d3f74e009397f4c0405cc8fb2fa7129932985799f2bdd56",
+          "hash": "d47a6ae6309985df578c4a734a2b86103c8581f08d76d1e59fe372b77f76a013",
           "importOrder": [
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/hit-testing.ts",
@@ -5154,6 +5267,7 @@
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-layout.ts",
             "packages/editor/src/panels/speed-panel-stores.ts",
+            "packages/editor/src/speed-panel-macros.ts",
             "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/index.ts"
@@ -5165,6 +5279,7 @@
             "packages/editor/src/speed-panel-actions.ts",
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-layout.ts",
+            "packages/editor/src/speed-panel-macros.ts",
             "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/index.ts"
@@ -5177,39 +5292,40 @@
             "getSelectedConnection",
             "getSelectedZoneId",
             "getSelectionCount",
+            "isReplayableSessionAction",
             "isSelected"
           ],
           "failurePaths": [
             {
               "kind": "catch",
-              "line": 335
+              "line": 380
             },
             {
               "in": "toggleElevation",
               "kind": "catch",
-              "line": 443
+              "line": 488
             },
             {
               "kind": "catch",
-              "line": 493
+              "line": 538
             },
             {
               "in": "toggleHidden",
               "kind": "catch",
-              "line": 503
+              "line": 548
             },
             {
               "in": "clearHiddenIds",
               "kind": "catch",
-              "line": 517
+              "line": 562
             },
             {
               "in": "hideSelected",
               "kind": "catch",
-              "line": 533
+              "line": 578
             }
           ],
-          "hash": "2a1dfed829773643e1ab2e2b821591337e0c20815c222c398ab3416d335be9fd",
+          "hash": "b4822953a1ea12d0a305209d7e8765354a79520143da7e2669dcc05153fec282",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -5250,55 +5366,55 @@
             {
               "in": "hasAutoSaveRecovery",
               "kind": "catch",
-              "line": 530
+              "line": 536
             },
             {
               "in": "recoverAutoSave",
               "kind": "catch",
-              "line": 542
+              "line": 548
             },
             {
               "in": "clearAutoSave",
               "kind": "catch",
-              "line": 552
+              "line": 558
             },
             {
               "in": "writeAutoSave",
               "kind": "catch",
-              "line": 620
+              "line": 626
             },
             {
               "in": "writeAutoSave",
               "kind": "catch",
-              "line": 655
+              "line": 661
             },
             {
               "in": "writeAutoSave",
               "kind": "catch",
-              "line": 664
+              "line": 670
             },
             {
               "in": "writeAutoSave",
               "kind": "catch",
-              "line": 673
+              "line": 679
             },
             {
               "in": "rollbackProject",
-              "kind": "catch",
-              "line": 683
-            },
-            {
-              "in": "writeAutoSave",
               "kind": "catch",
               "line": 689
             },
             {
               "in": "writeAutoSave",
               "kind": "catch",
-              "line": 697
+              "line": 695
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 703
             }
           ],
-          "hash": "7b321d6468217d75a17f8f940f0c5fb7594917b48a562739840ac2d25f75c320",
+          "hash": "f5d6369f8fe5fbeb8a3f626f322162c748bdfc202b39c5991c7404ea1a30773a",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/duplicate.ts",
@@ -5309,6 +5425,7 @@
             "packages/editor/src/presets/types.ts",
             "packages/editor/src/mode-profiles.ts",
             "packages/editor/src/ids.ts",
+            "packages/editor/src/project-ops.ts",
             "packages/editor/src/zone-attached.ts",
             "packages/editor/src/save-project.ts",
             "packages/editor/src/hit-testing.ts"
@@ -5321,6 +5438,7 @@
             "packages/editor/src/mode-profiles.ts",
             "packages/editor/src/paste.ts",
             "packages/editor/src/presets/types.ts",
+            "packages/editor/src/project-ops.ts",
             "packages/editor/src/resize-handles.ts",
             "packages/editor/src/save-project.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -5360,25 +5478,35 @@
           "exports": [
             "loadJson",
             "loadSpeedPanelStateV2",
-            "pruneAdaptiveHistory"
+            "pruneAdaptiveHistory",
+            "sanitizeMacroStepArgs",
+            "sanitizeMacros",
+            "sanitizePins"
           ],
           "failurePaths": [
             {
               "in": "loadJson",
               "kind": "catch",
-              "line": 48
+              "line": 49
             },
             {
               "in": "saveJson",
               "kind": "catch",
-              "line": 65
+              "line": 66
             }
           ],
-          "hash": "e291278b9f0460c9f6a764375d6004479094a4a9f7d9e76a511dd5c7d5c2ee83",
+          "hash": "1ffbd311a3ed510579ff60231120597686f0d439b9240d901c2521bc922d57a1",
+          "importOrder": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/speed-panel-actions.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/editor/src/speed-panel-search.ts"
+          ],
           "importsFiles": [
             "packages/editor/src/command-registry.ts",
             "packages/editor/src/speed-panel-actions.ts",
-            "packages/editor/src/speed-panel-search.ts"
+            "packages/editor/src/speed-panel-search.ts",
+            "packages/editor/src/store/editor-store.ts"
           ],
           "path": "packages/editor/src/store/speed-panel-store.ts"
         },
@@ -5682,6 +5810,7 @@
         },
         {
           "exports": [
+            "appendConnectionToProject",
             "applyAttachedToProject",
             "collectZoneAttached",
             "reassignAttachedZoneIds",
@@ -5689,7 +5818,7 @@
             "translateAttachedByZones",
             "zoneContainsCell"
           ],
-          "hash": "734929e9124212392c0a047700f8d1b492be75895a21d4011bdc072ecf680ea2",
+          "hash": "1d42710beedbd92ea7f03d94e19adfac38b0dcd59c73b7febaaa6b24d74ee4f8",
           "importOrder": [
             "packages/schema/src/index.ts",
             "packages/editor/src/ids.ts"
@@ -11061,7 +11190,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "56e0cb148a52a8b9a57cfa729112d1c8148531c705f35fc862158b6316867caa",
+          "hash": "14c844e499e2714270a0ea6b0bd78325c08510d21a31b32df0b3c9fdfa9840af",
           "path": "CHANGELOG.md"
         },
         {
@@ -11093,7 +11222,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "fb1182a9ed5c786c09d82cdb8b3e7f77ea939086a0dfee271166d824bf37f7b0",
+          "hash": "0c188ec82695d2552876dfa67cc469fd893aebafffa2a5bea97ea685ef3e71cb",
           "path": "README.md"
         },
         {
@@ -12165,7 +12294,7 @@
           "path": "site/src/content/docs/handbook/beginners.md"
         },
         {
-          "hash": "ec73b38ae80d4909e5bad015dc88407a7a0665c934ec84eee6602ba5ba33941b",
+          "hash": "32ec4e3a21b314e23e48e35eee5c64669c0db8fbdc61f0c76bd5632c2956659b",
           "path": "site/src/content/docs/handbook/editor-workflow.md"
         },
         {
@@ -12530,7 +12659,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 261
+          "files": 265
         },
         {
           "boundary": "export-ai-rpg",
@@ -13234,7 +13363,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 235,
+          "files": 237,
           "job": "build-and-test",
           "runner": "vitest",
           "step": "6",
@@ -13245,7 +13374,7 @@
         {
           "config": "vitest.config.ts",
           "coverage": true,
-          "files": 235,
+          "files": 237,
           "job": "build-and-test",
           "junit": true,
           "runner": "vitest",
@@ -13802,7 +13931,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 261
+          "files": 265
         },
         {
           "boundary": "export-ai-rpg",
@@ -14465,7 +14594,7 @@
       "tests": [
         {
           "config": "vitest.config.ts",
-          "files": 235,
+          "files": 237,
           "job": "publish",
           "runner": "vitest",
           "step": "Test",
@@ -14990,8 +15119,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "3fbf88dabf021de824680f193b0f3a02cc6ed6f3",
-    "tracked": 678
+    "commit": "3c04da4cbbd7d8f43304e530054c31ab7a728c8d",
+    "tracked": 682
   },
   "landings": [
     {
@@ -16609,7 +16738,7 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 249,
+  "testFiles": 251,
   "unassigned": [],
   "workspaces": [
     "packages/editor",

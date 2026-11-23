@@ -1,8 +1,9 @@
 // bundle.ts — Kit bundle serialization for portable export/import
 
-import type { StarterKit } from './types.js';
+import type { KitSpeedPanelPresets, StarterKit } from './types.js';
 import type { AuthoringMode, WorldProject } from '@world-forge/schema';
 import { validateKit } from './validate-kit.js';
+import { sanitizeMacros, sanitizePins } from '../store/speed-panel-store.js';
 
 /** Current bundle format version. Increment on breaking changes. */
 export const BUNDLE_VERSION = 1;
@@ -50,6 +51,7 @@ export interface KitBundle {
   project: WorldProject;
   presetRefs: { region: string[]; encounter: string[] };
   guideHints: Partial<Record<string, { label: string; description: string }>>;
+  speedPanelPresets?: KitSpeedPanelPresets;
   version?: string;
   exportedAt: string;
 }
@@ -63,6 +65,26 @@ export interface ParseBundleResult {
 export interface ParseBundleError {
   ok: false;
   error: string;
+}
+
+export function sanitizeKitSpeedPanelPresets(raw: unknown): {
+  value?: KitSpeedPanelPresets;
+  warnings: string[];
+} {
+  if (raw === undefined) {
+    return { warnings: [] };
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { warnings: ['Ignored malformed speedPanelPresets field'] };
+  }
+  const obj = raw as Record<string, unknown>;
+  const warnings: string[] = [];
+  const pins = sanitizePins(obj.pins ?? [], warnings);
+  const macros = sanitizeMacros(obj.macros ?? [], warnings);
+  return {
+    value: { pins, macros },
+    warnings,
+  };
 }
 
 /**
@@ -83,6 +105,14 @@ export function serializeKit(kit: StarterKit): KitBundle {
       encounter: [...kit.presetRefs.encounter],
     },
     guideHints: JSON.parse(JSON.stringify(kit.guideHints)),
+    ...(kit.speedPanelPresets
+      ? {
+          speedPanelPresets: {
+            pins: [...kit.speedPanelPresets.pins],
+            macros: JSON.parse(JSON.stringify(kit.speedPanelPresets.macros)),
+          },
+        }
+      : {}),
     version: kit.version,
     exportedAt: new Date().toISOString(),
   };
@@ -131,6 +161,8 @@ export function parseKitBundle(
   if (typeof parsedObj.description !== 'string') warnings.push('Missing description');
   if (typeof parsedObj.icon !== 'string') warnings.push('Missing icon');
   if (!Array.isArray(parsedObj.tags)) warnings.push('Missing tags array');
+  const spPresets = sanitizeKitSpeedPanelPresets(parsedObj.speedPanelPresets);
+  warnings.push(...spPresets.warnings);
 
   const bundle: KitBundle = {
     bundleVersion: currentVersion,
@@ -157,6 +189,7 @@ export function parseKitBundle(
       parsedObj.guideHints && typeof parsedObj.guideHints === 'object'
         ? (parsedObj.guideHints as KitBundle['guideHints'])
         : {},
+    ...(spPresets.value ? { speedPanelPresets: spPresets.value } : {}),
     version: typeof parsedObj.version === 'string' ? parsedObj.version : undefined,
     exportedAt:
       typeof parsedObj.exportedAt === 'string' ? parsedObj.exportedAt : new Date().toISOString(),
@@ -172,6 +205,77 @@ export function kitFilename(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
   return `${slug || 'kit'}.wfkit.json`;
+}
+
+/** Merge current user Speed Panel pins & macros onto a kit copy prior to bundle export. */
+export function buildKitWithSpeedPanelPresets(
+  kit: StarterKit,
+  current?: KitSpeedPanelPresets,
+): StarterKit {
+  if (!current || (current.pins.length === 0 && current.macros.length === 0)) {
+    return kit;
+  }
+  const existing = kit.speedPanelPresets;
+  if (!existing) {
+    return {
+      ...kit,
+      speedPanelPresets: {
+        pins: [...current.pins],
+        macros: JSON.parse(JSON.stringify(current.macros)),
+      },
+    };
+  }
+  const pinSet = new Set([...existing.pins, ...current.pins]);
+  const macroIds = new Set(existing.macros.map((m) => m.id));
+  const mergedMacros = [
+    ...JSON.parse(JSON.stringify(existing.macros)),
+    ...JSON.parse(JSON.stringify(current.macros)).filter((m: { id: string }) => !macroIds.has(m.id)),
+  ];
+  return {
+    ...kit,
+    speedPanelPresets: {
+      pins: [...pinSet],
+      macros: mergedMacros,
+    },
+  };
+}
+
+/** Serialize a kit bundle, optionally folding in live user Speed Panel pins & macros. */
+export function buildExportBundleForKit(
+  kit: StarterKit,
+  options: { includeSpeedPanel: boolean; currentPresets?: KitSpeedPanelPresets },
+): { filename: string; bundle: KitBundle } {
+  const effectiveKit = options.includeSpeedPanel
+    ? buildKitWithSpeedPanelPresets(kit, options.currentPresets)
+    : kit;
+  return {
+    filename: kitFilename(effectiveKit.name),
+    bundle: serializeKit(effectiveKit),
+  };
+}
+
+/** Format user-facing status feedback after merging a Starter Kit's Speed Panel presets. */
+export function mergeKitSpeedPanelPresetsIfEnabled(
+  kit: StarterKit,
+  includePresets: boolean,
+  mergeFn: (presets: KitSpeedPanelPresets, kitName: string) => {
+    addedPins: string[];
+    addedMacros: unknown[];
+    warnings: string[];
+  },
+): { message: string; level: 'info' | 'warning' } | null {
+  if (!includePresets || !kit.speedPanelPresets) return null;
+  const merged = mergeFn(kit.speedPanelPresets, kit.name);
+  if (merged.warnings.length > 0) {
+    return { message: merged.warnings[0], level: 'warning' };
+  }
+  if (merged.addedPins.length > 0 || merged.addedMacros.length > 0) {
+    return {
+      message: `Added ${merged.addedPins.length} Speed Panel pin(s) and ${merged.addedMacros.length} macro(s) from "${kit.name}".`,
+      level: 'info',
+    };
+  }
+  return null;
 }
 
 /** Result of the full import validation pipeline. */
@@ -205,6 +309,7 @@ export function prepareKitImport(data: unknown): ImportKitResult | ParseBundleEr
     project: bundle.project,
     presetRefs: bundle.presetRefs,
     guideHints: bundle.guideHints,
+    ...(bundle.speedPanelPresets ? { speedPanelPresets: bundle.speedPanelPresets } : {}),
     version: bundle.version,
     source: 'imported',
   };
@@ -222,6 +327,7 @@ export function prepareKitImport(data: unknown): ImportKitResult | ParseBundleEr
       project: bundle.project,
       presetRefs: bundle.presetRefs,
       guideHints: bundle.guideHints,
+      ...(bundle.speedPanelPresets ? { speedPanelPresets: bundle.speedPanelPresets } : {}),
       version: bundle.version,
       source: 'imported' as const,
     },

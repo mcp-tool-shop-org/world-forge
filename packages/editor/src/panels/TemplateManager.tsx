@@ -5,7 +5,14 @@ import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import { useTemplateStore, type UserTemplate } from '../store/template-store.js';
 import { GENRE_TEMPLATES, SAMPLE_WORLDS, createProjectFromWizard } from '../templates/registry.js';
-import { useKitStore, filterKitsByMode, serializeKit, kitFilename, StoragePersistError } from '../kits/index.js';
+import {
+  useKitStore,
+  filterKitsByMode,
+  buildExportBundleForKit,
+  mergeKitSpeedPanelPresetsIfEnabled,
+  StoragePersistError,
+} from '../kits/index.js';
+import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 import { pushToast } from '../ui/Toast.js';
 import type { StarterKit } from '../kits/index.js';
 import type { WorldProject, AuthoringMode } from '@world-forge/schema';
@@ -81,6 +88,8 @@ export function TemplateManager({ onClose }: Props) {
   const [filterMode, setFilterMode] = useState<AuthoringMode | undefined>(undefined);
   const [editingKit, setEditingKit] = useState<StarterKit | null>(null);
   const [showImportKit, setShowImportKit] = useState(false);
+  const [exportIncludeSpeedPanel, setExportIncludeSpeedPanel] = useState(true);
+  const [applyKitPresetsById, setApplyKitPresetsById] = useState<Record<string, boolean>>({});
   // F-c28f6fa5: keep the kit-export object URL; revoke on unmount / replace only.
   const [kitFallback, setKitFallback] = useState<{ href: string; filename: string } | null>(null);
 
@@ -138,8 +147,14 @@ export function TemplateManager({ onClose }: Props) {
     loadProject(project);
     resetChecklist();
     setActiveKitId(kit.id);
+    const notice = mergeKitSpeedPanelPresetsIfEnabled(
+      kit,
+      applyKitPresetsById[kit.id] ?? true,
+      (p, kName) => useSpeedPanelPins.getState().mergeKitPresets(p, kName),
+    );
+    if (notice) pushToast(notice.message, notice.level, notice.level === 'warning' ? 4000 : 3500);
     onClose();
-  }, [dirty, name, loadProject, resetChecklist, setActiveKitId, onClose]);
+  }, [dirty, name, loadProject, resetChecklist, setActiveKitId, applyKitPresetsById, onClose]);
 
   const handleOpenSample = useCallback((project: WorldProject) => {
     if (dirty && !confirmDiscard()) return;
@@ -188,10 +203,14 @@ export function TemplateManager({ onClose }: Props) {
     if (kitFallback?.href) {
       try { URL.revokeObjectURL(kitFallback.href); } catch { /* ignore */ }
     }
-    const filename = kitFilename(kit.name);
-    const url = downloadJsonSync(filename, serializeKit(kit));
+    const { pinnedIds, macros } = useSpeedPanelPins.getState();
+    const { filename, bundle } = buildExportBundleForKit(kit, {
+      includeSpeedPanel: exportIncludeSpeedPanel,
+      currentPresets: { pins: pinnedIds, macros },
+    });
+    const url = downloadJsonSync(filename, bundle);
     if (url) setKitFallback({ href: url, filename });
-  }, [kitFallback]);
+  }, [kitFallback, exportIncludeSpeedPanel]);
 
   const handleDeleteKit = useCallback((id: string) => {
     if (confirmDeleteKit === id) {
@@ -358,8 +377,17 @@ export function TemplateManager({ onClose }: Props) {
                 </button>
               ))}
             </div>
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={() => setShowImportKit(true)} style={smallBtnStyle}>Import Kit</button>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--wf-text-muted)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  data-testid="wf-kit-export-include-speed-panel"
+                  checked={exportIncludeSpeedPanel}
+                  onChange={(e) => setExportIncludeSpeedPanel(e.target.checked)}
+                />
+                Include Speed Panel pins &amp; macros on export
+              </label>
               {kitFallback && (
                 <a
                   href={kitFallback.href}
@@ -415,6 +443,17 @@ export function TemplateManager({ onClose }: Props) {
                       {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
                       {presetCount > 0 && <> &middot; {presetCount} presets</>}
                     </div>
+                    {kit.speedPanelPresets && (kit.speedPanelPresets.pins.length > 0 || kit.speedPanelPresets.macros.length > 0) && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--wf-text-secondary)', marginBottom: 8, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          data-testid={`wf-kit-apply-speed-panel-${kit.id}`}
+                          checked={applyKitPresetsById[kit.id] ?? true}
+                          onChange={(e) => setApplyKitPresetsById((prev) => ({ ...prev, [kit.id]: e.target.checked }))}
+                        />
+                        Add Speed Panel pins ({kit.speedPanelPresets.pins.length}) &amp; macros ({kit.speedPanelPresets.macros.length}) without overwriting existing
+                      </label>
+                    )}
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => handleOpenKit(kit)} style={openBtnStyle}>Start Project</button>
                       <button onClick={() => handleDuplicateKit(kit.id)} style={smallBtnStyle}>Duplicate</button>

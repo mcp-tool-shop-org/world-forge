@@ -78,11 +78,11 @@ import {
   type StepStackState,
 } from '../speed-panel-steps.js';
 import {
+  createSpeedPanelCallbacks,
   customGroupHeadingId,
   handleScalarPillKeyDown,
   handleStepChoiceSelect,
   resolveStepKeyAction,
-  submitScalarPill,
 } from '../speed-panel-ui.js';
 
 function makeTwoZoneProject() {
@@ -242,10 +242,13 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     const applied = advanceStepChoice(modeStep.flow, overwriteOpt!, productionStepStores());
     expect(applied.done).toBe(true);
     expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
-    expect(useProjectStore.getState().getUndoLabel()).toBe('Apply region preset');
+    expect(useProjectStore.getState().getUndoLabel()).toBe(
+      `Apply preset "${firstPreset!.label}" to ${proj.districts[0].name} (overwrite)`,
+    );
 
     // 2) Standalone zone -> encounter preset with AI RPG badge
-    const standaloneZoneId = useProjectStore.getState().project.zones.find((z) => !z.parentDistrictId)!.id;
+    const standaloneZone = useProjectStore.getState().project.zones.find((z) => !z.parentDistrictId)!;
+    const standaloneZoneId = standaloneZone.id;
     const openStandalone = openCommandStepFlow('apply-preset', { type: 'zone', id: standaloneZoneId }, productionStepStores());
     expect(openStandalone.kind).toBe('steps');
     if (openStandalone.kind !== 'steps') return;
@@ -253,7 +256,9 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     const encOpt = openStandalone.flow.steps[0].kind === 'choice' ? openStandalone.flow.steps[0].options[0] : null;
     const encApplied = advanceStepChoice(openStandalone.flow, encOpt!, productionStepStores());
     expect(encApplied.done).toBe(true);
-    expect(useProjectStore.getState().getUndoLabel()).toBe('Add encounter from preset');
+    expect(useProjectStore.getState().getUndoLabel()).toBe(
+      `Apply encounter preset "${encOpt!.label}" in ${standaloneZone.name}`,
+    );
 
     // 3) Empty canvas -> target-zone step
     const openEmpty = openCommandStepFlow('apply-preset', null, productionStepStores());
@@ -431,12 +436,27 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     // 1) Encounter parity: outside-panel buildEncounterAnchor + addEncounter vs panel commitPlaceEncounter (ignoring id)
     useProjectStore.getState().addEncounter(buildEncounterAnchor(z0.id, 'patrol'));
     const toolAnchor = useProjectStore.getState().project.encounterAnchors.at(-1)!;
-    expect(toolAnchor.cooldownTurns).toBe(3);
+    expect(toolAnchor).toMatchObject({
+      zoneId: z0.id,
+      encounterType: 'patrol',
+      enemyIds: [],
+      probability: 0.5,
+      cooldownTurns: 3,
+      tags: [],
+    });
     expect(useProjectStore.getState().getUndoLabel()).toBe('Add encounter');
 
     const panelEncRes = commitPlaceEncounter(productionStepStores(), z0.id, 'patrol');
     expect(panelEncRes.ok).toBe(true);
     const panelAnchor = useProjectStore.getState().project.encounterAnchors.at(-1)!;
+    expect(panelAnchor).toMatchObject({
+      zoneId: z0.id,
+      encounterType: 'patrol',
+      enemyIds: [],
+      probability: 0.5,
+      cooldownTurns: 3,
+      tags: [],
+    });
     expect({ ...panelAnchor, id: 'ignored' }).toEqual({ ...toolAnchor, id: 'ignored' });
     expect(useProjectStore.getState().getUndoLabel()).toBe(`Place patrol encounter in ${z0.name}`);
 
@@ -486,13 +506,25 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     expect(useProjectStore.getState().getUndoCount()).toBe(undoRepeatBefore + 1);
     expect(useProjectStore.getState().getUndoLabel()).toBe(`Set elevation to 7 (${z1.name})`);
 
-    // Descriptive Merge pick undo label + single undo entry
+    // Descriptive Merge pick undo label + single undo entry (and outside-panel default labels remain unchanged)
     const mergeStart = openCommandStepFlow('merge-zones', { type: 'zone', id: z0.id }, productionStepStores());
     expect(mergeStart.kind).toBe('pick');
     if (mergeStart.kind !== 'pick') return;
     const undoMergeBefore = useProjectStore.getState().getUndoCount();
     commitSpatialPickTarget(mergeStart.pick, z2.id, false, productionStepStores());
     expect(useProjectStore.getState().getUndoCount()).toBe(undoMergeBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(`Merge ${z0.name} + ${z2.name}`);
+    useProjectStore.getState().undo();
+
+    const outsideRegPreset = usePresetStore.getState().regionPresets[0];
+    const outsideEncPreset = usePresetStore.getState().encounterPresets[0];
+    useProjectStore.getState().applyRegionPreset(dist.id, outsideRegPreset, 'merge');
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Apply region preset');
+    useProjectStore.getState().undo();
+    useProjectStore.getState().createEncounterFromPreset(z0.id, outsideEncPreset);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Add encounter from preset');
+    useProjectStore.getState().undo();
+    useProjectStore.getState().mergeZones([z0.id, z1.id]);
     expect(useProjectStore.getState().getUndoLabel()).toBe('Merge 2 zones');
     useProjectStore.getState().undo();
 
@@ -512,11 +544,49 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
       target: null,
     });
 
-    // Step-stack choice Esc + input Esc
+    // Step-stack choice Esc + input Esc (both pure key resolution AND real-store createSpeedPanelCallbacks dispatch)
     const escStep = openCommandStepFlow('assign-district', { type: 'zone', id: z0.id }, productionStepStores());
     expect(escStep.kind).toBe('steps');
     if (escStep.kind === 'steps') {
       expect(resolveStepKeyAction(mkKey('Escape'), escStep.flow, [], 0, '')).toEqual({ type: 'cancel' });
+      useEditorStore.getState().openSpeedPanel(40, 40, { type: 'zone', id: z0.id });
+      const choiceCbs = createSpeedPanelCallbacks({
+        context: { type: 'zone', id: z0.id },
+        selection: useEditorStore.getState().selection,
+        zones: useProjectStore.getState().project.zones,
+        query: '',
+        view: buildSpeedPanelView(COMMAND_REGISTRY, { hit: { type: 'zone', id: z0.id }, selection: useEditorStore.getState().selection }, ''),
+        allNavigable: [],
+        activeIdx: 0,
+        lastPanelAction: null,
+        stepFlow: escStep.flow,
+        filteredStepOptions: escStep.flow.steps[0].kind === 'choice' ? escStep.flow.steps[0].options : [],
+        stepActiveIdx: 0,
+        stepFilter: '',
+        stepInputDraft: '',
+        scalarPill: null,
+        scalarPillRef: { current: null },
+        executeCommand: executeRegistryCommand,
+        runMacroSteps: vi.fn(() => ({ completed: 0, total: 0, steps: [], totalSteps: 0, completedSteps: 0 })),
+        stores: productionExecuteStores(),
+        stepStores: productionStepStores(),
+        hotkeyCtx: productionHotkeyContext(),
+        closeSpeedPanel: () => useEditorStore.getState().closeSpeedPanel(),
+        setActiveIdx: vi.fn(),
+        reorderPin: vi.fn(),
+        setStepFlow: vi.fn(),
+        setStepFilter: vi.fn(),
+        setStepActiveIdx: vi.fn(),
+        setScalarPill: vi.fn(),
+        setMacroStatus: vi.fn(),
+        recordCommandUsage: vi.fn(),
+        pushToast: vi.fn(),
+        refocusSearch: vi.fn(),
+      });
+      choiceCbs.handleKeyDown({ ...mkKey('Escape'), preventDefault: vi.fn(), stopPropagation: vi.fn() });
+      expect(useEditorStore.getState().showSpeedPanel).toBe(false);
+
+      expect(escStep.flow.steps[0].kind).toBe('choice');
       const createOpt = escStep.flow.steps[0].kind === 'choice'
         ? escStep.flow.steps[0].options.find((o) => o.kind === 'create')!
         : null;
@@ -528,6 +598,42 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
         expect(resolveStepKeyAction(mkKey('Backspace'), inStep.flow, [], 0, 'Cliff Quarter')).toEqual({ type: 'none' });
         expect(resolveStepKeyAction(mkKey('Backspace'), inStep.flow, [], 0, '')).toEqual({ type: 'back' });
         expect(resolveStepKeyAction(mkKey('Escape'), inStep.flow, [], 0, 'Cliff Quarter')).toEqual({ type: 'cancel' });
+        useEditorStore.getState().openSpeedPanel(40, 40, { type: 'zone', id: z0.id });
+        const inputCbs = createSpeedPanelCallbacks({
+          context: { type: 'zone', id: z0.id },
+          selection: useEditorStore.getState().selection,
+          zones: useProjectStore.getState().project.zones,
+          query: '',
+          view: buildSpeedPanelView(COMMAND_REGISTRY, { hit: { type: 'zone', id: z0.id }, selection: useEditorStore.getState().selection }, ''),
+          allNavigable: [],
+          activeIdx: 0,
+          lastPanelAction: null,
+          stepFlow: inStep.flow,
+          filteredStepOptions: [],
+          stepActiveIdx: 0,
+          stepFilter: '',
+          stepInputDraft: 'Cliff Quarter',
+          scalarPill: null,
+          scalarPillRef: { current: null },
+          executeCommand: executeRegistryCommand,
+          runMacroSteps: vi.fn(() => ({ completed: 0, total: 0, steps: [], totalSteps: 0, completedSteps: 0 })),
+          stores: productionExecuteStores(),
+          stepStores: productionStepStores(),
+          hotkeyCtx: productionHotkeyContext(),
+          closeSpeedPanel: () => useEditorStore.getState().closeSpeedPanel(),
+          setActiveIdx: vi.fn(),
+          reorderPin: vi.fn(),
+          setStepFlow: vi.fn(),
+          setStepFilter: vi.fn(),
+          setStepActiveIdx: vi.fn(),
+          setScalarPill: vi.fn(),
+          setMacroStatus: vi.fn(),
+          recordCommandUsage: vi.fn(),
+          pushToast: vi.fn(),
+          refocusSearch: vi.fn(),
+        });
+        inputCbs.handleKeyDown({ ...mkKey('Escape'), preventDefault: vi.fn(), stopPropagation: vi.fn() });
+        expect(useEditorStore.getState().showSpeedPanel).toBe(false);
       }
       // handleStepChoiceSelect forwards stepFilter into advanceStepChoice
       let pushedFlow: StepStackState | null = null;
@@ -547,11 +653,16 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
 
     // Backspace on empty custom-encounter-type input step also goes Back
     const encStep = openCommandStepFlow('place-encounter', { type: 'zone', id: z0.id }, productionStepStores());
-    if (encStep.kind === 'steps' && encStep.flow.steps[0].kind === 'choice') {
-      const customOpt = encStep.flow.steps[0].options.find((o) => o.kind === 'create')!;
-      const customInput = advanceStepChoice(encStep.flow, customOpt, productionStepStores());
-      if (!customInput.done) {
-        expect(resolveStepKeyAction(mkKey('Backspace'), customInput.flow, [], 0, '')).toEqual({ type: 'back' });
+    expect(encStep.kind).toBe('steps');
+    if (encStep.kind === 'steps') {
+      expect(encStep.flow.steps[0].kind).toBe('choice');
+      if (encStep.flow.steps[0].kind === 'choice') {
+        const customOpt = encStep.flow.steps[0].options.find((o) => o.kind === 'create')!;
+        const customInput = advanceStepChoice(encStep.flow, customOpt, productionStepStores());
+        expect(customInput.done).toBe(false);
+        if (!customInput.done) {
+          expect(resolveStepKeyAction(mkKey('Backspace'), customInput.flow, [], 0, '')).toEqual({ type: 'back' });
+        }
       }
     }
 
@@ -564,8 +675,10 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
 
     // Connect & Merge & Repeat picks Esc leaves project, undo stack, and selection unchanged
     const escConn = openCommandStepFlow('connect-from', { type: 'zone', id: z0.id }, productionStepStores());
+    expect(escConn.kind).toBe('pick');
     if (escConn.kind === 'pick') cancelSpatialPick(escConn.pick, productionStepStores());
     const escMerge = openCommandStepFlow('merge-zones', { type: 'zone', id: z0.id }, productionStepStores());
+    expect(escMerge.kind).toBe('pick');
     if (escMerge.kind === 'pick') cancelSpatialPick(escMerge.pick, productionStepStores());
     const escRepeat = replayLastPanelAction(
       { commandId: 'connect-from', label: 'Connect', timestamp: 1 },
@@ -573,6 +686,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
       productionStepStores(),
       { executeStores: productionExecuteStores(), hotkeyCtx: productionHotkeyContext(), executeDirect: executeRegistryCommand },
     );
+    expect(escRepeat.status).toBe('pick');
     if (escRepeat.status === 'pick') cancelSpatialPick(escRepeat.pick, productionStepStores());
 
     expect(useProjectStore.getState().project).toEqual(snapProject);
@@ -604,6 +718,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
 
     // Undo/Redo/loadProject/newProject/openSpeedPanel all clear an active pick
     const dummyPickOpen = openCommandStepFlow('connect-from', { type: 'zone', id: z1.id }, productionStepStores());
+    expect(dummyPickOpen.kind).toBe('pick');
     if (dummyPickOpen.kind === 'pick') {
       useEditorStore.getState().setSpeedPanelPick(dummyPickOpen.pick);
       useProjectStore.getState().undo();
@@ -623,6 +738,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
 
       useProjectStore.getState().loadProject(makeTwoZoneProject());
       const mergePick = openCommandStepFlow('merge-zones', { type: 'zone', id: z0.id }, productionStepStores());
+      expect(mergePick.kind).toBe('pick');
       if (mergePick.kind === 'pick') {
         const twoPicked = commitSpatialPickTarget(mergePick.pick, z1.id, true, productionStepStores()).pick!;
         useProjectStore.getState().removeZone(z1.id);
@@ -640,12 +756,14 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     const propsSel = { ...emptySelection(), props: ['prop-barrel'] };
     useEditorStore.getState().setSelection(propsSel);
     const propsPick = openCommandStepFlow('connect-from', { type: 'zone', id: 'zone-cellar' }, productionStepStores());
+    expect(propsPick.kind).toBe('pick');
     if (propsPick.kind === 'pick') cancelSpatialPick(propsPick.pick, productionStepStores());
     expect(useEditorStore.getState().selection).toEqual(propsSel);
 
     const tilesSel = { ...emptySelection(), tiles: ['layer-1:2:3'] };
     useEditorStore.getState().setSelection(tilesSel);
     const tilesPick = openCommandStepFlow('connect-from', { type: 'zone', id: 'zone-cellar' }, productionStepStores());
+    expect(tilesPick.kind).toBe('pick');
     if (tilesPick.kind === 'pick') cancelSpatialPick(tilesPick.pick, productionStepStores());
     expect(useEditorStore.getState().selection).toEqual(tilesSel);
   });
@@ -774,23 +892,32 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
 
     // 2) Custom encounter type path (blank error then commit)
     const encOpen = openCommandStepFlow('place-encounter', { type: 'zone', id: z0 }, productionStepStores());
-    if (encOpen.kind === 'steps' && encOpen.flow.steps[0].kind === 'choice') {
-      const customOpt = encOpen.flow.steps[0].options.find((o) => o.kind === 'create')!;
-      const pushedCustom = advanceStepChoice(encOpen.flow, customOpt, productionStepStores());
-      if (!pushedCustom.done) {
-        const bad = submitStepInput(pushedCustom.flow, '   ', productionStepStores());
-        expect(bad.done).toBe(false);
-        const good = submitStepInput(pushedCustom.flow, 'my-custom-enc', productionStepStores());
-        expect(good.done).toBe(true);
+    expect(encOpen.kind).toBe('steps');
+    if (encOpen.kind === 'steps') {
+      expect(encOpen.flow.steps[0].kind).toBe('choice');
+      if (encOpen.flow.steps[0].kind === 'choice') {
+        const customOpt = encOpen.flow.steps[0].options.find((o) => o.kind === 'create')!;
+        const pushedCustom = advanceStepChoice(encOpen.flow, customOpt, productionStepStores());
+        expect(pushedCustom.done).toBe(false);
+        if (!pushedCustom.done) {
+          const bad = submitStepInput(pushedCustom.flow, '   ', productionStepStores());
+          expect(bad.done).toBe(false);
+          const good = submitStepInput(pushedCustom.flow, 'my-custom-enc', productionStepStores());
+          expect(good.done).toBe(true);
+        }
       }
     }
 
     // 3) Apply Preset empty-canvas target-zone selection -> branch into region/encounter
     const emptyPresetOpen = openCommandStepFlow('apply-preset', null, productionStepStores());
-    if (emptyPresetOpen.kind === 'steps' && emptyPresetOpen.flow.steps[0].kind === 'choice') {
-      const standaloneOpt = emptyPresetOpen.flow.steps[0].options.find((o) => o.id === z2)!;
-      const pickedZone = advanceStepChoice(emptyPresetOpen.flow, standaloneOpt, productionStepStores());
-      expect(pickedZone.done).toBe(false);
+    expect(emptyPresetOpen.kind).toBe('steps');
+    if (emptyPresetOpen.kind === 'steps') {
+      expect(emptyPresetOpen.flow.steps[0].kind).toBe('choice');
+      if (emptyPresetOpen.flow.steps[0].kind === 'choice') {
+        const standaloneOpt = emptyPresetOpen.flow.steps[0].options.find((o) => o.id === z2)!;
+        const pickedZone = advanceStepChoice(emptyPresetOpen.flow, standaloneOpt, productionStepStores());
+        expect(pickedZone.done).toBe(false);
+      }
     }
 
     // 4) Typed connection starts, merge >=2 selected returns direct, single-zone non-shift merge commits immediately
@@ -802,6 +929,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
 
     useEditorStore.getState().clearSelection();
     const mergeOpen = openCommandStepFlow('merge-zones', { type: 'zone', id: z0 }, productionStepStores());
+    expect(mergeOpen.kind).toBe('pick');
     if (mergeOpen.kind === 'pick') {
       // Clicking self returns error
       expect(commitSpatialPickTarget(mergeOpen.pick, z0, false, productionStepStores()).error).toContain('Already selected');
@@ -818,6 +946,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     useEditorStore.getState().selectConnection(z0, z1);
     cancelSpatialPick(null, productionStepStores());
     const pickWithConn = openCommandStepFlow('add-secret-conn', { type: 'zone', id: z0 }, productionStepStores());
+    expect(pickWithConn.kind).toBe('pick');
     if (pickWithConn.kind === 'pick') {
       cancelSpatialPick(pickWithConn.pick, productionStepStores());
       expect(useEditorStore.getState().selectedConnection).toEqual({ from: z0, to: z1 });
@@ -921,7 +1050,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     expect(repeatDupCmd.when({ hit: { type: 'zone', id: z0 }, selection: emptySelection() })).toBe(true);
     expect(repeatDupCmd.disabledReason({ hit: { type: 'zone', id: z0 }, selection: emptySelection() })).toBeNull();
 
-    // Cancel restore when previousSelection holds items + spawn + landmark
+    // Cancel preserves existing selection holding items + spawn + landmark
     useEditorStore.getState().selectAll({
       ...emptySelection(),
       landmarks: ['lm-1'],
@@ -930,6 +1059,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
       markets: ['mk-1'],
     }, false);
     const pickRestoreItem = openCommandStepFlow('connect-from', { type: 'zone', id: z0 }, productionStepStores());
+    expect(pickRestoreItem.kind).toBe('pick');
     if (pickRestoreItem.kind === 'pick') {
       cancelSpatialPick(pickRestoreItem.pick, productionStepStores());
       expect(useEditorStore.getState().selection.items).toEqual(['it-1']);
@@ -976,8 +1106,6 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
       cursorSY: 0,
       hoveredZoneId: null,
       invalidReason: null,
-      previousSelection: emptySelection(),
-      previousSelectedConnection: null,
       previousTool: 'select',
     }, 'nonexistent-zone', s.project)).toBe('Target zone not found');
 
@@ -991,8 +1119,6 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
       cursorSY: 0,
       hoveredZoneId: null,
       invalidReason: null,
-      previousSelection: emptySelection(),
-      previousSelectedConnection: null,
       previousTool: 'select',
     }, 'nonexistent-zone', false, s).committed).toBe(false);
 

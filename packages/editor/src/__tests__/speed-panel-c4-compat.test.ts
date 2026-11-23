@@ -125,6 +125,7 @@ describe('Speed Panel C4 compatibility contracts (unchanged)', () => {
       'tool-prop',
       'tool-encounter',
       'tool-item',
+      'create-macro-from-recent',
     ]);
     expect(COMMAND_REGISTRY.some((c) => c.id === 'repeat-last')).toBe(false);
 
@@ -147,6 +148,7 @@ describe('Speed Panel C4 compatibility contracts (unchanged)', () => {
       ['set-elevation', 'Set Elevation'],
       ['open-review', 'Open Review'],
       ['export-summary', 'Export Summary'],
+      ['create-macro-from-recent', 'Create Macro from Recent Actions…'],
     ]);
 
     expect(HOTKEY_BINDINGS).toHaveLength(29);

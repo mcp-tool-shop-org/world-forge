@@ -1237,6 +1237,12 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
         resizeMove.current = null;
         activeGuides.current = [];
         snapDelta.current = { dx: 0, dy: 0 };
+      } else if (result.handled && (result.action === 'duplicate' || result.action === 'delete')) {
+        useEditorStore.getState().recordSessionAction({
+          commandId: result.action,
+          label: result.action === 'duplicate' ? 'Duplicate' : 'Delete',
+          timestamp: Date.now(),
+        });
       }
     };
 
@@ -1435,7 +1441,14 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     } else if (activeTool === 'encounter-place') {
       const zone = findZoneAt(gx, gy);
       if (zone) {
-        addEncounter(buildEncounterAnchor(zone.id, getModeProfile(project.mode).encounterTypes[0]));
+        const encType = getModeProfile(project.mode).encounterTypes[0];
+        addEncounter(buildEncounterAnchor(zone.id, encType));
+        useEditorStore.getState().recordSessionAction({
+          commandId: 'place-encounter',
+          label: `Place Encounter (${encType})`,
+          timestamp: Date.now(),
+          args: { kind: 'place-encounter', encounterType: encType },
+        });
       } else {
         pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }

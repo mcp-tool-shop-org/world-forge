@@ -12,6 +12,7 @@ import { HOTKEY_BINDINGS } from '../hotkeys.js';
 import {
   SPEED_PANEL_ACTIONS,
 } from '../speed-panel-actions.js';
+import { getMacroStepCommandId, type SpeedPanelMacro } from '../speed-panel-actions.js';
 import {
   buildSpeedPanelView,
   type PaletteRow,
@@ -31,6 +32,7 @@ import {
 } from '../speed-panel-steps.js';
 import {
   SP_HEADING_IDS,
+  buildMacroReplaceStepView,
   buildNavigableEntries,
   buildPinRowHandlers,
   catalogueGroupHeadingId,
@@ -41,6 +43,10 @@ import {
   customGroupHeadingId,
   filterStepOptions,
   splitHighlightSegments,
+  submitCreateMacroState,
+  toggleCreateMacroSelection,
+  type CreateMacroViewState,
+  type MacroReplaceFlowState,
   type NavEntry,
   type ScalarPillState,
 } from '../speed-panel-ui.js';
@@ -63,6 +69,8 @@ export interface SpeedPanelProps {
   initialCollapsedGroups?: readonly string[];
   initialStepFlow?: StepStackState | null;
   initialScalarPill?: ScalarPillState | null;
+  initialCreateMacroState?: CreateMacroViewState | null;
+  initialMacroReplaceFlow?: MacroReplaceFlowState | null;
 }
 
 export function SpeedPanel({
@@ -73,6 +81,8 @@ export function SpeedPanel({
   initialCollapsedGroups = [],
   initialStepFlow = null,
   initialScalarPill = null,
+  initialCreateMacroState = null,
+  initialMacroReplaceFlow = null,
 }: SpeedPanelProps) {
   const {
     speedPanelPosition,
@@ -83,6 +93,7 @@ export function SpeedPanel({
     selection,
     selectedConnection,
     lastPanelAction,
+    recentPanelActions,
   } = useEditorStore();
   const { project } = useProjectStore();
   const {
@@ -122,6 +133,8 @@ export function SpeedPanel({
     return last?.kind === 'input' ? last.value : '';
   });
   const [scalarPill, setScalarPill] = useState<ScalarPillState | null>(initialScalarPill);
+  const [createMacroState, setCreateMacroState] = useState<CreateMacroViewState | null>(initialCreateMacroState);
+  const [macroReplaceFlow, setMacroReplaceFlow] = useState<MacroReplaceFlowState | null>(initialMacroReplaceFlow);
   const inputRef = useRef<HTMLInputElement>(null);
   const stepInputRef = useRef<HTMLInputElement>(null);
   const scalarPillRef = useRef<HTMLInputElement>(null);
@@ -222,12 +235,23 @@ export function SpeedPanel({
     }
   }, [scalarPill !== null]);
 
+  const replaceView = useMemo(
+    () => (macroReplaceFlow ? buildMacroReplaceStepView(macroReplaceFlow) : null),
+    [macroReplaceFlow],
+  );
+  const filteredReplaceOptions = useMemo(
+    () => (replaceView && macroReplaceFlow ? filterStepOptions(replaceView.currentPrompt.options, macroReplaceFlow.filter) : []),
+    [replaceView, macroReplaceFlow],
+  );
+
   const {
     execute,
     onSelectStepOption,
     onSubmitStep,
     onStepBack,
     runMacro,
+    onSelectReplaceOption,
+    onStepBackReplace,
     scalarPropsFor,
     handleKeyDown,
   } = createSpeedPanelCallbacks({
@@ -246,6 +270,12 @@ export function SpeedPanel({
     stepInputDraft,
     scalarPill,
     scalarPillRef,
+    recentPanelActions,
+    createMacroState,
+    setCreateMacroState,
+    addMacro,
+    macroReplaceFlow,
+    setMacroReplaceFlow,
     executeCommand: executeRegistryCommand,
     runMacroSteps: executeMacro,
     stores: productionExecuteStores(),
@@ -318,8 +348,48 @@ export function SpeedPanel({
           overflow: 'hidden',
         }}
       >
-        {/* Header: Step breadcrumb/input OR ARIA combobox search + edit toggle */}
-        {stepFlow && currentStep ? (
+        {/* Header: Create macro / Missing-ID replacement / Step breadcrumb / Root combobox */}
+        {createMacroState ? (
+          <SpeedPanelCreateMacroView
+            state={createMacroState}
+            setState={setCreateMacroState}
+            onSaveMacro={(state) =>
+              submitCreateMacroState(state, {
+                addMacro,
+                setCreateMacroState,
+                setMacroStatus,
+                refocusSearch: () => queueMicrotask(() => inputRef.current?.focus({ preventScroll: true })),
+              })
+            }
+            onBack={() => {
+              setCreateMacroState(null);
+              queueMicrotask(() => inputRef.current?.focus({ preventScroll: true }));
+            }}
+            onCancel={() => {
+              setCreateMacroState(null);
+              closeSpeedPanel();
+            }}
+          />
+        ) : replaceView && macroReplaceFlow ? (
+          <SpeedPanelStepView
+            stepFlow={replaceView.stepStack}
+            currentStep={replaceView.stepStack.steps[0]}
+            stepFilter={macroReplaceFlow.filter}
+            setStepFilter={(v) => setMacroReplaceFlow({ ...macroReplaceFlow, filter: v, activeIdx: 0 })}
+            filteredOptions={filteredReplaceOptions}
+            activeIdx={macroReplaceFlow.activeIdx}
+            stepInputDraft=""
+            setStepInputDraft={() => {}}
+            stepInputRef={stepInputRef}
+            onBack={onStepBackReplace}
+            onCancel={() => {
+              setMacroReplaceFlow(null);
+              closeSpeedPanel();
+            }}
+            onSelectOption={onSelectReplaceOption}
+            onSubmitInput={() => {}}
+          />
+        ) : stepFlow && currentStep ? (
           <SpeedPanelStepView
             stepFlow={stepFlow}
             currentStep={currentStep}
@@ -508,11 +578,12 @@ export function SpeedPanel({
                         {isExpanded && (
                           <div role="presentation" style={{ padding: '2px 16px 4px', borderLeft: '2px solid var(--wf-border-default)', marginLeft: 12 }}>
                             {m.steps.map((step, si) => {
-                              const action = COMMAND_REGISTRY.find((c) => c.id === step.actionId);
+                              const stepCmdId = getMacroStepCommandId(step);
+                              const action = COMMAND_REGISTRY.find((c) => c.id === stepCmdId);
                               return (
                                 <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--wf-text-primary)', padding: '1px 0' }}>
                                   <span style={{ color: 'var(--wf-text-muted)', width: 14 }}>{si + 1}.</span>
-                                  <span style={{ flex: 1 }}>{action?.title ?? step.actionId}</span>
+                                  <span style={{ flex: 1 }}>{action?.title ?? stepCmdId}</span>
                                   <button
                                     type="button"
                                     onClick={() => si > 0 && reorderMacroStep(m.id, si, si - 1)}
@@ -605,8 +676,36 @@ export function SpeedPanel({
                 </div>
               )}
 
-              {/* === BAND 4: MODE SUGGESTIONS, CUSTOM GROUPS, & CANONICAL CATALOGUE === */}
+              {/* === BAND 4: SAVED UNPINNED MACROS, MODE SUGGESTIONS, CUSTOM GROUPS, & CANONICAL CATALOGUE === */}
               <div data-testid="wf-sp-band-4" role="presentation">
+                {view.band4Macros && view.band4Macros.length > 0 && (
+                  <div data-testid="wf-sp-band-4-macros" role="group" aria-labelledby={SP_HEADING_IDS.band4Macros}>
+                    <div id={SP_HEADING_IDS.band4Macros} role="presentation" style={SECTION_STYLE}>MACROS</div>
+                    {view.band4Macros.map((m) => {
+                      const idx = navIdx++;
+                      const domId = `wf-sp-opt-b4-macro-${m.id}`;
+                      return (
+                        <div
+                          key={domId}
+                          id={domId}
+                          role="option"
+                          aria-selected={idx === activeIdx}
+                          onClick={() => runMacro(m)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 'var(--wf-space-2)',
+                            padding: 'var(--wf-space-1) var(--wf-space-2)', cursor: 'pointer', fontSize: 12,
+                            background: idx === activeIdx ? 'var(--wf-bg-hover)' : 'transparent',
+                            color: 'var(--wf-text-primary)',
+                          }}
+                        >
+                          <span style={{ color: 'var(--wf-success-text)', fontSize: 10, flexShrink: 0 }}>{'\u25B6'}</span>
+                          <span style={{ flex: 1 }}>{m.name}</span>
+                          <span style={{ color: 'var(--wf-text-muted)', fontSize: 9 }}>{m.steps.length} step{m.steps.length !== 1 ? 's' : ''}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {view.band4ModeSuggested.length > 0 && (
                   <div data-testid="wf-sp-band-4-mode" role="group" aria-labelledby={SP_HEADING_IDS.band4Mode}>
                     <div id={SP_HEADING_IDS.band4Mode} role="presentation" style={SECTION_STYLE}>MODE SUGGESTED</div>
@@ -1347,6 +1446,125 @@ export function SpeedPanelStepView({
           {stepFlow.error}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Inline view for "Create Macro from Recent Actions…" inside Speed Panel. */
+function SpeedPanelCreateMacroView({
+  state,
+  setState,
+  onSaveMacro,
+  onBack,
+  onCancel,
+}: {
+  state: CreateMacroViewState;
+  setState: (next: CreateMacroViewState | null) => void;
+  onSaveMacro: (state: CreateMacroViewState) => SpeedPanelMacro | null;
+  onBack: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div data-testid="wf-sp-create-macro-view" style={{ padding: 'var(--wf-space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--wf-space-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--wf-space-1)', borderBottom: '1px solid var(--wf-border-default)', paddingBottom: 'var(--wf-space-1)' }}>
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to Speed Panel"
+          style={{ background: 'transparent', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 12, padding: '2px 4px' }}
+        >{'\u2190'}</button>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--wf-text-primary)', flex: 1 }}>
+          Create Macro from Recent Actions
+        </span>
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Cancel create macro"
+          style={{ background: 'transparent', border: 'none', color: 'var(--wf-text-muted)', cursor: 'pointer', fontSize: 12, padding: '2px 4px' }}
+        >{'\u2715'}</button>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSaveMacro(state);
+        }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--wf-space-2)' }}
+      >
+        <input
+          autoFocus
+          data-testid="wf-sp-create-macro-name"
+          aria-label="Macro name"
+          placeholder="Macro name..."
+          value={state.name}
+          onChange={(e) => setState({ ...state, name: e.target.value, error: null })}
+          style={{
+            background: 'var(--wf-bg-app)',
+            color: 'var(--wf-text-primary)',
+            border: `1px solid ${state.error ? 'var(--wf-danger)' : 'var(--wf-border-default)'}`,
+            borderRadius: 4,
+            padding: '5px 8px',
+            fontSize: 12,
+            outline: 'none',
+          }}
+        />
+
+        <div data-testid="wf-sp-create-macro-list" style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {state.entries.length === 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', padding: '6px 4px' }}>
+              No recent replayable actions recorded in this session yet.
+            </div>
+          ) : (
+            state.entries.map((entry, idx) => (
+              <label
+                key={entry.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
+                  color: 'var(--wf-text-primary)', cursor: 'pointer', padding: '2px 4px',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  data-testid={`wf-sp-recent-action-${idx}`}
+                  checked={state.selectedIds.includes(entry.id)}
+                  onChange={() => setState(toggleCreateMacroSelection(state, entry.id))}
+                />
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.label}</span>
+                <span style={{ fontSize: 9, color: 'var(--wf-text-muted)' }}>{entry.commandId}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--wf-text-secondary)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            data-testid="wf-sp-create-macro-pin"
+            checked={state.pinToPanel}
+            onChange={(e) => setState({ ...state, pinToPanel: e.target.checked })}
+          />
+          Pin to Speed Panel
+        </label>
+
+        {state.error && (
+          <div role="alert" data-testid="wf-sp-create-macro-error" style={{ fontSize: 11, color: 'var(--wf-danger-text)' }}>
+            {state.error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{ background: 'transparent', border: '1px solid var(--wf-border-default)', color: 'var(--wf-text-muted)', borderRadius: 4, fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}
+          >Cancel</button>
+          <button
+            type="submit"
+            data-testid="wf-sp-create-macro-save"
+            style={{ background: 'var(--wf-accent)', border: 'none', color: 'var(--wf-bg-app)', borderRadius: 4, fontSize: 11, padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}
+          >Save Macro</button>
+        </div>
+      </form>
     </div>
   );
 }

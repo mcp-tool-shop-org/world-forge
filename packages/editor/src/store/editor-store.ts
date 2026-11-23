@@ -259,12 +259,15 @@ interface EditorState {
   speedPanelEditMode: boolean;
   speedPanelPick: SpeedPanelPickSession | null;
   lastPanelAction: LastPanelAction | null;
+  recentPanelActions: SessionActionLogEntry[];
   openSpeedPanel: (x: number, y: number, context: HitResult | null) => void;
   closeSpeedPanel: () => void;
   toggleSpeedPanelEditMode: () => void;
   setSpeedPanelPick: (pick: SpeedPanelPickSession | null) => void;
   clearSpeedPanelPick: () => void;
   setLastPanelAction: (action: LastPanelAction | null) => void;
+  recordSessionAction: (entry: Omit<SessionActionLogEntry, 'id'>) => void;
+  clearRecentPanelActions: () => void;
 }
 
 export type SpeedPanelPickMode = 'connect' | 'merge';
@@ -279,8 +282,6 @@ export interface SpeedPanelPickSession {
   cursorSY: number;
   hoveredZoneId: string | null;
   invalidReason: string | null;
-  previousSelection: SelectionSet;
-  previousSelectedConnection: { from: string; to: string } | null;
   previousTool: EditorTool;
 }
 
@@ -296,6 +297,50 @@ export interface LastPanelAction {
   label: string;
   timestamp: number;
   params?: LastPanelActionParams;
+}
+
+export const MAX_RECENT_PANEL_ACTIONS = 8;
+
+export interface SessionActionLogEntry {
+  id: string;
+  commandId: string;
+  label: string;
+  timestamp: number;
+  args?: LastPanelActionParams;
+}
+
+const PARAM_KINDS_BY_COMMAND: Readonly<Record<string, readonly LastPanelActionParams['kind'][]>> = {
+  'assign-district': ['assign-district'],
+  'apply-preset': ['apply-region-preset', 'apply-encounter-preset'],
+  'place-encounter': ['place-encounter'],
+  'set-elevation': ['set-elevation'],
+};
+
+const ARGLESS_REPLAYABLE_COMMANDS = new Set([
+  'fit-content',
+  'edit-props',
+  'delete',
+  'duplicate',
+  'swap-direction',
+  'open-review',
+  'export-summary',
+]);
+
+let _sessionActionCounter = 0;
+
+/**
+ * Validate whether an action entry can be deterministically replayed from `(commandId, args)`
+ * without interactive pointer picking or label parsing.
+ */
+export function isReplayableSessionAction(
+  commandId: string,
+  args?: LastPanelActionParams,
+): boolean {
+  if (args) {
+    const allowed = PARAM_KINDS_BY_COMMAND[commandId];
+    return Boolean(allowed && allowed.includes(args.kind));
+  }
+  return ARGLESS_REPLAYABLE_COMMANDS.has(commandId);
 }
 
 /**
@@ -567,10 +612,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   speedPanelEditMode: false,
   speedPanelPick: null,
   lastPanelAction: null,
+  recentPanelActions: [],
   openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context, speedPanelPick: null }),
   closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null, speedPanelEditMode: false }),
   toggleSpeedPanelEditMode: () => set((s) => ({ speedPanelEditMode: !s.speedPanelEditMode })),
   setSpeedPanelPick: (pick) => set({ speedPanelPick: pick }),
   clearSpeedPanelPick: () => set({ speedPanelPick: null }),
   setLastPanelAction: (action) => set({ lastPanelAction: action }),
+  recordSessionAction: (entry) => set((s) => {
+    if (!isReplayableSessionAction(entry.commandId, entry.args)) {
+      return {};
+    }
+    _sessionActionCounter += 1;
+    const nextEntry: SessionActionLogEntry = {
+      id: `act-${_sessionActionCounter}`,
+      commandId: entry.commandId,
+      label: entry.label,
+      timestamp: entry.timestamp,
+      ...(entry.args ? { args: { ...entry.args } } : {}),
+    };
+    return {
+      recentPanelActions: [nextEntry, ...s.recentPanelActions].slice(0, MAX_RECENT_PANEL_ACTIONS),
+    };
+  }),
+  clearRecentPanelActions: () => set({ recentPanelActions: [] }),
 }));

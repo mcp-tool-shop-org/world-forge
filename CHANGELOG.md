@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Speed Panel & Starter Kits
+
+- **Create Macro from Recent Actions… & parameterized single-undo macros.** `@world-forge/editor` (`COMMAND_REGISTRY`, `speed-panel-macros.ts`, `speed-panel-actions.ts`, `editor-store.ts`, `speed-panel-store.ts`) extends `MacroStep` with optional `commandId` and typed `LastPanelActionParams` `args` (keeping existing `{ actionId }` macros and `wf.speedPanel.v2` storage compatible), adds a bounded 8-entry in-session log of finished replayable panel and tool actions (`recentPanelActions`), registers `"Create Macro from Recent Actions…"` with inline pinned/unpinned creation UI, commits parameterized macro runs in one atomic undo entry labelled with the macro's name, and validates district/preset/target-zone IDs up front with inline replacement prompts (`Esc` aborts with zero project mutation, zero undo entry, and unchanged selection).
+- **Starter Kit Speed Panel presets.** `StarterKit` and `.wfkit.json` bundles (`BUNDLE_VERSION = 1`) accept optional `speedPanelPresets` (`pins` and `macros`), allow bundling active Speed Panel favorites & macros on save/export, drop unknown command IDs with warnings, and merge kit presets into `useSpeedPanelPins` without overwriting existing pins or colliding user macro names (`<Name> (<Kit Name>)`).
+- **Descriptive panel undo labels & Canvas spatial-pick hardening.** Speed Panel **Apply Preset** and **Merge Zones** actions emit descriptive undo labels (`Apply preset "<name>" to <district> (<merge|overwrite>)`, `Apply encounter preset "<name>" in <zone>`, and `Merge <Zone A> + <Zone B>...`) while preserving outside-panel store defaults, and `SpeedPanelPickSession` removes unused snapshot fields alongside verified input/textarea key-guard ordering during active spatial picks.
+
 ### Branding
 
 - **New logo.** The World Forge logo (`assets/logo.png`, the site's and editor's `logo.png`, and the `logo.png` shipped in each package) is replaced with the new artwork, at the same 1024 × 1024 size.

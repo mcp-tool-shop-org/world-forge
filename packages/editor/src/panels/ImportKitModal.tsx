@@ -166,6 +166,9 @@ export function ImportKitModal({ onClose }: Props) {
             </div>
             <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>
               {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
+              {result.kit.speedPanelPresets && (
+                <> &middot; {result.kit.speedPanelPresets.pins.length} Speed Panel pins &middot; {result.kit.speedPanelPresets.macros.length} macros</>
+              )}
             </div>
           </div>
         )}

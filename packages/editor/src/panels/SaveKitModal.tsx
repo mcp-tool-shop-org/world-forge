@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store.js';
+import { useSpeedPanelPins } from '../store/speed-panel-store.js';
 import { StoragePersistError, useKitStore } from '../kits/index.js';
 import { pushToast } from '../ui/Toast.js';
 import { AUTHORING_MODES } from '@world-forge/schema';
@@ -16,12 +17,17 @@ interface Props { onClose: () => void }
 export function SaveKitModal({ onClose }: Props) {
   const project = useProjectStore((s) => s.project);
   const saveKit = useKitStore((s) => s.saveKit);
+  const pinnedIds = useSpeedPanelPins((s) => s.pinnedIds);
+  const macros = useSpeedPanelPins((s) => s.macros);
 
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [icon, setIcon] = useState('\uD83D\uDCE6');
   const [modes, setModes] = useState<AuthoringMode[]>(project.mode ? [project.mode] : ['dungeon']);
   const [tagsInput, setTagsInput] = useState('');
+  const [includeSpeedPanelPresets, setIncludeSpeedPanelPresets] = useState(
+    pinnedIds.length > 0 || macros.length > 0,
+  );
 
   const toggleMode = (m: AuthoringMode) => {
     setModes((prev) =>
@@ -46,6 +52,14 @@ export function SaveKitModal({ onClose }: Props) {
         project: JSON.parse(JSON.stringify(project)),
         presetRefs: { region: [], encounter: [] },
         guideHints: {},
+        ...(includeSpeedPanelPresets && (pinnedIds.length > 0 || macros.length > 0)
+          ? {
+              speedPanelPresets: {
+                pins: [...pinnedIds],
+                macros: structuredClone(macros),
+              },
+            }
+          : {}),
       });
       onClose();
     } catch (err) {
@@ -56,7 +70,7 @@ export function SaveKitModal({ onClose }: Props) {
         : (err instanceof Error ? err.message : 'Could not save kit.');
       pushToast(msg, 'error', 4000);
     }
-  }, [name, description, icon, modes, tagsInput, project, saveKit, onClose]);
+  }, [name, description, icon, modes, tagsInput, project, saveKit, onClose, includeSpeedPanelPresets, pinnedIds, macros]);
 
   return (
     <ModalFrame title="Save as Starter Kit" width={440} onClose={onClose}>
@@ -128,10 +142,20 @@ export function SaveKitModal({ onClose }: Props) {
         />
 
         {/* Content summary */}
-        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: 'var(--wf-text-muted)', marginTop: 8, marginBottom: 8 }}>
           This kit will include: {project.zones.length} zones, {project.entityPlacements.length} entities,
           {' '}{project.dialogues.length} dialogues, {project.itemPlacements.length} items
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--wf-text-secondary)', marginBottom: 16, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            data-testid="wf-save-kit-include-speed-panel"
+            checked={includeSpeedPanelPresets}
+            onChange={(e) => setIncludeSpeedPanelPresets(e.target.checked)}
+          />
+          Include Speed Panel pins ({pinnedIds.length}) &amp; macros ({macros.length})
+        </label>
 
         {/* Actions */}
         <div style={modalFooter}>

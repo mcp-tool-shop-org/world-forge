@@ -41,6 +41,7 @@ import {
   type LastPanelAction,
   type LastPanelActionParams,
   type SelectionSet,
+  type SessionActionLogEntry,
   type SpeedPanelPickSession,
 } from './store/editor-store.js';
 
@@ -110,7 +111,8 @@ export type StepId =
   | 'pick-encounter-preset'
   | 'pick-encounter-type'
   | 'custom-encounter-type'
-  | 'set-elevation';
+  | 'set-elevation'
+  | 'macro-replace-ref';
 
 export interface ChoicePanelStep {
   kind: 'choice';
@@ -153,9 +155,14 @@ export interface StepExecutionStores {
   updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
   updateZone: (zoneId: string, updates: Partial<WorldProject['zones'][number]>) => void;
   addConnection: (conn: ZoneConnection) => void;
-  mergeZones: (zoneIds: string[]) => string | null;
-  applyRegionPreset: (districtId: string, preset: RegionPreset, mode: 'merge' | 'overwrite') => void;
-  createEncounterFromPreset: (zoneId: string, preset: EncounterPreset) => string;
+  mergeZones: (zoneIds: string[], undoLabel?: string) => string | null;
+  applyRegionPreset: (
+    districtId: string,
+    preset: RegionPreset,
+    mode: 'merge' | 'overwrite',
+    undoLabel?: string,
+  ) => void;
+  createEncounterFromPreset: (zoneId: string, preset: EncounterPreset, undoLabel?: string) => string;
   selectZone: (id: string, additive: boolean) => void;
   selectEncounter: (id: string, additive: boolean) => void;
   selectAll: (sel: SelectionSet, additive: boolean) => void;
@@ -167,6 +174,29 @@ export interface StepExecutionStores {
   setSpeedPanelPick: (pick: SpeedPanelPickSession | null) => void;
   clearSpeedPanelPick: () => void;
   setLastPanelAction: (action: LastPanelAction | null) => void;
+  recordSessionAction?: (entry: Omit<SessionActionLogEntry, 'id'>) => void;
+}
+
+/** Build descriptive panel-side undo label for merging zones (`Merge <Zone A> + <Zone B>...`). */
+export function formatMergeZonesUndoLabel(
+  zoneIds: readonly string[],
+  project: WorldProject,
+): string {
+  const names = zoneIds.map((zid) => project.zones.find((z) => z.id === zid)?.name ?? zid);
+  return `Merge ${names.join(' + ')}`;
+}
+
+function recordFinishedPanelAction(
+  stores: StepExecutionStores,
+  action: LastPanelAction,
+): LastPanelAction {
+  stores.recordSessionAction?.({
+    commandId: action.commandId,
+    label: action.label,
+    timestamp: action.timestamp,
+    ...(action.params ? { args: action.params } : {}),
+  });
+  return action;
 }
 
 const TYPED_CONNECTION_KINDS: Readonly<Record<string, ConnectionKind>> = {
@@ -395,25 +425,6 @@ function buildEncounterPresetStep(
   };
 }
 
-function cloneSelection(sel: SelectionSet): SelectionSet {
-  return {
-    ...sel,
-    zones: [...sel.zones],
-    entities: [...sel.entities],
-    landmarks: [...sel.landmarks],
-    spawns: [...sel.spawns],
-    encounters: [...sel.encounters],
-    ...(sel.items ? { items: [...sel.items] } : {}),
-    ...(sel.markets ? { markets: [...sel.markets] } : {}),
-    ...(sel.stations ? { stations: [...sel.stations] } : {}),
-    ...(sel.buildings ? { buildings: [...sel.buildings] } : {}),
-    ...(sel.hubs ? { hubs: [...sel.hubs] } : {}),
-    ...(sel.strongholds ? { strongholds: [...sel.strongholds] } : {}),
-    ...(sel.props ? { props: [...sel.props] } : {}),
-    ...(sel.tiles ? { tiles: [...sel.tiles] } : {}),
-  };
-}
-
 export type StepFlowOpenResult =
   | { kind: 'steps'; flow: StepStackState }
   | { kind: 'pick'; pick: SpeedPanelPickSession }
@@ -584,8 +595,6 @@ export function openCommandStepFlow(
         cursorSY: 0,
         hoveredZoneId: null,
         invalidReason: null,
-        previousSelection: cloneSelection(stores.selection),
-        previousSelectedConnection: stores.selectedConnection ? { ...stores.selectedConnection } : null,
         previousTool: stores.activeTool,
       },
     };
@@ -612,8 +621,6 @@ export function openCommandStepFlow(
         cursorSY: 0,
         hoveredZoneId: null,
         invalidReason: null,
-        previousSelection: cloneSelection(stores.selection),
-        previousSelectedConnection: stores.selectedConnection ? { ...stores.selectedConnection } : null,
         previousTool: stores.activeTool,
       },
     };
@@ -801,12 +808,12 @@ export function advanceStepChoice(
     return {
       done: true,
       commandId: flow.commandId,
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'assign-district',
         label: `Assign District: ${option.label}`,
         timestamp: Date.now(),
         params: { kind: 'assign-district', districtId: option.id },
-      },
+      }),
     };
   }
 
@@ -850,18 +857,24 @@ export function advanceStepChoice(
     if (!preset || !districtId) {
       return { done: false, flow: { ...flow, error: 'District or preset unavailable.' } };
     }
+    const district = stores.project.districts.find((d) => d.id === districtId);
     const applyMode: 'merge' | 'overwrite' = option.id === 'overwrite' ? 'overwrite' : 'merge';
-    stores.applyRegionPreset(districtId, preset, applyMode);
+    stores.applyRegionPreset(
+      districtId,
+      preset,
+      applyMode,
+      `Apply preset "${preset.name}" to ${district?.name ?? districtId} (${applyMode})`,
+    );
     rememberAppliedRegionPreset(preset.id);
     return {
       done: true,
       commandId: flow.commandId,
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'apply-preset',
         label: `Apply Preset: ${preset.name} (${applyMode})`,
         timestamp: Date.now(),
         params: { kind: 'apply-region-preset', presetId: preset.id, applyMode },
-      },
+      }),
     };
   }
 
@@ -871,18 +884,23 @@ export function advanceStepChoice(
     if (!preset || !zoneId) {
       return { done: false, flow: { ...flow, error: 'Zone or encounter preset unavailable.' } };
     }
-    const id = stores.createEncounterFromPreset(zoneId, preset);
+    const zone = stores.project.zones.find((z) => z.id === zoneId);
+    const id = stores.createEncounterFromPreset(
+      zoneId,
+      preset,
+      `Apply encounter preset "${preset.name}" in ${zone?.name ?? zoneId}`,
+    );
     stores.selectEncounter(id, false);
     rememberAppliedEncounterPreset(preset.id);
     return {
       done: true,
       commandId: flow.commandId,
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'apply-preset',
         label: `Apply Preset: ${preset.name}`,
         timestamp: Date.now(),
         params: { kind: 'apply-encounter-preset', presetId: preset.id },
-      },
+      }),
     };
   }
 
@@ -915,12 +933,12 @@ export function advanceStepChoice(
     return {
       done: true,
       commandId: flow.commandId,
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'place-encounter',
         label: `Place Encounter: ${option.id}`,
         timestamp: Date.now(),
         params: { kind: 'place-encounter', encounterType: option.id },
-      },
+      }),
     };
   }
 
@@ -953,12 +971,12 @@ export function submitStepInput(
     return {
       done: true,
       commandId: flow.commandId,
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'assign-district',
         label: `Assign District: ${rawValue.trim()}`,
         timestamp: Date.now(),
         params: { kind: 'assign-district', districtId: res.districtId },
-      },
+      }),
     };
   }
 
@@ -978,12 +996,12 @@ export function submitStepInput(
     return {
       done: true,
       commandId: flow.commandId,
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'place-encounter',
         label: `Place Encounter: ${rawValue.trim()}`,
         timestamp: Date.now(),
         params: { kind: 'place-encounter', encounterType: rawValue.trim() },
-      },
+      }),
     };
   }
 
@@ -1002,12 +1020,12 @@ export function submitStepInput(
     return {
       done: true,
       commandId: 'set-elevation',
-      lastAction: {
+      lastAction: recordFinishedPanelAction(stores, {
         commandId: 'set-elevation',
         label: res.elevation === undefined ? 'Clear Elevation' : `Set Elevation: ${res.elevation}m`,
         timestamp: Date.now(),
         params: { kind: 'set-elevation', elevation: res.elevation },
-      },
+      }),
     };
   }
 
@@ -1203,14 +1221,15 @@ export function commitSpatialPickTarget(
     return { committed: false, finished: false, pick: updated, error: null };
   }
 
-  const mergedId = stores.mergeZones(nextPicked);
+  const mergeUndoLabel = formatMergeZonesUndoLabel(nextPicked, stores.project);
+  const mergedId = stores.mergeZones(nextPicked, mergeUndoLabel);
   if (mergedId) {
     stores.selectZone(mergedId, false);
-    stores.setLastPanelAction({
+    stores.setLastPanelAction(recordFinishedPanelAction(stores, {
       commandId: 'merge-zones',
-      label: 'Merge Zones',
+      label: mergeUndoLabel,
       timestamp: Date.now(),
-    });
+    }));
   }
   stores.setTool(pick.previousTool);
   stores.clearSpeedPanelPick();
@@ -1229,14 +1248,15 @@ export function finalizeMergePick(
   if (pick.mode !== 'merge' || pick.pickedZoneIds.length < 2) {
     return { committed: false, mergedId: null };
   }
-  const mergedId = stores.mergeZones(pick.pickedZoneIds);
+  const mergeUndoLabel = formatMergeZonesUndoLabel(pick.pickedZoneIds, stores.project);
+  const mergedId = stores.mergeZones(pick.pickedZoneIds, mergeUndoLabel);
   if (mergedId) {
     stores.selectZone(mergedId, false);
-    stores.setLastPanelAction({
+    stores.setLastPanelAction(recordFinishedPanelAction(stores, {
       commandId: 'merge-zones',
-      label: 'Merge Zones',
+      label: mergeUndoLabel,
       timestamp: Date.now(),
-    });
+    }));
   }
   stores.setTool(pick.previousTool);
   stores.clearSpeedPanelPick();
@@ -1345,7 +1365,12 @@ export function replayLastPanelAction(
       if (!preset) {
         return { status: 'error', message: 'Previously applied region preset no longer exists.' };
       }
-      stores.applyRegionPreset(district.id, preset, params.applyMode);
+      stores.applyRegionPreset(
+        district.id,
+        preset,
+        params.applyMode,
+        `Apply preset "${preset.name}" to ${district.name} (${params.applyMode})`,
+      );
       rememberAppliedRegionPreset(preset.id);
       return { status: 'done' };
     }
@@ -1357,7 +1382,12 @@ export function replayLastPanelAction(
       if (!preset) {
         return { status: 'error', message: 'Previously applied encounter preset no longer exists.' };
       }
-      const id = stores.createEncounterFromPreset(primaryZoneId, preset);
+      const zone = stores.project.zones.find((z) => z.id === primaryZoneId);
+      const id = stores.createEncounterFromPreset(
+        primaryZoneId,
+        preset,
+        `Apply encounter preset "${preset.name}" in ${zone?.name ?? primaryZoneId}`,
+      );
       stores.selectEncounter(id, false);
       rememberAppliedEncounterPreset(preset.id);
       return { status: 'done' };

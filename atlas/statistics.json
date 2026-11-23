@@ -392,7 +392,7 @@
       },
       {
         "commits": 13,
-        "lines": 712,
+        "lines": 720,
         "path": "atlas/README.md"
       },
       {
@@ -402,17 +402,17 @@
       },
       {
         "commits": 13,
-        "lines": 4546,
+        "lines": 4555,
         "path": "atlas/page.json"
       },
       {
         "commits": 13,
-        "lines": 13044,
+        "lines": 13212,
         "path": "atlas/statistics.json"
       },
       {
         "commits": 13,
-        "lines": 59946,
+        "lines": 57951,
         "path": "atlas/structure.json"
       },
       {
@@ -682,7 +682,7 @@
       },
       {
         "commits": 1,
-        "lines": 211,
+        "lines": 241,
         "path": "e2e/speed-panel-multi-step.spec.ts"
       },
       {
@@ -752,7 +752,7 @@
       },
       {
         "commits": 25,
-        "lines": 2720,
+        "lines": 2743,
         "path": "packages/editor/src/Canvas.tsx"
       },
       {
@@ -942,17 +942,17 @@
       },
       {
         "commits": 1,
-        "lines": 210,
+        "lines": 217,
         "path": "packages/editor/src/__tests__/speed-panel-c4-compat.test.ts"
       },
       {
         "commits": 1,
-        "lines": 1074,
+        "lines": 1141,
         "path": "packages/editor/src/__tests__/speed-panel-c4-handlers.test.ts"
       },
       {
         "commits": 1,
-        "lines": 750,
+        "lines": 1034,
         "path": "packages/editor/src/__tests__/speed-panel-c4-multistep.test.ts"
       },
       {
@@ -1217,7 +1217,7 @@
       },
       {
         "commits": 3,
-        "lines": 383,
+        "lines": 468,
         "path": "packages/editor/src/panels/OptionsModal.tsx"
       },
       {
@@ -1542,17 +1542,17 @@
       },
       {
         "commits": 1,
-        "lines": 1551,
+        "lines": 1584,
         "path": "packages/editor/src/speed-panel-steps.ts"
       },
       {
         "commits": 2,
-        "lines": 1072,
+        "lines": 1076,
         "path": "packages/editor/src/speed-panel-ui.ts"
       },
       {
         "commits": 13,
-        "lines": 536,
+        "lines": 538,
         "path": "packages/editor/src/store/editor-store.ts"
       },
       {
@@ -1561,8 +1561,8 @@
         "path": "packages/editor/src/store/modal-store.ts"
       },
       {
-        "commits": 21,
-        "lines": 1334,
+        "commits": 22,
+        "lines": 1354,
         "path": "packages/editor/src/store/project-store.ts"
       },
       {
@@ -1681,8 +1681,8 @@
         "path": "packages/editor/src/ui/theme.css"
       },
       {
-        "commits": 3,
-        "lines": 651,
+        "commits": 4,
+        "lines": 670,
         "path": "packages/editor/src/zone-attached.ts"
       },
       {
@@ -3041,9 +3041,9 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-23T01:52:01.416Z",
+  "generatedAt": "2026-11-23T03:52:50.700Z",
   "generatedFrom": {
-    "commit": "3fbf88dabf021de824680f193b0f3a02cc6ed6f3"
+    "commit": "3c04da4cbbd7d8f43304e530054c31ab7a728c8d"
   },
   "pairs": [
     {
@@ -3750,8 +3750,8 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-22T20:47:26-05:00",
-    "inScopeFiles": 683,
+    "headDate": "2026-11-22T21:35:05-05:00",
+    "inScopeFiles": 687,
     "pinnedStart": null,
     "priorFloor": "fallen",
     "qualifyingCommits": 144,
@@ -3759,7 +3759,7 @@
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-27T01:47:26.000Z",
+    "since": "2026-05-27T02:35:05.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

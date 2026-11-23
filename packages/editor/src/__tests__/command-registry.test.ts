@@ -32,6 +32,7 @@ const EXPECTED_SPEED_PANEL_IDS = [
   'set-elevation',
   'open-review',
   'export-summary',
+  'create-macro-from-recent',
 ];
 
 const EXPECTED_HOTKEY_ACTION_IDS = [
@@ -97,7 +98,7 @@ const ALL_HIT_SAMPLES: Array<HitResult | null> = [
 
 describe('editor command registry (Part 4)', () => {
   it('every registered command defines id, title, category, keywords, when, disabledReason, and run with unique ids', () => {
-    expect(COMMAND_REGISTRY.length).toBe(43);
+    expect(COMMAND_REGISTRY.length).toBe(44);
     const seen = new Set<string>();
     for (const cmd of COMMAND_REGISTRY) {
       expect(typeof cmd.id).toBe('string');

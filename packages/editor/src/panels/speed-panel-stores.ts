@@ -45,6 +45,9 @@ export function productionExecuteStores(): ExecuteStores {
     project: project.project,
     updateZone: project.updateZone,
     mergeZones: project.mergeZones,
+    updateProject: project.updateProject,
+    regionPresets: usePresetStore.getState().regionPresets,
+    encounterPresets: usePresetStore.getState().encounterPresets,
   };
 }
 
@@ -77,6 +80,7 @@ export function productionStepStores(): StepExecutionStores {
     setSpeedPanelPick: editor.setSpeedPanelPick,
     clearSpeedPanelPick: editor.clearSpeedPanelPick,
     setLastPanelAction: editor.setLastPanelAction,
+    recordSessionAction: editor.recordSessionAction,
   };
 }
 
