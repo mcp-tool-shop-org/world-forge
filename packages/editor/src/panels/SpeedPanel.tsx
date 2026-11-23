@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
-import { useSpeedPanelPins } from '../store/speed-panel-store.js';
+import { notifySpeedPanelLoadWarnings, useSpeedPanelPins } from '../store/speed-panel-store.js';
 import {
   COMMAND_REGISTRY,
   type CommandBadge,
@@ -26,6 +26,11 @@ import {
   productionStepStores,
 } from './speed-panel-stores.js';
 import {
+  buildQuickFixStepView,
+  getProblemsForObject,
+  type QuickFixFlowState,
+} from '../speed-panel-quick-fix.js';
+import {
   createRepeatLastCommand,
   type StepChoiceOption,
   type StepStackState,
@@ -42,6 +47,7 @@ import {
   createSpeedPanelCallbacks,
   customGroupHeadingId,
   filterStepOptions,
+  getInitialActiveIndex,
   splitHighlightSegments,
   submitCreateMacroState,
   toggleCreateMacroSelection,
@@ -71,6 +77,7 @@ export interface SpeedPanelProps {
   initialScalarPill?: ScalarPillState | null;
   initialCreateMacroState?: CreateMacroViewState | null;
   initialMacroReplaceFlow?: MacroReplaceFlowState | null;
+  initialQuickFixFlow?: QuickFixFlowState | null;
 }
 
 export function SpeedPanel({
@@ -83,6 +90,7 @@ export function SpeedPanel({
   initialScalarPill = null,
   initialCreateMacroState = null,
   initialMacroReplaceFlow = null,
+  initialQuickFixFlow = null,
 }: SpeedPanelProps) {
   const {
     speedPanelPosition,
@@ -120,7 +128,6 @@ export function SpeedPanel({
   } = useSpeedPanelPins();
 
   const [query, setQuery] = useState(initialQuery);
-  const [activeIdx, setActiveIdx] = useState(0);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(initialCollapsedGroups));
   const [expandedMacro, setExpandedMacro] = useState<string | null>(initialExpandedMacro);
   const [macroStatus, setMacroStatus] = useState<string | null>(initialMacroStatus);
@@ -135,6 +142,7 @@ export function SpeedPanel({
   const [scalarPill, setScalarPill] = useState<ScalarPillState | null>(initialScalarPill);
   const [createMacroState, setCreateMacroState] = useState<CreateMacroViewState | null>(initialCreateMacroState);
   const [macroReplaceFlow, setMacroReplaceFlow] = useState<MacroReplaceFlowState | null>(initialMacroReplaceFlow);
+  const [quickFixFlow, setQuickFixFlow] = useState<QuickFixFlowState | null>(initialQuickFixFlow);
   const inputRef = useRef<HTMLInputElement>(null);
   const stepInputRef = useRef<HTMLInputElement>(null);
   const scalarPillRef = useRef<HTMLInputElement>(null);
@@ -156,6 +164,11 @@ export function SpeedPanel({
     [lastPanelAction],
   );
 
+  const quickFixProblems = useMemo(
+    () => (speedPanelPosition && speedPanelContext ? getProblemsForObject(project, speedPanelContext) : []),
+    [speedPanelPosition, project, speedPanelContext],
+  );
+
   const view = useMemo(
     () =>
       buildSpeedPanelView(COMMAND_REGISTRY, cmdCtx, query, {
@@ -169,8 +182,9 @@ export function SpeedPanel({
         showRecents,
         hotkeyBindings: HOTKEY_BINDINGS,
         repeatCommand,
+        quickFixProblems,
       }),
-    [cmdCtx, query, pinnedIds, frecency, recentIds, adaptiveHistory, groups, macros, project.mode, showRecents, repeatCommand],
+    [cmdCtx, query, pinnedIds, frecency, recentIds, adaptiveHistory, groups, macros, project.mode, showRecents, repeatCommand, quickFixProblems],
   );
 
   const pinnedIdSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
@@ -179,16 +193,22 @@ export function SpeedPanel({
     () => buildNavigableEntries(view, collapsedGroups),
     [view, collapsedGroups],
   );
+  const [activeIdx, setActiveIdx] = useState(() => getInitialActiveIndex(allNavigable));
 
-  // Auto-focus without scrolling viewport on mount
-  useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
+  // Auto-focus without scrolling viewport on mount, and surface any deferred macro load warnings once
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+    notifySpeedPanelLoadWarnings(pushToast);
+  }, []);
 
   // Clamp active index when list changes
   useEffect(() => {
-    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length));
+    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length, getInitialActiveIndex(allNavigable)));
   }, [allNavigable.length]);
 
-  useEffect(() => { setActiveIdx(0); }, [query]);
+  useEffect(() => {
+    setActiveIdx(getInitialActiveIndex(allNavigable));
+  }, [query, speedPanelPosition, speedPanelContext]);
 
   // Keep active descendant scrolled into view even under zoom
   useEffect(() => {
@@ -244,6 +264,21 @@ export function SpeedPanel({
     [replaceView, macroReplaceFlow],
   );
 
+  const quickFixView = useMemo(
+    () => (quickFixFlow ? buildQuickFixStepView(quickFixFlow) : null),
+    [quickFixFlow],
+  );
+  const quickFixCurrentStep = quickFixView
+    ? quickFixView.stepStack.steps[quickFixView.stepStack.steps.length - 1]
+    : null;
+  const filteredQuickFixOptions = useMemo(
+    () =>
+      quickFixCurrentStep?.kind === 'choice' && quickFixFlow
+        ? filterStepOptions(quickFixCurrentStep.options, quickFixFlow.filter)
+        : [],
+    [quickFixCurrentStep, quickFixFlow],
+  );
+
   const {
     execute,
     onSelectStepOption,
@@ -252,6 +287,9 @@ export function SpeedPanel({
     runMacro,
     onSelectReplaceOption,
     onStepBackReplace,
+    onOpenQuickFix,
+    onSelectQuickFixOption,
+    onStepBackQuickFix,
     scalarPropsFor,
     handleKeyDown,
   } = createSpeedPanelCallbacks({
@@ -276,6 +314,8 @@ export function SpeedPanel({
     addMacro,
     macroReplaceFlow,
     setMacroReplaceFlow,
+    quickFixFlow,
+    setQuickFixFlow,
     executeCommand: executeRegistryCommand,
     runMacroSteps: executeMacro,
     stores: productionExecuteStores(),
@@ -379,7 +419,6 @@ export function SpeedPanel({
             filteredOptions={filteredReplaceOptions}
             activeIdx={macroReplaceFlow.activeIdx}
             stepInputDraft=""
-            setStepInputDraft={() => {}}
             stepInputRef={stepInputRef}
             onBack={onStepBackReplace}
             onCancel={() => {
@@ -387,7 +426,23 @@ export function SpeedPanel({
               closeSpeedPanel();
             }}
             onSelectOption={onSelectReplaceOption}
-            onSubmitInput={() => {}}
+          />
+        ) : quickFixView && quickFixCurrentStep && quickFixFlow ? (
+          <SpeedPanelStepView
+            stepFlow={quickFixView.stepStack}
+            currentStep={quickFixCurrentStep}
+            stepFilter={quickFixFlow.filter}
+            setStepFilter={(v) => setQuickFixFlow({ ...quickFixFlow, filter: v, activeIdx: 0 })}
+            filteredOptions={filteredQuickFixOptions}
+            activeIdx={quickFixFlow.activeIdx}
+            stepInputDraft=""
+            stepInputRef={stepInputRef}
+            onBack={onStepBackQuickFix}
+            onCancel={() => {
+              setQuickFixFlow(null);
+              closeSpeedPanel();
+            }}
+            onSelectOption={onSelectQuickFixOption}
           />
         ) : stepFlow && currentStep ? (
           <SpeedPanelStepView
@@ -471,6 +526,45 @@ export function SpeedPanel({
                 <div id={SP_HEADING_IDS.band1} role="presentation" style={SECTION_STYLE}>
                   {speedPanelContext ? `${view.deckKey} DECK` : 'CANVAS DECK'}
                 </div>
+                {view.quickFix && (() => {
+                  const qf = view.quickFix;
+                  const idx = navIdx++;
+                  return (
+                    <div
+                      id="wf-sp-opt-quick-fix"
+                      data-testid="wf-sp-quick-fix-row"
+                      role="option"
+                      aria-selected={idx === activeIdx}
+                      onClick={() => onOpenQuickFix(qf)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--wf-space-2)',
+                        padding: 'var(--wf-space-1) var(--wf-space-2)',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        background: idx === activeIdx ? 'var(--wf-bg-hover)' : 'color-mix(in srgb, var(--wf-warning) 10%, transparent)',
+                        color: 'var(--wf-text-primary)',
+                        borderBottom: '1px solid var(--wf-border-default)',
+                      }}
+                    >
+                      <span aria-hidden="true" style={{ fontSize: 13, width: 16, textAlign: 'center', color: 'var(--wf-warning)' }}>!</span>
+                      <span style={{ flex: 1, fontWeight: 600 }}>{qf.label}</span>
+                      <span
+                        data-testid="wf-sp-quick-fix-count"
+                        style={{
+                          fontSize: 10,
+                          padding: '0 6px',
+                          borderRadius: 10,
+                          background: 'color-mix(in srgb, var(--wf-warning) 20%, var(--wf-bg-control))',
+                          color: 'var(--wf-warning)',
+                        }}
+                      >
+                        {qf.countLabel}
+                      </span>
+                    </div>
+                  );
+                })()}
                 {view.band1Deck.map((row, i) => {
                   const idx = navIdx++;
                   const domId = `wf-sp-opt-b1-${i}-${row.command.id}`;
@@ -1249,12 +1343,12 @@ export function SpeedPanelStepView({
   filteredOptions: readonly StepChoiceOption[];
   activeIdx: number;
   stepInputDraft: string;
-  setStepInputDraft: (v: string) => void;
+  setStepInputDraft?: (v: string) => void;
   stepInputRef: React.RefObject<HTMLInputElement | null>;
   onBack: () => void;
   onCancel: () => void;
   onSelectOption: (opt: StepChoiceOption) => void;
-  onSubmitInput: () => void;
+  onSubmitInput?: () => void;
 }) {
   return (
     <div data-testid="wf-sp-step-view" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -1370,7 +1464,7 @@ export function SpeedPanelStepView({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSubmitInput();
+            onSubmitInput?.();
           }}
           style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 'var(--wf-space-2)' }}
         >
@@ -1382,7 +1476,7 @@ export function SpeedPanelStepView({
               aria-label={currentStep.label}
               value={stepInputDraft}
               placeholder={currentStep.placeholder}
-              onChange={(e) => setStepInputDraft(e.target.value)}
+              onChange={(e) => setStepInputDraft?.(e.target.value)}
               style={{
                 background: 'var(--wf-bg-app)',
                 color: 'var(--wf-text-primary)',

@@ -41,7 +41,7 @@ import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { SPEED_PANEL_STATE_V2_KEY, loadSpeedPanelStateV2, useSpeedPanelPins } from '../store/speed-panel-store.js';
 
-describe('Speed Panel D2 Base Compatibility Contracts (unchanged)', () => {
+describe('Speed Panel Macro and Starter Kit Base Compatibility Contracts', () => {
   beforeEach(() => {
     storage.clear();
     useProjectStore.getState().loadProject(structuredClone(minimalProject));
@@ -49,7 +49,7 @@ describe('Speed Panel D2 Base Compatibility Contracts (unchanged)', () => {
     useSpeedPanelPins.setState({ pinnedIds: ['edit-props', 'duplicate'], macros: [] });
   });
 
-  it('unchanged: old-format { actionId } macros load cleanly from v2 and legacy storage and run unchanged', () => {
+  it('loads legacy { actionId } macros from v2 and legacy storage and matches hand execution', () => {
     const legacyMacros: SpeedPanelMacro[] = [
       {
         id: 'legacy-1',
@@ -94,8 +94,7 @@ describe('Speed Panel D2 Base Compatibility Contracts (unchanged)', () => {
     expect(atomicRes.completed).toBe(2);
     expect(atomicRes.abortedAt).toBeUndefined();
     expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
-    const macroZonesCount = useProjectStore.getState().project.zones.length;
-    const macroAddedZone = useProjectStore.getState().project.zones.at(-1)!;
+    const macroProj = structuredClone(useProjectStore.getState().project);
 
     useProjectStore.getState().loadProject(structuredClone(minimalProject));
     const dupCmd = getCommandById('duplicate')!;
@@ -106,12 +105,26 @@ describe('Speed Panel D2 Base Compatibility Contracts (unchanged)', () => {
       project: useProjectStore.getState().project,
     });
     expect(handRes.executed).toBe(true);
-    const handAddedZone = useProjectStore.getState().project.zones.at(-1)!;
-    expect(useProjectStore.getState().project.zones.length).toBe(macroZonesCount);
-    expect({ ...macroAddedZone, id: 'normalized' }).toEqual({ ...handAddedZone, id: 'normalized' });
+    const handProj = structuredClone(useProjectStore.getState().project);
+
+    const normalizeFullProject = (proj: typeof macroProj) => {
+      const baseIds = new Set(minimalProject.zones.map((z) => z.id));
+      const idMap = new Map<string, string>();
+      let copyIdx = 0;
+      for (const z of proj.zones) {
+        if (!baseIds.has(z.id)) idMap.set(z.id, `copied-zone-${++copyIdx}`);
+      }
+      const remap = (id: string) => idMap.get(id) ?? id;
+      return {
+        ...proj,
+        zones: proj.zones.map((z) => ({ ...z, id: remap(z.id), neighbors: z.neighbors.map(remap) })),
+        districts: proj.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.map(remap) })),
+      };
+    };
+    expect(normalizeFullProject(macroProj)).toEqual(normalizeFullProject(handProj));
   });
 
-  it('unchanged: BUNDLE_VERSION stays 1 and kits without speedPanelPresets parse, serialize, and validate identically', () => {
+  it('keeps BUNDLE_VERSION at 1 and round-trips v1 kits without speedPanelPresets', () => {
     expect(BUNDLE_VERSION).toBe(1);
     const bareKit = structuredClone(BUILTIN_KITS[0]);
     const baseV1Literal: KitBundle = {

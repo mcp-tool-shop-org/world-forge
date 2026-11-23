@@ -13,6 +13,7 @@ import { saveProjectFile } from './save-project.js';
 import { resetFileInput } from './file-load.js';
 import { validateProject } from '@world-forge/schema';
 import { useEditorStore, getSelectedZoneId, getSelectionCount, type RightTab } from './store/editor-store.js';
+import { notifySpeedPanelLoadWarnings } from './store/speed-panel-store.js';
 import { ToastHost, pushToast } from './ui/Toast.js';
 import { useModalStore } from './store/modal-store.js';
 import { ToolPalette } from './panels/ToolPalette.js';
@@ -120,6 +121,7 @@ export function App() {
         );
       }
     }
+    notifySpeedPanelLoadWarnings(pushToast);
     startAutoSave();
     return () => stopAutoSave();
     // eslint-disable-next-line react-hooks/exhaustive-deps

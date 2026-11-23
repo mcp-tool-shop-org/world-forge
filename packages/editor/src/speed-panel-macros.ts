@@ -15,6 +15,7 @@ import {
 } from './project-ops.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
 import {
+  ARG_REQUIRED_MACRO_COMMANDS,
   getMacroStepCommandId,
   type MacroExecutionResult,
   type MacroStep,
@@ -73,12 +74,6 @@ const ZONE_TARGETED_ARG_KINDS = new Set([
   'apply-encounter-preset',
   'place-encounter',
   'set-elevation',
-]);
-
-const ARG_REQUIRED_MACRO_COMMANDS = new Set([
-  'set-elevation',
-  'place-encounter',
-  'apply-preset',
 ]);
 
 /** Build a new `SpeedPanelMacro` from checked session log entries (preserving chronological step order). */
@@ -526,7 +521,7 @@ export function executeMacroAtomic(
     };
     if (!cmd.when(cmdCtx)) {
       steps.push({ action: cmdId, success: false });
-      return abort(i, cmdId, 'context mismatch');
+      return abort(i, cmdId, cmd.disabledReason(cmdCtx) ?? 'Not available in this context');
     }
 
     if (cmdId === 'duplicate') {

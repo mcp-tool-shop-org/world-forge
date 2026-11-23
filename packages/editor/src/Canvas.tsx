@@ -75,6 +75,27 @@ type MouseLike = { clientX: number; clientY: number; shiftKey: boolean; button?:
 /** FT-021: When selection exceeds this count, use simplified outline-only rendering */
 export const LARGE_SELECTION_THRESHOLD = 50;
 
+/** Record a finished canvas duplicate or delete hotkey action in the Speed Panel session log. */
+export function recordCanvasHotkeySessionAction(action: string | undefined): void {
+  if (action === 'duplicate' || action === 'delete') {
+    useEditorStore.getState().recordSessionAction({
+      commandId: action,
+      label: action === 'duplicate' ? 'Duplicate' : 'Delete',
+      timestamp: Date.now(),
+    });
+  }
+}
+
+/** Record a finished canvas encounter-placement click in the Speed Panel session log. */
+export function recordCanvasEncounterSessionAction(encType: string): void {
+  useEditorStore.getState().recordSessionAction({
+    commandId: 'place-encounter',
+    label: `Place Encounter (${encType})`,
+    timestamp: Date.now(),
+    args: { kind: 'place-encounter', encounterType: encType },
+  });
+}
+
 export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { project, addZone, addConnection, removeConnection, addEntity, addEncounter, addSpawnPoint, addLandmark, addItemPlacement, moveSelected, resizeZone, removeSelected, duplicateSelected } = useProjectStore();
@@ -1237,12 +1258,8 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
         resizeMove.current = null;
         activeGuides.current = [];
         snapDelta.current = { dx: 0, dy: 0 };
-      } else if (result.handled && (result.action === 'duplicate' || result.action === 'delete')) {
-        useEditorStore.getState().recordSessionAction({
-          commandId: result.action,
-          label: result.action === 'duplicate' ? 'Duplicate' : 'Delete',
-          timestamp: Date.now(),
-        });
+      } else if (result.handled) {
+        recordCanvasHotkeySessionAction(result.action);
       }
     };
 
@@ -1443,12 +1460,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       if (zone) {
         const encType = getModeProfile(project.mode).encounterTypes[0];
         addEncounter(buildEncounterAnchor(zone.id, encType));
-        useEditorStore.getState().recordSessionAction({
-          commandId: 'place-encounter',
-          label: `Place Encounter (${encType})`,
-          timestamp: Date.now(),
-          args: { kind: 'place-encounter', encounterType: encType },
-        });
+        recordCanvasEncounterSessionAction(encType);
       } else {
         pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }

@@ -65,7 +65,7 @@ function computeFittedChapelZoneAnchor(
   };
 }
 
-test.describe('Speed Panel C4 Multi-Step, Scalar Pill, Spatial Picking & Replay', () => {
+test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
   test('Mechanism 1 & 2: Assign District (+ Create District), Place Encounter export badges, Set Elevation Tab pill with inline error & atomic Undo, and Repeat Last Action Here', async ({ page }) => {
     await loadChapel(page);
 
@@ -251,7 +251,7 @@ test.describe('Speed Panel C4 Multi-Step, Scalar Pill, Spatial Picking & Replay'
     await expect(undoBtn).toHaveAttribute('title', 'Undo: Merge Chapel Entrance + Crypt Chamber');
   });
 
-  test('Speed Panel D2: Create Macro from Recent Actions, run with single atomic undo, and cancel missing-ref prompt with Esc', async ({ page }) => {
+  test('creates a macro from recent actions, runs it with one undo entry, and cancels missing-target prompt with Esc', async ({ page }) => {
     await loadChapel(page);
 
     const canvas = page.locator('canvas');
@@ -324,5 +324,98 @@ test.describe('Speed Panel C4 Multi-Step, Scalar Pill, Spatial Picking & Replay'
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
     await expect(undoBtn).toBeDisabled();
+  });
+
+  test('displays Quick Fix count for object problems without shifting Band 1 deck, cancels cleanly on Esc, and applies repair with Deps undo parity', async ({ page }) => {
+    await loadChapel(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+
+    const entranceAnchor = computeFittedChapelZoneAnchor('chapel-entrance', box!, { rx: 0.75, ry: 0.75 });
+    const panel = page.getByTestId('wf-speed-panel');
+    const undoBtn = page.getByRole('button', { name: /^Undo\b/ });
+
+    // 1) Clean Chapel Entrance has no Quick Fix row; Enter on open runs Band 1 slot 1 (Edit Properties)
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('wf-sp-quick-fix-row')).toHaveCount(0);
+    const baselineDeckIds = await panel.locator('[data-testid="wf-sp-band-1"] [id^="wf-sp-opt-b1-"]').evaluateAll(
+      (els) => els.map((e) => e.id),
+    );
+    expect(baselineDeckIds.length).toBeGreaterThanOrEqual(4);
+    await expect(panel.locator(`#${baselineDeckIds[0]}`)).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue('Chapel Entrance');
+
+    // 2) Load a Chapel copy carrying a broken backgroundId reference on chapel-entrance
+    const brokenChapel = JSON.parse(readFileSync(CHAPEL_PROJECT, 'utf-8')) as {
+      zones: Array<Record<string, unknown>>;
+    };
+    const entIdx = brokenChapel.zones.findIndex((z) => z.id === 'chapel-entrance');
+    expect(entIdx).toBeGreaterThanOrEqual(0);
+    brokenChapel.zones[entIdx] = { ...brokenChapel.zones[entIdx], backgroundId: 'missing-bg-asset' };
+    await page.locator('input[type="file"]').first().setInputFiles({
+      name: 'chapel-broken-bg.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(brokenChapel), 'utf-8'),
+    });
+    await expect(undoBtn).toBeDisabled();
+
+    // 3) Broken Chapel Entrance: Quick Fix appears above unshifted Band 1, slot 1 starts active, and Enter on open still runs slot 1
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    const qfRow = panel.getByTestId('wf-sp-quick-fix-row');
+    await expect(qfRow).toBeVisible();
+    await expect(panel.getByTestId('wf-sp-quick-fix-count')).toHaveText('2 problems');
+
+    const deckIdsWithFix = await panel.locator('[data-testid="wf-sp-band-1"] [id^="wf-sp-opt-b1-"]').evaluateAll(
+      (els) => els.map((e) => e.id),
+    );
+    expect(deckIdsWithFix).toEqual(baselineDeckIds);
+    await expect(qfRow).toHaveAttribute('aria-selected', 'false');
+    await expect(panel.locator(`#${baselineDeckIds[0]}`)).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue('Chapel Entrance');
+    await expect(undoBtn).toBeDisabled();
+
+    // 4) ArrowUp from Band 1 slot 1 reaches Quick Fix row, Enter opens Quick Fix, and Esc cancels cleanly
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(`#${baselineDeckIds[0]}`)).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowUp');
+    await expect(qfRow).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Enter');
+    await expect(panel.getByTestId('wf-sp-step-view')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(undoBtn).toBeDisabled();
+
+    // 5) Reopen Quick Fix -> select the dependency problem -> verify Show in Deps option + apply repair -> exact Deps undo label parity
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    await panel.getByTestId('wf-sp-quick-fix-row').click();
+    await panel.locator('[data-testid^="wf-sp-step-opt-dep:"]').first().click();
+    await expect(panel.getByTestId('wf-sp-step-opt-show-in-panel')).toBeVisible();
+    await panel.getByTestId('wf-sp-step-opt-repair:0').click();
+
+    await expect(panel).toHaveCount(0);
+    await expect(undoBtn).toHaveText('Undo (1)');
+    await expect(undoBtn).toHaveAttribute('title', 'Undo: Repair: Clear backgroundId');
+
+    // 6) Zone is now clean again -> Quick Fix row no longer appears and slot 1 remains active
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('wf-sp-quick-fix-row')).toHaveCount(0);
+    await expect(panel.locator(`#${baselineDeckIds[0]}`)).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Escape');
   });
 });
