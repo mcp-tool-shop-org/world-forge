@@ -129,6 +129,7 @@ describe('Speed Panel C1 snapshots and state compatibility (unchanged)', () => {
           { id: 'add-trail-conn', label: 'Draw Trail Connection', icon: '↘' },
           { id: 'merge-zones', label: 'Merge Zones', icon: '⋈' },
           { id: 'set-elevation', label: 'Set Elevation', icon: '▲' },
+          { id: 'create-macro-from-recent', label: 'Create Macro from Recent Actions…', icon: '⊞' },
         ],
       },
       entity: {
@@ -141,6 +142,7 @@ describe('Speed Panel C1 snapshots and state compatibility (unchanged)', () => {
           { id: 'edit-props', label: 'Edit Properties', icon: '✎' },
           { id: 'delete', label: 'Delete', icon: '✕' },
           { id: 'duplicate', label: 'Duplicate', icon: '⧉' },
+          { id: 'create-macro-from-recent', label: 'Create Macro from Recent Actions…', icon: '⊞' },
         ],
       },
       connection: {
@@ -153,6 +155,7 @@ describe('Speed Panel C1 snapshots and state compatibility (unchanged)', () => {
           { id: 'edit-props', label: 'Edit Properties', icon: '✎' },
           { id: 'delete', label: 'Delete', icon: '✕' },
           { id: 'swap-direction', label: 'Swap Direction', icon: '⇄' },
+          { id: 'create-macro-from-recent', label: 'Create Macro from Recent Actions…', icon: '⊞' },
         ],
       },
       empty: {
@@ -166,6 +169,7 @@ describe('Speed Panel C1 snapshots and state compatibility (unchanged)', () => {
           { id: 'fit-content', label: 'Fit to Content', icon: '◱' },
           { id: 'open-review', label: 'Open Review', icon: '☑' },
           { id: 'export-summary', label: 'Export Summary', icon: '▤' },
+          { id: 'create-macro-from-recent', label: 'Create Macro from Recent Actions…', icon: '⊞' },
         ],
       },
     });

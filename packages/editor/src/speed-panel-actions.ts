@@ -2,6 +2,7 @@
 
 import type { HitResult } from './hit-testing.js';
 import type { AuthoringMode, WorldProject } from '@world-forge/schema';
+import type { LastPanelActionParams } from './store/editor-store.js';
 import {
   SPEED_PANEL_ICON_GLYPH,
   getContextMenuCommands,
@@ -39,12 +40,20 @@ export interface SpeedPanelGroup {
 
 export interface MacroStep {
   actionId: string;
+  commandId?: string;
+  args?: LastPanelActionParams;
+}
+
+/** Resolve the effective command ID for a saved or newly created macro step. */
+export function getMacroStepCommandId(step: MacroStep): string {
+  return step.commandId ?? step.actionId;
 }
 
 export interface SpeedPanelMacro {
   id: string;
   name: string;
   steps: MacroStep[];
+  pinned?: boolean;
 }
 
 /** Result of a single macro step execution. */

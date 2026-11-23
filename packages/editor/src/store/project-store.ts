@@ -24,7 +24,13 @@ import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { nextId } from '../ids.js';
-import { appendConnectionToProject, reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
+import {
+  applyRegionPresetToProject,
+  createEncounterFromPresetInProject,
+  mergeZonesInProject,
+  removeSelectedFromProject,
+} from '../project-ops.js';
+import { appendConnectionToProject, translateAttachedByZones } from '../zone-attached.js';
 import { clearSavedFileHandle } from '../save-project.js';
 import { tileMatchesSelection } from '../hit-testing.js';
 
@@ -420,11 +426,11 @@ interface ProjectState {
   removeDialogueNode: (dialogueId: string, nodeId: string) => void;
 
   // Preset apply helpers
-  applyRegionPreset: (districtId: string, preset: RegionPreset, mode: 'merge' | 'overwrite') => void;
-  createEncounterFromPreset: (zoneId: string, preset: EncounterPreset) => string;
+  applyRegionPreset: (districtId: string, preset: RegionPreset, mode: 'merge' | 'overwrite', undoLabel?: string) => void;
+  createEncounterFromPreset: (zoneId: string, preset: EncounterPreset, undoLabel?: string) => string;
 
   // Zone merge (FT-008)
-  mergeZones: (zoneIds: string[]) => string | null;
+  mergeZones: (zoneIds: string[], undoLabel?: string) => string | null;
 
   // Bulk entity spawner (FT-015)
   batchPlaceEntities: (config: { role: string; count: number; zoneId: string; pattern: 'grid' | 'random' | 'circle'; spacing: number }) => void;
@@ -1261,52 +1267,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const count = sel.zones.length + sel.entities.length + sel.landmarks.length + sel.spawns.length + sel.encounters.length
       + iSet.size + mSet.size + stSet.size + bSet.size + hSet.size + shSet.size + pSet.size + tSet.size;
     const label = `Delete ${count} ${count === 1 ? 'object' : 'objects'}`;
-    get().updateProject((p) => {
-      const zSet = new Set(sel.zones);
-      const eSet = new Set(sel.entities);
-      const lSet = new Set(sel.landmarks);
-      const sSet = new Set(sel.spawns);
-      const encSet = new Set(sel.encounters);
-      return {
-        ...p,
-        zones: p.zones
-          .filter((z) => !zSet.has(z.id))
-          .map((z) => ({
-            ...z,
-            neighbors: z.neighbors.filter((n) => !zSet.has(n)),
-            exits: z.exits.filter((e) => !zSet.has(e.targetZoneId)),
-          })),
-        connections: p.connections.filter((c) => !zSet.has(c.fromZoneId) && !zSet.has(c.toZoneId)),
-        districts: p.districts.map((d) => ({ ...d, zoneIds: d.zoneIds.filter((zid) => !zSet.has(zid)) })),
-        // F-df80d913: deleting a zone here must NOT cascade-delete its
-        // attached entities/landmarks/spawns/encounters. orphans.ts states
-        // this as a deliberate, documented design principle ("we do NOT
-        // silently clean up orphans on zone delete... surface them as
-        // first-class, selectable, repairable rows so the user decides"),
-        // and removeZone (below) already honors it — it only ever filters
-        // `zones` and `connections`. This used to violate that principle for
-        // the exact same conceptual operation (delete a zone) reached via a
-        // different UI path (multi-select + Delete), hard-deleting objects
-        // that were never part of the user's selection with no confirmation.
-        // Only remove what the user actually selected; zone-attached items
-        // not explicitly selected become orphans, same as removeZone.
-        entityPlacements: p.entityPlacements.filter((e) => !eSet.has(e.entityId)),
-        landmarks: p.landmarks.filter((l) => !lSet.has(l.id)),
-        spawnPoints: p.spawnPoints.filter((s) => !sSet.has(s.id)),
-        encounterAnchors: p.encounterAnchors.filter((e) => !encSet.has(e.id)),
-        itemPlacements: (p.itemPlacements ?? []).filter((it) => !iSet.has(it.itemId)),
-        marketNodes: (p.marketNodes ?? []).filter((m) => !mSet.has(m.id)),
-        craftingStations: (p.craftingStations ?? []).filter((c) => !stSet.has(c.id)),
-        buildings: (p.buildings ?? []).filter((b) => !bSet.has(b.id)),
-        hubs: (p.hubs ?? []).filter((h) => !hSet.has(h.id)),
-        strongholds: (p.strongholds ?? []).filter((s) => !shSet.has(s.id)),
-        propPlacements: (p.propPlacements ?? []).filter((pl) => !pSet.has(pl.id)),
-        tileLayers: (p.tileLayers ?? []).map((l) => ({
-          ...l,
-          tiles: l.tiles.filter((t) => !tileMatchesSelection(l.id, t, tSet)),
-        })),
-      };
-    }, label);
+    get().updateProject((p) => removeSelectedFromProject(p, sel), label);
   },
   duplicateSelected: (sel) => {
     const { project } = get();
@@ -1515,218 +1476,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   // ── Preset apply helpers ──────────────────────────────────────
 
-  applyRegionPreset: (districtId, preset, mode) => get().updateProject((p) => {
-    const district = p.districts.find((d) => d.id === districtId);
-    if (!district) {
+  applyRegionPreset: (districtId, preset, mode, undoLabel) => get().updateProject((p) => {
+    const res = applyRegionPresetToProject(p, districtId, preset, mode);
+    if (!res.applied) {
       console.warn(`applyRegionPreset: district "${districtId}" not found in project — preset was not applied.`);
-      return p;
     }
+    return res.project;
+  }, undoLabel ?? 'Apply region preset'),
 
-    const isMerge = mode === 'merge';
-
-    // Update district fields
-    const updatedDistrict = { ...district };
-
-    // Tags: merge appends unique, overwrite replaces
-    if (isMerge) {
-      const combined = new Set([...district.tags, ...preset.regionTags]);
-      updatedDistrict.tags = [...combined];
-    } else {
-      updatedDistrict.tags = [...preset.regionTags];
-    }
-
-    // Controlling faction: merge only fills if empty
-    if (!isMerge || !district.controllingFaction) {
-      updatedDistrict.controllingFaction = preset.controllingFaction;
-    }
-
-    // Metrics: merge only fills default (0) values, overwrite replaces all
-    const dm = district.baseMetrics;
-    updatedDistrict.baseMetrics = {
-      commerce: (!isMerge || dm.commerce === 0) && preset.baseMetrics.commerce != null ? preset.baseMetrics.commerce : dm.commerce,
-      morale: (!isMerge || dm.morale === 0) && preset.baseMetrics.morale != null ? preset.baseMetrics.morale : dm.morale,
-      safety: (!isMerge || dm.safety === 0) && preset.baseMetrics.safety != null ? preset.baseMetrics.safety : dm.safety,
-      stability: (!isMerge || dm.stability === 0) && preset.baseMetrics.stability != null ? preset.baseMetrics.stability : dm.stability,
-    };
-
-    // Economy profile: merge only fills if categories/defaults are empty
-    if (preset.economyProfile) {
-      const existing = district.economyProfile;
-      if (!isMerge) {
-        updatedDistrict.economyProfile = {
-          supplyCategories: preset.economyProfile.supplyCategories ?? existing.supplyCategories,
-          scarcityDefaults: preset.economyProfile.scarcityDefaults ?? existing.scarcityDefaults,
-        };
-      } else {
-        updatedDistrict.economyProfile = {
-          supplyCategories: existing.supplyCategories.length === 0 && preset.economyProfile.supplyCategories
-            ? preset.economyProfile.supplyCategories
-            : existing.supplyCategories,
-          scarcityDefaults: Object.keys(existing.scarcityDefaults).length === 0 && preset.economyProfile.scarcityDefaults
-            ? preset.economyProfile.scarcityDefaults
-            : existing.scarcityDefaults,
-        };
-      }
-    }
-
-    const districts = p.districts.map((d) => d.id === districtId ? updatedDistrict : d);
-
-    // Faction presences: add new factions that don't already exist for this district
-    let factionPresences = [...p.factionPresences];
-    for (const fp of preset.factionPresences) {
-      const exists = factionPresences.some(
-        (f) => f.factionId === fp.factionId && f.districtIds.includes(districtId),
-      );
-      if (!exists) {
-        // Check if faction already exists elsewhere — extend districtIds
-        const existing = factionPresences.find((f) => f.factionId === fp.factionId);
-        if (existing) {
-          factionPresences = factionPresences.map((f) =>
-            f.factionId === fp.factionId
-              ? { ...f, districtIds: [...f.districtIds, districtId] }
-              : f,
-          );
-        } else {
-          factionPresences.push({
-            factionId: fp.factionId,
-            districtIds: [districtId],
-            influence: fp.influence,
-            alertLevel: fp.alertLevel,
-            patrolRoutes: fp.patrolRoutes,
-          });
-        }
-      }
-    }
-
-    // Pressure hotspots: add one per district zone (first zone only to avoid spam)
-    let pressureHotspots = [...p.pressureHotspots];
-    for (const ph of preset.pressureHotspots) {
-      // Place in first zone of district that doesn't already have this pressure type
-      const targetZone = district.zoneIds.find(
-        (zid) => !pressureHotspots.some((h) => h.zoneId === zid && h.pressureType === ph.pressureType),
-      );
-      if (targetZone) {
-        pressureHotspots.push({
-          id: nextId('hotspot'),
-          zoneId: targetZone,
-          pressureType: ph.pressureType,
-          baseProbability: ph.baseProbability,
-          tags: [...ph.tags],
-        });
-      }
-    }
-
-    return { ...p, districts, factionPresences, pressureHotspots };
-  }, 'Apply region preset'),
-
-  createEncounterFromPreset: (zoneId, preset) => {
+  createEncounterFromPreset: (zoneId, preset, undoLabel) => {
     const id = nextId('enc');
-    get().updateProject((p) => ({
-      ...p,
-      encounterAnchors: [...p.encounterAnchors, {
-        id,
-        zoneId,
-        encounterType: preset.encounterType,
-        enemyIds: [...preset.enemyIds],
-        probability: preset.probability,
-        cooldownTurns: preset.cooldownTurns,
-        tags: [...preset.encounterTags],
-      }],
-    }), 'Add encounter from preset');
+    get().updateProject(
+      (p) => createEncounterFromPresetInProject(p, zoneId, preset, id).project,
+      undoLabel ?? 'Add encounter from preset',
+    );
     return id;
   },
 
   // ── FT-008: Zone Merge ─────────────────────────────────────────
-  mergeZones: (zoneIds) => {
-    if (zoneIds.length < 2) return null;
+  mergeZones: (zoneIds, undoLabel) => {
     const { project } = get();
-    const zones = project.zones.filter((z) => zoneIds.includes(z.id));
-    if (zones.length < 2) return null;
+    const preview = mergeZonesInProject(project, zoneIds);
+    if (!preview.mergedId) return null;
 
-    const mergedId = nextId('zone-merged');
-    const idSet = new Set(zoneIds);
+    get().updateProject(
+      () => preview.project,
+      undoLabel ?? `Merge ${zoneIds.length} zones`,
+    );
 
-    // Compute bounding box
-    const minX = Math.min(...zones.map((z) => z.gridX));
-    const minY = Math.min(...zones.map((z) => z.gridY));
-    const maxX = Math.max(...zones.map((z) => z.gridX + z.gridWidth));
-    const maxY = Math.max(...zones.map((z) => z.gridY + z.gridHeight));
-
-    // Merge tags, hazards, interactables
-    const allTags = [...new Set(zones.flatMap((z) => z.tags))];
-    const allHazards = [...new Set(zones.flatMap((z) => z.hazards))];
-    const allInteractables = zones.flatMap((z) => z.interactables);
-
-    // External neighbors (not in merge set)
-    const externalNeighbors = [...new Set(zones.flatMap((z) => z.neighbors).filter((n) => !idSet.has(n)))];
-
-    const mergedZone: Zone = {
-      id: mergedId,
-      name: `Merged (${zones.map((z) => z.name).join(' + ')})`,
-      description: zones.map((z) => z.description).filter(Boolean).join(' '),
-      tags: allTags,
-      gridX: minX,
-      gridY: minY,
-      gridWidth: maxX - minX,
-      gridHeight: maxY - minY,
-      neighbors: externalNeighbors,
-      exits: zones.flatMap((z) => z.exits.filter((e) => !idSet.has(e.targetZoneId))),
-      light: Math.round(zones.reduce((s, z) => s + z.light, 0) / zones.length),
-      noise: Math.round(zones.reduce((s, z) => s + z.noise, 0) / zones.length),
-      hazards: allHazards,
-      interactables: allInteractables,
-      parentDistrictId: zones.find((z) => z.parentDistrictId)?.parentDistrictId,
-    };
-
-    get().updateProject((p) => {
-      // Remove old zones, add merged
-      const newZones = [...p.zones.filter((z) => !idSet.has(z.id)), mergedZone];
-
-      // Reassign entities, landmarks, spawns, encounters
-      const entityPlacements = p.entityPlacements.map((e) =>
-        idSet.has(e.zoneId) ? { ...e, zoneId: mergedId } : e);
-      const landmarks = p.landmarks.map((l) =>
-        idSet.has(l.zoneId) ? { ...l, zoneId: mergedId } : l);
-      const spawnPoints = p.spawnPoints.map((s) =>
-        idSet.has(s.zoneId) ? { ...s, zoneId: mergedId } : s);
-      const encounterAnchors = p.encounterAnchors.map((e) =>
-        idSet.has(e.zoneId) ? { ...e, zoneId: mergedId } : e);
-
-      // Remove internal connections, repoint external ones
-      const connections = p.connections
-        .filter((c) => !(idSet.has(c.fromZoneId) && idSet.has(c.toZoneId)))
-        .map((c) => ({
-          ...c,
-          fromZoneId: idSet.has(c.fromZoneId) ? mergedId : c.fromZoneId,
-          toZoneId: idSet.has(c.toZoneId) ? mergedId : c.toZoneId,
-        }))
-        // Deduplicate connections that now point to same pair
-        .filter((c, i, arr) => arr.findIndex((x) => x.fromZoneId === c.fromZoneId && x.toZoneId === c.toZoneId) === i);
-
-      // Update districts
-      const districts = p.districts.map((d) => {
-        const hasOld = d.zoneIds.some((zid) => idSet.has(zid));
-        if (!hasOld) return d;
-        const filtered = d.zoneIds.filter((zid) => !idSet.has(zid));
-        return { ...d, zoneIds: [...filtered, mergedId] };
-      });
-
-      const attached = reassignAttachedZoneIds(p, idSet, mergedId);
-
-      return {
-        ...p,
-        zones: newZones,
-        entityPlacements,
-        landmarks,
-        spawnPoints,
-        encounterAnchors,
-        connections,
-        districts,
-        ...attached,
-      };
-    }, `Merge ${zoneIds.length} zones`);
-
-    return mergedId;
+    return preview.mergedId;
   },
 
   // ── FT-015: Bulk Entity Spawner ────────────────────────────────

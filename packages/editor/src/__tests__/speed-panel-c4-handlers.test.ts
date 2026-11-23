@@ -273,8 +273,6 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
       cursorSY: 0,
       hoveredZoneId: null,
       invalidReason: null,
-      previousSelection: { ...emptySelection(), zones: [zones[0].id] },
-      previousSelectedConnection: null,
       previousTool: 'select',
     };
     useEditorStore.getState().selectZone(zones[0].id, false);
@@ -343,8 +341,6 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
       cursorSY: 50,
       hoveredZoneId: null,
       invalidReason: null,
-      previousSelection: emptySelection(),
-      previousSelectedConnection: null,
       previousTool: 'select',
     });
     expect(pickHandlers.handleKeyDown({ key: 'Enter', preventDefault: vi.fn(), stopPropagation: vi.fn() })).toBe(true);
@@ -625,8 +621,6 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
         cursorSY: 160,
         hoveredZoneId: zoneId,
         invalidReason: 'Pick a different zone to connect',
-        previousSelection: emptySelection(),
-        previousSelectedConnection: null,
         previousTool: 'select',
       },
       project: useProjectStore.getState().project,
@@ -652,8 +646,6 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
         cursorSY: 80,
         hoveredZoneId: null,
         invalidReason: null,
-        previousSelection: emptySelection(),
-        previousSelectedConnection: null,
         previousTool: 'select',
       },
       project: useProjectStore.getState().project,

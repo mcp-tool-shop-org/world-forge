@@ -513,11 +513,11 @@ Rename groups inline, delete them with ✕, or remove individual actions from a 
 
 The **RECENT** band shows up to 3 applicable commands not already shown in Band 1 or Band 2, scored by continuous exponential-decay frecency. Uncheck **Show recent commands in Speed Panel** in **Options** if you prefer a purely static menu.
 
-### Lightweight Macros
+### Lightweight & Parameterized Macros
 
-In edit mode, click **+ New Macro** to create a multi-step macro. Macros appear inside Band 2 when their steps apply to the current target and execute sequentially as separate undo entries.
+In edit mode, click **+ New Macro** to build a step macro manually, or run **Create Macro from Recent Actions…** anywhere from the Speed Panel to promote any subset of the last 8 finished replayable panel or canvas tool actions (including parameterized district assignments, presets, encounters, and elevations) into a named macro. Choose whether to pin the new macro to Band 2 or leave it unpinned (still available under Band 4 **MACROS** and search).
 
-Only **macroSafe** actions can be macro steps (actions that don't require interactive picking). If a macro step fails (context mismatch), execution aborts and a red status banner shows which step failed and why.
+When a macro executes, parameterized or multi-step runs validate all referenced district, preset, and target zone IDs up front and commit as **one atomic undo entry** labelled with the macro's name. If any referenced ID no longer exists in the project or preset library, the Speed Panel prompts inline for a replacement choice (`Esc` cancels with zero project mutation, zero undo entry, and unchanged selection). Only **macroSafe** commands appear in the manual edit-mode step dropdown; if a step fails at runtime, the entire run aborts cleanly without leaving partial mutations.
 
 ### Band & Section Order
 
@@ -612,6 +612,7 @@ Click **Save as Kit** (in the top bar) to capture your current project as a cust
 - **Icon** — emoji or character for the card header
 - **Modes** — which authoring modes the kit is compatible with (auto-detected from project)
 - **Tags** — comma-separated labels for organization
+- **Speed Panel pins & macros (optional)** — check **Include Speed Panel pins & macros** to bundle your active favorites and macros inside the kit (`speedPanelPresets`)
 
 Custom kits support full editing (metadata, preset references, and guide hints) and deletion. Use **Duplicate** on any kit — built-in or custom — to create an editable copy.
 
@@ -619,9 +620,11 @@ Custom kits support full editing (metadata, preset references, and guide hints) 
 
 Custom kits can override the mode guide's checklist labels. When you open a project from a kit with guide hints, the checklist panel uses the kit's labels instead of the mode defaults. This lets kit authors tailor the authoring guide to their specific world concept.
 
-### Export
+### Export & Applying Speed Panel Presets
 
-Every kit card (built-in and custom) has an **Export** button that downloads the kit as a portable `.wfkit.json` bundle file. The bundle contains the kit's name, description, icon, modes, tags, project data, preset references, and guide hints — everything needed to recreate the kit on another machine. Runtime fields (id, timestamps, source) are stripped; a `bundleVersion` and `exportedAt` timestamp are added.
+Every kit card (built-in and custom) has an **Export** button that downloads the kit as a portable `.wfkit.json` v1 bundle file. Toggle **Include Speed Panel pins & macros on export** (unchecked by default) at the top of the Starter Kits tab to bundle your current Speed Panel favorites and macros alongside the kit's name, description, icon, modes, tags, project data, preset references, and guide hints. Runtime fields (id, timestamps, source) are stripped; a `bundleVersion` and `exportedAt` timestamp are added. Unknown command IDs and excess entries beyond import caps (`32` pins, `32` macros, `16` steps per macro) inside imported `speedPanelPresets` are dropped or trimmed cleanly with validation warnings.
+
+When starting a project from a kit that carries `speedPanelPresets`, an opt-in checkbox on the kit card adds the kit's pins and macros **without overwriting existing user state** — any colliding incoming macro name is disambiguated as `<Name> (<Kit Name>)` so both macros remain intact, and starting the same kit repeatedly skips already-merged presets without duplicating them.
 
 ### Import
 

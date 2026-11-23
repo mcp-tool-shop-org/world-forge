@@ -3,6 +3,7 @@
 import type { StarterKit } from './types.js';
 import { isValidMode, validateProject } from '@world-forge/schema';
 import { BUILTIN_REGION_PRESETS, BUILTIN_ENCOUNTER_PRESETS } from '../presets/built-ins.js';
+import { sanitizeMacros, sanitizePins } from '../store/speed-panel-store.js';
 
 export interface KitValidationResult {
   valid: boolean;
@@ -58,6 +59,11 @@ export function validateKit(kit: StarterKit): KitValidationResult {
     if (!encounterPresetIds.has(refId)) {
       warnings.push(`Encounter preset ref not found: ${refId}`);
     }
+  }
+
+  if (kit.speedPanelPresets) {
+    sanitizePins(kit.speedPanelPresets.pins, warnings);
+    sanitizeMacros(kit.speedPanelPresets.macros, warnings);
   }
 
   return {

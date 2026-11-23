@@ -45,18 +45,18 @@ function makeCtx(overrides: Partial<HotkeyContext> = {}): HotkeyContext {
 }
 
 describe('SpeedPanel integration', () => {
-  it('zone context produces 13 actions (9 core + 4 pending-kind connections)', () => {
+  it('zone context produces 14 actions (9 core + 4 pending-kind connections + create-macro-from-recent)', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const { pinned, contextual } = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    // edit, delete, duplicate, assign-district, place-entity, place-encounter, connect-from, merge-zones, set-elevation
-    expect(pinned.length + contextual.length).toBe(13);
+    // edit, delete, duplicate, assign-district, place-entity, place-encounter, connect-from, merge-zones, set-elevation, + 4 conn kinds + create-macro-from-recent
+    expect(pinned.length + contextual.length).toBe(14);
   });
 
-  it('empty context produces 4 global actions (2 core + 2 review) — F-bdf856bf removed the 4 non-functional mode-suggested add-*-conn actions', () => {
+  it('empty context produces 5 global actions (2 core + 2 review + create-macro-from-recent)', () => {
     const { pinned, contextual, modeSuggested } = filterActions(SPEED_PANEL_ACTIONS, null, '', []);
-    // No mode → modeSuggested empty, all 4 remaining global actions in contextual
+    // No mode → modeSuggested empty, all 5 remaining global actions in contextual
     expect(modeSuggested.length).toBe(0);
-    expect(pinned.length + contextual.length).toBe(4);
+    expect(pinned.length + contextual.length).toBe(5);
   });
 
   it('search query narrows results', () => {
@@ -88,11 +88,11 @@ describe('SpeedPanel integration', () => {
     expect(cleared).toBe(true);
   });
 
-  it('spawn context returns edit + delete only', () => {
+  it('spawn context returns edit + delete + create-macro-from-recent', () => {
     const hit: HitResult = { type: 'spawn', id: 's1' };
     const { pinned, contextual } = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
     const ids = [...pinned, ...contextual].map((a) => a.id);
-    expect(ids).toEqual(['edit-props', 'delete']);
+    expect(ids).toEqual(['edit-props', 'delete', 'create-macro-from-recent']);
   });
 });
 
@@ -191,7 +191,7 @@ describe('macros in filterActions', () => {
     // describe block below), so they no longer appear here either.
     expect(unsafe.map((a) => a.id).sort()).toEqual([
       'add-channel-conn', 'add-secret-conn', 'add-trail-conn', 'add-warp-conn',
-      'connect-from', 'new-zone', 'place-encounter', 'place-entity', 'set-elevation',
+      'connect-from', 'create-macro-from-recent', 'new-zone', 'place-encounter', 'place-entity', 'set-elevation',
     ]);
     expect(safe.length).toBe(9);
   });
@@ -277,7 +277,7 @@ describe('mode-aware speed panel', () => {
   it('existing filterActions tests: all non-mode actions still work', () => {
     const hit: HitResult = { type: 'zone', id: 'z1' };
     const result = filterActions(SPEED_PANEL_ACTIONS, hit, '', []);
-    expect(result.pinned.length + result.contextual.length).toBe(13);
+    expect(result.pinned.length + result.contextual.length).toBe(14);
   });
 
   it('section order: PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL', () => {

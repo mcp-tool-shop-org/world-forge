@@ -131,6 +131,7 @@ describe('Speed Panel C2 base compatibility (unchanged)', () => {
       { id: 'set-elevation', label: 'Set Elevation', icon: '▲', category: 'context', macroSafe: false },
       { id: 'open-review', label: 'Open Review', icon: '☑', category: 'global', macroSafe: true },
       { id: 'export-summary', label: 'Export Summary', icon: '▤', category: 'global', macroSafe: true },
+      { id: 'create-macro-from-recent', label: 'Create Macro from Recent Actions…', icon: '⊞', category: 'global', macroSafe: false },
     ]);
   });
 });

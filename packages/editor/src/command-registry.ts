@@ -17,6 +17,7 @@ import {
 import type { ModalId } from './store/modal-store.js';
 import type { EnrichedReviewSnapshot } from './panels/ReviewPanel.js';
 import { reviewSnapshotToMarkdown, summaryFilename } from './review/export-summary.js';
+import type { EncounterPreset, RegionPreset } from './presets/types.js';
 
 /** Closed icon enum so the palette/context menu can style a 16px glyph from tokens. */
 export type SpeedPanelIconId =
@@ -37,7 +38,8 @@ export type SpeedPanelIconId =
   | 'connect-secret'
   | 'connect-channel'
   | 'connect-warp'
-  | 'connect-trail';
+  | 'connect-trail'
+  | 'macro-record';
 
 /** Geometric glyphs — not emoji, not 1–3 letter codes. */
 export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
@@ -59,6 +61,7 @@ export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
   'connect-channel': '\u2248',
   'connect-warp': '\u29C1',
   'connect-trail': '\u2198',
+  'macro-record': '\u229E',
 };
 
 /** Bag of store methods needed by execute — keeps action execution testable without DOM mounts. */
@@ -90,6 +93,9 @@ export interface ExecuteStores {
   selection?: SelectionSet;
   downloadFile?: (filename: string, content: string, mimeType: string) => void;
   canvasSize?: { w: number; h: number };
+  updateProject?: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
+  regionPresets?: readonly RegionPreset[];
+  encounterPresets?: readonly EncounterPreset[];
 
   project: WorldProject;
 }
@@ -1124,6 +1130,24 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
 
   // -- 10 Tool-switch Commands (unified hotkey + ToolPalette) --
   ...TOOL_COMMANDS,
+
+  // -- Speed Panel Macro Authoring --
+  {
+    id: 'create-macro-from-recent',
+    title: 'Create Macro from Recent Actions\u2026',
+    label: 'Create Macro from Recent Actions\u2026',
+    category: 'author',
+    surfaces: ['speed-panel'],
+    keywords: ['macro', 'record', 'recent', 'actions', 'batch', 'automate', 'save macro'],
+    icon: SPEED_PANEL_ICON_GLYPH['macro-record'],
+    iconId: 'macro-record',
+    description: 'Save recent replayable actions as a reusable macro',
+    speedPanelCategory: 'global',
+    macroSafe: false,
+    when: () => true,
+    disabledReason: () => null,
+    run: () => ({ executed: true }),
+  },
 ];
 
 const COMMAND_BY_ID = new Map<string, EditorCommand>(

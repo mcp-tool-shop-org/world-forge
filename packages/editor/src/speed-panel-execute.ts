@@ -1,7 +1,7 @@
 // speed-panel-execute.ts — extracted action execution logic for the Speed Panel
 
 import type { HitResult } from './hit-testing.js';
-import type { SpeedPanelMacro, MacroExecutionResult } from './speed-panel-actions.js';
+import { getMacroStepCommandId, type SpeedPanelMacro, type MacroExecutionResult } from './speed-panel-actions.js';
 import {
   getCommandById,
   type ExecuteResult,
@@ -10,6 +10,8 @@ import {
 } from './command-registry.js';
 import { useEditorStore } from './store/editor-store.js';
 import { useProjectStore } from './store/project-store.js';
+import { usePresetStore } from './presets/preset-store.js';
+import { executeMacroAtomic } from './speed-panel-macros.js';
 import { pushToast } from './ui/Toast.js';
 import { defaultDownloadViaAnchor } from './save-project.js';
 
@@ -87,6 +89,9 @@ export function buildExecuteStores(canvasSize?: { w: number; h: number }): Execu
     mergeZones: proj.mergeZones,
     selection: editor.selection,
     canvasSize,
+    updateProject: proj.updateProject,
+    regionPresets: usePresetStore.getState().regionPresets,
+    encounterPresets: usePresetStore.getState().encounterPresets,
     project: proj.project,
   };
 }
@@ -160,7 +165,13 @@ export function executeContextMenuAction(
   canvasSize?: { w: number; h: number },
 ): ExecuteResult {
   const result = executeAction(actionId, hit, buildExecuteStores(canvasSize));
-  if (!result.executed) {
+  if (result.executed) {
+    useEditorStore.getState().recordSessionAction({
+      commandId: actionId,
+      label: getCommandById(actionId)?.label ?? actionId,
+      timestamp: Date.now(),
+    });
+  } else {
     const reason = result.reason ?? `Action "${actionId}" did not run`;
     console.warn(`[context-menu] action "${actionId}" did not execute (${reason}) for hit type ${hit?.type ?? 'none'}`);
     const message = failReasonToUserMessage(actionId, reason);
@@ -170,26 +181,45 @@ export function executeContextMenuAction(
 }
 
 /**
- * Execute a macro — runs steps sequentially, each step = separate undo entry.
- * Aborts on first step that fails (context mismatch).
- * Returns step-by-step results for feedback UI.
+ * Execute a macro — when `updateProject` is available on `stores`, runs atomically in a single
+ * undo entry labelled `macro.name`; otherwise runs argless legacy steps sequentially.
  */
 export function executeMacro(
   macro: SpeedPanelMacro,
   context: HitResult | null,
   stores: ExecuteStores,
 ): MacroExecutionResult {
+  if (stores.updateProject) {
+    return executeMacroAtomic(macro, context, {
+      ...stores,
+      updateProject: stores.updateProject,
+    });
+  }
   const total = macro.steps.length;
   const steps: MacroExecutionResult['steps'] = [];
 
   for (let i = 0; i < total; i++) {
-    const result = executeAction(macro.steps[i].actionId, context, stores);
-    steps.push({ action: macro.steps[i].actionId, success: result.executed });
+    const step = macro.steps[i];
+    const cmdId = getMacroStepCommandId(step);
+    if (step.args !== undefined) {
+      steps.push({ action: cmdId, success: false });
+      return {
+        completed: i,
+        total,
+        abortedAt: i,
+        reason: `Step ${i + 1} (${cmdId}) failed — updateProject required for parameterized step`,
+        steps,
+        totalSteps: total,
+        completedSteps: i,
+      };
+    }
+    const result = executeAction(cmdId, context, stores);
+    steps.push({ action: cmdId, success: result.executed });
     if (!result.executed) {
       return {
         completed: i, total,
         abortedAt: i,
-        reason: `Step ${i + 1} (${macro.steps[i].actionId}) failed — ${result.reason ?? 'context mismatch'}`,
+        reason: `Step ${i + 1} (${cmdId}) failed — ${result.reason ?? 'context mismatch'}`,
         steps,
         totalSteps: total,
         completedSteps: i,

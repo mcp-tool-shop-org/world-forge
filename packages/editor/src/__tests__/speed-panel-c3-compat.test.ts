@@ -121,6 +121,7 @@ describe('Speed Panel C3 compatibility contracts (unchanged)', () => {
       'tool-prop',
       'tool-encounter',
       'tool-item',
+      'create-macro-from-recent',
     ]);
 
     expect(SPEED_PANEL_ACTIONS.map((a) => [a.id, a.label])).toEqual([
@@ -142,6 +143,7 @@ describe('Speed Panel C3 compatibility contracts (unchanged)', () => {
       ['set-elevation', 'Set Elevation'],
       ['open-review', 'Open Review'],
       ['export-summary', 'Export Summary'],
+      ['create-macro-from-recent', 'Create Macro from Recent Actions…'],
     ]);
 
     expect(HOTKEY_BINDINGS.map((b) => [b.key, Boolean(b.ctrl), Boolean(b.shift), b.label])).toEqual([

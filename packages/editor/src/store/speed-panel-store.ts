@@ -2,7 +2,8 @@
 
 import { create } from 'zustand';
 import { COMMAND_REGISTRY } from '../command-registry.js';
-import type { SpeedPanelGroup, SpeedPanelMacro } from '../speed-panel-actions.js';
+import type { MacroStep, SpeedPanelGroup, SpeedPanelMacro } from '../speed-panel-actions.js';
+import type { LastPanelActionParams } from './editor-store.js';
 import {
   bumpAdaptiveHistory,
   bumpFrecency,
@@ -21,8 +22,11 @@ export const SPEED_PANEL_STATE_V2_KEY = 'wf.speedPanel.v2';
 
 const MAX_RECENTS = 5;
 export const MAX_ADAPTIVE_HISTORY = 200;
+export const MAX_IMPORTED_PINS = 32;
+export const MAX_IMPORTED_MACROS = 32;
+export const MAX_MACRO_STEPS = 16;
 /** F-e57095f8: drop persisted macro steps whose actionId is no longer registered. */
-const KNOWN_ACTION_IDS = new Set(COMMAND_REGISTRY.map((c) => c.id));
+export const KNOWN_ACTION_IDS = new Set(COMMAND_REGISTRY.map((c) => c.id));
 
 export interface SpeedPanelStateV2 {
   version: 2;
@@ -82,19 +86,130 @@ function sanitizeGroups(raw: unknown): SpeedPanelGroup[] {
     .map((g) => ({ id: g.id, name: g.name, actionIds: [...g.actionIds] }));
 }
 
-function sanitizeMacros(raw: unknown): SpeedPanelMacro[] {
+/** Validate and clone serialized macro step arguments reusing `LastPanelActionParams`. */
+export function sanitizeMacroStepArgs(raw: unknown): LastPanelActionParams | undefined {
+  if (!isPlainObject(raw) || typeof raw.kind !== 'string') return undefined;
+  switch (raw.kind) {
+    case 'assign-district':
+      return typeof raw.districtId === 'string' && raw.districtId.length > 0
+        ? { kind: 'assign-district', districtId: raw.districtId }
+        : undefined;
+    case 'apply-region-preset':
+      return typeof raw.presetId === 'string' &&
+        raw.presetId.length > 0 &&
+        (raw.applyMode === 'merge' || raw.applyMode === 'overwrite')
+        ? { kind: 'apply-region-preset', presetId: raw.presetId, applyMode: raw.applyMode }
+        : undefined;
+    case 'apply-encounter-preset':
+      return typeof raw.presetId === 'string' && raw.presetId.length > 0
+        ? { kind: 'apply-encounter-preset', presetId: raw.presetId }
+        : undefined;
+    case 'place-encounter':
+      return typeof raw.encounterType === 'string' && raw.encounterType.length > 0
+        ? { kind: 'place-encounter', encounterType: raw.encounterType }
+        : undefined;
+    case 'set-elevation': {
+      if (raw.elevation === undefined) {
+        return { kind: 'set-elevation', elevation: undefined };
+      }
+      if (typeof raw.elevation === 'number' && Number.isFinite(raw.elevation)) {
+        return { kind: 'set-elevation', elevation: raw.elevation };
+      }
+      return undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** Validate and filter pinned command IDs against the command registry, recording dropped unknown IDs. */
+export function sanitizePins(raw: unknown, warnings?: string[]): string[] {
   if (!Array.isArray(raw)) return [];
-  return raw
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    if (!KNOWN_ACTION_IDS.has(item)) {
+      warnings?.push(`Unknown pinned Speed Panel command dropped: ${item}`);
+      continue;
+    }
+    if (!seen.has(item)) {
+      seen.add(item);
+      out.push(item);
+    }
+  }
+  if (out.length > MAX_IMPORTED_PINS) {
+    warnings?.push(`Trimmed Speed Panel pins to ${MAX_IMPORTED_PINS} (dropped ${out.length - MAX_IMPORTED_PINS})`);
+    return out.slice(0, MAX_IMPORTED_PINS);
+  }
+  return out;
+}
+
+/**
+ * Sanitize persisted or bundled Speed Panel macros while keeping legacy `{ actionId }` steps
+ * intact and dropping steps with unknown command IDs.
+ */
+export function sanitizeMacros(raw: unknown, warnings?: string[]): SpeedPanelMacro[] {
+  if (!Array.isArray(raw)) return [];
+  const validMacros = raw
     .filter((m): m is SpeedPanelMacro =>
       isPlainObject(m) &&
       typeof m.id === 'string' &&
       typeof m.name === 'string' &&
       Array.isArray(m.steps),
     )
-    .map((m) => ({
-      ...m,
-      steps: m.steps.filter((s) => s && typeof s.actionId === 'string' && KNOWN_ACTION_IDS.has(s.actionId)),
-    }));
+    .map((m) => {
+      const steps: MacroStep[] = [];
+      for (const rawStep of m.steps as unknown[]) {
+        if (!isPlainObject(rawStep)) continue;
+        const actionId =
+          typeof rawStep.actionId === 'string'
+            ? rawStep.actionId
+            : typeof rawStep.commandId === 'string'
+              ? rawStep.commandId
+              : null;
+        if (!actionId || !KNOWN_ACTION_IDS.has(actionId)) {
+          warnings?.push(`Unknown macro step command dropped from "${m.name}": ${actionId ?? 'invalid'}`);
+          continue;
+        }
+        const args = rawStep.args !== undefined ? sanitizeMacroStepArgs(rawStep.args) : undefined;
+        if (rawStep.args !== undefined && args === undefined) {
+          warnings?.push(`Dropped malformed macro step args in "${m.name}" (${actionId})`);
+        }
+        const step: MacroStep = {
+          actionId,
+          ...(typeof rawStep.commandId === 'string' && KNOWN_ACTION_IDS.has(rawStep.commandId)
+            ? { commandId: rawStep.commandId }
+            : {}),
+          ...(args ? { args } : {}),
+        };
+        steps.push(step);
+      }
+      if (steps.length > MAX_MACRO_STEPS) {
+        warnings?.push(`Trimmed steps in macro "${m.name}" to ${MAX_MACRO_STEPS} (dropped ${steps.length - MAX_MACRO_STEPS})`);
+        steps.splice(MAX_MACRO_STEPS);
+      }
+      return {
+        ...m,
+        steps,
+        ...(typeof m.pinned === 'boolean' ? { pinned: m.pinned } : {}),
+      };
+    });
+  if (validMacros.length > MAX_IMPORTED_MACROS) {
+    warnings?.push(`Trimmed Speed Panel macros to ${MAX_IMPORTED_MACROS} (dropped ${validMacros.length - MAX_IMPORTED_MACROS})`);
+    return validMacros.slice(0, MAX_IMPORTED_MACROS);
+  }
+  return validMacros;
+}
+
+function macroContentKey(m: Pick<SpeedPanelMacro, 'steps' | 'pinned'>): string {
+  return JSON.stringify({
+    pinned: m.pinned !== false,
+    steps: m.steps.map((s) => ({
+      id: s.commandId ?? s.actionId,
+      args: s.args ?? null,
+    })),
+  });
 }
 
 function sanitizeFrecency(raw: unknown): Record<string, FrecencyEntry> {
@@ -265,6 +380,13 @@ function snapshotV2(s: {
 
 // -- Store interface --
 
+export interface MergeKitPresetsResult {
+  addedPins: string[];
+  addedMacros: SpeedPanelMacro[];
+  renamedMacros: Array<{ from: string; to: string }>;
+  warnings: string[];
+}
+
 export interface SpeedPanelPinState {
   // Pins
   pinnedIds: string[];
@@ -296,11 +418,15 @@ export interface SpeedPanelPinState {
   addStepToMacro: (macroId: string, actionId: string) => void;
   removeStepFromMacro: (macroId: string, stepIndex: number) => void;
   reorderMacroStep: (macroId: string, fromIndex: number, toIndex: number) => void;
+  mergeKitPresets: (
+    presets: { pins?: readonly string[]; macros?: readonly SpeedPanelMacro[] },
+    kitName: string,
+  ) => MergeKitPresetsResult;
 }
 
 const initialV2 = loadSpeedPanelStateV2();
 
-export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
+export const useSpeedPanelPins = create<SpeedPanelPinState>((set, get) => ({
   // -- Pins --
   pinnedIds: initialV2.pinnedIds,
 
@@ -469,4 +595,73 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
     saveJson(SPEED_PANEL_STATE_V2_KEY, snapshotV2({ ...s, macros }));
     return { macros };
   }),
+
+  mergeKitPresets: (presets, kitName) => {
+    const warnings: string[] = [];
+    const validPins = sanitizePins(presets.pins ?? [], warnings);
+    const validMacros = sanitizeMacros(presets.macros ?? [], warnings);
+
+    const state = get();
+    const existingPinSet = new Set(state.pinnedIds);
+    const addedPins = validPins.filter((id) => !existingPinSet.has(id));
+    const pinnedIds = [...state.pinnedIds, ...addedPins];
+
+    const existingNames = new Set(state.macros.map((m) => m.name.trim().toLowerCase()));
+    const existingIds = new Set(state.macros.map((m) => m.id));
+    const addedMacros: SpeedPanelMacro[] = [];
+    const renamedMacros: Array<{ from: string; to: string }> = [];
+
+    for (const incoming of validMacros) {
+      const suffixLabel = kitName.trim() || 'Kit';
+      const baseLower = incoming.name.trim().toLowerCase();
+      const kitPrefix = `${baseLower} (${suffixLabel.toLowerCase()}`;
+      const incomingKey = macroContentKey(incoming);
+      const alreadyMerged = [...state.macros, ...addedMacros].some((existing) => {
+        if (macroContentKey(existing) !== incomingKey) return false;
+        const exLower = existing.name.trim().toLowerCase();
+        return exLower === baseLower || exLower === `${kitPrefix})` || exLower.startsWith(`${kitPrefix} `);
+      });
+      if (alreadyMerged) continue;
+
+      let nextId = incoming.id;
+      let idSuffix = 2;
+      while (existingIds.has(nextId)) {
+        nextId = `${incoming.id}-${idSuffix}`;
+        idSuffix += 1;
+      }
+      existingIds.add(nextId);
+
+      let nextName = incoming.name;
+      if (existingNames.has(nextName.trim().toLowerCase())) {
+        let candidate = `${incoming.name} (${suffixLabel})`;
+        let n = 2;
+        while (existingNames.has(candidate.trim().toLowerCase())) {
+          candidate = `${incoming.name} (${suffixLabel} ${n})`;
+          n += 1;
+        }
+        renamedMacros.push({ from: incoming.name, to: candidate });
+        nextName = candidate;
+      }
+      existingNames.add(nextName.trim().toLowerCase());
+
+      const cloned: SpeedPanelMacro = {
+        ...incoming,
+        id: nextId,
+        name: nextName,
+        steps: incoming.steps.map((st) => ({
+          actionId: st.actionId,
+          ...(st.commandId ? { commandId: st.commandId } : {}),
+          ...(st.args ? { args: { ...st.args } } : {}),
+        })),
+      };
+      addedMacros.push(cloned);
+    }
+
+    const macros = [...state.macros, ...addedMacros];
+    saveJson(PINS_KEY, pinnedIds);
+    saveJson(MACROS_KEY, macros);
+    saveJson(SPEED_PANEL_STATE_V2_KEY, snapshotV2({ ...state, pinnedIds, macros }));
+    set({ pinnedIds, macros });
+    return { addedPins, addedMacros, renamedMacros, warnings };
+  },
 }));

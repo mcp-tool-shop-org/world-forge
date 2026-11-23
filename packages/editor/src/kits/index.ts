@@ -1,6 +1,6 @@
 // kits/ barrel export
 
-export type { StarterKit } from './types.js';
+export type { StarterKit, KitSpeedPanelPresets } from './types.js';
 export { BUILTIN_KITS } from './built-ins.js';
 export { useKitStore, filterKitsByMode, StoragePersistError } from './kit-store.js';
 export { validateKit, type KitValidationResult } from './validate-kit.js';
@@ -10,6 +10,10 @@ export {
   prepareKitImport,
   kitFilename,
   migrateKitBundle,
+  sanitizeKitSpeedPanelPresets,
+  buildKitWithSpeedPanelPresets,
+  buildExportBundleForKit,
+  mergeKitSpeedPanelPresetsIfEnabled,
   BUNDLE_VERSION,
   MIN_SUPPORTED_BUNDLE_VERSION,
 } from './bundle.js';

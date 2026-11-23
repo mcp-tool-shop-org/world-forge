@@ -186,6 +186,13 @@ test.describe('Speed Panel C4 Multi-Step, Scalar Pill, Spatial Picking & Replay'
     await expect(pickBar).toBeVisible();
     const kindBtn = page.getByTestId('wf-sp-pick-kind-cycle');
     const initialKind = await kindBtn.textContent();
+    // Typing Tab inside an Inspector <input> during active pick must NOT cycle connection kind (Canvas key-listener guard order)
+    const nameInput = page.getByLabel('Name', { exact: true }).first();
+    await nameInput.focus();
+    await page.keyboard.press('Tab');
+    await expect(kindBtn).toHaveText(initialKind ?? '');
+    // Outside editable inputs, Tab cycles the connection kind
+    await nameInput.evaluate((el) => (el as HTMLElement).blur());
     await page.keyboard.press('Tab');
     await expect(kindBtn).not.toHaveText(initialKind ?? '');
 
@@ -222,7 +229,7 @@ test.describe('Speed Panel C4 Multi-Step, Scalar Pill, Spatial Picking & Replay'
     await expect(undoBtn).toHaveText('Undo (2)');
     await expect(undoBtn).toHaveAttribute('title', /^Undo: Connect Chapel Entrance \u2192 Crypt Chamber \(/);
 
-    // Single-zone Merge Zones initiates pick -> Shift+Click second zone keeps open -> Merge (2) commits in 1 undo entry
+    // Single-zone Merge Zones initiates pick -> Shift+Click second zone keeps open -> Enter inside pick search does NOT confirm merge -> Merge (2) commits in 1 descriptive undo entry
     await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
     await page.keyboard.press('q');
     const search = page.getByTestId('wf-speed-panel-search');
@@ -233,9 +240,89 @@ test.describe('Speed Panel C4 Multi-Step, Scalar Pill, Spatial Picking & Replay'
     await page.mouse.click(box!.x + cryptAnchor.sx, box!.y + cryptAnchor.sy);
     await page.keyboard.up('Shift');
     await expect(page.getByTestId('wf-sp-pick-bar')).toContainText('2 picked');
+    // Typing Enter inside an Inspector <textarea> during active merge pick must NOT trigger merge
+    const descTextarea = page.getByRole('textbox', { name: 'Description', exact: true });
+    await descTextarea.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('wf-sp-pick-bar')).toBeVisible();
     await page.getByTestId('wf-sp-pick-merge-confirm').click();
     await expect(page.getByTestId('wf-sp-pick-bar')).toHaveCount(0);
+    await expect(undoBtn).toHaveText('Undo (4)');
+    await expect(undoBtn).toHaveAttribute('title', 'Undo: Merge Chapel Entrance + Crypt Chamber');
+  });
+
+  test('Speed Panel D2: Create Macro from Recent Actions, run with single atomic undo, and cancel missing-ref prompt with Esc', async ({ page }) => {
+    await loadChapel(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+
+    const entranceAnchor = computeFittedChapelZoneAnchor('chapel-entrance', box!, { rx: 0.75, ry: 0.75 });
+    const naveAnchor = computeFittedChapelZoneAnchor('chapel-nave', box!, { rx: 0.8, ry: 0.8 });
+
+    // 1) Perform Assign District (+ Create District 'Bellfry Ward') and Set Elevation '15' on Chapel Entrance
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    const panel = page.getByTestId('wf-speed-panel');
+    await panel.getByTestId('wf-sp-row-assign-district').click();
+    await panel.getByTestId('wf-sp-step-opt-__create_district__').click();
+    await panel.getByTestId('wf-sp-step-input').fill('Bellfry Ward');
+    await panel.getByTestId('wf-sp-step-confirm').click();
+    await expect(panel).toHaveCount(0);
+
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    const search = page.getByTestId('wf-speed-panel-search');
+    await search.fill('set elevation');
+    await search.press('Tab');
+    const pill = panel.getByTestId('wf-sp-scalar-pill');
+    await pill.fill('15');
+    await pill.press('Enter');
+    await expect(panel).toHaveCount(0);
+
+    const undoBtn = page.getByRole('button', { name: /^Undo\b/ });
+    await expect(undoBtn).toHaveText('Undo (2)');
+
+    // 2) Open Create Macro from Recent Actions -> save pinned macro 'Ward Prep'
+    await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await search.fill('create macro');
+    await panel.getByTestId('wf-sp-row-create-macro-from-recent').click();
+    await expect(panel.getByTestId('wf-sp-create-macro-view')).toBeVisible();
+    await expect(panel.getByTestId('wf-sp-recent-action-0')).toBeVisible();
+    await expect(panel.getByTestId('wf-sp-recent-action-1')).toBeVisible();
+    await panel.getByTestId('wf-sp-create-macro-name').fill('Ward Prep');
+    await panel.getByTestId('wf-sp-create-macro-save').click();
+    await expect(panel.getByTestId('wf-sp-create-macro-view')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+
+    // 3) Run 'Ward Prep' on Chapel Nave -> commits both district assignment & elevation in ONE undo entry
+    await page.mouse.move(box!.x + naveAnchor.sx, box!.y + naveAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel.getByTestId('wf-sp-band-2')).toContainText('Ward Prep');
+    await panel.getByTestId('wf-sp-band-2').getByText('Ward Prep').click();
+    await expect(panel).toHaveCount(0);
     await expect(undoBtn).toHaveText('Undo (3)');
-    await expect(undoBtn).toHaveAttribute('title', 'Undo: Merge 2 zones');
+    await expect(undoBtn).toHaveAttribute('title', 'Undo: Ward Prep');
+
+    // Undo 'Ward Prep', Undo elevation 15, Undo creating 'Bellfry Ward' -> district ID is now missing
+    await undoBtn.click();
+    await expect(undoBtn).toHaveText('Undo (2)');
+    await undoBtn.click();
+    await expect(undoBtn).toHaveText('Undo (1)');
+    await undoBtn.click();
+    await expect(undoBtn).toBeDisabled();
+
+    // 4) Run 'Ward Prep' again when 'Bellfry Ward' district is missing -> inline prompt appears -> Esc cancels with zero undo entry
+    await page.mouse.move(box!.x + naveAnchor.sx, box!.y + naveAnchor.sy);
+    await page.keyboard.press('q');
+    await panel.getByTestId('wf-sp-band-2').getByText('Ward Prep').click();
+    await expect(panel.getByTestId('wf-sp-step-view')).toContainText('Replace missing district');
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(undoBtn).toBeDisabled();
   });
 });

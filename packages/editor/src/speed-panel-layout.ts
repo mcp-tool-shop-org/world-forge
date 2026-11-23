@@ -16,7 +16,7 @@ import {
   type HotkeyBinding,
 } from './command-registry.js';
 import type { SpeedPanelGroup, SpeedPanelMacro } from './speed-panel-actions.js';
-import { fuzzyMatch } from './speed-panel-actions.js';
+import { fuzzyMatch, getMacroStepCommandId } from './speed-panel-actions.js';
 import {
   computeDecayedFrecency,
   searchCommands,
@@ -67,6 +67,7 @@ export interface UnsearchedSpeedPanelView {
   band2Pinned: PaletteRow[];
   band2Macros: SpeedPanelMacro[];
   band3Recents: PaletteRow[];
+  band4Macros?: SpeedPanelMacro[];
   band4ModeSuggested: PaletteRow[];
   band4CustomGroups: CustomGroupSection[];
   band4Catalogue: CatalogueGroupSection[];
@@ -151,13 +152,15 @@ export function buildUnsearchedSpeedPanel(
   }
   const band2PinnedIds = new Set(band2Pinned.map((r) => r.command.id));
 
-  const band2Macros = (options.macros ?? []).filter((macro) => {
+  const applicableMacros = (options.macros ?? []).filter((macro) => {
     if (macro.steps.length === 0) return true;
     return macro.steps.every((step) => {
-      const cmd = byId.get(step.actionId);
+      const cmd = byId.get(getMacroStepCommandId(step));
       return cmd ? cmd.when(ctx) : true;
     });
   });
+  const band2Macros = applicableMacros.filter((macro) => macro.pinned !== false);
+  const band4Macros = applicableMacros.filter((macro) => macro.pinned === false);
 
   // Band 3: up to 3 recent commands not shown in Band 1 or Band 2, ranked by continuous frecency
   const showRecents = options.showRecents ?? true;
@@ -272,6 +275,7 @@ export function buildUnsearchedSpeedPanel(
     band2Pinned,
     band2Macros,
     band3Recents,
+    ...(band4Macros.length > 0 ? { band4Macros } : {}),
     band4ModeSuggested,
     band4CustomGroups,
     band4Catalogue,

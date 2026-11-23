@@ -386,6 +386,7 @@ describe('Speed Panel C3 search tiers, synonyms, highlighting, unavailable rules
       'tool-prop': 'pro',
       'tool-encounter': 'enc',
       'tool-item': 'ite',
+      'create-macro-from-recent': 'cmr',
     };
 
     expect(Object.keys(shortestQueryForCommand).sort()).toEqual(COMMAND_REGISTRY.map((c) => c.id).sort());
@@ -414,7 +415,7 @@ describe('Speed Panel C3 search tiers, synonyms, highlighting, unavailable rules
       const bestCtx: CommandContext =
         cmd.id === 'swap-direction'
           ? { hit: DECK_HIT_SAMPLES.connection, selection: emptySelection() }
-          : cmd.id === 'new-zone' || cmd.id === 'fit-content' || cmd.id === 'open-review' || cmd.id === 'export-summary'
+          : cmd.id === 'new-zone' || cmd.id === 'fit-content' || cmd.id === 'open-review' || cmd.id === 'export-summary' || cmd.id === 'create-macro-from-recent'
             ? emptyCtx
             : { hit: DECK_HIT_SAMPLES.zone, selection: { ...emptySelection(), zones: ['zone-entrance', 'zone-cellar'] } };
       const ranked = searchCommands(COMMAND_REGISTRY, bestCtx, q);

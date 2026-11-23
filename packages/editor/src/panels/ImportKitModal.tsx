@@ -11,16 +11,16 @@ import { buttonBase, buttonPrimary, modalFooter } from '../ui/styles.js';
 import { readerOutcomeMessage } from './import-kit-modal-helpers.js';
 import { jsonFileParseError } from './import-modal-helpers.js';
 
-interface Props { onClose: () => void }
+interface Props { onClose: () => void; initialResult?: ImportKitResult | null }
 
-export function ImportKitModal({ onClose }: Props) {
+export function ImportKitModal({ onClose, initialResult = null }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const { kits, importKit } = useKitStore();
 
   const [fileName, setFileName] = useState('');
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ImportKitResult | null>(null);
+  const [result, setResult] = useState<ImportKitResult | null>(initialResult);
   const [collision, setCollision] = useState<{ existingId: string; isBuiltIn: boolean } | null>(null);
 
   // F-005: mirrors ImportModal.tsx's ED-B-011 hardening — abort the previous
@@ -166,6 +166,9 @@ export function ImportKitModal({ onClose }: Props) {
             </div>
             <div style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>
               {c.zones} zones &middot; {c.entities} entities &middot; {c.dialogues} dialogues &middot; {c.trees} trees &middot; {c.items} items
+              {result.kit.speedPanelPresets && (
+                <> &middot; {result.kit.speedPanelPresets.pins.length} Speed Panel pins &middot; {result.kit.speedPanelPresets.macros.length} macros</>
+              )}
             </div>
           </div>
         )}
