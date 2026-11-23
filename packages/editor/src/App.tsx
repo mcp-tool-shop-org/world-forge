@@ -568,7 +568,7 @@ export function App() {
               </div>
             </div>
           )}
-          {showSpeedPanel && <SpeedPanel />}
+          {showSpeedPanel && <SpeedPanel onSave={handleSave} />}
           {/* F-69a1f39b: same containing block as the minimap (canvas well), not viewport-fixed. */}
           <ToastHost shiftForMinimap={showMinimap && project.zones.length > 0} />
         </div>

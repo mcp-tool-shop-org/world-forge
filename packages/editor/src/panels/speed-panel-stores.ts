@@ -8,9 +8,15 @@
 
 import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
+import { useModalStore } from '../store/modal-store.js';
+import { usePresetStore } from '../presets/preset-store.js';
+import { applyPresetFromSelection, savePresetFromSelection } from '../preset-actions.js';
+import { saveProjectFile } from '../save-project.js';
+import { pushToast } from '../ui/Toast.js';
 import type { ExecuteStores } from '../speed-panel-execute.js';
+import type { HotkeyContext } from '../command-registry.js';
 
-/** Live store bag SpeedPanel threads into executeAction / executeMacro. */
+/** Live store bag SpeedPanel threads into executeAction / executeRegistryCommand / executeMacro. */
 export function productionExecuteStores(): ExecuteStores {
   const editor = useEditorStore.getState();
   const project = useProjectStore.getState();
@@ -21,6 +27,7 @@ export function productionExecuteStores(): ExecuteStores {
     selectSpawn: editor.selectSpawn,
     selectEncounter: editor.selectEncounter,
     selectConnection: editor.selectConnection,
+    selectKind: editor.selectKind,
     clearSelection: editor.clearSelection,
     setRightTab: editor.setRightTab,
     setRightCollapsed: editor.setRightCollapsed,
@@ -33,9 +40,72 @@ export function productionExecuteStores(): ExecuteStores {
     duplicateSelected: project.duplicateSelected,
     removeConnection: project.removeConnection,
     addConnection: project.addConnection,
+    swapConnection: project.swapConnection,
     project: project.project,
     updateZone: project.updateZone,
     mergeZones: project.mergeZones,
+  };
+}
+
+/** Live hotkey context so registry-wide commands invoked from SpeedPanel run cleanly. */
+export function productionHotkeyContext(onSave?: () => void): HotkeyContext {
+  const editor = useEditorStore.getState();
+  const projectStore = useProjectStore.getState();
+  return {
+    selection: editor.selection,
+    selectedConnection: editor.selectedConnection,
+    project: projectStore.project,
+    showEntities: editor.showEntities,
+    showLandmarks: editor.showLandmarks,
+    showSpawns: editor.showSpawns,
+    showTown: editor.showTown,
+    activeModal: useModalStore.getState().activeModal,
+    showSearch: editor.showSearch,
+    clearSelection: editor.clearSelection,
+    selectAll: editor.selectAll,
+    moveSelected: projectStore.moveSelected,
+    removeSelected: projectStore.removeSelected,
+    removeConnection: projectStore.removeConnection,
+    duplicateSelected: projectStore.duplicateSelected,
+    copySelection: editor.copySelection,
+    pasteClipboard: () => {
+      const newSel = useProjectStore.getState().pasteClipboard();
+      if (newSel) useEditorStore.getState().selectAll(newSel, false);
+    },
+    undo: () => useProjectStore.getState().undo(),
+    redo: () => useProjectStore.getState().redo(),
+    setShowSearch: editor.setShowSearch,
+    setRightTab: editor.setRightTab,
+    setRightCollapsed: editor.setRightCollapsed,
+    setTool: editor.setTool,
+    showSpeedPanel: editor.showSpeedPanel,
+    closeSpeedPanel: editor.closeSpeedPanel,
+    setConnectionStart: editor.setConnectionStart,
+    save: onSave ?? (() => {
+      const p = useProjectStore.getState();
+      void saveProjectFile(p.project, { markClean: p.markClean, toast: pushToast });
+    }),
+    applyPreset: () => {
+      const ed = useEditorStore.getState();
+      const ps = useProjectStore.getState();
+      const res = applyPresetFromSelection(ps.project, ed.selection, {
+        regionPresets: usePresetStore.getState().regionPresets,
+        encounterPresets: usePresetStore.getState().encounterPresets,
+        applyRegionPreset: ps.applyRegionPreset,
+        createEncounterFromPreset: ps.createEncounterFromPreset,
+        selectEncounter: ed.selectEncounter,
+      });
+      pushToast(res.message, res.ok ? 'success' : 'warning', 3000);
+    },
+    savePreset: () => {
+      const ed = useEditorStore.getState();
+      const ps = useProjectStore.getState();
+      const res = savePresetFromSelection(ps.project, ed.selection, {
+        saveRegionPreset: usePresetStore.getState().saveRegionPreset,
+        saveEncounterPreset: usePresetStore.getState().saveEncounterPreset,
+      });
+      pushToast(res.message, res.ok ? 'success' : 'warning', 3000);
+    },
   };
 }
 

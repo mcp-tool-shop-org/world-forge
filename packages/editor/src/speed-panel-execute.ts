@@ -6,6 +6,7 @@ import {
   getCommandById,
   type ExecuteResult,
   type ExecuteStores,
+  type HotkeyContext,
 } from './command-registry.js';
 import { useEditorStore } from './store/editor-store.js';
 import { useProjectStore } from './store/project-store.js';
@@ -110,6 +111,40 @@ export function executeAction(
     selection: stores.selection,
     project: stores.project,
   });
+  return result.reason !== undefined
+    ? { executed: result.executed, reason: result.reason }
+    : { executed: result.executed };
+}
+
+/**
+ * Execute any command in `COMMAND_REGISTRY` from the Speed Panel, enforcing `when`
+ * and `disabledReason` preconditions before dispatching `cmd.run`.
+ */
+export function executeRegistryCommand(
+  commandId: string,
+  context: HitResult | null,
+  stores: ExecuteStores,
+  hotkeyCtx?: HotkeyContext,
+): ExecuteResult {
+  const cmd = getCommandById(commandId);
+  if (!cmd) {
+    return { executed: false, reason: 'unknown action' };
+  }
+  const effectiveStores = stores.downloadFile ? stores : { ...stores, downloadFile: browserDownload };
+  const cmdCtx = {
+    hit: context,
+    stores: effectiveStores,
+    selection: stores.selection,
+    selectedConnection: hotkeyCtx?.selectedConnection ?? null,
+    project: stores.project,
+    ...(hotkeyCtx ? { hotkeyCtx } : {}),
+  };
+  const allowed = cmd.when(cmdCtx);
+  const preReason = cmd.disabledReason(cmdCtx);
+  if (!allowed || preReason !== null) {
+    return { executed: false, reason: preReason ?? 'Not available in this context' };
+  }
+  const result = cmd.run(cmdCtx);
   return result.reason !== undefined
     ? { executed: result.executed, reason: result.reason }
     : { executed: result.executed };

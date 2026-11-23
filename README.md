@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.9.1</strong> — 3626 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.9.1</strong> — 3647 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architecture
@@ -173,7 +173,7 @@ React 19 + Vite web app with Zustand state management, undo/redo with action lab
 
 - **Viewport** — pan/zoom camera, mousewheel zoom (cursor-anchored), spacebar/middle-mouse/right-click drag-pan, fit-to-content when the canvas first opens a project with zones (and on demand from the Speed Panel's Fit to Content), double-click to center
 - **Search** — Ctrl+K opens overlay to find any object by name/ID with fuzzy matching, keyboard navigation, and recent search history (localStorage)
-- **Speed Panel** — press `Q` (configurable in Options) with the pointer over the canvas (or with the canvas focused, anchored at the selection or centre) or double-right-click to grow the instant single-right-click compact menu in place into the floating command palette with context-aware actions, pinnable favorites, macros, and mode-suggested quick actions
+- **Speed Panel** — press `Q` (configurable in Options) with the pointer over the canvas (or with the canvas focused, anchored at the selection or centre) or double-right-click to grow the instant single-right-click compact menu in place into the floating command palette, featuring a fixed four-band layout on open (fixed context deck per hit type, copied reorderable pins & macros, toggleable frecency recents, and fixed catalogue groups), tiered search with RPG synonyms, initials, typo tolerance, character highlighting, explained `"Unavailable here"` actions, and live hotkey or editor-location badges
 - **Hotkeys** — 29 keyboard shortcuts including tool switching (V/Z/C/E/L/S/T/O/N/I), Enter (open properties in the Map tab and expand the right sidebar), P (apply preset), Shift+P (save preset), Ctrl+C/V (copy/paste), arrow nudge (Shift = 5×)
 - **Accessibility** — modal focus traps with Escape-to-close, ARIA labels on all icon-only buttons, keyboard-navigable object tree, screen-reader-announced dirty indicator. Spatial canvas operations (placement, box-select, resize, connection drawing, panning) remain pointer-based
 
@@ -250,7 +250,7 @@ Mode is set when creating a project and stored as `mode?: AuthoringMode` on `Wor
 - Layout templates, dialogue templates and batch entity placement (grid/random/circle) exist in the code but are not yet reachable from the editor UI
 - Auto-save with 30-second throttle and 3-version recovery history
 - Ctrl+K search across all object types with fuzzy matching and recent history
-- Speed Panel command palette with pinnable favorites, macros, custom groups, and mode suggestions
+- Speed Panel command palette with fixed context decks, copied reorderable favorites, toggleable exponential-decay frecency recents, fixed catalogue groups, tiered RPG synonym/typo search, live keybinding badges, macros, custom groups, and mode suggestions (`wf.speedPanel.v2`)
 - 29 centralized keyboard shortcuts (including 10 tool-switching keys)
 - Project metadata editor (author, license, category, tags)
 - Review statistics (role distribution, connection kinds, encounter types, zones per district)

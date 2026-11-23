@@ -476,55 +476,65 @@ Search uses **fuzzy matching** — characters must appear in order but don't nee
 
 Press **Q** (configurable in top-bar **Options**) with the pointer over the canvas — or with the canvas focused and no pointer over it (anchoring at the current selection or canvas centre) — to open the Speed Panel immediately with focus in its search box. A single right-click (or `Ctrl+Click` on macOS) opens the compact context menu immediately on pointer release with a discovery footer showing active triggers; a second right-click within the window and radius (default `320 ms`, `18 px`, `6 px` click drift; `360 ms`, `24 px`, `8 px` for `pen`) grows that open menu in place into the full Speed Panel, while dragging pans the canvas with no menu. Both triggers and thresholds are configurable in **Options** (refusing keys used by canvas navigation or existing hotkeys).
 
-The Speed Panel is context-aware. Actions change based on what's under the cursor:
+The Speed Panel opens with a fixed **Four-Band Ordering Contract** when search is empty so top coordinates never shift under muscle memory:
 
-| Context | Available Actions |
-|---------|-------------------|
-| Empty canvas | New Zone, Fit to Content |
-| Zone | Edit Properties, Delete, Duplicate, Assign District, Place Entity Here, Connect From Here |
-| Entity | Edit Properties, Delete, Duplicate |
-| Landmark | Edit Properties, Delete, Duplicate |
-| Spawn | Edit Properties, Delete |
-| Encounter | Edit Properties, Delete |
-| Connection | Edit Properties, Delete, Swap Direction |
+1. **Band 1 — Fixed Context Deck (`Alt+1`–`Alt+5`):** 4–5 primary actions for the hovered or selected target type, always in the same slot order and never reordered by recency, frequency, or mode:
+
+| Context | Band 1 Deck (Fixed Slots) |
+|---------|-----------------------------|
+| Empty canvas | New Zone, Fit to Content, Entity Tool, Open Review, Export Summary |
+| Zone | Edit Properties, Connect From Here, Place Entity Here, Place Encounter Here, Duplicate |
+| Entity | Edit Properties, Duplicate, Delete, Entity Tool |
+| Connection | Edit Properties, Swap Direction, Delete, Connection Tool |
+| Landmark | Edit Properties, Duplicate, Delete, Landmark Tool |
+| Spawn | Edit Properties, Delete, Spawn Tool, Select Tool |
+| Encounter | Edit Properties, Delete, Encounter Place Tool, Select Tool |
+| Item | Edit Properties, Delete, Item Place Tool, Select Tool |
+
+2. **Band 2 — Pinned Favorites & Macros:** Your pinned commands and applicable macros in your chosen order. Pinning **copies** a command into Band 2 without removing it from Band 1 or Band 4.
+3. **Band 3 — Recent Frecency Strip:** Up to 3 recently executed non-pinned, non-deck commands ranked by continuous exponential-decay frecency (30-day half-life). Toggle **Show recent commands in Speed Panel** in top-bar **Options** to turn this band on or off.
+4. **Band 4 — Canonical Catalogue:** Mode suggestions, custom groups, and all remaining applicable commands organized in fixed **Author → Connect → Populate → Inspect → View → Export** sections. Same-type actions blocked only by current selection (such as **Merge Zones** when fewer than 2 zones are selected) stay visible inline with their prerequisite, while cross-type actions are hidden until searched.
 
 **Edit Properties** selects the target object, switches to the **Map** tab (even from **Guide** or another tab), expands the right sidebar if collapsed, and displays its properties inspector (including selected entities regardless of active tool).
 
 ### Pinned Favorites
 
-Click the star icon next to any action to pin it. Pinned actions always appear at the top of the Speed Panel in a dedicated section, regardless of context. Pins persist across sessions in localStorage.
+Click the star icon next to any action to copy it into Band 2. Pinned actions stay in your order across sessions in `wf.speedPanel.v2` (with lossless migration from earlier saved keys).
 
-Click the **pencil button** (✎) to enter edit mode. In edit mode, pinned actions show up/down arrows to reorder them. The order persists in localStorage.
+Reorder pinned commands by dragging rows in Band 2, pressing **Alt+Up** / **Alt+Down** when a pinned row is highlighted, or clicking **✎** to use the ▲/▼ move buttons in edit mode.
 
 ### Custom Groups
 
-In edit mode, click **+ New Group** to create a named action group. Groups appear as collapsible sections between Pinned and Recent. Actions can belong to multiple groups — they're copied, not moved. Groups filter by context: if none of a group's actions match the current context, the group is hidden.
+In edit mode, click **+ New Group** to create a named action group. Groups render inside Band 4 so Band 1 and Band 2 positions never move, and hide automatically when no member matches the current target context.
 
 Rename groups inline, delete them with ✕, or remove individual actions from a group in edit mode.
 
 ### Recent Actions
 
-The **RECENT** section shows your last 5 unique actions, most-recent-first. Recent actions exclude anything already pinned. The list updates automatically as you use the Speed Panel.
+The **RECENT** band shows up to 3 applicable commands not already shown in Band 1 or Band 2, scored by continuous exponential-decay frecency. Uncheck **Show recent commands in Speed Panel** in **Options** if you prefer a purely static menu.
 
 ### Lightweight Macros
 
-In edit mode, click **+ New Macro** to create a multi-step macro. Macros execute their steps sequentially — each step is a separate undo entry, so you can undo individual steps.
+In edit mode, click **+ New Macro** to create a multi-step macro. Macros appear inside Band 2 when their steps apply to the current target and execute sequentially as separate undo entries.
 
-Only **macroSafe** actions can be macro steps (actions that don't require interactive picking). The step editor dropdown filters to safe actions only: Edit Properties, Delete, Duplicate, Fit to Content, Assign District, and Swap Direction.
+Only **macroSafe** actions can be macro steps (actions that don't require interactive picking). If a macro step fails (context mismatch), execution aborts and a red status banner shows which step failed and why.
 
-If a macro step fails (context mismatch), execution aborts and a red status banner shows which step failed and why.
+### Band & Section Order
 
-### Section Order
-
-The Speed Panel displays sections in this order: **PINNED → GROUPS → RECENT → MACROS → MODE → CONTEXTUAL**. Empty sections are fully hidden.
+When search is empty, the Speed Panel always displays: **Band 1 (Context Deck) → Band 2 (Pinned & Macros) → Band 3 (Recent Frecency, up to 3, toggleable) → Band 4 (Mode Suggested → Custom Groups → Author → Connect → Populate → Inspect → View → Export)**.
 
 ### Mode Suggestions
 
-When an authoring mode is active, a **MODE** section appears between Macros and Contextual with mode-relevant quick actions — for example, "Add Secret Connection" in dungeon mode, "Add Channel" in ocean mode, "Add Warp Route" in space mode, or "Add Trail" in wilderness mode. These actions pre-set the connection tool with the appropriate kind.
+When an authoring mode is active, **Mode Suggested** quick actions appear inside Band 4 above the catalogue groups — keeping Band 1 slot positions fixed — for example, "Draw Secret Connection" in dungeon mode, "Draw Channel Connection" in ocean mode, "Draw Warp Connection" in space mode, or "Draw Trail Connection" in wilderness mode.
 
-### Search & Keyboard
+### Search, Shortcuts & Unavailable Actions
 
-Type in the search input to filter actions and macros by name. Use **Arrow keys** to navigate across all sections (section headers are skipped), **Enter** to execute the selected action or macro, and **Esc** to dismiss.
+Type in the search box to match across the entire editor command registry without hiding blocked commands:
+- **Lexicographic Tiers:** Prior selections for the exact query rank first, followed by exact/title-prefix matches, word-start initials (`pe`, `dsc`, `nz`), out-of-order multi-word tokens and `[Group]` filters (`conn warp`, `[Connect] warp`), and RPG synonyms (`npc`, `merchant`, `boss`, `fight`, `room`, `basement`) with 1-letter typo tolerance on 4+ letter words. Frecency only breaks ties within the same tier.
+- **Match Highlighting:** Matched characters in titles and synonyms highlight inline.
+- **Live Shortcuts & Editor Paths:** Every row displays its live hotkey binding from the hotkey table or, when unbound, where the command lives in the editor UI.
+- **Unavailable here:** Matching commands blocked by the current context stay keyboard-focusable (`aria-disabled="true"`) in **Unavailable here** below enabled hits, showing the exact reason from the command registry.
+- **Keyboard:** Use **Arrow keys** to move across results, **Alt+Up** / **Alt+Down** to reorder pins, **Alt+1**–**Alt+5** on empty search to run Band 1 slots, **Enter** to execute, and **Esc** to dismiss.
 
 ## 12. Objects Tab
 

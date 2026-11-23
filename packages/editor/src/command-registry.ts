@@ -194,6 +194,8 @@ export interface EditorCommand {
   when: (ctx: CommandContext) => boolean;
   disabledReason: (ctx: CommandContext) => string | null;
   hotkeyId?: string;
+  /** Where this command lives in the editor UI when it has no bound hotkey. */
+  uiPath?: string;
   run: (ctx: CommandContext) => CommandRunResult;
   // Speed Panel / Context Menu metadata
   label?: string;
@@ -211,6 +213,48 @@ export interface EditorCommand {
   toolKey?: string;
   toolIcon?: string;
 }
+
+export type ContextDeckKey =
+  | 'zone'
+  | 'entity'
+  | 'connection'
+  | 'landmark'
+  | 'spawn'
+  | 'encounter'
+  | 'item'
+  | 'empty';
+
+/**
+ * Fixed 4–5 slot context decks for Band 1 (Four-Band Ordering).
+ * Slot order for each target type never shifts with recency, frequency, or mode.
+ * Zone uses the default deck: Inspect Properties, Connect From Zone,
+ * Place Entity Here, Place Encounter Here, Duplicate Zone.
+ */
+export const CONTEXT_DECKS: Readonly<Record<ContextDeckKey, readonly string[]>> = {
+  zone: ['edit-props', 'connect-from', 'place-entity', 'place-encounter', 'duplicate'],
+  entity: ['edit-props', 'duplicate', 'delete', 'tool-entity'],
+  connection: ['edit-props', 'swap-direction', 'delete', 'tool-connection'],
+  landmark: ['edit-props', 'duplicate', 'delete', 'tool-landmark'],
+  spawn: ['edit-props', 'delete', 'tool-spawn', 'tool-select'],
+  encounter: ['edit-props', 'delete', 'tool-encounter', 'tool-select'],
+  item: ['edit-props', 'delete', 'tool-item', 'tool-select'],
+  empty: ['new-zone', 'fit-content', 'tool-entity', 'open-review', 'export-summary'],
+};
+
+export const CATALOGUE_GROUPS = ['Author', 'Connect', 'Populate', 'Inspect', 'View', 'Export'] as const;
+export type CatalogueGroup = (typeof CATALOGUE_GROUPS)[number];
+
+const CATEGORY_TO_CATALOGUE_GROUP: Record<CommandCategory, CatalogueGroup> = {
+  author: 'Author',
+  edit: 'Author',
+  connect: 'Connect',
+  populate: 'Populate',
+  inspect: 'Inspect',
+  selection: 'Inspect',
+  view: 'View',
+  tools: 'View',
+  export: 'Export',
+};
 
 const CONTEXT_MENU_LIMIT = 7;
 
@@ -275,6 +319,8 @@ function createTypedConnectionCommand(spec: {
   label: string;
   iconId: SpeedPanelIconId;
   description: string;
+  keywords: readonly string[];
+  uiPath?: string;
   modeSuggested: AuthoringMode[];
   kind: ConnectionKind;
 }): EditorCommand {
@@ -284,7 +330,8 @@ function createTypedConnectionCommand(spec: {
     label: spec.label,
     category: 'connect',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: spec.keywords,
+    ...(spec.uiPath ? { uiPath: spec.uiPath } : {}),
     icon: SPEED_PANEL_ICON_GLYPH[spec.iconId],
     iconId: spec.iconId,
     description: spec.description,
@@ -303,6 +350,7 @@ function createNudgeCommand(spec: {
   key: string;
   label: string;
   description: string;
+  keywords: readonly string[];
   order: number;
   dx: number;
   dy: number;
@@ -312,7 +360,7 @@ function createNudgeCommand(spec: {
     title: spec.title,
     category: 'edit',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: spec.keywords,
     hotkeyId: spec.id,
     hotkeyBindings: [{
       key: spec.key,
@@ -348,6 +396,7 @@ function createToolCommand(spec: {
   toolIcon: string;
   key: string;
   description: string;
+  keywords: readonly string[];
   order: number;
 }): EditorCommand {
   return {
@@ -355,8 +404,9 @@ function createToolCommand(spec: {
     title: spec.title,
     category: 'tools',
     surfaces: ['hotkey', 'tool-palette'],
-    keywords: [],
+    keywords: spec.keywords,
     hotkeyId: spec.id,
+    uiPath: `Tool Palette \u2192 ${spec.toolLabel}`,
     tool: spec.tool,
     toolLabel: spec.toolLabel,
     toolKey: spec.toolKey,
@@ -370,7 +420,7 @@ function createToolCommand(spec: {
     when: () => true,
     disabledReason: () => null,
     run: (ctx) => {
-      const setToolFn = ctx.hotkeyCtx?.setTool ?? ctx.setTool;
+      const setToolFn = ctx.hotkeyCtx?.setTool ?? ctx.stores?.setTool ?? ctx.setTool;
       if (!setToolFn) return fail('setTool unavailable');
       setToolFn(spec.tool);
       return { executed: true, handled: true, action: spec.id };
@@ -379,16 +429,16 @@ function createToolCommand(spec: {
 }
 
 const TOOL_COMMANDS: readonly EditorCommand[] = [
-  createToolCommand({ id: 'tool-select',     title: 'Select Tool',          tool: 'select',          toolLabel: 'Select',    toolKey: 'V', toolIcon: '\u25C7', key: 'KeyV', description: 'Switch to Select tool',          order: 19 }),
-  createToolCommand({ id: 'tool-zone',       title: 'Zone Tool',            tool: 'zone-paint',      toolLabel: 'Zone',      toolKey: 'Z', toolIcon: '\u25A6', key: 'KeyZ', description: 'Switch to Zone tool',            order: 20 }),
-  createToolCommand({ id: 'tool-connection', title: 'Connection Tool',      tool: 'connection',      toolLabel: 'Connect',   toolKey: 'C', toolIcon: '\u2194', key: 'KeyC', description: 'Switch to Connection tool',      order: 21 }),
-  createToolCommand({ id: 'tool-entity',     title: 'Entity Tool',          tool: 'entity-place',    toolLabel: 'Entity',    toolKey: 'E', toolIcon: '\u25C9', key: 'KeyE', description: 'Switch to Entity tool',          order: 22 }),
-  createToolCommand({ id: 'tool-landmark',   title: 'Landmark Tool',        tool: 'landmark',        toolLabel: 'Landmark',  toolKey: 'L', toolIcon: '\u25B2', key: 'KeyL', description: 'Switch to Landmark tool',        order: 23 }),
-  createToolCommand({ id: 'tool-spawn',      title: 'Spawn Tool',           tool: 'spawn',           toolLabel: 'Spawn',     toolKey: 'S', toolIcon: '\u2605', key: 'KeyS', description: 'Switch to Spawn tool',           order: 24 }),
-  createToolCommand({ id: 'tool-tile',       title: 'Tile Paint Tool',      tool: 'tile-paint',      toolLabel: 'Tiles',     toolKey: 'T', toolIcon: '\u25A3', key: 'KeyT', description: 'Switch to Tile Paint tool',      order: 25 }),
-  createToolCommand({ id: 'tool-prop',       title: 'Prop Place Tool',      tool: 'prop-place',      toolLabel: 'Prop',      toolKey: 'O', toolIcon: '\u25A2', key: 'KeyO', description: 'Switch to Prop Place tool',      order: 26 }),
-  createToolCommand({ id: 'tool-encounter',  title: 'Encounter Place Tool', tool: 'encounter-place', toolLabel: 'Encounter', toolKey: 'N', toolIcon: '\u2694', key: 'KeyN', description: 'Switch to Encounter Place tool', order: 27 }),
-  createToolCommand({ id: 'tool-item',       title: 'Item Place Tool',      tool: 'item-place',      toolLabel: 'Item',      toolKey: 'I', toolIcon: '\u2726', key: 'KeyI', description: 'Switch to Item Place tool',      order: 28 }),
+  createToolCommand({ id: 'tool-select',     title: 'Select Tool',          tool: 'select',          toolLabel: 'Select',    toolKey: 'V', toolIcon: '\u25C7', key: 'KeyV', description: 'Switch to Select tool',          keywords: ['pointer', 'cursor', 'pick', 'move', 'drag'],                      order: 19 }),
+  createToolCommand({ id: 'tool-zone',       title: 'Zone Tool',            tool: 'zone-paint',      toolLabel: 'Zone',      toolKey: 'Z', toolIcon: '\u25A6', key: 'KeyZ', description: 'Switch to Zone tool',            keywords: ['area', 'region', 'paint', 'draw', 'brush'],                       order: 20 }),
+  createToolCommand({ id: 'tool-connection', title: 'Connection Tool',      tool: 'connection',      toolLabel: 'Connect',   toolKey: 'C', toolIcon: '\u2194', key: 'KeyC', description: 'Switch to Connection tool',      keywords: ['link', 'wire', 'path', 'exit', 'passage'],                        order: 21 }),
+  createToolCommand({ id: 'tool-entity',     title: 'Entity Tool',          tool: 'entity-place',    toolLabel: 'Entity',    toolKey: 'E', toolIcon: '\u25C9', key: 'KeyE', description: 'Switch to Entity tool',          keywords: ['character', 'unit', 'spawnable', 'actor'],                        order: 22 }),
+  createToolCommand({ id: 'tool-landmark',   title: 'Landmark Tool',        tool: 'landmark',        toolLabel: 'Landmark',  toolKey: 'L', toolIcon: '\u25B2', key: 'KeyL', description: 'Switch to Landmark tool',        keywords: ['poi', 'monument', 'altar', 'shrine', 'statue'],                   order: 23 }),
+  createToolCommand({ id: 'tool-spawn',      title: 'Spawn Tool',           tool: 'spawn',           toolLabel: 'Spawn',     toolKey: 'S', toolIcon: '\u2605', key: 'KeyS', description: 'Switch to Spawn tool',           keywords: ['start', 'entry', 'player', 'origin', 'waypoint'],                 order: 24 }),
+  createToolCommand({ id: 'tool-tile',       title: 'Tile Paint Tool',      tool: 'tile-paint',      toolLabel: 'Tiles',     toolKey: 'T', toolIcon: '\u25A3', key: 'KeyT', description: 'Switch to Tile Paint tool',      keywords: ['floor', 'ground', 'terrain', 'terrain brush', 'paint'],           order: 25 }),
+  createToolCommand({ id: 'tool-prop',       title: 'Prop Place Tool',      tool: 'prop-place',      toolLabel: 'Prop',      toolKey: 'O', toolIcon: '\u25A2', key: 'KeyO', description: 'Switch to Prop Place tool',      keywords: ['furniture', 'crate', 'barrel', 'decor', 'object'],                order: 26 }),
+  createToolCommand({ id: 'tool-encounter',  title: 'Encounter Place Tool', tool: 'encounter-place', toolLabel: 'Encounter', toolKey: 'N', toolIcon: '\u2694', key: 'KeyN', description: 'Switch to Encounter Place tool', keywords: ['skirmish', 'monster', 'wave', 'trap', 'danger'],                  order: 27 }),
+  createToolCommand({ id: 'tool-item',       title: 'Item Place Tool',      tool: 'item-place',      toolLabel: 'Item',      toolKey: 'I', toolIcon: '\u2726', key: 'KeyI', description: 'Switch to Item Place tool',      keywords: ['loot', 'chest', 'treasure', 'pickup', 'potion', 'weapon'],        order: 28 }),
 ];
 
 /**
@@ -403,7 +453,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'New Zone',
     category: 'author',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['room', 'chamber', 'location', 'box', 'create zone', 'add zone'],
+    uiPath: 'Tool Palette \u2192 Zone',
     icon: SPEED_PANEL_ICON_GLYPH.plus,
     iconId: 'plus',
     description: 'Paint a new zone on the canvas',
@@ -423,7 +474,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Fit to Content',
     category: 'view',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['frame', 'zoom', 'reset view', 'center', 'overview'],
+    uiPath: 'Tool Palette \u2192 Fit',
     icon: SPEED_PANEL_ICON_GLYPH.fit,
     iconId: 'fit',
     description: 'Zoom the viewport to fit the whole map',
@@ -450,7 +502,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Edit Properties',
     category: 'inspect',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['inspect', 'rename', 'stats', 'attributes', 'fields', 'inspector'],
+    uiPath: 'Right Sidebar \u2192 Map',
     icon: SPEED_PANEL_ICON_GLYPH.edit,
     iconId: 'edit',
     description: 'Open properties for the selected object',
@@ -472,7 +525,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Delete',
     category: 'edit',
     surfaces: ['speed-panel', 'context-menu', 'hotkey'],
-    keywords: [],
+    keywords: ['remove', 'erase', 'destroy', 'trash', 'clear'],
     icon: SPEED_PANEL_ICON_GLYPH.delete,
     iconId: 'delete',
     description: 'Remove the selected object',
@@ -529,7 +582,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Duplicate',
     category: 'edit',
     surfaces: ['speed-panel', 'context-menu', 'hotkey'],
-    keywords: [],
+    keywords: ['clone', 'copy nearby', 'repeat'],
     icon: SPEED_PANEL_ICON_GLYPH.duplicate,
     iconId: 'duplicate',
     description: 'Copy the selected object nearby',
@@ -580,10 +633,11 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Assign District',
     category: 'author',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['ward', 'neighborhood', 'faction', 'territory', 'lock', 'party'],
+    uiPath: 'Right Sidebar \u2192 Map \u2192 District',
     icon: SPEED_PANEL_ICON_GLYPH.district,
     iconId: 'district',
-    description: 'Set this zone’s parent district',
+    description: 'Set this zone\u2019s parent district',
     speedPanelCategory: 'context',
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
@@ -601,7 +655,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Place Entity Here',
     category: 'populate',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['npc', 'merchant', 'recruit', 'villager', 'companion', 'shopkeeper', 'vendor'],
+    uiPath: 'Tool Palette \u2192 Entity',
     icon: SPEED_PANEL_ICON_GLYPH.entity,
     iconId: 'entity',
     description: 'Drop an entity inside this zone',
@@ -621,7 +676,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Place Encounter Here',
     category: 'populate',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['foe', 'boss', 'fight', 'combat', 'battle', 'ambush', 'patrol', 'mob'],
+    uiPath: 'Tool Palette \u2192 Encounter',
     icon: SPEED_PANEL_ICON_GLYPH.encounter,
     iconId: 'encounter',
     description: 'Drop an encounter anchor inside this zone',
@@ -641,7 +697,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Connect From Here',
     category: 'connect',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['door', 'stairs', 'passage', 'gate', 'portal', 'road', 'route'],
+    uiPath: 'Tool Palette \u2192 Connect',
     icon: SPEED_PANEL_ICON_GLYPH.connect,
     iconId: 'connect',
     description: 'Start a connection from this zone',
@@ -662,10 +719,11 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Swap Direction',
     category: 'connect',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['reverse', 'flip', 'invert', 'one-way', 'bidirectional'],
+    uiPath: 'Right Sidebar \u2192 Map \u2192 Swap Direction',
     icon: SPEED_PANEL_ICON_GLYPH.swap,
     iconId: 'swap',
-    description: 'Reverse this connection’s direction',
+    description: 'Reverse this connection\u2019s direction',
     speedPanelCategory: 'context',
     macroSafe: true,
     when: (ctx) => effectiveHit(ctx)?.type === 'connection',
@@ -694,6 +752,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Draw Secret Connection',
     iconId: 'connect-secret',
     description: 'Start a secret connection from this zone',
+    keywords: ['hidden door', 'trapdoor', 'secret passage', 'concealed'],
     modeSuggested: ['dungeon', 'interior'],
     kind: 'secret',
   }),
@@ -702,6 +761,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Draw Channel Connection',
     iconId: 'connect-channel',
     description: 'Start a channel connection from this zone',
+    keywords: ['sea lane', 'waterway', 'strait', 'voyage', 'ocean'],
     modeSuggested: ['ocean'],
     kind: 'channel',
   }),
@@ -710,6 +770,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Draw Warp Connection',
     iconId: 'connect-warp',
     description: 'Start a warp connection from this zone',
+    keywords: ['hyperspace', 'jumpgate', 'ftl', 'starlane', 'space'],
     modeSuggested: ['space'],
     kind: 'warp',
   }),
@@ -718,6 +779,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Draw Trail Connection',
     iconId: 'connect-trail',
     description: 'Start a trail connection from this zone',
+    keywords: ['footpath', 'track', 'wilderness path', 'forest trail'],
     modeSuggested: ['wilderness'],
     kind: 'trail',
   }),
@@ -727,7 +789,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Merge Zones',
     category: 'author',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['combine', 'join', 'unite', 'weld'],
     icon: SPEED_PANEL_ICON_GLYPH.merge,
     iconId: 'merge',
     description: 'Combine this zone with another selected zone',
@@ -757,10 +819,11 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Set Elevation',
     category: 'author',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['basement', 'cliff', 'stratum', 'height', 'altitude', 'floor', 'depth'],
+    uiPath: 'Right Sidebar \u2192 Map \u2192 Elevation',
     icon: SPEED_PANEL_ICON_GLYPH.elevation,
     iconId: 'elevation',
-    description: 'Set this zone’s elevation',
+    description: 'Set this zone\u2019s elevation',
     speedPanelCategory: 'context',
     macroSafe: false,
     when: (ctx) => effectiveHit(ctx)?.type === 'zone',
@@ -794,7 +857,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Open Review',
     category: 'view',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['audit', 'checklist', 'readiness', 'health', 'validate'],
+    uiPath: 'Right Sidebar \u2192 Review',
     icon: SPEED_PANEL_ICON_GLYPH.review,
     iconId: 'review',
     description: 'Open the project review panel',
@@ -814,7 +878,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     label: 'Export Summary',
     category: 'export',
     surfaces: ['speed-panel', 'context-menu'],
-    keywords: [],
+    keywords: ['markdown', 'download', 'brief', 'output', 'share'],
+    uiPath: 'Right Sidebar \u2192 Review \u2192 Export MD',
     icon: SPEED_PANEL_ICON_GLYPH.summary,
     iconId: 'summary',
     description: 'Show a summary of the last export',
@@ -839,7 +904,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Open Search Overlay',
     category: 'view',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['find', 'lookup', 'jump', 'filter world', 'query'],
     hotkeyId: 'search',
     hotkeyBindings: [{ key: 'KeyK', ctrl: true, label: 'Ctrl+K', description: 'Open search overlay', order: 0 }],
     when: () => true,
@@ -856,7 +921,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Save Project',
     category: 'export',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['write', 'persist', 'file', 'store'],
     hotkeyId: 'save',
     hotkeyBindings: [{ key: 'KeyS', ctrl: true, label: 'Ctrl+S', description: 'Save project', order: 1 }],
     when: () => true,
@@ -873,7 +938,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Copy Selected Objects',
     category: 'edit',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['yank', 'clipboard'],
     hotkeyId: 'copy',
     hotkeyBindings: [{ key: 'KeyC', ctrl: true, label: 'Ctrl+C', description: 'Copy selected objects', order: 2 }],
     when: (ctx) => {
@@ -896,7 +961,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Paste from Clipboard',
     category: 'edit',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['insert', 'yank', 'clipboard'],
     hotkeyId: 'paste',
     hotkeyBindings: [{ key: 'KeyV', ctrl: true, label: 'Ctrl+V', description: 'Paste from clipboard', order: 3 }],
     when: () => true,
@@ -913,7 +978,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Undo Last Action',
     category: 'edit',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['revert', 'rollback', 'history', 'step back'],
     hotkeyId: 'undo',
     hotkeyBindings: [{ key: 'KeyZ', ctrl: true, label: 'Ctrl+Z', description: 'Undo last action', order: 5 }],
     when: () => true,
@@ -930,7 +995,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Redo Last Undone Action',
     category: 'edit',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['reapply', 'forward', 'history'],
     hotkeyId: 'redo',
     hotkeyBindings: [
       { key: 'KeyZ', ctrl: true, shift: true, label: 'Ctrl+Shift+Z', description: 'Redo last undone action', order: 6 },
@@ -950,7 +1015,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Select All Visible Objects',
     category: 'selection',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['pick all', 'highlight all', 'everything'],
     hotkeyId: 'select-all',
     hotkeyBindings: [{ key: 'KeyA', ctrl: true, label: 'Ctrl+A', description: 'Select all visible objects', order: 8 }],
     when: () => true,
@@ -979,7 +1044,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Clear Selection and Cancel',
     category: 'selection',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['deselect', 'abort', 'dismiss'],
     hotkeyId: 'escape',
     hotkeyBindings: [{ key: 'Escape', label: 'Esc', description: 'Clear selection and cancel drag', order: 11 }],
     when: () => true,
@@ -992,25 +1057,28 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
       return { executed: true, handled: true, action: 'escape' };
     },
   },
-  createNudgeCommand({ id: 'nudge-up',    title: 'Nudge Selection Up',    key: 'ArrowUp',    label: 'Up',    description: 'Nudge selected up (Shift for 5x)',    order: 12, dx: 0,  dy: -1 }),
-  createNudgeCommand({ id: 'nudge-down',  title: 'Nudge Selection Down',  key: 'ArrowDown',  label: 'Down',  description: 'Nudge selected down (Shift for 5x)',  order: 13, dx: 0,  dy: 1 }),
-  createNudgeCommand({ id: 'nudge-left',  title: 'Nudge Selection Left',  key: 'ArrowLeft',  label: 'Left',  description: 'Nudge selected left (Shift for 5x)',  order: 14, dx: -1, dy: 0 }),
-  createNudgeCommand({ id: 'nudge-right', title: 'Nudge Selection Right', key: 'ArrowRight', label: 'Right', description: 'Nudge selected right (Shift for 5x)', order: 15, dx: 1,  dy: 0 }),
+  createNudgeCommand({ id: 'nudge-up',    title: 'Nudge Selection Up',    key: 'ArrowUp',    label: 'Up',    description: 'Nudge selected up (Shift for 5x)',    keywords: ['move north', 'shift up'],    order: 12, dx: 0,  dy: -1 }),
+  createNudgeCommand({ id: 'nudge-down',  title: 'Nudge Selection Down',  key: 'ArrowDown',  label: 'Down',  description: 'Nudge selected down (Shift for 5x)',  keywords: ['move south', 'shift down'],  order: 13, dx: 0,  dy: 1 }),
+  createNudgeCommand({ id: 'nudge-left',  title: 'Nudge Selection Left',  key: 'ArrowLeft',  label: 'Left',  description: 'Nudge selected left (Shift for 5x)',  keywords: ['move west', 'shift left'],   order: 14, dx: -1, dy: 0 }),
+  createNudgeCommand({ id: 'nudge-right', title: 'Nudge Selection Right', key: 'ArrowRight', label: 'Right', description: 'Nudge selected right (Shift for 5x)', keywords: ['move east', 'shift right'],  order: 15, dx: 1,  dy: 0 }),
   {
     id: 'open-details',
     title: 'Open Details',
     category: 'inspect',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['sidebar', 'map tab', 'focus inspector'],
     hotkeyId: 'open-details',
     hotkeyBindings: [{ key: 'Enter', label: 'Enter', description: 'Open details for selected object', order: 16 }],
-    when: () => true,
+    when: (ctx) => hasAnyTarget(ctx),
     disabledReason: (ctx) => (hasAnyTarget(ctx) ? null : 'Select an object to inspect details'),
-    run: ({ hotkeyCtx, event }) => {
-      if (!hotkeyCtx) return fail('hotkeyCtx unavailable');
+    run: ({ hit, stores, hotkeyCtx, event }) => {
+      if (!hotkeyCtx && !stores) return fail('hotkeyCtx unavailable');
       event?.preventDefault();
-      hotkeyCtx.setRightTab('map');
-      hotkeyCtx.setRightCollapsed?.(false);
+      if (hit && stores && (!hotkeyCtx || getSelectionCount(hotkeyCtx.selection) === 0)) {
+        selectFromContext(hit, stores);
+      }
+      (hotkeyCtx ?? stores)?.setRightTab('map');
+      (hotkeyCtx ?? stores)?.setRightCollapsed?.(false);
       return { executed: true, handled: true, action: 'open-details' };
     },
   },
@@ -1019,7 +1087,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Apply Preset',
     category: 'author',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['template', 'biome', 'style', 'pattern'],
     hotkeyId: 'apply-preset',
     hotkeyBindings: [{ key: 'KeyP', label: 'P', description: 'Apply preset to selected district or zone', order: 17 }],
     when: () => true,
@@ -1037,7 +1105,7 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     title: 'Save Selection as Preset',
     category: 'author',
     surfaces: ['hotkey'],
-    keywords: [],
+    keywords: ['kit', 'capture template', 'store preset', 'reusable'],
     hotkeyId: 'save-preset',
     hotkeyBindings: [{ key: 'KeyP', shift: true, label: 'Shift+P', description: 'Save current selection as preset', order: 18 }],
     when: () => true,
@@ -1058,6 +1126,79 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
 const COMMAND_BY_ID = new Map<string, EditorCommand>(
   COMMAND_REGISTRY.map((cmd) => [cmd.id, cmd]),
 );
+
+const CONTEXT_DECK_HIT_MAP: Record<HitResult['type'], ContextDeckKey> = {
+  zone: 'zone',
+  entity: 'entity',
+  connection: 'connection',
+  landmark: 'landmark',
+  spawn: 'spawn',
+  encounter: 'encounter',
+  item: 'item',
+  prop: 'item',
+  tile: 'item',
+  market: 'item',
+  building: 'item',
+  hub: 'item',
+  stronghold: 'item',
+  station: 'item',
+};
+
+/** Resolve a canvas HitResult into one of the 8 canonical Band 1 context-deck keys. */
+export function getContextDeckKey(hit: HitResult | null | undefined): ContextDeckKey {
+  if (!hit) return 'empty';
+  return CONTEXT_DECK_HIT_MAP[hit.type] ?? 'empty';
+}
+
+/** Return the fixed, ordered 4–5 slot Band 1 context deck for `hit`. */
+export function getContextDeckCommands(hit: HitResult | null | undefined): EditorCommand[] {
+  const key = getContextDeckKey(hit);
+  const ids = CONTEXT_DECKS[key];
+  const cmds: EditorCommand[] = [];
+  for (const id of ids) {
+    const cmd = COMMAND_BY_ID.get(id);
+    if (cmd) cmds.push(cmd);
+  }
+  return cmds;
+}
+
+/** Return the fixed canonical Band 4 Catalogue group for `cmd`. */
+export function getCommandCatalogueGroup(cmd: EditorCommand): CatalogueGroup {
+  return CATEGORY_TO_CATALOGUE_GROUP[cmd.category];
+}
+
+export interface CommandBadge {
+  kind: 'shortcut' | 'location';
+  text: string;
+}
+
+/**
+ * Look up the live keybinding label(s) for `cmd` from the active hotkey binding table.
+ * Never returns hardcoded strings independent of the hotkey table.
+ */
+export function getCommandShortcutLabel(
+  cmd: EditorCommand,
+  bindings?: readonly HotkeyBinding[],
+): string | null {
+  const table = bindings ?? getHotkeyBindingsFromRegistry();
+  const labels = table.filter((b) => b.action === cmd.id).map((b) => b.label);
+  if (labels.length === 0) return null;
+  return labels[0];
+}
+
+/**
+ * Return the right-side hint badge for a palette row: live shortcut from `bindings`
+ * when bound, or editor location (`uiPath`) when unbound.
+ */
+export function getCommandBadge(
+  cmd: EditorCommand,
+  bindings?: readonly HotkeyBinding[],
+): CommandBadge | null {
+  const shortcut = getCommandShortcutLabel(cmd, bindings);
+  if (shortcut) return { kind: 'shortcut', text: shortcut };
+  if (cmd.uiPath) return { kind: 'location', text: cmd.uiPath };
+  return null;
+}
 
 /** Look up any registered command by ID. */
 export function getCommandById(id: string): EditorCommand | undefined {
