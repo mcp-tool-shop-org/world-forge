@@ -35,6 +35,14 @@ import {
   type StepChoiceOption,
   type StepStackState,
 } from '../speed-panel-steps.js';
+import type { HitResult } from '../hit-testing.js';
+import {
+  buildScopeChips,
+  cycleScopeChipIndex,
+  findActiveScopeChipIndex,
+  formatScopeTargetAnnouncement,
+  type ScopeChip,
+} from '../speed-panel-scope.js';
 import {
   SP_HEADING_IDS,
   buildMacroReplaceStepView,
@@ -48,6 +56,7 @@ import {
   customGroupHeadingId,
   filterStepOptions,
   getInitialActiveIndex,
+  reconcileActiveIndexOnQuickFixChange,
   splitHighlightSegments,
   submitCreateMacroState,
   toggleCreateMacroSelection,
@@ -95,6 +104,8 @@ export function SpeedPanel({
   const {
     speedPanelPosition,
     speedPanelContext,
+    speedPanelHits,
+    setSpeedPanelContext,
     closeSpeedPanel,
     speedPanelEditMode,
     toggleSpeedPanelEditMode,
@@ -147,6 +158,32 @@ export function SpeedPanel({
   const stepInputRef = useRef<HTMLInputElement>(null);
   const scalarPillRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const scopeChipRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [hasSwitchedScope, setHasSwitchedScope] = useState(false);
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
+
+  const scopeChips: ScopeChip[] = useMemo(
+    () => buildScopeChips(speedPanelHits, project),
+    [speedPanelHits, project],
+  );
+  const activeScopeIdx = useMemo(
+    () => findActiveScopeChipIndex(scopeChips, speedPanelContext),
+    [scopeChips, speedPanelContext],
+  );
+
+  const selectScopeTarget = (hit: HitResult | null, refocusSearch = true) => {
+    setHasSwitchedScope(true);
+    setSpeedPanelContext(hit);
+    if (refocusSearch) {
+      queueMicrotask(() => inputRef.current?.focus({ preventScroll: true }));
+    }
+  };
+
+  const cycleScope = (direction: 1 | -1) => {
+    if (scopeChips.length < 2) return;
+    const nextHit = cycleScopeChipIndex(scopeChips, speedPanelContext, direction);
+    selectScopeTarget(nextHit);
+  };
 
   const cmdCtx = useMemo(
     () => ({
@@ -194,6 +231,9 @@ export function SpeedPanel({
     [view, collapsedGroups],
   );
   const [activeIdx, setActiveIdx] = useState(() => getInitialActiveIndex(allNavigable));
+  const hasQuickFix = view.kind === 'unsearched' && Boolean(view.quickFix);
+  const prevHasQuickFixRef = useRef(hasQuickFix);
+  const prevResetDepsRef = useRef({ query, speedPanelPosition, speedPanelContext });
 
   // Auto-focus without scrolling viewport on mount, and surface any deferred macro load warnings once
   useEffect(() => {
@@ -201,14 +241,34 @@ export function SpeedPanel({
     notifySpeedPanelLoadWarnings(pushToast);
   }, []);
 
-  // Clamp active index when list changes
+  // Reset active highlight on query/position/target changes, preserve item slot when Quick Fix appears or clears, otherwise clamp
   useEffect(() => {
-    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length, getInitialActiveIndex(allNavigable)));
-  }, [allNavigable.length]);
+    const prevDeps = prevResetDepsRef.current;
+    const resetDepsChanged =
+      prevDeps.query !== query ||
+      prevDeps.speedPanelPosition !== speedPanelPosition ||
+      prevDeps.speedPanelContext !== speedPanelContext;
+    if (prevDeps.speedPanelPosition !== speedPanelPosition) {
+      setHasSwitchedScope(false);
+    }
+    prevResetDepsRef.current = { query, speedPanelPosition, speedPanelContext };
+    const hadQuickFix = prevHasQuickFixRef.current;
+    prevHasQuickFixRef.current = hasQuickFix;
 
-  useEffect(() => {
-    setActiveIdx(getInitialActiveIndex(allNavigable));
-  }, [query, speedPanelPosition, speedPanelContext]);
+    if (resetDepsChanged) {
+      setActiveIdx(getInitialActiveIndex(allNavigable));
+      return;
+    }
+
+    if (hadQuickFix !== hasQuickFix) {
+      setActiveIdx((prev) =>
+        reconcileActiveIndexOnQuickFixChange(prev, hadQuickFix, hasQuickFix, allNavigable.length),
+      );
+      return;
+    }
+
+    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length, getInitialActiveIndex(allNavigable)));
+  }, [query, speedPanelPosition, speedPanelContext, allNavigable.length, hasQuickFix]);
 
   // Keep active descendant scrolled into view even under zoom
   useEffect(() => {
@@ -216,6 +276,13 @@ export function SpeedPanel({
     if (!active || typeof document === 'undefined') return;
     document.getElementById(active.domId)?.scrollIntoView?.({ block: 'nearest' });
   }, [activeIdx, allNavigable]);
+
+  // Populate live announcement after the status region mounts so screen readers reliably detect text insertion
+  useEffect(() => {
+    setLiveAnnouncement(
+      speedPanelPosition ? formatScopeTargetAnnouncement(speedPanelContext, project, hasSwitchedScope) : '',
+    );
+  }, [speedPanelPosition, speedPanelContext, project, hasSwitchedScope]);
 
   // Edge clamping
   const [offset, setOffset] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
@@ -297,6 +364,8 @@ export function SpeedPanel({
     selection,
     zones: project.zones,
     query,
+    hasScopeChips: scopeChips.length >= 2,
+    cycleScope,
     view,
     allNavigable,
     activeIdx,
@@ -388,6 +457,22 @@ export function SpeedPanel({
           overflow: 'hidden',
         }}
       >
+        <div
+          data-testid="wf-sp-live-region"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            position: 'absolute',
+            width: 1,
+            height: 1,
+            overflow: 'hidden',
+            clip: 'rect(0, 0, 0, 0)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {liveAnnouncement}
+        </div>
         {/* Header: Create macro / Missing-ID replacement / Step breadcrumb / Root combobox */}
         {createMacroState ? (
           <SpeedPanelCreateMacroView
@@ -498,6 +583,67 @@ export function SpeedPanel({
             {'\u270E'}
           </button>
         </div>
+
+        {/* Overlapping target scope chips (shown only when 2+ objects overlap at pointer) */}
+        {scopeChips.length >= 2 && (
+          <div
+            data-testid="wf-sp-scope-chips"
+            role="group"
+            aria-label="Target object scope"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 'var(--wf-space-1)',
+              padding: 'var(--wf-space-1) var(--wf-space-2)',
+              borderBottom: '1px solid var(--wf-border-default)',
+              background: 'var(--wf-bg-surface)',
+            }}
+          >
+            {scopeChips.map((chip, idx) => {
+              const isActive = idx === activeScopeIdx;
+              return (
+                <button
+                  key={chip.key}
+                  ref={(el) => {
+                    scopeChipRefs.current[idx] = el;
+                  }}
+                  type="button"
+                  data-scope-chip="true"
+                  data-testid={`wf-sp-scope-chip-${chip.key}`}
+                  aria-pressed={isActive}
+                  onClick={(e?: { detail?: number }) => selectScopeTarget(chip.hit, e === undefined || e.detail !== 0)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const dir = e.key === 'ArrowRight' ? 1 : -1;
+                      const nextIdx = (idx + dir + scopeChips.length) % scopeChips.length;
+                      setHasSwitchedScope(true);
+                      setSpeedPanelContext(scopeChips[nextIdx].hit);
+                      queueMicrotask(() => scopeChipRefs.current[nextIdx]?.focus({ preventScroll: true }));
+                    }
+                  }}
+                  style={{
+                    background: isActive ? 'var(--wf-accent)' : 'var(--wf-bg-app)',
+                    color: isActive ? 'var(--wf-bg-app)' : 'var(--wf-text-secondary)',
+                    border: `1px solid ${isActive ? 'var(--wf-accent)' : 'var(--wf-border-default)'}`,
+                    borderRadius: 999,
+                    padding: '1px 7px',
+                    fontSize: 10,
+                    fontWeight: isActive ? 600 : 400,
+                    cursor: 'pointer',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Macro status banner */}
         {macroStatus && (

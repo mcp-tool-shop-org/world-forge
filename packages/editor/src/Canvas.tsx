@@ -14,6 +14,11 @@ import { dispatchHotkey, shouldArmSpacePan, type HotkeyContext } from './hotkeys
 import { getModeProfile, getDefaultConnectionKind, generateZoneName } from './mode-profiles.js';
 import { getContextMenuActions } from './speed-panel-actions.js';
 import { executeContextMenuAction } from './speed-panel-execute.js';
+import {
+  computeScopeTargetHighlight,
+  drawScopeTargetHighlight,
+  scopeHighlightToScreenBox,
+} from './speed-panel-scope.js';
 import { fallbackTileColor, elevationDrawOffset, zoneElevationAt } from './tile-render.js';
 import { nextId, generateZoneId } from './ids.js';
 import { pushToast } from './ui/Toast.js';
@@ -107,7 +112,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     setSelectedZone, setHoveredZone, selectAll, clearSelection,
     connectionStart, setConnectionStart, pendingConnectionKind, setPendingConnectionKind,
     viewport, setViewport, setShowSearch, setRightTab, setRightCollapsed,
-    openSpeedPanel, showSpeedPanel, closeSpeedPanel,
+    openSpeedPanel, showSpeedPanel, speedPanelContext, closeSpeedPanel,
     speedPanelPick, setSpeedPanelPick,
     hiddenIds, showPerfStats, showElevation, setTool,
   } = useEditorStore();
@@ -989,6 +994,14 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       }
     }
 
+    // Speed Panel active target highlight (temporary view state only)
+    if (showSpeedPanel && speedPanelContext) {
+      const scopeHl = computeScopeTargetHighlight(speedPanelContext, project, tileSize);
+      if (scopeHl) {
+        drawScopeTargetHighlight(ctx, scopeHl, zoom, readCssVar('--wf-accent', '#58a6ff'));
+      }
+    }
+
     // Reset transform for screen-space overlays
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -1040,7 +1053,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, speedPanelPick, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, showSpeedPanel, speedPanelContext, speedPanelPick, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
 
   useEffect(() => {
     draw();
@@ -1167,6 +1180,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     getOptions: () => useSpeedPanelOptions.getState().options,
     getScreenXY,
     findFilteredHitAt: (sx, sy) => filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility)),
+    findFilteredHitsAt: (sx, sy) => filterHidden(findAllHitsAt(sx, sy, viewport, project, tileSize, visibility)),
     getMenuActionsForHit: (hit) =>
       getContextMenuActions(hit, project).map((a) => ({ id: a.id, label: a.label, icon: a.icon, description: a.description })),
     openSpeedPanel,
@@ -1993,6 +2007,11 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     );
   };
 
+  const scopeHighlight = showSpeedPanel && speedPanelContext
+    ? computeScopeTargetHighlight(speedPanelContext, project, tileSize)
+    : null;
+  const scopeHighlightBox = scopeHighlight ? scopeHighlightToScreenBox(scopeHighlight, viewport) : null;
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <canvas
@@ -2170,6 +2189,28 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
 
       {/* FT-014: Minimap overlay */}
       {renderMinimap()}
+
+      {/* Speed Panel active scope target highlight overlay */}
+      {scopeHighlightBox && speedPanelContext && (
+        <div
+          data-testid="wf-sp-canvas-highlight"
+          data-target-type={speedPanelContext.type}
+          data-target-id={speedPanelContext.id}
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: scopeHighlightBox.left,
+            top: scopeHighlightBox.top,
+            width: scopeHighlightBox.width,
+            height: scopeHighlightBox.height,
+            border: '2px dashed var(--wf-accent, #58a6ff)',
+            borderRadius: 4,
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.35)',
+            pointerEvents: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+      )}
 
       {/* C4: Speed Panel spatial picking HUD + cursor badge + off-screen selector */}
       {speedPanelPick && (

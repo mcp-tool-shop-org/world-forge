@@ -516,10 +516,11 @@ export interface CanvasRightPointerHandlerDeps {
   setViewport: (vp: Partial<ViewportState>) => void;
   getOptions: () => SpeedPanelOptions;
   findFilteredHitAt: (sx: number, sy: number) => HitResult | null;
+  findFilteredHitsAt?: (sx: number, sy: number) => HitResult[];
   getMenuActionsForHit: (hit: HitResult | null) => Array<{ id: string; label: string; icon: string }>;
   getContextMenu: () => CanvasContextMenuState | null;
   setContextMenu: (menu: CanvasContextMenuState | null) => void;
-  openSpeedPanel: (x: number, y: number, hit: HitResult | null) => void;
+  openSpeedPanel: (x: number, y: number, hit: HitResult | null, hits?: HitResult[]) => void;
   getGestureState: () => RightClickGestureState;
   setGestureState: (state: RightClickGestureState) => void;
   getRightPanStart: () => { x: number; y: number; panX: number; panY: number } | null;
@@ -577,7 +578,11 @@ export function createCanvasRightPointerHandlers(deps: CanvasRightPointerHandler
     const { x, y, hit } = menu;
     deps.setContextMenu(null);
     deps.setGestureState(createInitialRightClickGestureState());
-    deps.openSpeedPanel(x, y, hit);
+    if (deps.findFilteredHitsAt) {
+      deps.openSpeedPanel(x, y, hit, deps.findFilteredHitsAt(x, y));
+    } else {
+      deps.openSpeedPanel(x, y, hit);
+    }
   };
 
   const startRightPointer = (e: {
@@ -670,7 +675,11 @@ export function createCanvasRightPointerHandlers(deps: CanvasRightPointerHandler
     if (effect.action === 'open-speed-panel') {
       deps.setContextMenu(null);
       const hit = effect.prevHit !== undefined ? effect.prevHit : deps.findFilteredHitAt(effect.x, effect.y);
-      deps.openSpeedPanel(effect.x, effect.y, hit);
+      if (deps.findFilteredHitsAt) {
+        deps.openSpeedPanel(effect.x, effect.y, hit, deps.findFilteredHitsAt(effect.x, effect.y));
+      } else {
+        deps.openSpeedPanel(effect.x, effect.y, hit);
+      }
     } else if (effect.action === 'open-compact-menu') {
       openObjectContextMenu(effect.x, effect.y);
     }
@@ -701,7 +710,11 @@ export function createCanvasRightPointerHandlers(deps: CanvasRightPointerHandler
     if (decision.source === 'pointer') {
       const { sx, sy } = deps.getLastPointer();
       const hit = deps.findFilteredHitAt(sx, sy);
-      deps.openSpeedPanel(sx, sy, hit);
+      if (deps.findFilteredHitsAt) {
+        deps.openSpeedPanel(sx, sy, hit, deps.findFilteredHitsAt(sx, sy));
+      } else {
+        deps.openSpeedPanel(sx, sy, hit);
+      }
       return true;
     }
 
@@ -713,7 +726,7 @@ export function createCanvasRightPointerHandlers(deps: CanvasRightPointerHandler
       deps.getViewport(),
       env.tileSize,
     );
-    deps.openSpeedPanel(anchor.sx, anchor.sy, anchor.hit);
+    deps.openSpeedPanel(anchor.sx, anchor.sy, anchor.hit, []);
     return true;
   };
 
@@ -747,8 +760,9 @@ export interface CanvasRightPointerRefs {
   getOptions: () => SpeedPanelOptions;
   getScreenXY: (e: { clientX: number; clientY: number }) => { sx: number; sy: number };
   findFilteredHitAt: (sx: number, sy: number) => HitResult | null;
+  findFilteredHitsAt?: (sx: number, sy: number) => HitResult[];
   getMenuActionsForHit: (hit: HitResult | null) => Array<{ id: string; label: string; icon: string }>;
-  openSpeedPanel: (x: number, y: number, hit: HitResult | null) => void;
+  openSpeedPanel: (x: number, y: number, hit: HitResult | null, hits?: HitResult[]) => void;
   getEditorEnv: CanvasRightPointerHandlerDeps['getEditorEnv'];
   isMacPlatformFn?: () => boolean;
 }
@@ -762,6 +776,7 @@ export function buildCanvasRightPointerHandlersFromRefs(refs: CanvasRightPointer
     setViewport: refs.setViewport,
     getOptions: refs.getOptions,
     findFilteredHitAt: refs.findFilteredHitAt,
+    findFilteredHitsAt: refs.findFilteredHitsAt,
     getMenuActionsForHit: refs.getMenuActionsForHit,
     getContextMenu: () => refs.contextMenu.current,
     setContextMenu: refs.setContextMenu,

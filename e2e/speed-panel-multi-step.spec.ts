@@ -418,4 +418,115 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     await expect(panel.locator(`#${baselineDeckIds[0]}`)).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('Escape');
   });
+
+  test('displays overlapping scope chips, switches via Tab/Shift+Tab/click, moves canvas highlight cleanly, and preserves typed scalar Tab', async ({ page }) => {
+    await loadChapel(page);
+
+    const canvas = page.locator('canvas');
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+
+    const bareZoneAnchor = computeFittedChapelZoneAnchor('chapel-entrance', box!, { rx: 0.75, ry: 0.75 });
+    const pilgrimOverlapAnchor = computeFittedChapelZoneAnchor('chapel-entrance', box!, { rx: 0.1, ry: 0.2 });
+    const panel = page.getByTestId('wf-speed-panel');
+    const undoBtn = page.getByRole('button', { name: /^Undo\b/ });
+    const highlight = page.getByTestId('wf-sp-canvas-highlight');
+
+    // 1) Single-object bare zone opening omits scope chip row
+    await page.mouse.move(box!.x + bareZoneAnchor.sx, box!.y + bareZoneAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('wf-sp-scope-chips')).toHaveCount(0);
+    await expect(highlight).toHaveAttribute('data-target-type', 'zone');
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(highlight).toHaveCount(0);
+
+    // 2) Overlapping Item + NPC + Zone opening renders chips in hit order with Canvas last, initial live announcement, and Item canvas highlight
+    await page.mouse.move(box!.x + pilgrimOverlapAnchor.sx, box!.y + pilgrimOverlapAnchor.sy);
+    await page.keyboard.press('q');
+    await expect(panel).toBeVisible();
+    const chipBar = panel.getByTestId('wf-sp-scope-chips');
+    await expect(chipBar).toBeVisible();
+    const itemChip = chipBar.getByTestId('wf-sp-scope-chip-item:chapel-lantern');
+    const npcChip = chipBar.getByTestId('wf-sp-scope-chip-entity:suspicious-pilgrim');
+    const zoneChip = chipBar.getByTestId('wf-sp-scope-chip-zone:chapel-entrance');
+    const canvasChip = chipBar.getByTestId('wf-sp-scope-chip-canvas');
+    await expect(itemChip).toHaveText('Item: Chapel Lantern');
+    await expect(npcChip).toHaveText('NPC: Suspicious Pilgrim');
+    await expect(zoneChip).toHaveText('Zone: Chapel Entrance');
+    await expect(canvasChip).toHaveText('Canvas');
+    await expect(itemChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(npcChip).toHaveAttribute('aria-pressed', 'false');
+    await expect(zoneChip).toHaveAttribute('aria-pressed', 'false');
+    await expect(highlight).toHaveAttribute('data-target-type', 'item');
+    await expect(highlight).toHaveAttribute('data-target-id', 'chapel-lantern');
+    await expect(panel.getByTestId('wf-sp-live-region')).toContainText('Item: Chapel Lantern');
+
+    // 3) Tab from the focused last chip leaves the chip row in normal focus order onto the first Band 1 pin button
+    await canvasChip.focus();
+    await expect(canvasChip).toBeFocused();
+    await page.keyboard.press('Tab');
+    const leftChipRow = await page.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const chips = document.querySelector('[data-testid="wf-sp-scope-chips"]');
+      const band1 = document.querySelector('[data-testid="wf-sp-band-1"]');
+      return {
+        inChips: Boolean(active && chips && chips.contains(active)),
+        inBand1: Boolean(active && band1 && band1.contains(active)),
+        notBody: Boolean(active && active !== document.body),
+        tagName: active?.tagName ?? '',
+        accessibleLabel: (active?.getAttribute('aria-label') || active?.textContent || '').trim(),
+      };
+    });
+    expect(leftChipRow.inChips).toBe(false);
+    expect(leftChipRow.inBand1).toBe(true);
+    expect(leftChipRow.notBody).toBe(true);
+    expect(leftChipRow.tagName).toBe('BUTTON');
+    expect(leftChipRow.accessibleLabel).toMatch(/^(Pin|Unpin) /);
+    await panel.getByTestId('wf-speed-panel-search').focus();
+
+    // 4) Tab with empty search cycles Item -> NPC -> Zone, moving canvas highlight, live announcement & Band 1 deck
+    await page.keyboard.press('Tab');
+    await expect(npcChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(highlight).toHaveAttribute('data-target-type', 'entity');
+    await expect(highlight).toHaveAttribute('data-target-id', 'suspicious-pilgrim');
+    await expect(panel.getByTestId('wf-sp-live-region')).toContainText('NPC: Suspicious Pilgrim');
+
+    await page.keyboard.press('Tab');
+    await expect(zoneChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(highlight).toHaveAttribute('data-target-type', 'zone');
+    await expect(highlight).toHaveAttribute('data-target-id', 'chapel-entrance');
+    await expect(panel.getByTestId('wf-sp-live-region')).toContainText('Zone: Chapel Entrance');
+    await expect(panel.getByTestId('wf-sp-band-1').getByTestId('wf-sp-row-edit-props')).toBeVisible();
+
+    // Shift+Tab cycles back to NPC
+    await page.keyboard.press('Shift+Tab');
+    await expect(npcChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(highlight).toHaveAttribute('data-target-type', 'entity');
+
+    // Clicking Canvas chip clears target highlight and switches deck to Canvas commands
+    await canvasChip.click();
+    await expect(canvasChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(highlight).toHaveCount(0);
+    await expect(panel.getByTestId('wf-sp-live-region')).toContainText('Canvas');
+    await expect(panel.getByTestId('wf-sp-band-1').getByTestId('wf-sp-row-new-zone')).toBeVisible();
+
+    // Clicking Zone chip restores Zone target & highlight, then typing 'elev' + Tab still opens inline scalar pill
+    await zoneChip.click();
+    await expect(zoneChip).toHaveAttribute('aria-pressed', 'true');
+    await expect(highlight).toHaveAttribute('data-target-type', 'zone');
+    await panel.getByTestId('wf-speed-panel-search').fill('elev');
+    await page.keyboard.press('Tab');
+    await expect(panel.getByTestId('wf-sp-scalar-pill')).toBeVisible();
+    await expect(zoneChip).toHaveAttribute('aria-pressed', 'true');
+
+    // Esc dismisses scalar pill, next Esc closes panel and clears highlight with zero project/undo mutation
+    await page.keyboard.press('Escape');
+    await expect(panel.getByTestId('wf-sp-scalar-pill')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(highlight).toHaveCount(0);
+    await expect(undoBtn).toBeDisabled();
+  });
 });

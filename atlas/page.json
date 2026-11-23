@@ -92,8 +92,8 @@
   ],
   "changes": {
     "fileCounts": {
-      "added": 4,
-      "changed": 21,
+      "added": 3,
+      "changed": 15,
       "moved": 0,
       "parts": 4,
       "removed": 0
@@ -101,13 +101,13 @@
     "items": [
       {
         "kind": "counts",
-        "sentence": "Nothing structural changed since 2026-11-23; 4 files added and 21 changed content.",
+        "sentence": "Nothing structural changed since 2026-11-23; 3 files added and 15 changed content.",
         "subjects": []
       }
     ],
     "since": {
-      "commit": "3c04da4cbbd7d8f43304e530054c31ab7a728c8d",
-      "generatedAt": "2026-11-23T03:52:50.700Z"
+      "commit": "36dcd246e0c2c14d101250280215c4b03513cc72",
+      "generatedAt": "2026-11-23T05:02:13.208Z"
     },
     "unchanged": true
   },
@@ -173,19 +173,19 @@
       "shared": 5
     },
     {
-      "a": "dogfood/worlds/multi-target-proof.ts",
-      "b": "packages/export-godot/src/index.ts",
-      "either": 11,
+      "a": "packages/editor/src/panels/SpeedPanel.tsx",
+      "b": "packages/editor/src/panels/speed-panel-stores.ts",
+      "either": 9,
       "partLabels": [
-        "dogfood",
-        "export-godot"
+        "editor",
+        "editor"
       ],
       "parts": [
-        "dogfood",
-        "export-godot"
+        "editor",
+        "editor"
       ],
-      "relation": "a-imports-b",
-      "shared": 7
+      "relation": "inside",
+      "shared": 6
     }
   ],
   "changesTogetherNote": [
@@ -194,9 +194,9 @@
     "Window: 180 days; a pair counts from 3 shared commits, since 8 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
   "changesTogetherWithTests": 2,
-  "commit": "36dcd246e0c2c14d101250280215c4b03513cc72",
+  "commit": "60112b84a59a10c45dd77a97cb5a8629b5e128d3",
   "defaultBranch": "main",
-  "derived": "15 parts, mostly TypeScript (533 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
+  "derived": "15 parts, mostly TypeScript (536 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
   "doors": [
     {
       "checks": [
@@ -218,7 +218,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 511,
+      "checksMore": 514,
       "file": ".github/workflows/ci.yml",
       "id": ".github/workflows/ci.yml",
       "landings": [
@@ -243,7 +243,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 269
+          "files": 272
         },
         {
           "boundary": "export-ai-rpg",
@@ -355,7 +355,7 @@
         "site/src/"
       ],
       "runsCount": 66,
-      "runsMore": 230,
+      "runsMore": 232,
       "sends": [
         "uploads coverage to Codecov"
       ],
@@ -386,7 +386,7 @@
         "packages/schema/src/"
       ],
       "checksCount": 16,
-      "checksMore": 511,
+      "checksMore": 514,
       "file": ".github/workflows/release.yml",
       "id": ".github/workflows/release.yml",
       "landings": [
@@ -411,7 +411,7 @@
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 269
+          "files": 272
         },
         {
           "boundary": "export-ai-rpg",
@@ -995,10 +995,10 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-23T05:02:13.208Z",
+  "generatedAt": "2026-11-23T07:12:35.496Z",
   "limits": [
     "10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.",
-    "14 files in editor use syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts and 11 more), so what they import is not known.",
+    "16 files in editor use syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts and 13 more), so what they import is not known.",
     "3 writes and 4 reads use paths built at run time and are not named here.",
     "38 writes go to places this repository does not track, so they are not listed as generated.",
     "2 writes and 62 reads go to a path their caller passes, not to this repository.",
@@ -1045,7 +1045,7 @@
   "startReason": "This path follows world-forge-export (a command people run) from its entry, since CI runs only tests, scripts that import no code here and checks.",
   "summary": null,
   "summaryFrom": null,
-  "testFiles": 254,
+  "testFiles": 256,
   "testedBy": {
     "dogfood": 10,
     "e2e": 5,
@@ -1091,7 +1091,7 @@
       ]
     }
   ],
-  "unreadFiles": 14,
+  "unreadFiles": 16,
   "unreadNote": [],
   "untested": [],
   "untestedNote": [],
