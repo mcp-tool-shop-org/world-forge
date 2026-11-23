@@ -63,7 +63,13 @@ import { convertProgressionTrees } from './convert-progression-trees.js';
 import { convertManifest, convertPackMeta } from './convert-pack.js';
 import { computeContentHash } from './content-hash.js';
 import { buildFidelityReport, type FidelityEntry, type FidelityReport } from './fidelity.js';
-import { convertEncounterAnchors, listAiRpgEncounterBlockers, type AiRpgEncounterBlocker } from './encounter-types.js';
+import {
+  convertEncounterAnchors,
+  listAiRpgEncounterAdjustments,
+  listAiRpgEncounterBlockers,
+  type AiRpgEncounterAdjustment,
+  type AiRpgEncounterBlocker,
+} from './encounter-types.js';
 
 // AIR-FT-005: Schema version is imported directly from @world-forge/schema
 // as SCHEMA_VERSION. This is browser-safe (no node:module dependency) and
@@ -296,6 +302,91 @@ export type ExportError = {
   speakerBlockers?: AiRpgDialogueSpeakerBlocker[];
 };
 
+export type AiRpgReadinessCheck = {
+  ready: boolean;
+  validationErrors: ValidationError[];
+  encounterBlockers: AiRpgEncounterBlocker[];
+  speakerBlockers: AiRpgDialogueSpeakerBlocker[];
+  blockerErrors: ValidationError[];
+  encounterAdjustments: AiRpgEncounterAdjustment[];
+};
+
+function encounterBlockerToValidationError(b: AiRpgEncounterBlocker): ValidationError {
+  return {
+    path: `encounterAnchors.${b.anchorId}.encounterType`,
+    message: b.message,
+  };
+}
+
+function speakerBlockerToValidationError(b: AiRpgDialogueSpeakerBlocker): ValidationError {
+  return {
+    path: b.nodeId ? `dialogues.${b.dialogueId}.nodes.${b.nodeId}.speaker` : `dialogues.${b.dialogueId}.speakers`,
+    message: b.message,
+  };
+}
+
+/**
+ * Evaluate structural validation, engine blockers, and encounter translations/drops
+ * without running domain converters or content hashing. Shared by `exportToEngine`
+ * and the editor readiness banner so both enforce the exact same blocker rules.
+ */
+export function checkAiRpgExportReadiness(project: WorldProject): AiRpgReadinessCheck {
+  const validation = validateProject(project);
+  const encounterBlockers = listAiRpgEncounterBlockers(project);
+  const speakerBlockers = listAiRpgDialogueSpeakerBlockers(project);
+  const blockerErrors: ValidationError[] = [
+    ...encounterBlockers.map(encounterBlockerToValidationError),
+    ...speakerBlockers.map(speakerBlockerToValidationError),
+  ];
+  const ready = validation.valid && encounterBlockers.length === 0 && speakerBlockers.length === 0;
+  return {
+    ready,
+    validationErrors: validation.errors,
+    encounterBlockers,
+    speakerBlockers,
+    blockerErrors,
+    encounterAdjustments: listAiRpgEncounterAdjustments(project),
+  };
+}
+
+/**
+ * Separate schema/converter errors from typed encounter and dialogue speaker blockers
+ * using `encounterBlockers` and `speakerBlockers` regardless of `result.errors` ordering.
+ */
+export function splitExportFailureErrors(result: ExportError): {
+  encounterBlockers: AiRpgEncounterBlocker[];
+  speakerBlockers: AiRpgDialogueSpeakerBlocker[];
+  schemaOrConverterErrors: ValidationError[];
+} {
+  const encounterBlockers = result.encounterBlockers ?? [];
+  const speakerBlockers = result.speakerBlockers ?? [];
+  const blockerCounts = new Map<string, number>();
+  const keyOf = (path: string, message: string) => `${path}\0${message}`;
+
+  for (const b of encounterBlockers) {
+    const err = encounterBlockerToValidationError(b);
+    const key = keyOf(err.path, err.message);
+    blockerCounts.set(key, (blockerCounts.get(key) ?? 0) + 1);
+  }
+  for (const b of speakerBlockers) {
+    const err = speakerBlockerToValidationError(b);
+    const key = keyOf(err.path, err.message);
+    blockerCounts.set(key, (blockerCounts.get(key) ?? 0) + 1);
+  }
+
+  const schemaOrConverterErrors: ValidationError[] = [];
+  for (const err of result.errors) {
+    const key = keyOf(err.path, err.message);
+    const remaining = blockerCounts.get(key) ?? 0;
+    if (remaining > 0) {
+      blockerCounts.set(key, remaining - 1);
+    } else {
+      schemaOrConverterErrors.push(err);
+    }
+  }
+  return { encounterBlockers, speakerBlockers, schemaOrConverterErrors };
+}
+
 /**
  * Export a WorldProject to engine-compatible ContentPack, GameManifest, and PackMetadata.
  *
@@ -314,25 +405,13 @@ export function exportToEngine(
   const emitSchemaVersion = options?.emitSchemaVersion ?? true;
 
   // 1. Validate the project and refuse engine-incompatible encounter/speaker blockers
-  const validation = validateProject(project);
-  const encounterBlockers = listAiRpgEncounterBlockers(project);
-  const speakerBlockers = listAiRpgDialogueSpeakerBlockers(project);
-  if (!validation.valid || encounterBlockers.length > 0 || speakerBlockers.length > 0) {
-    const blockerErrors: ValidationError[] = [
-      ...encounterBlockers.map((b) => ({
-        path: `encounterAnchors.${b.anchorId}.encounterType`,
-        message: b.message,
-      })),
-      ...speakerBlockers.map((b) => ({
-        path: b.nodeId ? `dialogues.${b.dialogueId}.nodes.${b.nodeId}.speaker` : `dialogues.${b.dialogueId}.speakers`,
-        message: b.message,
-      })),
-    ];
+  const readiness = checkAiRpgExportReadiness(project);
+  if (!readiness.ready) {
     return {
       success: false,
-      errors: [...validation.errors, ...blockerErrors],
-      ...(encounterBlockers.length > 0 ? { encounterBlockers } : {}),
-      ...(speakerBlockers.length > 0 ? { speakerBlockers } : {}),
+      errors: [...readiness.validationErrors, ...readiness.blockerErrors],
+      ...(readiness.encounterBlockers.length > 0 ? { encounterBlockers: readiness.encounterBlockers } : {}),
+      ...(readiness.speakerBlockers.length > 0 ? { speakerBlockers: readiness.speakerBlockers } : {}),
     };
   }
 
