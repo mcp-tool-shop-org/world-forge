@@ -92,24 +92,32 @@
   ],
   "changes": {
     "fileCounts": {
-      "added": 1,
-      "changed": 21,
+      "added": 0,
+      "changed": 8,
       "moved": 0,
-      "parts": 7,
+      "parts": 5,
       "removed": 0
     },
     "items": [
       {
+        "kind": "landing",
+        "sentence": "dogfood/output/chapel-threshold-exportable.json is now written by dogfood/chapel-threshold.ts.",
+        "subjects": [
+          "dogfood/output/chapel-threshold-exportable.json",
+          "dogfood/chapel-threshold.ts"
+        ]
+      },
+      {
         "kind": "counts",
-        "sentence": "Nothing structural changed since 2026-11-23; 1 file added and 21 changed content.",
+        "sentence": "8 files changed content, across 5 parts.",
         "subjects": []
       }
     ],
     "since": {
-      "commit": "60112b84a59a10c45dd77a97cb5a8629b5e128d3",
-      "generatedAt": "2026-11-23T07:12:35.496Z"
+      "commit": "c2baa5a854d45b48a318a1efaee0df1502e24be9",
+      "generatedAt": "2026-11-23T08:42:06.876Z"
     },
-    "unchanged": true
+    "unchanged": false
   },
   "changesTogether": [
     {
@@ -158,19 +166,19 @@
       "shared": 6
     },
     {
-      "a": "packages/editor/src/panels/ExportModal.tsx",
-      "b": "packages/editor/src/panels/TemplateManager.tsx",
-      "either": 7,
+      "a": "e2e/speed-panel-multi-step.spec.ts",
+      "b": "packages/editor/src/speed-panel-ui.ts",
+      "either": 6,
       "partLabels": [
-        "editor",
+        "e2e",
         "editor"
       ],
       "parts": [
-        "editor",
+        "e2e",
         "editor"
       ],
-      "relation": "inside",
-      "shared": 5
+      "relation": "none",
+      "shared": 4
     },
     {
       "a": "packages/editor/src/speed-panel-ui.ts",
@@ -189,12 +197,12 @@
     }
   ],
   "changesTogetherNote": [
-    "2 files changed together with their own tests, as expected.",
+    "3 files changed together with their own tests, as expected.",
     "Confidence is low: fewer than 25 source files reach 10 revisions in the window.",
-    "Window: 180 days; a pair counts from 3 shared commits, since 9 source files reach 10 revisions; the floor rises to 10 when 25 do."
+    "Window: 180 days; a pair counts from 3 shared commits, since 10 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
-  "changesTogetherWithTests": 2,
-  "commit": "c2baa5a854d45b48a318a1efaee0df1502e24be9",
+  "changesTogetherWithTests": 3,
+  "commit": "e52a33ef1b6a41c927492da4e3f83cc3ff364680",
   "defaultBranch": "main",
   "derived": "15 parts, mostly TypeScript (537 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
   "doors": [
@@ -995,7 +1003,7 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-23T08:42:06.876Z",
+  "generatedAt": "2026-11-23T10:09:34.300Z",
   "limits": [
     "10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.",
     "16 files in editor use syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts and 13 more), so what they import is not known.",

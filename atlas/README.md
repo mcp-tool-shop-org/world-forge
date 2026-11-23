@@ -1,14 +1,15 @@
 # world-forge: how it works
 
-Mapped at 2026-11-23 from commit c2baa5a by Atlas 1.26.0.
+Mapped at 2026-11-23 from commit e52a33e by Atlas 1.26.0.
 
 ## What this is
 
 15 parts, mostly TypeScript (537 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.
 
-## What changed since 2026-11-23 (60112b8)
+## What changed since 2026-11-23 (c2baa5a)
 
-Nothing structural changed since 2026-11-23; 1 file added and 21 changed content.
+- dogfood/output/chapel-threshold-exportable.json is now written by dogfood/chapel-threshold.ts.
+- 8 files changed content, across 5 parts.
 
 ## What comes in
 
@@ -73,14 +74,14 @@ Nothing structural changed since 2026-11-23; 1 file added and 21 changed content
 - **dogfood/godot-smoke/smoke_load_world.gd** and **dogfood/worlds/multi-target-proof.ts** changed together in 7 of 9 commits, inside the dogfood part.
 - **packages/export-godot/src/export.ts** and **packages/export-godot/src/index.ts** changed together in 10 of 13 commits, inside the export-godot part.
 - **packages/schema/src/index.ts** and **packages/schema/src/project.ts** changed together in 6 of 8 commits, inside the schema part.
-- **packages/editor/src/panels/ExportModal.tsx** and **packages/editor/src/panels/TemplateManager.tsx** changed together in 5 of 7 commits, inside the editor part.
+- **e2e/speed-panel-multi-step.spec.ts** and **packages/editor/src/speed-panel-ui.ts** changed together in 4 of 6 commits, though neither part imports the other.
 - **packages/editor/src/speed-panel-ui.ts** and **packages/editor/src/store/speed-panel-store.ts** changed together in 4 of 6 commits, inside the editor part.
 
-2 files changed together with their own tests, as expected.
+3 files changed together with their own tests, as expected.
 
 Confidence is low: fewer than 25 source files reach 10 revisions in the window.
 
-Window: 180 days; a pair counts from 3 shared commits, since 9 source files reach 10 revisions; the floor rises to 10 when 25 do.
+Window: 180 days; a pair counts from 3 shared commits, since 10 source files reach 10 revisions; the floor rises to 10 when 25 do.
 
 ## What no test touches
 

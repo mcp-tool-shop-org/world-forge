@@ -314,7 +314,7 @@
           "path": "dogfood/chapel-threshold-unreal.ts"
         },
         {
-          "hash": "8a317b0573a3d6ec39f473a3a0c4085e41360d40c67666f2ff9f52f1d40408ae",
+          "hash": "627dc161536007d90f0aafe37a165c3c9878522feec05f5b45e0417da517dcf4",
           "importOrder": [
             "packages/schema/src/__tests__/fixtures/chapel-exportable.ts",
             "packages/export-ai-rpg/src/export.ts"
@@ -582,7 +582,7 @@
       "externals": 0,
       "files": [
         {
-          "hash": "131426aabdbd721c3f762e0268a5bc64b8459fca89c425e746159388609fdff0",
+          "hash": "223bb4cbbed39531856cfd4e8aef389fec2d24fe4af391d45f7ac8abd448cf3a",
           "importsFiles": [
             "e2e/helpers.ts"
           ],
@@ -1225,7 +1225,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "7c61e0463c8f41424124652505467b370bec7a25c4eef31941c9434dc892fd5e",
+          "hash": "31d13abb49887ac90543d10bee8276b8bcd8b8eced296c11620ff9b148a50b98",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -3245,15 +3245,15 @@
             {
               "in": "ExportModal",
               "kind": "catch",
-              "line": 172
+              "line": 186
             },
             {
               "in": "handleExportBundle",
               "kind": "catch",
-              "line": 241
+              "line": 255
             }
           ],
-          "hash": "e8039f79e5185bdd9308c7864e26c0d34f861fdfa680cbf98901aa5db22ac73f",
+          "hash": "567e2161b4e6e4d3c4246ee2cd8ab9b54a34e7242899512ec750dd43e638748d",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/store/editor-store.ts",
@@ -11354,7 +11354,7 @@
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "1c3dfc402ee1b20867b5643adcf6eb0ec3779f32d8b59817b46cb5d747be6522",
+          "hash": "ce2c40b8f493fced3a2c657bd4cecbf296177df40d42d70df167d4bff5cbd1ad",
           "path": "CHANGELOG.md"
         },
         {
@@ -11386,7 +11386,7 @@
           "path": "README.ja.md"
         },
         {
-          "hash": "0099f0776f776b4c6e73fd276104e96c5ef1916d3cde603fe725ae45770e8a27",
+          "hash": "9581320d825887801e0b3b66320bb175f6dcf728c9d8564ca6b9bba4a6b8a62c",
           "path": "README.md"
         },
         {
@@ -12436,7 +12436,7 @@
           "path": "site/public/screenshots/canvas-hero.jpg"
         },
         {
-          "hash": "09cb5c1984c7a2c7bdbf99240e696b9e442557032a89d058a5c0d4455b0a51f2",
+          "hash": "61d5900a22536859bdc2893cf300d4d9301c45fba590d7da47ec758d7810ea6e",
           "path": "site/public/screenshots/editor-canvas.jpg"
         },
         {
@@ -12491,7 +12491,7 @@
           "path": "site/src/content/docs/handbook/getting-started.md"
         },
         {
-          "hash": "830a744a410962e531ce5cd6cee348a4fad0c7835155799de6e14fb0b770c1ea",
+          "hash": "523b7bb1c006dca8d18fe1d0e937aaaf0979027bbf736fbaf61234b53b1e9e67",
           "path": "site/src/content/docs/handbook/index.md"
         },
         {
@@ -15296,7 +15296,7 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "c2baa5a854d45b48a318a1efaee0df1502e24be9",
+    "commit": "e52a33ef1b6a41c927492da4e3f83cc3ff364680",
     "tracked": 690
   },
   "landings": [
@@ -15669,11 +15669,18 @@
       "tracked": false,
       "writers": [
         {
-          "by": "dogfood/chapel-threshold.ts",
-          "confidence": "ast"
-        },
-        {
           "by": "e2e/write-chapel-fixture.ts",
+          "confidence": "ast"
+        }
+      ]
+    },
+    {
+      "readers": [],
+      "target": "dogfood/output/chapel-threshold-exportable.json",
+      "tracked": false,
+      "writers": [
+        {
+          "by": "dogfood/chapel-threshold.ts",
           "confidence": "ast"
         }
       ]
