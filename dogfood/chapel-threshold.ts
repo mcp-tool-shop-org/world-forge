@@ -2,10 +2,13 @@
 // Run: npx tsx dogfood/chapel-threshold.ts
 //
 // INF-B-007 / F-2abb3406: generated files under dogfood/output/ are .gitignored
-// and are NOT the e2e input. Playwright webServer runs e2e/write-chapel-fixture.ts to write
-// chapel-project.json from the schema chapel fixture at suite start. This script
-// still writes the same filename as a local dogfood artifact; it must not be
-// committed. chapel-export-result.json was an unreferenced leftover and is gone.
+// and are NOT the e2e input. Playwright webServer runs e2e/write-chapel-fixture.ts
+// to write dogfood/output/chapel-project.json (authored) and
+// dogfood/output/chapel-ai-rpg-project.json (exportable) before Vite boots.
+// This script writes its own local input copy to
+// dogfood/output/chapel-threshold-exportable.json so running it never clobbers
+// the e2e fixture files. chapel-export-result.json was an unreferenced leftover
+// and is gone.
 //
 // If a future release wants snapshot regression, the work is:
 //   1. Un-gitignore a named fixture path and document it as the e2e input, OR
@@ -25,8 +28,8 @@ const __dirname = typeof import.meta.dirname === 'string' ? import.meta.dirname 
 const outDir = join(__dirname, 'output');
 mkdirSync(outDir, { recursive: true });
 
-// Write the exact project copy passed into exportToEngine
-writeFileSync(join(outDir, 'chapel-project.json'), JSON.stringify(chapelExportableProject, null, 2));
+// Write the exact project copy passed into exportToEngine under its own filename
+writeFileSync(join(outDir, 'chapel-threshold-exportable.json'), JSON.stringify(chapelExportableProject, null, 2));
 
 console.log('=== Chapel Threshold Dogfood Export ===\n');
 console.log(`Project: ${chapelExportableProject.name}`);
@@ -92,7 +95,7 @@ if (contentPack.progressionTrees.length > 0) {
 }
 
 console.log('--- Output Files ---\n');
-console.log(`  ${outDir}/chapel-project.json (input)`);
+console.log(`  ${outDir}/chapel-threshold-exportable.json (input)`);
 console.log(`  ${outDir}/manifest.json`);
 console.log(`  ${outDir}/pack-meta.json`);
 console.log(`  ${outDir}/zones.json`);
