@@ -40,7 +40,6 @@ import { TOOL_PALETTE_TOOLS } from '../panels/ToolPalette.js';
 import { executeAction, type ExecuteStores } from '../speed-panel-execute.js';
 import { SPEED_PANEL_STATE_V2_KEY } from '../store/speed-panel-store.js';
 import {
-  DEFAULT_SPEED_PANEL_OPTIONS,
   SPEED_PANEL_OPTIONS_KEY,
   loadSpeedPanelOptions,
 } from '../store/speed-panel-options-store.js';
@@ -168,7 +167,15 @@ describe('Speed Panel C4 compatibility contracts (unchanged)', () => {
   it('unchanged: saved-state keys and default trigger options match base', () => {
     expect(SPEED_PANEL_STATE_V2_KEY).toBe('wf.speedPanel.v2');
     expect(SPEED_PANEL_OPTIONS_KEY).toBe('wf.speedPanel.options.v1');
-    expect(loadSpeedPanelOptions()).toEqual(DEFAULT_SPEED_PANEL_OPTIONS);
+    expect(loadSpeedPanelOptions()).toEqual({
+      version: 1,
+      keyTriggerEnabled: true,
+      triggerKey: 'KeyQ',
+      doubleRightClickEnabled: true,
+      clickDriftPx: 6,
+      doubleClickRadiusPx: 18,
+      doubleClickWindowMs: 320,
+    });
   });
 
   it('unchanged: non-panel command execution and registry preconditions remain intact', () => {

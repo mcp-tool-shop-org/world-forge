@@ -71,6 +71,8 @@ import {
   OptionsModal,
   applyKeyCaptureEvent,
   commitThresholdDraft,
+  createOptionsModalHandlers,
+  createThresholdFieldHandlers,
   handleThresholdFieldKeyDown,
   resetOptionsModalState,
 } from '../panels/OptionsModal.js';
@@ -275,6 +277,7 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
       previousSelectedConnection: null,
       previousTool: 'select',
     };
+    useEditorStore.getState().selectZone(zones[0].id, false);
     useEditorStore.getState().setSpeedPanelPick(pick);
 
     const pickHandlers = createCanvasSpatialPickHandlers({
@@ -306,6 +309,26 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
     expect(useEditorStore.getState().speedPanelPick?.connectionKind).not.toBe('passage');
 
     expect(pickHandlers.handleKeyDown({ key: 'a', preventDefault: vi.fn(), stopPropagation: vi.fn() })).toBe(false);
+    // Typing in INPUT / TEXTAREA / SELECT / contentEditable must NOT fire pick keys
+    expect(pickHandlers.handleKeyDown({
+      key: 'Tab',
+      target: { tagName: 'INPUT' },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })).toBe(false);
+    expect(pickHandlers.handleKeyDown({
+      key: 'Enter',
+      target: { tagName: 'TEXTAREA' },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })).toBe(false);
+    expect(pickHandlers.handleKeyDown({
+      key: 'Escape',
+      target: { isContentEditable: true },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })).toBe(false);
+    expect(useEditorStore.getState().speedPanelPick).not.toBeNull();
     expect(pickHandlers.handleKeyDown({ key: 'Escape', preventDefault: vi.fn(), stopPropagation: vi.fn() })).toBe(true);
     expect(useEditorStore.getState().speedPanelPick).toBeNull();
     expect(useEditorStore.getState().selection.zones).toEqual([zones[0].id]);
@@ -380,6 +403,50 @@ describe('Speed Panel C4 real handler coverage across Canvas gesture/pick, Optio
     expect(resetDeps.setShowRecents).toHaveBeenCalledWith(true);
     expect(resetDeps.setKeyError).toHaveBeenCalledWith(null);
     expect(resetDeps.bumpResetToken).toHaveBeenCalled();
+
+    let draftVal = '6';
+    const commitSpy = vi.fn();
+    const fieldHandlers = createThresholdFieldHandlers({
+      getDraft: () => draftVal,
+      setDraft: (v) => { draftVal = v; },
+      storedValue: 6,
+      min: 4,
+      max: 15,
+      onCommit: commitSpy,
+    });
+    fieldHandlers.onChange({ target: { value: '12' } });
+    expect(draftVal).toBe('12');
+    fieldHandlers.onKeyDown({ key: 'Enter', preventDefault: vi.fn(), stopPropagation: vi.fn() });
+    expect(commitSpy).toHaveBeenCalledWith(12);
+    fieldHandlers.onChange({ target: { value: '99' } });
+    fieldHandlers.commit();
+    expect(draftVal).toBe('15');
+    expect(commitSpy).toHaveBeenLastCalledWith(15);
+
+    const modalSpies = {
+      setKeyTriggerEnabled: vi.fn(),
+      setTriggerKey: vi.fn((k: string) =>
+        k === 'KeyH' ? ({ ok: true as const, code: 'KeyH' }) : ({ ok: false as const, reason: 'In use' }),
+      ),
+      setDoubleRightClickEnabled: vi.fn(),
+      setShowRecents: vi.fn(),
+      resetOptions: vi.fn(),
+      setKeyError: vi.fn(),
+      bumpResetToken: vi.fn(),
+    };
+    const modalHandlers = createOptionsModalHandlers(modalSpies);
+    modalHandlers.handleKeyCapture({ key: 'h', code: 'KeyH', preventDefault: vi.fn(), stopPropagation: vi.fn() });
+    expect(modalSpies.setKeyError).toHaveBeenLastCalledWith(null);
+    modalHandlers.handleKeyCapture({ key: 'Tab', code: 'Tab', preventDefault: vi.fn(), stopPropagation: vi.fn() });
+    modalHandlers.onToggleKeyTrigger({ target: { checked: false } });
+    modalHandlers.onToggleDoubleRightClick({ target: { checked: false } });
+    modalHandlers.onToggleShowRecents({ target: { checked: false } });
+    modalHandlers.onReset();
+    expect(modalSpies.setKeyTriggerEnabled).toHaveBeenCalledWith(false);
+    expect(modalSpies.setDoubleRightClickEnabled).toHaveBeenCalledWith(false);
+    expect(modalSpies.setShowRecents).toHaveBeenCalledWith(false);
+    expect(modalSpies.resetOptions).toHaveBeenCalled();
+    expect(modalSpies.bumpResetToken).toHaveBeenCalled();
 
     const optHtml = renderToStaticMarkup(createElement(OptionsModal, { onClose: () => {}, initialKeyError: 'Reserved' }));
     expect(optHtml).toContain('wf-opt-trigger-key-error');

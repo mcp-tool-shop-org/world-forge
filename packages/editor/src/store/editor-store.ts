@@ -567,7 +567,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   speedPanelEditMode: false,
   speedPanelPick: null,
   lastPanelAction: null,
-  openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context }),
+  openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context, speedPanelPick: null }),
   closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null, speedPanelEditMode: false }),
   toggleSpeedPanelEditMode: () => set((s) => ({ speedPanelEditMode: !s.speedPanelEditMode })),
   setSpeedPanelPick: (pick) => set({ speedPanelPick: pick }),

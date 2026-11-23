@@ -112,6 +112,54 @@ export function resetOptionsModalState(deps: {
   deps.bumpResetToken();
 }
 
+/** Build handlers for `ThresholdNumberField` so JSX delegates cleanly and handlers stay unit-testable. */
+export function createThresholdFieldHandlers(deps: {
+  getDraft: () => string;
+  setDraft: (value: string) => void;
+  storedValue: number;
+  min: number;
+  max: number;
+  onCommit: (value: number) => void;
+}) {
+  const commit = () => {
+    deps.setDraft(commitThresholdDraft(deps.getDraft(), deps.storedValue, deps.min, deps.max, deps.onCommit));
+  };
+  const onChange = (e: { target: { value: string } }) => deps.setDraft(e.target.value);
+  const onKeyDown = (e: { key: string; preventDefault: () => void; stopPropagation: () => void }) =>
+    handleThresholdFieldKeyDown(e, deps.getDraft(), deps.storedValue, commit, (restored) => deps.setDraft(restored));
+  return { commit, onChange, onKeyDown };
+}
+
+/** Build event handlers for `<OptionsModal>` controls so JSX stays declarative and testable without jsdom. */
+export function createOptionsModalHandlers(deps: {
+  setKeyTriggerEnabled: (enabled: boolean) => void;
+  setTriggerKey: (input: string) => { ok: true; code: string } | { ok: false; reason: string };
+  setDoubleRightClickEnabled: (enabled: boolean) => void;
+  setShowRecents: (enabled: boolean) => void;
+  resetOptions: () => void;
+  setKeyError: (err: string | null) => void;
+  bumpResetToken: () => void;
+}) {
+  return {
+    handleKeyCapture: (e: KeyCaptureEventLike) => {
+      const outcome = applyKeyCaptureEvent(e, deps.setTriggerKey);
+      if (outcome.handled) {
+        deps.setKeyError(outcome.error);
+      }
+    },
+    onToggleKeyTrigger: (e: { target: { checked: boolean } }) => deps.setKeyTriggerEnabled(e.target.checked),
+    onToggleDoubleRightClick: (e: { target: { checked: boolean } }) => deps.setDoubleRightClickEnabled(e.target.checked),
+    onToggleShowRecents: (e: { target: { checked: boolean } }) => deps.setShowRecents(e.target.checked),
+    onReset: () =>
+      resetOptionsModalState({
+        resetOptions: deps.resetOptions,
+        setShowRecents: deps.setShowRecents,
+        setKeyError: deps.setKeyError,
+        bumpResetToken: deps.bumpResetToken,
+      }),
+  };
+}
+
 interface Props {
   onClose: () => void;
   initialKeyError?: string | null;
@@ -171,9 +219,14 @@ function ThresholdNumberField({
     setDraft(String(value));
   }, [value, resetToken]);
 
-  const commit = () => {
-    setDraft(commitThresholdDraft(draft, value, min, max, onCommit));
-  };
+  const { commit, onChange, onKeyDown } = createThresholdFieldHandlers({
+    getDraft: () => draft,
+    setDraft,
+    storedValue: value,
+    min,
+    max,
+    onCommit,
+  });
 
   return (
     <label style={ROW_STYLE}>
@@ -184,11 +237,9 @@ function ThresholdNumberField({
         min={min}
         max={max}
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={onChange}
         onBlur={commit}
-        onKeyDown={(e) =>
-          handleThresholdFieldKeyDown(e, draft, value, commit, (restored) => setDraft(restored))
-        }
+        onKeyDown={onKeyDown}
         style={NUMBER_INPUT_STYLE}
       />
     </label>
@@ -214,12 +265,21 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
   const penThresholds = resolveGestureThresholds(options, 'pen');
   const footerPreview = formatSpeedPanelTriggerFooter(options);
 
-  const handleKeyCapture = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const outcome = applyKeyCaptureEvent(e, setTriggerKey);
-    if (outcome.handled) {
-      setKeyError(outcome.error);
-    }
-  };
+  const {
+    handleKeyCapture,
+    onToggleKeyTrigger,
+    onToggleDoubleRightClick,
+    onToggleShowRecents,
+    onReset,
+  } = createOptionsModalHandlers({
+    setKeyTriggerEnabled,
+    setTriggerKey,
+    setDoubleRightClickEnabled,
+    setShowRecents,
+    resetOptions,
+    setKeyError,
+    bumpResetToken: () => setResetToken((n) => n + 1),
+  });
 
   return (
     <ModalFrame title="Options" width={480} onClose={onClose}>
@@ -234,7 +294,7 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
             type="checkbox"
             data-testid="wf-opt-key-trigger-enabled"
             checked={options.keyTriggerEnabled}
-            onChange={(e) => setKeyTriggerEnabled(e.target.checked)}
+            onChange={onToggleKeyTrigger}
           />
         </label>
 
@@ -286,7 +346,7 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
             type="checkbox"
             data-testid="wf-opt-dbl-right-enabled"
             checked={options.doubleRightClickEnabled}
-            onChange={(e) => setDoubleRightClickEnabled(e.target.checked)}
+            onChange={onToggleDoubleRightClick}
           />
         </label>
 
@@ -296,7 +356,7 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
             type="checkbox"
             data-testid="wf-opt-show-recents"
             checked={showRecents}
-            onChange={(e) => setShowRecents(e.target.checked)}
+            onChange={onToggleShowRecents}
           />
         </label>
 
@@ -352,14 +412,7 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
           <button
             type="button"
             data-testid="wf-opt-reset"
-            onClick={() =>
-              resetOptionsModalState({
-                resetOptions,
-                setShowRecents,
-                setKeyError,
-                bumpResetToken: () => setResetToken((n) => n + 1),
-              })
-            }
+            onClick={onReset}
             style={buttonBase}
           >
             Reset defaults

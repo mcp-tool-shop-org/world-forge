@@ -26,6 +26,7 @@ import type { HitResult } from './hit-testing.js';
 import { nextId } from './ids.js';
 import { getModeProfile } from './mode-profiles.js';
 import { getOrderedKinds, KIND_LABELS } from './panels/ConnectionProperties.js';
+import { appendConnectionToProject } from './zone-attached.js';
 import {
   districtForSelection,
   filterPresetsByMode,
@@ -631,17 +632,38 @@ export function popPanelStep(flow: StepStackState): StepStackState | null {
   };
 }
 
+/** Build an encounter anchor matching the canvas encounter-place tool defaults. */
+export function buildEncounterAnchor(
+  zoneId: string,
+  encounterType: string,
+  id = nextId('enc'),
+): EncounterAnchor {
+  return {
+    id,
+    zoneId,
+    encounterType,
+    enemyIds: [],
+    probability: 0.5,
+    cooldownTurns: 3,
+    tags: [],
+  };
+}
+
 /** Commit assigning one or more zones to an existing district in one atomic `updateProject`. */
 export function commitDistrictAssignment(
   stores: StepExecutionStores,
   targetZoneIds: readonly string[],
   districtId: string,
 ): { ok: true } | { ok: false; error: string } {
-  const exists = stores.project.districts.some((d) => d.id === districtId);
-  if (!exists) {
+  const district = stores.project.districts.find((d) => d.id === districtId);
+  if (!district) {
     return { ok: false, error: 'Selected district no longer exists.' };
   }
   const targetSet = new Set(targetZoneIds);
+  const scope =
+    targetZoneIds.length === 1
+      ? (stores.project.zones.find((z) => z.id === targetZoneIds[0])?.name ?? targetZoneIds[0])
+      : `${targetZoneIds.length} zones`;
   stores.updateProject((p) => ({
     ...p,
     zones: p.zones.map((z) => (targetSet.has(z.id) ? { ...z, parentDistrictId: districtId } : z)),
@@ -652,7 +674,7 @@ export function commitDistrictAssignment(
       const nextIds = d.zoneIds.filter((zid) => !targetSet.has(zid));
       return nextIds.length !== d.zoneIds.length ? { ...d, zoneIds: nextIds } : d;
     }),
-  }), 'Assign district');
+  }), `Assign ${scope} to ${district.name}`);
   return { ok: true };
 }
 
@@ -694,25 +716,18 @@ export function commitPlaceEncounter(
   zoneId: string,
   encounterType: string,
 ): { ok: true; encounterId: string } | { ok: false; error: string } {
-  if (!stores.project.zones.some((z) => z.id === zoneId)) {
+  const zone = stores.project.zones.find((z) => z.id === zoneId);
+  if (!zone) {
     return { ok: false, error: 'Target zone no longer exists.' };
   }
   const checked = validateEncounterTypeInput(encounterType);
   if (!checked.ok) return checked;
   const id = nextId('enc');
-  const anchor: EncounterAnchor = {
-    id,
-    zoneId,
-    encounterType: checked.encounterType,
-    enemyIds: [],
-    probability: 0.5,
-    cooldownTurns: 2,
-    tags: [],
-  };
+  const anchor = buildEncounterAnchor(zoneId, checked.encounterType, id);
   stores.updateProject((p) => ({
     ...p,
     encounterAnchors: [...p.encounterAnchors, anchor],
-  }), `Place ${checked.encounterType} encounter`);
+  }), `Place ${checked.encounterType} encounter in ${zone.name}`);
   stores.selectEncounter(id, false);
   return { ok: true, encounterId: id };
 }
@@ -726,15 +741,19 @@ export function commitSetElevation(
   const checked = validateElevationInput(rawValue);
   if (!checked.ok) return checked;
   const elevation = checked.value;
-  if (targetZoneIds.length === 1) {
-    stores.updateZone(targetZoneIds[0], { elevation });
-  } else {
-    const targetSet = new Set(targetZoneIds);
-    stores.updateProject((p) => ({
-      ...p,
-      zones: p.zones.map((z) => (targetSet.has(z.id) ? { ...z, elevation } : z)),
-    }), `Set elevation on ${targetZoneIds.length} zones`);
-  }
+  const targetSet = new Set(targetZoneIds);
+  const scope =
+    targetZoneIds.length === 1
+      ? (stores.project.zones.find((z) => z.id === targetZoneIds[0])?.name ?? targetZoneIds[0])
+      : `${targetZoneIds.length} zones`;
+  const label =
+    elevation === undefined
+      ? `Clear elevation (${scope})`
+      : `Set elevation to ${elevation} (${scope})`;
+  stores.updateProject((p) => ({
+    ...p,
+    zones: p.zones.map((z) => (targetSet.has(z.id) ? { ...z, elevation } : z)),
+  }), label);
   return { ok: true, elevation };
 }
 
@@ -747,6 +766,7 @@ export function advanceStepChoice(
   flow: StepStackState,
   option: StepChoiceOption,
   stores: StepExecutionStores,
+  initialFilter?: string,
 ): StepAdvanceResult {
   const current = flow.steps[flow.steps.length - 1];
   if (!current || current.kind !== 'choice') {
@@ -768,7 +788,7 @@ export function advanceStepChoice(
               title: 'Create District',
               label: 'New district name',
               placeholder: 'e.g. Old Quarter',
-              value: '',
+              value: initialFilter?.trim() ?? '',
             },
           ],
         },
@@ -994,39 +1014,24 @@ export function submitStepInput(
   return { done: false, flow };
 }
 
-/**
- * Monotonic generation guard for asynchronous/debounced field validation.
- * Stale completions after `invalidate()` (step switch, Back, or Esc cancel) are rejected safely.
- */
-export interface ValidationGuard {
-  invalidate: () => number;
-  currentToken: () => number;
-  run: <T>(
-    validator: () => Promise<T> | T,
-  ) => Promise<{ stale: true } | { stale: false; value: T }>;
-}
-
-export function createValidationGuard(): ValidationGuard {
-  let token = 0;
-  return {
-    invalidate: () => {
-      token += 1;
-      return token;
-    },
-    currentToken: () => token,
-    run: async <T>(validator: () => Promise<T> | T) => {
-      token += 1;
-      const issued = token;
-      const value = await validator();
-      if (issued !== token) {
-        return { stale: true };
-      }
-      return { stale: false, value };
-    },
-  };
-}
-
 // === Mechanism 3: Canvas-delegated spatial picking ===
+
+/** Verify that the pick session's source zone (and any already-picked merge zones) still exist. */
+export function isPickSourceMissing(
+  pick: SpeedPanelPickSession,
+  project: WorldProject,
+): string | null {
+  if (!project.zones.some((z) => z.id === pick.sourceZoneId)) {
+    return 'Source zone no longer exists';
+  }
+  if (
+    pick.mode === 'merge' &&
+    pick.pickedZoneIds.some((zid) => !project.zones.some((z) => z.id === zid))
+  ) {
+    return 'Picked zone no longer exists';
+  }
+  return null;
+}
 
 /** Validate whether `targetZoneId` is a valid pick for the active pick session. */
 export function validatePickTarget(
@@ -1034,6 +1039,8 @@ export function validatePickTarget(
   targetZoneId: string | null,
   project: WorldProject,
 ): string | null {
+  const missing = isPickSourceMissing(pick, project);
+  if (missing) return missing;
   if (!targetZoneId) return null;
   if (!project.zones.some((z) => z.id === targetZoneId)) {
     return 'Target zone not found';
@@ -1111,41 +1118,20 @@ export function searchPickZones(
     }));
 }
 
-function restorePickPreviousState(pick: SpeedPanelPickSession, stores: StepExecutionStores): void {
-  const prev = pick.previousSelection;
-  const hasPrev =
-    prev.zones.length > 0 ||
-    prev.entities.length > 0 ||
-    prev.landmarks.length > 0 ||
-    prev.spawns.length > 0 ||
-    prev.encounters.length > 0 ||
-    (prev.items?.length ?? 0) > 0 ||
-    (prev.markets?.length ?? 0) > 0 ||
-    (prev.stations?.length ?? 0) > 0 ||
-    (prev.buildings?.length ?? 0) > 0 ||
-    (prev.hubs?.length ?? 0) > 0 ||
-    (prev.strongholds?.length ?? 0) > 0;
-  if (hasPrev) {
-    stores.selectAll(cloneSelection(prev), false);
-  } else {
-    stores.clearSelection();
-  }
-  if (pick.previousSelectedConnection) {
-    stores.selectConnection(pick.previousSelectedConnection.from, pick.previousSelectedConnection.to);
-  }
+function endSpatialPickSession(pick: SpeedPanelPickSession, stores: StepExecutionStores): void {
   stores.setConnectionStart(null);
   stores.setPendingConnectionKind(null);
   stores.setTool(pick.previousTool);
   stores.clearSpeedPanelPick();
 }
 
-/** Cancel spatial picking without modifying the project, restoring prior selection and tool cleanly. */
+/** Cancel spatial picking without modifying the project or altering the user's selection. */
 export function cancelSpatialPick(
   pick: SpeedPanelPickSession | null,
   stores: StepExecutionStores,
 ): void {
   if (!pick) return;
-  restorePickPreviousState(pick, stores);
+  endSpatialPickSession(pick, stores);
 }
 
 /** Commit a clicked/selected destination zone during spatial picking. */
@@ -1155,6 +1141,12 @@ export function commitSpatialPickTarget(
   shiftKey: boolean,
   stores: StepExecutionStores,
 ): { committed: boolean; finished: boolean; pick: SpeedPanelPickSession | null; error: string | null } {
+  const missing = isPickSourceMissing(pick, stores.project);
+  if (missing) {
+    endSpatialPickSession(pick, stores);
+    return { committed: false, finished: true, pick: null, error: missing };
+  }
+
   const invalid = validatePickTarget(pick, targetZoneId, stores.project);
   if (invalid) {
     const nextPick: SpeedPanelPickSession = {
@@ -1168,21 +1160,35 @@ export function commitSpatialPickTarget(
 
   if (pick.mode === 'connect') {
     const kind = pick.connectionKind ?? getOrderedKinds(stores.project.mode).preferred[0] ?? 'passage';
-    stores.addConnection({
-      fromZoneId: pick.sourceZoneId,
-      toZoneId: targetZoneId,
-      bidirectional: true,
-      kind,
-    });
-    stores.setConnectionStart(null);
-    stores.setPendingConnectionKind(null);
-    stores.setTool(pick.previousTool);
-    stores.clearSpeedPanelPick();
+    const sourceZone = stores.project.zones.find((z) => z.id === pick.sourceZoneId);
+    const targetZone = stores.project.zones.find((z) => z.id === targetZoneId);
+    const sourceName = sourceZone?.name ?? pick.sourceZoneId;
+    const targetName = targetZone?.name ?? targetZoneId;
+    stores.updateProject(
+      (p) =>
+        appendConnectionToProject(p, {
+          fromZoneId: pick.sourceZoneId,
+          toZoneId: targetZoneId,
+          bidirectional: true,
+          kind,
+        }),
+      `Connect ${sourceName} \u2192 ${targetName} (${kind})`,
+    );
     stores.setLastPanelAction({
       commandId: pick.commandId,
       label: `Connect (${KIND_LABELS[kind] ?? kind})`,
       timestamp: Date.now(),
     });
+    if (shiftKey) {
+      const kept: SpeedPanelPickSession = {
+        ...pick,
+        hoveredZoneId: null,
+        invalidReason: null,
+      };
+      stores.setSpeedPanelPick(kept);
+      return { committed: true, finished: false, pick: kept, error: null };
+    }
+    endSpatialPickSession(pick, stores);
     return { committed: true, finished: true, pick: null, error: null };
   }
 
@@ -1216,6 +1222,10 @@ export function finalizeMergePick(
   pick: SpeedPanelPickSession,
   stores: StepExecutionStores,
 ): { committed: boolean; mergedId: string | null } {
+  if (isPickSourceMissing(pick, stores.project)) {
+    endSpatialPickSession(pick, stores);
+    return { committed: false, mergedId: null };
+  }
   if (pick.mode !== 'merge' || pick.pickedZoneIds.length < 2) {
     return { committed: false, mergedId: null };
   }
@@ -1416,13 +1426,23 @@ export interface CanvasSpatialPickDeps {
   onErrorToast?: (msg: string) => void;
 }
 
+/** Check whether an event target is an editable field where global canvas pick keys must not steal focus. */
+function isEditableEventTarget(target: unknown): boolean {
+  if (!target || typeof target !== 'object') return false;
+  const el = target as { tagName?: unknown; isContentEditable?: unknown };
+  if (el.isContentEditable === true) return true;
+  if (typeof el.tagName !== 'string') return false;
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT';
+}
+
 /** Create Canvas spatial-picking handlers shared by `<Canvas>` and real-handler unit tests. */
 export function createCanvasSpatialPickHandlers(deps: CanvasSpatialPickDeps) {
   const handlePointerMove = (sx: number, sy: number, gx: number, gy: number): boolean => {
     const pick = deps.getPick();
     if (!pick) return false;
     const hoverZoneId = deps.findZoneIdAtGrid(gx, gy);
-    const invalidReason = hoverZoneId ? validatePickTarget(pick, hoverZoneId, deps.getProject()) : null;
+    const missing = isPickSourceMissing(pick, deps.getProject());
+    const invalidReason = missing ?? (hoverZoneId ? validatePickTarget(pick, hoverZoneId, deps.getProject()) : null);
     if (
       pick.cursorSX === sx &&
       pick.cursorSY === sy &&
@@ -1444,22 +1464,35 @@ export function createCanvasSpatialPickHandlers(deps: CanvasSpatialPickDeps) {
   const handleMouseDown = (gx: number, gy: number, shiftKey: boolean): boolean => {
     const pick = deps.getPick();
     if (!pick) return false;
+    const missing = isPickSourceMissing(pick, deps.getProject());
+    if (missing) {
+      endSpatialPickSession(pick, deps.getStores());
+      deps.onErrorToast?.(missing);
+      return true;
+    }
     const zoneId = deps.findZoneIdAtGrid(gx, gy);
     if (!zoneId) {
       deps.onErrorToast?.('Click a zone on canvas, or press Esc to cancel.');
       return true;
     }
-    commitSpatialPickTarget(pick, zoneId, shiftKey, deps.getStores());
+    const res = commitSpatialPickTarget(pick, zoneId, shiftKey, deps.getStores());
+    if (res.finished && res.error) {
+      deps.onErrorToast?.(res.error);
+    }
     return true;
   };
 
   const handleKeyDown = (e: {
     key: string;
+    target?: unknown;
     preventDefault: () => void;
     stopPropagation?: () => void;
   }): boolean => {
     const pick = deps.getPick();
     if (!pick) return false;
+    if (isEditableEventTarget(e.target)) {
+      return false;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation?.();

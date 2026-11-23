@@ -40,17 +40,27 @@ import {
 } from '../store/speed-panel-store.js';
 import { COMMAND_REGISTRY, getCommandById } from '../command-registry.js';
 import { buildSpeedPanelView } from '../speed-panel-layout.js';
-import { matchCommand, searchCommands } from '../speed-panel-search.js';
+import {
+  ADAPTIVE_DAILY_DECAY,
+  MS_PER_DAY,
+  computeDecayedAdaptiveScore,
+  matchCommand,
+  searchCommands,
+} from '../speed-panel-search.js';
 import { executeRegistryCommand } from '../speed-panel-execute.js';
 import { productionExecuteStores, productionHotkeyContext, productionStepStores } from '../panels/speed-panel-stores.js';
 import { SpeedPanel } from '../panels/SpeedPanel.js';
 import {
   advanceStepChoice,
+  buildEncounterAnchor,
   cancelSpatialPick,
   classifyEncounterTypeForExport,
+  commitDistrictAssignment,
+  commitPlaceEncounter,
+  commitSetElevation,
   commitSpatialPickTarget,
+  createCanvasSpatialPickHandlers,
   createRepeatLastCommand,
-  createValidationGuard,
   cyclePickConnectionKind,
   finalizeMergePick,
   formatPickCursorBadge,
@@ -67,7 +77,13 @@ import {
   validatePickTarget,
   type StepStackState,
 } from '../speed-panel-steps.js';
-import { customGroupHeadingId } from '../speed-panel-ui.js';
+import {
+  customGroupHeadingId,
+  handleScalarPillKeyDown,
+  handleStepChoiceSelect,
+  resolveStepKeyAction,
+  submitScalarPill,
+} from '../speed-panel-ui.js';
 
 function makeTwoZoneProject() {
   const proj = structuredClone(minimalProject);
@@ -188,6 +204,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     expect(okRes.done).toBe(true);
     if (!okRes.done) return;
     expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Create district "Sunken Crypt" and assign');
     const createdDistrict = useProjectStore.getState().project.districts.find((d) => d.name === 'Sunken Crypt');
     expect(createdDistrict).toBeDefined();
     expect(createdDistrict!.zoneIds).toContain(targetZone);
@@ -225,6 +242,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     const applied = advanceStepChoice(modeStep.flow, overwriteOpt!, productionStepStores());
     expect(applied.done).toBe(true);
     expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Apply region preset');
 
     // 2) Standalone zone -> encounter preset with AI RPG badge
     const standaloneZoneId = useProjectStore.getState().project.zones.find((z) => !z.parentDistrictId)!.id;
@@ -235,6 +253,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     const encOpt = openStandalone.flow.steps[0].kind === 'choice' ? openStandalone.flow.steps[0].options[0] : null;
     const encApplied = advanceStepChoice(openStandalone.flow, encOpt!, productionStepStores());
     expect(encApplied.done).toBe(true);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Add encounter from preset');
 
     // 3) Empty canvas -> target-zone step
     const openEmpty = openCommandStepFlow('apply-preset', null, productionStepStores());
@@ -339,13 +358,48 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     const matches = searchPickZones(useProjectStore.getState().project, cycled, 'watch');
     expect(matches).toEqual([{ id: 'zone-tower', name: 'Watchtower', disabledReason: null }]);
 
-    // Committing valid target creates exact connection matching outside-panel behavior
+    // Committing valid target creates exact connection matching outside-panel behavior (non-Shift ends pick)
+    const connUndoBefore = useProjectStore.getState().getUndoCount();
     const connDone = commitSpatialPickTarget(cycled, zones[1].id, false, productionStepStores());
     expect(connDone.committed).toBe(true);
     expect(connDone.finished).toBe(true);
+    expect(useProjectStore.getState().getUndoCount()).toBe(connUndoBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(
+      `Connect ${zones[0].name} \u2192 ${zones[1].name} (${cycled.connectionKind})`,
+    );
     expect(useProjectStore.getState().project.connections.some(
       (c) => c.fromZoneId === zones[0].id && c.toZoneId === zones[1].id && c.kind === cycled.connectionKind,
     )).toBe(true);
+
+    // Shift+Click in Connect mode chains multiple targets from the same source, each with 1 descriptive undo entry
+    const openedChain = openCommandStepFlow('connect-from', { type: 'zone', id: zones[0].id }, productionStepStores());
+    expect(openedChain.kind).toBe('pick');
+    if (openedChain.kind !== 'pick') return;
+    const chainUndo0 = useProjectStore.getState().getUndoCount();
+    const firstChain = commitSpatialPickTarget(openedChain.pick, zones[1].id, true, productionStepStores());
+    expect(firstChain.committed).toBe(true);
+    expect(firstChain.finished).toBe(false);
+    expect(firstChain.pick?.sourceZoneId).toBe(zones[0].id);
+    expect(useEditorStore.getState().speedPanelPick?.sourceZoneId).toBe(zones[0].id);
+    expect(useProjectStore.getState().getUndoCount()).toBe(chainUndo0 + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(
+      `Connect ${zones[0].name} \u2192 ${zones[1].name} (${openedChain.pick.connectionKind})`,
+    );
+
+    const secondChain = commitSpatialPickTarget(firstChain.pick!, zones[2].id, false, productionStepStores());
+    expect(secondChain.committed).toBe(true);
+    expect(secondChain.finished).toBe(true);
+    expect(useEditorStore.getState().speedPanelPick).toBeNull();
+    expect(useProjectStore.getState().getUndoCount()).toBe(chainUndo0 + 2);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(
+      `Connect ${zones[0].name} \u2192 ${zones[2].name} (${openedChain.pick.connectionKind})`,
+    );
+    // Undoing each chained connection individually reverts target 2 then target 1
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().getUndoLabel()).toBe(
+      `Connect ${zones[0].name} \u2192 ${zones[1].name} (${openedChain.pick.connectionKind})`,
+    );
+    useProjectStore.getState().undo();
 
     // Single-zone Merge Zones initiates spatial pick, accumulates with Shift, commits atomically in 1 undo
     useEditorStore.getState().clearSelection();
@@ -368,18 +422,232 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     expect(useProjectStore.getState().project.zones.some((z) => z.id === zones[1].id)).toBe(true);
   });
 
-  it('changed: async ValidationGuard drops stale completions when invalidated before resolution', async () => {
-    const guard = createValidationGuard();
-    let resolveFirst!: (v: string) => void;
-    const firstPromise = guard.run(() => new Promise<string>((r) => { resolveFirst = r; }));
+  it('changed: enforces panel-vs-outside parity, descriptive undo labels and Esc invariants across all 5 mechanisms, pick safety, props/tiles Esc selection, and input-step Back + filter carryover', () => {
+    const zones = useProjectStore.getState().project.zones;
+    const z0 = zones[0];
+    const z1 = zones[1];
+    const z2 = zones[2];
 
-    // User switches step / cancels before async validator settles
-    guard.invalidate();
-    resolveFirst('late error');
-    expect(await firstPromise).toEqual({ stale: true });
+    // 1) Encounter parity: outside-panel buildEncounterAnchor + addEncounter vs panel commitPlaceEncounter (ignoring id)
+    useProjectStore.getState().addEncounter(buildEncounterAnchor(z0.id, 'patrol'));
+    const toolAnchor = useProjectStore.getState().project.encounterAnchors.at(-1)!;
+    expect(toolAnchor.cooldownTurns).toBe(3);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Add encounter');
 
-    const second = await guard.run(async () => 'ok');
-    expect(second).toEqual({ stale: false, value: 'ok' });
+    const panelEncRes = commitPlaceEncounter(productionStepStores(), z0.id, 'patrol');
+    expect(panelEncRes.ok).toBe(true);
+    const panelAnchor = useProjectStore.getState().project.encounterAnchors.at(-1)!;
+    expect({ ...panelAnchor, id: 'ignored' }).toEqual({ ...toolAnchor, id: 'ignored' });
+    expect(useProjectStore.getState().getUndoLabel()).toBe(`Place patrol encounter in ${z0.name}`);
+
+    // Parity & outside-panel label checks for connection and single-zone update
+    const outsideConnBefore = useProjectStore.getState().project.connections.length;
+    useProjectStore.getState().addConnection({ fromZoneId: z0.id, toZoneId: z2.id, bidirectional: true, kind: 'trail' });
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Add connection');
+    const outsideConn = useProjectStore.getState().project.connections[outsideConnBefore];
+
+    useProjectStore.getState().undo();
+    const pickConnOpen = openCommandStepFlow('add-trail-conn', { type: 'zone', id: z0.id }, productionStepStores());
+    expect(pickConnOpen.kind).toBe('pick');
+    if (pickConnOpen.kind !== 'pick') return;
+    commitSpatialPickTarget(pickConnOpen.pick, z2.id, false, productionStepStores());
+    expect(useProjectStore.getState().project.connections.at(-1)).toEqual(outsideConn);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(`Connect ${z0.name} \u2192 ${z2.name} (trail)`);
+
+    // 2) Undo-label + single-undo verification for Assign District, + Create District, Set Elevation, Merge, Repeat Last
+    const dist = useProjectStore.getState().project.districts[0];
+    const undoAssignBefore = useProjectStore.getState().getUndoCount();
+    expect(commitDistrictAssignment(productionStepStores(), [z1.id], dist.id)).toEqual({ ok: true });
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoAssignBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(`Assign ${z1.name} to ${dist.name}`);
+
+    const undoElevMultiBefore = useProjectStore.getState().getUndoCount();
+    commitSetElevation(productionStepStores(), [z0.id, z1.id, z2.id], '2');
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoElevMultiBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Set elevation to 2 (3 zones)');
+
+    const undoElevSingleBefore = useProjectStore.getState().getUndoCount();
+    commitSetElevation(productionStepStores(), [z0.id], '');
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoElevSingleBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(`Clear elevation (${z0.name})`);
+    // Outside-panel updateZone label remains untouched
+    useProjectStore.getState().updateZone(z0.id, { elevation: 4 });
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Update zone');
+
+    // Descriptive Repeat Last undo label + single undo entry
+    const undoRepeatBefore = useProjectStore.getState().getUndoCount();
+    const repeatRes = replayLastPanelAction(
+      { commandId: 'set-elevation', label: 'Set Elevation: 2m', timestamp: 1, params: { kind: 'set-elevation', elevation: 7 } },
+      { type: 'zone', id: z1.id },
+      productionStepStores(),
+      { executeStores: productionExecuteStores(), hotkeyCtx: productionHotkeyContext(), executeDirect: executeRegistryCommand },
+    );
+    expect(repeatRes).toEqual({ status: 'done' });
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoRepeatBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe(`Set elevation to 7 (${z1.name})`);
+
+    // Descriptive Merge pick undo label + single undo entry
+    const mergeStart = openCommandStepFlow('merge-zones', { type: 'zone', id: z0.id }, productionStepStores());
+    expect(mergeStart.kind).toBe('pick');
+    if (mergeStart.kind !== 'pick') return;
+    const undoMergeBefore = useProjectStore.getState().getUndoCount();
+    commitSpatialPickTarget(mergeStart.pick, z2.id, false, productionStepStores());
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoMergeBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Merge 2 zones');
+    useProjectStore.getState().undo();
+
+    // 3) Esc at every step against real stores leaves project, undo stack, and selection untouched
+    useEditorStore.getState().selectEntity('npc-keeper', false);
+    const snapProject = structuredClone(useProjectStore.getState().project);
+    const snapUndo = useProjectStore.getState().getUndoCount();
+    const snapSel = structuredClone(useEditorStore.getState().selection);
+
+    const mkKey = (key: string) => ({
+      key,
+      code: key,
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      target: null,
+    });
+
+    // Step-stack choice Esc + input Esc
+    const escStep = openCommandStepFlow('assign-district', { type: 'zone', id: z0.id }, productionStepStores());
+    expect(escStep.kind).toBe('steps');
+    if (escStep.kind === 'steps') {
+      expect(resolveStepKeyAction(mkKey('Escape'), escStep.flow, [], 0, '')).toEqual({ type: 'cancel' });
+      const createOpt = escStep.flow.steps[0].kind === 'choice'
+        ? escStep.flow.steps[0].options.find((o) => o.kind === 'create')!
+        : null;
+      const inStep = advanceStepChoice(escStep.flow, createOpt!, productionStepStores(), 'Cliff Quarter');
+      expect(inStep.done).toBe(false);
+      // 7) "+ Create District" carries current filter text AND Backspace on empty input goes Back
+      if (!inStep.done && inStep.flow.steps[1].kind === 'input') {
+        expect(inStep.flow.steps[1].value).toBe('Cliff Quarter');
+        expect(resolveStepKeyAction(mkKey('Backspace'), inStep.flow, [], 0, 'Cliff Quarter')).toEqual({ type: 'none' });
+        expect(resolveStepKeyAction(mkKey('Backspace'), inStep.flow, [], 0, '')).toEqual({ type: 'back' });
+        expect(resolveStepKeyAction(mkKey('Escape'), inStep.flow, [], 0, 'Cliff Quarter')).toEqual({ type: 'cancel' });
+      }
+      // handleStepChoiceSelect forwards stepFilter into advanceStepChoice
+      let pushedFlow: StepStackState | null = null;
+      handleStepChoiceSelect(escStep.flow, createOpt!, {
+        query: '',
+        stepFilter: 'Docks Ward',
+        stepStores: productionStepStores(),
+        setStepFlow: (f) => { pushedFlow = f; },
+        setStepFilter: vi.fn(),
+        setStepActiveIdx: vi.fn(),
+        recordCommandUsage: vi.fn(),
+        closeSpeedPanel: vi.fn(),
+      });
+      const pushed = pushedFlow as StepStackState | null;
+      expect(pushed?.steps[1]?.kind === 'input' ? pushed.steps[1].value : null).toBe('Docks Ward');
+    }
+
+    // Backspace on empty custom-encounter-type input step also goes Back
+    const encStep = openCommandStepFlow('place-encounter', { type: 'zone', id: z0.id }, productionStepStores());
+    if (encStep.kind === 'steps' && encStep.flow.steps[0].kind === 'choice') {
+      const customOpt = encStep.flow.steps[0].options.find((o) => o.kind === 'create')!;
+      const customInput = advanceStepChoice(encStep.flow, customOpt, productionStepStores());
+      if (!customInput.done) {
+        expect(resolveStepKeyAction(mkKey('Backspace'), customInput.flow, [], 0, '')).toEqual({ type: 'back' });
+      }
+    }
+
+    // Typed scalar pill Esc leaves project, undo stack, and selection unchanged
+    handleScalarPillKeyDown(
+      { key: 'Escape', preventDefault: vi.fn(), stopPropagation: vi.fn() },
+      { commandId: 'set-elevation', targetZoneIds: [z0.id], value: '999', error: null },
+      { query: 'elev', stepStores: productionStepStores(), setScalarPill: vi.fn(), recordCommandUsage: vi.fn(), closeSpeedPanel: vi.fn(), refocusSearch: vi.fn() },
+    );
+
+    // Connect & Merge & Repeat picks Esc leaves project, undo stack, and selection unchanged
+    const escConn = openCommandStepFlow('connect-from', { type: 'zone', id: z0.id }, productionStepStores());
+    if (escConn.kind === 'pick') cancelSpatialPick(escConn.pick, productionStepStores());
+    const escMerge = openCommandStepFlow('merge-zones', { type: 'zone', id: z0.id }, productionStepStores());
+    if (escMerge.kind === 'pick') cancelSpatialPick(escMerge.pick, productionStepStores());
+    const escRepeat = replayLastPanelAction(
+      { commandId: 'connect-from', label: 'Connect', timestamp: 1 },
+      { type: 'zone', id: z0.id },
+      productionStepStores(),
+      { executeStores: productionExecuteStores(), hotkeyCtx: productionHotkeyContext(), executeDirect: executeRegistryCommand },
+    );
+    if (escRepeat.status === 'pick') cancelSpatialPick(escRepeat.pick, productionStepStores());
+
+    expect(useProjectStore.getState().project).toEqual(snapProject);
+    expect(useProjectStore.getState().getUndoCount()).toBe(snapUndo);
+    expect(useEditorStore.getState().selection).toEqual(snapSel);
+
+    // 4) Pick session safety: deleted source zone during Connect refuses and ends pick; load/undo/redo/reopen clear pick
+    const startConnectA = openCommandStepFlow('connect-from', { type: 'zone', id: z0.id }, productionStepStores());
+    expect(startConnectA.kind).toBe('pick');
+    if (startConnectA.kind === 'pick') {
+      useEditorStore.getState().setSpeedPanelPick(startConnectA.pick);
+      useProjectStore.getState().removeZone(z0.id);
+      const toastSpy = vi.fn();
+      const handlers = createCanvasSpatialPickHandlers({
+        getPick: () => useEditorStore.getState().speedPanelPick,
+        getProject: () => useProjectStore.getState().project,
+        findZoneIdAtGrid: () => z1.id,
+        setPick: (p) => useEditorStore.getState().setSpeedPanelPick(p),
+        getStores: productionStepStores,
+        onErrorToast: toastSpy,
+      });
+      const connsBefore = useProjectStore.getState().project.connections.length;
+      expect(validatePickTarget(startConnectA.pick, z1.id, useProjectStore.getState().project)).toBe('Source zone no longer exists');
+      expect(handlers.handleMouseDown(z1.gridX + 1, z1.gridY + 1, false)).toBe(true);
+      expect(useProjectStore.getState().project.connections.length).toBe(connsBefore);
+      expect(useEditorStore.getState().speedPanelPick).toBeNull();
+      expect(toastSpy).toHaveBeenCalledWith('Source zone no longer exists');
+    }
+
+    // Undo/Redo/loadProject/newProject/openSpeedPanel all clear an active pick
+    const dummyPickOpen = openCommandStepFlow('connect-from', { type: 'zone', id: z1.id }, productionStepStores());
+    if (dummyPickOpen.kind === 'pick') {
+      useEditorStore.getState().setSpeedPanelPick(dummyPickOpen.pick);
+      useProjectStore.getState().undo();
+      expect(useEditorStore.getState().speedPanelPick).toBeNull();
+
+      useEditorStore.getState().setSpeedPanelPick(dummyPickOpen.pick);
+      useProjectStore.getState().redo();
+      expect(useEditorStore.getState().speedPanelPick).toBeNull();
+
+      useEditorStore.getState().setSpeedPanelPick(dummyPickOpen.pick);
+      useEditorStore.getState().openSpeedPanel(10, 10, null);
+      expect(useEditorStore.getState().speedPanelPick).toBeNull();
+
+      useEditorStore.getState().setSpeedPanelPick(dummyPickOpen.pick);
+      useProjectStore.getState().newProject();
+      expect(useEditorStore.getState().speedPanelPick).toBeNull();
+
+      useProjectStore.getState().loadProject(makeTwoZoneProject());
+      const mergePick = openCommandStepFlow('merge-zones', { type: 'zone', id: z0.id }, productionStepStores());
+      if (mergePick.kind === 'pick') {
+        const twoPicked = commitSpatialPickTarget(mergePick.pick, z1.id, true, productionStepStores()).pick!;
+        useProjectStore.getState().removeZone(z1.id);
+        expect(validatePickTarget(twoPicked, z2.id, useProjectStore.getState().project)).toBe('Picked zone no longer exists');
+        const mergeErr = commitSpatialPickTarget(twoPicked, z2.id, false, productionStepStores());
+        expect(mergeErr).toEqual({ committed: false, finished: true, pick: null, error: 'Picked zone no longer exists' });
+        expect(finalizeMergePick(twoPicked, productionStepStores())).toEqual({ committed: false, mergedId: null });
+      }
+      useEditorStore.getState().setSpeedPanelPick(dummyPickOpen.pick);
+      useProjectStore.getState().loadProject(makeTwoZoneProject());
+      expect(useEditorStore.getState().speedPanelPick).toBeNull();
+    }
+
+    // 6) Esc keeps props-only and tiles-only selections intact
+    const propsSel = { ...emptySelection(), props: ['prop-barrel'] };
+    useEditorStore.getState().setSelection(propsSel);
+    const propsPick = openCommandStepFlow('connect-from', { type: 'zone', id: 'zone-cellar' }, productionStepStores());
+    if (propsPick.kind === 'pick') cancelSpatialPick(propsPick.pick, productionStepStores());
+    expect(useEditorStore.getState().selection).toEqual(propsSel);
+
+    const tilesSel = { ...emptySelection(), tiles: ['layer-1:2:3'] };
+    useEditorStore.getState().setSelection(tilesSel);
+    const tilesPick = openCommandStepFlow('connect-from', { type: 'zone', id: 'zone-cellar' }, productionStepStores());
+    if (tilesPick.kind === 'pick') cancelSpatialPick(tilesPick.pick, productionStepStores());
+    expect(useEditorStore.getState().selection).toEqual(tilesSel);
   });
 
   it('changed: Repeat Last Action Here replays parameterized actions with deep-cloned parameters and fresh encounter IDs', () => {
@@ -436,15 +704,31 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
     expect(after.fitnew?.commandId).toBe('fit-content');
     expect(after['q-0']).toBeUndefined(); // lowest recency evicted cleanly
 
-    const prunedEqual = pruneAdaptiveHistory(fullHistory, baseNow + 1000, 2);
-    expect(Object.keys(prunedEqual)).toEqual(['q-199', 'q-198']);
+    // Real equal-decayed-score tie test: older entry has compensated score so both decay to exactly 1.0 at baseNow + MS_PER_DAY
+    const evalNow = baseNow + MS_PER_DAY;
+    const tieHistory = {
+      older: { commandId: 'new-zone', score: 1 / ADAPTIVE_DAILY_DECAY, lastUsedAt: baseNow },
+      newer: { commandId: 'fit-content', score: 1, lastUsedAt: evalNow },
+    };
+    expect(computeDecayedAdaptiveScore(tieHistory.older, evalNow)).toBeCloseTo(
+      computeDecayedAdaptiveScore(tieHistory.newer, evalNow),
+      12,
+    );
+    const prunedTie = pruneAdaptiveHistory(tieHistory, evalNow, 1);
+    expect(Object.keys(prunedTie)).toEqual(['newer']);
 
-    // Tier 2 ordering check against Report §4 ("Contiguous word-boundary or uppercase initials (pe, sc, DM)")
-    const scMatch = matchCommand(getCommandById('add-secret-conn')!, 'sc', { nowMs: baseNow });
-    const sspMatch = matchCommand(getCommandById('save-preset')!, 'ssp', { nowMs: baseNow });
-    expect(scMatch!.tier).toBe(2);
-    expect(sspMatch!.tier).toBe(2);
-    expect(scMatch!.subRank).toBeLessThan(sspMatch!.subRank);
+    // Tier 2 ordering check: 2.0 word-0 contiguous -> 2.1 non-first-word prefix -> 2.2 contiguous later-word initials -> 2.3 skipped word-start
+    const sub20Match = matchCommand(getCommandById('add-secret-conn')!, 'dsc', { nowMs: baseNow });
+    const sub21Match = matchCommand(getCommandById('add-warp-conn')!, 'warp', { nowMs: baseNow });
+    const sub22Match = matchCommand(getCommandById('add-secret-conn')!, 'sc', { nowMs: baseNow });
+    const sub23Match = matchCommand(getCommandById('save-preset')!, 'ssp', { nowMs: baseNow });
+    expect(sub20Match).toMatchObject({ tier: 2, subRank: 0 });
+    expect(sub21Match).toMatchObject({ tier: 2, subRank: 1 });
+    expect(sub22Match).toMatchObject({ tier: 2, subRank: 2 });
+    expect(sub23Match).toMatchObject({ tier: 2, subRank: 3 });
+    expect(sub20Match!.subRank).toBeLessThan(sub21Match!.subRank);
+    expect(sub21Match!.subRank).toBeLessThan(sub22Match!.subRank);
+    expect(sub22Match!.subRank).toBeLessThan(sub23Match!.subRank);
 
     // Search comparing contiguous word-0 `dsc` vs later-word contiguous `sc`
     const dscRes = searchCommands(COMMAND_REGISTRY, { hit: { type: 'zone', id: 'zone-entrance' }, selection: emptySelection() }, 'dsc');

@@ -34,6 +34,7 @@ import {
   type CanvasContextMenuState,
 } from './speed-panel-gesture.js';
 import {
+  buildEncounterAnchor,
   cancelSpatialPick,
   commitSpatialPickTarget,
   computePickPreviewLine,
@@ -1177,17 +1178,22 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const spatialPickKeyRef = useRef(spatialPickHandlers.handleKeyDown);
   spatialPickKeyRef.current = spatialPickHandlers.handleKeyDown;
 
+  useEffect(() => () => {
+    useEditorStore.getState().clearSpeedPanelPick();
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       suppressNextCanvasContextMenu.current = false;
 
+      // Input/textarea/select/contentEditable fields always keep keystrokes (Tab, Enter, Space)
+      const targetEl = e.target as HTMLElement | null;
+      const tag = targetEl?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || targetEl?.isContentEditable) return;
+
       if (spatialPickKeyRef.current(e)) {
         return;
       }
-
-      // Space handled locally (depends on ref)
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
       if (e.code === 'Space' && !e.repeat) {
         // F-6c1fa8ce: do not steal Space from focused buttons / tabs / links.
@@ -1429,15 +1435,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     } else if (activeTool === 'encounter-place') {
       const zone = findZoneAt(gx, gy);
       if (zone) {
-        addEncounter({
-          id: nextId('enc'),
-          zoneId: zone.id,
-          encounterType: getModeProfile(project.mode).encounterTypes[0],
-          enemyIds: [],
-          probability: 0.5,
-          cooldownTurns: 3,
-          tags: [],
-        });
+        addEncounter(buildEncounterAnchor(zone.id, getModeProfile(project.mode).encounterTypes[0]));
       } else {
         pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
@@ -2155,9 +2153,10 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
           project={project}
           onCycleKind={() => setSpeedPanelPick(cyclePickConnectionKind(speedPanelPick, project.mode))}
           onConfirmMerge={() => finalizeMergePick(speedPanelPick, productionStepStores())}
-          onPickZone={(zoneId, shiftKey) =>
-            commitSpatialPickTarget(speedPanelPick, zoneId, shiftKey, productionStepStores())
-          }
+          onPickZone={(zoneId, shiftKey) => {
+            const res = commitSpatialPickTarget(speedPanelPick, zoneId, shiftKey, productionStepStores());
+            if (res.finished && res.error) pushToast(res.error, 'info', 2500);
+          }}
           onCancel={() => cancelSpatialPick(speedPanelPick, productionStepStores())}
         />
       )}

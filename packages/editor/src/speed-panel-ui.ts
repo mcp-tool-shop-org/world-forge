@@ -568,10 +568,10 @@ export function resolveStepKeyAction(
   if (e.altKey && e.key === 'ArrowLeft') {
     return { type: 'back' };
   }
+  if (e.key === 'Backspace' && stepFilter === '') {
+    return { type: 'back' };
+  }
   if (current.kind === 'choice') {
-    if (e.key === 'Backspace' && stepFilter === '') {
-      return { type: 'back' };
-    }
     if (e.key === 'ArrowDown') {
       return {
         type: 'set-active',
@@ -747,6 +747,7 @@ export function handleStepChoiceSelect(
   option: StepChoiceOption,
   deps: {
     query: string;
+    stepFilter?: string;
     stepStores: StepExecutionStores;
     setStepFlow: (next: StepStackState | null) => void;
     setStepFilter: (v: string) => void;
@@ -755,7 +756,7 @@ export function handleStepChoiceSelect(
     closeSpeedPanel: () => void;
   },
 ): boolean {
-  const res = advanceStepChoice(flow, option, deps.stepStores);
+  const res = advanceStepChoice(flow, option, deps.stepStores, deps.stepFilter);
   if (!res.done) {
     deps.setStepFilter('');
     deps.setStepActiveIdx(0);
@@ -966,6 +967,7 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
     if (!deps.stepFlow) return;
     handleStepChoiceSelect(deps.stepFlow, option, {
       query: deps.query,
+      stepFilter: deps.stepFilter,
       stepStores: deps.stepStores,
       setStepFlow: deps.setStepFlow,
       setStepFilter: deps.setStepFilter,
@@ -1033,11 +1035,13 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
 
   const handleKeyDown = (e: SpeedPanelKeyDispatchEvent) => {
     if (deps.stepFlow) {
+      const currentStep = deps.stepFlow.steps[deps.stepFlow.steps.length - 1];
+      const activeText = currentStep?.kind === 'input' ? deps.stepInputDraft : deps.stepFilter;
       dispatchStepKeyAction(e, {
         flow: deps.stepFlow,
         filteredOptions: deps.filteredStepOptions,
         activeStepIdx: deps.stepActiveIdx,
-        stepFilter: deps.stepFilter,
+        stepFilter: activeText,
         onCancel: deps.closeSpeedPanel,
         onBack: onStepBack,
         onSetActiveIdx: deps.setStepActiveIdx,
