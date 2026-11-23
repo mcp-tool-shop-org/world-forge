@@ -9,7 +9,7 @@ import {
   DEFAULT_AI_RPG_OPTIONS, DEFAULT_UNREAL_OPTIONS, DEFAULT_GODOT_OPTIONS,
 } from './export-handlers.js';
 import { validateProject, scanDependencies, type WorldProject } from '@world-forge/schema';
-import { checkAiRpgExportReadiness } from '@world-forge/export-ai-rpg';
+import { checkAiRpgExportReadiness, exportToEngine } from '@world-forge/export-ai-rpg';
 import { classifyError, navigationForError } from './validation-helpers.js';
 import { diffProjects } from '../diff/diff-model.js';
 import { serializeProject, projectFilename } from '../projects/index.js';
@@ -70,12 +70,26 @@ export function computeTargetReadiness(project: WorldProject, precheckValid: boo
   for (const entry of readiness.encounterAdjustments) {
     aiRpgAdvisories.push(entry.message);
   }
-  if (!readiness.ready && aiRpgBlockers.length === 0 && precheckValid) {
-    aiRpgBlockers.push(...readiness.validationErrors.map((e) => e.message));
+
+  let aiRpgReady = precheckValid && readiness.ready;
+  if (aiRpgReady) {
+    // Run converters only when validation and blockers pass so throwing converters still block
+    // readiness; silence console.warn here so diagnostics stay on actual export/CLI runs.
+    const prevWarn = console.warn;
+    console.warn = () => {};
+    try {
+      const probe = exportToEngine(project);
+      if (!probe.success) {
+        aiRpgReady = false;
+        aiRpgBlockers.push(...probe.errors.map((e) => e.message));
+      }
+    } finally {
+      console.warn = prevWarn;
+    }
   }
 
   return {
-    aiRpg: { ready: precheckValid && readiness.ready, advisories: aiRpgAdvisories, blockers: aiRpgBlockers },
+    aiRpg: { ready: aiRpgReady, advisories: aiRpgAdvisories, blockers: aiRpgBlockers },
     unreal: { ready: precheckValid, advisories: unrealAdvisories, blockers: [] },
     godot: { ready: precheckValid, advisories: godotAdvisories, blockers: [] },
   };
