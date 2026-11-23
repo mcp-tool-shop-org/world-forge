@@ -99,7 +99,7 @@
       "confidence": "low",
       "highWater": null,
       "name": "e2e",
-      "qualifyingSourceCommits": 14,
+      "qualifyingSourceCommits": 15,
       "rebaseline": null
     },
     {
@@ -115,7 +115,7 @@
       "confidence": "full",
       "highWater": null,
       "name": "editor",
-      "qualifyingSourceCommits": 47,
+      "qualifyingSourceCommits": 48,
       "rebaseline": null
     },
     {
@@ -321,8 +321,8 @@
         "path": ".gitignore"
       },
       {
-        "commits": 28,
-        "lines": 427,
+        "commits": 29,
+        "lines": 433,
         "path": "CHANGELOG.md"
       },
       {
@@ -356,8 +356,8 @@
         "path": "README.ja.md"
       },
       {
-        "commits": 29,
-        "lines": 279,
+        "commits": 30,
+        "lines": 285,
         "path": "README.md"
       },
       {
@@ -391,8 +391,8 @@
         "path": "assets/logo.png"
       },
       {
-        "commits": 15,
-        "lines": 760,
+        "commits": 16,
+        "lines": 780,
         "path": "atlas/README.md"
       },
       {
@@ -401,18 +401,18 @@
         "path": "atlas/boundaries.yaml"
       },
       {
-        "commits": 15,
-        "lines": 4651,
+        "commits": 16,
+        "lines": 4701,
         "path": "atlas/page.json"
       },
       {
-        "commits": 15,
-        "lines": 13556,
+        "commits": 16,
+        "lines": 13791,
         "path": "atlas/statistics.json"
       },
       {
-        "commits": 15,
-        "lines": 58351,
+        "commits": 16,
+        "lines": 58470,
         "path": "atlas/structure.json"
       },
       {
@@ -681,8 +681,8 @@
         "path": "e2e/speed-panel-layout-search.spec.ts"
       },
       {
-        "commits": 3,
-        "lines": 429,
+        "commits": 4,
+        "lines": 540,
         "path": "e2e/speed-panel-multi-step.spec.ts"
       },
       {
@@ -751,8 +751,8 @@
         "path": "packages/editor/src/App.tsx"
       },
       {
-        "commits": 27,
-        "lines": 2794,
+        "commits": 28,
+        "lines": 2839,
         "path": "packages/editor/src/Canvas.tsx"
       },
       {
@@ -984,6 +984,16 @@
         "commits": 8,
         "lines": 356,
         "path": "packages/editor/src/__tests__/speed-panel-execute.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 1359,
+        "path": "packages/editor/src/__tests__/speed-panel-scope-chips.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 516,
+        "path": "packages/editor/src/__tests__/speed-panel-scope-compat.test.ts"
       },
       {
         "commits": 7,
@@ -1311,8 +1321,8 @@
         "path": "packages/editor/src/panels/SpawnProperties.tsx"
       },
       {
-        "commits": 12,
-        "lines": 2496,
+        "commits": 13,
+        "lines": 2654,
         "path": "packages/editor/src/panels/SpeedPanel.tsx"
       },
       {
@@ -1566,8 +1576,8 @@
         "path": "packages/editor/src/speed-panel-execute.ts"
       },
       {
-        "commits": 2,
-        "lines": 798,
+        "commits": 3,
+        "lines": 825,
         "path": "packages/editor/src/speed-panel-gesture.ts"
       },
       {
@@ -1587,6 +1597,11 @@
       },
       {
         "commits": 1,
+        "lines": 429,
+        "path": "packages/editor/src/speed-panel-scope.ts"
+      },
+      {
+        "commits": 1,
         "lines": 555,
         "path": "packages/editor/src/speed-panel-search.ts"
       },
@@ -1596,13 +1611,13 @@
         "path": "packages/editor/src/speed-panel-steps.ts"
       },
       {
-        "commits": 4,
-        "lines": 1511,
+        "commits": 5,
+        "lines": 1587,
         "path": "packages/editor/src/speed-panel-ui.ts"
       },
       {
-        "commits": 14,
-        "lines": 605,
+        "commits": 15,
+        "lines": 616,
         "path": "packages/editor/src/store/editor-store.ts"
       },
       {
@@ -3011,8 +3026,8 @@
         "path": "site/src/content/docs/handbook/beginners.md"
       },
       {
-        "commits": 12,
-        "lines": 157,
+        "commits": 13,
+        "lines": 165,
         "path": "site/src/content/docs/handbook/editor-workflow.md"
       },
       {
@@ -3091,17 +3106,17 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-23T07:12:35.496Z",
+  "generatedAt": "2026-11-23T08:42:06.876Z",
   "generatedFrom": {
-    "commit": "60112b84a59a10c45dd77a97cb5a8629b5e128d3"
+    "commit": "c2baa5a854d45b48a318a1efaee0df1502e24be9"
   },
   "pairs": [
     {
       "a": "CHANGELOG.md",
       "b": "README.md",
-      "either": 28,
-      "shared": 17,
-      "strength": 0.607143
+      "either": 29,
+      "shared": 18,
+      "strength": 0.62069
     },
     {
       "a": "README.es.md",
@@ -3302,100 +3317,100 @@
     {
       "a": "atlas/README.md",
       "b": "atlas/page.json",
-      "either": 10,
-      "shared": 10,
+      "either": 11,
+      "shared": 11,
       "strength": 1
     },
     {
       "a": "atlas/README.md",
       "b": "atlas/statistics.json",
-      "either": 10,
-      "shared": 10,
+      "either": 11,
+      "shared": 11,
       "strength": 1
     },
     {
       "a": "atlas/README.md",
       "b": "atlas/structure.json",
-      "either": 10,
-      "shared": 10,
+      "either": 11,
+      "shared": 11,
       "strength": 1
     },
     {
       "a": "atlas/README.md",
       "b": "packages/editor/src/command-registry.ts",
-      "either": 10,
+      "either": 11,
       "shared": 6,
-      "strength": 0.6
+      "strength": 0.545455
     },
     {
       "a": "atlas/README.md",
       "b": "site/src/content/docs/handbook/editor-workflow.md",
-      "either": 12,
-      "shared": 7,
-      "strength": 0.583333
+      "either": 13,
+      "shared": 8,
+      "strength": 0.615385
     },
     {
       "a": "atlas/page.json",
       "b": "atlas/statistics.json",
-      "either": 10,
-      "shared": 10,
+      "either": 11,
+      "shared": 11,
       "strength": 1
     },
     {
       "a": "atlas/page.json",
       "b": "atlas/structure.json",
-      "either": 10,
-      "shared": 10,
+      "either": 11,
+      "shared": 11,
       "strength": 1
     },
     {
       "a": "atlas/page.json",
       "b": "packages/editor/src/command-registry.ts",
-      "either": 10,
+      "either": 11,
       "shared": 6,
-      "strength": 0.6
+      "strength": 0.545455
     },
     {
       "a": "atlas/page.json",
       "b": "site/src/content/docs/handbook/editor-workflow.md",
-      "either": 12,
-      "shared": 7,
-      "strength": 0.583333
+      "either": 13,
+      "shared": 8,
+      "strength": 0.615385
     },
     {
       "a": "atlas/statistics.json",
       "b": "atlas/structure.json",
-      "either": 10,
-      "shared": 10,
+      "either": 11,
+      "shared": 11,
       "strength": 1
     },
     {
       "a": "atlas/statistics.json",
       "b": "packages/editor/src/command-registry.ts",
-      "either": 10,
+      "either": 11,
       "shared": 6,
-      "strength": 0.6
+      "strength": 0.545455
     },
     {
       "a": "atlas/statistics.json",
       "b": "site/src/content/docs/handbook/editor-workflow.md",
-      "either": 12,
-      "shared": 7,
-      "strength": 0.583333
+      "either": 13,
+      "shared": 8,
+      "strength": 0.615385
     },
     {
       "a": "atlas/structure.json",
       "b": "packages/editor/src/command-registry.ts",
-      "either": 10,
+      "either": 11,
       "shared": 6,
-      "strength": 0.6
+      "strength": 0.545455
     },
     {
       "a": "atlas/structure.json",
       "b": "site/src/content/docs/handbook/editor-workflow.md",
-      "either": 12,
-      "shared": 7,
-      "strength": 0.583333
+      "either": 13,
+      "shared": 8,
+      "strength": 0.615385
     },
     {
       "a": "docs/c0-alignment/export-table.json",
@@ -3617,16 +3632,16 @@
     {
       "a": "packages/editor/src/Canvas.tsx",
       "b": "packages/editor/src/store/editor-store.ts",
-      "either": 17,
-      "shared": 9,
-      "strength": 0.529412
+      "either": 18,
+      "shared": 10,
+      "strength": 0.555556
     },
     {
       "a": "packages/editor/src/command-registry.ts",
       "b": "packages/editor/src/panels/SpeedPanel.tsx",
-      "either": 9,
+      "either": 10,
       "shared": 5,
-      "strength": 0.555556
+      "strength": 0.5
     },
     {
       "a": "packages/editor/src/command-registry.ts",
@@ -3644,6 +3659,13 @@
     },
     {
       "a": "packages/editor/src/command-registry.ts",
+      "b": "packages/editor/src/speed-panel-ui.ts",
+      "either": 7,
+      "shared": 4,
+      "strength": 0.571429
+    },
+    {
+      "a": "packages/editor/src/command-registry.ts",
       "b": "packages/editor/src/store/speed-panel-store.ts",
       "either": 7,
       "shared": 4,
@@ -3652,9 +3674,9 @@
     {
       "a": "packages/editor/src/command-registry.ts",
       "b": "site/src/content/docs/handbook/editor-workflow.md",
-      "either": 9,
+      "either": 10,
       "shared": 6,
-      "strength": 0.666667
+      "strength": 0.6
     },
     {
       "a": "packages/editor/src/panels/ExportModal.tsx",
@@ -3666,15 +3688,43 @@
     {
       "a": "packages/editor/src/panels/SpeedPanel.tsx",
       "b": "packages/editor/src/panels/speed-panel-stores.ts",
-      "either": 9,
+      "either": 10,
       "shared": 6,
-      "strength": 0.666667
+      "strength": 0.6
+    },
+    {
+      "a": "packages/editor/src/panels/SpeedPanel.tsx",
+      "b": "packages/editor/src/speed-panel-ui.ts",
+      "either": 9,
+      "shared": 5,
+      "strength": 0.555556
+    },
+    {
+      "a": "packages/editor/src/panels/speed-panel-stores.ts",
+      "b": "packages/editor/src/speed-panel-ui.ts",
+      "either": 8,
+      "shared": 4,
+      "strength": 0.5
     },
     {
       "a": "packages/editor/src/panels/speed-panel-stores.ts",
       "b": "packages/editor/src/store/speed-panel-store.ts",
       "either": 8,
       "shared": 4,
+      "strength": 0.5
+    },
+    {
+      "a": "packages/editor/src/speed-panel-ui.ts",
+      "b": "packages/editor/src/store/speed-panel-store.ts",
+      "either": 6,
+      "shared": 4,
+      "strength": 0.666667
+    },
+    {
+      "a": "packages/editor/src/speed-panel-ui.ts",
+      "b": "site/src/content/docs/handbook/editor-workflow.md",
+      "either": 10,
+      "shared": 5,
       "strength": 0.5
     },
     {
@@ -3863,16 +3913,16 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-23T01:02:47-05:00",
-    "inScopeFiles": 694,
+    "headDate": "2026-11-23T03:09:58-05:00",
+    "inScopeFiles": 695,
     "pinnedStart": null,
     "priorFloor": "fallen",
-    "qualifyingCommits": 146,
+    "qualifyingCommits": 147,
     "qualifyingMinimum": 30,
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-27T06:02:47.000Z",
+    "since": "2026-05-27T08:09:58.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",
@@ -3888,7 +3938,7 @@
     ],
     "sourceFileReach": 20,
     "sourceFileRise": 25,
-    "sourceFilesReachingStrongFloor": 8,
+    "sourceFilesReachingStrongFloor": 9,
     "strength": 0.5,
     "windowDays": 180
   },

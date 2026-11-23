@@ -2,10 +2,13 @@
 // Run: npx tsx dogfood/chapel-threshold.ts
 //
 // INF-B-007 / F-2abb3406: generated files under dogfood/output/ are .gitignored
-// and are NOT the e2e input. Playwright webServer runs e2e/write-chapel-fixture.ts to write
-// chapel-project.json from the schema chapel fixture at suite start. This script
-// still writes the same filename as a local dogfood artifact; it must not be
-// committed. chapel-export-result.json was an unreferenced leftover and is gone.
+// and are NOT the e2e input. Playwright webServer runs e2e/write-chapel-fixture.ts
+// to write dogfood/output/chapel-project.json (authored) and
+// dogfood/output/chapel-ai-rpg-project.json (exportable) before Vite boots.
+// This script writes its own local input copy to
+// dogfood/output/chapel-threshold-exportable.json so running it never clobbers
+// the e2e fixture files. chapel-export-result.json was an unreferenced leftover
+// and is gone.
 //
 // If a future release wants snapshot regression, the work is:
 //   1. Un-gitignore a named fixture path and document it as the e2e input, OR
@@ -15,7 +18,7 @@
 //   3. Add a documented refresh path (`npm run dogfood:refresh` or similar) so
 //      intentional changes are a one-command regeneration, not a manual diff.
 
-import { chapelProject } from '../packages/schema/src/__tests__/fixtures/chapel-authored.js';
+import { chapelExportableProject } from '../packages/schema/src/__tests__/fixtures/chapel-exportable.js';
 import { exportToEngine } from '../packages/export-ai-rpg/src/export.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -25,31 +28,23 @@ const __dirname = typeof import.meta.dirname === 'string' ? import.meta.dirname 
 const outDir = join(__dirname, 'output');
 mkdirSync(outDir, { recursive: true });
 
-// Also write the input project for reference
-writeFileSync(join(outDir, 'chapel-project.json'), JSON.stringify(chapelProject, null, 2));
+// Write the exact project copy passed into exportToEngine under its own filename
+writeFileSync(join(outDir, 'chapel-threshold-exportable.json'), JSON.stringify(chapelExportableProject, null, 2));
 
 console.log('=== Chapel Threshold Dogfood Export ===\n');
-console.log(`Project: ${chapelProject.name}`);
-console.log(`Zones: ${chapelProject.zones.length}`);
-console.log(`Districts: ${chapelProject.districts.length}`);
-console.log(`Entities: ${chapelProject.entityPlacements.length}`);
-console.log(`Items: ${chapelProject.itemPlacements.length}`);
-console.log(`Connections: ${chapelProject.connections.length}`);
-console.log(`Landmarks: ${chapelProject.landmarks.length}`);
-console.log(`Spawn points: ${chapelProject.spawnPoints.length}`);
-console.log(`Faction presences: ${chapelProject.factionPresences.length}`);
-console.log(`Pressure hotspots: ${chapelProject.pressureHotspots.length}`);
+console.log(`Project: ${chapelExportableProject.name}`);
+console.log(`Zones: ${chapelExportableProject.zones.length}`);
+console.log(`Districts: ${chapelExportableProject.districts.length}`);
+console.log(`Entities: ${chapelExportableProject.entityPlacements.length}`);
+console.log(`Items: ${chapelExportableProject.itemPlacements.length}`);
+console.log(`Connections: ${chapelExportableProject.connections.length}`);
+console.log(`Landmarks: ${chapelExportableProject.landmarks.length}`);
+console.log(`Spawn points: ${chapelExportableProject.spawnPoints.length}`);
+console.log(`Faction presences: ${chapelExportableProject.factionPresences.length}`);
+console.log(`Pressure hotspots: ${chapelExportableProject.pressureHotspots.length}`);
 console.log();
 
-const engineChapelProject = {
-  ...chapelProject,
-  encounterAnchors: chapelProject.encounterAnchors.map((a) => ({
-    ...a,
-    encounterType: a.encounterType === 'combat' ? 'boss' : a.encounterType,
-  })),
-};
-
-const result = exportToEngine(engineChapelProject);
+const result = exportToEngine(chapelExportableProject);
 
 if ('success' in result && result.success === false) {
   console.error('EXPORT FAILED — validation errors:');
@@ -100,7 +95,7 @@ if (contentPack.progressionTrees.length > 0) {
 }
 
 console.log('--- Output Files ---\n');
-console.log(`  ${outDir}/chapel-project.json (input)`);
+console.log(`  ${outDir}/chapel-threshold-exportable.json (input)`);
 console.log(`  ${outDir}/manifest.json`);
 console.log(`  ${outDir}/pack-meta.json`);
 console.log(`  ${outDir}/zones.json`);
@@ -137,7 +132,7 @@ for (const i of contentPack.items) {
 }
 
 // Dialogues: entity-dialogue binding
-for (const e of chapelProject.entityPlacements) {
+for (const e of chapelExportableProject.entityPlacements) {
   if (e.dialogueId && !contentPack.dialogues.some((d) => d.id === e.dialogueId)) {
     gaps.push(`Entity "${e.entityId}" references dialogue "${e.dialogueId}" but it was not exported`);
   }

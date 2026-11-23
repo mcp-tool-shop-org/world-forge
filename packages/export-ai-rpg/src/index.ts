@@ -20,8 +20,9 @@ export { convertBuildCatalog } from './convert-build-catalog.js';
 export type { ExportedBuildCatalog } from './convert-build-catalog.js';
 export { convertProgressionTrees } from './convert-progression-trees.js';
 export { convertManifest, convertPackMeta } from './convert-pack.js';
-export { exportToEngine } from './export.js';
+export { exportToEngine, checkAiRpgExportReadiness, splitExportFailureErrors } from './export.js';
 export type {
+  AiRpgReadinessCheck,
   ContentPack,
   ExportResult,
   ExportError,

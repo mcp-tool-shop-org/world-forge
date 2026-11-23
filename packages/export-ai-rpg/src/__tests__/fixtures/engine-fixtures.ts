@@ -1,6 +1,6 @@
 import type { WorldProject } from '@world-forge/schema';
 import { minimalProject } from '../../../../schema/src/__tests__/fixtures/minimal.js';
-import { chapelProject } from '../../../../schema/src/__tests__/fixtures/chapel-authored.js';
+import { chapelExportableProject } from '../../../../schema/src/__tests__/fixtures/chapel-exportable.js';
 
 /** Minimal fixture clone whose encounter types and dialogue speakers satisfy the AI RPG Engine contract. */
 export const engineMinimalProject: WorldProject = {
@@ -15,11 +15,5 @@ export const engineMinimalProject: WorldProject = {
   })),
 };
 
-/** Chapel fixture clone whose encounter types and dialogue speakers satisfy the AI RPG Engine contract. */
-export const engineChapelProject: WorldProject = {
-  ...chapelProject,
-  encounterAnchors: chapelProject.encounterAnchors.map((a) => ({
-    ...a,
-    encounterType: a.encounterType === 'combat' ? 'boss' : a.encounterType,
-  })),
-};
+/** Shared exportable chapel fixture whose encounter types and dialogue speakers satisfy the AI RPG Engine contract. */
+export const engineChapelProject: WorldProject = chapelExportableProject;

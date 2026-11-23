@@ -3,7 +3,7 @@
 
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { exportToEngine, type ExportProfile, type ExportResult } from './export.js';
+import { exportToEngine, splitExportFailureErrors, type ExportProfile, type ExportResult } from './export.js';
 import {
   importProject,
   importFromExportResult,
@@ -501,11 +501,8 @@ async function main(): Promise<void> {
   const result = exportToEngine(project, { profile, emitSchemaVersion });
 
   if (!result.success) {
-    const encounterBlockers = result.encounterBlockers ?? [];
-    const speakerBlockers = result.speakerBlockers ?? [];
+    const { encounterBlockers, speakerBlockers, schemaOrConverterErrors } = splitExportFailureErrors(result);
     const blockerCount = encounterBlockers.length + speakerBlockers.length;
-    const schemaOrConverterErrors =
-      blockerCount > 0 ? result.errors.slice(0, result.errors.length - blockerCount) : result.errors;
 
     if (schemaOrConverterErrors.length > 0) {
       // F-3b0e3f5f: converter throws are not schema validation.

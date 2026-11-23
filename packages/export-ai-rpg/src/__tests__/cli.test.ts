@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { writeFile, readFile, rm, mkdtemp, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { splitExportFailureErrors, type ExportError } from '../export.js';
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
 import { invalidOrphanProject } from '../../../schema/src/__tests__/fixtures/invalid-orphan.js';
 import { fileURLToPath } from 'node:url';
@@ -501,6 +502,56 @@ describe('CLI: world-forge-export', () => {
     const combined = `${stdout}\n${stderr}`;
     expect(combined).toMatch(/Fidelity:|Warnings:/);
     expect(combined).toMatch(/landmark/i);
+  });
+
+  it('splits schema errors from typed encounter and speaker blockers regardless of errors order', () => {
+    const encounterBlocker = {
+      anchorId: 'enc-first',
+      zoneId: 'zone-entrance',
+      encounterType: 'combat',
+      validTypes: ['ambush', 'patrol', 'horde', 'duel'] as const,
+      message: 'Encounter anchor "enc-first" has encounterType "combat" — blocked.',
+    };
+    const speakerBlocker = {
+      dialogueId: 'dlg-first',
+      speaker: 'ghost-npc',
+      message: 'Dialogue "dlg-first" references unresolved speaker "ghost-npc".',
+    };
+    const encounterErr = {
+      path: 'encounterAnchors.enc-first.encounterType',
+      message: encounterBlocker.message,
+    };
+    const speakerErr = {
+      path: 'dialogues.dlg-first.speakers',
+      message: speakerBlocker.message,
+    };
+    const schemaErr1 = {
+      path: 'spawnPoints',
+      message: 'Project must have at least one spawn point.',
+    };
+    const schemaErr2 = {
+      path: 'zones.zone-missing',
+      message: 'Zone "zone-missing" does not exist.',
+    };
+
+    const reordered: ExportError = {
+      success: false,
+      // Blockers placed before and between validation errors rather than at the tail
+      errors: [encounterErr, schemaErr1, speakerErr, schemaErr2],
+      encounterBlockers: [encounterBlocker],
+      speakerBlockers: [speakerBlocker],
+    };
+
+    const split = splitExportFailureErrors(reordered);
+    expect(split.encounterBlockers).toEqual([encounterBlocker]);
+    expect(split.speakerBlockers).toEqual([speakerBlocker]);
+    expect(split.schemaOrConverterErrors).toEqual([schemaErr1, schemaErr2]);
+
+    // Contrast: positional tail slicing drops schemaErr2 and leaks encounterErr when blockers are not last
+    const blockerCount = reordered.encounterBlockers!.length + reordered.speakerBlockers!.length;
+    const naivePositionalSlice = reordered.errors.slice(0, reordered.errors.length - blockerCount);
+    expect(naivePositionalSlice).toEqual([encounterErr, schemaErr1]);
+    expect(naivePositionalSlice).not.toEqual(split.schemaOrConverterErrors);
   });
 });
 
