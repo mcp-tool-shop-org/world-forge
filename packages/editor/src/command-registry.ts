@@ -38,7 +38,8 @@ export type SpeedPanelIconId =
   | 'connect-secret'
   | 'connect-channel'
   | 'connect-warp'
-  | 'connect-trail';
+  | 'connect-trail'
+  | 'macro-record';
 
 /** Geometric glyphs — not emoji, not 1–3 letter codes. */
 export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
@@ -60,6 +61,7 @@ export const SPEED_PANEL_ICON_GLYPH: Record<SpeedPanelIconId, string> = {
   'connect-channel': '\u2248',
   'connect-warp': '\u29C1',
   'connect-trail': '\u2198',
+  'macro-record': '\u229E',
 };
 
 /** Bag of store methods needed by execute — keeps action execution testable without DOM mounts. */
@@ -1137,8 +1139,8 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
     category: 'author',
     surfaces: ['speed-panel'],
     keywords: ['macro', 'record', 'recent', 'actions', 'batch', 'automate', 'save macro'],
-    icon: SPEED_PANEL_ICON_GLYPH.plus,
-    iconId: 'plus',
+    icon: SPEED_PANEL_ICON_GLYPH['macro-record'],
+    iconId: 'macro-record',
     description: 'Save recent replayable actions as a reusable macro',
     speedPanelCategory: 'global',
     macroSafe: false,
