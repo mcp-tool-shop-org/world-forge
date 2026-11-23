@@ -11,6 +11,25 @@ export function parseSpeakersInput(value: string): string[] {
   return value.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+/** Comma-separated Speakers input for a dialogue entry so panel rendering and tests share the same onChange handler. */
+export function DialogueSpeakersInput({
+  speakers,
+  onSpeakersChange,
+}: {
+  speakers: string[];
+  onSpeakersChange: (speakers: string[]) => void;
+}) {
+  return (
+    <input
+      data-testid="wf-dialogue-speakers-input"
+      style={inputStyle}
+      value={speakers.join(', ')}
+      placeholder="e.g. suspicious-pilgrim, npc-merchant"
+      onChange={(e) => onSpeakersChange(parseSpeakersInput(e.target.value))}
+    />
+  );
+}
+
 function nextDialogueId(existingIds: Iterable<string> = []): string {
   const taken = new Set(existingIds);
   const base = `dlg-${Date.now()}`;
@@ -131,10 +150,10 @@ export function DialoguePanel() {
             <input style={{ ...inputStyle, color: 'var(--wf-text-muted)' }} value={selected.id} disabled />
           </label>
           <label style={labelStyle}>Speakers
-            <input style={inputStyle} value={selected.speakers.join(', ')} placeholder="e.g. suspicious-pilgrim, npc-merchant"
-              onChange={(e) => updateDialogue(selected.id, {
-                speakers: parseSpeakersInput(e.target.value),
-              })} />
+            <DialogueSpeakersInput
+              speakers={selected.speakers}
+              onSpeakersChange={(speakers) => updateDialogue(selected.id, { speakers })}
+            />
             <div style={hintStyle}>Comma-separated entity IDs.</div>
           </label>
           <label style={labelStyle}>Entry Node
