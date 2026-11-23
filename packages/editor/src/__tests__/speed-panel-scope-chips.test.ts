@@ -125,9 +125,13 @@ import { Canvas } from '../Canvas.js';
 import { SpeedPanel } from '../panels/SpeedPanel.js';
 import { createCanvasRightPointerHandlers } from '../speed-panel-gesture.js';
 import { findAllHitsAt, findHitAt, type HitResult } from '../hit-testing.js';
+import { elevationDrawOffset } from '../tile-render.js';
+import { productionStepStores } from '../panels/speed-panel-stores.js';
+import { createCanvasSpatialPickHandlers } from '../speed-panel-steps.js';
 import {
   clampActiveIndex,
   dispatchSpeedPanelKeyAction,
+  resolveSpeedPanelKeyAction,
 } from '../speed-panel-ui.js';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
@@ -422,18 +426,30 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     expect(collectAll(sTree, (el) => el.props.id === 'wf-sp-opt-hit-0-assign-district')[0]).toBeDefined();
   });
 
-  it('preserves Tab for typed scalar input when scope chips are visible', () => {
+  it('preserves Tab for typed scalar input after switching to zone via scope chip', () => {
     const project = useProjectStore.getState().project;
     const z0 = project.zones[0];
     const hits: HitResult[] = [
       { type: 'entity', id: 'npc-innkeeper' },
       { type: 'zone', id: z0.id },
     ];
-    useEditorStore.getState().openSpeedPanel(120, 120, hits[1], hits as never);
+    useEditorStore.getState().openSpeedPanel(120, 120, hits[0], hits as never);
 
-    let tree = renderRoot(SpeedPanel, { initialQuery: 'elev' });
+    let tree = renderRoot(SpeedPanel, {});
     flushEffects();
     expect(findByTestId(tree, 'wf-sp-scope-chips')).toBeDefined();
+
+    // Switch to Zone using its scope chip first, then search 'elev' and press Tab
+    const zoneChipBtn = findByTestId(tree, `wf-sp-scope-chip-zone:${z0.id}`)!;
+    (zoneChipBtn.props.onClick as () => void)();
+    expect(useEditorStore.getState().speedPanelContext).toEqual({ type: 'zone', id: z0.id });
+
+    tree = renderRoot(SpeedPanel, {});
+    flushEffects();
+    const searchInput = findByTestId(tree, 'wf-speed-panel-search')!;
+    (searchInput.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: 'elev' } });
+    tree = renderRoot(SpeedPanel, {});
+    flushEffects();
 
     // Press Tab with search 'elev' -> opens Set Elevation inline scalar pill, does NOT cycle scope chips
     const panelEl = findByTestId(tree, 'wf-speed-panel')!;
@@ -442,11 +458,11 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
       target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
     });
     expect(useEditorStore.getState().speedPanelContext).toEqual({ type: 'zone', id: z0.id });
-    tree = renderRoot(SpeedPanel, { initialQuery: 'elev' });
+    tree = renderRoot(SpeedPanel, {});
     const pill = findByTestId(tree, 'wf-sp-scalar-pill');
     expect(pill).toBeDefined();
     (pill!.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: '2' } });
-    tree = renderRoot(SpeedPanel, { initialQuery: 'elev' });
+    tree = renderRoot(SpeedPanel, {});
     (findByTestId(tree, 'wf-sp-scalar-pill')!.props.onKeyDown as (e: Record<string, unknown>) => void)({
       key: 'Enter', preventDefault: vi.fn(), stopPropagation: vi.fn(),
     });
@@ -509,7 +525,7 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     expect(useProjectStore.getState().undoStack).toEqual([]);
   });
 
-  it('announces active target kind and name on open and on each scope switch', () => {
+  it('mounts the live region empty and populates target announcements after mount and on each scope switch', () => {
     const project = useProjectStore.getState().project;
     const z0 = project.zones[0];
     const hits: HitResult[] = [
@@ -518,22 +534,30 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     ];
     useEditorStore.getState().openSpeedPanel(100, 100, hits[0], hits as never);
     let tree = renderRoot(SpeedPanel, {});
-    flushEffects();
 
-    const live = findByTestId(tree, 'wf-sp-live-region');
-    expect(live).toBeDefined();
-    expect(live!.props['aria-live']).toBe('polite');
-    expect(textContent(live)).toContain('NPC: Innkeeper');
+    // Live region mounts empty before effects run so screen readers announce text inserted after insertion
+    const initialLive = findByTestId(tree, 'wf-sp-live-region');
+    expect(initialLive).toBeDefined();
+    expect(initialLive!.props['aria-live']).toBe('polite');
+    expect(textContent(initialLive)).toBe('');
+
+    flushEffects();
+    tree = renderRoot(SpeedPanel, {});
+    expect(textContent(findByTestId(tree, 'wf-sp-live-region'))).toBe('Speed Panel target: NPC: Innkeeper');
 
     const zoneChip = findByTestId(tree, `wf-sp-scope-chip-zone:${z0.id}`)!;
     (zoneChip.props.onClick as () => void)();
     tree = renderRoot(SpeedPanel, {});
-    expect(textContent(findByTestId(tree, 'wf-sp-live-region'))).toContain(`Zone: ${z0.name}`);
+    flushEffects();
+    tree = renderRoot(SpeedPanel, {});
+    expect(textContent(findByTestId(tree, 'wf-sp-live-region'))).toBe(`Target switched to Zone: ${z0.name}`);
 
     const canvasChip = findByTestId(tree, 'wf-sp-scope-chip-canvas')!;
     (canvasChip.props.onClick as () => void)();
     tree = renderRoot(SpeedPanel, {});
-    expect(textContent(findByTestId(tree, 'wf-sp-live-region'))).toContain('Canvas');
+    flushEffects();
+    tree = renderRoot(SpeedPanel, {});
+    expect(textContent(findByTestId(tree, 'wf-sp-live-region'))).toBe('Target switched to Canvas');
   });
 
   it('triggers startup load warnings notice inside mounted App without overwriting storage', () => {
@@ -707,9 +731,11 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     ];
     const chips = scopeMod.buildScopeChips(hits, project);
     expect(scopeMod.findActiveScopeChipIndex([], null)).toBe(-1);
-    expect(scopeMod.findActiveScopeChipIndex(chips, { type: 'zone', id: 'other' })).toBe(0);
-    expect(scopeMod.findActiveScopeChipIndex(chips.slice(0, 1), null)).toBe(0);
+    expect(scopeMod.findActiveScopeChipIndex(chips, { type: 'zone', id: 'other' })).toBe(-1);
+    expect(scopeMod.findActiveScopeChipIndex(chips.slice(0, 1), null)).toBe(-1);
     expect(scopeMod.cycleScopeChipIndex([], hits[0], 1)).toEqual(hits[0]);
+    expect(scopeMod.cycleScopeChipIndex(chips, { type: 'zone', id: 'other' }, 1)).toEqual(chips[0].hit);
+    expect(scopeMod.cycleScopeChipIndex(chips, { type: 'zone', id: 'other' }, -1)).toBeNull();
     expect(reconcileActiveIndexOnQuickFixChange(0, true, false, 5)).toBe(0);
     expect(reconcileActiveIndexOnQuickFixChange(1, false, true, 6)).toBe(2);
     expect(reconcileActiveIndexOnQuickFixChange(1, true, false, 0)).toBe(0);
@@ -757,5 +783,395 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     tree = renderRoot(SpeedPanel, {});
     expect(findByTestId(tree, 'wf-sp-quick-fix-row')).toBeDefined();
     expect(collectAll(tree, (el) => el.props.id === 'wf-sp-opt-b1-1-connect-from')[0].props['aria-selected']).toBe(true);
+  });
+
+  it('omits scope chips on canvas-focused keyboard open (on-screen and off-screen) and marks zero chips active on mismatched context', () => {
+    const project = useProjectStore.getState().project;
+    const z0 = project.zones[0];
+    const tileSize = project.map.tileSize;
+    const vis = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true, showProps: true, showTiles: true };
+
+    // When active context is absent from the chip list, zero chips are marked aria-pressed
+    const mismatchedHits: HitResult[] = [
+      { type: 'entity', id: 'npc-innkeeper' },
+      { type: 'zone', id: z0.id },
+    ];
+    useEditorStore.getState().openSpeedPanel(120, 120, { type: 'landmark', id: 'other-lm' }, mismatchedHits as never);
+    let tree = renderRoot(SpeedPanel, {});
+    flushEffects();
+    const mismatchChips = collectAll(tree, (el) => typeof el.props['data-testid'] === 'string' && (el.props['data-testid'] as string).startsWith('wf-sp-scope-chip-'));
+    expect(mismatchChips.length).toBe(3);
+    expect(mismatchChips.every((c) => c.props['aria-pressed'] === false)).toBe(true);
+
+    // Select an NPC in a painted-tile zone, focus canvas with pointer elsewhere, press Q (on-screen then off-screen)
+    for (const vp of [{ panX: 0, panY: 0, zoom: 1 }, { panX: 5000, panY: 5000, zoom: 1 }]) {
+      resetHooks();
+      useProjectStore.getState().loadProject(makeOverlapProject());
+      useEditorStore.getState().closeSpeedPanel();
+      useEditorStore.getState().selectEntity('npc-innkeeper', false);
+      const openSpy = vi.fn((x: number, y: number, ctx: HitResult | null, h?: HitResult[]) => {
+        useEditorStore.getState().openSpeedPanel(x, y, ctx, h as never);
+      });
+      const curProj = useProjectStore.getState().project;
+      const handlers = createCanvasRightPointerHandlers({
+        isMacPlatform: () => false,
+        getScreenXY: () => ({ sx: -30, sy: -30 }),
+        getViewport: () => vp,
+        setViewport: () => {},
+        getOptions: () => ({ ...DEFAULT_SPEED_PANEL_OPTIONS }),
+        findFilteredHitAt: (x: number, y: number) => findHitAt(x, y, vp, curProj, tileSize, vis),
+        findFilteredHitsAt: (x: number, y: number) => findAllHitsAt(x, y, vp, curProj, tileSize, vis),
+        getMenuActionsForHit: () => [],
+        openSpeedPanel: openSpy,
+        getContextMenu: () => null,
+        setContextMenu: () => {},
+        getGestureState: () => ({ rightButtonDown: false, rightPressStart: null, lastRightUp: null, dragging: false }),
+        setGestureState: () => {},
+        getRightPanStart: () => null,
+        setRightPanStart: () => {},
+        getLastRightMoveEvent: () => null,
+        setLastRightMoveEvent: () => {},
+        setSuppressNextLeftMouseUp: () => {},
+        setSuppressNextCanvasContextMenu: () => {},
+        getContextMenuHandledInPress: () => false,
+        setContextMenuHandledInPress: () => {},
+        setLastPointer: () => {},
+        getLastPointer: () => ({ sx: -30, sy: -30 }),
+        setPointerOverCanvas: () => {},
+        getPointerOverCanvas: () => false,
+        setLastPointerRegion: () => {},
+        getLastPointerRegion: () => 'canvas',
+        setLastPointerStamp: () => {},
+        getLastPointerStamp: () => 0,
+        getLastCanvasFocusStamp: () => 0,
+        getCanvasFocusedNow: () => true,
+        getCanvasSize: () => ({ w: 800, h: 600 }),
+        getEditorEnv: () => ({
+          activeModal: null, showSearch: false, showSpeedPanel: false, activeElement: null,
+          selection: useEditorStore.getState().selection, selectedConnection: null, project: curProj, tileSize,
+        }),
+      } as never);
+
+      expect(handlers.handleSpeedPanelKeyTrigger({
+        key: 'q', code: 'KeyQ', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+        repeat: false, isComposing: false, target: null, preventDefault: () => {}, stopPropagation: () => {},
+      })).toBe(true);
+      expect(openSpy).toHaveBeenCalledTimes(1);
+      expect(openSpy.mock.calls[0][2]).toEqual({ type: 'entity', id: 'npc-innkeeper' });
+      expect(openSpy.mock.calls[0][3]).toEqual([]);
+
+      tree = renderRoot(SpeedPanel, {});
+      flushEffects();
+      expect(findByTestId(tree, 'wf-sp-scope-chips')).toBeUndefined();
+
+      // Act on the selected NPC (Delete) cleanly without touching wrong objects
+      const delRow = findByTestId(tree, 'wf-sp-row-delete')!;
+      expect(delRow).toBeDefined();
+      (delRow.props.onClick as () => void)();
+      expect(useProjectStore.getState().project.entityPlacements.some((e) => e.entityId === 'npc-innkeeper')).toBe(false);
+    }
+  });
+
+  it('produces identical project state and undo label after Tab scope switches as opening directly on entity, tile, and zone', () => {
+    const overlapHits: HitResult[] = [
+      { type: 'entity', id: 'npc-innkeeper' },
+      { type: 'tile', id: 'layer-floor::2::2' },
+      { type: 'zone', id: 'zone-entrance' },
+    ];
+
+    const runOnMode = (targetIdx: number, viaSwitch: boolean) => {
+      resetHooks();
+      storage.clear();
+      useProjectStore.getState().loadProject(makeOverlapProject());
+      useEditorStore.getState().clearSelection();
+      useEditorStore.getState().closeSpeedPanel();
+      useSpeedPanelPins.setState({ pinnedIds: [], macros: [], groups: [], loadWarnings: [] });
+
+      if (viaSwitch) {
+        useEditorStore.getState().openSpeedPanel(120, 120, overlapHits[0], overlapHits as never);
+      } else {
+        useEditorStore.getState().openSpeedPanel(120, 120, overlapHits[targetIdx], [overlapHits[targetIdx]] as never);
+      }
+      let tree = renderRoot(SpeedPanel, {});
+      flushEffects();
+
+      if (viaSwitch) {
+        for (let step = 0; step < targetIdx; step++) {
+          (findByTestId(tree, 'wf-speed-panel')!.props.onKeyDown as (e: Record<string, unknown>) => void)({
+            key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+            target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+          });
+          tree = renderRoot(SpeedPanel, {});
+          flushEffects();
+        }
+      }
+      expect(useEditorStore.getState().speedPanelContext).toEqual(overlapHits[targetIdx]);
+
+      // Search 'delete' and execute via Enter so the same delete path works uniformly for entity, tile, and zone
+      const searchEl = findByTestId(tree, 'wf-speed-panel-search')!;
+      (searchEl.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: 'delete' } });
+      tree = renderRoot(SpeedPanel, {});
+      flushEffects();
+      tree = renderRoot(SpeedPanel, {});
+      (findByTestId(tree, 'wf-speed-panel')!.props.onKeyDown as (e: Record<string, unknown>) => void)({
+        key: 'Enter', code: 'Enter', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+        target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+      });
+      const ps = useProjectStore.getState();
+      return {
+        project: ps.project,
+        undoLabel: ps.undoStack[0]?.label,
+      };
+    };
+
+    for (let idx = 0; idx < overlapHits.length; idx++) {
+      const fromSwitch = runOnMode(idx, true);
+      const fromDirect = runOnMode(idx, false);
+      expect(fromSwitch.undoLabel).toBe('Delete 1 object');
+      expect(fromSwitch.undoLabel).toBe(fromDirect.undoLabel);
+      expect(fromSwitch.project).toEqual(fromDirect.project);
+    }
+  });
+
+  it('preserves Tab inside step stack, prioritized Set Elevation row, and spatial pick mode while letting Tab leave the chip row', () => {
+    const project = useProjectStore.getState().project;
+    const z0 = project.zones[0];
+    const hits: HitResult[] = [
+      { type: 'entity', id: 'npc-innkeeper' },
+      { type: 'zone', id: z0.id },
+    ];
+
+    // 1) Tab inside an active step stack with chips stored does not switch scope
+    useEditorStore.getState().openSpeedPanel(120, 120, hits[1], hits as never);
+    let tree = renderRoot(SpeedPanel, {});
+    flushEffects();
+    expect(findByTestId(tree, 'wf-sp-scope-chips')).toBeDefined();
+    (findByTestId(tree, 'wf-sp-row-assign-district')!.props.onClick as () => void)();
+    tree = renderRoot(SpeedPanel, {});
+    expect(findByTestId(tree, 'wf-sp-step-view')).toBeDefined();
+    (findByTestId(tree, 'wf-speed-panel')!.props.onKeyDown as (e: Record<string, unknown>) => void)({
+      key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+      target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+    });
+    expect(useEditorStore.getState().speedPanelContext).toEqual(hits[1]);
+    expect(findByTestId(tree, 'wf-sp-step-view')).toBeDefined();
+
+    // 2) Pin Set Elevation in Band 2 so it is highlighted with empty query + chips shown: Tab opens pill before cycling scope
+    resetHooks();
+    useSpeedPanelPins.setState({ pinnedIds: ['set-elevation'] });
+    useEditorStore.getState().openSpeedPanel(120, 120, hits[1], hits as never);
+    tree = renderRoot(SpeedPanel, {});
+    flushEffects();
+    expect(findByTestId(tree, 'wf-sp-scope-chips')).toBeDefined();
+    const pinnedElev = findByTestId(tree, 'wf-sp-pin-set-elevation')!;
+    expect(pinnedElev).toBeDefined();
+    // Navigate down from Band 1 (5 rows -> indices 0..4) to Band 2 slot 0 (index 5)
+    for (let i = 0; i < 5; i++) {
+      (findByTestId(tree, 'wf-speed-panel')!.props.onKeyDown as (e: Record<string, unknown>) => void)({
+        key: 'ArrowDown', code: 'ArrowDown', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+        target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+      });
+      tree = renderRoot(SpeedPanel, {});
+    }
+    expect(findByTestId(tree, 'wf-sp-pin-set-elevation')!.props['aria-selected']).toBe(true);
+    (findByTestId(tree, 'wf-speed-panel')!.props.onKeyDown as (e: Record<string, unknown>) => void)({
+      key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+      target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+    });
+    expect(useEditorStore.getState().speedPanelContext).toEqual(hits[1]);
+    tree = renderRoot(SpeedPanel, {});
+    expect(findByTestId(tree, 'wf-sp-scalar-pill')).toBeDefined();
+
+    // 3) Tab from a focused scope chip returns 'none' so focus moves out in normal order
+    const lastChipTarget = {
+      tagName: 'BUTTON',
+      getAttribute: (name: string) => (name === 'data-scope-chip' ? 'true' : null),
+      dataset: { scopeChip: 'true', testid: 'wf-sp-scope-chip-canvas' },
+    };
+    const fakeEntries = [{ kind: 'row', domId: 'wf-sp-pin-set-elevation', row: { command: { id: 'set-elevation' }, disabledReason: null } }] as never;
+    expect(
+      resolveSpeedPanelKeyAction(
+        { key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, target: lastChipTarget },
+        { kind: 'unsearched' } as never,
+        fakeEntries,
+        0,
+        { query: '', hasScopeChips: true },
+      ),
+    ).toEqual({ type: 'none' });
+    expect(
+      resolveSpeedPanelKeyAction(
+        { key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: true, target: { dataset: { testid: 'wf-sp-scope-chip-canvas' } } },
+        { kind: 'unsearched' } as never,
+        fakeEntries,
+        0,
+        { query: '', hasScopeChips: true },
+      ),
+    ).toEqual({ type: 'none' });
+
+    // 4) Pick mode with scope chips shown still cycles connectionKind on Tab without altering scope target
+    resetHooks();
+    useSpeedPanelPins.setState({ pinnedIds: [] });
+    useEditorStore.getState().openSpeedPanel(120, 120, hits[1], hits as never);
+    tree = renderRoot(SpeedPanel, {});
+    flushEffects();
+    (findByTestId(tree, 'wf-sp-row-connect-from')!.props.onClick as () => void)();
+    expect(useEditorStore.getState().speedPanelPick?.mode).toBe('connect');
+    const spatialHandlers = createCanvasSpatialPickHandlers({
+      getPick: () => useEditorStore.getState().speedPanelPick,
+      getProject: () => useProjectStore.getState().project,
+      findZoneIdAtGrid: () => null,
+      setPick: useEditorStore.getState().setSpeedPanelPick,
+      getStores: productionStepStores,
+    });
+    const beforeKind = useEditorStore.getState().speedPanelPick?.connectionKind;
+    expect(spatialHandlers.handleKeyDown({ key: 'Tab', preventDefault: vi.fn(), stopPropagation: vi.fn() })).toBe(true);
+    expect(useEditorStore.getState().speedPanelPick?.connectionKind).not.toBe(beforeKind);
+  });
+
+  it('applies tile elevation offset to tile highlight and exercises Canvas draw and gesture hit-list paths', async () => {
+    const scopeMod = await import('../speed-panel-scope.js');
+    const project = structuredClone(useProjectStore.getState().project);
+    const tileSize = project.map.tileSize;
+    project.zones[0] = { ...project.zones[0], elevation: 5 };
+
+    // Tile outline y matches tile draw elevationDrawOffset
+    const elevTileHl = scopeMod.computeScopeTargetHighlight({ type: 'tile', id: 'layer-floor::2::2' }, project, tileSize);
+    expect(elevTileHl).toEqual({
+      kind: 'rect',
+      x: 2 * tileSize,
+      y: 2 * tileSize + elevationDrawOffset(5),
+      width: tileSize,
+      height: tileSize,
+    });
+
+    // Gesture: compact menu upgrade and double-right-click finish both forward findFilteredHitsAt
+    const z0 = project.zones[0];
+    const vp = { panX: 0, panY: 0, zoom: 1 };
+    const vis = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true, showProps: true, showTiles: true };
+    const sx = (z0.gridX + 2) * tileSize;
+    const sy = (z0.gridY + 2) * tileSize;
+    const openSpy = vi.fn();
+    let gestureState = { rightButtonDown: false, rightPressStart: null as null | { sx: number; sy: number; pointerId: number; t: number }, lastRightUp: null as null | { sx: number; sy: number; t: number }, dragging: false };
+    let menuState: { x: number; y: number; hit: HitResult | null; actions: Array<{ id: string; label: string; icon: string }> } | null = null;
+    let now = 1000;
+    const gestureHandlers = createCanvasRightPointerHandlers({
+      isMacPlatform: () => false,
+      nowFn: () => now,
+      getScreenXY: () => ({ sx, sy }),
+      getViewport: () => vp,
+      setViewport: () => {},
+      getOptions: () => ({ ...DEFAULT_SPEED_PANEL_OPTIONS }),
+      findFilteredHitAt: (x: number, y: number) => findHitAt(x, y, vp, project, tileSize, vis),
+      findFilteredHitsAt: (x: number, y: number) => findAllHitsAt(x, y, vp, project, tileSize, vis),
+      getMenuActionsForHit: () => [{ id: 'edit-props', label: 'Edit Properties', icon: '\u270E' }],
+      openSpeedPanel: openSpy,
+      getContextMenu: () => menuState,
+      setContextMenu: (m: typeof menuState) => { menuState = m; },
+      getGestureState: () => gestureState,
+      setGestureState: (s: typeof gestureState) => { gestureState = s; },
+      getRightPanStart: () => null,
+      setRightPanStart: () => {},
+      getLastRightMoveEvent: () => null,
+      setLastRightMoveEvent: () => {},
+      setSuppressNextLeftMouseUp: () => {},
+      setSuppressNextCanvasContextMenu: () => {},
+      getContextMenuHandledInPress: () => false,
+      setContextMenuHandledInPress: () => {},
+      setLastPointer: () => {},
+      getLastPointer: () => ({ sx, sy }),
+      setPointerOverCanvas: () => {},
+      getPointerOverCanvas: () => true,
+      setLastPointerRegion: () => {},
+      getLastPointerRegion: () => 'canvas',
+      setLastPointerStamp: () => {},
+      getLastPointerStamp: () => now,
+      getLastCanvasFocusStamp: () => 0,
+      getCanvasFocusedNow: () => false,
+      getCanvasSize: () => ({ w: 800, h: 600 }),
+      getEditorEnv: () => ({
+        activeModal: null, showSearch: false, showSpeedPanel: false, activeElement: null,
+        selection: useEditorStore.getState().selection, selectedConnection: null, project, tileSize,
+      }),
+    } as never);
+
+    gestureHandlers.openObjectContextMenu(sx, sy);
+    gestureHandlers.upgradeContextMenuToSpeedPanel();
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect((openSpy.mock.calls[0][3] as HitResult[]).length).toBeGreaterThanOrEqual(2);
+
+    // Double right-click finishes into Speed Panel forwarding filtered hits
+    const rightEvt = { button: 2, clientX: sx, clientY: sy, pointerId: 1, pointerType: 'mouse', preventDefault: () => {}, stopPropagation: () => {} };
+    gestureHandlers.startRightPointer(rightEvt);
+    now += 40;
+    gestureHandlers.finishRightPointer(rightEvt);
+    now += 80;
+    gestureHandlers.startRightPointer(rightEvt);
+    now += 40;
+    gestureHandlers.finishRightPointer(rightEvt);
+    expect(openSpy).toHaveBeenCalledTimes(2);
+    expect((openSpy.mock.calls[1][3] as HitResult[]).length).toBeGreaterThanOrEqual(2);
+
+    // Canvas mount: draw() with active speedPanelContext + pointer Q open populates hits and paints 2D highlight
+    useProjectStore.getState().loadProject(makeOverlapProject());
+    useEditorStore.getState().closeSpeedPanel();
+    const listeners = new Map<string, Array<(e: unknown) => void>>();
+    const win = (globalThis as Record<string, unknown>).window as Record<string, unknown>;
+    const prevAdd = win.addEventListener;
+    const prevRem = win.removeEventListener;
+    const prevGetComputed = win.getComputedStyle;
+    win.addEventListener = (type: string, fn: (e: unknown) => void) => {
+      const list = listeners.get(type) ?? [];
+      list.push(fn);
+      listeners.set(type, list);
+    };
+    win.removeEventListener = () => {};
+    win.getComputedStyle = () => ({ getPropertyValue: () => '' });
+    const drawnOps: string[] = [];
+    const ctx2dProxy = new Proxy({}, {
+      get(_t, prop) {
+        if (prop === 'measureText') return () => ({ width: 20 });
+        if (prop === 'createLinearGradient' || prop === 'createRadialGradient') return () => ({ addColorStop: () => {} });
+        if (prop === 'createPattern') return () => null;
+        return (..._args: unknown[]) => { drawnOps.push(String(prop)); };
+      },
+      set() { return true; },
+    });
+    const prevGetCtx = mockCanvasElement.getContext;
+    mockCanvasElement.getContext = () => ctx2dProxy as never;
+    try {
+      resetHooks();
+      useEditorStore.getState().openSpeedPanel(sx, sy, { type: 'entity', id: 'npc-innkeeper' }, [
+        { type: 'entity', id: 'npc-innkeeper' },
+        { type: 'zone', id: z0.id },
+      ] as never);
+      let cTree = renderRoot(Canvas, {});
+      flushEffects();
+      expect(drawnOps).toContain('setLineDash');
+      expect(drawnOps).toContain('stroke');
+
+      // Pointer hover over overlapping coord + Q triggers Canvas.tsx findFilteredHitsAt
+      useEditorStore.getState().closeSpeedPanel();
+      cTree = renderRoot(Canvas, {});
+      flushEffects();
+      const vpNow = useEditorStore.getState().viewport;
+      const hitSx = ((z0.gridX + 2) * tileSize - vpNow.panX) * vpNow.zoom;
+      const hitSy = ((z0.gridY + 2) * tileSize - vpNow.panY) * vpNow.zoom;
+      const canvasEl = collectAll(cTree, (el) => el.type === 'canvas')[0];
+      const origPt = { clientX: hitSx, clientY: hitSy, nativeEvent: { clientX: hitSx, clientY: hitSy } };
+      (canvasEl.props.onPointerMove as (e: typeof origPt) => void)(origPt);
+      for (const fn of listeners.get('keydown') ?? []) {
+        fn({
+          key: 'q', code: 'KeyQ', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+          repeat: false, isComposing: false, target: null, preventDefault: () => {}, stopPropagation: () => {},
+        });
+      }
+      expect(useEditorStore.getState().showSpeedPanel).toBe(true);
+      expect(useEditorStore.getState().speedPanelHits.length).toBeGreaterThanOrEqual(2);
+    } finally {
+      mockCanvasElement.getContext = prevGetCtx;
+      win.addEventListener = prevAdd;
+      win.removeEventListener = prevRem;
+      win.getComputedStyle = prevGetComputed;
+    }
   });
 });

@@ -726,11 +726,7 @@ export function createCanvasRightPointerHandlers(deps: CanvasRightPointerHandler
       deps.getViewport(),
       env.tileSize,
     );
-    if (deps.findFilteredHitsAt) {
-      deps.openSpeedPanel(anchor.sx, anchor.sy, anchor.hit, deps.findFilteredHitsAt(anchor.sx, anchor.sy));
-    } else {
-      deps.openSpeedPanel(anchor.sx, anchor.sy, anchor.hit);
-    }
+    deps.openSpeedPanel(anchor.sx, anchor.sy, anchor.hit, []);
     return true;
   };
 

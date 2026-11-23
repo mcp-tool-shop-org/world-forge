@@ -463,7 +463,24 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     await expect(highlight).toHaveAttribute('data-target-id', 'chapel-lantern');
     await expect(panel.getByTestId('wf-sp-live-region')).toContainText('Item: Chapel Lantern');
 
-    // 3) Tab with empty search cycles Item -> NPC -> Zone, moving canvas highlight, live announcement & Band 1 deck
+    // 3) Tab from the focused last chip leaves the chip row in normal focus order (does not jump back to search)
+    await canvasChip.focus();
+    await expect(canvasChip).toBeFocused();
+    await page.keyboard.press('Tab');
+    const leftChipRow = await page.evaluate(() => {
+      const active = document.activeElement;
+      const chips = document.querySelector('[data-testid="wf-sp-scope-chips"]');
+      const search = document.querySelector('[data-testid="wf-speed-panel-search"]');
+      return {
+        inChips: Boolean(active && chips && chips.contains(active)),
+        inSearch: Boolean(active && search && active === search),
+      };
+    });
+    expect(leftChipRow.inChips).toBe(false);
+    expect(leftChipRow.inSearch).toBe(false);
+    await panel.getByTestId('wf-speed-panel-search').focus();
+
+    // 4) Tab with empty search cycles Item -> NPC -> Zone, moving canvas highlight, live announcement & Band 1 deck
     await page.keyboard.press('Tab');
     await expect(npcChip).toHaveAttribute('aria-pressed', 'true');
     await expect(highlight).toHaveAttribute('data-target-type', 'entity');

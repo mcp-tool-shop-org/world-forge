@@ -160,6 +160,7 @@ export function SpeedPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const scopeChipRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [hasSwitchedScope, setHasSwitchedScope] = useState(false);
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
 
   const scopeChips: ScopeChip[] = useMemo(
     () => buildScopeChips(speedPanelHits, project),
@@ -170,10 +171,12 @@ export function SpeedPanel({
     [scopeChips, speedPanelContext],
   );
 
-  const selectScopeTarget = (hit: HitResult | null) => {
+  const selectScopeTarget = (hit: HitResult | null, refocusSearch = true) => {
     setHasSwitchedScope(true);
     setSpeedPanelContext(hit);
-    queueMicrotask(() => inputRef.current?.focus({ preventScroll: true }));
+    if (refocusSearch) {
+      queueMicrotask(() => inputRef.current?.focus({ preventScroll: true }));
+    }
   };
 
   const cycleScope = (direction: 1 | -1) => {
@@ -273,6 +276,13 @@ export function SpeedPanel({
     if (!active || typeof document === 'undefined') return;
     document.getElementById(active.domId)?.scrollIntoView?.({ block: 'nearest' });
   }, [activeIdx, allNavigable]);
+
+  // Populate live announcement after the status region mounts so screen readers reliably detect text insertion
+  useEffect(() => {
+    setLiveAnnouncement(
+      speedPanelPosition ? formatScopeTargetAnnouncement(speedPanelContext, project, hasSwitchedScope) : '',
+    );
+  }, [speedPanelPosition, speedPanelContext, project, hasSwitchedScope]);
 
   // Edge clamping
   const [offset, setOffset] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
@@ -461,7 +471,7 @@ export function SpeedPanel({
             whiteSpace: 'nowrap',
           }}
         >
-          {formatScopeTargetAnnouncement(speedPanelContext, project, hasSwitchedScope)}
+          {liveAnnouncement}
         </div>
         {/* Header: Create macro / Missing-ID replacement / Step breadcrumb / Root combobox */}
         {createMacroState ? (
@@ -598,9 +608,10 @@ export function SpeedPanel({
                     scopeChipRefs.current[idx] = el;
                   }}
                   type="button"
+                  data-scope-chip="true"
                   data-testid={`wf-sp-scope-chip-${chip.key}`}
                   aria-pressed={isActive}
-                  onClick={() => selectScopeTarget(chip.hit)}
+                  onClick={(e?: { detail?: number }) => selectScopeTarget(chip.hit, e === undefined || e.detail !== 0)}
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                       e.preventDefault();

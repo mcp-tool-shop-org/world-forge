@@ -279,6 +279,28 @@ export function isNonSearchTextInput(target: unknown): boolean {
   return false;
 }
 
+/**
+ * Return true when an event target is a Speed Panel scope chip button (`data-scope-chip="true"`
+ * or `data-testid="wf-sp-scope-chip-*"`), allowing `Tab` / `Shift+Tab` to leave the chip row cleanly.
+ */
+export function isScopeChipElement(target: unknown): boolean {
+  if (!target || typeof target !== 'object') return false;
+  const el = target as {
+    getAttribute?: (name: string) => string | null;
+    dataset?: { scopeChip?: string; testid?: string };
+  };
+  const scopeAttr =
+    (typeof el.getAttribute === 'function' ? el.getAttribute('data-scope-chip') : null) ??
+    el.dataset?.scopeChip ??
+    null;
+  if (scopeAttr === 'true') return true;
+  const testId =
+    (typeof el.getAttribute === 'function' ? el.getAttribute('data-testid') : null) ??
+    el.dataset?.testid ??
+    null;
+  return typeof testId === 'string' && testId.startsWith('wf-sp-scope-chip-');
+}
+
 export interface SpeedPanelKeyEventLike {
   key: string;
   code: string;
@@ -384,7 +406,9 @@ export function resolveSpeedPanelKeyAction(
     };
   }
 
-  if (e.key === 'Tab' && !inSecondaryInput && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+  const inScopeChip = isScopeChipElement(e.target);
+
+  if (e.key === 'Tab' && !inSecondaryInput && !inScopeChip && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
     const active = allNavigable[activeIdx];
     if (active?.kind === 'row' && active.row.command.id === 'set-elevation' && active.row.disabledReason === null) {
       return { type: 'open-scalar-pill', commandId: 'set-elevation', domId: active.domId };
@@ -394,6 +418,7 @@ export function resolveSpeedPanelKeyAction(
   if (
     e.key === 'Tab' &&
     !inSecondaryInput &&
+    !inScopeChip &&
     !e.ctrlKey &&
     !e.altKey &&
     !e.metaKey &&

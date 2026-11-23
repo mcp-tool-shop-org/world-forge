@@ -2,6 +2,7 @@
 
 import type { WorldProject } from '@world-forge/schema';
 import { decodeTileHitId, type HitResult } from './hit-testing.js';
+import { elevationDrawOffset, zoneElevationAt } from './tile-render.js';
 import { collectTownMarkers } from './town-markers.js';
 import type { ViewportState } from './viewport.js';
 
@@ -180,16 +181,14 @@ export function buildScopeChips(hits: readonly HitResult[], project: WorldProjec
   return chips;
 }
 
-/** Return the index of `activeContext` inside `chips`, defaulting safely when absent. */
+/** Return the index of `activeContext` inside `chips`, or `-1` when absent so wrong chips are never marked active. */
 export function findActiveScopeChipIndex(
   chips: readonly ScopeChip[],
   activeContext: HitResult | null,
 ): number {
   if (chips.length === 0) return -1;
   const key = scopeChipKey(activeContext);
-  const idx = chips.findIndex((c) => c.key === key);
-  if (idx >= 0) return idx;
-  return activeContext === null ? chips.length - 1 : 0;
+  return chips.findIndex((c) => c.key === key);
 }
 
 /** Return the next or previous target along `chips` (wrapping cleanly at ends). */
@@ -200,8 +199,10 @@ export function cycleScopeChipIndex(
 ): HitResult | null {
   if (chips.length === 0) return activeContext;
   const cur = findActiveScopeChipIndex(chips, activeContext);
-  const start = cur >= 0 ? cur : 0;
-  const next = (start + direction + chips.length) % chips.length;
+  if (cur < 0) {
+    return (direction === 1 ? chips[0] : chips[chips.length - 1]).hit;
+  }
+  const next = (cur + direction + chips.length) % chips.length;
   return chips[next].hit;
 }
 
@@ -306,7 +307,7 @@ export function computeScopeTargetHighlight(
       return {
         kind: 'rect',
         x: decoded.gridX * tileSize,
-        y: decoded.gridY * tileSize,
+        y: decoded.gridY * tileSize + elevationDrawOffset(zoneElevationAt(project.zones, decoded.gridX, decoded.gridY)),
         width: tileSize,
         height: tileSize,
       };
