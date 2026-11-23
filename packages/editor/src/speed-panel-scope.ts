@@ -64,6 +64,24 @@ function parseConnectionKey(id: string): [string, string] | null {
   return to ? [from, to] : null;
 }
 
+/**
+ * Resolve grid coordinates for a tile hit by looking up placement `id` across `project.tileLayers`
+ * first (how painted tiles are stored), falling back to `decodeTileHitId` for composite IDs.
+ */
+export function resolveTileHitPosition(
+  project: WorldProject,
+  hitId: string,
+): { gridX: number; gridY: number } | null {
+  for (const layer of project.tileLayers ?? []) {
+    const placement = layer.tiles.find((t) => t.id === hitId);
+    if (placement) {
+      return { gridX: placement.gridX, gridY: placement.gridY };
+    }
+  }
+  const decoded = decodeTileHitId(hitId);
+  return decoded ? { gridX: decoded.gridX, gridY: decoded.gridY } : null;
+}
+
 /** Resolve human-readable kind and name labels for any canvas hit or empty Canvas target. */
 export function formatScopeTarget(
   hit: HitResult | null,
@@ -122,9 +140,9 @@ export function formatScopeTarget(
       break;
     }
     case 'tile': {
-      const decoded = decodeTileHitId(hit.id);
-      if (decoded) {
-        nameLabel = `(${decoded.gridX}, ${decoded.gridY})`;
+      const pos = resolveTileHitPosition(project, hit.id);
+      if (pos) {
+        nameLabel = `(${pos.gridX}, ${pos.gridY})`;
       }
       break;
     }
@@ -302,12 +320,12 @@ export function computeScopeTargetHighlight(
       };
     }
     case 'tile': {
-      const decoded = decodeTileHitId(target.id);
-      if (!decoded) return null;
+      const pos = resolveTileHitPosition(project, target.id);
+      if (!pos) return null;
       return {
         kind: 'rect',
-        x: decoded.gridX * tileSize,
-        y: decoded.gridY * tileSize + elevationDrawOffset(zoneElevationAt(project.zones, decoded.gridX, decoded.gridY)),
+        x: pos.gridX * tileSize,
+        y: pos.gridY * tileSize + elevationDrawOffset(zoneElevationAt(project.zones, pos.gridX, pos.gridY)),
         width: tileSize,
         height: tileSize,
       };

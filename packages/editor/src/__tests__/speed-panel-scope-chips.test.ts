@@ -127,7 +127,6 @@ import { createCanvasRightPointerHandlers } from '../speed-panel-gesture.js';
 import { findAllHitsAt, findHitAt, type HitResult } from '../hit-testing.js';
 import { elevationDrawOffset } from '../tile-render.js';
 import { productionStepStores } from '../panels/speed-panel-stores.js';
-import { createCanvasSpatialPickHandlers } from '../speed-panel-steps.js';
 import {
   clampActiveIndex,
   dispatchSpeedPanelKeyAction,
@@ -237,9 +236,21 @@ function makeOverlapProject(): WorldProject {
     { id: 'prop-sign', propId: 'signpost', zoneId: z0.id, gridX: z0.gridX + 2, gridY: z0.gridY + 2 },
   ];
   p.tileLayers = [
-    { id: 'layer-floor', name: 'Floor', zIndex: 0, tiles: [{ id: 'tile-stone', tileId: 'stone', gridX: z0.gridX + 2, gridY: z0.gridY + 2 }] },
+    { id: 'layer-floor', name: 'Floor', zIndex: 0, tiles: [] },
   ];
   return p;
+}
+
+function loadPaintedOverlapProject() {
+  useProjectStore.getState().loadProject(makeOverlapProject());
+  const z0 = useProjectStore.getState().project.zones[0];
+  useProjectStore.getState().addTilePlacement('layer-floor', {
+    tileId: 'stone',
+    gridX: z0.gridX + 2,
+    gridY: z0.gridY + 2,
+  });
+  // Reset initial undo history after seeding the painted tile so undo tests start clean
+  useProjectStore.getState().loadProject(structuredClone(useProjectStore.getState().project));
 }
 
 describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () => {
@@ -249,7 +260,7 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     resetHooks();
     vi.restoreAllMocks();
     installMockDomGlobals();
-    useProjectStore.getState().loadProject(makeOverlapProject());
+    loadPaintedOverlapProject();
     useEditorStore.getState().clearSelection();
     useEditorStore.getState().closeSpeedPanel();
     useSpeedPanelPins.setState({ pinnedIds: [], macros: [], groups: [], loadWarnings: [] });
@@ -273,11 +284,14 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     const visAll = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true, showProps: true, showTiles: true };
     const allHits = findAllHitsAt(sx, sy, vp, project, tileSize, visAll);
     expect(allHits.map((h) => h.type)).toEqual(['spawn', 'landmark', 'entity', 'prop', 'tile', 'zone']);
+    const paintedTileHit = allHits.find((h) => h.type === 'tile')!;
+    expect(paintedTileHit.id).toMatch(/^tile-\d+(?:-\d+)?$/);
     const chips = buildScopeChips(allHits, project);
     expect(chips.map((c) => c.hit)).toEqual([...allHits, null]);
     expect(chips[0].label).toContain('Spawn:');
     expect(chips[1].label).toBe('Landmark: Town Fountain');
     expect(chips[2].label).toBe('NPC: Innkeeper');
+    expect(chips[4].label).toBe(`Tile: (${z0.gridX + 2}, ${z0.gridY + 2})`);
     expect(chips[chips.length - 1].label).toBe('Canvas');
 
     // 2) Hidden layers & hidden object IDs are omitted before building chips
@@ -475,12 +489,20 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     const z0 = project.zones[0];
     const tileSize = project.map.tileSize;
 
+    const paintedTile = project.tileLayers![0].tiles[0];
+    expect(paintedTile.id).toMatch(/^tile-\d+(?:-\d+)?$/);
     expect(computeScopeTargetHighlight({ type: 'zone', id: z0.id }, project, tileSize)?.kind).toBe('rect');
     expect(computeScopeTargetHighlight({ type: 'entity', id: 'npc-innkeeper' }, project, tileSize)?.kind).toBe('circle');
     expect(computeScopeTargetHighlight({ type: 'landmark', id: 'lm-fountain' }, project, tileSize)?.kind).toBe('circle');
     expect(computeScopeTargetHighlight({ type: 'spawn', id: 'sp-square' }, project, tileSize)?.kind).toBe('circle');
     expect(computeScopeTargetHighlight({ type: 'prop', id: 'prop-sign' }, project, tileSize)?.kind).toBe('rect');
-    expect(computeScopeTargetHighlight({ type: 'tile', id: 'layer-floor::2::2' }, project, tileSize)?.kind).toBe('rect');
+    expect(computeScopeTargetHighlight({ type: 'tile', id: paintedTile.id! }, project, tileSize)).toEqual({
+      kind: 'rect',
+      x: paintedTile.gridX * tileSize,
+      y: paintedTile.gridY * tileSize,
+      width: tileSize,
+      height: tileSize,
+    });
     expect(computeScopeTargetHighlight({ type: 'connection', id: `${project.connections[0].fromZoneId}::${project.connections[0].toZoneId}` }, project, tileSize)?.kind).toBe('line');
     expect(computeScopeTargetHighlight(null, project, tileSize)).toBeNull();
 
@@ -665,11 +687,13 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
       { id: 'st-1', zoneId: z0.id, stationType: 'anvil', availableRecipes: [] },
     ];
 
-    // Labels for all HitResult types
+    const paintedTile = project.tileLayers![0].tiles[0];
+    // Labels for all HitResult types (including real painted tile-N id and legacy composite tile id)
     expect(scopeMod.formatScopeTarget({ type: 'entity', id: 'boss-warden' }, project).label).toBe('Entity: Iron Warden');
     expect(scopeMod.formatScopeTarget({ type: 'encounter', id: project.encounterAnchors[0].id }, project).kindLabel).toBe('Encounter');
     expect(scopeMod.formatScopeTarget({ type: 'item', id: 'item-key' }, project).label).toBe('Item: Brass Key');
     expect(scopeMod.formatScopeTarget({ type: 'prop', id: 'prop-sign' }, project).label).toBe('Prop: Old Sign');
+    expect(scopeMod.formatScopeTarget({ type: 'tile', id: paintedTile.id! }, project).label).toBe('Tile: (2, 2)');
     expect(scopeMod.formatScopeTarget({ type: 'tile', id: 'layer-floor::2::2' }, project).label).toBe('Tile: (2, 2)');
     expect(scopeMod.formatScopeTarget({ type: 'connection', id: `${project.connections[0].fromZoneId}::${project.connections[0].toZoneId}` }, project).kindLabel).toBe('Connection');
     expect(scopeMod.formatScopeTarget({ type: 'market', id: 'mkt-1' }, project).label).toBe('Market: Innkeeper');
@@ -806,7 +830,7 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     // Select an NPC in a painted-tile zone, focus canvas with pointer elsewhere, press Q (on-screen then off-screen)
     for (const vp of [{ panX: 0, panY: 0, zoom: 1 }, { panX: 5000, panY: 5000, zoom: 1 }]) {
       resetHooks();
-      useProjectStore.getState().loadProject(makeOverlapProject());
+      loadPaintedOverlapProject();
       useEditorStore.getState().closeSpeedPanel();
       useEditorStore.getState().selectEntity('npc-innkeeper', false);
       const openSpy = vi.fn((x: number, y: number, ctx: HitResult | null, h?: HitResult[]) => {
@@ -873,16 +897,24 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
   });
 
   it('produces identical project state and undo label after Tab scope switches as opening directly on entity, tile, and zone', () => {
-    const overlapHits: HitResult[] = [
-      { type: 'entity', id: 'npc-innkeeper' },
-      { type: 'tile', id: 'layer-floor::2::2' },
-      { type: 'zone', id: 'zone-entrance' },
-    ];
+    loadPaintedOverlapProject();
+    const seeded = useProjectStore.getState().project;
+    const z0 = seeded.zones[0];
+    const tileSize = seeded.map.tileSize;
+    const vis = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true, showProps: true, showTiles: true };
+    const rawHits = findAllHitsAt((z0.gridX + 2) * tileSize, (z0.gridY + 2) * tileSize, { panX: 0, panY: 0, zoom: 1 }, seeded, tileSize, vis);
+    const entityHit = rawHits.find((h) => h.type === 'entity')!;
+    const tileHit = rawHits.find((h) => h.type === 'tile')!;
+    const zoneHit = rawHits.find((h) => h.type === 'zone')!;
+    expect(entityHit).toEqual({ type: 'entity', id: 'npc-innkeeper' });
+    expect(tileHit.id).toMatch(/^tile-\d+(?:-\d+)?$/);
+    expect(zoneHit).toEqual({ type: 'zone', id: z0.id });
+    const overlapHits: HitResult[] = [entityHit, tileHit, zoneHit];
 
     const runOnMode = (targetIdx: number, viaSwitch: boolean) => {
       resetHooks();
       storage.clear();
-      useProjectStore.getState().loadProject(makeOverlapProject());
+      useProjectStore.getState().loadProject(structuredClone(seeded));
       useEditorStore.getState().clearSelection();
       useEditorStore.getState().closeSpeedPanel();
       useSpeedPanelPins.setState({ pinnedIds: [], macros: [], groups: [], loadWarnings: [] });
@@ -953,6 +985,8 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
       key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
       target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
     });
+    tree = renderRoot(SpeedPanel, {});
+    flushEffects();
     expect(useEditorStore.getState().speedPanelContext).toEqual(hits[1]);
     expect(findByTestId(tree, 'wf-sp-step-view')).toBeDefined();
 
@@ -1008,48 +1042,132 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
       ),
     ).toEqual({ type: 'none' });
 
-    // 4) Pick mode with scope chips shown still cycles connectionKind on Tab without altering scope target
+    // 4) Pick mode entered from Speed Panel still cycles connectionKind on Tab through Canvas & CanvasSpatialPickOverlay without altering scope target
     resetHooks();
     useSpeedPanelPins.setState({ pinnedIds: [] });
     useEditorStore.getState().openSpeedPanel(120, 120, hits[1], hits as never);
     tree = renderRoot(SpeedPanel, {});
     flushEffects();
+    expect(findByTestId(tree, 'wf-sp-scope-chips')).toBeDefined();
     (findByTestId(tree, 'wf-sp-row-connect-from')!.props.onClick as () => void)();
     expect(useEditorStore.getState().speedPanelPick?.mode).toBe('connect');
-    const spatialHandlers = createCanvasSpatialPickHandlers({
-      getPick: () => useEditorStore.getState().speedPanelPick,
-      getProject: () => useProjectStore.getState().project,
-      findZoneIdAtGrid: () => null,
-      setPick: useEditorStore.getState().setSpeedPanelPick,
-      getStores: productionStepStores,
-    });
-    const beforeKind = useEditorStore.getState().speedPanelPick?.connectionKind;
-    expect(spatialHandlers.handleKeyDown({ key: 'Tab', preventDefault: vi.fn(), stopPropagation: vi.fn() })).toBe(true);
-    expect(useEditorStore.getState().speedPanelPick?.connectionKind).not.toBe(beforeKind);
+
+    const pickListeners = new Map<string, Array<(e: unknown) => void>>();
+    const pickWin = (globalThis as Record<string, unknown>).window as Record<string, unknown>;
+    const prevPickAdd = pickWin.addEventListener;
+    const prevPickRem = pickWin.removeEventListener;
+    const prevPickComputed = pickWin.getComputedStyle;
+    pickWin.addEventListener = (type: string, fn: (e: unknown) => void) => {
+      const list = pickListeners.get(type) ?? [];
+      list.push(fn);
+      pickListeners.set(type, list);
+    };
+    pickWin.removeEventListener = () => {};
+    pickWin.getComputedStyle = () => ({ getPropertyValue: () => '' });
+    try {
+      resetHooks();
+      let cTree = renderRoot(Canvas, {});
+      flushEffects();
+      expect(findByTestId(cTree, 'wf-sp-pick-bar')).toBeDefined();
+
+      // Re-open overlapping context alongside active pick mode and verify neither window keydown nor overlay input Tab switches scope
+      useEditorStore.setState({ showSpeedPanel: true, speedPanelContext: hits[1], speedPanelHits: hits as never });
+      cTree = renderRoot(Canvas, {});
+      flushEffects();
+
+      const beforeWindowKind = useEditorStore.getState().speedPanelPick?.connectionKind;
+      for (const fn of pickListeners.get('keydown') ?? []) {
+        fn({
+          key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+          repeat: false, isComposing: false, target: null, preventDefault: vi.fn(), stopPropagation: vi.fn(),
+        });
+      }
+      expect(useEditorStore.getState().speedPanelPick?.connectionKind).not.toBe(beforeWindowKind);
+      expect(useEditorStore.getState().speedPanelContext).toEqual(hits[1]);
+
+      cTree = renderRoot(Canvas, {});
+      flushEffects();
+      const pickSearch = findByTestId(cTree, 'wf-sp-pick-search')!;
+      expect(pickSearch).toBeDefined();
+      const beforeInputKind = useEditorStore.getState().speedPanelPick?.connectionKind;
+      (pickSearch.props.onKeyDown as (e: Record<string, unknown>) => void)({
+        key: 'Tab', code: 'Tab', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+        preventDefault: vi.fn(), stopPropagation: vi.fn(),
+      });
+      expect(useEditorStore.getState().speedPanelPick?.connectionKind).not.toBe(beforeInputKind);
+      expect(useEditorStore.getState().speedPanelContext).toEqual(hits[1]);
+    } finally {
+      resetHooks();
+      useEditorStore.getState().closeSpeedPanel();
+      pickWin.addEventListener = prevPickAdd;
+      pickWin.removeEventListener = prevPickRem;
+      pickWin.getComputedStyle = prevPickComputed;
+    }
   });
 
   it('applies tile elevation offset to tile highlight and exercises Canvas draw and gesture hit-list paths', async () => {
     const scopeMod = await import('../speed-panel-scope.js');
-    const project = structuredClone(useProjectStore.getState().project);
-    const tileSize = project.map.tileSize;
-    project.zones[0] = { ...project.zones[0], elevation: 5 };
-
-    // Tile outline y matches tile draw elevationDrawOffset
-    const elevTileHl = scopeMod.computeScopeTargetHighlight({ type: 'tile', id: 'layer-floor::2::2' }, project, tileSize);
-    expect(elevTileHl).toEqual({
-      kind: 'rect',
-      x: 2 * tileSize,
-      y: 2 * tileSize + elevationDrawOffset(5),
-      width: tileSize,
-      height: tileSize,
-    });
-
-    // Gesture: compact menu upgrade and double-right-click finish both forward findFilteredHitsAt
-    const z0 = project.zones[0];
+    loadPaintedOverlapProject();
+    const flatProject = useProjectStore.getState().project;
+    const z0 = flatProject.zones[0];
+    const tileSize = flatProject.map.tileSize;
     const vp = { panX: 0, panY: 0, zoom: 1 };
     const vis = { showEntities: true, showLandmarks: true, showSpawns: true, showConnections: true, showProps: true, showTiles: true };
     const sx = (z0.gridX + 2) * tileSize;
     const sy = (z0.gridY + 2) * tileSize;
+
+    // Painted tile resolved by real findAllHitsAt under elevated zone + showElevation enabled
+    const elevatedProject = structuredClone(flatProject);
+    elevatedProject.zones[0] = { ...elevatedProject.zones[0], elevation: 5 };
+    useProjectStore.getState().loadProject(elevatedProject);
+    if (!useEditorStore.getState().showElevation) {
+      useEditorStore.getState().toggleElevation();
+    }
+    expect(useEditorStore.getState().showElevation).toBe(true);
+
+    const elevHits = findAllHitsAt(sx, sy, vp, elevatedProject, tileSize, vis);
+    const elevTileHit = elevHits.find((h) => h.type === 'tile')!;
+    expect(elevTileHit).toBeDefined();
+    expect(elevTileHit.id).toMatch(/^tile-\d+(?:-\d+)?$/);
+    expect(scopeMod.formatScopeTarget(elevTileHit, elevatedProject).nameLabel).toBe(`(${z0.gridX + 2}, ${z0.gridY + 2})`);
+    expect(scopeMod.computeScopeTargetHighlight(elevTileHit, elevatedProject, tileSize)).toEqual({
+      kind: 'rect',
+      x: (z0.gridX + 2) * tileSize,
+      y: (z0.gridY + 2) * tileSize + elevationDrawOffset(5),
+      width: tileSize,
+      height: tileSize,
+    });
+
+    // Composite tile hit ID fallback when a placement carries no explicit id
+    const noIdGx = z0.gridX + 4;
+    const noIdGy = z0.gridY + 4;
+    const noIdProject = structuredClone(elevatedProject);
+    noIdProject.tileLayers.push({
+      id: 'layer-noid',
+      name: 'NoId',
+      zIndex: 1,
+      tiles: [{ tileId: 'stone', gridX: noIdGx, gridY: noIdGy }],
+    });
+    const noIdHits = findAllHitsAt(noIdGx * tileSize, noIdGy * tileSize, vp, noIdProject, tileSize, vis);
+    const noIdTileHit = noIdHits.find((h) => h.type === 'tile')!;
+    expect(noIdTileHit).toEqual({ type: 'tile', id: `layer-noid::${noIdGx}::${noIdGy}` });
+    expect(scopeMod.formatScopeTarget(noIdTileHit, noIdProject).nameLabel).toBe(`(${noIdGx}, ${noIdGy})`);
+    expect(scopeMod.computeScopeTargetHighlight(noIdTileHit, noIdProject, tileSize)).toEqual({
+      kind: 'rect',
+      x: noIdGx * tileSize,
+      y: noIdGy * tileSize + elevationDrawOffset(5),
+      width: tileSize,
+      height: tileSize,
+    });
+
+    // Restore flat painted project with elevation view off for gesture + canvas baseline
+    loadPaintedOverlapProject();
+    if (useEditorStore.getState().showElevation) {
+      useEditorStore.getState().toggleElevation();
+    }
+    const project = useProjectStore.getState().project;
+
+    // Gesture: compact menu upgrade and double-right-click finish both forward findFilteredHitsAt
     const openSpy = vi.fn();
     let gestureState = { rightButtonDown: false, rightPressStart: null as null | { sx: number; sy: number; pointerId: number; t: number }, lastRightUp: null as null | { sx: number; sy: number; t: number }, dragging: false };
     let menuState: { x: number; y: number; hit: HitResult | null; actions: Array<{ id: string; label: string; icon: string }> } | null = null;
@@ -1097,7 +1215,7 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     gestureHandlers.openObjectContextMenu(sx, sy);
     gestureHandlers.upgradeContextMenuToSpeedPanel();
     expect(openSpy).toHaveBeenCalledTimes(1);
-    expect((openSpy.mock.calls[0][3] as HitResult[]).length).toBeGreaterThanOrEqual(2);
+    expect((openSpy.mock.calls[0][3] as HitResult[]).some((h) => h.type === 'tile' && /^tile-\d+(?:-\d+)?$/.test(h.id))).toBe(true);
 
     // Double right-click finishes into Speed Panel forwarding filtered hits
     const rightEvt = { button: 2, clientX: sx, clientY: sy, pointerId: 1, pointerType: 'mouse', preventDefault: () => {}, stopPropagation: () => {} };
@@ -1109,10 +1227,9 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     now += 40;
     gestureHandlers.finishRightPointer(rightEvt);
     expect(openSpy).toHaveBeenCalledTimes(2);
-    expect((openSpy.mock.calls[1][3] as HitResult[]).length).toBeGreaterThanOrEqual(2);
+    expect((openSpy.mock.calls[1][3] as HitResult[]).some((h) => h.type === 'tile' && /^tile-\d+(?:-\d+)?$/.test(h.id))).toBe(true);
 
-    // Canvas mount: draw() with active speedPanelContext + pointer Q open populates hits and paints 2D highlight
-    useProjectStore.getState().loadProject(makeOverlapProject());
+    // Canvas mount: verify exact dashed highlight arc/rect draw calls and coordinates, plus pointer Q real tile-N hit
     useEditorStore.getState().closeSpeedPanel();
     const listeners = new Map<string, Array<(e: unknown) => void>>();
     const win = (globalThis as Record<string, unknown>).window as Record<string, unknown>;
@@ -1126,30 +1243,89 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
     };
     win.removeEventListener = () => {};
     win.getComputedStyle = () => ({ getPropertyValue: () => '' });
-    const drawnOps: string[] = [];
+    let currentDash: number[] = [];
+    const dashStack: number[][] = [];
+    const arcCalls: Array<{ x: number; y: number; r: number; dash: number[] }> = [];
+    const rectCalls: Array<{ x: number; y: number; w: number; h: number; dash: number[] }> = [];
     const ctx2dProxy = new Proxy({}, {
       get(_t, prop) {
         if (prop === 'measureText') return () => ({ width: 20 });
         if (prop === 'createLinearGradient' || prop === 'createRadialGradient') return () => ({ addColorStop: () => {} });
         if (prop === 'createPattern') return () => null;
-        return (..._args: unknown[]) => { drawnOps.push(String(prop)); };
+        if (prop === 'save') return () => { dashStack.push([...currentDash]); };
+        if (prop === 'restore') return () => { currentDash = dashStack.pop() ?? []; };
+        if (prop === 'setLineDash') return (segs: number[]) => { currentDash = [...segs]; };
+        if (prop === 'arc') {
+          return (x: number, y: number, r: number) => {
+            arcCalls.push({ x, y, r, dash: [...currentDash] });
+          };
+        }
+        if (prop === 'rect') {
+          return (x: number, y: number, w: number, h: number) => {
+            rectCalls.push({ x, y, w, h, dash: [...currentDash] });
+          };
+        }
+        return () => {};
       },
       set() { return true; },
     });
     const prevGetCtx = mockCanvasElement.getContext;
     mockCanvasElement.getContext = () => ctx2dProxy as never;
     try {
+      // Closed Speed Panel emits no scope highlight dash arc/rect call
       resetHooks();
+      let cTree = renderRoot(Canvas, {});
+      flushEffects();
+      const closedZoom = useEditorStore.getState().viewport.zoom;
+      expect(arcCalls.filter((c) => c.dash.length === 2 && c.dash[0] === 6 / closedZoom && c.dash[1] === 3 / closedZoom)).toHaveLength(0);
+      expect(rectCalls.filter((c) => c.dash.length === 2 && c.dash[0] === 6 / closedZoom && c.dash[1] === 3 / closedZoom)).toHaveLength(0);
+
+      // Entity target highlight paints exact circle arc with [6 / zoom, 3 / zoom] dash
+      arcCalls.length = 0;
+      rectCalls.length = 0;
       useEditorStore.getState().openSpeedPanel(sx, sy, { type: 'entity', id: 'npc-innkeeper' }, [
         { type: 'entity', id: 'npc-innkeeper' },
         { type: 'zone', id: z0.id },
       ] as never);
-      let cTree = renderRoot(Canvas, {});
+      cTree = renderRoot(Canvas, {});
       flushEffects();
-      expect(drawnOps).toContain('setLineDash');
-      expect(drawnOps).toContain('stroke');
+      const entityZoom = useEditorStore.getState().viewport.zoom;
+      expect(arcCalls).toContainEqual({
+        x: (z0.gridX + 2) * tileSize,
+        y: (z0.gridY + 2) * tileSize,
+        r: 14 / entityZoom,
+        dash: [6 / entityZoom, 3 / entityZoom],
+      });
 
-      // Pointer hover over overlapping coord + Q triggers Canvas.tsx findFilteredHitsAt
+      // Elevated painted tile target paints exact shifted outline rect with [6 / zoom, 3 / zoom] dash
+      arcCalls.length = 0;
+      rectCalls.length = 0;
+      const canvasElevProject = structuredClone(project);
+      canvasElevProject.zones[0] = { ...canvasElevProject.zones[0], elevation: 5 };
+      const canvasElevTile = findAllHitsAt(sx, sy, vp, canvasElevProject, tileSize, vis).find((h) => h.type === 'tile')!;
+      expect(canvasElevTile.id).toMatch(/^tile-\d+(?:-\d+)?$/);
+      useProjectStore.getState().loadProject(canvasElevProject);
+      if (!useEditorStore.getState().showElevation) {
+        useEditorStore.getState().toggleElevation();
+      }
+      useEditorStore.getState().openSpeedPanel(sx, sy, canvasElevTile, [canvasElevTile, { type: 'zone', id: z0.id }] as never);
+      cTree = renderRoot(Canvas, {});
+      flushEffects();
+      const tileZoom = useEditorStore.getState().viewport.zoom;
+      const tilePad = 2 / tileZoom;
+      expect(rectCalls).toContainEqual({
+        x: (z0.gridX + 2) * tileSize - tilePad,
+        y: (z0.gridY + 2) * tileSize + elevationDrawOffset(5) - tilePad,
+        w: tileSize + tilePad * 2,
+        h: tileSize + tilePad * 2,
+        dash: [6 / tileZoom, 3 / tileZoom],
+      });
+
+      // Pointer hover over overlapping coord + Q triggers Canvas.tsx findFilteredHitsAt returning real painted tile-N
+      if (useEditorStore.getState().showElevation) {
+        useEditorStore.getState().toggleElevation();
+      }
+      loadPaintedOverlapProject();
       useEditorStore.getState().closeSpeedPanel();
       cTree = renderRoot(Canvas, {});
       flushEffects();
@@ -1166,8 +1342,14 @@ describe('Speed Panel Scope Chips, Target Highlight & Live Announcements', () =>
         });
       }
       expect(useEditorStore.getState().showSpeedPanel).toBe(true);
-      expect(useEditorStore.getState().speedPanelHits.length).toBeGreaterThanOrEqual(2);
+      const qHits = useEditorStore.getState().speedPanelHits;
+      expect(qHits.length).toBeGreaterThanOrEqual(2);
+      expect(qHits.some((h) => h.type === 'tile' && /^tile-\d+(?:-\d+)?$/.test(h.id))).toBe(true);
     } finally {
+      if (useEditorStore.getState().showElevation) {
+        useEditorStore.getState().toggleElevation();
+      }
+      resetHooks();
       mockCanvasElement.getContext = prevGetCtx;
       win.addEventListener = prevAdd;
       win.removeEventListener = prevRem;
