@@ -537,7 +537,7 @@ describe('unresolved dialogue speakers refused by readiness and CLI', () => {
     return findRenderedInput(el.props.children as ReactNode);
   }
 
-  it('refuses a free-typed speaker name from the Speakers comma-split input path in readiness and CLI', async () => {
+  it('invokes DialogueSpeakersInput onChange directly and refuses an unresolved speaker in readiness and CLI', async () => {
     const store = useProjectStore.getState();
     store.loadProject(structuredClone(validProject));
     const firstDlg = useProjectStore.getState().project.dialogues[0];
@@ -554,12 +554,9 @@ describe('unresolved dialogue speakers refused by readiness and CLI', () => {
     expect(renderedInput.props['data-testid']).toBe('wf-dialogue-speakers-input');
     expect(renderedInput.props.value).toBe(firstDlg.speakers.join(', '));
 
-    const changeEvent = new Event('change', { bubbles: true });
-    Object.defineProperty(changeEvent, 'target', {
-      value: { value: 'fence-marlo, Tavern Keeper' },
-      configurable: true,
+    (renderedInput.props.onChange as (e: { target: { value: string } }) => void)({
+      target: { value: 'fence-marlo, Tavern Keeper' },
     });
-    (renderedInput.props.onChange as (e: Event) => void)(changeEvent);
 
     const updatedDlg = useProjectStore.getState().project.dialogues[0];
     expect(renderToStaticMarkup(createElement(DialogueSpeakersInput, { ...props, speakers: updatedDlg.speakers }))).toContain('fence-marlo, Tavern Keeper');
@@ -802,6 +799,7 @@ function makeConverterThrowProject(): WorldProject {
             description: 'Triggers converter error when effects is missing.',
             cost: 1,
             requires: [],
+            // Intentional invalid value to force convertProgressionTrees to throw
             effects: null as never,
           },
         ],
@@ -877,8 +875,9 @@ describe('readiness parity and combined blockers with encounter advisories', () 
         expectedBlockersFromExport(fixture, precheck.valid),
       );
     }
+  });
 
-    // Readiness path silences [convert-items] stderr warnings while direct exportToEngine still emits them
+  it('computeTargetReadiness silences console.warn while direct exportToEngine still emits warnings', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold')!;
