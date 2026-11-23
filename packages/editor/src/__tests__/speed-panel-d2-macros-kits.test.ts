@@ -1639,7 +1639,7 @@ describe('Parameterized Macros, Session Action Log & Starter Kit Presets', () =>
     expect(cappedMacros).toHaveLength(MAX_IMPORTED_MACROS);
     expect(macroCapWarnings.some((w) => w.includes('Trimmed Speed Panel macros'))).toBe(true);
 
-    // 2) Old argless macro on empty canvas: NO target-zone prompt, aborts with base disabledReason wording
+    // 2) Old argless macro on empty canvas: NO target-zone prompt, aborts with command disabledReason wording
     const oldArgless: SpeedPanelMacro = { id: 'old-ad', name: 'Old Assign', steps: [{ actionId: 'assign-district' }] };
     const oldVal = validateMacroExecution(
       oldArgless,

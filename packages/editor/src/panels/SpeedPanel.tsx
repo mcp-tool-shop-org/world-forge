@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
-import { useSpeedPanelPins } from '../store/speed-panel-store.js';
+import { notifySpeedPanelLoadWarnings, useSpeedPanelPins } from '../store/speed-panel-store.js';
 import {
   COMMAND_REGISTRY,
   type CommandBadge,
@@ -194,8 +194,11 @@ export function SpeedPanel({
     [view, collapsedGroups],
   );
 
-  // Auto-focus without scrolling viewport on mount
-  useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
+  // Auto-focus without scrolling viewport on mount, and surface any deferred macro load warnings once
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true });
+    notifySpeedPanelLoadWarnings(pushToast);
+  }, []);
 
   // Clamp active index when list changes
   useEffect(() => {

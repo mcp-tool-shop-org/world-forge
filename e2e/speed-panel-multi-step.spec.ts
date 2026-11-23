@@ -337,7 +337,7 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     const panel = page.getByTestId('wf-speed-panel');
     const undoBtn = page.getByRole('button', { name: /^Undo\b/ });
 
-    // 1) Confirm clean state on Chapel Entrance has no Quick Fix row and record Band 1 slot IDs
+    // 1) Confirm clean state on Chapel Entrance has no Quick Fix row, record Band 1 slot IDs, and Enter on open runs Band 1 slot 1
     await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
     await page.keyboard.press('q');
     await expect(panel).toBeVisible();
@@ -346,8 +346,9 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
       (els) => els.map((e) => e.id),
     );
     expect(baselineDeckIds.length).toBeGreaterThanOrEqual(4);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('Enter');
     await expect(panel).toHaveCount(0);
+    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue('Chapel Entrance');
 
     // 2) Load a Chapel copy carrying a broken backgroundId reference on chapel-entrance
     const brokenChapel = JSON.parse(readFileSync(CHAPEL_PROJECT, 'utf-8')) as {
@@ -363,7 +364,7 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     });
     await expect(undoBtn).toBeDisabled();
 
-    // 3) Open Speed Panel over chapel-entrance -> Quick Fix row + count appear above unshifted Band 1 slots
+    // 3) Open Speed Panel over chapel-entrance -> Quick Fix row + count appear above unshifted Band 1 slots; Enter on open launches Quick Fix
     await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
     await page.keyboard.press('q');
     await expect(panel).toBeVisible();
@@ -376,14 +377,13 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
     );
     expect(deckIdsWithFix).toEqual(baselineDeckIds);
 
-    // 4) Open Quick Fix -> cancel with Esc -> undo remains disabled (zero mutations)
-    await qfRow.click();
+    await page.keyboard.press('Enter');
     await expect(panel.getByTestId('wf-sp-step-view')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
     await expect(undoBtn).toBeDisabled();
 
-    // 5) Reopen Quick Fix -> select the dependency problem -> verify Show in Deps option + apply repair -> Deps undo label parity
+    // 4) Reopen Quick Fix -> select the dependency problem -> verify Show in Deps option + apply repair -> exact Deps undo label parity
     await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
     await page.keyboard.press('q');
     await panel.getByTestId('wf-sp-quick-fix-row').click();
@@ -393,9 +393,9 @@ test.describe('Speed Panel Multi-Step Flows, Macros, and Quick Fix', () => {
 
     await expect(panel).toHaveCount(0);
     await expect(undoBtn).toHaveText('Undo (1)');
-    await expect(undoBtn).toHaveAttribute('title', /^Undo: Repair: /);
+    await expect(undoBtn).toHaveAttribute('title', 'Undo: Repair: Clear backgroundId');
 
-    // 6) Zone is now clean again -> Quick Fix row no longer appears
+    // 5) Zone is now clean again -> Quick Fix row no longer appears and Enter runs Band 1 slot 1
     await page.mouse.move(box!.x + entranceAnchor.sx, box!.y + entranceAnchor.sy);
     await page.keyboard.press('q');
     await expect(panel).toBeVisible();

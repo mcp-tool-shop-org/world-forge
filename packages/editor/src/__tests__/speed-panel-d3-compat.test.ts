@@ -89,7 +89,7 @@ describe('Speed Panel Band 1 Deck & Analysis Compatibility', () => {
       );
 
       expect(view.kind).toBe('unsearched');
-      if (view.kind !== 'unsearched') continue;
+      if (view.kind !== 'unsearched') throw new Error('Expected unsearched view');
       expect(view.band1Deck.map((r) => r.command.id)).toEqual(expectedDeck.map((c) => c.id));
       expect(view.band1Deck.map((r) => r.deckShortcut)).toEqual(
         expectedDeck.map((_, i) => `Alt+${i + 1}`),
@@ -100,7 +100,7 @@ describe('Speed Panel Band 1 Deck & Analysis Compatibility', () => {
   it('preserves validateProject, scanDependencies, presentationAdvisories, and DependencyPanel repair undo convention', () => {
     const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold');
     expect(chapel).toBeDefined();
-    if (!chapel) return;
+    if (!chapel) throw new Error('Expected chapel-threshold built-in sample');
 
     const cleanProject = structuredClone(chapel.project);
     expect(validateProject(cleanProject).valid).toBe(true);

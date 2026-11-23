@@ -71,7 +71,9 @@ import { SAMPLE_WORLDS } from '../templates/samples.js';
 import { useProjectStore } from '../store/project-store.js';
 import { useEditorStore } from '../store/editor-store.js';
 import {
+  formatSpeedPanelLoadNotice,
   loadSpeedPanelStateV2,
+  notifySpeedPanelLoadWarnings,
   sanitizeMacros,
   SPEED_PANEL_STATE_V2_KEY,
   useSpeedPanelPins,
@@ -283,7 +285,9 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
 
     expect(viewWithFix.kind).toBe('unsearched');
     expect(viewWithoutFix.kind).toBe('unsearched');
-    if (viewWithFix.kind !== 'unsearched' || viewWithoutFix.kind !== 'unsearched') return;
+    if (viewWithFix.kind !== 'unsearched' || viewWithoutFix.kind !== 'unsearched') {
+      throw new Error('Expected unsearched views');
+    }
 
     expect(viewWithFix.quickFix?.label).toBe('Quick Fix');
     expect(viewWithoutFix.quickFix).toBeUndefined();
@@ -340,7 +344,9 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
     const problems = getProblemsForObject(baseProject, target);
     const depProblem = problems.find((p) => p.source === 'dependencies' && p.repairs.length > 0);
     expect(depProblem).toBeDefined();
-    if (!depProblem || !depProblem.edge) return;
+    if (!depProblem || !depProblem.edge) {
+      throw new Error('Expected a repairable dependency problem on zone z2');
+    }
 
     // 1) Reference result via DependencyPanel's direct pattern
     useProjectStore.getState().loadProject(structuredClone(baseProject));
@@ -679,7 +685,7 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
     expect(buildProjectProblemSnapshot(sampleProject).depEdges.length).toBeGreaterThan(0);
   });
 
-  it('drops unsupported and invalidly parameterized macro steps at kit import and store load and preserves empty-canvas wording', () => {
+  it('drops unsupported and invalidly parameterized macro steps at kit import and store load and reports command disabledReason on argless macro aborts', () => {
     // 1) sanitizeMacros drops commands outside ATOMIC_MACRO_SUPPORTED_COMMANDS and argless ARG_REQUIRED_MACRO_COMMANDS
     const warnings: string[] = [];
     const cleaned = sanitizeMacros([
@@ -775,5 +781,78 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
     const expectedMsg = assignCmd.disabledReason(productionHotkeyContext())
       ?? 'Not available in this context';
     expect(execRes.reason).toContain(expectedMsg);
+  });
+
+  it('collects warnings at persisted state load naming dropped commands and removed empty macros and notifies once without overwriting localStorage', () => {
+    const legacyMacrosKey = 'world-forge-speed-panel-macros';
+    const rawV2 = JSON.stringify({
+      version: 2,
+      pinnedIds: ['fit-content'],
+      recentIds: [],
+      frecency: {},
+      adaptiveHistory: {},
+      groups: [],
+      macros: [
+        {
+          id: 'm-keep-one',
+          name: 'Partial Stored Macro',
+          steps: [{ actionId: 'new-zone' }, { actionId: 'fit-content' }],
+        },
+        {
+          id: 'm-drop-all',
+          name: 'Dead End Stored Macro',
+          steps: [{ actionId: 'new-zone' }],
+        },
+      ],
+      showRecents: true,
+    });
+    storage.set(SPEED_PANEL_STATE_V2_KEY, rawV2);
+
+    const loadWarnings: string[] = [];
+    const loadedV2 = loadSpeedPanelStateV2(Date.now(), loadWarnings);
+    expect(loadedV2.macros.map((m) => m.id)).toEqual(['m-keep-one']);
+    expect(loadedV2.macros[0].steps).toEqual([{ actionId: 'fit-content' }]);
+    expect(loadWarnings.some((w) => w.includes('new-zone') && w.includes('Partial Stored Macro'))).toBe(true);
+    expect(loadWarnings.some((w) => w.includes('new-zone') && w.includes('Dead End Stored Macro'))).toBe(true);
+    expect(loadWarnings.some((w) => w.includes('Dead End Stored Macro') && w.includes('removed'))).toBe(true);
+    // Original persisted value stays intact at load before notice is shown or user saves
+    expect(storage.get(SPEED_PANEL_STATE_V2_KEY)).toBe(rawV2);
+
+    // Notice shows once and leaves localStorage untouched until a deliberate write
+    expect(formatSpeedPanelLoadNotice([])).toBeNull();
+    useSpeedPanelPins.setState({ loadWarnings: [...loadWarnings] });
+    const toastSpy = vi.fn();
+    notifySpeedPanelLoadWarnings(toastSpy);
+    expect(toastSpy).toHaveBeenCalledTimes(1);
+    const noticeMsg = toastSpy.mock.calls[0][0] as string;
+    expect(noticeMsg).toContain('new-zone');
+    expect(noticeMsg).toContain('Partial Stored Macro');
+    expect(noticeMsg).toContain('Dead End Stored Macro');
+    expect(noticeMsg).toContain('removed');
+    expect(toastSpy.mock.calls[0][1]).toBe('warning');
+    expect(storage.get(SPEED_PANEL_STATE_V2_KEY)).toBe(rawV2);
+
+    // Repeat notification call does not fire twice
+    notifySpeedPanelLoadWarnings(toastSpy);
+    expect(toastSpy).toHaveBeenCalledTimes(1);
+
+    // Deliberate user write then updates localStorage cleanly
+    useSpeedPanelPins.getState().addMacro({
+      id: 'user-saved',
+      name: 'User Saved',
+      steps: [{ actionId: 'fit-content' }],
+    });
+    expect(storage.get(SPEED_PANEL_STATE_V2_KEY)).not.toBe(rawV2);
+
+    // Legacy macro migration path also collects load warnings
+    storage.clear();
+    const rawLegacy = JSON.stringify([{ id: 'leg-bad', name: 'Legacy Bad', steps: [{ actionId: 'new-zone' }] }]);
+    storage.set(legacyMacrosKey, rawLegacy);
+    const legacyWarnings: string[] = [];
+    const loadedLegacy = loadSpeedPanelStateV2(Date.now(), legacyWarnings);
+    expect(loadedLegacy.macros).toEqual([]);
+    expect(legacyWarnings.some((w) => w.includes('new-zone') && w.includes('Legacy Bad'))).toBe(true);
+    expect(legacyWarnings.some((w) => w.includes('Legacy Bad') && w.includes('removed'))).toBe(true);
+    expect(storage.get(legacyMacrosKey)).toBe(rawLegacy);
   });
 });

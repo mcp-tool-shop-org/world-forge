@@ -204,7 +204,7 @@ export function sanitizeMacros(raw: unknown, warnings?: string[]): SpeedPanelMac
       steps.push(step);
     }
     if (m.steps.length > 0 && steps.length === 0) {
-      warnings?.push(`Dropped macro "${m.name}": no valid executable steps remaining`);
+      warnings?.push(`Dropped macro "${m.name}" (removed): no valid executable steps remaining`);
       continue;
     }
     if (steps.length > MAX_MACRO_STEPS) {
@@ -330,7 +330,7 @@ function seedFrecencyFromRecents(
  * If any individual v2 field fails validation, fall back to its legacy key
  * rather than discarding intact legacy data.
  */
-export function loadSpeedPanelStateV2(nowMs = Date.now()): SpeedPanelStateV2 {
+export function loadSpeedPanelStateV2(nowMs = Date.now(), warnings?: string[]): SpeedPanelStateV2 {
   const v2Raw = loadJson<Record<string, unknown> | null>(SPEED_PANEL_STATE_V2_KEY, null, isPlainObject);
   if (v2Raw && v2Raw.version === 2) {
     const pinnedIds = isStringArray(v2Raw.pinnedIds)
@@ -343,8 +343,8 @@ export function loadSpeedPanelStateV2(nowMs = Date.now()): SpeedPanelStateV2 {
       ? sanitizeGroups(v2Raw.groups)
       : sanitizeGroups(loadJson<unknown[]>(GROUPS_KEY, [], isArray));
     const macros = isArray(v2Raw.macros)
-      ? sanitizeMacros(v2Raw.macros)
-      : sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray));
+      ? sanitizeMacros(v2Raw.macros, warnings)
+      : sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray), warnings);
     const frecency = isPlainObject(v2Raw.frecency)
       ? sanitizeFrecency(v2Raw.frecency)
       : seedFrecencyFromRecents(recentIds, nowMs);
@@ -364,7 +364,7 @@ export function loadSpeedPanelStateV2(nowMs = Date.now()): SpeedPanelStateV2 {
   const pinnedIds = loadJson<string[]>(PINS_KEY, [], isStringArray);
   const recentIds = loadJson<string[]>(RECENTS_KEY, [], isStringArray);
   const groups = sanitizeGroups(loadJson<unknown[]>(GROUPS_KEY, [], isArray));
-  const macros = sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray));
+  const macros = sanitizeMacros(loadJson<unknown[]>(MACROS_KEY, [], isArray), warnings);
 
   return {
     version: 2,
@@ -443,11 +443,41 @@ export interface SpeedPanelPinState {
     presets: { pins?: readonly string[]; macros?: readonly SpeedPanelMacro[] },
     kitName: string,
   ) => MergeKitPresetsResult;
+  loadWarnings: string[];
+  consumeLoadWarnings: () => string[];
 }
 
-const initialV2 = loadSpeedPanelStateV2();
+/** Format persisted macro sanitization warnings into one startup notice, or `null` when empty. */
+export function formatSpeedPanelLoadNotice(warnings: readonly string[]): string | null {
+  if (warnings.length === 0) return null;
+  return `Speed Panel macros updated on load: ${warnings.join('; ')}.`;
+}
+
+/** Display pending startup macro load warnings once via `notify` without modifying localStorage. */
+export function notifySpeedPanelLoadWarnings(
+  notify: (message: string, level: 'warning' | 'error' | 'info' | 'success', durationMs?: number) => void,
+): string[] {
+  const warnings = useSpeedPanelPins.getState().consumeLoadWarnings();
+  const message = formatSpeedPanelLoadNotice(warnings);
+  if (message) {
+    notify(message, 'warning', 6000);
+  }
+  return warnings;
+}
+
+const initialLoadWarnings: string[] = [];
+const initialV2 = loadSpeedPanelStateV2(Date.now(), initialLoadWarnings);
 
 export const useSpeedPanelPins = create<SpeedPanelPinState>((set, get) => ({
+  // -- Startup load warnings (shown once, never written back to storage) --
+  loadWarnings: initialLoadWarnings,
+
+  consumeLoadWarnings: () => {
+    const warnings = get().loadWarnings;
+    if (warnings.length > 0) set({ loadWarnings: [] });
+    return warnings;
+  },
+
   // -- Pins --
   pinnedIds: initialV2.pinnedIds,
 
