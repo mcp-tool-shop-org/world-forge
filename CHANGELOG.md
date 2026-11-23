@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### README Screenshot
+
+- **Real editor screenshot.** `site/public/screenshots/editor-canvas.jpg` (shown in the README and the handbook index) is now a capture of the running editor: the Chapel Threshold sample with the Speed Panel open over a zone. It replaces an illustration that did not show the real interface.
+
 ### Speed Panel Overlapping Target Scope Chips & Canvas Highlight
 
 - **Overlapping scope chips, temporary canvas highlight & live announcements.** `@world-forge/editor` (`speed-panel-scope.ts`, `panels/SpeedPanel.tsx`, `speed-panel-ui.ts`, `speed-panel-gesture.ts`, `Canvas.tsx`, `store/editor-store.ts`) captures all visible `findAllHitsAt` hits under the pointer (omitting hidden items and hidden layers) in hit priority order with a trailing `Canvas` option, displaying an interactive scope chip bar (`wf-sp-scope-chips`) below the search box at the top of the Speed Panel only when two or more overlapping visible objects sit under the pointer while keeping single-hit and keyboard-open openings layout-identical and preserving `findHitAt` default targeting. Switching via chip click, `ArrowLeft` / `ArrowRight` on focused chips, or `Tab` / `Shift+Tab` on an empty search input rebuilds Band 1, Quick Fix, and search results with Band 1 slot 1 active (preserving `Tab` on **Set Elevation**, typed search, multi-step flows, and canvas spatial picking), moves a temporary view-only outline (`wf-sp-canvas-highlight`) on the canvas until close or `Esc` without touching the project or undo stack, preserves highlighted item slot parity when Quick Fix appears or clears while open, and announces target opens and switches in a polite live region (`wf-sp-live-region`).
