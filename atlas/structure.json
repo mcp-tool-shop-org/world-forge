@@ -134,7 +134,7 @@
     },
     {
       "dynamicReads": 2,
-      "dynamicSpawns": 2,
+      "dynamicSpawns": 3,
       "dynamicSpawnsInTests": 0,
       "dynamicWrites": 3,
       "entryPoints": [],
@@ -169,37 +169,61 @@
             "stderrDiagnostics"
           ],
           "hash": "8889d2079c9387f56e5ab2cd102872637baf2c95901ea600aab64c652345ec75",
-          "path": "dogfood/__tests__/chapel-threshold-gap-gate.test.ts"
+          "path": "dogfood/__tests__/chapel-threshold-gap-gate.test.ts",
+          "spawns": [
+            "dogfood/chapel-threshold.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "df6d25698e4e68ca06a11524697a73dfeba8ea59ef8185bf3e77491e2fd06edd",
-          "path": "dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts"
+          "path": "dogfood/__tests__/chapel-threshold-unreal-25d-gate.test.ts",
+          "spawns": [
+            "dogfood/chapel-threshold-unreal.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "ff81e1419b87a7196efcb18ec42f7e8cfec70673164606ab6b1155c2e42b1bc2",
-          "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts"
+          "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts",
+          "spawns": [
+            "dogfood/export-stage-fixture.ts",
+            "dogfood/run-ai-rpg-smoke.ts",
+            "dogfood/run-godot-smoke.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "517cabd4cd94a8d9fff9444af06f28f69ddeddc3ab03795f6285e574df79427e",
-          "path": "dogfood/__tests__/export-stage-fixture-presentation.test.ts"
+          "path": "dogfood/__tests__/export-stage-fixture-presentation.test.ts",
+          "spawns": [
+            "dogfood/export-stage-fixture.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "eeefb0dd6d4c5785c0f33b445b7f2a55aa1fcb1dec3c3750fd29bada18055623",
           "importsFiles": [
             "dogfood/godot-smoke-verdict.ts"
           ],
-          "path": "dogfood/__tests__/godot-smoke-verdict.test.ts"
+          "path": "dogfood/__tests__/godot-smoke-verdict.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "525c1e2fa3b766e374d3dba1f9e78b787228f48fe819dde81c74ecf9d949ef3e",
-          "path": "dogfood/__tests__/multi-target-export-proof-exit-code.test.ts"
+          "path": "dogfood/__tests__/multi-target-export-proof-exit-code.test.ts",
+          "spawns": [
+            "dogfood/multi-target-export-proof.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "c085ee24d7285c3bfbd6ce40fba1b21ce03fded24d277f18ffa121a659d4dc5e",
           "importsFiles": [
             "playwright.config.ts"
           ],
-          "path": "dogfood/__tests__/playwright-reporter.test.ts"
+          "path": "dogfood/__tests__/playwright-reporter.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "84a2bbf6390bbbe9d81b02cdec4b87a5fd669f87a0e1211b40550ef228721a06",
@@ -213,7 +237,8 @@
             "dogfood/worlds/sandbox-scale.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "dogfood/__tests__/salt-road-presentation.test.ts"
+          "path": "dogfood/__tests__/salt-road-presentation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c6c59f0839e8a28dc0c03750fbc298593a99635d2b1b549630d8ecf97cbfca0e",
@@ -231,7 +256,8 @@
             "packages/export-godot/src/index.ts",
             "packages/export-unreal/src/index.ts"
           ],
-          "path": "dogfood/__tests__/salt-road-proof.test.ts"
+          "path": "dogfood/__tests__/salt-road-proof.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "513e4dcd208b62240551b9296c71ce2fd654ce8be8d5bcefd81edeb1deb42293",
@@ -243,22 +269,35 @@
             "dogfood/worlds/salt-road.ts",
             "dogfood/worlds/sandbox-scale.ts"
           ],
-          "path": "dogfood/__tests__/sandbox-scale.test.ts"
+          "path": "dogfood/__tests__/sandbox-scale.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1de7a560fb33584fc9b6e81c38a77ff2a2b263007c9dd55cbdbc07de1d1b130b",
-          "path": "dogfood/__tests__/sync-version.test.ts"
+          "path": "dogfood/__tests__/sync-version.test.ts",
+          "spawns": [
+            "scripts/sync-version.mjs"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "f4123042fdbb75bd70e55be6352873ba7d782c4558880c89c2ffd8751a3cf2e7",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
-          "path": "dogfood/__tests__/unreal-smoke-transitions.test.ts"
+          "path": "dogfood/__tests__/unreal-smoke-transitions.test.ts",
+          "spawns": [
+            "dogfood/run-unreal-smoke.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "8a5d57a4f359620121be5357e07a1fd7cd505c8015c74b9f7425641324821006",
-          "path": "dogfood/__tests__/vitest-include-floor.test.ts"
+          "names": [
+            "vitest.config.ts"
+          ],
+          "path": "dogfood/__tests__/vitest-include-floor.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1e44ca139cd7b37b8b3c32298c16d31fcfa2026cc1f07ff7fa8e105a3d2b88fc",
@@ -348,6 +387,12 @@
           "path": "dogfood/godot-smoke/transitions/stairwell.tscn"
         },
         {
+          "failurePaths": [
+            {
+              "kind": "throw",
+              "line": 149
+            }
+          ],
           "hash": "854adc0b374f6adc18a33ea6b4b8c723bc3f1f0310cfb8510f2561b99c2ba7c9",
           "importOrder": [
             "dogfood/worlds/multi-target-proof.ts",
@@ -366,6 +411,38 @@
           "path": "dogfood/multi-target-export-proof.ts"
         },
         {
+          "failurePaths": [
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 213
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 237
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 290
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 335
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 355
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 377
+            }
+          ],
           "hash": "933689a7047323b160a262955bc104144f12454e4a9402022a0b1ced605eed3b",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
@@ -396,6 +473,18 @@
           "path": "dogfood/run-godot-smoke.ts"
         },
         {
+          "failurePaths": [
+            {
+              "in": "requireValue",
+              "kind": "throw",
+              "line": 65
+            },
+            {
+              "in": "run",
+              "kind": "catch",
+              "line": 280
+            }
+          ],
           "hash": "2d730547cc064d66b495994cb15ac40dd7e15b779d9421a7d6284171a8e5debf",
           "importOrder": [
             "dogfood/worlds/multi-target-proof.ts",
@@ -461,7 +550,10 @@
       ],
       "outsideReads": 3,
       "role": "code",
-      "testedBy": 8,
+      "testRunners": [
+        "vitest"
+      ],
+      "testedBy": 10,
       "unresolvedNamed": [
         {
           "path": "dogfood/__tests__/dogfood-runner-exit-codes.test.ts",
@@ -506,6 +598,13 @@
             "openExportModal",
             "readDownloadJson"
           ],
+          "failurePaths": [
+            {
+              "in": "clickExportAndDownload",
+              "kind": "catch",
+              "line": 64
+            }
+          ],
           "hash": "3f0dd409fa1816194e64a21c17d84e22d2b30a52b1048ec05dde98e64f89e6aa",
           "path": "e2e/helpers.ts"
         },
@@ -524,11 +623,19 @@
           "path": "e2e/speed-panel-layout-search.spec.ts"
         },
         {
+          "hash": "b3916c4a6ef1f351f65e2d6a220ad3b903a5c1c3ed8bafec7663f8ac75a8f0bd",
+          "importsFiles": [
+            "e2e/helpers.ts"
+          ],
+          "path": "e2e/speed-panel-multi-step.spec.ts"
+        },
+        {
           "hash": "a63be8178776febc7147f9f91ed1dc1e4d423fec6a01c97ede41bd793cc6d1a9",
           "importsFiles": [
             "e2e/helpers.ts"
           ],
-          "path": "e2e/speed-panel-triggers.spec.ts"
+          "path": "e2e/speed-panel-triggers.spec.ts",
+          "testFramework": "playwright test"
         },
         {
           "hash": "86674d22dcf6aec3d15f00b8ee4a702d0acc8f352d2eb9ef1f6ac2cbba0f1692",
@@ -545,7 +652,7 @@
       "name": "e2e",
       "origin": "authored",
       "role": "code",
-      "testedBy": 4,
+      "testedBy": 5,
       "unresolvedSites": 0
     },
     {
@@ -620,6 +727,33 @@
           "exports": [
             "App",
             "getInitialTheme"
+          ],
+          "failurePaths": [
+            {
+              "in": "getInitialTheme",
+              "kind": "catch",
+              "line": 59
+            },
+            {
+              "in": "getInitialTheme",
+              "kind": "catch",
+              "line": 63
+            },
+            {
+              "in": "App",
+              "kind": "catch",
+              "line": 93
+            },
+            {
+              "in": "reader.onload",
+              "kind": "catch",
+              "line": 225
+            },
+            {
+              "in": "reader.onload",
+              "kind": "catch",
+              "line": 228
+            }
           ],
           "hash": "9049d702be0335ba7d06df84a64b96ff46691d8bad41b968d493953a4b666e5d",
           "importOrder": [
@@ -742,6 +876,7 @@
             "packages/editor/src/presets/preset-store.ts",
             "packages/editor/src/store/speed-panel-options-store.ts",
             "packages/editor/src/speed-panel-gesture.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/panels/speed-panel-stores.ts",
             "packages/editor/src/panels/ConnectionProperties.tsx"
           ],
@@ -761,6 +896,7 @@
             "packages/editor/src/speed-panel-actions.ts",
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-gesture.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/modal-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -775,6 +911,38 @@
           "path": "packages/editor/src/Canvas.tsx"
         },
         {
+          "failurePaths": [
+            {
+              "in": "buildReportText",
+              "kind": "catch",
+              "line": 50
+            },
+            {
+              "in": "handleCopyDetails",
+              "kind": "throw",
+              "line": 77
+            },
+            {
+              "in": "handleCopyDetails",
+              "kind": "catch",
+              "line": 80
+            },
+            {
+              "in": "handleDownloadDetails",
+              "kind": "catch",
+              "line": 97
+            },
+            {
+              "in": "handleDownloadDetails",
+              "kind": "catch",
+              "line": 98
+            },
+            {
+              "in": "render",
+              "kind": "catch",
+              "line": 114
+            }
+          ],
           "hash": "e57052bb7810d815a5347731c715c6668e45908830e381e355190f8b217a7309",
           "path": "packages/editor/src/ErrorBoundary.tsx"
         },
@@ -825,7 +993,8 @@
           "importsFiles": [
             "packages/editor/src/store/project-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/autosave.test.ts"
+          "path": "packages/editor/src/__tests__/autosave.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "6f4a95f0b7621868976d85b2dbd508193af02f1314210c2d2daa59e53486606a",
@@ -833,7 +1002,8 @@
             "packages/editor/src/mode-profiles.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/canvas-defaults.test.ts"
+          "path": "packages/editor/src/__tests__/canvas-defaults.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "35f51fa253b7797daf453dc192f709d9f120d28ed173689c092c82fdbc484a27",
@@ -855,7 +1025,8 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/editor/src/__tests__/command-registry.test.ts"
+          "path": "packages/editor/src/__tests__/command-registry.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "354853dbbfd6b3e43df9323221c90237fe9285f0b33ad7b6be9e7d40bb376736",
@@ -864,7 +1035,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/connection-lines.test.ts"
+          "path": "packages/editor/src/__tests__/connection-lines.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "9d38877324ff7f26d6dcd1a8e571b05c31495ff1d3fa0285a5000390578dc240",
@@ -872,7 +1044,8 @@
             "packages/editor/src/panels/ConnectionProperties.tsx",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/connection-properties.test.ts"
+          "path": "packages/editor/src/__tests__/connection-properties.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "73b35984a8749457c2e4932b0eb0d95387614810b5998517faad92e5685d5fab",
@@ -892,7 +1065,8 @@
             "packages/editor/src/ui/Toast.tsx",
             "packages/schema/src/__tests__/fixtures/chapel-authored.ts"
           ],
-          "path": "packages/editor/src/__tests__/context-menu-wiring.test.ts"
+          "path": "packages/editor/src/__tests__/context-menu-wiring.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "cb4efbab9971fa5e10933e35e61e87e89eee84b87e44972f3e3450d53c576555",
@@ -908,7 +1082,8 @@
             "packages/editor/src/repairs.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/dependency-panel.test.ts"
+          "path": "packages/editor/src/__tests__/dependency-panel.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "0bc3121a237866b4d4fc5f3d80de6b03ac194ab2994f84f576be50cb0557862b",
@@ -922,7 +1097,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/double-click.test.ts"
+          "path": "packages/editor/src/__tests__/double-click.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "58b77b8a6ebe7081b453fcd008c7d5a4b6040c5a3c3f71c65527ae5ff4a3e528",
@@ -930,7 +1106,8 @@
             "packages/editor/src/duplicate.ts",
             "packages/schema/src/__tests__/fixtures/chapel-authored.ts"
           ],
-          "path": "packages/editor/src/__tests__/duplicate.test.ts"
+          "path": "packages/editor/src/__tests__/duplicate.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ad01da11818e2d2764364a200c17c0eefd02702aafbbb279cb5d0263bf51bb88",
@@ -950,7 +1127,8 @@
             "packages/editor/src/ui/Toast.tsx",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/ed-b-humanization.test.ts"
+          "path": "packages/editor/src/__tests__/ed-b-humanization.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "6da736d76725686cb4a21b4918403159f06e6592f511bebd808d4999fa2cf78d",
@@ -968,7 +1146,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/ed-b-stage-c.test.ts"
+          "path": "packages/editor/src/__tests__/ed-b-stage-c.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "160c87f5e96fe6870ff24732c633b109710cd666e7b824af86384dc49482339b",
@@ -982,7 +1161,8 @@
             "packages/editor/src/panels/EncounterProperties.tsx",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/encounter-suggestions.test.ts"
+          "path": "packages/editor/src/__tests__/encounter-suggestions.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "59c0aeec4bff91243d80a2e4f60657df1f6fc29617ebb7da8e33006b2478d384",
@@ -998,7 +1178,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/eu-fixes.test.ts"
+          "path": "packages/editor/src/__tests__/eu-fixes.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3c39046475f0040f89385a9a4dda24377783744750cb35c5d4f97ae436e2fbd7",
@@ -1018,7 +1199,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/eub-humanization.test.ts"
+          "path": "packages/editor/src/__tests__/eub-humanization.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "e99397191f7f2798d02de85b5b11bb1872dcb0b45d0ab6267ac834e92371e85c",
@@ -1032,7 +1214,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/export-depth-regression.test.ts"
+          "path": "packages/editor/src/__tests__/export-depth-regression.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a49403b1fa51891979619f2430e12c7ba88fa770e302f0aafb73675a13515a42",
@@ -1068,7 +1251,11 @@
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/export-modal.test.ts"
+          "path": "packages/editor/src/__tests__/export-modal.test.ts",
+          "spawns": [
+            "packages/export-ai-rpg/src/cli.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "197dda34ee2a5ff50191fdee68b02d46e8937d3459bebd0a08d109036ee2ea7b",
@@ -1082,7 +1269,8 @@
             "packages/editor/src/review/export-summary.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/export-summary.test.ts"
+          "path": "packages/editor/src/__tests__/export-summary.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "80089e23415ef35801424f4ca0d6ffbca1d4628281bf70fce6adfe6315b19ce3",
@@ -1102,7 +1290,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/feature-tickets.test.ts"
+          "path": "packages/editor/src/__tests__/feature-tickets.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "71dac8374705fad0a7fcd4f4a56a03aa2cdf3bf2f677099031f23e7c0ff37dcb",
@@ -1124,7 +1313,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/ft-features.test.ts"
+          "path": "packages/editor/src/__tests__/ft-features.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c12a6074fb15f7e51e88ab73b6fc0db037fa08ae4554bcbcaf2fa4a85d1d7afc",
@@ -1148,7 +1338,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/ft003-ft004-ft005-ft013.test.ts"
+          "path": "packages/editor/src/__tests__/ft003-ft004-ft005-ft013.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "6c085b494686308f64b21dce0be63c67455e9ae91847b601219aed2cdfecb755",
@@ -1170,7 +1361,8 @@
             "packages/editor/src/templates/registry.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/ft008-ft009-ft015-ft020-ft023.test.ts"
+          "path": "packages/editor/src/__tests__/ft008-ft009-ft015-ft020-ft023.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a31a4ed7d8becbd219c97483d836eb0410e47437d89cf72519349fa31d1eacf8",
@@ -1188,7 +1380,8 @@
             "packages/editor/src/panels/shared.tsx",
             "packages/editor/src/store/editor-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/ft009-ft010-ft018-ft019-ft025.test.ts"
+          "path": "packages/editor/src/__tests__/ft009-ft010-ft018-ft019-ft025.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c45e52921afa9b468bb00de92f1ddbdc8876a42619c5ba9034437128cf69da32",
@@ -1210,7 +1403,8 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/ft021-ft027-ft030-ft031-ft033.test.ts"
+          "path": "packages/editor/src/__tests__/ft021-ft027-ft030-ft031-ft033.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "9c695c46d76113cf22ac59a7a6c6d86fe0b95e23a2c39790e09eca2fa7217dde",
@@ -1226,14 +1420,16 @@
             "packages/editor/src/templates/samples.ts",
             "packages/editor/src/viewport.ts"
           ],
-          "path": "packages/editor/src/__tests__/hit-testing.test.ts"
+          "path": "packages/editor/src/__tests__/hit-testing.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c5c092c4e6abf9d7cbc82ea5b0037060e18ab128c1d0fe6f499cbb5a13fc48fd",
           "importsFiles": [
             "packages/editor/src/hotkeys.ts"
           ],
-          "path": "packages/editor/src/__tests__/hotkey-list.test.ts"
+          "path": "packages/editor/src/__tests__/hotkey-list.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "bb61bd259c15b3b9823b6e2892dd20d1afe20226ae59b38e84f9d9ca1cd9e842",
@@ -1241,7 +1437,8 @@
             "packages/editor/src/hotkeys.ts",
             "packages/editor/src/store/editor-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/hotkeys.test.ts"
+          "path": "packages/editor/src/__tests__/hotkeys.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "15f6838d1778e016df9bdf16567fa486cd23683573aa4196428a2cc496a751f3",
@@ -1261,11 +1458,13 @@
             "packages/editor/src/viewport.ts",
             "packages/schema/src/__tests__/fixtures/chapel-authored.ts"
           ],
-          "path": "packages/editor/src/__tests__/humanization-editor-core.test.ts"
+          "path": "packages/editor/src/__tests__/humanization-editor-core.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3981b13e27c2b6b2d3f0c6bd38885d4e69f45fb7a6c033b027fa73c8e41c58c1",
-          "path": "packages/editor/src/__tests__/keyboard-listener-stability.test.ts"
+          "path": "packages/editor/src/__tests__/keyboard-listener-stability.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b4d9edb114b0cece3c898b7a6b62b3462aafde3f442fbc8c24f50a4f975a67e0",
@@ -1273,7 +1472,8 @@
             "packages/editor/src/kits/index.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-authoring.test.ts"
+          "path": "packages/editor/src/__tests__/kit-authoring.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "5f18428bcf463e4830f18e3e7ce562f695379975112b4d5fdf83b5f68d4bdd92",
@@ -1285,7 +1485,8 @@
             "packages/editor/src/kits/index.ts",
             "packages/editor/src/panels/TemplateManager.tsx"
           ],
-          "path": "packages/editor/src/__tests__/kit-browser.test.ts"
+          "path": "packages/editor/src/__tests__/kit-browser.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "5182c62e41616f7e27ba74e5590a3ea4e054b4ff026975e9a92e57d258284e97",
@@ -1294,7 +1495,8 @@
             "packages/editor/src/kits/bundle.ts",
             "packages/editor/src/kits/types.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-bundle.test.ts"
+          "path": "packages/editor/src/__tests__/kit-bundle.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "976d55f5d690629445c88bd8f6e485c11b64af5b2d9cd888f03abea9ca77179c",
@@ -1310,7 +1512,8 @@
             "packages/editor/src/kits/kit-store.ts",
             "packages/editor/src/kits/types.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-import.test.ts"
+          "path": "packages/editor/src/__tests__/kit-import.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "4b55548cae6799319b6c2ef541f5fec9bde67c999a10045f03b9e8e330378e49",
@@ -1328,7 +1531,8 @@
             "packages/editor/src/kits/types.ts",
             "packages/editor/src/panels/SearchOverlay.tsx"
           ],
-          "path": "packages/editor/src/__tests__/kit-provenance.test.ts"
+          "path": "packages/editor/src/__tests__/kit-provenance.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "53f2aa50b3131907b49021a38e4f198befd58b04b925b37eab77e7642ce692fc",
@@ -1346,7 +1550,8 @@
             "packages/editor/src/kits/types.ts",
             "packages/editor/src/kits/validate-kit.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-roundtrip.test.ts"
+          "path": "packages/editor/src/__tests__/kit-roundtrip.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "e779165c0223f37b04f631131dfda174405e77fc02269363efafcd330ed7b7ef",
@@ -1362,7 +1567,8 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/templates/samples.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-search.test.ts"
+          "path": "packages/editor/src/__tests__/kit-search.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a33eeb15b6daa2f1cd35514914a42a22c2e05c0cb220ed6e28c2ef6341dddb1a",
@@ -1376,7 +1582,8 @@
             "packages/editor/src/kits/index.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-store.test.ts"
+          "path": "packages/editor/src/__tests__/kit-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a121298618e9bfb4e8e81e64e17f2eda0b5909f14a64e523d3dd9f123430186e",
@@ -1392,14 +1599,16 @@
             "packages/editor/src/templates/registry.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-types.test.ts"
+          "path": "packages/editor/src/__tests__/kit-types.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c3383dbbf81cea4e613bea274c3baf9e3eed53249509a0034641cfe8522cdfe6",
           "importsFiles": [
             "packages/editor/src/kits/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/kit-validation.test.ts"
+          "path": "packages/editor/src/__tests__/kit-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3fb448c935411d9d0ae5f64e1013f0cddb05dcfa472fd4824141f4158057a286",
@@ -1407,7 +1616,8 @@
             "packages/editor/src/layout.ts",
             "packages/editor/src/templates/samples.ts"
           ],
-          "path": "packages/editor/src/__tests__/layout.test.ts"
+          "path": "packages/editor/src/__tests__/layout.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "86d08a195c55e49a0f7ca7dac7b9bd6a453e1cc0c27208bb11e3fff06f0415dd",
@@ -1425,7 +1635,12 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/leftover-480.test.ts"
+          "names": [
+            "packages/editor/src/App.tsx",
+            "packages/editor/src/panels/ReviewPanel.tsx"
+          ],
+          "path": "packages/editor/src/__tests__/leftover-480.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3661760e4342e63cad13dfc754e3478387022c471f1c4529c376dd363a885467",
@@ -1443,7 +1658,17 @@
             "packages/editor/src/viewport.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/leftover-editor-deep.test.ts"
+          "names": [
+            "packages/editor/src/panels/AssetPanel.tsx",
+            "packages/editor/src/panels/BuildCatalogPanel.tsx",
+            "packages/editor/src/panels/DialoguePanel.tsx",
+            "packages/editor/src/panels/HazardLibraryPanel.tsx",
+            "packages/editor/src/panels/PropPalette.tsx",
+            "packages/editor/src/panels/StrataPanel.tsx",
+            "packages/editor/src/panels/ZoneProperties.tsx"
+          ],
+          "path": "packages/editor/src/__tests__/leftover-editor-deep.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "fa6e921e8ce589eef3bf53b587fd8cf025e55efc7c4f26f00e850e63f821cdb7",
@@ -1457,7 +1682,8 @@
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/store/editor-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/leftover-pending-conn.test.ts"
+          "path": "packages/editor/src/__tests__/leftover-pending-conn.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "648496c122ec0a7df83db35afaf4abdec8cf047cc8925fee3ec67458286b2865",
@@ -1471,7 +1697,8 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/lifecycle-guards.test.ts"
+          "path": "packages/editor/src/__tests__/lifecycle-guards.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a36d446bcdf8e314e9537348a78f1cfb26d7122f51d42ac1a6b0d11115609096",
@@ -1479,7 +1706,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/load-project-safety.test.ts"
+          "path": "packages/editor/src/__tests__/load-project-safety.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "83512b025797c6fb9f44b85de2db28b44ef92798f1296ae68fbc807734ed6693",
@@ -1487,7 +1715,8 @@
             "packages/editor/src/mode-profiles.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/mode-profiles.test.ts"
+          "path": "packages/editor/src/__tests__/mode-profiles.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "fbfddaef4fa1d171bfddf1c53a51985c3985c2521262155778075b0de3fd2dd6",
@@ -1503,18 +1732,21 @@
             "packages/editor/src/templates/registry.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/mode-starters.test.ts"
+          "path": "packages/editor/src/__tests__/mode-starters.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b04752694cbfb3d25717bff95713f61a7a8a52b96417a53e6ee1d9e5bef2c1f8",
-          "path": "packages/editor/src/__tests__/mouseup-gesture-recovery.test.ts"
+          "path": "packages/editor/src/__tests__/mouseup-gesture-recovery.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c90c36f9c6352ea62fedf628e48a883e01f39477bc0f875c51910ae878a71300",
           "importsFiles": [
             "packages/editor/src/panels/ObjectListPanel.tsx"
           ],
-          "path": "packages/editor/src/__tests__/object-list-empty.test.ts"
+          "path": "packages/editor/src/__tests__/object-list-empty.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "37b5b796c38814e9da7657c33e700753e7ad783f31b4e8037c22ada680624320",
@@ -1528,7 +1760,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/editor/src/viewport.ts"
           ],
-          "path": "packages/editor/src/__tests__/overlap-cycle.test.ts"
+          "path": "packages/editor/src/__tests__/overlap-cycle.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "923ca5d7be980e471c5bb38c9911a0886d2c0d1907661004524f99fdde5f7b22",
@@ -1546,7 +1779,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/__tests__/fixtures/chapel-authored.ts"
           ],
-          "path": "packages/editor/src/__tests__/paste-wiring.test.ts"
+          "path": "packages/editor/src/__tests__/paste-wiring.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "acf93b17709881cb22932f5b54f3f69aef8129993d1599fa34d6523cfc9dfaa9",
@@ -1560,7 +1794,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/preset-apply.test.ts"
+          "path": "packages/editor/src/__tests__/preset-apply.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "78551e3c0f0ea3e34d6ac0e7f1994a13d943834cdc67cf42e223b811c0351d3f",
@@ -1576,7 +1811,8 @@
             "packages/editor/src/presets/preset-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/preset-store.test.ts"
+          "path": "packages/editor/src/__tests__/preset-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b85de67e0a4d9c7ab705a86dc5b476cdc5de32ba186cf699e46b9f497f42b6aa",
@@ -1588,7 +1824,8 @@
             "packages/editor/src/projects/index.ts",
             "packages/editor/src/templates/samples.ts"
           ],
-          "path": "packages/editor/src/__tests__/project-bundle.test.ts"
+          "path": "packages/editor/src/__tests__/project-bundle.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "5aff84e408608be04eb8539c842abaf75958ef1453b92ee8bf05a226775ab5a7",
@@ -1600,7 +1837,8 @@
             "packages/editor/src/projects/bundle.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/project-deps-integration.test.ts"
+          "path": "packages/editor/src/__tests__/project-deps-integration.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "251366d9d5e74e5b22721165d3fd6c68ca9f4f907ebfc84dd7568546e8b0b574",
@@ -1616,7 +1854,8 @@
             "packages/editor/src/templates/samples.ts",
             "packages/export-ai-rpg/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/project-import.test.ts"
+          "path": "packages/editor/src/__tests__/project-import.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "16b0b521b90a7b16e2180446c93d459892fbc203a0cf9d4a965565944b904e60",
@@ -1628,7 +1867,8 @@
             "packages/editor/src/projects/index.ts",
             "packages/editor/src/templates/samples.ts"
           ],
-          "path": "packages/editor/src/__tests__/project-roundtrip.test.ts"
+          "path": "packages/editor/src/__tests__/project-roundtrip.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "5e4ecc696ae8863b5a63a8c7157d3289af22113b0e84416dd68768a1e21001d5",
@@ -1636,7 +1876,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/prop-store.test.ts"
+          "path": "packages/editor/src/__tests__/prop-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a7caaa87e34d1596ccfb31bd2e7eb8b30e1b40bf7e20e568e48874847d7d44f8",
@@ -1648,7 +1889,8 @@
             "packages/editor/src/hotkeys.ts",
             "packages/editor/src/store/editor-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/prop-tool.test.ts"
+          "path": "packages/editor/src/__tests__/prop-tool.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "067b732b29168b91bd3dc03618eda59f13022174dd09ae5d91a1831b651306fb",
@@ -1656,7 +1898,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/remove-selected-orphans.test.ts"
+          "path": "packages/editor/src/__tests__/remove-selected-orphans.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "0dc69ae49f2a882cdd706ce6ca2a0817726b8d55abe4051725456735a4445c9d",
@@ -1664,14 +1907,16 @@
             "packages/editor/src/repairs.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/repairs.test.ts"
+          "path": "packages/editor/src/__tests__/repairs.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "2696d4d73b540a69f82c03e49fc38a985c3ca5f83c3df285faf71f72097be494",
           "importsFiles": [
             "packages/editor/src/resize-handles.ts"
           ],
-          "path": "packages/editor/src/__tests__/resize-handles.test.ts"
+          "path": "packages/editor/src/__tests__/resize-handles.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ceb04882cf367eeb05fd391088f51d6e0a83b3092d6e5a8570a0541dd6ffc288",
@@ -1689,7 +1934,8 @@
             "packages/editor/src/speed-panel-actions.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/review-panel.test.ts"
+          "path": "packages/editor/src/__tests__/review-panel.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "418bbe7981974e054e084695c3c79a147c4b5c34571658a79c0f9dbbbb64861d",
@@ -1715,7 +1961,8 @@
             "packages/export-unreal/src/index.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/sample-gate.test.ts"
+          "path": "packages/editor/src/__tests__/sample-gate.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ede88258679ea86101121c389e1e5ed7c1715088315d911a7a3c1f9fbdf76972",
@@ -1729,7 +1976,8 @@
             "packages/editor/src/templates/registry.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/scene-preview.test.ts"
+          "path": "packages/editor/src/__tests__/scene-preview.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "163527cad5f8929e158b96bafc9dbe85ca0d5b46ce4eed6a18f0d0cc679b05c4",
@@ -1747,14 +1995,16 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/search.test.ts"
+          "path": "packages/editor/src/__tests__/search.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "87a6582f1a374556336acf6d9032dfa3a8fda6592c780f4f828203277407bf61",
           "importsFiles": [
             "packages/editor/src/store/editor-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/selection.test.ts"
+          "path": "packages/editor/src/__tests__/selection.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "fc06956abf04ce045b042d071c350e2a8deb9ef78b730699043108b557786e38",
@@ -1766,14 +2016,16 @@
             "packages/editor/src/panels/shared.tsx",
             "packages/editor/src/ui/styles.ts"
           ],
-          "path": "packages/editor/src/__tests__/shared-components.test.ts"
+          "path": "packages/editor/src/__tests__/shared-components.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "544455efea7eda03ae7ec1facd1b60d9a648948d190dd1893871be4d6efbc268",
           "importsFiles": [
             "packages/editor/src/snap.ts"
           ],
-          "path": "packages/editor/src/__tests__/snap-guides.test.ts"
+          "path": "packages/editor/src/__tests__/snap-guides.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "de099d19815ff8c724fbf1b002c44271ca8b7a48ebc20a551cbd770eb2bb809c",
@@ -1781,7 +2033,8 @@
             "packages/editor/src/snap.ts",
             "packages/editor/src/templates/samples.ts"
           ],
-          "path": "packages/editor/src/__tests__/snap.test.ts"
+          "path": "packages/editor/src/__tests__/snap.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "dc56251f1b79ed3815f87398c994dca8217cb7c2fc137297c0ddc539e2a3ab17",
@@ -1793,7 +2046,8 @@
             "packages/editor/src/hit-testing.ts",
             "packages/editor/src/speed-panel-actions.ts"
           ],
-          "path": "packages/editor/src/__tests__/speed-panel-actions.test.ts"
+          "path": "packages/editor/src/__tests__/speed-panel-actions.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "bf02533b63536507a27422335d2e12be574f44beb41270701778c7857aca2e42",
@@ -1826,8 +2080,24 @@
           "path": "packages/editor/src/__tests__/speed-panel-c3-ui.test.ts"
         },
         {
+          "hash": "3a0c4de66df73365f6819eeb544cd5712fbd7d05f60fdb01444872d007359189",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-c4-compat.test.ts"
+        },
+        {
+          "hash": "8d91cd897bedc15a55fec60f3efe75d92f701aa052d94a69930ce99c7328caad",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-c4-handlers.test.ts"
+        },
+        {
+          "hash": "5bbfdba8c168fa0a255a1863405fb9c86e1349de3d222475979cafaaf23a5b85",
+          "parseError": true,
+          "path": "packages/editor/src/__tests__/speed-panel-c4-multistep.test.ts"
+        },
+        {
           "hash": "dc83473a9ae0fcb134ccb21aa44087d8e2185c337cb33c53af88c2ff1236b525",
-          "path": "packages/editor/src/__tests__/speed-panel-detection.test.ts"
+          "path": "packages/editor/src/__tests__/speed-panel-detection.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "764be97d07c1d95ada014c5c8ef218686d9c663255a049ee38eeade8247edb5a",
@@ -1843,14 +2113,16 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/speed-panel-execute.test.ts"
+          "path": "packages/editor/src/__tests__/speed-panel-execute.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "53171bbc178aa0c34d9fc8604ec8b79b4400b656dec1640fefe82aa38e61f64c",
           "importsFiles": [
             "packages/editor/src/store/speed-panel-store.ts"
           ],
-          "path": "packages/editor/src/__tests__/speed-panel-store.test.ts"
+          "path": "packages/editor/src/__tests__/speed-panel-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "e32c6a7a5a9b00c89d3a4ef13813c8b89f4da1303589588e21b107ddf85cc626",
@@ -1866,7 +2138,8 @@
             "packages/editor/src/speed-panel-actions.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/speed-panel.test.ts"
+          "path": "packages/editor/src/__tests__/speed-panel.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1bd0af5ec79ee659f5bc7b3423cd596a14a40f370c0b46de0478393de342869e",
@@ -1884,7 +2157,8 @@
             "packages/editor/src/templates/registry.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/templates.test.ts"
+          "path": "packages/editor/src/__tests__/templates.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f8bfb7e789705f304efba85671151afd25b78bdad2e61a66963ab1ebe24da7e2",
@@ -1900,7 +2174,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/tile-brush.test.ts"
+          "path": "packages/editor/src/__tests__/tile-brush.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "bca2f3b6a766bf35c8aa98056fff04be2b3b7b2eda5454a967ccdd28079f1fc0",
@@ -1912,7 +2187,8 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/tile-render.ts"
           ],
-          "path": "packages/editor/src/__tests__/tile-render.test.ts"
+          "path": "packages/editor/src/__tests__/tile-render.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "d0144f2e299db121db09dad485effc018209f0078da4e18a816465c9122b0b1e",
@@ -1920,7 +2196,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/tile-store.test.ts"
+          "path": "packages/editor/src/__tests__/tile-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "45fe0229bccb8d4ee63d4b853890c605bfef7899491dfcd8bb35b56076640172",
@@ -1928,7 +2205,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/town-economy-store.test.ts"
+          "path": "packages/editor/src/__tests__/town-economy-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "2a034f2f60b157672220d0fe96ae0d10c440b1ed145ab96b783ad1fdf9c736df",
@@ -1936,7 +2214,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/town-structures-store.test.ts"
+          "path": "packages/editor/src/__tests__/town-structures-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "33e1ff26fc88b66375e23d99ab50cf5a32c8f658526fa3e95d9fe74847e193b2",
@@ -1944,7 +2223,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/undo-labels.test.ts"
+          "path": "packages/editor/src/__tests__/undo-labels.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "4d317215b4ce3c2684fc3ccf25b882b8adfcbbfa1e83e5ed3669c61b8791a1d6",
@@ -1952,14 +2232,16 @@
             "packages/editor/src/panels/validation-helpers.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/validation-nav.test.ts"
+          "path": "packages/editor/src/__tests__/validation-nav.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "cf0bd8caea493aee3ff32f77c6277da51e2b693e60e32800475bed219e525167",
           "importsFiles": [
             "packages/editor/src/viewport.ts"
           ],
-          "path": "packages/editor/src/__tests__/viewport-frame.test.ts"
+          "path": "packages/editor/src/__tests__/viewport-frame.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "fc3ba9048955af1f071d4f89e98497460cc53c0b9786b0e7137d25a6a322e1f9",
@@ -1971,7 +2253,8 @@
             "packages/editor/src/templates/registry.ts",
             "packages/editor/src/viewport.ts"
           ],
-          "path": "packages/editor/src/__tests__/viewport.test.ts"
+          "path": "packages/editor/src/__tests__/viewport.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "14f9d00bfd04bf7132b7f7b617d89d8c4047f2cec06b818136dfe8adb775ba68",
@@ -1985,7 +2268,13 @@
             "packages/editor/src/store/project-store.ts",
             "packages/editor/src/ui/Toast.tsx"
           ],
-          "path": "packages/editor/src/__tests__/wave-18-amend.test.ts"
+          "names": [
+            "packages/editor/src/App.tsx",
+            "packages/editor/src/Canvas.tsx",
+            "packages/editor/src/ErrorBoundary.tsx"
+          ],
+          "path": "packages/editor/src/__tests__/wave-18-amend.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f511cfc3675035dd8723bcef503b834880af9478cab0627bf0e82c17f4319fcc",
@@ -2005,7 +2294,12 @@
             "packages/editor/src/ui/css-var.ts",
             "packages/editor/src/ui/styles.ts"
           ],
-          "path": "packages/editor/src/__tests__/wave-23-amend.test.ts"
+          "names": [
+            "packages/editor/src/Canvas.tsx",
+            "packages/editor/src/ErrorBoundary.tsx"
+          ],
+          "path": "packages/editor/src/__tests__/wave-23-amend.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b887e8b062123a24926e14011313c392aebc775fc95c427162e2fd4977b1a95e",
@@ -2033,7 +2327,13 @@
             "packages/editor/src/viewport.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/wave-32-amend.test.ts"
+          "names": [
+            "packages/editor/src/App.tsx",
+            "packages/editor/src/Canvas.tsx",
+            "packages/editor/src/LandmarkProperties.tsx"
+          ],
+          "path": "packages/editor/src/__tests__/wave-32-amend.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b429cdcd922e15abfeb8c9fdc1c431ea3e32f594f0d220a8d40f0ff3d4136664",
@@ -2061,7 +2361,8 @@
             "packages/editor/src/store/template-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/wave-9-amend.test.ts"
+          "path": "packages/editor/src/__tests__/wave-9-amend.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "bfffa95ca81ebe3128c87448a7ef38fe784080999481cec6d1789b6bca3c9530",
@@ -2069,7 +2370,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/world-modeling-entry-gate-store.test.ts"
+          "path": "packages/editor/src/__tests__/world-modeling-entry-gate-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "40634f65d38a1269c66d6e1ac2055aa86b07259217fe0bfe6ae67c5a1101190a",
@@ -2077,7 +2379,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/world-modeling-hazards-store.test.ts"
+          "path": "packages/editor/src/__tests__/world-modeling-hazards-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3fb9c2a6bae880f4319178df5019025de99de497f8b2bb4c542bbfdba3fbbe02",
@@ -2085,7 +2388,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/world-modeling-strata-store.test.ts"
+          "path": "packages/editor/src/__tests__/world-modeling-strata-store.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "815d2e4a9e3cdfcde825506c77bcb8792df315b165ba0e83064f515186fdb963",
@@ -2105,7 +2409,8 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/zone-2d5-editor.test.ts"
+          "path": "packages/editor/src/__tests__/zone-2d5-editor.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b94178f1b80995002493e4e342a748b265e3d90930c66f9787fd4d7ed214fc5b",
@@ -2113,7 +2418,8 @@
             "packages/editor/src/mode-profiles.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/__tests__/zone-auto-naming.test.ts"
+          "path": "packages/editor/src/__tests__/zone-auto-naming.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -2200,6 +2506,13 @@
         {
           "exports": [
             "diffProjects"
+          ],
+          "failurePaths": [
+            {
+              "in": "deepEqual",
+              "kind": "catch",
+              "line": 42
+            }
           ],
           "hash": "f76f34b91e36d323101469b20c34237744df018a40806ca3094db658a5ce4e8d",
           "importOrder": [
@@ -2288,6 +2601,13 @@
             "matchHotkey",
             "shouldArmSpacePan"
           ],
+          "failurePaths": [
+            {
+              "in": "isActivatingControl",
+              "kind": "catch",
+              "line": 98
+            }
+          ],
           "hash": "9ad30b14c5460ee63d88157b6abd7e17b9fb4105aa7c5c3e1f4b0dd39213db0e",
           "importsFiles": [
             "packages/editor/src/command-registry.ts"
@@ -2345,7 +2665,8 @@
             "packages/editor/src/kits/built-ins.ts",
             "packages/editor/src/kits/bundle.ts"
           ],
-          "path": "packages/editor/src/kits/bundle-migrate.test.ts"
+          "path": "packages/editor/src/kits/bundle-migrate.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -2397,11 +2718,54 @@
             "packages/editor/src/kits/built-ins.ts",
             "packages/editor/src/kits/kit-store.ts"
           ],
-          "path": "packages/editor/src/kits/kit-store-persist.test.ts"
+          "path": "packages/editor/src/kits/kit-store-persist.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
             "filterKitsByMode"
+          ],
+          "failurePaths": [
+            {
+              "in": "persist",
+              "kind": "catch",
+              "line": 51
+            },
+            {
+              "in": "loadFromStorage",
+              "kind": "catch",
+              "line": 75
+            },
+            {
+              "in": "saveKit",
+              "kind": "throw",
+              "line": 126
+            },
+            {
+              "in": "updateKit",
+              "kind": "throw",
+              "line": 141
+            },
+            {
+              "in": "deleteKit",
+              "kind": "throw",
+              "line": 151
+            },
+            {
+              "in": "duplicateKit",
+              "kind": "throw",
+              "line": 173
+            },
+            {
+              "in": "importKit",
+              "kind": "throw",
+              "line": 197
+            },
+            {
+              "in": "importKit",
+              "kind": "throw",
+              "line": 217
+            }
           ],
           "hash": "ac28bc257a141c63a2ad565cdf1941167951a5fd660a7d2153973d0c0ce029bb",
           "importOrder": [
@@ -2476,7 +2840,8 @@
           "importsFiles": [
             "packages/editor/src/modal-guards.ts"
           ],
-          "path": "packages/editor/src/modal-guards.test.ts"
+          "path": "packages/editor/src/modal-guards.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -2737,6 +3102,13 @@
           "exports": [
             "EditKitModal"
           ],
+          "failurePaths": [
+            {
+              "in": "EditKitModal",
+              "kind": "catch",
+              "line": 72
+            }
+          ],
           "hash": "9aacf28e2a53f6acf0a021606e79b4fa191ca1c323e7ce86407a02e52dfdf849",
           "importOrder": [
             "packages/editor/src/kits/index.ts",
@@ -2811,6 +3183,18 @@
             "TargetReadinessSummary",
             "computeTargetReadiness"
           ],
+          "failurePaths": [
+            {
+              "in": "ExportModal",
+              "kind": "catch",
+              "line": 172
+            },
+            {
+              "in": "handleExportBundle",
+              "kind": "catch",
+              "line": 241
+            }
+          ],
           "hash": "7796da13edcce2243f2f9c37d018dbb49e0471b8dae74d42f72928cd18590597",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
@@ -2865,6 +3249,23 @@
           "exports": [
             "ImportKitModal"
           ],
+          "failurePaths": [
+            {
+              "in": "ImportKitModal",
+              "kind": "catch",
+              "line": 42
+            },
+            {
+              "in": "reader.onload",
+              "kind": "catch",
+              "line": 72
+            },
+            {
+              "in": "ImportKitModal",
+              "kind": "catch",
+              "line": 97
+            }
+          ],
           "hash": "15a7127e5067b379682750758ebb498538a41867ca02294bc5c49d3cebc82cf9",
           "importOrder": [
             "packages/editor/src/kits/index.ts",
@@ -2891,6 +3292,18 @@
         {
           "exports": [
             "ImportModal"
+          ],
+          "failurePaths": [
+            {
+              "in": "ImportModal",
+              "kind": "catch",
+              "line": 62
+            },
+            {
+              "in": "reader.onload",
+              "kind": "catch",
+              "line": 105
+            }
           ],
           "hash": "bb06cfc8813f801032c46ecb44195b7eaede227cc211337b9452e4827c8a5672",
           "importOrder": [
@@ -3114,6 +3527,38 @@
           "exports": [
             "PresetBrowser"
           ],
+          "failurePaths": [
+            {
+              "in": "handleSaveRegionFromCurrent",
+              "kind": "catch",
+              "line": 80
+            },
+            {
+              "in": "handleSaveEncounterFromCurrent",
+              "kind": "catch",
+              "line": 92
+            },
+            {
+              "in": "PresetBrowser",
+              "kind": "catch",
+              "line": 178
+            },
+            {
+              "in": "PresetBrowser",
+              "kind": "catch",
+              "line": 186
+            },
+            {
+              "in": "PresetBrowser",
+              "kind": "catch",
+              "line": 214
+            },
+            {
+              "in": "PresetBrowser",
+              "kind": "catch",
+              "line": 220
+            }
+          ],
           "hash": "6152b22f21bc88fb6f2f24c1f4dcade5234f2e69ff097dd66753db5a83f754a2",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
@@ -3187,6 +3632,18 @@
             "enrichReviewSnapshot",
             "useReviewHealth"
           ],
+          "failurePaths": [
+            {
+              "in": "ReviewPanel",
+              "kind": "catch",
+              "line": 100
+            },
+            {
+              "in": "ReviewPanel",
+              "kind": "catch",
+              "line": 110
+            }
+          ],
           "hash": "099a25cc9454404566bff43d26c449d6759a9a1913b881dfa92e41d5377005a3",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
@@ -3211,6 +3668,13 @@
         {
           "exports": [
             "SaveKitModal"
+          ],
+          "failurePaths": [
+            {
+              "in": "SaveKitModal",
+              "kind": "catch",
+              "line": 51
+            }
           ],
           "hash": "81ec76c422b8c3268258bfbdd375c90469c81ebd121bfde33f3284655cd49c37",
           "importOrder": [
@@ -3256,6 +3720,13 @@
           "exports": [
             "ScenePreview"
           ],
+          "failurePaths": [
+            {
+              "in": "ScenePreview",
+              "kind": "catch",
+              "line": 40
+            }
+          ],
           "hash": "5154c9887c1680180875cbefd45c533962845c5caff2edb3fe7d99602dc699e3",
           "importOrder": [
             "packages/editor/src/store/project-store.ts",
@@ -3279,6 +3750,28 @@
             "loadRecentSearches",
             "pruneRecentSearches",
             "saveRecentSearch"
+          ],
+          "failurePaths": [
+            {
+              "in": "loadRecentSearches",
+              "kind": "catch",
+              "line": 176
+            },
+            {
+              "in": "saveRecentSearch",
+              "kind": "catch",
+              "line": 188
+            },
+            {
+              "in": "pruneRecentSearches",
+              "kind": "catch",
+              "line": 199
+            },
+            {
+              "in": "SearchOverlay",
+              "kind": "catch",
+              "line": 414
+            }
           ],
           "hash": "a222691ac67bf99484eaa2be25fe003b27166b6e4645acf240d7a7d66f4db113",
           "importOrder": [
@@ -3373,6 +3866,7 @@
             "packages/editor/src/speed-panel-search.ts",
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/panels/speed-panel-stores.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/speed-panel-ui.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/editor/src/panels/shared.tsx"
@@ -3386,6 +3880,7 @@
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-layout.ts",
             "packages/editor/src/speed-panel-search.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/speed-panel-ui.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -3417,6 +3912,28 @@
             "countContent",
             "createProjectFromKit",
             "requestTemplateManagerTab"
+          ],
+          "failurePaths": [
+            {
+              "in": "TemplateManager",
+              "kind": "catch",
+              "line": 97
+            },
+            {
+              "in": "TemplateManager",
+              "kind": "catch",
+              "line": 179
+            },
+            {
+              "in": "TemplateManager",
+              "kind": "catch",
+              "line": 189
+            },
+            {
+              "in": "TemplateManager",
+              "kind": "catch",
+              "line": 201
+            }
           ],
           "hash": "59a9b2bf9241a125c4e480c15c4a7eb647b861fbf924450a8831a7a2e186f6b3",
           "importOrder": [
@@ -3483,6 +4000,13 @@
         {
           "exports": [
             "ToolPalette"
+          ],
+          "failurePaths": [
+            {
+              "in": "ToolPalette",
+              "kind": "catch",
+              "line": 42
+            }
           ],
           "hash": "b5aa4f589df54368f130ef3c9f821c89411c574e44f84f3dd34b869de19a2ca9",
           "importOrder": [
@@ -3616,14 +4140,16 @@
             "packages/editor/src/store/project-store.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/batch-zone-delete.test.ts"
+          "path": "packages/editor/src/panels/__tests__/batch-zone-delete.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "4adadccaab74477a290aa304dff5a398a435646a4fb52ba35c4812aa3bb0455a",
           "importsFiles": [
             "packages/editor/src/panels/checklist-helpers.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/checklist-helpers.test.ts"
+          "path": "packages/editor/src/panels/__tests__/checklist-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a9e2b7499db9b62d4528d272b50d07d6153c185256e2b13def9fca2e2519640f",
@@ -3635,28 +4161,39 @@
             "packages/editor/src/panels/dependency-panel-helpers.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/dependency-panel-helpers.test.ts"
+          "path": "packages/editor/src/panels/__tests__/dependency-panel-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "4bb4d25d5f12988eed8e5adf6938a21ac715d07f8ab733393b7f716f8c15ef44",
           "importsFiles": [
             "packages/editor/src/panels/zone-2d5-helpers.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/elevation-range.test.ts"
+          "path": "packages/editor/src/panels/__tests__/elevation-range.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "8e816134aca288d9626b7678916aaf8f89ca560d1a05753cdb22ebc42888c409",
           "importsFiles": [
             "packages/editor/src/panels/entity-properties-helpers.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/entity-properties-helpers.test.ts"
+          "names": [
+            "packages/editor/src/panels/EntityProperties.tsx"
+          ],
+          "path": "packages/editor/src/panels/__tests__/entity-properties-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f47ce76ab4b10b767fd09aa2746d8b664ee3fe9d6dd5e87d844d85ee5d456000",
           "importsFiles": [
             "packages/editor/src/panels/export-handlers.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/export-download-fallback.test.ts"
+          "names": [
+            "packages/editor/src/panels/ExportModal.tsx",
+            "packages/editor/src/panels/TemplateManager.tsx"
+          ],
+          "path": "packages/editor/src/panels/__tests__/export-download-fallback.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ba8d1f29bfb98844e956bf064018ec05fd1b30ef2e0df5be3873b1a84d210fff",
@@ -3664,14 +4201,16 @@
             "packages/editor/src/panels/export-handlers.ts",
             "packages/editor/src/templates/samples.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/export-handlers-options.test.ts"
+          "path": "packages/editor/src/panels/__tests__/export-handlers-options.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "51ed624eb1330b03504e1e6d444127ac9fb14eca2b4a825032e1d5d80c786f1a",
           "importsFiles": [
             "packages/editor/src/panels/import-kit-modal-helpers.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/import-kit-modal-helpers.test.ts"
+          "path": "packages/editor/src/panels/__tests__/import-kit-modal-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c988c86d85a369d7f33a51f3011d0a005d14af39569ecf401abeb8ac3a7a450b",
@@ -3685,7 +4224,8 @@
             "packages/editor/src/projects/index.ts",
             "packages/editor/src/store/project-store.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/import-modal-helpers.test.ts"
+          "path": "packages/editor/src/panels/__tests__/import-modal-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "d2041d3cec71abfb4896602d912cb4e0456881a5b7320cd6d4b6a70b3ebe94f8",
@@ -3701,7 +4241,17 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/item-loot-transition-helpers.test.ts"
+          "names": [
+            "packages/editor/src/panels/EconomyPanel.tsx",
+            "packages/editor/src/panels/HazardLibraryPanel.tsx",
+            "packages/editor/src/panels/ItemProperties.tsx",
+            "packages/editor/src/panels/LootTablePanel.tsx",
+            "packages/editor/src/panels/ObjectListPanel.tsx",
+            "packages/editor/src/panels/PlayerTemplatePanel.tsx",
+            "packages/editor/src/panels/TransitionProperties.tsx"
+          ],
+          "path": "packages/editor/src/panels/__tests__/item-loot-transition-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "45c69b0576cb0d302c70ae922c9c97d2c792e4129da0c022b7960132385cabb3",
@@ -3713,14 +4263,20 @@
             "packages/editor/src/panels/landmark-spawn-helpers.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/landmark-spawn-helpers.test.ts"
+          "names": [
+            "packages/editor/src/panels/LandmarkProperties.tsx",
+            "packages/editor/src/panels/SpawnProperties.tsx"
+          ],
+          "path": "packages/editor/src/panels/__tests__/landmark-spawn-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "09274a07a6610f8695f480ef1ceadf6651a7bd2e2372b113b5b8c61409ddb08b",
           "importsFiles": [
             "packages/editor/src/panels/player-template-helpers.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/player-template-helpers.test.ts"
+          "path": "packages/editor/src/panels/__tests__/player-template-helpers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "031dee7184653cddb8cef466d7b06ef2ad749cc634af5f24a7d7cb289113e8c9",
@@ -3734,14 +4290,16 @@
             "packages/editor/src/templates/samples.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/review-snapshot.test.ts"
+          "path": "packages/editor/src/panels/__tests__/review-snapshot.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "d76431fd235427f89658ff74202ba01d99958dc5ef74acf29bd520fa02641d1f",
           "importsFiles": [
             "packages/editor/src/panels/SearchOverlay.tsx"
           ],
-          "path": "packages/editor/src/panels/__tests__/search-overlay-recent.test.ts"
+          "path": "packages/editor/src/panels/__tests__/search-overlay-recent.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "684b288dee640f8a945b2fa2afaa09405703f1383eace2c8d2d77f14306e529d",
@@ -3755,7 +4313,8 @@
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/project-store.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/speed-panel-stores.test.ts"
+          "path": "packages/editor/src/panels/__tests__/speed-panel-stores.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "efc3a49aee8b4fed1f64e10b7a4a9aa2d09b2b97e1ec738912fd6df840282416",
@@ -3767,7 +4326,8 @@
             "packages/editor/src/panels/validation-helpers.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/editor/src/panels/__tests__/validation-navigation.test.ts"
+          "path": "packages/editor/src/panels/__tests__/validation-navigation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -3823,6 +4383,43 @@
             "runUnrealExport",
             "stringifyOffMainThread"
           ],
+          "failurePaths": [
+            {
+              "in": "stringifyOffMainThread",
+              "kind": "catch",
+              "line": 141
+            },
+            {
+              "in": "runEngineExport",
+              "kind": "catch",
+              "line": 362
+            },
+            {
+              "in": "runEngineExport",
+              "kind": "catch",
+              "line": 365
+            },
+            {
+              "in": "runUnrealExport",
+              "kind": "catch",
+              "line": 445
+            },
+            {
+              "in": "runUnrealExport",
+              "kind": "catch",
+              "line": 448
+            },
+            {
+              "in": "runGodotExport",
+              "kind": "catch",
+              "line": 517
+            },
+            {
+              "in": "runGodotExport",
+              "kind": "catch",
+              "line": 520
+            }
+          ],
           "hash": "02cbe5e29d5bb69f61424070c5c501df3a62b3936d258997034b04041b66e83e",
           "importOrder": [
             "packages/schema/src/index.ts",
@@ -3852,6 +4449,13 @@
             "distinctBundleWarnings",
             "jsonFileParseError",
             "safeExtractDependencies"
+          ],
+          "failurePaths": [
+            {
+              "in": "safeExtractDependencies",
+              "kind": "catch",
+              "line": 70
+            }
           ],
           "hash": "3af56c2b3fd587ceb983d2fd0438fd90e82ea0558209b3d856e59af24457f734",
           "importsFiles": [
@@ -3962,7 +4566,8 @@
             "packages/editor/src/save-project.ts",
             "packages/editor/src/ui/Toast.tsx",
             "packages/editor/src/speed-panel-execute.ts",
-            "packages/editor/src/command-registry.ts"
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/speed-panel-steps.ts"
           ],
           "importsFiles": [
             "packages/editor/src/command-registry.ts",
@@ -3970,6 +4575,7 @@
             "packages/editor/src/presets/preset-store.ts",
             "packages/editor/src/save-project.ts",
             "packages/editor/src/speed-panel-execute.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/editor/src/store/modal-store.ts",
             "packages/editor/src/store/project-store.ts",
@@ -4046,6 +4652,13 @@
             "resetPresetMemory",
             "savePresetFromSelection"
           ],
+          "failurePaths": [
+            {
+              "in": "savePresetFromSelection",
+              "kind": "catch",
+              "line": 150
+            }
+          ],
           "hash": "ce8cf7dad8ef0a247fdbd664d3f49e0567644dfb1a19c401fa3916a8563d283e",
           "importOrder": [
             "packages/schema/src/index.ts",
@@ -4093,9 +4706,62 @@
             "packages/editor/src/presets/built-ins.ts",
             "packages/editor/src/presets/preset-store.ts"
           ],
-          "path": "packages/editor/src/presets/preset-store-persist.test.ts"
+          "path": "packages/editor/src/presets/preset-store-persist.test.ts",
+          "testFramework": "vitest"
         },
         {
+          "failurePaths": [
+            {
+              "in": "persist",
+              "kind": "catch",
+              "line": 31
+            },
+            {
+              "in": "loadFromStorage",
+              "kind": "catch",
+              "line": 64
+            },
+            {
+              "in": "saveRegionPreset",
+              "kind": "throw",
+              "line": 135
+            },
+            {
+              "in": "updateRegionPreset",
+              "kind": "throw",
+              "line": 148
+            },
+            {
+              "in": "deleteRegionPreset",
+              "kind": "throw",
+              "line": 158
+            },
+            {
+              "in": "duplicateRegionPreset",
+              "kind": "throw",
+              "line": 176
+            },
+            {
+              "in": "saveEncounterPreset",
+              "kind": "throw",
+              "line": 194
+            },
+            {
+              "in": "updateEncounterPreset",
+              "kind": "throw",
+              "line": 207
+            },
+            {
+              "in": "deleteEncounterPreset",
+              "kind": "throw",
+              "line": 217
+            },
+            {
+              "in": "duplicateEncounterPreset",
+              "kind": "throw",
+              "line": 235
+            }
+          ],
           "hash": "38085025d5fd118df23c0918b0b26880314ae2660f3b3cec7ec36974817dc0be",
           "importOrder": [
             "packages/editor/src/presets/types.ts",
@@ -4183,6 +4849,38 @@
             "saveProjectFile",
             "setSavedFileHandle"
           ],
+          "failurePaths": [
+            {
+              "in": "finish",
+              "kind": "catch",
+              "line": 78
+            },
+            {
+              "in": "finish",
+              "kind": "catch",
+              "line": 80
+            },
+            {
+              "in": "defaultDownloadViaAnchor",
+              "kind": "catch",
+              "line": 88
+            },
+            {
+              "in": "saveProjectFile",
+              "kind": "catch",
+              "line": 104
+            },
+            {
+              "in": "saveProjectFile",
+              "kind": "catch",
+              "line": 129
+            },
+            {
+              "in": "saveProjectFile",
+              "kind": "catch",
+              "line": 144
+            }
+          ],
           "hash": "25b453f7fe688dfc536d31892d3df6ee3669c4cae941250f74bad15dd7c3b299",
           "importsFiles": [
             "packages/schema/src/index.ts"
@@ -4216,7 +4914,8 @@
           "importsFiles": [
             "packages/editor/src/speed-panel-actions.ts"
           ],
-          "path": "packages/editor/src/speed-panel-actions.test.ts"
+          "path": "packages/editor/src/speed-panel-actions.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -4354,6 +5053,67 @@
         },
         {
           "exports": [
+            "advanceStepChoice",
+            "cancelSpatialPick",
+            "classifyEncounterTypeForExport",
+            "cloneLastPanelActionParams",
+            "commitCreateAndAssignDistrict",
+            "commitDistrictAssignment",
+            "commitPlaceEncounter",
+            "commitSetElevation",
+            "commitSpatialPickTarget",
+            "computePickPreviewLine",
+            "createCanvasSpatialPickHandlers",
+            "createRepeatLastCommand",
+            "createValidationGuard",
+            "cyclePickConnectionKind",
+            "dispatchPickOverlayInputKeyDown",
+            "drawPickPreviewLine",
+            "finalizeMergePick",
+            "formatPickCursorBadge",
+            "getPickOrderedKinds",
+            "isMultiStepCommand",
+            "isSpatialPickCommand",
+            "openCommandStepFlow",
+            "popPanelStep",
+            "replayLastPanelAction",
+            "resolveTargetZoneIds",
+            "searchPickZones",
+            "submitStepInput",
+            "validateDistrictNameInput",
+            "validateElevationInput",
+            "validateEncounterTypeInput",
+            "validatePickTarget"
+          ],
+          "hash": "f79508f3270a1856b9a38bb6ff5d9b2309afa5a86e6bc4d5a39eb28f898259cb",
+          "importOrder": [
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/schema/src/index.ts",
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/ids.ts",
+            "packages/editor/src/mode-profiles.ts",
+            "packages/editor/src/panels/ConnectionProperties.tsx",
+            "packages/editor/src/preset-actions.ts",
+            "packages/editor/src/presets/types.ts",
+            "packages/editor/src/store/editor-store.ts"
+          ],
+          "importsFiles": [
+            "packages/editor/src/command-registry.ts",
+            "packages/editor/src/hit-testing.ts",
+            "packages/editor/src/ids.ts",
+            "packages/editor/src/mode-profiles.ts",
+            "packages/editor/src/panels/ConnectionProperties.tsx",
+            "packages/editor/src/preset-actions.ts",
+            "packages/editor/src/presets/types.ts",
+            "packages/editor/src/store/editor-store.ts",
+            "packages/export-ai-rpg/src/index.ts",
+            "packages/schema/src/index.ts"
+          ],
+          "path": "packages/editor/src/speed-panel-steps.ts"
+        },
+        {
+          "exports": [
             "buildNavigableEntries",
             "buildPinRowHandlers",
             "catalogueGroupHeadingId",
@@ -4379,6 +5139,13 @@
             "stepBackOrRoot",
             "submitScalarPill"
           ],
+          "failurePaths": [
+            {
+              "in": "executeSpeedPanelRow",
+              "kind": "catch",
+              "line": 497
+            }
+          ],
           "hash": "7205e9c894ae137d7d3f74e009397f4c0405cc8fb2fa7129932985799f2bdd56",
           "importOrder": [
             "packages/editor/src/command-registry.ts",
@@ -4387,6 +5154,7 @@
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-layout.ts",
             "packages/editor/src/panels/speed-panel-stores.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/index.ts"
           ],
@@ -4397,6 +5165,7 @@
             "packages/editor/src/speed-panel-actions.ts",
             "packages/editor/src/speed-panel-execute.ts",
             "packages/editor/src/speed-panel-layout.ts",
+            "packages/editor/src/speed-panel-steps.ts",
             "packages/editor/src/store/editor-store.ts",
             "packages/schema/src/index.ts"
           ],
@@ -4409,6 +5178,36 @@
             "getSelectedZoneId",
             "getSelectionCount",
             "isSelected"
+          ],
+          "failurePaths": [
+            {
+              "kind": "catch",
+              "line": 335
+            },
+            {
+              "in": "toggleElevation",
+              "kind": "catch",
+              "line": 443
+            },
+            {
+              "kind": "catch",
+              "line": 493
+            },
+            {
+              "in": "toggleHidden",
+              "kind": "catch",
+              "line": 503
+            },
+            {
+              "in": "clearHiddenIds",
+              "kind": "catch",
+              "line": 517
+            },
+            {
+              "in": "hideSelected",
+              "kind": "catch",
+              "line": 533
+            }
           ],
           "hash": "2a1dfed829773643e1ab2e2b821591337e0c20815c222c398ab3416d335be9fd",
           "importOrder": [
@@ -4446,6 +5245,58 @@
             "startAutoSave",
             "stopAutoSave",
             "writeAutoSave"
+          ],
+          "failurePaths": [
+            {
+              "in": "hasAutoSaveRecovery",
+              "kind": "catch",
+              "line": 530
+            },
+            {
+              "in": "recoverAutoSave",
+              "kind": "catch",
+              "line": 542
+            },
+            {
+              "in": "clearAutoSave",
+              "kind": "catch",
+              "line": 552
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 620
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 655
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 664
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 673
+            },
+            {
+              "in": "rollbackProject",
+              "kind": "catch",
+              "line": 683
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 689
+            },
+            {
+              "in": "writeAutoSave",
+              "kind": "catch",
+              "line": 697
+            }
           ],
           "hash": "7b321d6468217d75a17f8f940f0c5fb7594917b48a562739840ac2d25f75c320",
           "importOrder": [
@@ -4487,6 +5338,18 @@
             "resolveGestureThresholds",
             "validateTriggerKey"
           ],
+          "failurePaths": [
+            {
+              "in": "loadSpeedPanelOptions",
+              "kind": "catch",
+              "line": 261
+            },
+            {
+              "in": "saveSpeedPanelOptions",
+              "kind": "catch",
+              "line": 272
+            }
+          ],
           "hash": "7b173408ed6b216d38a327787e399ae3838ff68cc46cfd97f679ffb99ebe01af",
           "importsFiles": [
             "packages/editor/src/hotkeys.ts"
@@ -4499,6 +5362,18 @@
             "loadSpeedPanelStateV2",
             "pruneAdaptiveHistory"
           ],
+          "failurePaths": [
+            {
+              "in": "loadJson",
+              "kind": "catch",
+              "line": 48
+            },
+            {
+              "in": "saveJson",
+              "kind": "catch",
+              "line": 65
+            }
+          ],
           "hash": "e291278b9f0460c9f6a764375d6004479094a4a9f7d9e76a511dd5c7d5c2ee83",
           "importsFiles": [
             "packages/editor/src/command-registry.ts",
@@ -4508,6 +5383,28 @@
           "path": "packages/editor/src/store/speed-panel-store.ts"
         },
         {
+          "failurePaths": [
+            {
+              "in": "persist",
+              "kind": "catch",
+              "line": 23
+            },
+            {
+              "in": "loadFromStorage",
+              "kind": "catch",
+              "line": 37
+            },
+            {
+              "in": "loadFromStorage",
+              "kind": "catch",
+              "line": 41
+            },
+            {
+              "in": "loadFromStorage",
+              "kind": "catch",
+              "line": 43
+            }
+          ],
           "hash": "2ee9ff7666a442eec899ff818e2df02f4da41f72d472cc4cee1c547b90dadcfa",
           "importOrder": [
             "packages/schema/src/index.ts",
@@ -4522,6 +5419,13 @@
         {
           "exports": [
             "createHash"
+          ],
+          "failurePaths": [
+            {
+              "in": "createHash",
+              "kind": "throw",
+              "line": 6
+            }
           ],
           "hash": "dcf08d85f22ac8a1c8159d00c03b01c4d109356a0fc02c24c0109312bb1846ba",
           "path": "packages/editor/src/stubs/crypto.ts"
@@ -4737,6 +5641,13 @@
             "readCssVar",
             "resolveCssColor"
           ],
+          "failurePaths": [
+            {
+              "in": "readCssVar",
+              "kind": "catch",
+              "line": 7
+            }
+          ],
           "hash": "04c243a24e48ab8a735518dd7eac0d1733e99124e29f1bbbfedbee0bfa8eef51",
           "path": "packages/editor/src/ui/css-var.ts"
         },
@@ -4815,25 +5726,11 @@
       ],
       "outsideReads": 36,
       "role": "code",
-      "testedBy": 112,
-      "unresolvedNamed": [
-        {
-          "path": "packages/editor/src/Canvas.tsx",
-          "specifier": "./speed-panel-steps.js",
-          "why": "missing"
-        },
-        {
-          "path": "packages/editor/src/panels/SpeedPanel.tsx",
-          "specifier": "../speed-panel-steps.js",
-          "why": "missing"
-        },
-        {
-          "path": "packages/editor/src/panels/speed-panel-stores.ts",
-          "specifier": "../speed-panel-steps.js",
-          "why": "missing"
-        }
+      "testRunners": [
+        "vitest"
       ],
-      "unresolvedSites": 4
+      "testedBy": 112,
+      "unresolvedSites": 0
     },
     {
       "dynamicReads": 0,
@@ -4910,7 +5807,8 @@
             "packages/export-ai-rpg/src/__tests__/fixtures/vocabulary-coverage.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/c0-export-table.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/c0-export-table.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "35f96eb60aa7a8fe32d6b5ffe3286a37a2bf52fae9c2a9d658764d8da59841ef",
@@ -4926,7 +5824,8 @@
             "packages/schema/src/index.ts",
             "packages/schema/src/spawn-condition.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/c0-fixture-coverage.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/c0-fixture-coverage.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -4960,6 +5859,11 @@
         },
         {
           "hash": "a02d8415535821aa2cb0e30c20dd91c9c52745106e5302d53db9dbb878768832",
+          "names": [
+            "dogfood/export-stage-fixture.ts",
+            "packages/export-ai-rpg/src/convert-pack.ts",
+            "packages/schema/src/validate.ts"
+          ],
           "path": "packages/export-ai-rpg/src/__tests__/c0/export-table-data.ts"
         },
         {
@@ -4985,7 +5889,8 @@
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/c1-manifest-truth.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/c1-manifest-truth.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1736b69a3662afc74b4ce97ecb8f7a55f6b1123e15d047f31877313a98fb5ea3",
@@ -5001,7 +5906,8 @@
             "packages/export-ai-rpg/src/import-zones.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/c3-condition-roundtrip.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/c3-condition-roundtrip.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a3d59444c985b6053412d72ddf2ac0f678528f8ddb2afcd1bd986031cb1b758d",
@@ -5013,7 +5919,11 @@
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/cli.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/cli.test.ts",
+          "spawns": [
+            "packages/export-ai-rpg/src/cli.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "eff74d43cb929ae754fba412f636a5a581511ce0f9d2143d9b408c4830dd7495",
@@ -5027,7 +5937,14 @@
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/encounter-mapping.test.ts"
+          "names": [
+            "packages/editor/src/templates/samples.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/encounter-mapping.test.ts",
+          "spawns": [
+            "packages/export-ai-rpg/src/cli.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "2efe7cb4dde30fc0ec7c64f3ed53a7f356336cd3e5ea578d9c6b2a86fbdbc4ab",
@@ -5041,7 +5958,13 @@
             "packages/export-ai-rpg/src/export.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts"
+          "names": [
+            "dogfood/worlds/multi-target-proof.ts",
+            "dogfood/worlds/salt-road.ts",
+            "dogfood/worlds/sandbox-scale.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/engine-contract.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "97ca15d6e4e421118881403d73d57a047e8353ffd03041ef88778dde59e2935f",
@@ -5061,7 +5984,13 @@
             "packages/export-ai-rpg/src/export.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts"
+          "names": [
+            "dogfood/worlds/multi-target-proof.ts",
+            "dogfood/worlds/salt-road.ts",
+            "dogfood/worlds/sandbox-scale.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/engine-deps-3x.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "887891aff3dbf68858bd4880ef5d80a034851a032e076779ddd92ae92ca4440c",
@@ -5097,14 +6026,16 @@
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/export.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/export.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b99078bc92c8ce3b192898c5e48853ff53d04a8206523f4ba086f48afeb5f4a9",
           "importsFiles": [
             "packages/export-ai-rpg/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/extension-points.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/extension-points.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "893779281b0400bde80b4dac2a89c237277de257b5845c2edad54ec5dc561da3",
@@ -5118,7 +6049,8 @@
             "packages/export-ai-rpg/src/content-hash.ts",
             "packages/export-ai-rpg/src/export.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/f-1d037344-browser-safe-hash.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/f-1d037344-browser-safe-hash.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c6a3ce582af8197d31f8ec9d55d14c21c70172d148669cd1dd6fa6eb655dd233",
@@ -5134,7 +6066,8 @@
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/export-ai-rpg/src/import.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/fidelity.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/fidelity.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "590d9b27959b72d87924bb91067916f292f6c935c7216c57dbb8899f19d21f46",
@@ -5185,7 +6118,8 @@
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/humanization.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/humanization.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ad77ce7ebcf185d01e821e4070af69d7b3643a7891f57247ea151dac53778f15",
@@ -5217,7 +6151,8 @@
             "packages/export-ai-rpg/src/import.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/import.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/import.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "8d2db5c2ec79a927706f49856e886f22438d9bc680fd7d39d7a7a4ee2ad14999",
@@ -5231,7 +6166,8 @@
             "packages/export-ai-rpg/src/export.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/item-placements-contract.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "5c4bcdac2d247669c8b72bed68190df2e24f2c7259cb17b79ac97eab712a184c",
@@ -5240,7 +6176,11 @@
             "packages/export-ai-rpg/src/import.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/leftover-pack.test.ts"
+          "names": [
+            "packages/export-ai-rpg/src/cli.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/leftover-pack.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3a6f41c8f99768862d0080574279de2b51411811bc054d4c5195237ad08615d6",
@@ -5248,7 +6188,8 @@
             "packages/export-ai-rpg/src/convert-pack.ts",
             "packages/export-ai-rpg/src/import.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/map-drift.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/map-drift.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "d470ff1108a8013b147773c42acba682c0897819808a42f4bf4d2794aa644fef",
@@ -5260,7 +6201,8 @@
             "packages/export-ai-rpg/src/__tests__/fixtures/engine-fixtures.ts",
             "packages/export-ai-rpg/src/export.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/profiles.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/profiles.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "907c29e17d91e79b13b6da5e1bb98582b3254879feab789cd436ea2e506d36c5",
@@ -5284,7 +6226,12 @@
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/stage-c-amends.test.ts"
+          "names": [
+            "packages/export-ai-rpg/src/convert-build-catalog.ts",
+            "packages/export-ai-rpg/src/convert-progression-trees.ts"
+          ],
+          "path": "packages/export-ai-rpg/src/__tests__/stage-c-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "01da8730742fedbf947e978ad924f0d45f31a8816c525d3e35ce98e0f6304ccf",
@@ -5314,7 +6261,8 @@
             "packages/export-ai-rpg/src/import.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/swarm-fixes.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/swarm-fixes.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "e4aca7d29fd32b52de9df1e3191e5a23a98912b0117a839f34e3b76352002231",
@@ -5334,7 +6282,8 @@
             "packages/export-ai-rpg/src/fidelity.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave18-amends.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave18-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "cc10290555526d3ec19cde4f4a64a83019723b8dda94e65a3d3d8a6d653e234d",
@@ -5364,7 +6313,8 @@
             "packages/schema/src/__tests__/fixtures/chapel-authored.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave2-amends.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave2-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "56345e7b63664095c002a2eb5e406d5ee651451f3fa7d1684c4227e57e2772e4",
@@ -5396,7 +6346,8 @@
             "packages/export-ai-rpg/src/import.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave32-amends.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave32-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a6d0df1661832ee091fa59e9bf439a27259208bcbc336f4029fb3557e7a8515c",
@@ -5416,7 +6367,8 @@
             "packages/export-ai-rpg/src/import.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave4-amends.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave4-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ae1b92730becff7f3f1ffe5189b50a6a29c180fd1fc99d293f2378941cfeb006",
@@ -5442,11 +6394,69 @@
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave9-amends.test.ts"
+          "path": "packages/export-ai-rpg/src/__tests__/swarm-wave9-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "entry": "main",
           "entryRule": 1,
+          "failurePaths": [
+            {
+              "in": "readJsonIfExists",
+              "kind": "catch",
+              "line": 126
+            },
+            {
+              "in": "readJsonIfExists",
+              "kind": "throw",
+              "line": 129
+            },
+            {
+              "in": "isDirectory",
+              "kind": "catch",
+              "line": 137
+            },
+            {
+              "in": "loadPackDirectory",
+              "kind": "throw",
+              "line": 144
+            },
+            {
+              "in": "loadPackDirectory",
+              "kind": "throw",
+              "line": 147
+            },
+            {
+              "in": "loadPackDirectory",
+              "kind": "throw",
+              "line": 150
+            },
+            {
+              "in": "runImport",
+              "kind": "catch",
+              "line": 232
+            },
+            {
+              "in": "runImport",
+              "kind": "catch",
+              "line": 240
+            },
+            {
+              "in": "runImport",
+              "kind": "catch",
+              "line": 258
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 480
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 488
+            }
+          ],
           "hash": "71f7130f6b7787687c5d829ba5f093330f4c4b32e24d56cc600acd4cf4acec02",
           "importsFiles": [
             "packages/export-ai-rpg/src/convert-dialogues.ts",
@@ -5921,6 +6931,13 @@
           "exports": [
             "convertEntities"
           ],
+          "failurePaths": [
+            {
+              "in": "convertEntities",
+              "kind": "catch",
+              "line": 164
+            }
+          ],
           "hash": "cdbdcd138a3afc8ad31781bfc9a77f729701c14aca990067f4306ad88d211462",
           "importOrder": [
             "packages/schema/src/index.ts",
@@ -6097,6 +7114,13 @@
           "entryRule": 4,
           "exports": [
             "exportToEngine"
+          ],
+          "failurePaths": [
+            {
+              "in": "exportToEngine",
+              "kind": "catch",
+              "line": 438
+            }
           ],
           "hash": "e61b4b8fe25f3f4cdc5180c63a6c3fff7b01bb7d4219ac1d19cf855a57d74ea5",
           "importsFiles": [
@@ -6485,6 +7509,13 @@
             "importFromExportResult",
             "importProject",
             "inferMode"
+          ],
+          "failurePaths": [
+            {
+              "in": "importFromContentPack",
+              "kind": "catch",
+              "line": 471
+            }
           ],
           "hash": "36ddf33e9f1eb7946ba5be3bc0cf3c94797740dafb507f663fafe6d5662ed014",
           "importsFiles": [
@@ -7152,7 +8183,10 @@
       "outsideReads": 8,
       "outsideWrites": 4,
       "role": "code",
-      "testedBy": 69,
+      "testRunners": [
+        "vitest"
+      ],
+      "testedBy": 71,
       "unresolvedSites": 0
     },
     {
@@ -7196,7 +8230,8 @@
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/cli.test.ts"
+          "path": "packages/export-godot/src/__tests__/cli.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a2932c3ec8c472345f98cee8870aadec8f186a0fbf95f11919d81c46a322166c",
@@ -7204,7 +8239,8 @@
             "packages/export-godot/src/convert-assets.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-assets.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-assets.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "86a86a35fb3d189dc882fe76dabf0990215b3af696ae26241728a59b77b7abba",
@@ -7222,7 +8258,8 @@
             "packages/export-godot/src/scene-builder.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-connections.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-connections.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "54026bcc23acd830f2e76584afbe64e73e21ee63f5bd4ca2f561d4fcccd78483",
@@ -7230,7 +8267,8 @@
             "packages/export-godot/src/convert-dialogues.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-dialogues.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-dialogues.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "004f5f7fa31f814aaf284e44479c60f20fc2da54b78ea5b80076d0a7faa38aa3",
@@ -7238,7 +8276,8 @@
             "packages/export-godot/src/convert-districts.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-districts.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-districts.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "19836abc2873d8e31bf89f8da1bb3b32bc7064f8bd2c53db78d73ce345086f95",
@@ -7246,7 +8285,8 @@
             "packages/export-godot/src/convert-economy.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-economy.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-economy.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3ab3c3bb010a41e0ec6df3fcb96854fcf76e341989243cbb7e1a00c622038196",
@@ -7254,7 +8294,8 @@
             "packages/export-godot/src/convert-entities.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-entities.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-entities.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "03283e971f660193f9d06482699d046e1dacea0a8ed8f92379aebef4fc1d9cf3",
@@ -7262,7 +8303,8 @@
             "packages/export-godot/src/convert-gates.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-gates.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-gates.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "43831a1a293b4b32834e1b625a252878b88765ed6ccb6233926da3c9d003def9",
@@ -7270,7 +8312,8 @@
             "packages/export-godot/src/convert-hazards.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-hazards.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-hazards.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f7711f6aeb565d9f04f0a0875eef62bbb0c5882ffb792169086b566c84fe906c",
@@ -7278,7 +8321,8 @@
             "packages/export-godot/src/convert-items.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-items.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-items.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "007b5fc8ce8c5bb44e7103f084b955a6559f80d13f1a4716c876475a62101a62",
@@ -7286,7 +8330,8 @@
             "packages/export-godot/src/convert-loot-tables.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-loot-tables.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-loot-tables.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "8c203ce2ddf7cc78d31407df28f0e32f128d747e5c78aa5e9a3f23dd3e897b6e",
@@ -7294,7 +8339,8 @@
             "packages/export-godot/src/convert-props.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-props.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-props.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "d85a9fe0be7de4669a4c9559ccf1462a6409828f966c08ec3d18410029ffcdea",
@@ -7302,7 +8348,8 @@
             "packages/export-godot/src/convert-spawn-points.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-spawn-points.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-spawn-points.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b5ae7e5ecfcdfcbb51e1b394a15614f5774d584720bdc2dd177b080c734c5e9c",
@@ -7310,7 +8357,8 @@
             "packages/export-godot/src/convert-strata.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-strata.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-strata.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "4d86c67e8225e68bea9a82ee7edf21cb4153889a805b8110c7829034045abdc0",
@@ -7318,7 +8366,8 @@
             "packages/export-godot/src/convert-structures.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-structures.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-structures.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a70dba929e0c5ba74f61e9123638179f42456b7681d39fde4b672b2994fd0832",
@@ -7334,7 +8383,8 @@
             "packages/export-godot/src/scene-builder.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-tile-layers.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-tile-layers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "8d6b4f4a0e3723524597d6a3d0fe54c28f17c8df9dca896c30caac85a7ef3516",
@@ -7342,7 +8392,8 @@
             "packages/export-godot/src/convert-transitions.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-transitions.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-transitions.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "0fba3bdf5d33fbc3c46c4745f95f8b64c51f5d1656d7b852ebd422e7db672740",
@@ -7350,21 +8401,24 @@
             "packages/export-godot/src/convert-zones.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/convert-zones.test.ts"
+          "path": "packages/export-godot/src/__tests__/convert-zones.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "6556b9ba36d7a0f361a1f40d1e34e4985f4c933f7a8e3ceb5b8823419cf4ffa9",
           "importsFiles": [
             "packages/export-godot/src/coordinate-transform.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/coordinate-transform.test.ts"
+          "path": "packages/export-godot/src/__tests__/coordinate-transform.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "50cc01e9a615e44c75182adf5f367d727b483b580719a20da4b83d6855cb096d",
           "importsFiles": [
             "packages/export-godot/src/copy-assets.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/copy-assets.test.ts"
+          "path": "packages/export-godot/src/__tests__/copy-assets.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "130d4e6c447d001901a25894c642201925261c4152f1c4bf3a8bc42f59c30185",
@@ -7374,7 +8428,8 @@
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/export.test.ts"
+          "path": "packages/export-godot/src/__tests__/export.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "eb6f5cc318a05a272bac8418a084420d6122f6215d995c0476f0be956577947a",
@@ -7392,7 +8447,8 @@
             "packages/export-godot/src/convert-zones.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/fidelity-report.test.ts"
+          "path": "packages/export-godot/src/__tests__/fidelity-report.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b602da644a0d6228e949f3d728172cb0193c4d139b44bf955755fa250e6a57cf",
@@ -7400,14 +8456,16 @@
             "packages/export-godot/src/export.ts",
             "packages/export-godot/src/migrations.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/migrations.test.ts"
+          "path": "packages/export-godot/src/__tests__/migrations.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "cb0353c7e0dac864f59425a2af989b09c775fae78d0782dd9d40726d8a0cb004",
           "importsFiles": [
             "packages/export-godot/src/node-naming.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/node-naming.test.ts"
+          "path": "packages/export-godot/src/__tests__/node-naming.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c0d6ee86846a70ebdb88d8ce5e227818fe11f1e87204e5afc10c27b7bd45e041",
@@ -7437,7 +8495,8 @@
             "packages/export-godot/src/fidelity.ts",
             "packages/export-godot/src/scene-builder.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/scene-builder.test.ts"
+          "path": "packages/export-godot/src/__tests__/scene-builder.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "34a20f7eb9c395c3e42f7eab44918086b2f1813403b22165d6abfeb350bf7dd3",
@@ -7451,20 +8510,44 @@
             "packages/export-godot/src/scene-builder.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/scene-parseable.test.ts"
+          "path": "packages/export-godot/src/__tests__/scene-parseable.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "06ef1042e91361c46fb371f9cfc1a222e5dcd52ebdd59fe9dcadcaeedf69036e",
           "importsFiles": [
             "packages/export-godot/src/tres-serializer.ts"
           ],
-          "path": "packages/export-godot/src/__tests__/tres-serializer.test.ts"
+          "path": "packages/export-godot/src/__tests__/tres-serializer.test.ts",
+          "testFramework": "vitest"
         },
         {
           "entry": "runGodotCli",
           "entryRule": 1,
           "exports": [
             "runGodotCli"
+          ],
+          "failurePaths": [
+            {
+              "in": "invokedAsCli",
+              "kind": "catch",
+              "line": 63
+            },
+            {
+              "in": "runGodotCli",
+              "kind": "catch",
+              "line": 108
+            },
+            {
+              "in": "runGodotCli",
+              "kind": "catch",
+              "line": 117
+            },
+            {
+              "in": "runGodotCli",
+              "kind": "catch",
+              "line": 188
+            }
           ],
           "hash": "ed0f143feae3e8f682484acd496d7ae95018767aa912895d7ea2c976ab7f6185",
           "importsFiles": [
@@ -7916,6 +8999,28 @@
             "gridToGodot3D",
             "resolveTileSize"
           ],
+          "failurePaths": [
+            {
+              "in": "resolveTileSize",
+              "kind": "throw",
+              "line": 31
+            },
+            {
+              "in": "gridToGodot2D",
+              "kind": "throw",
+              "line": 55
+            },
+            {
+              "in": "gridToGodot3D",
+              "kind": "throw",
+              "line": 75
+            },
+            {
+              "in": "extentToGodot2D",
+              "kind": "throw",
+              "line": 89
+            }
+          ],
           "hash": "a6e73241762742ab78dc70f067c4adc2decfdd68a3b187b86666eb6631f45365",
           "path": "packages/export-godot/src/coordinate-transform.ts"
         },
@@ -7926,6 +9031,13 @@
             "isRemoteAssetUri",
             "planAuthoredAssetCopies",
             "resourcePathToRel"
+          ],
+          "failurePaths": [
+            {
+              "in": "isReadableFile",
+              "kind": "catch",
+              "line": 46
+            }
           ],
           "hash": "492c9eda304c6525773db1dd618488deb790d2f67c1fee625c80036a4af43006",
           "importsFiles": [
@@ -7966,6 +9078,18 @@
           "entryRule": 4,
           "exports": [
             "exportToGodot"
+          ],
+          "failurePaths": [
+            {
+              "in": "exportToGodot",
+              "kind": "catch",
+              "line": 181
+            },
+            {
+              "in": "exportToGodot",
+              "kind": "catch",
+              "line": 284
+            }
           ],
           "hash": "aec84767b8913e7aeb7aa9007ce4224660630d074fd6098aceb668ca792d5649",
           "importsFiles": [
@@ -8311,6 +9435,28 @@
             "buildWorldScene",
             "uniquifyRootNodeNames"
           ],
+          "failurePaths": [
+            {
+              "in": "assertParseable",
+              "kind": "throw",
+              "line": 749
+            },
+            {
+              "in": "assertParseable",
+              "kind": "throw",
+              "line": 759
+            },
+            {
+              "in": "assertParseable",
+              "kind": "throw",
+              "line": 770
+            },
+            {
+              "in": "assertParseable",
+              "kind": "throw",
+              "line": 786
+            }
+          ],
           "hash": "cae72d317e57594c356e3cb20baab2adbbdd75b66137a173e274a85b5965917e",
           "importOrder": [
             "packages/export-godot/src/convert-zones.ts",
@@ -8392,7 +9538,10 @@
       "outsideReads": 4,
       "outsideWrites": 9,
       "role": "code",
-      "testedBy": 46,
+      "testRunners": [
+        "vitest"
+      ],
+      "testedBy": 48,
       "unresolvedSites": 0
     },
     {
@@ -8432,7 +9581,11 @@
             "packages/schema/src/__tests__/fixtures/invalid-orphan.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/cli.test.ts"
+          "path": "packages/export-unreal/src/__tests__/cli.test.ts",
+          "spawns": [
+            "packages/export-unreal/src/cli.ts"
+          ],
+          "testFramework": "vitest"
         },
         {
           "hash": "7b7dddb2142c94c40e4424f9dd4a273407c912ff7b53de02c8c5ace3b65793af",
@@ -8441,7 +9594,8 @@
             "packages/export-unreal/src/convert-zones.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/convert-hazards.test.ts"
+          "path": "packages/export-unreal/src/__tests__/convert-hazards.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f2e3a38e39294cd05d2cff18337975ef16f4f02f664749b881cd982147b79a4c",
@@ -8449,7 +9603,8 @@
             "packages/export-unreal/src/convert-props.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/convert-props.test.ts"
+          "path": "packages/export-unreal/src/__tests__/convert-props.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1288c3b86b6bd025a2762d76d18a168c65e2153258b0203003e6fa66b5404304",
@@ -8457,7 +9612,8 @@
             "packages/export-unreal/src/convert-strata.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/convert-strata.test.ts"
+          "path": "packages/export-unreal/src/__tests__/convert-strata.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "e4f784eebb02cad9d45b7668022cd532967a5cae69b091fa5b9a0963082e00fe",
@@ -8465,14 +9621,16 @@
             "packages/export-unreal/src/convert-tile-layers.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/convert-tile-layers.test.ts"
+          "path": "packages/export-unreal/src/__tests__/convert-tile-layers.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "b984ddc360870776f39ce085d1f4b51655e93cd4d672c147c6160abb132aa1ce",
           "importsFiles": [
             "packages/export-unreal/src/coordinate-transform.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/coordinate-transform.test.ts"
+          "path": "packages/export-unreal/src/__tests__/coordinate-transform.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "06eb2e69206331c39ed155614df6a3614c9edadca724bec4a977ef51987b3c77",
@@ -8498,11 +9656,18 @@
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/export.test.ts"
+          "path": "packages/export-unreal/src/__tests__/export.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "901ab43694c8572e751d7638c7fdc3b1a5351473ce50eb36572f8a8a19ed43b7",
-          "path": "packages/export-unreal/src/__tests__/f-36785d5f-browser-safe-graph.test.ts"
+          "names": [
+            "packages/export-unreal/src/diff.ts",
+            "packages/export-unreal/src/signing.ts",
+            "packages/export-unreal/src/summary.ts"
+          ],
+          "path": "packages/export-unreal/src/__tests__/f-36785d5f-browser-safe-graph.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "7058626cc1ab080a611de5aa43221f8bafe80c011b336a5e4e76f66d0cfb14a6",
@@ -8518,7 +9683,8 @@
             "packages/export-unreal/src/migrations.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/migrations.test.ts"
+          "path": "packages/export-unreal/src/__tests__/migrations.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "86a0a0fad9e8038fdb609f14f2f4bf9d0646defb289d9eab14cc0af17f753b85",
@@ -8529,7 +9695,8 @@
             "packages/schema/src/__tests__/fixtures/minimal.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/parity.test.ts"
+          "path": "packages/export-unreal/src/__tests__/parity.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "3f73a3e79917e5020d436cd85b18625fa673869dc6ebc531a4cf0b0a606a5674",
@@ -8538,7 +9705,8 @@
             "packages/export-unreal/src/signing.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/signing.test.ts"
+          "path": "packages/export-unreal/src/__tests__/signing.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "8752affdc4894c2e7769ca49425357c4f00fb6059d4852d27f699670dc09b6d0",
@@ -8556,11 +9724,29 @@
             "packages/export-unreal/src/summary.ts",
             "packages/schema/src/__tests__/fixtures/minimal.ts"
           ],
-          "path": "packages/export-unreal/src/__tests__/summary-diff.test.ts"
+          "path": "packages/export-unreal/src/__tests__/summary-diff.test.ts",
+          "testFramework": "vitest"
         },
         {
           "entry": "main",
           "entryRule": 1,
+          "failurePaths": [
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 149
+            },
+            {
+              "in": "main",
+              "kind": "catch",
+              "line": 157
+            },
+            {
+              "in": "requirePathArg",
+              "kind": "throw",
+              "line": 367
+            }
+          ],
           "hash": "6e9ceb88b0ca3fa0c826db555e6b5dc11625771e61352fe322977b9133e23b77",
           "importsFiles": [
             "packages/export-unreal/src/diff.ts",
@@ -8962,6 +10148,28 @@
             "worldForgeToUnrealAxis",
             "zToElevationMeters"
           ],
+          "failurePaths": [
+            {
+              "in": "pixelsToUnrealCm",
+              "kind": "throw",
+              "line": 67
+            },
+            {
+              "in": "pixelsToUnrealCm",
+              "kind": "throw",
+              "line": 73
+            },
+            {
+              "in": "gridToUnrealAxis",
+              "kind": "throw",
+              "line": 119
+            },
+            {
+              "in": "unrealAxisToGrid",
+              "kind": "throw",
+              "line": 167
+            }
+          ],
           "hash": "4e37360376cb4bea0c6bf6396b9624b452ab6ae54fc79f4a59a237d107075a70",
           "path": "packages/export-unreal/src/coordinate-transform.ts"
         },
@@ -8969,6 +10177,43 @@
           "exports": [
             "diffPacks",
             "formatDiff"
+          ],
+          "failurePaths": [
+            {
+              "in": "readDirSafe",
+              "kind": "catch",
+              "line": 59
+            },
+            {
+              "in": "readDirSafe",
+              "kind": "catch",
+              "line": 63
+            },
+            {
+              "in": "collectActors",
+              "kind": "catch",
+              "line": 121
+            },
+            {
+              "in": "collectParallax",
+              "kind": "catch",
+              "line": 140
+            },
+            {
+              "in": "collectTransitions",
+              "kind": "catch",
+              "line": 159
+            },
+            {
+              "in": "diffPacks",
+              "kind": "catch",
+              "line": 171
+            },
+            {
+              "in": "diffPacks",
+              "kind": "catch",
+              "line": 179
+            }
           ],
           "hash": "1bf4882c4a84d69423db61be3c4941e7c8045e35d0d9a59f09d6395880d94216",
           "importsFiles": [
@@ -8983,6 +10228,13 @@
             "applyPackSigning",
             "composeBaseMeta",
             "exportToUnreal"
+          ],
+          "failurePaths": [
+            {
+              "in": "exportToUnreal",
+              "kind": "catch",
+              "line": 177
+            }
           ],
           "hash": "c8889704fafb4baec481fa312bf544c7ead75b0b468385cc37af48a9ecaf0fef",
           "importsFiles": [
@@ -9238,6 +10490,13 @@
           "exports": [
             "importFromUnreal"
           ],
+          "failurePaths": [
+            {
+              "in": "deserializeV1",
+              "kind": "catch",
+              "line": 172
+            }
+          ],
           "hash": "871f07ae2b4bb1d049096ff2643ba33fd1516ac66305978e67b969e3d1ac69ff",
           "importOrder": [
             "packages/schema/src/index.ts",
@@ -9350,6 +10609,48 @@
             "formatSummary",
             "summarizePack"
           ],
+          "failurePaths": [
+            {
+              "in": "listJsonFiles",
+              "kind": "catch",
+              "line": 57
+            },
+            {
+              "in": "dirSize",
+              "kind": "catch",
+              "line": 75
+            },
+            {
+              "in": "summarizePack",
+              "kind": "catch",
+              "line": 90
+            },
+            {
+              "in": "summarizePack",
+              "kind": "catch",
+              "line": 117
+            },
+            {
+              "in": "summarizePack",
+              "kind": "catch",
+              "line": 123
+            },
+            {
+              "in": "summarizePack",
+              "kind": "catch",
+              "line": 129
+            },
+            {
+              "in": "summarizePack",
+              "kind": "catch",
+              "line": 135
+            },
+            {
+              "in": "summarizePack",
+              "kind": "catch",
+              "line": 156
+            }
+          ],
           "hash": "b1aad08bcf3559cff33a430dcfd4912edcb95df7c8e26b5845b5c35759e721fc",
           "importsFiles": [
             "packages/export-unreal/src/export.ts",
@@ -9405,6 +10706,9 @@
       "outsideReads": 8,
       "outsideWrites": 17,
       "role": "code",
+      "testRunners": [
+        "vitest"
+      ],
       "testedBy": 39,
       "unresolvedSites": 0
     },
@@ -9468,7 +10772,8 @@
             "packages/renderer-2d/src/connection-renderer.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/connection-renderer.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/connection-renderer.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "84acb052f7c685b34201c17bcf4076c0e97e54332cf70a284f0992cb50cf9481",
@@ -9476,7 +10781,8 @@
             "packages/renderer-2d/src/diagnostics-overlay.ts",
             "packages/renderer-2d/src/diagnostics.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/diagnostics-overlay.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/diagnostics-overlay.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f5cbead036a7cbc4d02be342f7e04a83d6747329275e856aba540d326c8c061f",
@@ -9498,7 +10804,8 @@
             "packages/renderer-2d/src/viewport.ts",
             "packages/renderer-2d/src/zone-renderer.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/diagnostics.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/diagnostics.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "dac723fec28df7e89ca54a0f53c8d6d101451a9edd4bbef8b6ca44fc28e94f24",
@@ -9506,7 +10813,8 @@
             "packages/renderer-2d/src/entity-renderer.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/entity-renderer.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/entity-renderer.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ecf1d9c1f625e72649f20fe9a0b9b21216c5bcb7bee8d74dd9a22d819a8c5569",
@@ -9514,7 +10822,8 @@
             "packages/renderer-2d/src/minimap.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/minimap.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/minimap.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "4698c344795b90998fe4667df7513d523d32ad7d64c809e8e0dfe66b086d18ed",
@@ -9522,7 +10831,8 @@
             "packages/renderer-2d/src/parallax-renderer.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/parallax-renderer.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/parallax-renderer.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "6dc00b39723764f96f09e797465be3618b9c5681f545b288ea470265caa7b06e",
@@ -9530,14 +10840,16 @@
             "packages/renderer-2d/src/tile-renderer.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/tile-renderer.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/tile-renderer.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "52de0a8be1a8856e02dab44cc0fcada6ee1b1d620933200a7d14811f55f3c0be",
           "importsFiles": [
             "packages/renderer-2d/src/viewport.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/viewport.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/viewport.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "403481f5b5c156fdfea0188f5798e2180273366570c1dcb47c629255caad2d2e",
@@ -9545,7 +10857,8 @@
             "packages/renderer-2d/src/zone-renderer.ts",
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/renderer-2d/src/__tests__/zone-renderer.test.ts"
+          "path": "packages/renderer-2d/src/__tests__/zone-renderer.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "9a635e092dd3a8e072d9fa9ecb640b245ec87fb3eb924304f64027bf322e65d3",
@@ -9653,6 +10966,38 @@
           "path": "packages/renderer-2d/src/tile-renderer.ts"
         },
         {
+          "failurePaths": [
+            {
+              "in": "init",
+              "kind": "throw",
+              "line": 65
+            },
+            {
+              "in": "init",
+              "kind": "throw",
+              "line": 72
+            },
+            {
+              "in": "init",
+              "kind": "catch",
+              "line": 84
+            },
+            {
+              "in": "init",
+              "kind": "throw",
+              "line": 88
+            },
+            {
+              "in": "init",
+              "kind": "catch",
+              "line": 95
+            },
+            {
+              "in": "init",
+              "kind": "throw",
+              "line": 102
+            }
+          ],
           "hash": "ede32eee98cb2928e081d7d0ab091c0f5a7656d24b142eb61080d49151ab3d57",
           "importsFiles": [
             "packages/renderer-2d/src/diagnostics.ts"
@@ -9685,6 +11030,9 @@
       "name": "renderer-2d",
       "origin": "authored",
       "role": "code",
+      "testRunners": [
+        "vitest"
+      ],
       "testedBy": 10,
       "unresolvedSites": 0
     },
@@ -9830,6 +11178,9 @@
       ],
       "outsideReads": 1,
       "role": "docs",
+      "testRunners": [
+        "vitest"
+      ],
       "testedBy": 1,
       "unresolvedSites": 0
     },
@@ -9905,7 +11256,8 @@
             "packages/schema/src/review.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/advisory.test.ts"
+          "path": "packages/schema/src/__tests__/advisory.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "30add2505f03fa8f54cde65dc9b63b76aa24112d5b3a3b0677367bd911e8d304",
@@ -9921,7 +11273,8 @@
             "packages/schema/src/authoring-mode.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/authoring-mode.test.ts"
+          "path": "packages/schema/src/__tests__/authoring-mode.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "400b52928d3c5b9dbe9cc99c801f96f64ff0d290b68fd2b182e172a93640fdc8",
@@ -9939,7 +11292,8 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/review.ts"
           ],
-          "path": "packages/schema/src/__tests__/dependencies.test.ts"
+          "path": "packages/schema/src/__tests__/dependencies.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "a76387aa415ebb4ce436c419ef6a78bef657fe1f242b7d1aaf7c8a8874d89cf8",
@@ -9955,7 +11309,8 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/elevation-validation.test.ts"
+          "path": "packages/schema/src/__tests__/elevation-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1de6061f633484cbd438f82632bfb89837e0042d7db94aadb5f8022e067110b4",
@@ -9973,7 +11328,8 @@
             "packages/schema/src/spawn-condition.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/entry-gate-validation.test.ts"
+          "path": "packages/schema/src/__tests__/entry-gate-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "constantOnly": true,
@@ -10011,7 +11367,8 @@
             "packages/schema/src/flavor.ts",
             "packages/schema/src/project-shape.ts"
           ],
-          "path": "packages/schema/src/__tests__/flavor.test.ts"
+          "path": "packages/schema/src/__tests__/flavor.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f68d6c387dd0e99acd3806cc986f590d106a878e8772a214145909ab785f29ff",
@@ -10027,7 +11384,8 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/hazards-validation.test.ts"
+          "path": "packages/schema/src/__tests__/hazards-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "55fe26ea477c5be34ba3acc2239fd01adb4f58babb41c6d668ed2b75120b0c0f",
@@ -10051,7 +11409,8 @@
             "packages/schema/src/town.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/nested-array-guards.test.ts"
+          "path": "packages/schema/src/__tests__/nested-array-guards.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "ed374da3e19a1f68d134f97ba3c1d11a2f82004fc44f25b459075380e2cbfae1",
@@ -10065,14 +11424,16 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/optional-world-arrays-validation.test.ts"
+          "path": "packages/schema/src/__tests__/optional-world-arrays-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "14a9f46bfca9960523292c3ddc223b5b4f8c024132fef861fed5d2d4c521ac38",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/schema/src/__tests__/presentation.test.ts"
+          "path": "packages/schema/src/__tests__/presentation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "dde3b6ec54fc4b88de698103505cd4160e08347663b9d71725326c0daab27180",
@@ -10086,7 +11447,8 @@
             "packages/schema/src/authoring-mode.ts",
             "packages/schema/src/project.ts"
           ],
-          "path": "packages/schema/src/__tests__/project-metadata.test.ts"
+          "path": "packages/schema/src/__tests__/project-metadata.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "01f43a82e33a16c0a7565f47cba5db33d9fb403ba9c2206b9d2b0f21fe18d20c",
@@ -10100,7 +11462,8 @@
             "packages/schema/src/index.ts",
             "packages/schema/src/project.ts"
           ],
-          "path": "packages/schema/src/__tests__/project-shape.test.ts"
+          "path": "packages/schema/src/__tests__/project-shape.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "0cb366f724f9e60d7ed8aa580672edf5345cf836801bbbdadbd778e90ce4783c",
@@ -10118,14 +11481,16 @@
             "packages/schema/src/review.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/review.test.ts"
+          "path": "packages/schema/src/__tests__/review.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "5b793556dc7db0f71ef680c0c8f92adcf259f234b3eb8bd25f6cb79af190acb8",
           "importsFiles": [
             "packages/schema/src/spawn-condition.ts"
           ],
-          "path": "packages/schema/src/__tests__/spawn-condition-codec.test.ts"
+          "path": "packages/schema/src/__tests__/spawn-condition-codec.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "2381854be19a67a781c91db94018b1e8681ebbddb38ef1a1183b0a3e7b446f95",
@@ -10147,7 +11512,8 @@
             "packages/schema/src/review.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/stage-c-humanization-v44.test.ts"
+          "path": "packages/schema/src/__tests__/stage-c-humanization-v44.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "1687704a4fff5fed9556bdf39939b8ad02d76bc41e94be8076df59b9cc143298",
@@ -10169,7 +11535,8 @@
             "packages/schema/src/review.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/stage-c-humanization.test.ts"
+          "path": "packages/schema/src/__tests__/stage-c-humanization.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "9c4ca9a1071fc2c3670b75a2473668b972bbeb1c315929c140c75c99385f316c",
@@ -10185,7 +11552,8 @@
             "packages/schema/src/stratum.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/strata-validation.test.ts"
+          "path": "packages/schema/src/__tests__/strata-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f6d1a49afec758031027c7fa4efcec69e570cacb742c00b3843938b3093e88e6",
@@ -10201,14 +11569,16 @@
             "packages/schema/src/town.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/town-validation.test.ts"
+          "path": "packages/schema/src/__tests__/town-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "531fcfe7409a96f048231922652f01b7983fa65ba34cdbdcbd6f5fc929d97614",
           "importsFiles": [
             "packages/schema/src/index.ts"
           ],
-          "path": "packages/schema/src/__tests__/valid-sets.test.ts"
+          "path": "packages/schema/src/__tests__/valid-sets.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "c87c65a8c65fe64370d1e0547c68102c84fd6f0ae94b589fa47fbcf88da7a110",
@@ -10226,11 +11596,13 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/validate.test.ts"
+          "path": "packages/schema/src/__tests__/validate.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "15e291443a7aa34ddfd15817a74d78ed8d7707ddb7d4f4d925ce4b2e0f2c054d",
-          "path": "packages/schema/src/__tests__/version.test.ts"
+          "path": "packages/schema/src/__tests__/version.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "02061cd92c750229e3972b44432cfad3e3099ec273f4d9bb4d7ca593f7c0fc9c",
@@ -10252,7 +11624,8 @@
             "packages/schema/src/spawn-condition.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/wave1-schema.test.ts"
+          "path": "packages/schema/src/__tests__/wave1-schema.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "e7620aaa011205d6e567c3cb2b03588f4603255648981c59c4c1f7891c3c9154",
@@ -10268,7 +11641,8 @@
             "packages/schema/src/review.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/wave18-schema-humanization.test.ts"
+          "path": "packages/schema/src/__tests__/wave18-schema-humanization.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "0149c2d336d45d52c0d36636106544d807d2ad6a6be6c7fabcdcac4a521c45ac",
@@ -10288,7 +11662,8 @@
             "packages/schema/src/review.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/wave9-schema-amends.test.ts"
+          "path": "packages/schema/src/__tests__/wave9-schema-amends.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "486b560acd28e1055ea88c4a9b93c9086fdf469c2aad3a44af663622315ac2fc",
@@ -10302,7 +11677,8 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/world-array-fields-validation.test.ts"
+          "path": "packages/schema/src/__tests__/world-array-fields-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "hash": "f51aae72bba16d0934769c634c70ebaa336d0679360abc5c87dbd7880f00c3ad",
@@ -10316,7 +11692,8 @@
             "packages/schema/src/project.ts",
             "packages/schema/src/validate.ts"
           ],
-          "path": "packages/schema/src/__tests__/zone-exits-validation.test.ts"
+          "path": "packages/schema/src/__tests__/zone-exits-validation.test.ts",
+          "testFramework": "vitest"
         },
         {
           "exports": [
@@ -10638,7 +12015,10 @@
       ],
       "outsideReads": 1,
       "role": "code",
-      "testedBy": 204,
+      "testRunners": [
+        "vitest"
+      ],
+      "testedBy": 206,
       "unresolvedSites": 0
     },
     {
@@ -10652,6 +12032,12 @@
         {
           "entry": "packListing",
           "entryRule": 1,
+          "failurePaths": [
+            {
+              "kind": "catch",
+              "line": 40
+            }
+          ],
           "hash": "06bae34f779b195d059159c4e9a249be546a78f486ae6a87d83fa09b7ade0fd9",
           "path": "scripts/check-pack.mjs",
           "sequences": []
@@ -10663,6 +12049,28 @@
         {
           "entry": "measureTestCount",
           "entryRule": 1,
+          "failurePaths": [
+            {
+              "in": "measureTestCount",
+              "kind": "catch",
+              "line": 270
+            },
+            {
+              "in": "measureTestCount",
+              "kind": "catch",
+              "line": 282
+            },
+            {
+              "in": "measureTestCount",
+              "kind": "catch",
+              "line": 297
+            },
+            {
+              "in": "checkSubPackageVersions",
+              "kind": "catch",
+              "line": 321
+            }
+          ],
           "hash": "4c584fc8a5ec5089d768e1884c2f74043659214798ebfe588c56e352b29094b3",
           "path": "scripts/sync-version.mjs",
           "sequences": []
@@ -10675,6 +12083,9 @@
       "name": "scripts",
       "origin": "authored",
       "role": "code",
+      "testRunners": [
+        "vitest"
+      ],
       "testedBy": 1,
       "unresolvedSites": 0
     },
@@ -10840,6 +12251,7 @@
       "checksCount": 16,
       "commands": [
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npx"
@@ -10847,6 +12259,7 @@
           "step": "Atlas check"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npm"
@@ -10854,6 +12267,7 @@
           "step": "3"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npm"
@@ -10861,6 +12275,7 @@
           "step": "Dependency audit"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npm"
@@ -10868,6 +12283,7 @@
           "step": "5"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npm"
@@ -10875,6 +12291,7 @@
           "step": "6"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npm"
@@ -10882,6 +12299,7 @@
           "step": "Dogfood typecheck"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npm"
@@ -10889,6 +12307,7 @@
           "step": "Version + documented-count drift gate"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "node"
@@ -10896,6 +12315,7 @@
           "step": "Pack contents (SHIP_GATE D)"
         },
         {
+          "dir": "",
           "job": "build-and-test",
           "programs": [
             "npx"
@@ -10903,6 +12323,7 @@
           "step": "Re-run suite with coverage"
         },
         {
+          "dir": "",
           "job": "e2e",
           "programs": [
             "npm"
@@ -10910,6 +12331,7 @@
           "step": "2"
         },
         {
+          "dir": "",
           "job": "e2e",
           "programs": [
             "npm"
@@ -10917,6 +12339,7 @@
           "step": "3"
         },
         {
+          "dir": "",
           "job": "e2e",
           "programs": [
             "npx"
@@ -10924,6 +12347,7 @@
           "step": "Install Playwright Chromium"
         },
         {
+          "dir": "",
           "job": "e2e",
           "programs": [
             "npm"
@@ -10931,6 +12355,7 @@
           "step": "Playwright e2e"
         },
         {
+          "dir": "",
           "job": "e2e",
           "programs": [
             "echo"
@@ -10938,6 +12363,7 @@
           "step": "Point operator at Playwright artifacts"
         },
         {
+          "dir": "site",
           "job": "site-build",
           "programs": [
             "npm"
@@ -10945,6 +12371,7 @@
           "step": "Install site deps"
         },
         {
+          "dir": "site",
           "job": "site-build",
           "programs": [
             "npm"
@@ -10952,6 +12379,7 @@
           "step": "Dependency audit"
         },
         {
+          "dir": "site",
           "job": "site-build",
           "programs": [
             "npm"
@@ -10961,6 +12389,115 @@
       ],
       "elsewhere": [],
       "file": ".github/workflows/ci.yml",
+      "jobs": [
+        {
+          "basis": "declared",
+          "name": "build-and-test",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ],
+          "setup": [
+            {
+              "ranges": [
+                {
+                  "from": "22",
+                  "range": ">=22.0.0 <23.0.0-0"
+                },
+                {
+                  "from": "24",
+                  "range": ">=24.0.0 <25.0.0-0"
+                }
+              ],
+              "step": "1",
+              "uses": "actions/setup-node",
+              "version": "${{ matrix.node-version }}"
+            }
+          ]
+        },
+        {
+          "basis": "declared",
+          "name": "codecov",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ]
+        },
+        {
+          "basis": "declared",
+          "name": "e2e",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ],
+          "setup": [
+            {
+              "ranges": [
+                {
+                  "from": "24",
+                  "range": ">=24.0.0 <25.0.0-0"
+                }
+              ],
+              "step": "1",
+              "uses": "actions/setup-node",
+              "version": "24"
+            }
+          ]
+        },
+        {
+          "basis": "declared",
+          "name": "site-build",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ],
+          "setup": [
+            {
+              "ranges": [
+                {
+                  "from": "24",
+                  "range": ">=24.0.0 <25.0.0-0"
+                }
+              ],
+              "step": "1",
+              "uses": "actions/setup-node",
+              "version": "24"
+            }
+          ]
+        }
+      ],
       "landings": [
         "docs/c0-alignment/export-table.json",
         "docs/c0-alignment/export-table.md",
@@ -10988,12 +12525,12 @@
         {
           "boundary": "e2e",
           "depth": 0,
-          "files": 6
+          "files": 7
         },
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 257
+          "files": 261
         },
         {
           "boundary": "export-ai-rpg",
@@ -11694,6 +13231,35 @@
         "releases": false
       },
       "stages": [],
+      "tests": [
+        {
+          "config": "vitest.config.ts",
+          "files": 235,
+          "job": "build-and-test",
+          "runner": "vitest",
+          "step": "6",
+          "through": [
+            "npm test"
+          ]
+        },
+        {
+          "config": "vitest.config.ts",
+          "coverage": true,
+          "files": 235,
+          "job": "build-and-test",
+          "junit": true,
+          "runner": "vitest",
+          "step": "Re-run suite with coverage"
+        },
+        {
+          "job": "e2e",
+          "runner": "playwright test",
+          "step": "Playwright e2e",
+          "through": [
+            "npm run test:e2e"
+          ]
+        }
+      ],
       "triggers": [
         {
           "event": "pull_request"
@@ -11718,6 +13284,7 @@
       "checksCount": 0,
       "commands": [
         {
+          "dir": "site",
           "job": "build",
           "programs": [
             "npm"
@@ -11725,6 +13292,7 @@
           "step": "Install site dependencies"
         },
         {
+          "dir": "site",
           "job": "build",
           "programs": [
             "npm"
@@ -11732,6 +13300,7 @@
           "step": "Dependency audit"
         },
         {
+          "dir": "site",
           "job": "build",
           "programs": [
             "npm"
@@ -11739,9 +13308,9 @@
           "step": "Build site"
         },
         {
+          "dir": "",
           "job": "deploy",
           "programs": [
-            "attempt",
             "curl",
             "echo",
             "probe",
@@ -11771,6 +13340,56 @@
             "byHand": true,
             "event": "push"
           }
+        }
+      ],
+      "jobs": [
+        {
+          "basis": "declared",
+          "name": "build",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ],
+          "setup": [
+            {
+              "ranges": [
+                {
+                  "from": "24",
+                  "range": ">=24.0.0 <25.0.0-0"
+                }
+              ],
+              "step": "1",
+              "uses": "actions/setup-node",
+              "version": "24"
+            }
+          ]
+        },
+        {
+          "basis": "declared",
+          "environment": {
+            "name": "github-pages"
+          },
+          "name": "deploy",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ]
         }
       ],
       "landings": [],
@@ -11868,6 +13487,7 @@
       "checksCount": 16,
       "commands": [
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "sed"
@@ -11875,6 +13495,7 @@
           "step": "Strip _authToken from npmrc so OIDC can exchange"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "echo",
@@ -11886,6 +13507,7 @@
           "step": "Install npm 11.6.2 in sandbox for OIDC trusted-publishing auth"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11893,6 +13515,7 @@
           "step": "Install dependencies"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11900,6 +13523,7 @@
           "step": "Dependency audit"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "echo",
@@ -11908,6 +13532,7 @@
           "step": "Verify release tag matches package.json version"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11915,6 +13540,7 @@
           "step": "Build"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11922,6 +13548,7 @@
           "step": "Test"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11929,6 +13556,7 @@
           "step": "Dogfood typecheck"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11936,6 +13564,7 @@
           "step": "Version + documented-count drift gate"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npx"
@@ -11943,6 +13572,7 @@
           "step": "Install Playwright Chromium"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "npm"
@@ -11950,6 +13580,7 @@
           "step": "Playwright e2e"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "echo"
@@ -11957,10 +13588,10 @@
           "step": "Point operator at Playwright artifacts"
         },
         {
+          "dir": "packages/schema",
           "job": "publish",
           "programs": [
             "1",
-            "attempt",
             "cat",
             "echo",
             "grep",
@@ -11975,10 +13606,10 @@
           "step": "Publish if not already on the registry"
         },
         {
+          "dir": "packages/export-ai-rpg",
           "job": "publish",
           "programs": [
             "1",
-            "attempt",
             "cat",
             "echo",
             "grep",
@@ -11993,10 +13624,10 @@
           "step": "Publish if not already on the registry"
         },
         {
+          "dir": "packages/export-unreal",
           "job": "publish",
           "programs": [
             "1",
-            "attempt",
             "cat",
             "echo",
             "grep",
@@ -12011,10 +13642,10 @@
           "step": "Publish if not already on the registry"
         },
         {
+          "dir": "packages/export-godot",
           "job": "publish",
           "programs": [
             "1",
-            "attempt",
             "cat",
             "echo",
             "grep",
@@ -12029,10 +13660,10 @@
           "step": "Publish if not already on the registry"
         },
         {
+          "dir": "packages/renderer-2d",
           "job": "publish",
           "programs": [
             "1",
-            "attempt",
             "cat",
             "echo",
             "grep",
@@ -12047,10 +13678,10 @@
           "step": "Publish if not already on the registry"
         },
         {
+          "dir": "packages/editor",
           "job": "publish",
           "programs": [
             "1",
-            "attempt",
             "cat",
             "echo",
             "grep",
@@ -12065,6 +13696,7 @@
           "step": "Publish if not already on the registry"
         },
         {
+          "dir": "",
           "job": "publish",
           "programs": [
             "cd",
@@ -12078,6 +13710,37 @@
       ],
       "elsewhere": [],
       "file": ".github/workflows/release.yml",
+      "jobs": [
+        {
+          "basis": "declared",
+          "name": "publish",
+          "runsOn": [
+            {
+              "labels": [
+                "ubuntu-latest"
+              ],
+              "platform": {
+                "cpu": "x64",
+                "libc": "glibc",
+                "os": "linux"
+              }
+            }
+          ],
+          "setup": [
+            {
+              "ranges": [
+                {
+                  "from": "22",
+                  "range": ">=22.0.0 <23.0.0-0"
+                }
+              ],
+              "step": "1",
+              "uses": "actions/setup-node",
+              "version": "22"
+            }
+          ]
+        }
+      ],
       "landings": [
         "docs/c0-alignment/export-table.json",
         "docs/c0-alignment/export-table.md",
@@ -12134,12 +13797,12 @@
         {
           "boundary": "e2e",
           "depth": 0,
-          "files": 6
+          "files": 7
         },
         {
           "boundary": "editor",
           "depth": 0,
-          "files": 257
+          "files": 261
         },
         {
           "boundary": "export-ai-rpg",
@@ -12799,6 +14462,26 @@
         "releases": false
       },
       "stages": [],
+      "tests": [
+        {
+          "config": "vitest.config.ts",
+          "files": 235,
+          "job": "publish",
+          "runner": "vitest",
+          "step": "Test",
+          "through": [
+            "npm test"
+          ]
+        },
+        {
+          "job": "publish",
+          "runner": "playwright test",
+          "step": "Playwright e2e",
+          "through": [
+            "npm run test:e2e"
+          ]
+        }
+      ],
       "triggers": [
         {
           "event": "release",
@@ -13305,10 +14988,10 @@
       "to": "schema"
     }
   ],
-  "engine": "1.23.0",
+  "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "ccdc25a541721e17fbe26aa4e37db7c35499a8c2",
-    "tracked": 673
+    "commit": "3fbf88dabf021de824680f193b0f3a02cc6ed6f3",
+    "tracked": 678
   },
   "landings": [
     {
@@ -14926,6 +16609,14 @@
   "overlaps": [],
   "submodules": [],
   "symlinks": [],
-  "testFiles": 245,
-  "unassigned": []
+  "testFiles": 249,
+  "unassigned": [],
+  "workspaces": [
+    "packages/editor",
+    "packages/export-ai-rpg",
+    "packages/export-godot",
+    "packages/export-unreal",
+    "packages/renderer-2d",
+    "packages/schema"
+  ]
 }
