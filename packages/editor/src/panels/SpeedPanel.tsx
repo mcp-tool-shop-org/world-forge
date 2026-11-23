@@ -47,6 +47,7 @@ import {
   createSpeedPanelCallbacks,
   customGroupHeadingId,
   filterStepOptions,
+  getInitialActiveIndex,
   splitHighlightSegments,
   submitCreateMacroState,
   toggleCreateMacroSelection,
@@ -127,7 +128,6 @@ export function SpeedPanel({
   } = useSpeedPanelPins();
 
   const [query, setQuery] = useState(initialQuery);
-  const [activeIdx, setActiveIdx] = useState(0);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(initialCollapsedGroups));
   const [expandedMacro, setExpandedMacro] = useState<string | null>(initialExpandedMacro);
   const [macroStatus, setMacroStatus] = useState<string | null>(initialMacroStatus);
@@ -193,6 +193,7 @@ export function SpeedPanel({
     () => buildNavigableEntries(view, collapsedGroups),
     [view, collapsedGroups],
   );
+  const [activeIdx, setActiveIdx] = useState(() => getInitialActiveIndex(allNavigable));
 
   // Auto-focus without scrolling viewport on mount, and surface any deferred macro load warnings once
   useEffect(() => {
@@ -202,10 +203,12 @@ export function SpeedPanel({
 
   // Clamp active index when list changes
   useEffect(() => {
-    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length));
+    setActiveIdx((prev) => clampActiveIndex(prev, allNavigable.length, getInitialActiveIndex(allNavigable)));
   }, [allNavigable.length]);
 
-  useEffect(() => { setActiveIdx(0); }, [query]);
+  useEffect(() => {
+    setActiveIdx(getInitialActiveIndex(allNavigable));
+  }, [query, speedPanelPosition, speedPanelContext]);
 
   // Keep active descendant scrolled into view even under zoom
   useEffect(() => {

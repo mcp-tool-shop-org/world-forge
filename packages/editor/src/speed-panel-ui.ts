@@ -186,10 +186,15 @@ export function buildNavigableEntries(
   return items;
 }
 
+/** Return the initial active navigation index (skipping optional Quick Fix at 0 so Band 1 slot 1 starts highlighted). */
+export function getInitialActiveIndex(allNavigable: readonly NavEntry[]): number {
+  return allNavigable.length > 1 && allNavigable[0]?.kind === 'quick-fix' ? 1 : 0;
+}
+
 /** Clamp `activeIdx` back into `[0, length)` after list length shrinks. */
-export function clampActiveIndex(prev: number, length: number): number {
+export function clampActiveIndex(prev: number, length: number, fallback = 0): number {
   if (length === 0) return 0;
-  return prev >= length ? 0 : prev;
+  return prev >= length ? Math.min(Math.max(0, fallback), length - 1) : prev;
 }
 
 /** Clamp panel top-left coordinates inside parent bounds with a 4 px inset margin. */

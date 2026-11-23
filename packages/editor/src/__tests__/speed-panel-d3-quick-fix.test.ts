@@ -52,8 +52,10 @@ import {
 import { buildSpeedPanelView } from '../speed-panel-layout.js';
 import {
   buildNavigableEntries,
+  clampActiveIndex,
   createSpeedPanelCallbacks,
   dispatchSpeedPanelKeyAction,
+  getInitialActiveIndex,
   resolveSpeedPanelKeyAction,
 } from '../speed-panel-ui.js';
 import { COMMAND_REGISTRY, getCommandById } from '../command-registry.js';
@@ -854,5 +856,151 @@ describe('Speed Panel Quick Fix Row & Problem Attribution', () => {
     expect(legacyWarnings.some((w) => w.includes('new-zone') && w.includes('Legacy Bad'))).toBe(true);
     expect(legacyWarnings.some((w) => w.includes('Legacy Bad') && w.includes('removed'))).toBe(true);
     expect(storage.get(legacyMacrosKey)).toBe(rawLegacy);
+  });
+
+  it('starts highlight on Band 1 slot 1 with ArrowDown matching base order and ArrowUp reaching Quick Fix', () => {
+    const project = makeComplexProblemProject();
+    const brokenTarget: QuickFixTarget = { type: 'zone', id: 'z2' };
+    const cleanTarget: QuickFixTarget = { type: 'zone', id: 'z-clean' };
+    const brokenProblems = getProblemsForObject(project, brokenTarget);
+    const cleanProblems = getProblemsForObject(project, cleanTarget);
+    expect(brokenProblems.length).toBeGreaterThan(0);
+    expect(cleanProblems).toEqual([]);
+
+    const ctxBase = {
+      selection: { zones: [] as string[], entities: [] as string[], landmarks: [] as string[], spawns: [] as string[], encounters: [] as string[] },
+      selectedConnection: null,
+      project,
+      supportsSpatialPick: true,
+    };
+
+    const viewWithFix = buildSpeedPanelView(
+      COMMAND_REGISTRY,
+      { ...ctxBase, hit: brokenTarget },
+      '',
+      {
+        pinnedIds: [],
+        macros: [],
+        groups: [],
+        adaptiveHistory: {},
+        showRecents: true,
+        mode: 'dungeon',
+        quickFixProblems: brokenProblems,
+      },
+    );
+    const viewClean = buildSpeedPanelView(
+      COMMAND_REGISTRY,
+      { ...ctxBase, hit: cleanTarget },
+      '',
+      {
+        pinnedIds: [],
+        macros: [],
+        groups: [],
+        adaptiveHistory: {},
+        showRecents: true,
+        mode: 'dungeon',
+        quickFixProblems: cleanProblems,
+      },
+    );
+
+    const entriesWithFix = buildNavigableEntries(viewWithFix, new Set());
+    const entriesClean = buildNavigableEntries(viewClean, new Set());
+    if (viewWithFix.kind !== 'unsearched' || viewClean.kind !== 'unsearched') {
+      throw new Error('Expected unsearched views');
+    }
+
+    // Quick Fix sits at index 0 above slot 1, so initial active index is 1 on broken and 0 on clean
+    expect(entriesWithFix[0]).toMatchObject({ kind: 'quick-fix', domId: 'wf-sp-opt-quick-fix' });
+    const startWithFix = getInitialActiveIndex(entriesWithFix);
+    const startClean = getInitialActiveIndex(entriesClean);
+    expect(startWithFix).toBe(1);
+    expect(startClean).toBe(0);
+    expect(entriesWithFix[startWithFix]?.domId).toBe('wf-sp-opt-b1-0-edit-props');
+    expect(clampActiveIndex(99, entriesWithFix.length, startWithFix)).toBe(1);
+
+    // Enter at initial index runs Band 1 slot 1 (`edit-props`) identically with and without Quick Fix
+    const enterKey = { key: 'Enter', code: 'Enter', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, target: null };
+    const enterWithFix = resolveSpeedPanelKeyAction(enterKey, viewWithFix, entriesWithFix, startWithFix);
+    const enterClean = resolveSpeedPanelKeyAction(enterKey, viewClean, entriesClean, startClean);
+    expect(enterWithFix.type).toBe('exec-row');
+    expect(enterClean.type).toBe('exec-row');
+    if (enterWithFix.type !== 'exec-row' || enterClean.type !== 'exec-row') {
+      throw new Error('Expected Enter on open to dispatch exec-row for Band 1 slot 1');
+    }
+    expect(enterWithFix.row.command.id).toBe('edit-props');
+    expect(enterClean.row.command.id).toBe('edit-props');
+
+    // ArrowUp from slot 1 reaches Quick Fix at index 0, stays clamped at 0, and Enter there opens Quick Fix
+    const arrowUpKey = { key: 'ArrowUp', code: 'ArrowUp', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, target: null };
+    const upAction = resolveSpeedPanelKeyAction(arrowUpKey, viewWithFix, entriesWithFix, startWithFix);
+    expect(upAction).toEqual({ type: 'set-active', nextActiveIdx: 0 });
+    const stayTop = resolveSpeedPanelKeyAction(arrowUpKey, viewWithFix, entriesWithFix, 0);
+    expect(stayTop).toEqual({ type: 'set-active', nextActiveIdx: 0 });
+    expect(resolveSpeedPanelKeyAction(enterKey, viewWithFix, entriesWithFix, 0)).toEqual({
+      type: 'open-quick-fix',
+      quickFix: viewWithFix.quickFix!,
+    });
+
+    // Hard-coded base (36dcd246) ArrowDown row sequence starting from Band 1 slot 1 in dungeon mode with empty pins/recents
+    const BASE_ZONE_ARROW_DOWN_DOM_IDS = [
+      'wf-sp-opt-b1-0-edit-props',
+      'wf-sp-opt-b1-1-connect-from',
+      'wf-sp-opt-b1-2-place-entity',
+      'wf-sp-opt-b1-3-place-encounter',
+      'wf-sp-opt-b1-4-duplicate',
+      'wf-sp-opt-ms-0-add-secret-conn',
+      'wf-sp-opt-cat-Author-0-delete',
+      'wf-sp-opt-cat-Author-1-assign-district',
+      'wf-sp-opt-cat-Author-2-merge-zones',
+      'wf-sp-opt-cat-Author-3-set-elevation',
+      'wf-sp-opt-cat-Author-4-paste',
+      'wf-sp-opt-cat-Author-5-undo',
+      'wf-sp-opt-cat-Author-6-redo',
+      'wf-sp-opt-cat-Author-7-apply-preset',
+      'wf-sp-opt-cat-Author-8-save-preset',
+      'wf-sp-opt-cat-Author-9-create-macro-from-recent',
+      'wf-sp-opt-cat-Connect-0-add-channel-conn',
+      'wf-sp-opt-cat-Connect-1-add-warp-conn',
+      'wf-sp-opt-cat-Connect-2-add-trail-conn',
+      'wf-sp-opt-cat-Inspect-0-select-all',
+      'wf-sp-opt-cat-Inspect-1-escape',
+      'wf-sp-opt-cat-Inspect-2-open-details',
+      'wf-sp-opt-cat-View-0-search',
+      'wf-sp-opt-cat-View-1-tool-select',
+      'wf-sp-opt-cat-View-2-tool-zone',
+      'wf-sp-opt-cat-View-3-tool-connection',
+      'wf-sp-opt-cat-View-4-tool-entity',
+      'wf-sp-opt-cat-View-5-tool-landmark',
+      'wf-sp-opt-cat-View-6-tool-spawn',
+      'wf-sp-opt-cat-View-7-tool-tile',
+      'wf-sp-opt-cat-View-8-tool-prop',
+      'wf-sp-opt-cat-View-9-tool-encounter',
+      'wf-sp-opt-cat-View-10-tool-item',
+      'wf-sp-opt-cat-Export-0-save',
+    ];
+
+    const arrowDownKey = { key: 'ArrowDown', code: 'ArrowDown', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, target: null };
+    const visitedDomIds: string[] = [entriesWithFix[startWithFix].domId];
+    let cursor = startWithFix;
+    for (let step = 0; step < entriesWithFix.length + 2; step++) {
+      const next = resolveSpeedPanelKeyAction(arrowDownKey, viewWithFix, entriesWithFix, cursor);
+      expect(next.type).toBe('set-active');
+      if (next.type !== 'set-active' || next.nextActiveIdx === cursor) break;
+      cursor = next.nextActiveIdx;
+      visitedDomIds.push(entriesWithFix[cursor].domId);
+    }
+    expect(visitedDomIds).toEqual(BASE_ZONE_ARROW_DOWN_DOM_IDS);
+
+    // SSR initial render highlights Band 1 slot 1 rather than Quick Fix when problems are present
+    useProjectStore.getState().loadProject(project);
+    useSpeedPanelPins.setState({ pinnedIds: [], macros: [], groups: [], recentIds: [], frecency: {}, adaptiveHistory: {} });
+    useEditorStore.setState({
+      speedPanelPosition: { x: 100, y: 100 },
+      speedPanelContext: brokenTarget,
+      speedPanelEditMode: false,
+    });
+    const ssrHtml = renderToStaticMarkup(createElement(SpeedPanel));
+    expect(ssrHtml).toMatch(/id="wf-sp-opt-quick-fix"[^>]*aria-selected="false"/);
+    expect(ssrHtml).toMatch(/id="wf-sp-opt-b1-0-edit-props"[^>]*aria-selected="true"/);
   });
 });
