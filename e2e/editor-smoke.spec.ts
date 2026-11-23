@@ -171,4 +171,19 @@ test.describe('Editor export downloads (F-624ed964)', () => {
     expect(String(pack.worldSceneTscn).length).toBeGreaterThan(0);
     expect(String(pack.worldSceneTscn)).toContain('[gd_scene');
   });
+
+  test('Editing Dialogue Speakers input in the UI updates readiness blockers', async ({ page }) => {
+    await loadChapelExportable(page);
+    const tabBar = page.locator('[data-testid="wf-tab-bar"]');
+    await tabBar.locator('text=Dialogue').click();
+    await page.getByText('pilgrim-talk', { exact: true }).click();
+    const speakersInput = page.getByTestId('wf-dialogue-speakers-input');
+    await expect(speakersInput).toBeVisible();
+    await speakersInput.fill('fence-marlo, Tavern Keeper');
+
+    await openExportModal(page);
+    const dialog = page.getByRole('dialog', { name: 'Export' });
+    await expect(dialog.getByRole('button', { name: 'Export JSON', exact: true })).toBeDisabled();
+    await expect(dialog.getByText(/Tavern Keeper/)).toBeVisible();
+  });
 });

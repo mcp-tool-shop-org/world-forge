@@ -2,13 +2,13 @@
 // flows at the logic level (no DOM mount). Exercises `runEngineExport` and
 // `runUnrealExport` extracted from ExportModal.tsx.
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { writeFile, rm, mkdtemp, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createElement } from 'react';
+import { createElement, Fragment, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   loadContent,
@@ -516,6 +516,27 @@ describe('unresolved dialogue speakers refused by readiness and CLI', () => {
     expect(cli.stderr).toContain(speaker);
   }
 
+  function findRenderedInput(node: ReactNode): { props: Record<string, unknown> } | undefined {
+    if (node == null || typeof node === 'boolean' || typeof node === 'string' || typeof node === 'number') {
+      return undefined;
+    }
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        const hit = findRenderedInput(child);
+        if (hit) return hit;
+      }
+      return undefined;
+    }
+    if (typeof node !== 'object' || !('type' in node) || !('props' in node)) return undefined;
+    const el = node as { type: unknown; props: Record<string, unknown> };
+    if (el.type === Fragment) return findRenderedInput(el.props.children as ReactNode);
+    if (typeof el.type === 'function') {
+      return findRenderedInput((el.type as (p: Record<string, unknown>) => ReactNode)(el.props));
+    }
+    if (el.type === 'input') return el;
+    return findRenderedInput(el.props.children as ReactNode);
+  }
+
   it('refuses a free-typed speaker name from the Speakers comma-split input path in readiness and CLI', async () => {
     const store = useProjectStore.getState();
     store.loadProject(structuredClone(validProject));
@@ -524,15 +545,22 @@ describe('unresolved dialogue speakers refused by readiness and CLI', () => {
       speakers: firstDlg.speakers,
       onSpeakersChange: (speakers: string[]) => store.updateDialogue(firstDlg.id, { speakers }),
     };
-    const renderedHtml = renderToStaticMarkup(createElement(DialogueSpeakersInput, props));
+    const rootEl = createElement(DialogueSpeakersInput, props);
+    const renderedHtml = renderToStaticMarkup(rootEl);
     expect(renderedHtml).toContain('data-testid="wf-dialogue-speakers-input"');
-    const element = DialogueSpeakersInput(props);
-    expect(element.type).toBe('input');
-    expect(element.props['data-testid']).toBe('wf-dialogue-speakers-input');
-    expect(element.props.value).toBe(firstDlg.speakers.join(', '));
-    (element.props.onChange as (e: { target: { value: string } }) => void)({
-      target: { value: 'fence-marlo, Tavern Keeper' },
+
+    const renderedInput = findRenderedInput(rootEl)!;
+    expect(renderedInput).toBeDefined();
+    expect(renderedInput.props['data-testid']).toBe('wf-dialogue-speakers-input');
+    expect(renderedInput.props.value).toBe(firstDlg.speakers.join(', '));
+
+    const changeEvent = new Event('change', { bubbles: true });
+    Object.defineProperty(changeEvent, 'target', {
+      value: { value: 'fence-marlo, Tavern Keeper' },
+      configurable: true,
     });
+    (renderedInput.props.onChange as (e: Event) => void)(changeEvent);
+
     const updatedDlg = useProjectStore.getState().project.dialogues[0];
     expect(renderToStaticMarkup(createElement(DialogueSpeakersInput, { ...props, speakers: updatedDlg.speakers }))).toContain('fence-marlo, Tavern Keeper');
     await assertSpeakerRefused('free-typed', useProjectStore.getState().project, firstDlg.id, 'Tavern Keeper');
@@ -758,6 +786,30 @@ describe('Keeper starter dialogue in a fresh project', () => {
   });
 });
 
+function makeConverterThrowProject(): WorldProject {
+  return {
+    ...structuredClone(validProject),
+    progressionTrees: [
+      ...structuredClone(validProject.progressionTrees),
+      {
+        id: 'tree-broken',
+        name: 'Broken Tree',
+        currency: 'xp',
+        nodes: [
+          {
+            id: 'node-broken',
+            name: 'Broken Node',
+            description: 'Triggers converter error when effects is missing.',
+            cost: 1,
+            requires: [],
+            effects: null as never,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe('readiness parity and combined blockers with encounter advisories', () => {
   it('computeTargetReadiness matches exportToEngine verdict and blocker messages across every sample world and blocked fixture', () => {
     const blockedFixtures: WorldProject[] = [
@@ -789,6 +841,7 @@ describe('readiness parity and combined blockers with encounter advisories', () 
         ...structuredClone(validProject),
         dialogues: [structuredClone(STARTER_DIALOGUE)],
       },
+      makeConverterThrowProject(),
     ];
 
     const expectedBlockersFromExport = (project: WorldProject, precheckValid: boolean): string[] => {
@@ -824,6 +877,35 @@ describe('readiness parity and combined blockers with encounter advisories', () 
         expectedBlockersFromExport(fixture, precheck.valid),
       );
     }
+
+    // Readiness path silences [convert-items] stderr warnings while direct exportToEngine still emits them
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const chapel = SAMPLE_WORLDS.find((s) => s.id === 'chapel-threshold')!;
+      const chapelReadiness = computeTargetReadiness(chapel.project, true);
+      expect(chapelReadiness.aiRpg.ready).toBe(true);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      const exported = exportToEngine(chapel.project);
+      expect(exported.success).toBe(true);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('computeTargetReadiness marks AI RPG blocked with the converter message when a converter throws', () => {
+    const broken = makeConverterThrowProject();
+    expect(validateProject(broken).valid).toBe(true);
+
+    const readiness = computeTargetReadiness(broken, true);
+    expect(readiness.aiRpg.ready).toBe(false);
+    expect(readiness.aiRpg.blockers.length).toBeGreaterThan(0);
+    expect(readiness.aiRpg.blockers[0]).toContain('Converter failed:');
+
+    const html = renderToStaticMarkup(createElement(TargetReadinessSummary, { targetReadiness: readiness }));
+    expect(html).toContain('Not ready (1 blocker)');
+    expect(html).toContain('Converter failed:');
   });
 
   it('lists encounter translation and drop advisories beneath blockers when blocked, without changing export output', () => {
