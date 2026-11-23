@@ -24,7 +24,7 @@ import type { ResizeResult } from '../resize-handles.js';
 import type { RegionPreset, EncounterPreset } from '../presets/types.js';
 import { getModeProfile } from '../mode-profiles.js';
 import { nextId } from '../ids.js';
-import { reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
+import { appendConnectionToProject, reassignAttachedZoneIds, translateAttachedByZones } from '../zone-attached.js';
 import { clearSavedFileHandle } from '../save-project.js';
 import { tileMatchesSelection } from '../hit-testing.js';
 
@@ -809,6 +809,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dirty: false, undoStack: [], redoStack: [],
     });
     useEditorStore.getState().clearSelection();
+    useEditorStore.getState().clearSpeedPanelPick();
     // F-17014243: hidden ids are a global localStorage set; chapel-style
     // projects reuse stable ids, so hiding in A then loading B hid B's objects.
     useEditorStore.getState().clearHiddenIds();
@@ -823,6 +824,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   newProject: () => {
     set({ project: createEmptyProject(), dirty: false, undoStack: [], redoStack: [] });
     useEditorStore.getState().clearSelection();
+    useEditorStore.getState().clearSpeedPanelPick();
     useEditorStore.getState().clearHiddenIds();
     // F-9e54f408: New abandons the previous in-memory project; drop its slot.
     clearAutoSave();
@@ -859,6 +861,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       redoStack: [...redoStack, redoEntry],
       dirty: true,
     });
+    useEditorStore.getState().clearSpeedPanelPick();
   },
 
   redo: () => {
@@ -872,6 +875,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       redoStack: redoStack.slice(0, -1),
       dirty: true,
     });
+    useEditorStore.getState().clearSpeedPanelPick();
   },
 
   // Undo/redo label accessors
@@ -907,19 +911,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }), 'Resize zone'),
 
   // Connection helpers
-  addConnection: (c) => get().updateProject((p) => ({
-    ...p,
-    connections: [...p.connections, c],
-    zones: p.zones.map((z) => {
-      if (z.id === c.fromZoneId && !z.neighbors.includes(c.toZoneId)) {
-        return { ...z, neighbors: [...z.neighbors, c.toZoneId] };
-      }
-      if (c.bidirectional && z.id === c.toZoneId && !z.neighbors.includes(c.fromZoneId)) {
-        return { ...z, neighbors: [...z.neighbors, c.fromZoneId] };
-      }
-      return z;
-    }),
-  }), 'Add connection'),
+  addConnection: (c) => get().updateProject((p) => appendConnectionToProject(p, c), 'Add connection'),
   updateConnection: (fromId, toId, updates) => get().updateProject((p) => ({
     ...p, connections: p.connections.map((c) =>
       c.fromZoneId === fromId && c.toZoneId === toId ? { ...c, ...updates } : c),

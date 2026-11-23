@@ -534,7 +534,15 @@ Type in the search box to match across the entire editor command registry withou
 - **Match Highlighting:** Matched characters in titles and synonyms highlight inline.
 - **Live Shortcuts & Editor Paths:** Every row displays its live hotkey binding from the hotkey table or, when unbound, where the command lives in the editor UI.
 - **Unavailable here:** Matching commands blocked by the current context stay keyboard-focusable (`aria-disabled="true"`) in **Unavailable here** below enabled hits, showing the exact reason from the command registry.
-- **Keyboard:** Use **Arrow keys** to move across results, **Alt+Up** / **Alt+Down** to reorder pins, **Alt+1**–**Alt+5** on empty search to run Band 1 slots, **Enter** to execute, and **Esc** to dismiss.
+- **Keyboard:** Use **Arrow keys** to move across results, **Alt+Up** / **Alt+Down** to reorder pins, **Alt+1**–**Alt+5** on empty search to run Band 1 slots, **Tab** on **Set Elevation** to edit the numeric scalar pill inline, **Enter** to execute, and **Esc** to dismiss.
+
+### Multi-Step Actions, Spatial Picking & Repeat Last Action
+
+Commands that require extra choices finish inside the Speed Panel or via canvas picking with single-entry atomic undo:
+- **Inline choice steps:** **Assign District** (including inline **+ Create District**, which carries the current filter text into the district name field), **Apply Preset** (region `Merge`/`Overwrite` or encounter preset), and **Place Encounter Here** (showing live AI RPG Engine export badges for native, mapped, dropped, or blocked encounter types) filter inside a breadcrumb step header. Press **Back** (`Alt+ArrowLeft` or `Backspace` on an empty filter or empty step input) to go back a step, or **Esc** to cancel cleanly.
+- **Inline scalar pill (`Set Elevation`):** Press **Tab** on the **Set Elevation** row (or click **Tab: Value**) to type meters directly inline (`-5`, `12.5`, or blank to clear) and press **Enter** to apply. Non-numeric input displays an inline error without closing or mutating the project.
+- **Canvas spatial picking:** **Connect From Here**, typed connection actions, and single-zone **Merge Zones** close the palette into a canvas picking bar (`Esc` cancels without modifying the project or current selection). In connection mode, press **Tab** to cycle connection kinds while previewing or **Shift+Click** a target to place a connection and continue chaining from the same source; in merge mode, **Shift+Click** zones to add more targets or use the off-screen zone name filter (`wf-sp-pick-search`) from keyboard focus.
+- **Repeat Last Action Here:** Re-executing the previous Speed Panel action on a new target zone replays recorded parameters with fresh generated IDs in one step.
 
 ## 12. Objects Tab
 

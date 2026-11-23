@@ -257,9 +257,45 @@ interface EditorState {
   speedPanelPosition: { x: number; y: number } | null;
   speedPanelContext: HitResult | null;
   speedPanelEditMode: boolean;
+  speedPanelPick: SpeedPanelPickSession | null;
+  lastPanelAction: LastPanelAction | null;
   openSpeedPanel: (x: number, y: number, context: HitResult | null) => void;
   closeSpeedPanel: () => void;
   toggleSpeedPanelEditMode: () => void;
+  setSpeedPanelPick: (pick: SpeedPanelPickSession | null) => void;
+  clearSpeedPanelPick: () => void;
+  setLastPanelAction: (action: LastPanelAction | null) => void;
+}
+
+export type SpeedPanelPickMode = 'connect' | 'merge';
+
+export interface SpeedPanelPickSession {
+  commandId: string;
+  mode: SpeedPanelPickMode;
+  sourceZoneId: string;
+  pickedZoneIds: string[];
+  connectionKind?: ConnectionKind;
+  cursorSX: number;
+  cursorSY: number;
+  hoveredZoneId: string | null;
+  invalidReason: string | null;
+  previousSelection: SelectionSet;
+  previousSelectedConnection: { from: string; to: string } | null;
+  previousTool: EditorTool;
+}
+
+export type LastPanelActionParams =
+  | { kind: 'assign-district'; districtId: string }
+  | { kind: 'apply-region-preset'; presetId: string; applyMode: 'merge' | 'overwrite' }
+  | { kind: 'apply-encounter-preset'; presetId: string }
+  | { kind: 'place-encounter'; encounterType: string }
+  | { kind: 'set-elevation'; elevation: number | undefined };
+
+export interface LastPanelAction {
+  commandId: string;
+  label: string;
+  timestamp: number;
+  params?: LastPanelActionParams;
 }
 
 /**
@@ -529,7 +565,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   speedPanelPosition: null,
   speedPanelContext: null,
   speedPanelEditMode: false,
-  openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context }),
+  speedPanelPick: null,
+  lastPanelAction: null,
+  openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context, speedPanelPick: null }),
   closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null, speedPanelEditMode: false }),
   toggleSpeedPanelEditMode: () => set((s) => ({ speedPanelEditMode: !s.speedPanelEditMode })),
+  setSpeedPanelPick: (pick) => set({ speedPanelPick: pick }),
+  clearSpeedPanelPick: () => set({ speedPanelPick: null }),
+  setLastPanelAction: (action) => set({ lastPanelAction: action }),
 }));

@@ -117,24 +117,31 @@ function sanitizeFrecency(raw: unknown): Record<string, FrecencyEntry> {
   return out;
 }
 
-/** Evict the lowest decayed-score entries when query history exceeds `maxEntries`. */
+/** Evict the lowest decayed-score entries when query history exceeds `maxEntries`, keeping `pinnedKey` if present. */
 export function pruneAdaptiveHistory(
   history: Readonly<Record<string, AdaptiveHistoryEntry>>,
   nowMs = Date.now(),
   maxEntries = MAX_ADAPTIVE_HISTORY,
+  pinnedKey?: string,
 ): Record<string, AdaptiveHistoryEntry> {
   if (maxEntries <= 0) return {};
   const entries = Object.entries(history);
   if (entries.length <= maxEntries) {
     return { ...history };
   }
-  entries.sort(([, a], [, b]) => {
+  const hasPinned = pinnedKey !== undefined && Object.hasOwn(history, pinnedKey);
+  const rest = hasPinned ? entries.filter(([q]) => q !== pinnedKey) : entries;
+  rest.sort(([, a], [, b]) => {
     const scoreDiff = computeDecayedAdaptiveScore(b, nowMs) - computeDecayedAdaptiveScore(a, nowMs);
     if (scoreDiff !== 0) return scoreDiff;
     return b.lastUsedAt - a.lastUsedAt;
   });
   const out: Record<string, AdaptiveHistoryEntry> = {};
-  for (const [query, entry] of entries.slice(0, maxEntries)) {
+  if (hasPinned && pinnedKey !== undefined) {
+    out[pinnedKey] = history[pinnedKey];
+  }
+  const keepCount = hasPinned ? Math.max(0, maxEntries - 1) : maxEntries;
+  for (const [query, entry] of rest.slice(0, keepCount)) {
     out[query] = entry;
   }
   return out;
@@ -346,6 +353,8 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set) => ({
       ? pruneAdaptiveHistory(
           { ...s.adaptiveHistory, [norm]: bumpAdaptiveHistory(s.adaptiveHistory[norm], commandId, nowMs) },
           nowMs,
+          MAX_ADAPTIVE_HISTORY,
+          norm,
         )
       : s.adaptiveHistory;
     saveJson(RECENTS_KEY, recentIds);

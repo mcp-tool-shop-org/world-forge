@@ -1,6 +1,6 @@
 // SpeedPanel.tsx — floating pointer-anchored command palette with Four-Band layout & tiered search
 
-import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from 'react';
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { useEditorStore } from '../store/editor-store.js';
 import { useProjectStore } from '../store/project-store.js';
 import { useSpeedPanelPins } from '../store/speed-panel-store.js';
@@ -22,7 +22,13 @@ import { executeRegistryCommand, executeMacro } from '../speed-panel-execute.js'
 import {
   productionExecuteStores,
   productionHotkeyContext,
+  productionStepStores,
 } from './speed-panel-stores.js';
+import {
+  createRepeatLastCommand,
+  type StepChoiceOption,
+  type StepStackState,
+} from '../speed-panel-steps.js';
 import {
   SP_HEADING_IDS,
   buildNavigableEntries,
@@ -31,12 +37,12 @@ import {
   clampActiveIndex,
   commandGlyph,
   computeEdgeClampedOffset,
+  createSpeedPanelCallbacks,
   customGroupHeadingId,
-  dispatchSpeedPanelKeyAction,
-  executeSpeedPanelMacro,
-  executeSpeedPanelRow,
+  filterStepOptions,
   splitHighlightSegments,
   type NavEntry,
+  type ScalarPillState,
 } from '../speed-panel-ui.js';
 import { pushToast } from '../ui/Toast.js';
 import { EmptyState } from './shared.js';
@@ -55,6 +61,8 @@ export interface SpeedPanelProps {
   initialExpandedMacro?: string | null;
   initialMacroStatus?: string | null;
   initialCollapsedGroups?: readonly string[];
+  initialStepFlow?: StepStackState | null;
+  initialScalarPill?: ScalarPillState | null;
 }
 
 export function SpeedPanel({
@@ -63,6 +71,8 @@ export function SpeedPanel({
   initialExpandedMacro = null,
   initialMacroStatus = null,
   initialCollapsedGroups = [],
+  initialStepFlow = null,
+  initialScalarPill = null,
 }: SpeedPanelProps) {
   const {
     speedPanelPosition,
@@ -72,6 +82,7 @@ export function SpeedPanel({
     toggleSpeedPanelEditMode,
     selection,
     selectedConnection,
+    lastPanelAction,
   } = useEditorStore();
   const { project } = useProjectStore();
   const {
@@ -103,7 +114,17 @@ export function SpeedPanel({
   const [expandedMacro, setExpandedMacro] = useState<string | null>(initialExpandedMacro);
   const [macroStatus, setMacroStatus] = useState<string | null>(initialMacroStatus);
   const [dragPinIndex, setDragPinIndex] = useState<number | null>(null);
+  const [stepFlow, setStepFlow] = useState<StepStackState | null>(initialStepFlow);
+  const [stepFilter, setStepFilter] = useState('');
+  const [stepActiveIdx, setStepActiveIdx] = useState(0);
+  const [stepInputDraft, setStepInputDraft] = useState(() => {
+    const last = initialStepFlow?.steps[initialStepFlow.steps.length - 1];
+    return last?.kind === 'input' ? last.value : '';
+  });
+  const [scalarPill, setScalarPill] = useState<ScalarPillState | null>(initialScalarPill);
   const inputRef = useRef<HTMLInputElement>(null);
+  const stepInputRef = useRef<HTMLInputElement>(null);
+  const scalarPillRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const cmdCtx = useMemo(
@@ -112,8 +133,14 @@ export function SpeedPanel({
       selection,
       selectedConnection,
       project,
+      supportsSpatialPick: true,
     }),
     [speedPanelContext, selection, selectedConnection, project],
+  );
+
+  const repeatCommand = useMemo(
+    () => (lastPanelAction ? createRepeatLastCommand(lastPanelAction) : null),
+    [lastPanelAction],
   );
 
   const view = useMemo(
@@ -128,8 +155,9 @@ export function SpeedPanel({
         mode: project.mode,
         showRecents,
         hotkeyBindings: HOTKEY_BINDINGS,
+        repeatCommand,
       }),
-    [cmdCtx, query, pinnedIds, frecency, recentIds, adaptiveHistory, groups, macros, project.mode, showRecents],
+    [cmdCtx, query, pinnedIds, frecency, recentIds, adaptiveHistory, groups, macros, project.mode, showRecents, repeatCommand],
   );
 
   const pinnedIdSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
@@ -174,42 +202,67 @@ export function SpeedPanel({
     );
   }, [speedPanelPosition]);
 
-  const execute = useCallback((row: PaletteRow) => {
-    executeSpeedPanelRow(row, {
-      context: speedPanelContext,
-      query,
-      executeCommand: executeRegistryCommand,
-      stores: productionExecuteStores(),
-      hotkeyCtx: productionHotkeyContext(onSave),
-      closeSpeedPanel,
-      recordCommandUsage,
-      pushToast,
-    });
-  }, [speedPanelContext, onSave, closeSpeedPanel, recordCommandUsage, query]);
+  const currentStep = stepFlow ? stepFlow.steps[stepFlow.steps.length - 1] ?? null : null;
+  const filteredStepOptions = useMemo(
+    () => (currentStep?.kind === 'choice' ? filterStepOptions(currentStep.options, stepFilter) : []),
+    [currentStep, stepFilter],
+  );
 
-  const runMacro = useCallback((macro: Parameters<typeof executeSpeedPanelMacro>[0]) => {
-    executeSpeedPanelMacro(macro, {
-      context: speedPanelContext,
-      runMacroSteps: executeMacro,
-      stores: productionExecuteStores(),
-      setMacroStatus,
-      recordCommandUsage,
-      closeSpeedPanel,
-    });
-  }, [speedPanelContext, recordCommandUsage, closeSpeedPanel]);
+  useEffect(() => {
+    if (currentStep?.kind === 'input') {
+      setStepInputDraft(currentStep.value);
+    }
+    stepInputRef.current?.focus({ preventScroll: true });
+  }, [stepFlow?.steps.length, currentStep?.stepId]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    dispatchSpeedPanelKeyAction(e, {
-      view,
-      allNavigable,
-      activeIdx,
-      closeSpeedPanel,
-      reorderPin,
-      setActiveIdx,
-      execute,
-      runMacro,
-    });
-  };
+  useEffect(() => {
+    if (scalarPill) {
+      scalarPillRef.current?.focus({ preventScroll: true });
+      scalarPillRef.current?.select?.();
+    }
+  }, [scalarPill !== null]);
+
+  const {
+    execute,
+    onSelectStepOption,
+    onSubmitStep,
+    onStepBack,
+    runMacro,
+    scalarPropsFor,
+    handleKeyDown,
+  } = createSpeedPanelCallbacks({
+    context: speedPanelContext,
+    selection,
+    zones: project.zones,
+    query,
+    view,
+    allNavigable,
+    activeIdx,
+    lastPanelAction,
+    stepFlow,
+    filteredStepOptions,
+    stepActiveIdx,
+    stepFilter,
+    stepInputDraft,
+    scalarPill,
+    scalarPillRef,
+    executeCommand: executeRegistryCommand,
+    runMacroSteps: executeMacro,
+    stores: productionExecuteStores(),
+    stepStores: productionStepStores(),
+    hotkeyCtx: productionHotkeyContext(onSave),
+    closeSpeedPanel,
+    setActiveIdx,
+    reorderPin,
+    setStepFlow,
+    setStepFilter,
+    setStepActiveIdx,
+    setScalarPill,
+    setMacroStatus,
+    recordCommandUsage,
+    pushToast,
+    refocusSearch: () => queueMicrotask(() => inputRef.current?.focus({ preventScroll: true })),
+  });
 
   const toggleGroupCollapse = (id: string) => {
     setCollapsedGroups((prev) => {
@@ -265,7 +318,28 @@ export function SpeedPanel({
           overflow: 'hidden',
         }}
       >
-        {/* Header: ARIA combobox input + edit toggle */}
+        {/* Header: Step breadcrumb/input OR ARIA combobox search + edit toggle */}
+        {stepFlow && currentStep ? (
+          <SpeedPanelStepView
+            stepFlow={stepFlow}
+            currentStep={currentStep}
+            stepFilter={stepFilter}
+            setStepFilter={(v) => { setStepFilter(v); setStepActiveIdx(0); }}
+            filteredOptions={filteredStepOptions}
+            activeIdx={stepActiveIdx}
+            stepInputDraft={stepInputDraft}
+            setStepInputDraft={(v) => {
+              setStepInputDraft(v);
+              if (stepFlow.error) setStepFlow({ ...stepFlow, error: null });
+            }}
+            stepInputRef={stepInputRef}
+            onBack={onStepBack}
+            onCancel={closeSpeedPanel}
+            onSelectOption={onSelectStepOption}
+            onSubmitInput={onSubmitStep}
+          />
+        ) : (
+          <>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--wf-border-default)' }}>
           <input
             ref={inputRef}
@@ -375,6 +449,7 @@ export function SpeedPanel({
                         editMode={speedPanelEditMode}
                         draggable={!speedPanelEditMode && storeIdx !== undefined}
                         {...pinHandlers}
+                        {...scalarPropsFor(row, domId)}
                       />
                     );
                   })}
@@ -489,6 +564,24 @@ export function SpeedPanel({
                 </div>
               )}
 
+              {/* === REPEAT LAST ACTION HERE (AFTER FIXED BAND 1/2 SLOTS) === */}
+              {view.repeatLastRow && (() => {
+                const idx = navIdx++;
+                return (
+                  <div data-testid="wf-sp-repeat-last" style={{ borderTop: '1px solid var(--wf-border-subtle)', borderBottom: '1px solid var(--wf-border-subtle)' }}>
+                    <CommandRow
+                      domId="wf-sp-opt-repeat-last"
+                      testIdPrefix="wf-sp-repeat"
+                      row={view.repeatLastRow}
+                      active={idx === activeIdx}
+                      isPinned={false}
+                      onTogglePin={togglePin}
+                      onExecute={execute}
+                    />
+                  </div>
+                );
+              })()}
+
               {/* === BAND 3: FRECENCY RECENTS (UP TO 3, TOGGLEABLE IN OPTIONS) === */}
               {view.band3Recents.length > 0 && (
                 <div data-testid="wf-sp-band-3" role="group" aria-labelledby={SP_HEADING_IDS.band3}>
@@ -505,6 +598,7 @@ export function SpeedPanel({
                         isPinned={pinnedIdSet.has(row.command.id)}
                         onTogglePin={togglePin}
                         onExecute={execute}
+                        {...scalarPropsFor(row, domId)}
                       />
                     );
                   })}
@@ -542,7 +636,6 @@ export function SpeedPanel({
                       <div
                         id={headingId}
                         role="presentation"
-                        aria-label={g.group.name}
                         style={{ ...SECTION_STYLE, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => toggleGroupCollapse(g.group.id)}
                       >
@@ -615,6 +708,7 @@ export function SpeedPanel({
                             isPinned={pinnedIdSet.has(row.command.id)}
                             onTogglePin={togglePin}
                             onExecute={execute}
+                            {...scalarPropsFor(row, domId)}
                           />
                         );
                       })}
@@ -640,6 +734,7 @@ export function SpeedPanel({
                     isPinned={pinnedIdSet.has(row.command.id)}
                     onTogglePin={togglePin}
                     onExecute={execute}
+                    {...scalarPropsFor(row, domId)}
                   />
                 );
               })}
@@ -711,6 +806,8 @@ export function SpeedPanel({
             </>
           )}
         </div>
+          </>
+        )}
       </div>
     </>
   );
@@ -805,6 +902,11 @@ function CommandRow({
   onMoveDown,
   groupEditMode,
   onRemoveFromGroup,
+  scalarPill,
+  scalarPillRef,
+  onScalarPillOpen,
+  onScalarPillChange,
+  onScalarPillKeyDown,
 }: {
   domId: string;
   testIdPrefix?: string;
@@ -825,6 +927,11 @@ function CommandRow({
   onMoveDown?: () => void;
   groupEditMode?: boolean;
   onRemoveFromGroup?: () => void;
+  scalarPill?: ScalarPillState | null;
+  scalarPillRef?: React.RefObject<HTMLInputElement | null>;
+  onScalarPillOpen?: () => void;
+  onScalarPillChange?: (value: string) => void;
+  onScalarPillKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const { command, badge, disabledReason } = row;
   const label = command.label ?? command.title;
@@ -877,7 +984,49 @@ function CommandRow({
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <HighlightedText text={label} ranges={matchRanges} />
         </span>
-        <CommandBadgeLabel badge={badge} />
+        {scalarPill ? (
+          <input
+            ref={scalarPillRef}
+            data-testid="wf-sp-scalar-pill"
+            aria-label="Elevation value in meters"
+            value={scalarPill.value}
+            placeholder="e.g. -5"
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => onScalarPillChange?.(e.target.value)}
+            onKeyDown={onScalarPillKeyDown}
+            style={{
+              width: 72,
+              padding: '1px 5px',
+              fontSize: 11,
+              background: 'var(--wf-bg-app)',
+              color: 'var(--wf-text-primary)',
+              border: `1px solid ${scalarPill.error ? 'var(--wf-danger)' : 'var(--wf-accent)'}`,
+              borderRadius: 3,
+              outline: 'none',
+            }}
+          />
+        ) : onScalarPillOpen ? (
+          <button
+            type="button"
+            data-testid="wf-sp-scalar-hint"
+            onClick={(e) => { e.stopPropagation(); onScalarPillOpen(); }}
+            title="Press Tab to edit value inline"
+            style={{
+              fontSize: 9,
+              color: 'var(--wf-text-muted)',
+              background: 'var(--wf-bg-app)',
+              border: '1px solid var(--wf-border-default)',
+              borderRadius: 3,
+              padding: '0 4px',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Tab: Value
+          </button>
+        ) : (
+          <CommandBadgeLabel badge={badge} />
+        )}
         {editMode && isPinned && (
           <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
             <button
@@ -914,6 +1063,15 @@ function CommandRow({
           >{'\u2715'}</button>
         )}
       </div>
+      {scalarPill?.error && (
+        <div
+          role="alert"
+          data-testid="wf-sp-scalar-error"
+          style={{ paddingLeft: 42, fontSize: 10, color: 'var(--wf-danger-text)' }}
+        >
+          {scalarPill.error}
+        </div>
+      )}
       {(matchedKeyword || isDisabled) && (
         <div
           id={reasonId}
@@ -933,6 +1091,260 @@ function CommandRow({
             </span>
           )}
           {isDisabled && <span>{disabledReason}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Export compatibility pill for encounter types and encounter presets inside multi-step pickers. */
+export function StepExportBadge({ badge }: { badge: StepChoiceOption['badge'] }) {
+  if (!badge) return null;
+  const colorMap: Record<NonNullable<StepChoiceOption['badge']>['tone'], string> = {
+    native: 'var(--wf-success-text, #4ade80)',
+    mapped: 'var(--wf-info, #60a5fa)',
+    dropped: 'var(--wf-warning, #fbbf24)',
+    blocked: 'var(--wf-danger-text, #f87171)',
+    neutral: 'var(--wf-text-muted)',
+  };
+  return (
+    <span
+      data-testid="wf-sp-export-badge"
+      data-tone={badge.tone}
+      title={badge.title ?? badge.text}
+      style={{
+        fontSize: 9,
+        padding: '1px 5px',
+        borderRadius: 3,
+        border: `1px solid ${colorMap[badge.tone]}`,
+        color: colorMap[badge.tone],
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {badge.text}
+    </span>
+  );
+}
+
+/** Inline breadcrumb-based sub-step view rendered directly inside the Speed Panel. */
+export function SpeedPanelStepView({
+  stepFlow,
+  currentStep,
+  stepFilter,
+  setStepFilter,
+  filteredOptions,
+  activeIdx,
+  stepInputDraft,
+  setStepInputDraft,
+  stepInputRef,
+  onBack,
+  onCancel,
+  onSelectOption,
+  onSubmitInput,
+}: {
+  stepFlow: StepStackState;
+  currentStep: StepStackState['steps'][number];
+  stepFilter: string;
+  setStepFilter: (v: string) => void;
+  filteredOptions: readonly StepChoiceOption[];
+  activeIdx: number;
+  stepInputDraft: string;
+  setStepInputDraft: (v: string) => void;
+  stepInputRef: React.RefObject<HTMLInputElement | null>;
+  onBack: () => void;
+  onCancel: () => void;
+  onSelectOption: (opt: StepChoiceOption) => void;
+  onSubmitInput: () => void;
+}) {
+  return (
+    <div data-testid="wf-sp-step-view" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div
+        data-testid="wf-sp-step-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: 'var(--wf-space-1) var(--wf-space-2)',
+          borderBottom: '1px solid var(--wf-border-default)',
+          background: 'var(--wf-bg-elevated, var(--wf-bg-app))',
+        }}
+      >
+        <button
+          type="button"
+          data-testid="wf-sp-step-back"
+          aria-label="Back"
+          onClick={onBack}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--wf-text-muted)',
+            cursor: 'pointer',
+            fontSize: 12,
+            padding: '2px 4px',
+          }}
+        >
+          {'\u2190'}
+        </button>
+        <span style={{ fontSize: 11, color: 'var(--wf-text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {stepFlow.commandLabel} {'\u203A'} <strong style={{ color: 'var(--wf-text-primary)' }}>{currentStep.title}</strong>
+        </span>
+        <button
+          type="button"
+          aria-label="Cancel step flow"
+          onClick={onCancel}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--wf-text-muted)',
+            cursor: 'pointer',
+            fontSize: 11,
+            padding: '2px 4px',
+          }}
+        >
+          Esc
+        </button>
+      </div>
+
+      {currentStep.kind === 'choice' ? (
+        <>
+          <div style={{ borderBottom: '1px solid var(--wf-border-subtle)' }}>
+            <input
+              ref={stepInputRef}
+              data-testid="wf-sp-step-filter"
+              aria-label={currentStep.title}
+              value={stepFilter}
+              placeholder={currentStep.placeholder}
+              onChange={(e) => setStepFilter(e.target.value)}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                background: 'var(--wf-bg-app)',
+                color: 'var(--wf-text-primary)',
+                border: 'none',
+                padding: 'var(--wf-space-2) var(--wf-space-3)',
+                fontSize: 12,
+                outline: 'none',
+              }}
+            />
+          </div>
+          <div
+            role="listbox"
+            aria-label={currentStep.title}
+            style={{ maxHeight: 260, overflow: 'auto' }}
+          >
+            {filteredOptions.map((opt, i) => (
+              <div
+                key={opt.id}
+                role="option"
+                data-testid={`wf-sp-step-opt-${opt.id}`}
+                aria-selected={i === activeIdx}
+                onClick={() => onSelectOption(opt)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  padding: 'var(--wf-space-1) var(--wf-space-2)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  background: i === activeIdx ? 'var(--wf-bg-hover)' : 'transparent',
+                  color: opt.kind === 'create' ? 'var(--wf-accent, #60a5fa)' : 'var(--wf-text-primary)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{opt.label}</span>
+                  <StepExportBadge badge={opt.badge} />
+                </div>
+                {opt.description && (
+                  <span style={{ fontSize: 10, color: 'var(--wf-text-muted)' }}>{opt.description}</span>
+                )}
+              </div>
+            ))}
+            {filteredOptions.length === 0 && (
+              <div style={{ padding: 'var(--wf-space-2)', fontSize: 11, color: 'var(--wf-text-muted)' }}>
+                No matching options
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmitInput();
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 'var(--wf-space-2)' }}
+        >
+          <label style={{ fontSize: 11, color: 'var(--wf-text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span>{currentStep.label}</span>
+            <input
+              ref={stepInputRef}
+              data-testid="wf-sp-step-input"
+              aria-label={currentStep.label}
+              value={stepInputDraft}
+              placeholder={currentStep.placeholder}
+              onChange={(e) => setStepInputDraft(e.target.value)}
+              style={{
+                background: 'var(--wf-bg-app)',
+                color: 'var(--wf-text-primary)',
+                border: `1px solid ${stepFlow.error ? 'var(--wf-danger)' : 'var(--wf-border-default)'}`,
+                borderRadius: 4,
+                padding: '6px 8px',
+                fontSize: 12,
+                outline: 'none',
+              }}
+            />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+            <button
+              type="button"
+              onClick={onBack}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--wf-border-default)',
+                color: 'var(--wf-text-muted)',
+                borderRadius: 4,
+                padding: '4px 8px',
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              data-testid="wf-sp-step-confirm"
+              style={{
+                background: 'var(--wf-accent, #2563eb)',
+                border: 'none',
+                color: '#fff',
+                borderRadius: 4,
+                padding: '4px 10px',
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              Apply
+            </button>
+          </div>
+        </form>
+      )}
+
+      {stepFlow.error && (
+        <div
+          role="alert"
+          data-testid="wf-sp-step-error"
+          style={{
+            margin: '0 var(--wf-space-2) var(--wf-space-2)',
+            padding: '4px 8px',
+            fontSize: 11,
+            color: 'var(--wf-danger-text)',
+            background: 'color-mix(in srgb, var(--wf-danger) 14%, var(--wf-bg-app))',
+            border: '1px solid var(--wf-danger)',
+            borderRadius: 4,
+          }}
+        >
+          {stepFlow.error}
         </div>
       )}
     </div>

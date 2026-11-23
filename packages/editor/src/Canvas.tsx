@@ -24,21 +24,32 @@ import { applyPresetFromSelection, savePresetFromSelection } from './preset-acti
 import { usePresetStore } from './presets/preset-store.js';
 import { useSpeedPanelOptions, formatSpeedPanelTriggerFooter } from './store/speed-panel-options-store.js';
 import {
-  beginRightPointer,
-  computeRightPanViewport,
+  buildCanvasRightPointerHandlersFromRefs,
   createInitialRightClickGestureState,
-  endRightPointer,
-  getKeyboardSpeedPanelAnchor,
-  isMacCtrlClickPointer,
   isMacPlatform,
   isNodeInsideCanvasOrMenu,
   isRightClickPointer,
-  moveRightPointer,
   resolveCanvasContextMenu,
-  resolveCanvasKeyTriggerDecision,
-  resolveRightPointerEndEffect,
   shouldIgnoreLeftMouseUp,
+  type CanvasContextMenuState,
 } from './speed-panel-gesture.js';
+import {
+  buildEncounterAnchor,
+  cancelSpatialPick,
+  commitSpatialPickTarget,
+  computePickPreviewLine,
+  createCanvasSpatialPickHandlers,
+  cyclePickConnectionKind,
+  dispatchPickOverlayInputKeyDown,
+  drawPickPreviewLine,
+  finalizeMergePick,
+  formatPickCursorBadge,
+  searchPickZones,
+} from './speed-panel-steps.js';
+import { productionStepStores } from './panels/speed-panel-stores.js';
+import { KIND_LABELS } from './panels/ConnectionProperties.js';
+import type { SpeedPanelPickSession } from './store/editor-store.js';
+import type { WorldProject } from '@world-forge/schema';
 
 export { generateZoneId };
 
@@ -76,6 +87,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     connectionStart, setConnectionStart, pendingConnectionKind, setPendingConnectionKind,
     viewport, setViewport, setShowSearch, setRightTab, setRightCollapsed,
     openSpeedPanel, showSpeedPanel, closeSpeedPanel,
+    speedPanelPick, setSpeedPanelPick,
     hiddenIds, showPerfStats, showElevation, setTool,
   } = useEditorStore();
 
@@ -518,7 +530,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       const distIdx = project.districts.findIndex((d) => d.id === zone.parentDistrictId);
       const color = colors[distIdx % colors.length] ?? '#888';
 
-      const hovered = zone.id === hoveredZoneId;
+      const hovered = zone.id === hoveredZoneId || zone.id === speedPanelPick?.hoveredZoneId;
 
       // FT-021: simplified selection rendering for large selections
       if (selected && simplifiedSelection) {
@@ -929,8 +941,14 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
       ctx.setLineDash([]);
     }
 
-    // FT-007: Connection preview line while in connection tool
-    if (activeTool === 'connection' && connectionStart && connectionCursor.current) {
+    // FT-007: Connection preview line while in connection tool or Speed Panel spatial pick
+    const pickPreview = computePickPreviewLine(speedPanelPick, project, tileSize, viewport);
+    if (pickPreview) {
+      drawPickPreviewLine(ctx, pickPreview, zoom, {
+        valid: readCssVar('--wf-snap-guide', '#22d3ee'),
+        error: readCssVar('--wf-danger', '#ef4444'),
+      });
+    } else if (activeTool === 'connection' && connectionStart && connectionCursor.current) {
       const sourceZone = zoneMap.get(connectionStart);
       if (sourceZone) {
         const srcCx = (sourceZone.gridX + sourceZone.gridWidth / 2) * tileSize;
@@ -1001,7 +1019,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   // EU-007: All deps are reactive store slices or props that affect rendering.
   // project = zone/entity/connection data; show* = layer toggles; selection/hoveredZoneId = highlight state;
   // tileSize = grid scale; viewport = pan/zoom transform. All are necessary to redraw correctly.
-  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
+  }, [project, showGrid, showConnections, showEntities, showLandmarks, showSpawns, showTown, showTiles, showProps, showAmbient, selection, selectedConnection, hoveredZoneId, tileSize, viewport, activeTool, connectionStart, speedPanelPick, hiddenIds, showPerfStats, showElevation, getTileImage, tileImageTick, tilePaintTick]);
 
   useEffect(() => {
     draw();
@@ -1101,172 +1119,81 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
   const filterHitSingle = useCallback((hit: import('./hit-testing.js').HitResult | null): import('./hit-testing.js').HitResult | null =>
     hit && !hiddenIds.has(hit.id) ? hit : null, [hiddenIds]);
 
-  const openObjectContextMenu = (sx: number, sy: number) => {
-    const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
-    const actions = getContextMenuActions(hit, project)
-      .map((a) => ({ id: a.id, label: a.label, icon: a.icon }));
-    if (actions.length > 0) {
-      setContextMenu({ x: sx, y: sy, actions, hit });
-    }
-  };
-
-  const upgradeContextMenuToSpeedPanel = () => {
-    if (!contextMenu) return;
-    const { x, y, hit } = contextMenu;
-    setContextMenu(null);
-    rightClickGesture.current = createInitialRightClickGestureState();
-    openSpeedPanel(x, y, hit);
-  };
-
-  const startRightPointer = (e: {
-    button: number;
-    ctrlKey?: boolean;
-    clientX: number;
-    clientY: number;
-    pointerId: number;
-    pointerType?: string;
-    preventDefault: () => void;
-  }): boolean => {
-    const mac = isMacPlatform();
-    if (!isRightClickPointer(e, mac)) return false;
-    e.preventDefault();
-    const macCtrl = isMacCtrlClickPointer(e, mac);
-    suppressNextLeftMouseUp.current = macCtrl;
-    contextMenuHandledInPress.current = false;
-    const { sx, sy } = getScreenXY(e);
-    lastPointerRef.current = { sx, sy };
-    pointerOverCanvasRef.current = true;
-    lastPointerRegionRef.current = 'canvas';
-    lastPointerStampRef.current = performance.now();
-    rightClickGesture.current = beginRightPointer(rightClickGesture.current, {
-      sx,
-      sy,
-      pointerId: e.pointerId,
-      pointerType: e.pointerType,
-      isMacCtrlClick: macCtrl,
-    });
-    rightPanStart.current = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
-    return true;
-  };
-
-  const moveRightPointerHandler = (
-    e: Event & { clientX: number; clientY: number; pointerId: number; buttons?: number },
-  ): boolean => {
-    if (lastRightMoveEvent.current === e) {
-      return rightClickGesture.current.active?.pointerId === e.pointerId;
-    }
-    lastRightMoveEvent.current = e;
-    if (rightClickGesture.current.active?.pointerId !== e.pointerId) {
-      return false;
-    }
-    const { sx, sy } = getScreenXY(e);
-    const opts = useSpeedPanelOptions.getState().options;
-    const moved = moveRightPointer(
-      rightClickGesture.current,
-      { sx, sy, pointerId: e.pointerId, buttons: e.buttons },
-      opts,
-    );
-    rightClickGesture.current = moved.state;
-    if (moved.cancelled) {
-      rightPanStart.current = null;
-      suppressNextLeftMouseUp.current = false;
-      return false;
-    }
-    if (moved.isDragging && rightPanStart.current) {
-      if (contextMenuRef.current) setContextMenu(null);
-      setViewport(computeRightPanViewport(rightPanStart.current, e.clientX, e.clientY, viewport.zoom));
-    }
-    return true;
-  };
-
-  const finishRightPointer = (e: {
-    clientX: number;
-    clientY: number;
-    pointerId: number;
-    pointerType?: string;
-  }): boolean => {
-    if (rightClickGesture.current.active?.pointerId !== e.pointerId) return false;
-    if (!contextMenuHandledInPress.current) {
-      suppressNextCanvasContextMenu.current = true;
-    }
-    contextMenuHandledInPress.current = false;
-
-    const { sx, sy } = getScreenXY(e);
-    const opts = useSpeedPanelOptions.getState().options;
-    const outcome = endRightPointer(
-      rightClickGesture.current,
-      { sx, sy, pointerId: e.pointerId, pointerType: e.pointerType, now: Date.now() },
-      opts,
-    );
-    rightClickGesture.current = outcome.state;
-    rightPanStart.current = null;
-
-    const effect = resolveRightPointerEndEffect(outcome, Boolean(contextMenuRef.current), contextMenuRef.current?.hit);
-    if (effect.action === 'open-speed-panel') {
-      setContextMenu(null);
-      const hit = effect.prevHit !== undefined
-        ? effect.prevHit
-        : filterHitSingle(findHitAt(effect.x, effect.y, viewport, project, tileSize, visibility));
-      openSpeedPanel(effect.x, effect.y, hit);
-    } else if (effect.action === 'open-compact-menu') {
-      openObjectContextMenu(effect.x, effect.y);
-    }
-    return true;
-  };
+  const {
+    openObjectContextMenu,
+    upgradeContextMenuToSpeedPanel,
+    startRightPointer,
+    moveRightPointerHandler,
+    finishRightPointer,
+    handleSpeedPanelKeyTrigger,
+  } = buildCanvasRightPointerHandlersFromRefs({
+    canvasEl: () => canvasRef.current,
+    rightClickGesture,
+    rightPanStart,
+    lastRightMoveEvent,
+    suppressNextLeftMouseUp,
+    suppressNextCanvasContextMenu,
+    contextMenuHandledInPress,
+    lastPointer: lastPointerRef,
+    pointerOverCanvas: pointerOverCanvasRef,
+    lastPointerRegion: lastPointerRegionRef,
+    lastPointerStamp: lastPointerStampRef,
+    lastCanvasFocusStamp: lastCanvasFocusStampRef,
+    contextMenu: contextMenuRef as { current: CanvasContextMenuState | null },
+    setContextMenu: (menu) => setContextMenu(menu as typeof contextMenu),
+    getViewport: () => viewport,
+    setViewport,
+    getOptions: () => useSpeedPanelOptions.getState().options,
+    getScreenXY,
+    findFilteredHitAt: (sx, sy) => filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility)),
+    getMenuActionsForHit: (hit) =>
+      getContextMenuActions(hit, project).map((a) => ({ id: a.id, label: a.label, icon: a.icon, description: a.description })),
+    openSpeedPanel,
+    getEditorEnv: () => {
+      const es = useEditorStore.getState();
+      return {
+        activeModal: useModalStore.getState().activeModal,
+        showSearch: es.showSearch,
+        showSpeedPanel: es.showSpeedPanel,
+        activeElement: typeof document !== 'undefined' ? document.activeElement : null,
+        selection,
+        selectedConnection,
+        project,
+        tileSize,
+      };
+    },
+  });
 
   const speedPanelKeyTriggerRef = useRef<((e: KeyboardEvent) => boolean) | null>(null);
-  speedPanelKeyTriggerRef.current = (e: KeyboardEvent): boolean => {
-    const editorState = useEditorStore.getState();
-    const canvasEl = canvasRef.current;
-    const decision = resolveCanvasKeyTriggerDecision(e, {
-      options: useSpeedPanelOptions.getState().options,
-      pointerOverCanvas: pointerOverCanvasRef.current,
-      canvasFocusedNow: Boolean(canvasEl && typeof document !== 'undefined' && document.activeElement === canvasEl),
-      lastPointerRegion: lastPointerRegionRef.current,
-      lastCanvasFocusStamp: lastCanvasFocusStampRef.current,
-      lastPointerStamp: lastPointerStampRef.current,
-      activeModal: useModalStore.getState().activeModal,
-      showSearch: editorState.showSearch,
-      showSpeedPanel: editorState.showSpeedPanel,
-      activeElement: typeof document !== 'undefined' ? document.activeElement : null,
-    });
-    if (!decision.trigger) return false;
+  speedPanelKeyTriggerRef.current = handleSpeedPanelKeyTrigger;
 
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu(null);
-    rightClickGesture.current = createInitialRightClickGestureState();
+  const spatialPickHandlers = createCanvasSpatialPickHandlers({
+    getPick: () => useEditorStore.getState().speedPanelPick,
+    getProject: () => project,
+    findZoneIdAtGrid: (gx, gy) => findZoneAt(gx, gy)?.id ?? null,
+    setPick: setSpeedPanelPick,
+    getStores: productionStepStores,
+    onErrorToast: (msg) => pushToast(msg, 'info', 2500),
+  });
+  const spatialPickKeyRef = useRef(spatialPickHandlers.handleKeyDown);
+  spatialPickKeyRef.current = spatialPickHandlers.handleKeyDown;
 
-    if (decision.source === 'pointer') {
-      const { sx, sy } = lastPointerRef.current;
-      const hit = filterHitSingle(findHitAt(sx, sy, viewport, project, tileSize, visibility));
-      openSpeedPanel(sx, sy, hit);
-      return true;
-    }
-
-    const canvasSize = {
-      w: canvasEl?.clientWidth ?? 800,
-      h: canvasEl?.clientHeight ?? 600,
-    };
-    const anchor = getKeyboardSpeedPanelAnchor(
-      canvasSize,
-      selection,
-      selectedConnection,
-      project,
-      viewport,
-      tileSize,
-    );
-    openSpeedPanel(anchor.sx, anchor.sy, anchor.hit);
-    return true;
-  };
+  useEffect(() => () => {
+    useEditorStore.getState().clearSpeedPanelPick();
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       suppressNextCanvasContextMenu.current = false;
 
-      // Space handled locally (depends on ref)
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      // Input/textarea/select/contentEditable fields always keep keystrokes (Tab, Enter, Space)
+      const targetEl = e.target as HTMLElement | null;
+      const tag = targetEl?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || targetEl?.isContentEditable) return;
+
+      if (spatialPickKeyRef.current(e)) {
+        return;
+      }
 
       if (e.code === 'Space' && !e.repeat) {
         // F-6c1fa8ce: do not steal Space from focused buttons / tabs / links.
@@ -1397,6 +1324,10 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     const { sx, sy } = getScreenXY(e);
     const { gx, gy } = screenToGrid(sx, sy);
 
+    if (spatialPickHandlers.handleMouseDown(gx, gy, e.shiftKey)) {
+      return;
+    }
+
     if (activeTool === 'select') {
       // Resize handle priority: check before body hit-testing
       const singleZoneId = getSelectedZoneId(selection);
@@ -1504,15 +1435,7 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     } else if (activeTool === 'encounter-place') {
       const zone = findZoneAt(gx, gy);
       if (zone) {
-        addEncounter({
-          id: nextId('enc'),
-          zoneId: zone.id,
-          encounterType: getModeProfile(project.mode).encounterTypes[0],
-          enemyIds: [],
-          probability: 0.5,
-          cooldownTurns: 3,
-          tags: [],
-        });
+        addEncounter(buildEncounterAnchor(zone.id, getModeProfile(project.mode).encounterTypes[0]));
       } else {
         pushToast(CANVAS_PLACEMENT_HINTS.needZone, 'info');
       }
@@ -1799,6 +1722,13 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
     if (boxSelect.current) {
       boxSelect.current.curX = sx;
       boxSelect.current.curY = sy;
+      draw();
+      return;
+    }
+
+    // Speed Panel spatial picking hover + preview line
+    const { gx, gy } = screenToGrid(sx, sy);
+    if (spatialPickHandlers.handlePointerMove(sx, sy, gx, gy)) {
       draw();
       return;
     }
@@ -2215,6 +2145,238 @@ export function Canvas({ onSave }: { onSave?: () => void } = {}) {
 
       {/* FT-014: Minimap overlay */}
       {renderMinimap()}
+
+      {/* C4: Speed Panel spatial picking HUD + cursor badge + off-screen selector */}
+      {speedPanelPick && (
+        <CanvasSpatialPickOverlay
+          pick={speedPanelPick}
+          project={project}
+          onCycleKind={() => setSpeedPanelPick(cyclePickConnectionKind(speedPanelPick, project.mode))}
+          onConfirmMerge={() => finalizeMergePick(speedPanelPick, productionStepStores())}
+          onPickZone={(zoneId, shiftKey) => {
+            const res = commitSpatialPickTarget(speedPanelPick, zoneId, shiftKey, productionStepStores());
+            if (res.finished && res.error) pushToast(res.error, 'info', 2500);
+          }}
+          onCancel={() => cancelSpatialPick(speedPanelPick, productionStepStores())}
+        />
+      )}
     </div>
+  );
+}
+
+/** Floating HUD bar, cursor badge, and off-screen zone type-ahead selector for C4 spatial picking. */
+export function CanvasSpatialPickOverlay({
+  pick,
+  project,
+  initialQuery = '',
+  onCycleKind,
+  onConfirmMerge,
+  onPickZone,
+  onCancel,
+}: {
+  pick: SpeedPanelPickSession;
+  project: WorldProject;
+  initialQuery?: string;
+  onCycleKind: () => void;
+  onConfirmMerge: () => void;
+  onPickZone: (zoneId: string, shiftKey: boolean) => void;
+  onCancel: () => void;
+}) {
+  const [zoneQuery, setZoneQuery] = useState(initialQuery);
+  const badge = formatPickCursorBadge(pick, project);
+  const sourceZone = project.zones.find((z) => z.id === pick.sourceZoneId);
+  const candidates = searchPickZones(project, pick, zoneQuery);
+
+  return (
+    <>
+      <div
+        data-testid="wf-sp-pick-bar"
+        role="region"
+        aria-label="Canvas picking mode"
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 'calc(var(--wf-z-speed) + 2)' as unknown as number,
+          background: 'var(--wf-bg-panel)',
+          border: '1px solid var(--wf-border-default)',
+          borderRadius: 6,
+          boxShadow: 'var(--wf-shadow-panel)',
+          padding: '6px 10px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          minWidth: 320,
+          maxWidth: 460,
+          fontSize: 12,
+          color: 'var(--wf-text-primary)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+          <span style={{ fontWeight: 600 }}>
+            {pick.mode === 'connect'
+              ? `Connect from ${sourceZone?.name ?? pick.sourceZoneId}`
+              : `Merge Zones (${pick.pickedZoneIds.length} picked)`}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {pick.mode === 'connect' && (
+              <button
+                type="button"
+                data-testid="wf-sp-pick-kind-cycle"
+                onClick={onCycleKind}
+                style={{
+                  background: 'var(--wf-bg-app)',
+                  color: 'var(--wf-text-primary)',
+                  border: '1px solid var(--wf-border-default)',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  fontSize: 11,
+                  cursor: 'pointer',
+                }}
+              >
+                {KIND_LABELS[pick.connectionKind ?? 'passage'] ?? pick.connectionKind} (Tab)
+              </button>
+            )}
+            {pick.mode === 'merge' && pick.pickedZoneIds.length >= 2 && (
+              <button
+                type="button"
+                data-testid="wf-sp-pick-merge-confirm"
+                onClick={onConfirmMerge}
+                style={{
+                  background: 'var(--wf-accent, #2563eb)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                  fontSize: 11,
+                  cursor: 'pointer',
+                }}
+              >
+                Merge ({pick.pickedZoneIds.length})
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="wf-sp-pick-cancel"
+              onClick={onCancel}
+              style={{
+                background: 'transparent',
+                color: 'var(--wf-text-muted)',
+                border: '1px solid var(--wf-border-default)',
+                borderRadius: 4,
+                padding: '2px 6px',
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel (Esc)
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <input
+            type="text"
+            data-testid="wf-sp-pick-search"
+            aria-label="Filter destination zone by name"
+            value={zoneQuery}
+            onChange={(e) => setZoneQuery(e.target.value)}
+            onKeyDown={(e) =>
+              dispatchPickOverlayInputKeyDown(e, {
+                pickMode: pick.mode,
+                candidates,
+                onCancel,
+                onCycleKind,
+                onPickZone,
+                clearQuery: () => setZoneQuery(''),
+              })
+            }
+            placeholder={
+              pick.mode === 'connect'
+                ? 'Click a destination zone on canvas or type name for off-screen...'
+                : 'Click zone (Shift+Click for multi) or type name...'
+            }
+            style={{
+              background: 'var(--wf-bg-app)',
+              color: 'var(--wf-text-primary)',
+              border: '1px solid var(--wf-border-default)',
+              borderRadius: 4,
+              padding: '4px 6px',
+              fontSize: 11,
+              outline: 'none',
+            }}
+          />
+          {zoneQuery.trim() !== '' && (
+            <div
+              data-testid="wf-sp-pick-results"
+              role="listbox"
+              aria-label="Off-screen zone matches"
+              style={{ maxHeight: 120, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}
+            >
+              {candidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="option"
+                  aria-disabled={c.disabledReason !== null ? 'true' : undefined}
+                  disabled={c.disabledReason !== null}
+                  data-testid={`wf-sp-pick-zone-${c.id}`}
+                  onClick={(e) => {
+                    onPickZone(c.id, e.shiftKey);
+                    setZoneQuery('');
+                  }}
+                  style={{
+                    textAlign: 'left',
+                    padding: '3px 6px',
+                    fontSize: 11,
+                    borderRadius: 3,
+                    border: 'none',
+                    cursor: c.disabledReason ? 'not-allowed' : 'pointer',
+                    background: 'var(--wf-bg-app)',
+                    color: c.disabledReason ? 'var(--wf-text-muted)' : 'var(--wf-text-primary)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}
+                >
+                  <span>{c.name}</span>
+                  {c.disabledReason && <span style={{ fontSize: 10 }}>{c.disabledReason}</span>}
+                </button>
+              ))}
+              {candidates.length === 0 && (
+                <div style={{ fontSize: 10, color: 'var(--wf-text-muted)', padding: '2px 4px' }}>
+                  No matching zones
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div
+        data-testid="wf-sp-cursor-badge"
+        role={badge.isError ? 'alert' : 'status'}
+        style={{
+          position: 'absolute',
+          left: Math.max(12, pick.cursorSX + 14),
+          top: Math.max(54, pick.cursorSY + 14),
+          pointerEvents: 'none',
+          zIndex: 'calc(var(--wf-z-speed) + 2)' as unknown as number,
+          background: 'var(--wf-bg-panel)',
+          color: badge.isError ? 'var(--wf-danger-text, #f87171)' : 'var(--wf-text-primary)',
+          border: `1px solid ${badge.isError ? 'var(--wf-danger, #ef4444)' : 'var(--wf-border-default)'}`,
+          borderRadius: 4,
+          padding: '2px 7px',
+          fontSize: 11,
+          whiteSpace: 'nowrap',
+          boxShadow: 'var(--wf-shadow-panel)',
+        }}
+      >
+        {badge.text}
+      </div>
+    </>
   );
 }

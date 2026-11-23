@@ -62,6 +62,7 @@ export interface CustomGroupSection {
 export interface UnsearchedSpeedPanelView {
   kind: 'unsearched';
   deckKey: ContextDeckKey;
+  repeatLastRow?: PaletteRow;
   band1Deck: PaletteRow[];
   band2Pinned: PaletteRow[];
   band2Macros: SpeedPanelMacro[];
@@ -92,6 +93,7 @@ export interface SpeedPanelLayoutOptions {
   hotkeyBindings?: readonly HotkeyBinding[];
   adaptiveHistory?: Readonly<Record<string, AdaptiveHistoryEntry>>;
   nowMs?: number;
+  repeatCommand?: EditorCommand | null;
 }
 
 function toRow(
@@ -257,9 +259,15 @@ export function buildUnsearchedSpeedPanel(
     }
   }
 
+  const repeatLastRow =
+    options.repeatCommand && options.repeatCommand.when(ctx)
+      ? toRow(options.repeatCommand, ctx, bindings)
+      : undefined;
+
   return {
     kind: 'unsearched',
     deckKey,
+    ...(repeatLastRow ? { repeatLastRow } : {}),
     band1Deck,
     band2Pinned,
     band2Macros,
@@ -286,8 +294,11 @@ export function buildSpeedPanelView(
     return buildUnsearchedSpeedPanel(commands, ctx, options);
   }
 
+  const effectiveCommands = options.repeatCommand
+    ? [options.repeatCommand, ...commands]
+    : commands;
   const bindings = options.hotkeyBindings ?? getHotkeyBindingsFromRegistry();
-  const { enabled, unavailable } = searchCommands(commands, ctx, trimmed, {
+  const { enabled, unavailable } = searchCommands(effectiveCommands, ctx, trimmed, {
     mode: options.mode,
     frecency: options.frecency,
     adaptiveHistory: options.adaptiveHistory,

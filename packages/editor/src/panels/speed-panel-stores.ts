@@ -15,6 +15,7 @@ import { saveProjectFile } from '../save-project.js';
 import { pushToast } from '../ui/Toast.js';
 import type { ExecuteStores } from '../speed-panel-execute.js';
 import type { HotkeyContext } from '../command-registry.js';
+import type { StepExecutionStores } from '../speed-panel-steps.js';
 
 /** Live store bag SpeedPanel threads into executeAction / executeRegistryCommand / executeMacro. */
 export function productionExecuteStores(): ExecuteStores {
@@ -44,6 +45,38 @@ export function productionExecuteStores(): ExecuteStores {
     project: project.project,
     updateZone: project.updateZone,
     mergeZones: project.mergeZones,
+  };
+}
+
+/** Live step-flow store bag used by C4 multi-step, scalar input, spatial pick, and replay flows. */
+export function productionStepStores(): StepExecutionStores {
+  const editor = useEditorStore.getState();
+  const projectStore = useProjectStore.getState();
+  const presetStore = usePresetStore.getState();
+  return {
+    project: projectStore.project,
+    selection: editor.selection,
+    selectedConnection: editor.selectedConnection,
+    activeTool: editor.activeTool,
+    regionPresets: presetStore.regionPresets,
+    encounterPresets: presetStore.encounterPresets,
+    updateProject: projectStore.updateProject,
+    updateZone: projectStore.updateZone,
+    addConnection: projectStore.addConnection,
+    mergeZones: projectStore.mergeZones,
+    applyRegionPreset: projectStore.applyRegionPreset,
+    createEncounterFromPreset: projectStore.createEncounterFromPreset,
+    selectZone: editor.selectZone,
+    selectEncounter: editor.selectEncounter,
+    selectAll: editor.selectAll,
+    selectConnection: editor.selectConnection,
+    clearSelection: editor.clearSelection,
+    setTool: editor.setTool,
+    setConnectionStart: editor.setConnectionStart,
+    setPendingConnectionKind: editor.setPendingConnectionKind,
+    setSpeedPanelPick: editor.setSpeedPanelPick,
+    clearSpeedPanelPick: editor.clearSpeedPanelPick,
+    setLastPanelAction: editor.setLastPanelAction,
   };
 }
 

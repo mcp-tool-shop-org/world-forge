@@ -4,7 +4,7 @@
 
 import type {
   WorldProject, ItemPlacement, PropPlacement, MarketNode, CraftingStation,
-  Building, Hub, Stronghold, PressureHotspot, Zone,
+  Building, Hub, Stronghold, PressureHotspot, Zone, ZoneConnection,
 } from '@world-forge/schema';
 import { nextId } from './ids.js';
 
@@ -213,5 +213,22 @@ export function translateAttachedByZones(
           : t,
       ),
     })),
+  };
+}
+
+/** Shared pure project updater for appending a zone connection and updating endpoint neighbors. */
+export function appendConnectionToProject(project: WorldProject, c: ZoneConnection): WorldProject {
+  return {
+    ...project,
+    connections: [...project.connections, c],
+    zones: project.zones.map((z) => {
+      if (z.id === c.fromZoneId && !z.neighbors.includes(c.toZoneId)) {
+        return { ...z, neighbors: [...z.neighbors, c.toZoneId] };
+      }
+      if (c.bidirectional && z.id === c.toZoneId && !z.neighbors.includes(c.fromZoneId)) {
+        return { ...z, neighbors: [...z.neighbors, c.fromZoneId] };
+      }
+      return z;
+    }),
   };
 }
