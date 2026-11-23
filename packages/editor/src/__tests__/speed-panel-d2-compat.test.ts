@@ -30,8 +30,9 @@ Object.defineProperty(globalThis, 'localStorage', {
 });
 
 import { minimalProject } from '../../../schema/src/__tests__/fixtures/minimal.js';
+import { getCommandById } from '../command-registry.js';
 import { BUILTIN_KITS } from '../kits/built-ins.js';
-import { BUNDLE_VERSION, parseKitBundle, serializeKit } from '../kits/bundle.js';
+import { BUNDLE_VERSION, parseKitBundle, type KitBundle } from '../kits/bundle.js';
 import { validateKit } from '../kits/validate-kit.js';
 import { productionExecuteStores } from '../panels/speed-panel-stores.js';
 import type { SpeedPanelMacro } from '../speed-panel-actions.js';
@@ -76,17 +77,65 @@ describe('Speed Panel D2 Base Compatibility Contracts (unchanged)', () => {
     );
     expect(res.completed).toBe(2);
     expect(res.abortedAt).toBeUndefined();
+
+    // Production atomic path (with updateProject present): base-format macro commits in 1 undo and equals hand execution
+    const firstZoneId = useProjectStore.getState().project.zones[0].id;
+    const baseDupMacro: SpeedPanelMacro = {
+      id: 'legacy-atomic-1',
+      name: 'Inspect And Dup',
+      steps: [{ actionId: 'edit-props' }, { actionId: 'duplicate' }],
+    };
+    const undoBefore = useProjectStore.getState().getUndoCount();
+    const atomicRes = executeMacro(
+      baseDupMacro,
+      { type: 'zone', id: firstZoneId },
+      productionExecuteStores(),
+    );
+    expect(atomicRes.completed).toBe(2);
+    expect(atomicRes.abortedAt).toBeUndefined();
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
+    const macroZonesCount = useProjectStore.getState().project.zones.length;
+    const macroAddedZone = useProjectStore.getState().project.zones.at(-1)!;
+
+    useProjectStore.getState().loadProject(structuredClone(minimalProject));
+    const dupCmd = getCommandById('duplicate')!;
+    const handRes = dupCmd.run({
+      hit: { type: 'zone', id: firstZoneId },
+      stores: productionExecuteStores(),
+      selection: useEditorStore.getState().selection,
+      project: useProjectStore.getState().project,
+    });
+    expect(handRes.executed).toBe(true);
+    const handAddedZone = useProjectStore.getState().project.zones.at(-1)!;
+    expect(useProjectStore.getState().project.zones.length).toBe(macroZonesCount);
+    expect({ ...macroAddedZone, id: 'normalized' }).toEqual({ ...handAddedZone, id: 'normalized' });
   });
 
   it('unchanged: BUNDLE_VERSION stays 1 and kits without speedPanelPresets parse, serialize, and validate identically', () => {
     expect(BUNDLE_VERSION).toBe(1);
     const bareKit = structuredClone(BUILTIN_KITS[0]);
-    const bundle = serializeKit(bareKit);
-    expect('speedPanelPresets' in bundle).toBe(false);
-    const parsed = parseKitBundle(bundle);
+    const baseV1Literal: KitBundle = {
+      bundleVersion: 1,
+      name: 'Base Horizon Kit',
+      description: 'Authored before speedPanelPresets existed',
+      icon: 'H',
+      modes: ['dungeon'],
+      tags: ['classic'],
+      project: structuredClone(bareKit.project),
+      presetRefs: {
+        region: [...bareKit.presetRefs.region],
+        encounter: [...bareKit.presetRefs.encounter],
+      },
+      guideHints: {},
+      version: '1.0.0',
+      exportedAt: '2026-11-01T00:00:00.000Z',
+    };
+    const parsed = parseKitBundle(baseV1Literal);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
+      expect(parsed.warnings).toEqual([]);
       expect('speedPanelPresets' in parsed.bundle).toBe(false);
+      expect(parsed.bundle).toEqual(baseV1Literal);
     }
     expect(validateKit(bareKit).warnings).toEqual([]);
   });

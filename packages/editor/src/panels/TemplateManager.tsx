@@ -28,7 +28,7 @@ import { buttonBase, badgePill, modalFooter } from '../ui/styles.js';
 import { EmptyState } from './shared.js';
 import { useModalStore } from '../store/modal-store.js';
 
-interface Props { onClose: () => void }
+interface Props { onClose: () => void; initialTab?: Tab }
 
 type Tab = 'genres' | 'starters' | 'samples' | 'templates';
 
@@ -57,7 +57,7 @@ export function createProjectFromKit(kit: StarterKit, projectName?: string): Wor
   return copy;
 }
 
-export function TemplateManager({ onClose }: Props) {
+export function TemplateManager({ onClose, initialTab }: Props) {
   const { loadProject } = useProjectStore();
   const dirty = useProjectStore((s) => s.dirty);
   const resetChecklist = useEditorStore((s) => s.resetChecklist);
@@ -66,7 +66,7 @@ export function TemplateManager({ onClose }: Props) {
   const { kits, loadKits, duplicateKit: duplicateKitAction, deleteKit: deleteKitAction } = useKitStore();
 
   const [tab, setTab] = useState<Tab>(() => {
-    const next = pendingTab ?? 'genres';
+    const next = pendingTab ?? initialTab ?? 'genres';
     pendingTab = null;
     return next;
   });
@@ -88,7 +88,7 @@ export function TemplateManager({ onClose }: Props) {
   const [filterMode, setFilterMode] = useState<AuthoringMode | undefined>(undefined);
   const [editingKit, setEditingKit] = useState<StarterKit | null>(null);
   const [showImportKit, setShowImportKit] = useState(false);
-  const [exportIncludeSpeedPanel, setExportIncludeSpeedPanel] = useState(true);
+  const [exportIncludeSpeedPanel, setExportIncludeSpeedPanel] = useState(false);
   const [applyKitPresetsById, setApplyKitPresetsById] = useState<Record<string, boolean>>({});
   // F-c28f6fa5: keep the kit-export object URL; revoke on unmount / replace only.
   const [kitFallback, setKitFallback] = useState<{ href: string; filename: string } | null>(null);

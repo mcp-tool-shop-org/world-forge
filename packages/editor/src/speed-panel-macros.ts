@@ -1,7 +1,7 @@
 // speed-panel-macros.ts — recent-action macro creation, pre-execution validation, replacement prompts, and atomic execution
 
-import { validateProject, type District, type EncounterAnchor, type WorldProject } from '@world-forge/schema';
-import { getCommandById, type ExecuteResult, type ExecuteStores } from './command-registry.js';
+import { type District, type EncounterAnchor, type WorldProject } from '@world-forge/schema';
+import { getCommandById, type ExecuteStores } from './command-registry.js';
 import { duplicateSelected as doDuplicate } from './duplicate.js';
 import type { HitResult } from './hit-testing.js';
 import { nextId } from './ids.js';
@@ -75,6 +75,12 @@ const ZONE_TARGETED_ARG_KINDS = new Set([
   'set-elevation',
 ]);
 
+const ARG_REQUIRED_MACRO_COMMANDS = new Set([
+  'set-elevation',
+  'place-encounter',
+  'apply-preset',
+]);
+
 /** Build a new `SpeedPanelMacro` from checked session log entries (preserving chronological step order). */
 export function createMacroFromRecentEntries(
   name: string,
@@ -109,9 +115,7 @@ export function createMacroFromRecentEntries(
 }
 
 function stepNeedsZoneTarget(step: MacroStep): boolean {
-  if (step.args && ZONE_TARGETED_ARG_KINDS.has(step.args.kind)) return true;
-  const cmdId = getMacroStepCommandId(step);
-  return cmdId === 'place-encounter' || cmdId === 'set-elevation' || cmdId === 'assign-district';
+  return Boolean(step.args && ZONE_TARGETED_ARG_KINDS.has(step.args.kind));
 }
 
 /** Validate all macro steps and ID references against live project and preset stores before applying anything. */
@@ -123,6 +127,27 @@ export function validateMacroExecution(
   context: HitResult | null,
   selection: SelectionSet,
 ): MacroValidationResult {
+  for (let i = 0; i < macro.steps.length; i++) {
+    const step = macro.steps[i];
+    const cmdId = getMacroStepCommandId(step);
+    const cmd = getCommandById(cmdId);
+    if (!cmd) {
+      return {
+        ok: false,
+        missingRefs: [],
+        error: `Step ${i + 1} (${cmdId}) is unknown and cannot execute.`,
+      };
+    }
+    if (ARG_REQUIRED_MACRO_COMMANDS.has(cmdId) && !step.args) {
+      const stepLabel = cmd.label ?? cmd.title;
+      return {
+        ok: false,
+        missingRefs: [],
+        error: `Step ${i + 1} (${stepLabel}) requires saved parameters and cannot run without them.`,
+      };
+    }
+  }
+
   const missingRefs: MacroMissingRefPrompt[] = [];
   const rawTargets = resolveTargetZoneIds(context, selection);
   const needsZone = macro.steps.some(stepNeedsZoneTarget);
@@ -179,14 +204,7 @@ export function validateMacroExecution(
   for (let i = 0; i < macro.steps.length; i++) {
     const step = macro.steps[i];
     const cmdId = getMacroStepCommandId(step);
-    const cmd = getCommandById(cmdId);
-    if (!cmd) {
-      return {
-        ok: false,
-        missingRefs: [],
-        error: `Step ${i + 1} (${cmdId}) is unknown and cannot execute.`,
-      };
-    }
+    const cmd = getCommandById(cmdId)!;
     const stepLabel = cmd.label ?? cmd.title;
 
     if (step.args?.kind === 'assign-district') {
@@ -340,8 +358,6 @@ export function executeMacroAtomic(
   }
 
   let workingProject: WorldProject = structuredClone(stores.project);
-  const initialValidation = validateProject(stores.project);
-  const preExistingErrorKeys = new Set(initialValidation.errors.map((e) => `${e.path}::${e.message}`));
 
   const effectiveContext: HitResult | null = replacements?.targetZoneId
     ? { type: 'zone', id: replacements.targetZoneId }
@@ -606,9 +622,9 @@ export function executeMacroAtomic(
     }
 
     if (cmdId === 'merge-zones') {
-      const zoneIds = workingSelection.zones.length >= 2
+      const zoneIds = stores.selection
         ? workingSelection.zones
-        : targetZoneIds;
+        : (effectiveContext?.type === 'zone' ? [effectiveContext.id] : []);
       if (zoneIds.length < 2) {
         steps.push({ action: cmdId, success: false });
         return abort(i, cmdId, 'need at least 2 zones');
@@ -693,28 +709,16 @@ export function executeMacroAtomic(
       continue;
     }
 
-    // Fallback for any other registry command (pre-checked above)
-    const fallbackRes: ExecuteResult = cmd.run({
-      hit: effectiveContext,
-      stores,
-      selection: workingSelection,
-      project: workingProject,
-    });
-    if (!fallbackRes.executed) {
+    // Atomic path must never invoke live `stores` via fallback cmd.run().
+    if (ARG_REQUIRED_MACRO_COMMANDS.has(cmdId)) {
       steps.push({ action: cmdId, success: false });
-      return abort(i, cmdId, fallbackRes.reason ?? 'context mismatch');
+      return abort(i, cmdId, 'requires saved parameters');
     }
-    steps.push({ action: cmdId, success: true });
+    steps.push({ action: cmdId, success: false });
+    return abort(i, cmdId, 'unsupported in atomic macro execution');
   }
 
   if (projectMutated) {
-    const afterValidation = validateProject(workingProject);
-    const newlyIntroducedErrors = afterValidation.errors.filter(
-      (e) => !preExistingErrorKeys.has(`${e.path}::${e.message}`),
-    );
-    if (newlyIntroducedErrors.length > 0) {
-      return abort(total - 1, getMacroStepCommandId(macro.steps[total - 1]), newlyIntroducedErrors[0].message);
-    }
     stores.updateProject(() => workingProject, macro.name);
   }
 

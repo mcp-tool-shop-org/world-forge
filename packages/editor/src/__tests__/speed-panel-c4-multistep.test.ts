@@ -593,6 +593,7 @@ describe('Speed Panel C4 multi-step flows, validation, picking, export badges, a
       const inStep = advanceStepChoice(escStep.flow, createOpt!, productionStepStores(), 'Cliff Quarter');
       expect(inStep.done).toBe(false);
       // 7) "+ Create District" carries current filter text AND Backspace on empty input goes Back
+      expect(!inStep.done && inStep.flow.steps[1].kind === 'input').toBe(true);
       if (!inStep.done && inStep.flow.steps[1].kind === 'input') {
         expect(inStep.flow.steps[1].value).toBe('Cliff Quarter');
         expect(resolveStepKeyAction(mkKey('Backspace'), inStep.flow, [], 0, 'Cliff Quarter')).toEqual({ type: 'none' });

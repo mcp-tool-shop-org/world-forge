@@ -22,6 +22,9 @@ export const SPEED_PANEL_STATE_V2_KEY = 'wf.speedPanel.v2';
 
 const MAX_RECENTS = 5;
 export const MAX_ADAPTIVE_HISTORY = 200;
+export const MAX_IMPORTED_PINS = 32;
+export const MAX_IMPORTED_MACROS = 32;
+export const MAX_MACRO_STEPS = 16;
 /** F-e57095f8: drop persisted macro steps whose actionId is no longer registered. */
 export const KNOWN_ACTION_IDS = new Set(COMMAND_REGISTRY.map((c) => c.id));
 
@@ -135,6 +138,10 @@ export function sanitizePins(raw: unknown, warnings?: string[]): string[] {
       out.push(item);
     }
   }
+  if (out.length > MAX_IMPORTED_PINS) {
+    warnings?.push(`Trimmed Speed Panel pins to ${MAX_IMPORTED_PINS} (dropped ${out.length - MAX_IMPORTED_PINS})`);
+    return out.slice(0, MAX_IMPORTED_PINS);
+  }
   return out;
 }
 
@@ -144,7 +151,7 @@ export function sanitizePins(raw: unknown, warnings?: string[]): string[] {
  */
 export function sanitizeMacros(raw: unknown, warnings?: string[]): SpeedPanelMacro[] {
   if (!Array.isArray(raw)) return [];
-  return raw
+  const validMacros = raw
     .filter((m): m is SpeedPanelMacro =>
       isPlainObject(m) &&
       typeof m.id === 'string' &&
@@ -166,6 +173,9 @@ export function sanitizeMacros(raw: unknown, warnings?: string[]): SpeedPanelMac
           continue;
         }
         const args = rawStep.args !== undefined ? sanitizeMacroStepArgs(rawStep.args) : undefined;
+        if (rawStep.args !== undefined && args === undefined) {
+          warnings?.push(`Dropped malformed macro step args in "${m.name}" (${actionId})`);
+        }
         const step: MacroStep = {
           actionId,
           ...(typeof rawStep.commandId === 'string' && KNOWN_ACTION_IDS.has(rawStep.commandId)
@@ -175,12 +185,31 @@ export function sanitizeMacros(raw: unknown, warnings?: string[]): SpeedPanelMac
         };
         steps.push(step);
       }
+      if (steps.length > MAX_MACRO_STEPS) {
+        warnings?.push(`Trimmed steps in macro "${m.name}" to ${MAX_MACRO_STEPS} (dropped ${steps.length - MAX_MACRO_STEPS})`);
+        steps.splice(MAX_MACRO_STEPS);
+      }
       return {
         ...m,
         steps,
         ...(typeof m.pinned === 'boolean' ? { pinned: m.pinned } : {}),
       };
     });
+  if (validMacros.length > MAX_IMPORTED_MACROS) {
+    warnings?.push(`Trimmed Speed Panel macros to ${MAX_IMPORTED_MACROS} (dropped ${validMacros.length - MAX_IMPORTED_MACROS})`);
+    return validMacros.slice(0, MAX_IMPORTED_MACROS);
+  }
+  return validMacros;
+}
+
+function macroContentKey(m: Pick<SpeedPanelMacro, 'steps' | 'pinned'>): string {
+  return JSON.stringify({
+    pinned: m.pinned !== false,
+    steps: m.steps.map((s) => ({
+      id: s.commandId ?? s.actionId,
+      args: s.args ?? null,
+    })),
+  });
 }
 
 function sanitizeFrecency(raw: unknown): Record<string, FrecencyEntry> {
@@ -583,6 +612,17 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set, get) => ({
     const renamedMacros: Array<{ from: string; to: string }> = [];
 
     for (const incoming of validMacros) {
+      const suffixLabel = kitName.trim() || 'Kit';
+      const baseLower = incoming.name.trim().toLowerCase();
+      const kitPrefix = `${baseLower} (${suffixLabel.toLowerCase()}`;
+      const incomingKey = macroContentKey(incoming);
+      const alreadyMerged = [...state.macros, ...addedMacros].some((existing) => {
+        if (macroContentKey(existing) !== incomingKey) return false;
+        const exLower = existing.name.trim().toLowerCase();
+        return exLower === baseLower || exLower === `${kitPrefix})` || exLower.startsWith(`${kitPrefix} `);
+      });
+      if (alreadyMerged) continue;
+
       let nextId = incoming.id;
       let idSuffix = 2;
       while (existingIds.has(nextId)) {
@@ -593,7 +633,6 @@ export const useSpeedPanelPins = create<SpeedPanelPinState>((set, get) => ({
 
       let nextName = incoming.name;
       if (existingNames.has(nextName.trim().toLowerCase())) {
-        const suffixLabel = kitName.trim() || 'Kit';
         let candidate = `${incoming.name} (${suffixLabel})`;
         let n = 2;
         while (existingNames.has(candidate.trim().toLowerCase())) {

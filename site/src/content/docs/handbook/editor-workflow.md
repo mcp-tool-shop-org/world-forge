@@ -622,9 +622,9 @@ Custom kits can override the mode guide's checklist labels. When you open a proj
 
 ### Export & Applying Speed Panel Presets
 
-Every kit card (built-in and custom) has an **Export** button that downloads the kit as a portable `.wfkit.json` v1 bundle file. Toggle **Include Speed Panel pins & macros on export** at the top of the Starter Kits tab to bundle your current Speed Panel favorites and macros alongside the kit's name, description, icon, modes, tags, project data, preset references, and guide hints. Runtime fields (id, timestamps, source) are stripped; a `bundleVersion` and `exportedAt` timestamp are added. Unknown command IDs inside imported `speedPanelPresets` are dropped cleanly with validation warnings.
+Every kit card (built-in and custom) has an **Export** button that downloads the kit as a portable `.wfkit.json` v1 bundle file. Toggle **Include Speed Panel pins & macros on export** (unchecked by default) at the top of the Starter Kits tab to bundle your current Speed Panel favorites and macros alongside the kit's name, description, icon, modes, tags, project data, preset references, and guide hints. Runtime fields (id, timestamps, source) are stripped; a `bundleVersion` and `exportedAt` timestamp are added. Unknown command IDs and excess entries beyond import caps (`32` pins, `32` macros, `16` steps per macro) inside imported `speedPanelPresets` are dropped or trimmed cleanly with validation warnings.
 
-When starting a project from a kit that carries `speedPanelPresets`, an opt-in checkbox on the kit card adds the kit's pins and macros **without overwriting existing user state** — any colliding incoming macro name is disambiguated as `<Name> (<Kit Name>)` so both macros remain intact.
+When starting a project from a kit that carries `speedPanelPresets`, an opt-in checkbox on the kit card adds the kit's pins and macros **without overwriting existing user state** — any colliding incoming macro name is disambiguated as `<Name> (<Kit Name>)` so both macros remain intact, and starting the same kit repeatedly skips already-merged presets without duplicating them.
 
 ### Import
 

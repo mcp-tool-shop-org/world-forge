@@ -74,6 +74,7 @@ import {
   advanceStepChoice,
   commitDistrictAssignment,
   commitPlaceEncounter,
+  commitSetElevation,
   openCommandStepFlow,
   submitStepInput,
 } from '../speed-panel-steps.js';
@@ -103,6 +104,9 @@ import {
 import { useProjectStore } from '../store/project-store.js';
 import {
   KNOWN_ACTION_IDS,
+  MAX_IMPORTED_MACROS,
+  MAX_IMPORTED_PINS,
+  MAX_MACRO_STEPS,
   SPEED_PANEL_STATE_V2_KEY,
   loadSpeedPanelStateV2,
   sanitizeMacroStepArgs,
@@ -756,8 +760,16 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
       'Shared Macro (Harbor Kit)',
     ]);
 
-    // Merging same kit name clash again disambiguates further without clobbering
-    const merge2 = useSpeedPanelPins.getState().mergeKitPresets({ pins: [], macros: [kitMacro] }, 'Harbor Kit');
+    // Re-applying same kit macro content is idempotent; distinct content still disambiguates without clobbering
+    const mergeRepeat = useSpeedPanelPins.getState().mergeKitPresets({ pins: [], macros: [kitMacro] }, 'Harbor Kit');
+    expect(mergeRepeat.addedMacros).toEqual([]);
+    expect(useSpeedPanelPins.getState().macros).toHaveLength(2);
+
+    const updatedKitMacro: SpeedPanelMacro = {
+      ...kitMacro,
+      steps: [{ actionId: 'set-elevation', args: { kind: 'set-elevation', elevation: 8 } }],
+    };
+    const merge2 = useSpeedPanelPins.getState().mergeKitPresets({ pins: [], macros: [updatedKitMacro] }, 'Harbor Kit');
     expect(merge2.renamedMacros).toEqual([{ from: 'Shared Macro', to: 'Shared Macro (Harbor Kit 2)' }]);
   });
 
@@ -1140,7 +1152,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
       { id: 'nz-fallback', name: 'NZ', steps: [{ actionId: 'new-zone' }] },
       null,
       atomicStores,
-    ).completed).toBe(1);
+    ).abortedAt).toBe(0);
     expect(executeMacroAtomic(
       { id: 'del-z', name: 'Del Tower', steps: [{ actionId: 'delete' }] },
       { type: 'zone', id: 'zone-tower' },
@@ -1152,6 +1164,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
       atomicStores,
     );
     expect(propsRes.completed).toBe(2);
+    expect(pState.entityPlacements[0]).toBeDefined();
     if (pState.entityPlacements[0]) {
       expect(executeMacroAtomic(
         { id: 'ee', name: 'Ent', steps: [{ actionId: 'edit-props' }] },
@@ -1159,6 +1172,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
         atomicStores,
       ).completed).toBe(1);
     }
+    expect(pState.landmarks[0]).toBeDefined();
     if (pState.landmarks[0]) {
       expect(executeMacroAtomic(
         { id: 'el', name: 'Lm', steps: [{ actionId: 'edit-props' }] },
@@ -1166,6 +1180,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
         atomicStores,
       ).completed).toBe(1);
     }
+    expect(pState.spawnPoints[0]).toBeDefined();
     if (pState.spawnPoints[0]) {
       expect(executeMacroAtomic(
         { id: 'es', name: 'Sp', steps: [{ actionId: 'edit-props' }] },
@@ -1331,6 +1346,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
 
     // Hit applySelectionForHit encounter branch, connection delete, & all removeSelectedFromProject entity collections (project-ops 100%)
     const encProj = makeRichProject();
+    expect(encProj.encounterAnchors[0]).toBeDefined();
     if (encProj.encounterAnchors[0]) {
       expect(executeMacroAtomic(
         { id: 'enc-ep', name: 'EP', steps: [{ actionId: 'edit-props' }] },
@@ -1399,5 +1415,275 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
       'overwrite',
     );
     expect(overwriteNullEco.applied).toBe(true);
+  });
+
+  // === PR #66 Fix 1 Tests (Parts 1, 2, 4, 5, 6, 7) ===
+
+  it('changed: Part 1 macro Delete on a zone with attached entity, landmark, and encounter equals Delete by hand', () => {
+    const rich = makeRichProject();
+    const targetZoneId = rich.zones[0].id;
+    rich.entityPlacements.push({
+      entityId: 'ent-orphan-check',
+      name: 'Gate Guard',
+      zoneId: targetZoneId,
+      role: 'npc',
+    });
+    rich.landmarks.push({
+      id: 'lm-orphan-check',
+      name: 'Stone Arch',
+      zoneId: targetZoneId,
+      gridX: 1,
+      gridY: 1,
+      tags: [],
+      interactionType: 'inspect',
+    });
+    rich.encounterAnchors.push({
+      id: 'enc-orphan-check',
+      zoneId: targetZoneId,
+      encounterType: 'patrol',
+      enemyIds: [],
+      probability: 0.5,
+      cooldownTurns: 3,
+      tags: [],
+    });
+
+    useProjectStore.getState().loadProject(structuredClone(rich));
+    const undoBefore = useProjectStore.getState().getUndoCount();
+    const res = executeMacro(
+      { id: 'm-del-zone', name: 'Delete Rich Zone', steps: [{ actionId: 'delete' }] },
+      { type: 'zone', id: targetZoneId },
+      buildExecuteStores(),
+    );
+    expect(res.completed).toBe(1);
+    expect(res.abortedAt).toBeUndefined();
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Delete Rich Zone');
+    const macroProj = structuredClone(useProjectStore.getState().project);
+
+    useProjectStore.getState().loadProject(structuredClone(rich));
+    const handCmd = getCommandById('delete')!;
+    const handRes = handCmd.run({
+      hit: { type: 'zone', id: targetZoneId },
+      stores: productionExecuteStores(),
+      selection: useEditorStore.getState().selection,
+      project: useProjectStore.getState().project,
+    });
+    expect(handRes.executed).toBe(true);
+    const handProj = structuredClone(useProjectStore.getState().project);
+
+    expect(macroProj).toEqual(handProj);
+    expect(macroProj.zones.some((z) => z.id === targetZoneId)).toBe(false);
+    expect(macroProj.entityPlacements.some((e) => e.entityId === 'ent-orphan-check')).toBe(true);
+    expect(macroProj.landmarks.some((l) => l.id === 'lm-orphan-check')).toBe(true);
+    expect(macroProj.encounterAnchors.some((a) => a.id === 'enc-orphan-check')).toBe(true);
+  });
+
+  it('changed: Part 2 argless parameterized step never calls live stores and mid-run abort leaves project + undo unchanged', () => {
+    const initialProj = structuredClone(useProjectStore.getState().project);
+    const updateZoneSpy = vi.fn();
+    const updateProjSpy = vi.fn((updater, label) => useProjectStore.getState().updateProject(updater, label));
+    const storesWithSpies = {
+      ...buildExecuteStores(),
+      updateZone: updateZoneSpy,
+      updateProject: updateProjSpy,
+    };
+
+    const arglessElevMacro: SpeedPanelMacro = {
+      id: 'm-argless-elev',
+      name: 'Assign Then Missing Elev',
+      steps: [
+        { actionId: 'assign-district', args: { kind: 'assign-district', districtId: 'dist-dock' } },
+        { actionId: 'set-elevation' },
+      ],
+    };
+
+    const valRes = validateMacroExecution(
+      arglessElevMacro,
+      useProjectStore.getState().project,
+      BUILTIN_REGION_PRESETS,
+      BUILTIN_ENCOUNTER_PRESETS,
+      { type: 'zone', id: 'zone-tower' },
+      emptySelection(),
+    );
+    expect(valRes.ok).toBe(false);
+    if (!valRes.ok) {
+      expect(valRes.error).toContain('requires saved parameters');
+    }
+
+    const undoBefore = useProjectStore.getState().getUndoCount();
+    const execRes = executeMacro(arglessElevMacro, { type: 'zone', id: 'zone-tower' }, storesWithSpies);
+    expect(execRes.abortedAt).toBe(1);
+    expect(execRes.completed).toBe(0);
+    expect(updateZoneSpy).not.toHaveBeenCalled();
+    expect(updateProjSpy).not.toHaveBeenCalled();
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore);
+    expect(useProjectStore.getState().project).toEqual(initialProj);
+
+    // Parameterized Set Elevation runs atomically in workingProject -> 1 undo entry -> equals hand commitSetElevation
+    const elevMacro: SpeedPanelMacro = {
+      id: 'm-param-elev',
+      name: 'Elevate Tower',
+      steps: [{ actionId: 'set-elevation', args: { kind: 'set-elevation', elevation: 22 } }],
+    };
+    const elevMacroRes = executeMacro(elevMacro, { type: 'zone', id: 'zone-tower' }, buildExecuteStores());
+    expect(elevMacroRes.completed).toBe(1);
+    expect(useProjectStore.getState().getUndoCount()).toBe(undoBefore + 1);
+    expect(useProjectStore.getState().getUndoLabel()).toBe('Elevate Tower');
+    const macroElevProj = structuredClone(useProjectStore.getState().project);
+
+    useProjectStore.getState().loadProject(structuredClone(initialProj));
+    commitSetElevation(productionStepStores(), ['zone-tower'], '22');
+    expect(macroElevProj).toEqual(useProjectStore.getState().project);
+  });
+
+  it('changed: Part 4 default kit export is opt-in and never mixes user macros into bare or pre-populated kits', () => {
+    const userMacro: SpeedPanelMacro = { id: 'u-priv', name: 'Private User Macro', steps: [{ actionId: 'fit-content' }] };
+    const currentPresets = { pins: ['fit-content', 'edit-props'], macros: [userMacro] };
+
+    // Built-in kit without presets: default export has no speedPanelPresets
+    const defaultBuiltin = buildExportBundleForKit(BUILTIN_KITS[0], {
+      includeSpeedPanel: false,
+      currentPresets,
+    });
+    expect('speedPanelPresets' in defaultBuiltin.bundle).toBe(false);
+
+    // Kit with its own presets: default export exports ONLY kit's own presets
+    const kitOwnMacro: SpeedPanelMacro = { id: 'k-own', name: 'Kit Own', steps: [{ actionId: 'open-review' }] };
+    const kitWithOwn: StarterKit = {
+      ...BUILTIN_KITS[0],
+      id: 'kit-own',
+      builtIn: false,
+      speedPanelPresets: { pins: ['open-review'], macros: [kitOwnMacro] },
+    };
+    const defaultOwn = buildExportBundleForKit(kitWithOwn, {
+      includeSpeedPanel: false,
+      currentPresets,
+    });
+    expect(defaultOwn.bundle.speedPanelPresets).toEqual({ pins: ['open-review'], macros: [kitOwnMacro] });
+
+    // Starter Kits UI starts export checkbox unchecked AND renders Import preview + SaveKitModal
+    useKitStore.setState({ kits: [...BUILTIN_KITS, kitWithOwn] });
+    const tmHtml = renderToStaticMarkup(createElement(TemplateManager, { onClose: () => {}, initialTab: 'starters' }));
+    expect(tmHtml).toContain('wf-kit-export-include-speed-panel');
+    expect(tmHtml).toContain('wf-kit-apply-speed-panel-kit-own');
+    expect(tmHtml).not.toContain('data-testid="wf-kit-export-include-speed-panel" checked=""');
+
+    const importPreviewHtml = renderToStaticMarkup(createElement(ImportKitModal, {
+      onClose: () => {},
+      initialResult: {
+        ok: true,
+        kit: kitWithOwn,
+        parseWarnings: [],
+        validationWarnings: [],
+        validationErrors: [],
+        isValid: true,
+      },
+    }));
+    expect(importPreviewHtml).toContain('Speed Panel pins');
+  });
+
+  it('changed: Part 5 applying the same kit twice is idempotent for pins and macros', () => {
+    const kitMacro: SpeedPanelMacro = {
+      id: 'dup-check',
+      name: 'Zone Setup',
+      steps: [{ actionId: 'set-elevation', args: { kind: 'set-elevation', elevation: 6 } }],
+    };
+    useSpeedPanelPins.setState({
+      pinnedIds: ['edit-props'],
+      macros: [{ id: 'existing-diff', name: 'Zone Setup', steps: [{ actionId: 'fit-content' }] }],
+    });
+
+    const first = useSpeedPanelPins.getState().mergeKitPresets({ pins: ['fit-content'], macros: [kitMacro] }, 'Harbor Kit');
+    expect(first.addedPins).toEqual(['fit-content']);
+    expect(first.addedMacros.map((m) => m.name)).toEqual(['Zone Setup (Harbor Kit)']);
+    const afterFirstCount = useSpeedPanelPins.getState().macros.length;
+
+    const second = useSpeedPanelPins.getState().mergeKitPresets({ pins: ['fit-content'], macros: [kitMacro] }, 'Harbor Kit');
+    expect(second.addedPins).toEqual([]);
+    expect(second.addedMacros).toEqual([]);
+    expect(useSpeedPanelPins.getState().macros).toHaveLength(afterFirstCount);
+    expect(useSpeedPanelPins.getState().macros.map((m) => m.name)).toEqual(['Zone Setup', 'Zone Setup (Harbor Kit)']);
+  });
+
+  it('changed: Part 6 caps pins/macros/steps with warnings, keeps argless empty-canvas behavior, and matches hand merge selection rule', () => {
+    // 1) Caps + warnings
+    const regIds = [...KNOWN_ACTION_IDS];
+    expect(regIds.length).toBeGreaterThan(MAX_IMPORTED_PINS);
+    const pinWarnings: string[] = [];
+    const cappedPins = sanitizePins(regIds, pinWarnings);
+    expect(cappedPins).toHaveLength(MAX_IMPORTED_PINS);
+    expect(pinWarnings.some((w) => w.includes('Trimmed Speed Panel pins'))).toBe(true);
+
+    const malformedStepMacroWarnings: string[] = [];
+    const manyStepsMacro = {
+      id: 'many-steps',
+      name: 'Too Many Steps',
+      steps: Array.from({ length: MAX_MACRO_STEPS + 4 }, () => ({ actionId: regIds[0] })),
+    };
+    const manyMacros = Array.from({ length: MAX_IMPORTED_MACROS + 3 }, (_, i) => ({
+      id: `mm-${i}`,
+      name: `Macro ${i}`,
+      steps: [{ actionId: regIds[0] }],
+    }));
+    const trimmedSteps = sanitizeMacros([
+      manyStepsMacro,
+      { id: 'bad-args', name: 'Bad Args', steps: [{ actionId: 'set-elevation', args: { kind: 'set-elevation', elevation: 'oops' } }] },
+    ], malformedStepMacroWarnings);
+    expect(trimmedSteps[0].steps).toHaveLength(MAX_MACRO_STEPS);
+    expect(malformedStepMacroWarnings.some((w) => w.includes('Trimmed steps'))).toBe(true);
+    expect(malformedStepMacroWarnings.some((w) => w.includes('Dropped malformed macro step args'))).toBe(true);
+
+    const macroCapWarnings: string[] = [];
+    const cappedMacros = sanitizeMacros(manyMacros, macroCapWarnings);
+    expect(cappedMacros).toHaveLength(MAX_IMPORTED_MACROS);
+    expect(macroCapWarnings.some((w) => w.includes('Trimmed Speed Panel macros'))).toBe(true);
+
+    // 2) Old argless macro on empty canvas: NO target-zone prompt, aborts with context mismatch
+    const oldArgless: SpeedPanelMacro = { id: 'old-ad', name: 'Old Assign', steps: [{ actionId: 'assign-district' }] };
+    const oldVal = validateMacroExecution(
+      oldArgless,
+      useProjectStore.getState().project,
+      BUILTIN_REGION_PRESETS,
+      BUILTIN_ENCOUNTER_PRESETS,
+      null,
+      emptySelection(),
+    );
+    expect(oldVal).toEqual({ ok: true, missingRefs: [] });
+    const oldRes = executeMacro(oldArgless, null, buildExecuteStores());
+    expect(oldRes.abortedAt).toBe(0);
+    expect(oldRes.reason).toContain('context mismatch');
+
+    // 3) merge-zones macro matches hand selection rule
+    const mergeMacro: SpeedPanelMacro = { id: 'm-merge', name: 'Merge Macro', steps: [{ actionId: 'merge-zones' }] };
+    const pClean = makeRichProject();
+    pClean.zones.push(
+      { ...pClean.zones[0], id: 'mz-1', name: 'Merge A', neighbors: [], exits: [] },
+      { ...pClean.zones[0], id: 'mz-2', name: 'Merge B', neighbors: [], exits: [] },
+    );
+    useProjectStore.getState().loadProject(structuredClone(pClean));
+    useEditorStore.getState().selectZone('mz-1', false); // only 1 zone selected -> hand-run fails
+    const singleSelMerge = executeMacro(mergeMacro, { type: 'zone', id: 'mz-2' }, buildExecuteStores());
+    expect(singleSelMerge.abortedAt).toBe(0);
+    expect(singleSelMerge.reason).toContain('need at least 2 zones');
+
+    useEditorStore.getState().selectZone('mz-1', false);
+    useEditorStore.getState().selectZone('mz-2', true);
+    const twoSelRes = executeMacro(mergeMacro, { type: 'zone', id: 'mz-1' }, buildExecuteStores());
+    expect(twoSelRes.completed).toBe(1);
+    const macroMergedZones = structuredClone(useProjectStore.getState().project.zones);
+
+    useProjectStore.getState().loadProject(structuredClone(pClean));
+    useEditorStore.getState().selectZone('mz-1', false);
+    useEditorStore.getState().selectZone('mz-2', true);
+    const handMergeCmd = getCommandById('merge-zones')!;
+    expect(handMergeCmd.run({
+      hit: { type: 'zone', id: 'mz-1' },
+      stores: productionExecuteStores(),
+      selection: useEditorStore.getState().selection,
+      project: useProjectStore.getState().project,
+    }).executed).toBe(true);
+    const handMergedZones = structuredClone(useProjectStore.getState().project.zones);
+    expect(macroMergedZones.map((z) => ({ ...z, id: z.id.startsWith('zone-') ? 'merged' : z.id })))
+      .toEqual(handMergedZones.map((z) => ({ ...z, id: z.id.startsWith('zone-') ? 'merged' : z.id })));
   });
 });
