@@ -519,6 +519,12 @@ In edit mode, click **+ New Macro** to build a step macro manually, or run **Cre
 
 When a macro executes, parameterized or multi-step runs validate all referenced district, preset, and target zone IDs up front and commit as **one atomic undo entry** labelled with the macro's name. If any referenced ID no longer exists in the project or preset library, the Speed Panel prompts inline for a replacement choice (`Esc` cancels with zero project mutation, zero undo entry, and unchanged selection). Only **macroSafe** commands appear in the manual edit-mode step dropdown; if a step fails at runtime, the entire run aborts cleanly without leaving partial mutations.
 
+### Scope Chips & Target Highlight
+
+When opening the Speed Panel over **two or more overlapping visible objects** (for example an NPC, landmark, or spawn inside a zone; hidden items and hidden layers are omitted), a row of scope chips appears below the search box in hit-priority order with **Canvas** last. Single-object and bare-zone openings show no chip row.
+
+Click a chip, navigate chips with **ArrowLeft** / **ArrowRight**, or press **Tab** / **Shift+Tab** with an empty search box to cycle targets (**Tab** still opens **Set Elevation**'s inline scalar pill first, and behaves normally in non-empty search, multi-step flows, and spatial picking). Switching targets rebuilds the Quick Fix row, Band 1 deck, and search results with slot 1 active, moves a temporary view-only highlight outline onto the active canvas target without changing the project or undo stack (cleared on close or **Esc**), and announces the target kind and name in a polite live region.
+
 ### Quick Fix Row
 
 When opening the Speed Panel over a zone, entity, landmark, encounter, connection, or district that has at least one matching problem from project validation (`validateProject`), dependency scanning (`scanDependencies`), or 2.5D presentation advisories (`presentationAdvisories`), Band 1 displays a **Quick Fix** row with a problem count badge (`1 problem`, `2 problems`, …) visually above the fixed context deck. Initial highlight still starts on Band 1 slot 1, so pressing **Enter** on open continues to run slot 1, **ArrowDown** walks the exact same rows in the same order as on a clean object, and `Alt+1`–`Alt+5` shortcuts remain unchanged; reach the **Quick Fix** row by pressing **ArrowUp** from Band 1 slot 1 or clicking it. Clean objects omit the row, and ID-less project-level advisories are not attributed to individual canvas objects. Problem lookups reuse a `WeakMap` snapshot keyed by project state computed on panel open rather than on pointer movement.
@@ -540,7 +546,7 @@ Type in the search box to match across the entire editor command registry withou
 - **Match Highlighting:** Matched characters in titles and synonyms highlight inline.
 - **Live Shortcuts & Editor Paths:** Every row displays its live hotkey binding from the hotkey table or, when unbound, where the command lives in the editor UI.
 - **Unavailable here:** Matching commands blocked by the current context stay keyboard-focusable (`aria-disabled="true"`) in **Unavailable here** below enabled hits, showing the exact reason from the command registry.
-- **Keyboard:** Use **Arrow keys** to move across results, **Alt+Up** / **Alt+Down** to reorder pins, **Alt+1**–**Alt+5** on empty search to run Band 1 slots, **Tab** on **Set Elevation** to edit the numeric scalar pill inline, **Enter** to execute, and **Esc** to dismiss.
+- **Keyboard:** Use **Arrow keys** to move across results, **Alt+Up** / **Alt+Down** to reorder pins, **Alt+1**–**Alt+5** on empty search to run Band 1 slots, **Tab** on **Set Elevation** to edit the numeric scalar pill inline (or **Tab** / **Shift+Tab** on empty search when overlapping scope chips are shown to cycle targets), **Enter** to execute, and **Esc** to dismiss.
 
 ### Multi-Step Actions, Spatial Picking & Repeat Last Action
 

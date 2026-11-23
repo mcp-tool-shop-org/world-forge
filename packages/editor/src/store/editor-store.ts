@@ -256,11 +256,13 @@ interface EditorState {
   showSpeedPanel: boolean;
   speedPanelPosition: { x: number; y: number } | null;
   speedPanelContext: HitResult | null;
+  speedPanelHits: HitResult[];
   speedPanelEditMode: boolean;
   speedPanelPick: SpeedPanelPickSession | null;
   lastPanelAction: LastPanelAction | null;
   recentPanelActions: SessionActionLogEntry[];
-  openSpeedPanel: (x: number, y: number, context: HitResult | null) => void;
+  openSpeedPanel: (x: number, y: number, context: HitResult | null, hits?: HitResult[]) => void;
+  setSpeedPanelContext: (context: HitResult | null) => void;
   closeSpeedPanel: () => void;
   toggleSpeedPanelEditMode: () => void;
   setSpeedPanelPick: (pick: SpeedPanelPickSession | null) => void;
@@ -609,12 +611,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showSpeedPanel: false,
   speedPanelPosition: null,
   speedPanelContext: null,
+  speedPanelHits: [],
   speedPanelEditMode: false,
   speedPanelPick: null,
   lastPanelAction: null,
   recentPanelActions: [],
-  openSpeedPanel: (x, y, context) => set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context, speedPanelPick: null }),
-  closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null, speedPanelEditMode: false }),
+  openSpeedPanel: (x, y, context, hits = []) =>
+    set({ showSpeedPanel: true, speedPanelPosition: { x, y }, speedPanelContext: context, speedPanelHits: hits, speedPanelPick: null }),
+  setSpeedPanelContext: (context) => set({ speedPanelContext: context }),
+  closeSpeedPanel: () => set({ showSpeedPanel: false, speedPanelPosition: null, speedPanelContext: null, speedPanelHits: [], speedPanelEditMode: false }),
   toggleSpeedPanelEditMode: () => set((s) => ({ speedPanelEditMode: !s.speedPanelEditMode })),
   setSpeedPanelPick: (pick) => set({ speedPanelPick: pick }),
   clearSpeedPanelPick: () => set({ speedPanelPick: null }),

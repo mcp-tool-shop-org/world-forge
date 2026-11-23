@@ -191,6 +191,23 @@ export function getInitialActiveIndex(allNavigable: readonly NavEntry[]): number
   return allNavigable.length > 1 && allNavigable[0]?.kind === 'quick-fix' ? 1 : 0;
 }
 
+/** Adjust `activeIdx` when the optional Quick Fix row at 0 appears or disappears while open. */
+export function reconcileActiveIndexOnQuickFixChange(
+  prevIdx: number,
+  hadQuickFix: boolean,
+  hasQuickFix: boolean,
+  nextLength: number,
+): number {
+  if (nextLength <= 0) return 0;
+  let shifted = prevIdx;
+  if (hadQuickFix && !hasQuickFix) {
+    shifted = prevIdx > 0 ? prevIdx - 1 : 0;
+  } else if (!hadQuickFix && hasQuickFix) {
+    shifted = prevIdx + 1;
+  }
+  return Math.min(Math.max(0, shifted), nextLength - 1);
+}
+
 /** Clamp `activeIdx` back into `[0, length)` after list length shrinks. */
 export function clampActiveIndex(prev: number, length: number, fallback = 0): number {
   if (length === 0) return 0;
@@ -276,6 +293,7 @@ export type SpeedPanelKeyAction =
   | { type: 'none' }
   | { type: 'close' }
   | { type: 'consumed' }
+  | { type: 'cycle-scope'; direction: 1 | -1 }
   | { type: 'open-scalar-pill'; commandId: string; domId?: string }
   | { type: 'reorder-pin'; fromPinIndex: number; toPinIndex: number; nextActiveIdx: number }
   | { type: 'exec-row'; row: PaletteRow }
@@ -289,6 +307,7 @@ export function resolveSpeedPanelKeyAction(
   view: SpeedPanelView,
   allNavigable: readonly NavEntry[],
   activeIdx: number,
+  options?: { query?: string; hasScopeChips?: boolean },
 ): SpeedPanelKeyAction {
   if (e.key === 'Escape') {
     return { type: 'close' };
@@ -372,6 +391,18 @@ export function resolveSpeedPanelKeyAction(
     }
   }
 
+  if (
+    e.key === 'Tab' &&
+    !inSecondaryInput &&
+    !e.ctrlKey &&
+    !e.altKey &&
+    !e.metaKey &&
+    options?.hasScopeChips &&
+    (options.query ?? '').trim() === ''
+  ) {
+    return { type: 'cycle-scope', direction: e.shiftKey ? -1 : 1 };
+  }
+
   if (e.key === 'Enter' && allNavigable[activeIdx]) {
     const tag = (e.target as { tagName?: string } | null)?.tagName?.toUpperCase();
     if (tag === 'BUTTON' || inSecondaryInput) return { type: 'none' };
@@ -409,6 +440,9 @@ export function dispatchSpeedPanelKeyAction(
     view: SpeedPanelView;
     allNavigable: readonly NavEntry[];
     activeIdx: number;
+    query?: string;
+    hasScopeChips?: boolean;
+    cycleScope?: (direction: 1 | -1) => void;
     closeSpeedPanel: () => void;
     reorderPin: (fromIndex: number, toIndex: number) => void;
     setActiveIdx: (nextIdx: number) => void;
@@ -418,11 +452,19 @@ export function dispatchSpeedPanelKeyAction(
     openQuickFix?: (quickFix: QuickFixRowView) => void;
   },
 ): SpeedPanelKeyAction['type'] {
-  const action = resolveSpeedPanelKeyAction(e, deps.view, deps.allNavigable, deps.activeIdx);
+  const action = resolveSpeedPanelKeyAction(e, deps.view, deps.allNavigable, deps.activeIdx, {
+    query: deps.query,
+    hasScopeChips: deps.hasScopeChips,
+  });
   switch (action.type) {
     case 'close':
       e.stopPropagation();
       deps.closeSpeedPanel();
+      return action.type;
+    case 'cycle-scope':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.cycleScope?.(action.direction);
       return action.type;
     case 'open-scalar-pill':
       e.preventDefault();
@@ -1209,6 +1251,8 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
   setMacroReplaceFlow?: (next: MacroReplaceFlowState | null) => void;
   quickFixFlow?: QuickFixFlowState | null;
   setQuickFixFlow?: (next: QuickFixFlowState | null) => void;
+  hasScopeChips?: boolean;
+  cycleScope?: (direction: 1 | -1) => void;
   executeCommand: (
     commandId: string,
     context: HitResult | null,
@@ -1469,6 +1513,9 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
       view: deps.view,
       allNavigable: deps.allNavigable,
       activeIdx: deps.activeIdx,
+      query: deps.query,
+      hasScopeChips: deps.hasScopeChips,
+      cycleScope: deps.cycleScope,
       closeSpeedPanel: deps.closeSpeedPanel,
       reorderPin: deps.reorderPin,
       setActiveIdx: deps.setActiveIdx,
