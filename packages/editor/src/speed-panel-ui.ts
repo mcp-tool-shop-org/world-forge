@@ -6,6 +6,19 @@ import type { MacroExecutionResult, SpeedPanelMacro } from './speed-panel-action
 import type { ExecuteResult, ExecuteStores } from './speed-panel-execute.js';
 import type { PaletteRow, SpeedPanelView } from './speed-panel-layout.js';
 import { formatSpeedPanelFailure, handleSpeedPanelExecuteResult } from './panels/speed-panel-stores.js';
+import {
+  advanceStepChoice,
+  openCommandStepFlow,
+  popPanelStep,
+  replayLastPanelAction,
+  resolveTargetZoneIds,
+  submitStepInput,
+  type StepChoiceOption,
+  type StepExecutionStores,
+  type StepStackState,
+} from './speed-panel-steps.js';
+import type { LastPanelAction, SelectionSet } from './store/editor-store.js';
+import type { WorldProject } from '@world-forge/schema';
 
 export const SPEED_GLYPH: Readonly<Record<string, string>> = {
   'new-zone': '+',
@@ -99,6 +112,9 @@ export function buildNavigableEntries(
     view.band2Macros.forEach((macro) => {
       items.push({ kind: 'macro', domId: `wf-sp-opt-macro-${macro.id}`, macro });
     });
+    if (view.repeatLastRow) {
+      items.push({ kind: 'row', domId: 'wf-sp-opt-repeat-last', row: view.repeatLastRow });
+    }
     view.band3Recents.forEach((row, i) => {
       items.push({ kind: 'row', domId: `wf-sp-opt-b3-${i}-${row.command.id}`, row });
     });
@@ -216,6 +232,7 @@ export type SpeedPanelKeyAction =
   | { type: 'none' }
   | { type: 'close' }
   | { type: 'consumed' }
+  | { type: 'open-scalar-pill'; commandId: string; domId?: string }
   | { type: 'reorder-pin'; fromPinIndex: number; toPinIndex: number; nextActiveIdx: number }
   | { type: 'exec-row'; row: PaletteRow }
   | { type: 'exec-macro'; macro: SpeedPanelMacro }
@@ -303,6 +320,13 @@ export function resolveSpeedPanelKeyAction(
     };
   }
 
+  if (e.key === 'Tab' && !inSecondaryInput && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    const active = allNavigable[activeIdx];
+    if (active?.kind === 'row' && active.row.command.id === 'set-elevation' && active.row.disabledReason === null) {
+      return { type: 'open-scalar-pill', commandId: 'set-elevation', domId: active.domId };
+    }
+  }
+
   if (e.key === 'Enter' && allNavigable[activeIdx]) {
     const tag = (e.target as { tagName?: string } | null)?.tagName?.toUpperCase();
     if (tag === 'BUTTON' || inSecondaryInput) return { type: 'none' };
@@ -342,6 +366,7 @@ export function dispatchSpeedPanelKeyAction(
     setActiveIdx: (nextIdx: number) => void;
     execute: (row: PaletteRow) => void;
     runMacro: (macro: SpeedPanelMacro) => void;
+    openScalarPill?: (commandId: string, domId?: string) => void;
   },
 ): SpeedPanelKeyAction['type'] {
   const action = resolveSpeedPanelKeyAction(e, deps.view, deps.allNavigable, deps.activeIdx);
@@ -349,6 +374,11 @@ export function dispatchSpeedPanelKeyAction(
     case 'close':
       e.stopPropagation();
       deps.closeSpeedPanel();
+      return action.type;
+    case 'open-scalar-pill':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.openScalarPill?.(action.commandId, action.domId);
       return action.type;
     case 'reorder-pin':
       e.preventDefault();
@@ -496,4 +526,547 @@ export function executeSpeedPanelMacro(
   deps.recordCommandUsage('macro:' + macro.id, '');
   deps.closeSpeedPanel();
   return true;
+}
+
+/** Filter active choice-step options case-insensitively by label or description, keeping `+ Create` visible. */
+export function filterStepOptions(
+  options: readonly StepChoiceOption[],
+  filterQuery: string,
+): StepChoiceOption[] {
+  const q = filterQuery.trim().toLowerCase();
+  if (!q) return [...options];
+  return options.filter(
+    (opt) =>
+      opt.kind === 'create' ||
+      opt.label.toLowerCase().includes(q) ||
+      (opt.description?.toLowerCase().includes(q) ?? false) ||
+      (opt.badge?.text.toLowerCase().includes(q) ?? false),
+  );
+}
+
+export type StepKeyAction =
+  | { type: 'none' }
+  | { type: 'cancel' }
+  | { type: 'back' }
+  | { type: 'set-active'; nextIdx: number }
+  | { type: 'choose'; option: StepChoiceOption }
+  | { type: 'submit-input' };
+
+/** Pure keyboard router while inside an active C4 panel step. */
+export function resolveStepKeyAction(
+  e: SpeedPanelKeyEventLike,
+  flow: StepStackState,
+  filteredOptions: readonly StepChoiceOption[],
+  activeStepIdx: number,
+  stepFilter: string,
+): StepKeyAction {
+  const current = flow.steps[flow.steps.length - 1];
+  if (!current) return { type: 'none' };
+  if (e.key === 'Escape') {
+    return { type: 'cancel' };
+  }
+  if (e.altKey && e.key === 'ArrowLeft') {
+    return { type: 'back' };
+  }
+  if (current.kind === 'choice') {
+    if (e.key === 'Backspace' && stepFilter === '') {
+      return { type: 'back' };
+    }
+    if (e.key === 'ArrowDown') {
+      return {
+        type: 'set-active',
+        nextIdx: filteredOptions.length > 0 ? (activeStepIdx + 1) % filteredOptions.length : 0,
+      };
+    }
+    if (e.key === 'ArrowUp') {
+      return {
+        type: 'set-active',
+        nextIdx: filteredOptions.length > 0
+          ? (activeStepIdx - 1 + filteredOptions.length) % filteredOptions.length
+          : 0,
+      };
+    }
+    if (e.key === 'Enter' && filteredOptions[activeStepIdx]) {
+      return { type: 'choose', option: filteredOptions[activeStepIdx] };
+    }
+  } else if (e.key === 'Enter') {
+    return { type: 'submit-input' };
+  }
+  return { type: 'none' };
+}
+
+/** Dispatch keyboard navigation inside a multi-step view cleanly. */
+export function dispatchStepKeyAction(
+  e: SpeedPanelKeyDispatchEvent,
+  deps: {
+    flow: StepStackState;
+    filteredOptions: readonly StepChoiceOption[];
+    activeStepIdx: number;
+    stepFilter: string;
+    onCancel: () => void;
+    onBack: () => void;
+    onSetActiveIdx: (idx: number) => void;
+    onSelectOption: (opt: StepChoiceOption) => void;
+    onSubmitInput: () => void;
+  },
+): StepKeyAction['type'] {
+  const action = resolveStepKeyAction(e, deps.flow, deps.filteredOptions, deps.activeStepIdx, deps.stepFilter);
+  switch (action.type) {
+    case 'cancel':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.onCancel();
+      return action.type;
+    case 'back':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.onBack();
+      return action.type;
+    case 'set-active':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.onSetActiveIdx(action.nextIdx);
+      return action.type;
+    case 'choose':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.onSelectOption(action.option);
+      return action.type;
+    case 'submit-input':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.onSubmitInput();
+      return action.type;
+    case 'none':
+      return action.type;
+  }
+}
+
+/**
+ * Unified C4 Speed Panel row executor:
+ * - Intercepts `repeat-last` (replay recorded parameterized/direct action)
+ * - Opens inline multi-step flows or canvas spatial pick sessions
+ * - Otherwise executes direct registry command and records `lastPanelAction`.
+ */
+export function executeSpeedPanelRowOrStep(
+  row: PaletteRow,
+  deps: {
+    context: HitResult | null;
+    query: string;
+    lastPanelAction: LastPanelAction | null;
+    executeCommand: (
+      commandId: string,
+      context: HitResult | null,
+      stores: ExecuteStores,
+      hotkeyCtx?: HotkeyContext,
+    ) => ExecuteResult;
+    stores: ExecuteStores;
+    stepStores: StepExecutionStores;
+    hotkeyCtx: HotkeyContext;
+    closeSpeedPanel: () => void;
+    setStepFlow: (flow: StepStackState | null) => void;
+    setStepFilter: (value: string) => void;
+    setStepActiveIdx: (idx: number) => void;
+    recordCommandUsage: (commandId: string, query: string) => void;
+    pushToast: (message: string, kind?: 'warning' | 'error' | 'info' | 'success') => void;
+  },
+): 'blocked' | 'steps' | 'pick' | 'closed' | 'kept-open' | 'error' {
+  const cmd = row.command;
+  const actionLabel = cmd.label ?? cmd.title;
+
+  if (row.disabledReason !== null) {
+    deps.pushToast(formatSpeedPanelFailure(actionLabel, row.disabledReason), 'warning');
+    return 'blocked';
+  }
+
+  if (cmd.id === 'repeat-last') {
+    if (!deps.lastPanelAction) {
+      deps.pushToast('No recent Speed Panel action to repeat.', 'warning');
+      return 'blocked';
+    }
+    const replay = replayLastPanelAction(deps.lastPanelAction, deps.context, deps.stepStores, {
+      executeStores: deps.stores,
+      hotkeyCtx: deps.hotkeyCtx,
+      executeDirect: deps.executeCommand,
+    });
+    if (replay.status === 'pick') {
+      deps.stepStores.setSpeedPanelPick(replay.pick);
+      deps.recordCommandUsage(deps.lastPanelAction.commandId, deps.query);
+      deps.closeSpeedPanel();
+      return 'pick';
+    }
+    if (replay.status === 'error') {
+      deps.pushToast(replay.message, 'warning');
+      return 'kept-open';
+    }
+    deps.recordCommandUsage(deps.lastPanelAction.commandId, deps.query);
+    deps.closeSpeedPanel();
+    return 'closed';
+  }
+
+  const opened = openCommandStepFlow(cmd.id, deps.context, deps.stepStores);
+  if (opened.kind === 'steps') {
+    deps.setStepFilter('');
+    deps.setStepActiveIdx(0);
+    deps.setStepFlow(opened.flow);
+    return 'steps';
+  }
+  if (opened.kind === 'pick') {
+    deps.stepStores.setSpeedPanelPick(opened.pick);
+    deps.closeSpeedPanel();
+    return 'pick';
+  }
+  if (opened.kind === 'blocked') {
+    deps.pushToast(formatSpeedPanelFailure(actionLabel, opened.reason), 'warning');
+    return 'blocked';
+  }
+
+  const outcome = executeSpeedPanelRow(row, {
+    context: deps.context,
+    query: deps.query,
+    executeCommand: deps.executeCommand,
+    stores: deps.stores,
+    hotkeyCtx: deps.hotkeyCtx,
+    closeSpeedPanel: deps.closeSpeedPanel,
+    recordCommandUsage: deps.recordCommandUsage,
+    pushToast: deps.pushToast,
+  });
+  if (outcome === 'closed') {
+    deps.stepStores.setLastPanelAction({
+      commandId: cmd.id,
+      label: actionLabel,
+      timestamp: Date.now(),
+    });
+  }
+  return outcome;
+}
+
+/** Handle clicking or confirming an option inside an active C4 panel step. */
+export function handleStepChoiceSelect(
+  flow: StepStackState,
+  option: StepChoiceOption,
+  deps: {
+    query: string;
+    stepStores: StepExecutionStores;
+    setStepFlow: (next: StepStackState | null) => void;
+    setStepFilter: (v: string) => void;
+    setStepActiveIdx: (idx: number) => void;
+    recordCommandUsage: (id: string, q: string) => void;
+    closeSpeedPanel: () => void;
+  },
+): boolean {
+  const res = advanceStepChoice(flow, option, deps.stepStores);
+  if (!res.done) {
+    deps.setStepFilter('');
+    deps.setStepActiveIdx(0);
+    deps.setStepFlow(res.flow);
+    return false;
+  }
+  deps.stepStores.setLastPanelAction(res.lastAction);
+  deps.recordCommandUsage(res.commandId, deps.query);
+  deps.setStepFlow(null);
+  deps.closeSpeedPanel();
+  return true;
+}
+
+/** Handle submitting the inline text/scalar input of the active C4 step. */
+export function handleStepInputSubmit(
+  flow: StepStackState,
+  value: string,
+  deps: {
+    query: string;
+    stepStores: StepExecutionStores;
+    setStepFlow: (next: StepStackState | null) => void;
+    recordCommandUsage: (id: string, q: string) => void;
+    closeSpeedPanel: () => void;
+  },
+): boolean {
+  const res = submitStepInput(flow, value, deps.stepStores);
+  if (!res.done) {
+    deps.setStepFlow(res.flow);
+    return false;
+  }
+  deps.stepStores.setLastPanelAction(res.lastAction);
+  deps.recordCommandUsage(res.commandId, deps.query);
+  deps.setStepFlow(null);
+  deps.closeSpeedPanel();
+  return true;
+}
+
+/** Step Back one level or exit multi-step mode cleanly back to root palette. */
+export function stepBackOrRoot(
+  flow: StepStackState,
+  deps: {
+    setStepFlow: (next: StepStackState | null) => void;
+    setStepFilter: (v: string) => void;
+    setStepActiveIdx: (idx: number) => void;
+  },
+): void {
+  deps.setStepFilter('');
+  deps.setStepActiveIdx(0);
+  deps.setStepFlow(popPanelStep(flow));
+}
+
+export interface ScalarPillState {
+  commandId: 'set-elevation';
+  domId?: string;
+  targetZoneIds: string[];
+  value: string;
+  error: string | null;
+}
+
+/** Commit an inline `Tab`-activated scalar elevation pill value cleanly with validation and single undo. */
+export function submitScalarPill(
+  pill: ScalarPillState,
+  deps: {
+    query: string;
+    stepStores: StepExecutionStores;
+    setScalarPill: (next: ScalarPillState | null) => void;
+    recordCommandUsage: (id: string, q: string) => void;
+    closeSpeedPanel: () => void;
+  },
+): boolean {
+  const res = submitStepInput(
+    {
+      commandId: pill.commandId,
+      commandLabel: 'Set Elevation',
+      context: null,
+      targetZoneIds: pill.targetZoneIds,
+      steps: [
+        {
+          kind: 'input',
+          stepId: 'set-elevation',
+          title: 'Set Elevation (m)',
+          label: 'Elevation',
+          placeholder: 'e.g. -5',
+          value: pill.value,
+          allowEmpty: true,
+        },
+      ],
+      error: null,
+    },
+    pill.value,
+    deps.stepStores,
+  );
+  if (!res.done) {
+    deps.setScalarPill({ ...pill, error: res.flow.error });
+    return false;
+  }
+  deps.stepStores.setLastPanelAction(res.lastAction);
+  deps.recordCommandUsage('set-elevation', deps.query);
+  deps.setScalarPill(null);
+  deps.closeSpeedPanel();
+  return true;
+}
+
+/** Route keys inside an inline `Tab` scalar pill (`Enter` commits, `Escape`/`Tab` returns to list). */
+export function handleScalarPillKeyDown(
+  e: { key: string; preventDefault: () => void; stopPropagation: () => void },
+  pill: ScalarPillState,
+  deps: {
+    query: string;
+    stepStores: StepExecutionStores;
+    setScalarPill: (next: ScalarPillState | null) => void;
+    recordCommandUsage: (id: string, q: string) => void;
+    closeSpeedPanel: () => void;
+    refocusSearch: () => void;
+  },
+): 'submit' | 'dismiss' | 'none' {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    e.stopPropagation();
+    submitScalarPill(pill, deps);
+    return 'submit';
+  }
+  if (e.key === 'Escape' || e.key === 'Tab') {
+    e.preventDefault();
+    e.stopPropagation();
+    deps.setScalarPill(null);
+    deps.refocusSearch();
+    return 'dismiss';
+  }
+  return 'none';
+}
+
+/** Build all interactive callbacks for `<SpeedPanel>` so JSX remains thin and handlers are directly testable. */
+export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { preventScroll?: boolean }) => void } | null }>(deps: {
+  context: HitResult | null;
+  selection: SelectionSet;
+  zones: WorldProject['zones'];
+  query: string;
+  view: SpeedPanelView;
+  allNavigable: readonly NavEntry[];
+  activeIdx: number;
+  lastPanelAction: LastPanelAction | null;
+  stepFlow: StepStackState | null;
+  filteredStepOptions: readonly StepChoiceOption[];
+  stepActiveIdx: number;
+  stepFilter: string;
+  stepInputDraft: string;
+  scalarPill: ScalarPillState | null;
+  scalarPillRef: TRef;
+  executeCommand: (
+    commandId: string,
+    context: HitResult | null,
+    stores: ExecuteStores,
+    hotkeyCtx?: HotkeyContext,
+  ) => ExecuteResult;
+  runMacroSteps: (
+    macro: SpeedPanelMacro,
+    context: HitResult | null,
+    stores: ExecuteStores,
+  ) => MacroExecutionResult;
+  stores: ExecuteStores;
+  stepStores: StepExecutionStores;
+  hotkeyCtx: HotkeyContext;
+  closeSpeedPanel: () => void;
+  setActiveIdx: (idx: number) => void;
+  reorderPin: (fromIndex: number, toIndex: number) => void;
+  setStepFlow: (next: StepStackState | null) => void;
+  setStepFilter: (v: string) => void;
+  setStepActiveIdx: (idx: number) => void;
+  setScalarPill: (updater: ScalarPillState | null | ((prev: ScalarPillState | null) => ScalarPillState | null)) => void;
+  setMacroStatus: (status: string | null) => void;
+  recordCommandUsage: (id: string, q: string) => void;
+  pushToast: (message: string, kind?: 'warning' | 'error' | 'info' | 'success') => void;
+  refocusSearch: () => void;
+}) {
+  const execute = (row: PaletteRow) =>
+    executeSpeedPanelRowOrStep(row, {
+      context: deps.context,
+      query: deps.query,
+      lastPanelAction: deps.lastPanelAction,
+      executeCommand: deps.executeCommand,
+      stores: deps.stores,
+      stepStores: deps.stepStores,
+      hotkeyCtx: deps.hotkeyCtx,
+      closeSpeedPanel: deps.closeSpeedPanel,
+      setStepFlow: deps.setStepFlow,
+      setStepFilter: deps.setStepFilter,
+      setStepActiveIdx: deps.setStepActiveIdx,
+      recordCommandUsage: deps.recordCommandUsage,
+      pushToast: deps.pushToast,
+    });
+
+  const openScalarPill = (commandId: string, domId?: string) => {
+    if (commandId !== 'set-elevation') return;
+    const zoneIds = resolveTargetZoneIds(deps.context, deps.selection);
+    if (zoneIds.length === 0) return;
+    const zone = deps.zones.find((z) => z.id === zoneIds[0]);
+    deps.setScalarPill({
+      commandId: 'set-elevation',
+      domId,
+      targetZoneIds: zoneIds,
+      value: zone?.elevation !== undefined ? String(zone.elevation) : '',
+      error: null,
+    });
+  };
+
+  const onSelectStepOption = (option: StepChoiceOption) => {
+    if (!deps.stepFlow) return;
+    handleStepChoiceSelect(deps.stepFlow, option, {
+      query: deps.query,
+      stepStores: deps.stepStores,
+      setStepFlow: deps.setStepFlow,
+      setStepFilter: deps.setStepFilter,
+      setStepActiveIdx: deps.setStepActiveIdx,
+      recordCommandUsage: deps.recordCommandUsage,
+      closeSpeedPanel: deps.closeSpeedPanel,
+    });
+  };
+
+  const onSubmitStep = () => {
+    if (!deps.stepFlow) return;
+    handleStepInputSubmit(deps.stepFlow, deps.stepInputDraft, {
+      query: deps.query,
+      stepStores: deps.stepStores,
+      setStepFlow: deps.setStepFlow,
+      recordCommandUsage: deps.recordCommandUsage,
+      closeSpeedPanel: deps.closeSpeedPanel,
+    });
+  };
+
+  const onStepBack = () => {
+    if (!deps.stepFlow) return;
+    stepBackOrRoot(deps.stepFlow, {
+      setStepFlow: deps.setStepFlow,
+      setStepFilter: deps.setStepFilter,
+      setStepActiveIdx: deps.setStepActiveIdx,
+    });
+    if (deps.stepFlow.steps.length <= 1) {
+      deps.refocusSearch();
+    }
+  };
+
+  const runMacro = (macro: SpeedPanelMacro) =>
+    executeSpeedPanelMacro(macro, {
+      context: deps.context,
+      runMacroSteps: deps.runMacroSteps,
+      stores: deps.stores,
+      setMacroStatus: deps.setMacroStatus,
+      recordCommandUsage: deps.recordCommandUsage,
+      closeSpeedPanel: deps.closeSpeedPanel,
+    });
+
+  const scalarPropsFor = (row: PaletteRow, domId: string) => {
+    if (row.command.id !== 'set-elevation' || row.disabledReason !== null) return {};
+    const activeHere = deps.scalarPill !== null && (!deps.scalarPill.domId || deps.scalarPill.domId === domId);
+    return {
+      scalarPill: activeHere ? deps.scalarPill : null,
+      scalarPillRef: activeHere ? deps.scalarPillRef : undefined,
+      onScalarPillOpen: () => openScalarPill('set-elevation', domId),
+      onScalarPillChange: (val: string) =>
+        deps.setScalarPill((prev) => (prev ? { ...prev, value: val, error: null } : null)),
+      onScalarPillKeyDown: (e: { key: string; preventDefault: () => void; stopPropagation: () => void }) => {
+        if (!deps.scalarPill) return;
+        handleScalarPillKeyDown(e, deps.scalarPill, {
+          query: deps.query,
+          stepStores: deps.stepStores,
+          setScalarPill: (next) => deps.setScalarPill(next),
+          recordCommandUsage: deps.recordCommandUsage,
+          closeSpeedPanel: deps.closeSpeedPanel,
+          refocusSearch: deps.refocusSearch,
+        });
+      },
+    };
+  };
+
+  const handleKeyDown = (e: SpeedPanelKeyDispatchEvent) => {
+    if (deps.stepFlow) {
+      dispatchStepKeyAction(e, {
+        flow: deps.stepFlow,
+        filteredOptions: deps.filteredStepOptions,
+        activeStepIdx: deps.stepActiveIdx,
+        stepFilter: deps.stepFilter,
+        onCancel: deps.closeSpeedPanel,
+        onBack: onStepBack,
+        onSetActiveIdx: deps.setStepActiveIdx,
+        onSelectOption: onSelectStepOption,
+        onSubmitInput: onSubmitStep,
+      });
+      return;
+    }
+    dispatchSpeedPanelKeyAction(e, {
+      view: deps.view,
+      allNavigable: deps.allNavigable,
+      activeIdx: deps.activeIdx,
+      closeSpeedPanel: deps.closeSpeedPanel,
+      reorderPin: deps.reorderPin,
+      setActiveIdx: deps.setActiveIdx,
+      execute,
+      runMacro,
+      openScalarPill,
+    });
+  };
+
+  return {
+    execute,
+    openScalarPill,
+    onSelectStepOption,
+    onSubmitStep,
+    onStepBack,
+    runMacro,
+    scalarPropsFor,
+    handleKeyDown,
+  };
 }

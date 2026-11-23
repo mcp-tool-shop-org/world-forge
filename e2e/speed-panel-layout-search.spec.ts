@@ -98,14 +98,12 @@ test.describe('Speed Panel layout & search (C3)', () => {
     await expect(band1Options.nth(3)).toHaveAttribute('data-testid', 'wf-sp-row-place-encounter');
     await expect(band1Options.nth(4)).toHaveAttribute('data-testid', 'wf-sp-row-duplicate');
 
-    // Empty search hides cross-type actions (Swap Direction) and keeps same-type blocked actions (Merge Zones) inline
+    // Empty search hides cross-type actions (Swap Direction) while keeping single-zone Merge Zones pickable in C4
     const band4 = panel.getByTestId('wf-sp-band-4');
     await expect(band4).toBeVisible();
     await expect(panel.getByTestId('wf-sp-row-swap-direction')).toHaveCount(0);
     const mergeRow = band4.getByTestId('wf-sp-row-merge-zones');
     await expect(mergeRow).toBeVisible();
-    await expect(mergeRow).toHaveAttribute('aria-disabled', 'true');
-    await expect(mergeRow).toContainText('Select at least 2 zones to merge');
 
     // Pin Edit Properties (in Band 1) and Delete (in Band 4) -> copied into Band 2, originals stay
     await band1.getByTestId('wf-sp-row-edit-props').getByRole('button', { name: 'Pin Edit Properties' }).click();
@@ -258,12 +256,13 @@ test.describe('Speed Panel layout & search (C3)', () => {
     await expect(options.nth(0)).toHaveAttribute('data-testid', 'wf-sp-row-place-entity');
     await expect(options.nth(1)).toHaveAttribute('data-testid', 'wf-sp-row-place-encounter');
 
-    // Execute the 2nd match (`Place Encounter Here`)
+    // Execute the 2nd match (`Place Encounter Here`) and confirm inline type step
     await panel.getByTestId('wf-sp-row-place-encounter').click();
+    await panel.getByTestId('wf-sp-step-opt-patrol').click();
     await expect(panel).toHaveCount(0);
 
-    // Reopen over chapel-alcove and type the same query -> `Place Encounter Here` now ranks #1 via Tier 0
-    await page.mouse.move(zx, zy);
+    // Reopen over chapel-alcove (offset from center encounter icon) and type the same query -> `Place Encounter Here` now ranks #1 via Tier 0
+    await page.mouse.move(zx - 25, zy - 25);
     await page.keyboard.press('q');
     await expect(panel).toBeVisible();
     await search.fill('place');
@@ -296,7 +295,7 @@ test.describe('Speed Panel layout & search (C3)', () => {
     await expect(swapRow).toHaveAttribute('aria-selected', 'true');
 
     // Press Enter while active -> project unchanged, nothing executed, panel remains open
-    const undoBtn = page.getByRole('button', { name: 'Undo' });
+    const undoBtn = page.getByRole('button', { name: /^Undo\b/ });
     await expect(undoBtn).toBeDisabled();
     await search.press('Enter');
     await expect(panel).toBeVisible();
@@ -322,6 +321,7 @@ test.describe('Speed Panel layout & search (C3)', () => {
     await page.keyboard.press('Alt+1');
     // Alt+1 inside the macro name input MUST NOT execute Band 1 slot 1 (`New Zone`) or close the panel
     await expect(panel).toBeVisible();
+    await expect(undoBtn).toBeDisabled();
 
     // Exit edit mode and use Alt+4 from search box on empty canvas (`Open Review` in Band 1 slot 4)
     await panel.getByRole('button', { name: 'Exit edit mode' }).click();

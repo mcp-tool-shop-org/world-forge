@@ -407,12 +407,12 @@
       },
       {
         "commits": 12,
-        "lines": 12890,
+        "lines": 13010,
         "path": "atlas/statistics.json"
       },
       {
         "commits": 12,
-        "lines": 57691,
+        "lines": 57749,
         "path": "atlas/structure.json"
       },
       {
@@ -677,7 +677,7 @@
       },
       {
         "commits": 1,
-        "lines": 238,
+        "lines": 360,
         "path": "e2e/speed-panel-layout-search.spec.ts"
       },
       {
@@ -922,13 +922,18 @@
       },
       {
         "commits": 1,
-        "lines": 125,
+        "lines": 232,
         "path": "packages/editor/src/__tests__/speed-panel-c3-compat.test.ts"
       },
       {
         "commits": 1,
-        "lines": 578,
+        "lines": 743,
         "path": "packages/editor/src/__tests__/speed-panel-c3-layout-search.test.ts"
+      },
+      {
+        "commits": 1,
+        "lines": 569,
+        "path": "packages/editor/src/__tests__/speed-panel-c3-ui.test.ts"
       },
       {
         "commits": 8,
@@ -1007,7 +1012,7 @@
       },
       {
         "commits": 3,
-        "lines": 1514,
+        "lines": 1507,
         "path": "packages/editor/src/command-registry.ts"
       },
       {
@@ -1252,7 +1257,7 @@
       },
       {
         "commits": 9,
-        "lines": 1708,
+        "lines": 1648,
         "path": "packages/editor/src/panels/SpeedPanel.tsx"
       },
       {
@@ -1516,6 +1521,11 @@
         "path": "packages/editor/src/speed-panel-search.ts"
       },
       {
+        "commits": 1,
+        "lines": 499,
+        "path": "packages/editor/src/speed-panel-ui.ts"
+      },
+      {
         "commits": 12,
         "lines": 495,
         "path": "packages/editor/src/store/editor-store.ts"
@@ -1537,7 +1547,7 @@
       },
       {
         "commits": 4,
-        "lines": 461,
+        "lines": 512,
         "path": "packages/editor/src/store/speed-panel-store.ts"
       },
       {
@@ -3006,9 +3016,9 @@
     "level": "low",
     "reason": "fewer than 25 source files reach 10 revisions in the window"
   },
-  "generatedAt": "2026-11-23T00:55:27.734Z",
+  "generatedAt": "2026-11-23T01:45:54.615Z",
   "generatedFrom": {
-    "commit": "de1f8450396d5e4dea432cbf6ad6d966863b780e"
+    "commit": "ccdc25a541721e17fbe26aa4e37db7c35499a8c2"
   },
   "pairs": [
     {
@@ -3680,7 +3690,7 @@
     "floor": "fallen",
     "floorHeld": false,
     "floorTrigger": "revision-depth",
-    "headDate": "2026-11-22T19:24:45-05:00",
+    "headDate": "2026-11-22T20:07:02-05:00",
     "inScopeFiles": 678,
     "pinnedStart": null,
     "priorFloor": "fallen",
@@ -3689,7 +3699,7 @@
     "revisions": 5,
     "shared": 10,
     "sharedFloorUsed": 3,
-    "since": "2026-05-27T00:24:45.000Z",
+    "since": "2026-05-27T01:07:02.000Z",
     "sourceExtensions": [
       ".js",
       ".mjs",

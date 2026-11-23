@@ -167,6 +167,8 @@ export interface CommandContext {
   hotkeyCtx?: HotkeyContext;
   event?: KeyboardEvent;
   setTool?: (tool: EditorTool) => void;
+  /** True when caller supports canvas-delegated spatial picking for incomplete selections. */
+  supportsSpatialPick?: boolean;
 }
 
 export interface CommandRunResult {
@@ -800,8 +802,9 @@ export const COMMAND_REGISTRY: readonly EditorCommand[] = [
       if (effectiveHit(ctx)?.type !== 'zone') return 'Target a zone';
       if (ctx.stores && !ctx.stores.mergeZones) return 'mergeZones not available';
       const selZones = effectiveSelection(ctx)?.zones;
-      if (!selZones || selZones.length < 2) return 'Select at least 2 zones to merge';
-      return null;
+      if (selZones && selZones.length >= 2) return null;
+      if (ctx.supportsSpatialPick && (ctx.project?.zones.length ?? 0) >= 2) return null;
+      return 'Select at least 2 zones to merge';
     },
     run: ({ hit, stores }) => {
       if (!stores) return fail('stores unavailable');

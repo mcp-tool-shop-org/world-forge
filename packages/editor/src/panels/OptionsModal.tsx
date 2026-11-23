@@ -99,6 +99,19 @@ export function applyKeyCaptureEvent(
   return { handled: true, error: res.ok ? null : res.reason };
 }
 
+/** Reset all Speed Panel options, recents toggle, key error state, and draft counter in one call. */
+export function resetOptionsModalState(deps: {
+  resetOptions: () => void;
+  setShowRecents: (value: boolean) => void;
+  setKeyError: (err: string | null) => void;
+  bumpResetToken: () => void;
+}): void {
+  deps.resetOptions();
+  deps.setShowRecents(true);
+  deps.setKeyError(null);
+  deps.bumpResetToken();
+}
+
 interface Props {
   onClose: () => void;
   initialKeyError?: string | null;
@@ -339,12 +352,14 @@ export function OptionsModal({ onClose, initialKeyError = null }: Props) {
           <button
             type="button"
             data-testid="wf-opt-reset"
-            onClick={() => {
-              resetOptions();
-              setShowRecents(true);
-              setKeyError(null);
-              setResetToken((n) => n + 1);
-            }}
+            onClick={() =>
+              resetOptionsModalState({
+                resetOptions,
+                setShowRecents,
+                setKeyError,
+                bumpResetToken: () => setResetToken((n) => n + 1),
+              })
+            }
             style={buttonBase}
           >
             Reset defaults

@@ -1,14 +1,14 @@
 # world-forge: how it works
 
-Mapped at 2026-11-23 from commit de1f845 by Atlas 1.26.0.
+Mapped at 2026-11-23 from commit ccdc25a by Atlas 1.23.0.
 
 ## What this is
 
 15 parts, mostly TypeScript (520 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.
 
-## What changed since 2026-11-23 (e2138c2)
+## What changed since 2026-11-23 (de1f845)
 
-Nothing structural changed since 2026-11-23; 2 files added and 10 changed content.
+Nothing structural changed since 2026-11-23; 16 files changed content.
 
 ## What comes in
 
@@ -127,14 +127,14 @@ Read those in order to follow one run of world-forge-export end to end. This pat
 
 ## What this map cannot see
 
-- 10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.
+- 14 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 11 more.
 - 6 files in editor use syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts and 3 more), so what they import is not known.
 - 3 writes and 4 reads use paths built at run time and are not named here.
 - 38 writes go to places this repository does not track, so they are not listed as generated.
 - 2 writes and 61 reads go to a path their caller passes, not to this repository.
 - 26 writes go to the directory the command is run in (GodotPack/ and UnrealPack/) or a path their caller passes, not to this repository.
 - 2 writes go to the directory the command is run in (export/), not to this repository.
-- 4 commands are built at run time and not followed.
+- 3 commands are built at run time and not followed.
 - Statistics confidence is low: fewer than 25 source files reach 10 revisions in the window.
 
 Regenerate with `npx --yes @dogfood-lab/atlas map`.

@@ -501,3 +501,298 @@ export function isNodeInsideCanvasOrMenu<TNode>(
       (targetNode === (canvasEl as unknown) || canvasEl.contains(targetNode) || contextMenuEl?.contains(targetNode)),
   );
 }
+
+export interface CanvasContextMenuState<TAction = { id: string; label: string; icon: string }> {
+  x: number;
+  y: number;
+  actions: TAction[];
+  hit: HitResult | null;
+}
+
+export interface CanvasRightPointerHandlerDeps {
+  isMacPlatform: () => boolean;
+  getScreenXY: (e: { clientX: number; clientY: number }) => { sx: number; sy: number };
+  getViewport: () => ViewportState;
+  setViewport: (vp: Partial<ViewportState>) => void;
+  getOptions: () => SpeedPanelOptions;
+  findFilteredHitAt: (sx: number, sy: number) => HitResult | null;
+  getMenuActionsForHit: (hit: HitResult | null) => Array<{ id: string; label: string; icon: string }>;
+  getContextMenu: () => CanvasContextMenuState | null;
+  setContextMenu: (menu: CanvasContextMenuState | null) => void;
+  openSpeedPanel: (x: number, y: number, hit: HitResult | null) => void;
+  getGestureState: () => RightClickGestureState;
+  setGestureState: (state: RightClickGestureState) => void;
+  getRightPanStart: () => { x: number; y: number; panX: number; panY: number } | null;
+  setRightPanStart: (pan: { x: number; y: number; panX: number; panY: number } | null) => void;
+  getLastRightMoveEvent: () => unknown;
+  setLastRightMoveEvent: (evt: unknown) => void;
+  setSuppressNextLeftMouseUp: (v: boolean) => void;
+  setSuppressNextCanvasContextMenu: (v: boolean) => void;
+  getContextMenuHandledInPress: () => boolean;
+  setContextMenuHandledInPress: (v: boolean) => void;
+  setLastPointer: (pt: { sx: number; sy: number }) => void;
+  getLastPointer: () => { sx: number; sy: number };
+  setPointerOverCanvas: (v: boolean) => void;
+  getPointerOverCanvas: () => boolean;
+  setLastPointerRegion: (region: 'none' | 'canvas' | 'other') => void;
+  getLastPointerRegion: () => 'none' | 'canvas' | 'other';
+  setLastPointerStamp: (t: number) => void;
+  getLastPointerStamp: () => number;
+  getLastCanvasFocusStamp: () => number;
+  getCanvasFocusedNow: () => boolean;
+  getCanvasSize: () => { w: number; h: number };
+  getEditorEnv: () => {
+    activeModal: ModalId;
+    showSearch: boolean;
+    showSpeedPanel: boolean;
+    activeElement?: unknown;
+    selection: SelectionSet;
+    selectedConnection: { from: string; to: string } | null;
+    project: WorldProject;
+    tileSize: number;
+  };
+  nowMs?: () => number;
+  perfNowMs?: () => number;
+}
+
+/**
+ * Create the production Canvas right-pointer & Speed Panel key-trigger handlers.
+ * Exported here so both `<Canvas>` and real-handler unit suites share the exact code path.
+ */
+export function createCanvasRightPointerHandlers(deps: CanvasRightPointerHandlerDeps) {
+  const nowFn = deps.nowMs ?? (() => Date.now());
+  const perfNowFn = deps.perfNowMs ?? (() => performance.now());
+
+  const openObjectContextMenu = (sx: number, sy: number) => {
+    const hit = deps.findFilteredHitAt(sx, sy);
+    const actions = deps.getMenuActionsForHit(hit);
+    if (actions.length > 0) {
+      deps.setContextMenu({ x: sx, y: sy, actions, hit });
+    }
+  };
+
+  const upgradeContextMenuToSpeedPanel = () => {
+    const menu = deps.getContextMenu();
+    if (!menu) return;
+    const { x, y, hit } = menu;
+    deps.setContextMenu(null);
+    deps.setGestureState(createInitialRightClickGestureState());
+    deps.openSpeedPanel(x, y, hit);
+  };
+
+  const startRightPointer = (e: {
+    button: number;
+    ctrlKey?: boolean;
+    clientX: number;
+    clientY: number;
+    pointerId: number;
+    pointerType?: string;
+    preventDefault: () => void;
+  }): boolean => {
+    const mac = deps.isMacPlatform();
+    if (!isRightClickPointer(e, mac)) return false;
+    e.preventDefault();
+    const macCtrl = isMacCtrlClickPointer(e, mac);
+    deps.setSuppressNextLeftMouseUp(macCtrl);
+    deps.setContextMenuHandledInPress(false);
+    const { sx, sy } = deps.getScreenXY(e);
+    deps.setLastPointer({ sx, sy });
+    deps.setPointerOverCanvas(true);
+    deps.setLastPointerRegion('canvas');
+    deps.setLastPointerStamp(perfNowFn());
+    deps.setGestureState(
+      beginRightPointer(deps.getGestureState(), {
+        sx,
+        sy,
+        pointerId: e.pointerId,
+        pointerType: e.pointerType,
+        isMacCtrlClick: macCtrl,
+      }),
+    );
+    const vp = deps.getViewport();
+    deps.setRightPanStart({ x: e.clientX, y: e.clientY, panX: vp.panX, panY: vp.panY });
+    return true;
+  };
+
+  const moveRightPointerHandler = (
+    e: { clientX: number; clientY: number; pointerId: number; buttons?: number },
+  ): boolean => {
+    if (deps.getLastRightMoveEvent() === e) {
+      return deps.getGestureState().active?.pointerId === e.pointerId;
+    }
+    deps.setLastRightMoveEvent(e);
+    if (deps.getGestureState().active?.pointerId !== e.pointerId) {
+      return false;
+    }
+    const { sx, sy } = deps.getScreenXY(e);
+    const moved = moveRightPointer(
+      deps.getGestureState(),
+      { sx, sy, pointerId: e.pointerId, buttons: e.buttons },
+      deps.getOptions(),
+    );
+    deps.setGestureState(moved.state);
+    if (moved.cancelled) {
+      deps.setRightPanStart(null);
+      deps.setSuppressNextLeftMouseUp(false);
+      return false;
+    }
+    const panStart = deps.getRightPanStart();
+    if (moved.isDragging && panStart) {
+      if (deps.getContextMenu()) deps.setContextMenu(null);
+      deps.setViewport(computeRightPanViewport(panStart, e.clientX, e.clientY, deps.getViewport().zoom));
+    }
+    return true;
+  };
+
+  const finishRightPointer = (e: {
+    clientX: number;
+    clientY: number;
+    pointerId: number;
+    pointerType?: string;
+  }): boolean => {
+    if (deps.getGestureState().active?.pointerId !== e.pointerId) return false;
+    if (!deps.getContextMenuHandledInPress()) {
+      deps.setSuppressNextCanvasContextMenu(true);
+    }
+    deps.setContextMenuHandledInPress(false);
+
+    const { sx, sy } = deps.getScreenXY(e);
+    const outcome = endRightPointer(
+      deps.getGestureState(),
+      { sx, sy, pointerId: e.pointerId, pointerType: e.pointerType, now: nowFn() },
+      deps.getOptions(),
+    );
+    deps.setGestureState(outcome.state);
+    deps.setRightPanStart(null);
+
+    const currentMenu = deps.getContextMenu();
+    const effect = resolveRightPointerEndEffect(outcome, Boolean(currentMenu), currentMenu?.hit);
+    if (effect.action === 'open-speed-panel') {
+      deps.setContextMenu(null);
+      const hit = effect.prevHit !== undefined ? effect.prevHit : deps.findFilteredHitAt(effect.x, effect.y);
+      deps.openSpeedPanel(effect.x, effect.y, hit);
+    } else if (effect.action === 'open-compact-menu') {
+      openObjectContextMenu(effect.x, effect.y);
+    }
+    return true;
+  };
+
+  const handleSpeedPanelKeyTrigger = (e: KeyTriggerEventLike & { preventDefault: () => void; stopPropagation: () => void }): boolean => {
+    const env = deps.getEditorEnv();
+    const decision = resolveCanvasKeyTriggerDecision(e, {
+      options: deps.getOptions(),
+      pointerOverCanvas: deps.getPointerOverCanvas(),
+      canvasFocusedNow: deps.getCanvasFocusedNow(),
+      lastPointerRegion: deps.getLastPointerRegion(),
+      lastCanvasFocusStamp: deps.getLastCanvasFocusStamp(),
+      lastPointerStamp: deps.getLastPointerStamp(),
+      activeModal: env.activeModal,
+      showSearch: env.showSearch,
+      showSpeedPanel: env.showSpeedPanel,
+      activeElement: env.activeElement,
+    });
+    if (!decision.trigger) return false;
+
+    e.preventDefault();
+    e.stopPropagation();
+    deps.setContextMenu(null);
+    deps.setGestureState(createInitialRightClickGestureState());
+
+    if (decision.source === 'pointer') {
+      const { sx, sy } = deps.getLastPointer();
+      const hit = deps.findFilteredHitAt(sx, sy);
+      deps.openSpeedPanel(sx, sy, hit);
+      return true;
+    }
+
+    const anchor = getKeyboardSpeedPanelAnchor(
+      deps.getCanvasSize(),
+      env.selection,
+      env.selectedConnection,
+      env.project,
+      deps.getViewport(),
+      env.tileSize,
+    );
+    deps.openSpeedPanel(anchor.sx, anchor.sy, anchor.hit);
+    return true;
+  };
+
+  return {
+    openObjectContextMenu,
+    upgradeContextMenuToSpeedPanel,
+    startRightPointer,
+    moveRightPointerHandler,
+    finishRightPointer,
+    handleSpeedPanelKeyTrigger,
+  };
+}
+
+export interface CanvasRightPointerRefs {
+  canvasEl: () => { clientWidth: number; clientHeight: number } | null;
+  rightClickGesture: { current: RightClickGestureState };
+  rightPanStart: { current: { x: number; y: number; panX: number; panY: number } | null };
+  lastRightMoveEvent: { current: unknown };
+  suppressNextLeftMouseUp: { current: boolean };
+  suppressNextCanvasContextMenu: { current: boolean };
+  contextMenuHandledInPress: { current: boolean };
+  lastPointer: { current: { sx: number; sy: number } };
+  pointerOverCanvas: { current: boolean };
+  lastPointerRegion: { current: 'none' | 'canvas' | 'other' };
+  lastPointerStamp: { current: number };
+  lastCanvasFocusStamp: { current: number };
+  contextMenu: { current: CanvasContextMenuState | null };
+  setContextMenu: (menu: CanvasContextMenuState | null) => void;
+  getViewport: () => ViewportState;
+  setViewport: (vp: Partial<ViewportState>) => void;
+  getOptions: () => SpeedPanelOptions;
+  getScreenXY: (e: { clientX: number; clientY: number }) => { sx: number; sy: number };
+  findFilteredHitAt: (sx: number, sy: number) => HitResult | null;
+  getMenuActionsForHit: (hit: HitResult | null) => Array<{ id: string; label: string; icon: string }>;
+  openSpeedPanel: (x: number, y: number, hit: HitResult | null) => void;
+  getEditorEnv: CanvasRightPointerHandlerDeps['getEditorEnv'];
+  isMacPlatformFn?: () => boolean;
+}
+
+/** Adapt mutable Canvas refs directly into `createCanvasRightPointerHandlers` without per-render closure boilerplate. */
+export function buildCanvasRightPointerHandlersFromRefs(refs: CanvasRightPointerRefs) {
+  return createCanvasRightPointerHandlers({
+    isMacPlatform: refs.isMacPlatformFn ?? isMacPlatform,
+    getScreenXY: refs.getScreenXY,
+    getViewport: refs.getViewport,
+    setViewport: refs.setViewport,
+    getOptions: refs.getOptions,
+    findFilteredHitAt: refs.findFilteredHitAt,
+    getMenuActionsForHit: refs.getMenuActionsForHit,
+    getContextMenu: () => refs.contextMenu.current,
+    setContextMenu: refs.setContextMenu,
+    openSpeedPanel: refs.openSpeedPanel,
+    getGestureState: () => refs.rightClickGesture.current,
+    setGestureState: (s) => { refs.rightClickGesture.current = s; },
+    getRightPanStart: () => refs.rightPanStart.current,
+    setRightPanStart: (p) => { refs.rightPanStart.current = p; },
+    getLastRightMoveEvent: () => refs.lastRightMoveEvent.current,
+    setLastRightMoveEvent: (evt) => { refs.lastRightMoveEvent.current = evt; },
+    setSuppressNextLeftMouseUp: (v) => { refs.suppressNextLeftMouseUp.current = v; },
+    setSuppressNextCanvasContextMenu: (v) => { refs.suppressNextCanvasContextMenu.current = v; },
+    getContextMenuHandledInPress: () => refs.contextMenuHandledInPress.current,
+    setContextMenuHandledInPress: (v) => { refs.contextMenuHandledInPress.current = v; },
+    setLastPointer: (pt) => { refs.lastPointer.current = pt; },
+    getLastPointer: () => refs.lastPointer.current,
+    setPointerOverCanvas: (v) => { refs.pointerOverCanvas.current = v; },
+    getPointerOverCanvas: () => refs.pointerOverCanvas.current,
+    setLastPointerRegion: (r) => { refs.lastPointerRegion.current = r; },
+    getLastPointerRegion: () => refs.lastPointerRegion.current,
+    setLastPointerStamp: (t) => { refs.lastPointerStamp.current = t; },
+    getLastPointerStamp: () => refs.lastPointerStamp.current,
+    getLastCanvasFocusStamp: () => refs.lastCanvasFocusStamp.current,
+    getCanvasFocusedNow: () => {
+      const el = refs.canvasEl();
+      return Boolean(el && typeof document !== 'undefined' && (document.activeElement as unknown) === el);
+    },
+    getCanvasSize: () => {
+      const el = refs.canvasEl();
+      return { w: el?.clientWidth ?? 800, h: el?.clientHeight ?? 600 };
+    },
+    getEditorEnv: refs.getEditorEnv,
+  });
+}

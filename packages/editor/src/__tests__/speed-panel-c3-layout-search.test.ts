@@ -530,8 +530,15 @@ describe('Speed Panel C3 search tiers, synonyms, highlighting, unavailable rules
     expect(spHtml).toContain('data-testid="wf-sp-band-2"');
     expect(spHtml).toContain('data-testid="wf-sp-band-3"');
     expect(spHtml).toContain('data-testid="wf-sp-band-4"');
-    expect(spHtml).toContain('aria-disabled="true"');
-    expect(spHtml).toContain('Select at least 2 zones to merge');
+    // When only 1 zone exists in the world, merge-zones cannot start picking and renders disabled inline
+    useProjectStore.getState().loadProject({
+      ...structuredClone(minimalProject),
+      zones: minimalProject.zones.slice(0, 1),
+    });
+    const oneZoneHtml = renderToStaticMarkup(createElement(SpeedPanel));
+    expect(oneZoneHtml).toContain('aria-disabled="true"');
+    expect(oneZoneHtml).toContain('Select at least 2 zones to merge');
+    useProjectStore.getState().loadProject(structuredClone(minimalProject));
     useEditorStore.getState().toggleSpeedPanelEditMode();
 
     // Render HighlightedText & CommandBadgeLabel variants directly
