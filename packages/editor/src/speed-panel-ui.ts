@@ -15,6 +15,15 @@ import {
   type MacroReplacementMap,
 } from './speed-panel-macros.js';
 import {
+  buildQuickFixStepView,
+  openQuickFixFlow,
+  selectQuickFixOption,
+  stepBackQuickFixFlow,
+  type QuickFixFlowState,
+  type QuickFixRowView,
+  type QuickFixSelectStores,
+} from './speed-panel-quick-fix.js';
+import {
   advanceStepChoice,
   formatMergeZonesUndoLabel,
   openCommandStepFlow,
@@ -106,7 +115,13 @@ export interface NavEntryMacro {
   macro: SpeedPanelMacro;
 }
 
-export type NavEntry = NavEntryAction | NavEntryMacro;
+export interface NavEntryQuickFix {
+  kind: 'quick-fix';
+  domId: string;
+  quickFix: QuickFixRowView;
+}
+
+export type NavEntry = NavEntryAction | NavEntryMacro | NavEntryQuickFix;
 
 /** Flatten visible selectable rows and macros in exact keyboard navigation order. */
 export function buildNavigableEntries(
@@ -115,6 +130,9 @@ export function buildNavigableEntries(
 ): NavEntry[] {
   const items: NavEntry[] = [];
   if (view.kind === 'unsearched') {
+    if (view.quickFix) {
+      items.push({ kind: 'quick-fix', domId: 'wf-sp-opt-quick-fix', quickFix: view.quickFix });
+    }
     view.band1Deck.forEach((row, i) => {
       items.push({ kind: 'row', domId: `wf-sp-opt-b1-${i}-${row.command.id}`, row });
     });
@@ -257,6 +275,7 @@ export type SpeedPanelKeyAction =
   | { type: 'reorder-pin'; fromPinIndex: number; toPinIndex: number; nextActiveIdx: number }
   | { type: 'exec-row'; row: PaletteRow }
   | { type: 'exec-macro'; macro: SpeedPanelMacro }
+  | { type: 'open-quick-fix'; quickFix: QuickFixRowView }
   | { type: 'set-active'; nextActiveIdx: number };
 
 /** Pure keyboard router for SpeedPanel. Keeps shortcuts dead while editing group/macro inputs. */
@@ -352,6 +371,9 @@ export function resolveSpeedPanelKeyAction(
     const tag = (e.target as { tagName?: string } | null)?.tagName?.toUpperCase();
     if (tag === 'BUTTON' || inSecondaryInput) return { type: 'none' };
     const item = allNavigable[activeIdx];
+    if (item.kind === 'quick-fix') {
+      return { type: 'open-quick-fix', quickFix: item.quickFix };
+    }
     return item.kind === 'row'
       ? { type: 'exec-row', row: item.row }
       : { type: 'exec-macro', macro: item.macro };
@@ -388,6 +410,7 @@ export function dispatchSpeedPanelKeyAction(
     execute: (row: PaletteRow) => void;
     runMacro: (macro: SpeedPanelMacro) => void;
     openScalarPill?: (commandId: string, domId?: string) => void;
+    openQuickFix?: (quickFix: QuickFixRowView) => void;
   },
 ): SpeedPanelKeyAction['type'] {
   const action = resolveSpeedPanelKeyAction(e, deps.view, deps.allNavigable, deps.activeIdx);
@@ -425,6 +448,11 @@ export function dispatchSpeedPanelKeyAction(
       e.preventDefault();
       e.stopPropagation();
       deps.runMacro(action.macro);
+      return action.type;
+    case 'open-quick-fix':
+      e.preventDefault();
+      e.stopPropagation();
+      deps.openQuickFix?.(action.quickFix);
       return action.type;
     case 'none':
       return action.type;
@@ -1174,6 +1202,8 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
   addMacro?: (macro: SpeedPanelMacro) => void;
   macroReplaceFlow?: MacroReplaceFlowState | null;
   setMacroReplaceFlow?: (next: MacroReplaceFlowState | null) => void;
+  quickFixFlow?: QuickFixFlowState | null;
+  setQuickFixFlow?: (next: QuickFixFlowState | null) => void;
   executeCommand: (
     commandId: string,
     context: HitResult | null,
@@ -1306,6 +1336,30 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
     });
   };
 
+  const onOpenQuickFix = (quickFix: QuickFixRowView) => {
+    if (!deps.context || !deps.setQuickFixFlow) return;
+    deps.setQuickFixFlow(openQuickFixFlow(deps.context, quickFix.problems, deps.stores.project));
+  };
+
+  const onSelectQuickFixOption = (option: StepChoiceOption) => {
+    if (!deps.quickFixFlow || !deps.setQuickFixFlow || !deps.stores.updateProject) return;
+    selectQuickFixOption(deps.quickFixFlow, option, {
+      stores: deps.stores as QuickFixSelectStores & {
+        updateProject: (updater: (p: WorldProject) => WorldProject, label?: string) => void;
+      },
+      setQuickFixFlow: deps.setQuickFixFlow,
+      closeSpeedPanel: deps.closeSpeedPanel,
+    });
+  };
+
+  const onStepBackQuickFix = () => {
+    if (!deps.quickFixFlow || !deps.setQuickFixFlow) return;
+    stepBackQuickFixFlow(deps.quickFixFlow, {
+      setQuickFixFlow: deps.setQuickFixFlow,
+      refocusSearch: deps.refocusSearch,
+    });
+  };
+
   const scalarPropsFor = (row: PaletteRow, domId: string) => {
     if (row.command.id !== 'set-elevation' || row.disabledReason !== null) return {};
     const activeHere = deps.scalarPill !== null && (!deps.scalarPill.domId || deps.scalarPill.domId === domId);
@@ -1365,6 +1419,31 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
       });
       return;
     }
+    if (deps.quickFixFlow && deps.setQuickFixFlow) {
+      const qfFlow = deps.quickFixFlow;
+      const setQuickFixFlow = deps.setQuickFixFlow;
+      const qfView = buildQuickFixStepView(qfFlow);
+      const activeStep = qfView.stepStack.steps[qfView.stepStack.steps.length - 1];
+      const options = activeStep?.kind === 'choice' ? activeStep.options : [];
+      const filteredQfOptions = filterStepOptions(options, qfFlow.filter);
+      dispatchStepKeyAction(e, {
+        flow: qfView.stepStack,
+        filteredOptions: filteredQfOptions,
+        activeStepIdx: qfFlow.activeIdx,
+        stepFilter: qfFlow.filter,
+        onCancel: () => {
+          setQuickFixFlow(null);
+          deps.closeSpeedPanel();
+        },
+        onBack: onStepBackQuickFix,
+        onSetActiveIdx: (idx) => {
+          setQuickFixFlow({ ...qfFlow, activeIdx: idx });
+        },
+        onSelectOption: onSelectQuickFixOption,
+        onSubmitInput: () => {},
+      });
+      return;
+    }
     if (deps.stepFlow) {
       const currentStep = deps.stepFlow.steps[deps.stepFlow.steps.length - 1];
       const activeText = currentStep?.kind === 'input' ? deps.stepInputDraft : deps.stepFilter;
@@ -1391,6 +1470,7 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
       execute,
       runMacro,
       openScalarPill,
+      openQuickFix: onOpenQuickFix,
     });
   };
 
@@ -1403,6 +1483,9 @@ export function createSpeedPanelCallbacks<TRef = { current: { focus?: (opts?: { 
     runMacro,
     onSelectReplaceOption,
     onStepBackReplace,
+    onOpenQuickFix,
+    onSelectQuickFixOption,
+    onStepBackQuickFix,
     scalarPropsFor,
     handleKeyDown,
   };

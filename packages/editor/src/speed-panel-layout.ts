@@ -18,6 +18,11 @@ import {
 import type { SpeedPanelGroup, SpeedPanelMacro } from './speed-panel-actions.js';
 import { fuzzyMatch, getMacroStepCommandId } from './speed-panel-actions.js';
 import {
+  buildQuickFixRowView,
+  type ObjectProblem,
+  type QuickFixRowView,
+} from './speed-panel-quick-fix.js';
+import {
   computeDecayedFrecency,
   searchCommands,
   type AdaptiveHistoryEntry,
@@ -62,6 +67,7 @@ export interface CustomGroupSection {
 export interface UnsearchedSpeedPanelView {
   kind: 'unsearched';
   deckKey: ContextDeckKey;
+  quickFix?: QuickFixRowView | null;
   repeatLastRow?: PaletteRow;
   band1Deck: PaletteRow[];
   band2Pinned: PaletteRow[];
@@ -95,6 +101,7 @@ export interface SpeedPanelLayoutOptions {
   adaptiveHistory?: Readonly<Record<string, AdaptiveHistoryEntry>>;
   nowMs?: number;
   repeatCommand?: EditorCommand | null;
+  quickFixProblems?: readonly ObjectProblem[];
 }
 
 function toRow(
@@ -267,9 +274,14 @@ export function buildUnsearchedSpeedPanel(
       ? toRow(options.repeatCommand, ctx, bindings)
       : undefined;
 
+  const quickFix = options.quickFixProblems
+    ? buildQuickFixRowView(options.quickFixProblems)
+    : null;
+
   return {
     kind: 'unsearched',
     deckKey,
+    ...(quickFix ? { quickFix } : {}),
     ...(repeatLastRow ? { repeatLastRow } : {}),
     band1Deck,
     band2Pinned,

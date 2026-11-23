@@ -29,6 +29,8 @@ export function productionExecuteStores(): ExecuteStores {
     selectEncounter: editor.selectEncounter,
     selectConnection: editor.selectConnection,
     selectKind: editor.selectKind,
+    selectAll: editor.selectAll,
+    setFocusTarget: editor.setFocusTarget,
     clearSelection: editor.clearSelection,
     setRightTab: editor.setRightTab,
     setRightCollapsed: editor.setRightCollapsed,

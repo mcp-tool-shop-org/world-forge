@@ -10,6 +10,7 @@ import {
   getSelectionCount,
   SELECTION_KIND_KEY,
   type EditorTool,
+  type FocusTarget,
   type RightTab,
   type SelectionKind,
   type SelectionSet,
@@ -73,6 +74,8 @@ export interface ExecuteStores {
   selectEncounter: (id: string, additive: boolean) => void;
   selectConnection: (fromId: string, toId: string) => void;
   selectKind?: (type: SelectionKind, id: string, additive: boolean) => void;
+  selectAll?: (sel: SelectionSet, additive: boolean) => void;
+  setFocusTarget?: (target: FocusTarget | null) => void;
   clearSelection: () => void;
 
   setRightTab: (tab: RightTab) => void;

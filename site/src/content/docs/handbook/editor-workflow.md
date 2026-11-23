@@ -519,9 +519,15 @@ In edit mode, click **+ New Macro** to build a step macro manually, or run **Cre
 
 When a macro executes, parameterized or multi-step runs validate all referenced district, preset, and target zone IDs up front and commit as **one atomic undo entry** labelled with the macro's name. If any referenced ID no longer exists in the project or preset library, the Speed Panel prompts inline for a replacement choice (`Esc` cancels with zero project mutation, zero undo entry, and unchanged selection). Only **macroSafe** commands appear in the manual edit-mode step dropdown; if a step fails at runtime, the entire run aborts cleanly without leaving partial mutations.
 
+### Quick Fix Row
+
+When opening the Speed Panel over a zone, entity, landmark, encounter, connection, or district that has at least one matching problem from project validation (`validateProject`), dependency scanning (`scanDependencies`), or 2.5D presentation advisories (`presentationAdvisories`), Band 1 displays a **Quick Fix** row with a problem count badge (`1 problem`, `2 problems`, …) above the fixed context deck without shifting Band 1 slots or `Alt+1`–`Alt+5` shortcuts. Clean objects omit the row, and ID-less project-level advisories are not attributed to individual canvas objects. Problem lookups reuse a `WeakMap` snapshot keyed by project state computed on panel open rather than on pointer movement.
+
+Opening **Quick Fix** lists the object's verbatim problem messages in the step stack (`Issues`, `Deps`, or `Review` badges). Choosing a problem offers all matching automatic repairs from `repairsForEdge`—executing `updateProject(repair.apply, "Repair: <label>")` with the exact same project transform and undo label as the **Deps** tab—or **Show in Issues** / **Show in Deps** / **Show in Review** to open the right sidebar tab and select the object. Pressing **Esc** at any step closes without altering the project, undo stack, or selection.
+
 ### Band & Section Order
 
-When search is empty, the Speed Panel always displays: **Band 1 (Context Deck) → Band 2 (Pinned & Macros) → Band 3 (Recent Frecency, up to 3, toggleable) → Band 4 (Mode Suggested → Custom Groups → Author → Connect → Populate → Inspect → View → Export)**.
+When search is empty, the Speed Panel always displays: **Band 1 (Optional Quick Fix + Fixed Context Deck) → Band 2 (Pinned & Macros) → Band 3 (Recent Frecency, up to 3, toggleable) → Band 4 (Mode Suggested → Custom Groups → Author → Connect → Populate → Inspect → View → Export)**.
 
 ### Mode Suggestions
 
@@ -840,6 +846,7 @@ Batch actions at the top: "Clear all broken refs" and "Remove all orphans" apply
 - **Import** — the import preview shows dependency health for both project-bundle and world-project formats; auto-switches to Deps tab after importing a project with issues
 - **Export** — the bundle export section warns about broken references and links to the Deps tab for repair
 - **Validation** — the Issues tab shows "Open Deps" links on reference errors for quick cross-navigation
+- **Speed Panel Quick Fix** — objects with broken references, validation errors, or presentation advisories display a **Quick Fix** row in the Speed Panel offering the same `Repair: …` actions or direct **Show in Issues / Deps / Review** navigation
 
 ## §21 Review Mode
 

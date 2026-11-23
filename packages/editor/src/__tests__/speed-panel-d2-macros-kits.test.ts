@@ -207,7 +207,7 @@ function makeCallbacksHarness(overrides: Record<string, unknown> = {}) {
   });
 }
 
-describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit Presets', () => {
+describe('Parameterized Macros, Session Action Log & Starter Kit Presets', () => {
   beforeEach(() => {
     storage.clear();
     useProjectStore.getState().loadProject(makeRichProject());
@@ -229,9 +229,9 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     useKitStore.setState({ kits: [...BUILTIN_KITS] });
   });
 
-  // === Part 1: MacroStep args persistence & sanitization ===
+  // === MacroStep args persistence & sanitization ===
 
-  it('changed: MacroStep extends cleanly with commandId + LastPanelActionParams args and sanitizes malformed args', () => {
+  it('extends MacroStep with commandId + LastPanelActionParams args and sanitizes malformed args', () => {
     expect(sanitizeMacroStepArgs('not-obj')).toBeUndefined();
     expect(sanitizeMacroStepArgs({ kind: 'assign-district', districtId: '' })).toBeUndefined();
     expect(sanitizeMacroStepArgs({ kind: 'assign-district', districtId: 'dist-1' })).toEqual({
@@ -294,9 +294,9 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(getMacroStepCommandId({ actionId: 'a', commandId: 'duplicate' })).toBe('duplicate');
   });
 
-  // === Part 2: Create Macro from Recent Actions & bounded session log ===
+  // === Create Macro from Recent Actions & session log ===
 
-  it('changed: registers "Create Macro from Recent Actions…" and records <= 8 newest-first replayable actions without persisting', () => {
+  it('registers "Create Macro from Recent Actions…" and records <= 8 newest-first replayable actions without persisting', () => {
     const cmd = getCommandById('create-macro-from-recent');
     expect(cmd).toBeDefined();
     expect(cmd!.label).toBe('Create Macro from Recent Actions…');
@@ -331,7 +331,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     }
   });
 
-  it('changed: panel step flows, scalar pill, context menu, and direct execution record structured args directly without parsing undo labels', () => {
+  it('records panel step flows, scalar pill, context menu, and direct execution directly without parsing undo labels', () => {
     const proj = useProjectStore.getState().project;
     const zTower = proj.zones.find((z) => z.id === 'zone-tower')!;
     const hitTower = { type: 'zone' as const, id: zTower.id };
@@ -397,7 +397,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     });
   });
 
-  it('changed: Create Macro UI state creates pinned (Band 2) or unpinned (Band 4 + search) macros in chronological step order and Esc cancels without saving', () => {
+  it('creates pinned (Band 2) or unpinned (Band 4 + search) macros in chronological step order and cancels cleanly on Esc', () => {
     useEditorStore.getState().recordSessionAction({
       commandId: 'assign-district',
       label: 'Assign District: Harbor Ward',
@@ -496,9 +496,9 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(useSpeedPanelPins.getState().macros).toHaveLength(prevCount);
   });
 
-  // === Part 3: Atomic single-undo execution, parity, validation, replacement & Esc ===
+  // === Atomic single-undo execution, parity, validation & replacement ===
 
-  it('changed: parameterized macro executes atomically in ONE undo entry matching macro.name and equals hand execution', () => {
+  it('executes parameterized macro atomically in ONE undo entry matching macro.name and equals hand execution', () => {
     const regPreset = BUILTIN_REGION_PRESETS[0];
     const encPreset = BUILTIN_ENCOUNTER_PRESETS[0];
     const macro: SpeedPanelMacro = {
@@ -549,7 +549,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(normalizeGeneratedIds(macroProj)).toEqual(normalizeGeneratedIds(handProj));
   });
 
-  it('changed: failure mid-macro aborts with zero partial mutations and zero undo entries', () => {
+  it('aborts mid-macro failure with zero partial mutations and zero undo entries', () => {
     const badMacro: SpeedPanelMacro = {
       id: 'macro-fail-mid',
       name: 'Should Abort',
@@ -567,7 +567,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(useProjectStore.getState().project).toEqual(snap);
   });
 
-  it('changed: missing district/preset/zone prompts inline replacements and commits on confirm or cancels on Esc with zero mutation', () => {
+  it('prompts inline replacements for missing references and commits on confirm or cancels on Esc with zero mutation', () => {
     const encPreset = BUILTIN_ENCOUNTER_PRESETS[0];
     const regPreset = BUILTIN_REGION_PRESETS[0];
     const macroWithMissingIds: SpeedPanelMacro = {
@@ -680,9 +680,9 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(useProjectStore.getState().project.zones.find((z) => z.id === 'zone-tower')?.parentDistrictId).toBe('dist-dock');
   });
 
-  // === Part 4: Starter Kits speedPanelPresets & non-overwriting merge ===
+  // === Starter Kits speedPanelPresets & non-overwriting merge ===
 
-  it('changed: Starter Kit speedPanelPresets export, parse, drop unknown IDs with warnings, and merge without overwriting user macros/pins', () => {
+  it('exports, parses, warns on unknown IDs, and merges Starter Kit Speed Panel presets without overwriting user macros or pins', () => {
     const kitMacro: SpeedPanelMacro = {
       id: 'kit-m1',
       name: 'Shared Macro',
@@ -775,7 +775,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
 
   // === Additional Coverage: project-ops, argless atomic steps, sanitizePins, & SSR ===
 
-  it('changed: covers pure project-ops, atomic argless macro ops, SSR views, and sanitizePins', () => {
+  it('covers pure project transforms, atomic argless macro ops, SSR views, and sanitizePins', () => {
     const base = makeRichProject();
     const regRes = applyRegionPresetToProject(base, base.districts[0].id, BUILTIN_REGION_PRESETS[0], 'merge');
     expect(regRes.applied).toBe(true);
@@ -1417,9 +1417,9 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(overwriteNullEco.applied).toBe(true);
   });
 
-  // === PR #66 Fix 1 Tests (Parts 1, 2, 4, 5, 6, 7) ===
+  // === Atomic execution parity, kit opt-in export, idempotency, and sanitization caps ===
 
-  it('changed: Part 1 macro Delete on a zone with attached entity, landmark, and encounter equals Delete by hand', () => {
+  it('allows macro Delete on a zone with attached objects and equals Delete by hand', () => {
     const rich = makeRichProject();
     const targetZoneId = rich.zones[0].id;
     rich.entityPlacements.push({
@@ -1478,7 +1478,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(macroProj.encounterAnchors.some((a) => a.id === 'enc-orphan-check')).toBe(true);
   });
 
-  it('changed: Part 2 argless parameterized step never calls live stores and mid-run abort leaves project + undo unchanged', () => {
+  it('refuses argless parameterized steps without calling live stores and matches Set Elevation by hand', () => {
     const initialProj = structuredClone(useProjectStore.getState().project);
     const updateZoneSpy = vi.fn();
     const updateProjSpy = vi.fn((updater, label) => useProjectStore.getState().updateProject(updater, label));
@@ -1536,7 +1536,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(macroElevProj).toEqual(useProjectStore.getState().project);
   });
 
-  it('changed: Part 4 default kit export is opt-in and never mixes user macros into bare or pre-populated kits', () => {
+  it('keeps default kit export opt-in without mixing user macros into bare or pre-populated kits', () => {
     const userMacro: SpeedPanelMacro = { id: 'u-priv', name: 'Private User Macro', steps: [{ actionId: 'fit-content' }] };
     const currentPresets = { pins: ['fit-content', 'edit-props'], macros: [userMacro] };
 
@@ -1582,7 +1582,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(importPreviewHtml).toContain('Speed Panel pins');
   });
 
-  it('changed: Part 5 applying the same kit twice is idempotent for pins and macros', () => {
+  it('skips duplicate pins and identical macros when re-applying the same kit', () => {
     const kitMacro: SpeedPanelMacro = {
       id: 'dup-check',
       name: 'Zone Setup',
@@ -1605,7 +1605,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(useSpeedPanelPins.getState().macros.map((m) => m.name)).toEqual(['Zone Setup', 'Zone Setup (Harbor Kit)']);
   });
 
-  it('changed: Part 6 caps pins/macros/steps with warnings, keeps argless empty-canvas behavior, and matches hand merge selection rule', () => {
+  it('enforces import caps with warnings, preserves empty-canvas argless behavior, and matches hand merge selection rule', () => {
     // 1) Caps + warnings
     const regIds = [...KNOWN_ACTION_IDS];
     expect(regIds.length).toBeGreaterThan(MAX_IMPORTED_PINS);
@@ -1618,27 +1618,28 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     const manyStepsMacro = {
       id: 'many-steps',
       name: 'Too Many Steps',
-      steps: Array.from({ length: MAX_MACRO_STEPS + 4 }, () => ({ actionId: regIds[0] })),
+      steps: Array.from({ length: MAX_MACRO_STEPS + 4 }, () => ({ actionId: 'fit-content' })),
     };
     const manyMacros = Array.from({ length: MAX_IMPORTED_MACROS + 3 }, (_, i) => ({
       id: `mm-${i}`,
       name: `Macro ${i}`,
-      steps: [{ actionId: regIds[0] }],
+      steps: [{ actionId: 'fit-content' }],
     }));
     const trimmedSteps = sanitizeMacros([
       manyStepsMacro,
       { id: 'bad-args', name: 'Bad Args', steps: [{ actionId: 'set-elevation', args: { kind: 'set-elevation', elevation: 'oops' } }] },
     ], malformedStepMacroWarnings);
+    expect(trimmedSteps).toHaveLength(1);
     expect(trimmedSteps[0].steps).toHaveLength(MAX_MACRO_STEPS);
     expect(malformedStepMacroWarnings.some((w) => w.includes('Trimmed steps'))).toBe(true);
-    expect(malformedStepMacroWarnings.some((w) => w.includes('Dropped malformed macro step args'))).toBe(true);
+    expect(malformedStepMacroWarnings.some((w) => w.includes('Dropped macro step "set-elevation"'))).toBe(true);
 
     const macroCapWarnings: string[] = [];
     const cappedMacros = sanitizeMacros(manyMacros, macroCapWarnings);
     expect(cappedMacros).toHaveLength(MAX_IMPORTED_MACROS);
     expect(macroCapWarnings.some((w) => w.includes('Trimmed Speed Panel macros'))).toBe(true);
 
-    // 2) Old argless macro on empty canvas: NO target-zone prompt, aborts with context mismatch
+    // 2) Old argless macro on empty canvas: NO target-zone prompt, aborts with base disabledReason wording
     const oldArgless: SpeedPanelMacro = { id: 'old-ad', name: 'Old Assign', steps: [{ actionId: 'assign-district' }] };
     const oldVal = validateMacroExecution(
       oldArgless,
@@ -1651,7 +1652,7 @@ describe('Speed Panel D2: Parameterized Macros, Session Action Log & Starter Kit
     expect(oldVal).toEqual({ ok: true, missingRefs: [] });
     const oldRes = executeMacro(oldArgless, null, buildExecuteStores());
     expect(oldRes.abortedAt).toBe(0);
-    expect(oldRes.reason).toContain('context mismatch');
+    expect(oldRes.reason).toContain('Target a zone to assign a district');
 
     // 3) merge-zones macro matches hand selection rule
     const mergeMacro: SpeedPanelMacro = { id: 'm-merge', name: 'Merge Macro', steps: [{ actionId: 'merge-zones' }] };

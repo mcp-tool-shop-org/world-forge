@@ -49,6 +49,29 @@ export function getMacroStepCommandId(step: MacroStep): string {
   return step.commandId ?? step.actionId;
 }
 
+/** Commands supported inside atomic macro runs. */
+export const ATOMIC_MACRO_SUPPORTED_COMMANDS: ReadonlySet<string> = new Set([
+  'duplicate',
+  'delete',
+  'swap-direction',
+  'merge-zones',
+  'edit-props',
+  'assign-district',
+  'apply-preset',
+  'place-encounter',
+  'set-elevation',
+  'fit-content',
+  'open-review',
+  'export-summary',
+]);
+
+/** Commands whose macro steps require saved parameters (`MacroStep.args`). */
+export const ARG_REQUIRED_MACRO_COMMANDS: ReadonlySet<string> = new Set([
+  'set-elevation',
+  'place-encounter',
+  'apply-preset',
+]);
+
 export interface SpeedPanelMacro {
   id: string;
   name: string;

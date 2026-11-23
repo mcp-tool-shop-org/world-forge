@@ -112,7 +112,9 @@ export type StepId =
   | 'pick-encounter-type'
   | 'custom-encounter-type'
   | 'set-elevation'
-  | 'macro-replace-ref';
+  | 'macro-replace-ref'
+  | 'quick-fix-list'
+  | 'quick-fix-actions';
 
 export interface ChoicePanelStep {
   kind: 'choice';
