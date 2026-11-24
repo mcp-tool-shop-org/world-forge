@@ -52,7 +52,7 @@ Ouvrez `http://localhost:5173` pour lancer l’éditeur.
 3. **Définissez des zones** : faites glisser le curseur sur la zone de travail pour créer des zones, connectez-les et attribuez-leur des quartiers.
 4. **Placez des entités** : déposez des PNJ, des ennemis, des marchands, des rencontres et des objets dans les zones.
 5. **Vérifiez** : ouvrez l’onglet Vérification pour consulter l’état de santé, l’aperçu du contenu et exporter un résumé (Markdown/JSON).
-6. **Exportez** : ouvrez la fenêtre d’exportation pour vérifier la préparation de chaque cible (la case indique l’état le plus critique parmi les trois cibles : rouge si bloqué, orange avec les avertissements répertoriés, y compris les traductions/éléments de type de rencontre, ainsi que les entités manquantes, l’absence de connexions dans les projets multi-zones, l’absence de modèle de joueur ou l’absence de paramètres d’élévation ou de parallaxe UE5, et vert si prêt, sans rien à signaler), configurez les options de cible, puis téléchargez AI RPG Engine, UE5 ou les packs Godot 4. Les reçus post-exportation sont regroupés par taille, nombre et détails de fidélité. Également : les ensembles de projets (.wfproject.json) et les résumés de vérification.
+6. **Exportez** : ouvrez la fenêtre d’exportation pour vérifier la préparation de chaque cible (la case indique l’état le plus critique parmi les trois cibles : rouge si bloqué, orange avec les avertissements répertoriés, y compris les traductions et omissions de types de rencontre, ainsi que les entités manquantes, l’absence de connexions dans les projets multi-zones, l’absence de modèle de joueur ou l’absence de paramètres d’élévation ou de parallaxe UE5, et vert si prêt, sans rien à signaler), configurez les options de cible, puis téléchargez AI RPG Engine, UE5 ou les packs Godot 4. Les reçus post-exportation sont regroupés par taille, nombre et détails de fidélité. Également : les ensembles de projets (.wfproject.json) et les résumés de vérification.
 
 ### Exportation en ligne de commande
 
@@ -85,7 +85,7 @@ Types TypeScript principaux et validation pour la création de mondes.
 - **Système de mode** : `AuthoringMode` (7 modes), profils de grille/connexion/validation spécifiques au mode
 - **Présentation** : `WorldPresentation` facultatif sur `WorldProject` : vue dimétrique, empreinte de tuile, cellules d’ancrage de zone, plans de sol et une ligne d’occupation par acteur. `presentationAdvisories()` exécute huit règles de vérification, dont la plus importante : une personne dessinée dans une pièce est placée à l’extérieur de cette pièce dans la simulation.
 - **Validation** : `validateProject()` (89 vérifications structurelles avec recherches O(n) basées sur une carte, `warningCount`), `advisoryValidation()` (suggestions spécifiques au mode, exhaustivité des métadonnées, nommage des ressources). v4.0 JSON qui omet les tableaux requis ultérieurement est accepté après `normalizeProjectShape()` / `stampProjectSchemaVersion()`.
-- **Unions fermées sur le tas** : `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS` et le reste des ensembles `VALID_*` sont exportés à partir de `@world-forge/schema`.
+- **Unions fermées à l’export racine** : `VALID_CONNECTION_KINDS`, `VALID_ASSET_KINDS`, `VALID_ENTITY_ROLES`, `VALID_ITEM_SLOTS` et le reste des ensembles `VALID_*` sont exportés à partir de `@world-forge/schema`.
 - **Utilitaires** : `assembleSceneData()` (liaisons visuelles avec détection des ressources manquantes), `scanDependencies()` (analyse du graphe de référence), `buildReviewSnapshot()` (classification de l’état de santé)
 
 ### @world-forge/export-unreal
@@ -179,7 +179,7 @@ Application web React 19 + Vite avec gestion de l’état par Zustand, annulatio
 
 #### Importation et exportation
 
-- **ContentPack** — exportation prenant en compte la cible vers le moteur AI RPG, Unreal Engine 5 ou Godot 4 avec des badges d’état par cible, des options configurables (taille des tuiles, préfixes de scène, filtrage des ensembles) et des reçus après le téléchargement
+- **ContentPack** — exportation prenant en compte la cible vers AI RPG Engine, Unreal Engine 5 ou Godot 4 avec des badges d’état par cible, des options configurables (taille des tuiles, préfixes de scène, filtrage des ensembles) et des reçus après le téléchargement
 - **Ensembles de projet** — fichiers `.wfproject.json` portables avec des métadonnées de provenance et des informations sur les dépendances
 - **Ensembles de kits** — `.wfkit.json` exportation/importation avec validation, gestion des collisions et suivi de la provenance
 - **Importation** — détecte automatiquement 4 formats avec un rapport de fidélité structuré
@@ -273,7 +273,7 @@ Les exportations ciblent trois moteurs :
 
 ### Le contrat de contenu Forge→Engine
 
-Un exporteur en fonctionnement n’est pas la même chose qu’un monde qui démarre. v4.6.0 comble cet écart pour la ligne de développement du moteur de RPG en IA, et — de manière plus utile — transforme l’écart restant en un nombre plutôt qu’en une supposition.
+Un exporteur en fonctionnement n’est pas la même chose qu’un monde qui démarre. v4.6.0 comble cet écart pour la voie AI RPG Engine, et — de manière plus utile — transforme l’écart restant en un nombre plutôt qu’en une supposition.
 
 - **Une table d’exportation mesurée** (`docs/c0-alignment/`) : un parcours de différences parcourt chaque champ créé et enregistre ceux qui atteignent réellement l’environnement d’exécution. Elle est générée, enregistrée et vérifiée à chaque test, de sorte que « ce qui survit à l’exportation » peut être vérifié plutôt que simplement affirmé.
 - **Un manifeste honnête** : le paquet émis contient une plage de versions de moteur réelle, des identifiants de modules réels, un hachage de contenu et des conditions de sortie compilées. Les identifiants de modules sont basés sur un contenu réel : un paquet sans stations d’artisanat ne prétend plus posséder le module d’artisanat.
@@ -296,11 +296,11 @@ Un exporteur en fonctionnement n’est pas la même chose qu’un monde qui dém
 
 Nécessite `ai-rpg-engine` `^3.12.2`.
 
-**Lacunes connues par rapport au moteur RPG en IA 3.12.2** (à partir d’un test de démarrage le 2026-11-24). L’exportation de cet exemple, Chapel Threshold, se charge dans le moteur publié, et le déplacement entre ses zones fonctionne. Les parties suivantes ne sont pas encore disponibles :
+**Lacunes connues par rapport à AI RPG Engine 3.12.2** (d’après un test de démarrage du 2026-11-24). L’exportation dans cette version de l’exemple Chapel Threshold se charge dans le moteur publié, et le déplacement entre ses zones est jouable. Ces éléments n’atteignent pas encore le jeu en cours :
 
 - **Sorties contrôlées.** Le moteur se déplace uniquement le long de `zones[].neighbors`. Il supprime `zones[].exits` et le `connections` du paquet lorsqu’il charge le paquet, de sorte qu’une zone que vous ne pouvez atteindre qu’en passant par une sortie contrôlée ne peut pas y être entrée. Dans l’exemple, il s’agit de la crypte et de l’événement qui s’y déroule.
 - **Comportement des PNJ.** Le moteur résout le `aiProfile` d’une entité uniquement à partir des profils que son hôte transmet, ou à partir du `entityAi` d’un paquet, ce que cet exportateur n’écrit pas encore. Jusqu’à ce qu’il le fasse, les PNJ exportés restent immobiles.
-- **Dialogues via le fichier annexe.** Les dialogues se jouent lorsqu’un hôte charge le paquet en cours d’exécution, comme dans la recette de démarrage JSON du moteur. Le fichier annexe du moteur les supprime lorsqu’il charge le paquet.
+- **Dialogues via le sidecar.** Les dialogues sont joués lorsqu’un hôte démarre le paquet dans le même processus (in-process), comme dans la recette de démarrage JSON du moteur. Le processus sidecar du moteur les ignore lorsqu’il charge le paquet.
 - **Autres données du paquet.** Le moteur les supprime lorsqu’il charge le paquet, et nomme chacune d’elles avec sa raison : descriptions et dangers des zones, présence des factions, points chauds de pression, points de génération, modèle du joueur, tables de butin, points de repère, strates et liens de strates, transitions, stations d’artisanat, nœuds de marché, bâtiments, centres, bastions, catalogue de construction et arbres de progression.
 
 ### Le contrat de rendu

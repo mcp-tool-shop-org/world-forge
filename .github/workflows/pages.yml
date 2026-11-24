@@ -17,10 +17,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # F-96633795: was ${{ github.workflow }}-${{ github.ref }}. A release-tag
-  # deploy (refs/tags/v*) and a main push could race two production CDN
-  # cutovers. Single production key serializes every deploy onto the live
-  # Pages site.
+  # F-96633795: was ${{ github.workflow }}-${{ github.ref }}. One production key
+  # serializes every deploy onto the live Pages site, so two overlapping main
+  # pushes, or a main push and a workflow_dispatch run, never race two CDN
+  # cutovers. (Release-tag deploys are gone since v4.10.0; see on: above.)
   group: pages
   # F-1b8b3bf8: was `true`. Same class as release.yml F-f4cbf9e9 — an in-flight
   # Pages deploy is irreversible-ish (artifact wired to the CDN, then the

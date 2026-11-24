@@ -52,7 +52,7 @@ Apri `http://localhost:5173` per avviare l'editor.
 3. **Dipingi le zone:** trascina sulla tela per creare zone, connetterle e assegnare i distretti.
 4. **Posiziona le entità:** trascina NPC, nemici, mercanti, incontri e oggetti sulle zone.
 5. **Verifica:** apri la scheda di verifica per lo stato di salute, la panoramica dei contenuti e l'esportazione riepilogativa (Markdown/JSON).
-6. **Esporta:** apri la finestra modale di esportazione per controllare lo stato di preparazione per ciascun target (la casella mostra lo stato peggiore tra tutti e tre i target: rosso quando è bloccato, giallo con avvisi elencati, inclusi i tipi di incontro e gli oggetti, nonché il posizionamento mancante delle entità, l'assenza di connessioni nei progetti multi-zona, il modello giocatore mancante o le impostazioni di elevazione o parallasse mancanti di UE5, e verde quando è pronto e non ci sono problemi), configura le opzioni di target, quindi scarica AI RPG Engine, UE5 o i pacchetti Godot 4. Le ricevute post-esportazione vengono raggruppate per dimensione, conteggio e dettagli di fedeltà. Inoltre: pacchetti di progetto (.wfproject.json) e riepiloghi di verifica.
+6. **Esporta:** apri la finestra modale di esportazione per controllare lo stato di preparazione per ciascun target (la casella mostra lo stato peggiore tra tutti e tre i target: rosso quando è bloccato, giallo con avvisi elencati, incluse le traduzioni e le omissioni dei tipi di incontro, nonché il posizionamento mancante delle entità, l'assenza di connessioni nei progetti multi-zona, il modello giocatore mancante o le impostazioni di elevazione o parallasse mancanti di UE5, e verde quando è pronto e non ci sono problemi), configura le opzioni di target, quindi scarica AI RPG Engine, UE5 o i pacchetti Godot 4. Le ricevute post-esportazione vengono raggruppate per dimensione, conteggio e dettagli di fedeltà. Inoltre: pacchetti di progetto (.wfproject.json) e riepiloghi di verifica.
 
 ### Esportazione da riga di comando (CLI)
 
@@ -274,7 +274,7 @@ L'esportazione è destinata a tre motori:
 ### Il contratto di contenuto Forge→Engine
 
 Un esportatore in esecuzione non è la stessa cosa di un mondo che viene avviato. v4.6.0 colma
-questa lacuna per la linea di sviluppo del motore AI RPG e, cosa ancora più utile, trasforma la lacuna rimanente
+questa lacuna per la linea di AI RPG Engine e, cosa ancora più utile, trasforma la lacuna rimanente
 in un numero anziché in un'ipotesi.
 
 - **Una tabella di esportazione misurata** (`docs/c0-alignment/`): un'analisi del percorso a foglia esamina
@@ -302,15 +302,15 @@ approssimato o eliminato. Quando un campo non può essere trasferito, l'esportaz
 | `ambush`, `patrol`, `horde`, `duel` | invariato | invariato, nessuna voce di fedeltà |
 | qualsiasi altra stringa personalizzata | rifiutato (`exportToEngine` restituisce `success: false` insieme a `listAiRpgEncounterBlockers`, l'interfaccia a riga di comando termina con codice 1) | bloccato |
 
-- **ID degli oratori del dialogo nell'esportazione AI RPG:** `@world-forge/export-ai-rpg` rifiuta le voci `dialogues[].speakers` non risolte per nome (`exportToEngine` restituisce `success: false` con `speakerBlockers` insieme a `listAiRpgDialogueSpeakerBlockers`, la modalità di esportazione viene bloccata, l'interfaccia a riga di comando termina con codice `1`), indicando sia l'ID del dialogo che l'oratore non risolto. Un nodo con `speaker: ''` viene popolato solo dall'unico oratore elencato nel dialogo quando ogni entità che contiene quel dialogo (`dialogueId`) è l'oratore elencato o nessuna entità lo contiene; viene rifiutato per ID del dialogo, ID del nodo e ID dell'entità portante quando una qualsiasi entità portante è un'entità diversa e viene rifiutato per ID del dialogo e ID del nodo quando `dialogues[].speakers` ha zero o più voci. Gli oratori dei nodi non vuoti vengono esportati invariati.
+- **ID degli oratori del dialogo nell'esportazione AI RPG:** `@world-forge/export-ai-rpg` rifiuta le voci `dialogues[].speakers` non risolte per nome (`exportToEngine` restituisce `success: false` con `speakerBlockers` insieme a `listAiRpgDialogueSpeakerBlockers`, la finestra modale di esportazione viene bloccata, l'interfaccia a riga di comando termina con codice `1`), indicando sia l'ID del dialogo che l'oratore non risolto. Un nodo con `speaker: ''` viene popolato solo dall'unico oratore elencato nel dialogo quando ogni entità che contiene quel dialogo (`dialogueId`) è l'oratore elencato o nessuna entità lo contiene; viene rifiutato per ID del dialogo, ID del nodo e ID dell'entità portante quando una qualsiasi entità portante è un'entità diversa e viene rifiutato per ID del dialogo e ID del nodo quando `dialogues[].speakers` ha zero o più voci. Gli oratori dei nodi non vuoti vengono esportati invariati.
 
 Richiede `ai-rpg-engine` `^3.12.2`.
 
 **Lacune note rispetto a AI RPG Engine 3.12.2** (da un test di avvio del 24-11-2026). L'esportazione di questa versione del campione Chapel Threshold viene caricata nel motore pubblicato e il passaggio tra le sue zone funziona. Queste parti non raggiungono ancora l'ambiente di gioco:
 
-- **Uscite vincolate:** il motore si muove solo lungo `zones[].neighbors`. Elimina `zones[].exits` e `connections` del pacchetto quando carica il pacchetto, quindi una zona che si raggiunge solo attraverso un'uscita vincolata non può essere inserita lì. Nel campione, si tratta della cripta e dell'incontro al suo interno.
+- **Uscite vincolate:** il motore si muove solo lungo `zones[].neighbors`. Elimina `zones[].exits` e `connections` del pacchetto quando carica il pacchetto, quindi non è possibile entrare in una zona raggiungibile solo attraverso un'uscita vincolata. Nel campione, si tratta della cripta e dell'incontro al suo interno.
 - **Comportamento dei PNG:** il motore risolve l'attributo `aiProfile` di un'entità solo dai profili che l'host passa, o da `entityAi` del pacchetto, che questo esportatore non scrive ancora. Fino a quando non lo farà, i PNG esportati rimarranno inattivi.
-- **Dialoghi tramite il file secondario:** i dialoghi vengono riprodotti quando un host carica il pacchetto in-process, come nella ricetta di avvio JSON del motore. Il file secondario del motore li elimina quando carica il pacchetto.
+- **Dialoghi tramite il sidecar:** i dialoghi vengono riprodotti quando un host avvia il pacchetto in-process, come nella ricetta di avvio JSON del motore. Il processo sidecar del motore li scarta quando carica il pacchetto.
 - **Altri dati del pacchetto:** il motore li elimina quando carica il pacchetto e assegna a ciascuno di essi un motivo: descrizioni e pericoli delle zone, presenze delle fazioni, punti caldi di pressione, punti di generazione, il modello del giocatore, tabelle di bottino, punti di riferimento, strati e collegamenti tra strati, transizioni, stazioni di creazione, nodi di mercato, edifici, hub, fortezze, il catalogo di costruzione e gli alberi di progressione.
 
 ### Il contratto di rendering

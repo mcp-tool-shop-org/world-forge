@@ -52,7 +52,7 @@ Abra `http://localhost:5173` para iniciar el editor.
 3. **Pinte zonas:** arrastre sobre el lienzo para crear zonas, conéctelas y asígneles distritos.
 4. **Coloque entidades:** agregue PNJ, enemigos, comerciantes, encuentros y objetos a las zonas.
 5. **Revise:** abra la pestaña de revisión para ver el estado de salud, la descripción general del contenido y la exportación resumida (Markdown/JSON).
-6. **Exporte:** abra el modal de exportación para inspeccionar la preparación por destino (el cuadro muestra el peor estado de los tres destinos: rojo cuando está bloqueado, ámbar con las advertencias enumeradas, incluidas las traducciones/objetos del tipo de encuentro, así como las entidades faltantes, sin conexiones en los proyectos de múltiples zonas, plantilla de jugador faltante o configuración de elevación o paralaje faltante de UE5, y verde cuando está listo y no hay nada que informar), configure las opciones de destino y luego descargue los paquetes de AI RPG Engine, UE5 o Godot 4. Los recibos posteriores a la exportación se acumulan con detalles de tamaño, recuento y fidelidad. También: paquetes de proyectos (.wfproject.json) y resúmenes de revisión.
+6. **Exporte:** abra el modal de exportación para inspeccionar la preparación por destino (el cuadro muestra el peor estado de los tres destinos: rojo cuando está bloqueado, ámbar con las advertencias enumeradas, incluidas las traducciones y los descartes de tipos de encuentro, así como las entidades faltantes, sin conexiones en los proyectos de múltiples zonas, plantilla de jugador faltante o configuración de elevación o paralaje faltante de UE5, y verde cuando está listo y no hay nada que informar), configure las opciones de destino y luego descargue los paquetes de AI RPG Engine, UE5 o Godot 4. Los recibos posteriores a la exportación se acumulan con detalles de tamaño, recuento y fidelidad. También: paquetes de proyectos (.wfproject.json) y resúmenes de revisión.
 
 ### Exportación desde la línea de comandos
 
@@ -108,7 +108,7 @@ Convierte un `WorldProject` en un paquete de contenido de Godot 4 con texto de e
 - **Mosaicos + interiores:** `TileMapLayer` + `TileSet` (`tile_map_data` horneado para conjuntos de mosaicos de imagen), colisión de pared por celda `StaticBody2D` y colocación de accesorios `Node2D`.
 - **Ciudad:** mercados + estaciones de artesanía y edificios (huellas `StaticBody2D`) / centros / fortalezas como marcadores de posición `Node2D`, todos los cuales llevan sus datos como metadatos.
 - **Modelado del mundo:** estratos verticales (bandas `z_index` por zona + `StratumLink` conectores), peligros tipificados como regiones `Area2D` y metadatos de entrada de zona.
-- **Informe de fidelidad:** seguimiento estructurado de los datos sin pérdidas, aproximados y eliminados, verificados con el motor real de Godot 4 (humo sin conexión, 36 aserciones).
+- **Informe de fidelidad:** seguimiento estructurado de los datos sin pérdidas, aproximados y eliminados, verificados con el motor real de Godot 4 (prueba de humo sin interfaz gráfica, 36 aserciones).
 - **Advertencias de presentación:** se transmite un bloque `presentation` creado sin cambios y sus advertencias se muestran en `warnings[]`, por lo que un desacuerdo entre el dibujo y la simulación es un hallazgo de exportación en lugar de una sorpresa en la pantalla.
 - **Versión del formato:** `GODOT_PACK_FORMAT_VERSION` 1.1.0 (`files`, `zoneGates`, `migrateGodotPack`)
 
@@ -179,7 +179,7 @@ Aplicación web React 19 + Vite con gestión de estado de Zustand, función de d
 
 #### Importar y exportar
 
-- **ContentPack** — exportación con conocimiento del objetivo al motor AI RPG, Unreal Engine 5 o Godot 4, con insignias de preparación por objetivo, opciones configurables (tamaño de la tesela, prefijos de escena, filtrado de paquetes) y recibos posteriores a la descarga.
+- **ContentPack** — exportación con conocimiento del objetivo a AI RPG Engine, Unreal Engine 5 o Godot 4, con insignias de preparación por objetivo, opciones configurables (tamaño de la tesela, prefijos de escena, filtrado de paquetes) y recibos posteriores a la descarga.
 - **Paquetes de proyecto** — archivos `.wfproject.json` portátiles con metadatos de procedencia e información de dependencias.
 - **Paquetes de kit** — `.wfkit.json` exportación/importación con validación, gestión de colisiones y seguimiento de la procedencia.
 - **Importar** — detecta automáticamente 4 formatos con informes de fidelidad estructurados.
@@ -273,7 +273,7 @@ Las exportaciones se dirigen a tres motores:
 
 ### El contrato de contenido Forge→Motor
 
-Un exportador en funcionamiento no es lo mismo que un mundo que se inicia. v4.6.0 cierra esa brecha para la línea de motores de juegos de rol de IA, y —de manera más útil— convierte la brecha restante en un número en lugar de una suposición.
+Un exportador en funcionamiento no es lo mismo que un mundo que se inicia. v4.6.0 cierra esa brecha para la vía de AI RPG Engine, y —de manera más útil— convierte la brecha restante en un número en lugar de una suposición.
 
 - **Una tabla de exportación medida** (`docs/c0-alignment/`): un recorrido de diferencias de ruta de hoja analiza cada campo creado y registra cuáles realmente llegan al tiempo de ejecución. Se genera, se incluye y se verifica en cada prueba, por lo que "lo que sobrevive a la exportación" es auditable en lugar de simplemente afirmado.
 - **Un manifiesto honesto:** el paquete emitido contiene un rango de versiones de motor real, identificadores de módulos reales, un hash de contenido y condiciones de salida compiladas. Los identificadores de módulos se basan en contenido real: un paquete sin estaciones de creación ya no reclama el módulo de creación.
@@ -292,15 +292,15 @@ Un exportador en funcionamiento no es lo mismo que un mundo que se inicia. v4.6.
 | `ambush`, `patrol`, `horde`, `duel` | sin cambios | sin cambios, sin entrada de fidelidad |
 | cualquier otra cadena personalizada | rechazado (`exportToEngine` devuelve `success: false` junto con `listAiRpgEncounterBlockers`, salida de la CLI 1) | bloqueado |
 
-- **Identificadores de oradores de diálogo en la exportación del juego de rol de IA:** `@world-forge/export-ai-rpg` rechaza las entradas de `dialogues[].speakers` no resueltas por nombre (`exportToEngine` devuelve `success: false` con `speakerBlockers` junto con `listAiRpgDialogueSpeakerBlockers`, el modo de exportación bloqueado, la salida de la CLI `1`), nombrando tanto el identificador de diálogo como el orador no resuelto. Un nodo con `speaker: ''` se completa a partir del único orador listado del diálogo solo cuando cada entidad que contiene ese diálogo (`dialogueId`) es ese orador listado o ninguna entidad lo contiene; se rechaza por el identificador de diálogo, el identificador de nodo y el identificador de entidad portadora cuando cualquier portador es una entidad diferente, y se rechaza por el identificador de diálogo y el identificador de nodo cuando `dialogues[].speakers` tiene cero o múltiples entradas. Los oradores de nodo no vacíos se exportan sin cambios.
+- **Identificadores de oradores de diálogo en la exportación del juego de rol de IA:** `@world-forge/export-ai-rpg` rechaza las entradas de `dialogues[].speakers` no resueltas por nombre (`exportToEngine` devuelve `success: false` con `speakerBlockers` junto con `listAiRpgDialogueSpeakerBlockers`, el modal de exportación bloqueado, la salida de la CLI `1`), nombrando tanto el identificador de diálogo como el orador no resuelto. Un nodo con `speaker: ''` se completa a partir del único orador listado del diálogo solo cuando cada entidad que contiene ese diálogo (`dialogueId`) es ese orador listado o ninguna entidad lo contiene; se rechaza por el identificador de diálogo, el identificador de nodo y el identificador de entidad portadora cuando cualquier portador es una entidad diferente, y se rechaza por el identificador de diálogo y el identificador de nodo cuando `dialogues[].speakers` tiene cero o múltiples entradas. Los oradores de nodo no vacíos se exportan sin cambios.
 
 Requiere `ai-rpg-engine` `^3.12.2`.
 
-**Brechas conocidas con respecto al motor de juego de rol de IA 3.12.2** (a partir de una prueba de inicio el 24 de noviembre de 2026). La exportación de esta versión de la muestra Chapel Threshold se carga en el motor publicado, y moverse entre sus zonas funciona. Estas partes aún no llegan a la jugabilidad:
+**Brechas conocidas con respecto a AI RPG Engine 3.12.2** (a partir de una prueba de inicio el 24 de noviembre de 2026). La exportación de esta versión de la muestra Chapel Threshold se carga en el motor publicado, y moverse entre sus zonas funciona. Estas partes aún no llegan a la jugabilidad:
 
 - **Salidas controladas:** el motor se mueve solo a lo largo de `zones[].neighbors`. Elimina `zones[].exits` y el `connections` del paquete cuando carga el paquete, por lo que una zona a la que solo se puede llegar a través de una salida controlada no se puede ingresar allí. En la muestra, esa es la cripta y el encuentro en su interior.
 - **Comportamiento de los NPC:** el motor resuelve el `aiProfile` de una entidad solo a partir de los perfiles que su host pasa, o del `entityAi` de un paquete, que este exportador aún no escribe. Hasta que lo haga, los NPC exportados permanecerán inactivos.
-- **Diálogos a través del archivo adjunto:** los diálogos se reproducen cuando un host inicia el paquete en proceso, como en la receta de inicio JSON del motor. El archivo adjunto del motor los elimina cuando carga el paquete.
+- **Diálogos a través del sidecar:** los diálogos funcionan cuando un host inicia el paquete en el mismo proceso, como en la receta de inicio JSON del motor. El proceso sidecar del motor los descarta cuando carga el paquete.
 - **Otros datos del paquete:** el motor los elimina cuando carga el paquete y nombra cada uno con su motivo: descripciones y peligros de las zonas, presencias de facciones, puntos críticos de presión, puntos de generación, la plantilla del jugador, tablas de botín, puntos de referencia, estratos y enlaces de estratos, transiciones, estaciones de creación, nodos de mercado, edificios, centros, fortalezas, el catálogo de construcción y los árboles de progresión.
 
 ### El contrato de dibujo
