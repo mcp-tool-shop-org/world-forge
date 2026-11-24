@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "pins": {
+    "11f3663e8d775677:hi": {
+      "lang": "hi",
+      "source": "Built by [MCP Tool Shop](https://mcp-tool-shop.github.io/)",
+      "translation": "[MCP Tool Shop](https://mcp-tool-shop.github.io/) द्वारा निर्मित",
+      "pinnedAt": "2026-11-24T07:52:50.016Z"
+    },
+    "11f3663e8d775677:ja": {
+      "lang": "ja",
+      "source": "Built by [MCP Tool Shop](https://mcp-tool-shop.github.io/)",
+      "translation": "[MCP Tool Shop](https://mcp-tool-shop.github.io/)によって作成",
+      "pinnedAt": "2026-11-24T07:52:49.889Z"
+    },
+    "11f3663e8d775677:zh": {
+      "lang": "zh",
+      "source": "Built by [MCP Tool Shop](https://mcp-tool-shop.github.io/)",
+      "translation": "由 [MCP Tool Shop](https://mcp-tool-shop.github.io/) 构建",
+      "pinnedAt": "2026-11-24T07:52:50.130Z"
+    },
+    "35ac7b1e0eb6eb5c:hi": {
+      "lang": "hi",
+      "source": "- **Dialogue speaker IDs on AI RPG export** — `@world-forge/export-ai-rpg` refuses unresolved `dialogues[].speakers` entries by name (`exportToEngine` returns `success: false` with `speakerBlockers` alongside `listAiRpgDialogueSpeakerBlockers`, Export modal blocked, CLI exit `1`), naming both the dialogue ID and the unresolved speaker. A node with `speaker: ''` fills from the dialogue's single listed speaker only when every entity carrying that dialogue (`dialogueId`) is that listed speaker or no entity carries it; it is refused by dialogue ID, node ID, and carrier entity ID when any carrier is a different entity, and refused by dialogue ID and node ID when `dialogues[].speakers` has zero or multiple entries. Non-empty node speakers export unchanged.",
+      "translation": "- **AI RPG एक्सपोर्ट में संवाद वक्ता ID** — `@world-forge/export-ai-rpg` अनसुलझी `dialogues[].speakers` प्रविष्टियों को नाम लेकर अस्वीकार करता है (`exportToEngine` `listAiRpgDialogueSpeakerBlockers` के साथ `speakerBlockers` सहित `success: false` लौटाता है, एक्सपोर्ट मोडल अवरुद्ध हो जाता है, CLI `1` के साथ बाहर निकलता है), और संवाद ID तथा अनसुलझे वक्ता दोनों का नाम बताता है। `speaker: ''` वाला नोड संवाद में सूचीबद्ध एकमात्र वक्ता से तभी भरा जाता है जब उस संवाद (`dialogueId`) को रखने वाली हर इकाई वही सूचीबद्ध वक्ता हो, या कोई भी इकाई उसे न रखती हो; जब उसे रखने वाली कोई इकाई अलग हो, तो उसे संवाद ID, नोड ID और उस इकाई की ID के साथ अस्वीकार किया जाता है, और जब `dialogues[].speakers` में शून्य या एक से अधिक प्रविष्टियाँ हों, तो संवाद ID और नोड ID के साथ अस्वीकार किया जाता है। गैर-रिक्त नोड वक्ता बिना बदलाव के एक्सपोर्ट होते हैं।",
+      "pinnedAt": "2026-11-24T07:52:20.852Z"
+    },
+    "35ac7b1e0eb6eb5c:ja": {
+      "lang": "ja",
+      "source": "- **Dialogue speaker IDs on AI RPG export** — `@world-forge/export-ai-rpg` refuses unresolved `dialogues[].speakers` entries by name (`exportToEngine` returns `success: false` with `speakerBlockers` alongside `listAiRpgDialogueSpeakerBlockers`, Export modal blocked, CLI exit `1`), naming both the dialogue ID and the unresolved speaker. A node with `speaker: ''` fills from the dialogue's single listed speaker only when every entity carrying that dialogue (`dialogueId`) is that listed speaker or no entity carries it; it is refused by dialogue ID, node ID, and carrier entity ID when any carrier is a different entity, and refused by dialogue ID and node ID when `dialogues[].speakers` has zero or multiple entries. Non-empty node speakers export unchanged.",
+      "translation": "- **AI RPGエクスポートにおけるダイアログ話者ID** - `@world-forge/export-ai-rpg`は、解決できない`dialogues[].speakers`のエントリを名前で示して拒否し（`exportToEngine`は`listAiRpgDialogueSpeakerBlockers`とともに、`speakerBlockers`を含む`success: false`を返し、エクスポートモーダルはブロックされ、CLIは`1`で終了します）、ダイアログIDと解決できない話者の両方を示します。`speaker: ''`のノードは、そのダイアログを持つすべてのエンティティ（`dialogueId`）がその記載された話者である場合、またはどのエンティティもそのダイアログを持たない場合にのみ、ダイアログに記載された唯一の話者で補完されます。そのダイアログを持つエンティティのいずれかが別のエンティティである場合は、ダイアログID、ノードID、およびそのエンティティのIDを示して拒否され、`dialogues[].speakers`のエントリが0個または複数の場合は、ダイアログIDとノードIDを示して拒否されます。空でないノードの話者は、変更されずにエクスポートされます。",
+      "pinnedAt": "2026-11-24T07:52:20.713Z"
+    }
+  }
+}
