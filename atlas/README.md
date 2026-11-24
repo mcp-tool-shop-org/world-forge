@@ -1,21 +1,21 @@
 # world-forge: how it works
 
-Mapped at 2026-11-23 from commit e52a33e by Atlas 1.26.0.
+Mapped at 2026-11-24 from commit d153a67 by Atlas 1.26.0.
 
 ## What this is
 
 15 parts, mostly TypeScript (537 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.
 
-## What changed since 2026-11-23 (c2baa5a)
+## What changed since 2026-11-23 (e52a33e)
 
-- dogfood/output/chapel-threshold-exportable.json is now written by dogfood/chapel-threshold.ts.
-- 8 files changed content, across 5 parts.
+- Deploy site to GitHub Pages no longer starts when a release is published.
+- 1 file added and 25 changed content, across 10 parts.
 
 ## What comes in
 
 1. **CI.** On a pull request; on a push; or by hand. Runs scripts/check-pack.mjs, scripts/sync-version.mjs, dogfood/__tests__/ and 232 more; checks dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts, dogfood/export-stage-fixture.ts and 515 more.
 2. **Release.** When a release is published. Runs scripts/sync-version.mjs, dogfood/__tests__/, packages/editor/src/__tests__/ and 120 more; checks dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts, dogfood/export-stage-fixture.ts and 515 more.
-3. **Deploy site to GitHub Pages.** On a push to main touching 3 paths; when a release is published; or by hand. On a push to main or by hand, it runs site/astro.config.mjs and site/src/.
+3. **Deploy site to GitHub Pages.** On a push to main touching 3 paths; or by hand. On main, it runs site/astro.config.mjs and site/src/.
 4. **@world-forge/export-ai-rpg** (the package people import). Loads packages/export-ai-rpg/src/index.ts.
 5. **@world-forge/export-godot** (the package people import). Loads packages/export-godot/src/index.ts.
 6. **@world-forge/export-unreal** (the package people import). Loads packages/export-unreal/src/index.ts, packages/export-unreal/src/diff.ts, packages/export-unreal/src/signing.ts and 1 more.
@@ -40,7 +40,7 @@ Mapped at 2026-11-23 from commit e52a33e by Atlas 1.26.0.
 
 **Release** runs scripts/sync-version.mjs, dogfood/__tests__/, packages/editor/src/__tests__/ and 120 more, checks dogfood/chapel-threshold-unreal.ts, dogfood/chapel-threshold.ts, dogfood/export-stage-fixture.ts and 515 more, reaches the repository root, writes to docs/c0-alignment/export-table.json, docs/c0-alignment/export-table.md, docs/c0-alignment/fixture-manifest.json and docs/c0-alignment/fixture-pack.json, publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm, and uploads dist-tarballs/*.tgz to the release.
 
-**Deploy site to GitHub Pages** runs site/astro.config.mjs and site/src/ on a push to main or by hand, and deploys the site on a push to main or by hand.
+**Deploy site to GitHub Pages** runs site/astro.config.mjs and site/src/ on main, and deploys the site on main.
 
 **@world-forge/export-ai-rpg** (the package people import) loads packages/export-ai-rpg/src/index.ts and reaches schema.
 
