@@ -120,6 +120,8 @@ export const config: SiteConfig = {
         ['Content-pack manifest truth (real semver range, content hash, gated module ids)', 'Shipped (v4.6.0)'],
         ['Space vocabulary crossing (compiled spawn conditions, hazards, entry gates, scene descriptors)', 'Shipped (v4.6.0)'],
         ['Drawing contract (presentation block: dimetric cells, zone anchors, occupancy, advisories)', 'Shipped (v4.9.0)'],
+        ['Speed Panel: Q key trigger, four-band layout, RPG search, Quick Fix row, macros from recent actions, scope chips', 'Shipped (v4.10.0)'],
+        ['AI RPG exports that AI RPG Engine 3.12.2 loads (encounter-type translation, speaker entity ids)', 'Shipped (v4.10.0)'],
         ['UE5 reference loader plugin', 'Ships with Star Freight'],
         ['Quest system + Canon adapter v1 + faction relationships', 'Planned'],
       ],

@@ -212,6 +212,31 @@ whole layer exists to prevent** — if the export does not tell you a field was 
 that is a bug in the export, not a detail of it.
 :::
 
+### Known gaps against AI RPG Engine 3.12.2
+
+A boot test on 2026-11-24 exported the Chapel Threshold sample with v4.10.0 and
+loaded it in the published engine. The pack loads, and moving between its zones
+plays. These parts don't reach play yet:
+
+- **Gated exits.** The engine moves only along `zones[].neighbors`. It drops
+  `zones[].exits` and the pack's `connections` when it loads the pack, so a zone
+  you reach only through a gated exit can't be entered there. In the sample,
+  that's the crypt and the encounter inside it.
+- **NPC behaviour.** The engine resolves an entity's `aiProfile` only from
+  profiles its host passes in, or from a pack's `entityAi`, which this exporter
+  doesn't write yet. Until it does, exported NPCs stand idle.
+- **Dialogues through the sidecar.** Dialogues play when a host boots the pack
+  in-process, as in the engine's JSON boot recipe. The engine's sidecar drops
+  them when it loads the pack.
+- **Other pack data.** The engine drops these when it loads the pack, and names
+  each one with its reason: zone descriptions and hazards, faction presences,
+  pressure hotspots, spawn points, the player template, loot tables, landmarks,
+  strata and stratum links, transitions, crafting stations, market nodes,
+  buildings, hubs, strongholds, the build catalog and progression trees.
+
+Before v4.10.0, the engine refused the exporter's packs at load: encounter types
+outside its four, and item placements with no `entityId`.
+
 ## Fidelity Reporting
 
 Every import produces a structured `FidelityReport` that tracks exactly what happened to each piece of data during conversion. Each entry has:

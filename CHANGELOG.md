@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.10.0] - 2026-11-24
+
+**The Speed Panel series, AI RPG exports that AI RPG Engine 3.12.2 loads, a new logo, and a real editor screenshot.** The AI RPG exporter in 4.9.1 writes packs the engine refuses at load: encounter types outside the engine's four, and item placements with no `entityId`. This release's export of the Chapel Threshold sample loads in the published engine 3.12.2, and moving between its zones plays (boot test, 2026-11-24). `SCHEMA_VERSION` follows the package version.
+
+### Known gaps against AI RPG Engine 3.12.2
+
+- The README lists them under "The Forge→Engine content contract". In short: the engine drops gated exits, so a zone reached only through one can't be entered there. NPC behaviour profiles don't resolve until this exporter writes the engine's `entityAi`. The engine's sidecar drops dialogues, which play when a host boots the pack in-process. Some other pack data is dropped at load, and the engine names each item with its reason.
+
 ### README Screenshot
 
 - **Real editor screenshot.** `site/public/screenshots/editor-canvas.jpg` (shown in the README and the handbook index) is now a capture of the running editor: the Chapel Threshold sample with the Speed Panel open over a zone. It replaces an illustration that did not show the real interface.
@@ -61,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **AI RPG export blocks on encounter-type blockers.** `"Export JSON"` in the editor Export modal is disabled while `!targetReadiness.aiRpg.ready` (leaving UE5 and Godot exports enabled), and CLI exports to the AI RPG target print each encounter blocker to stderr and exit 1 without writing output files.
 - **CI lines coverage ratchet.** Enforces a repository-wide Vitest lines threshold in CI (coverage 64.23%, floor 64 (target 90)); Codecov remains informational.
 - **Release workflow waits about 4 minutes for npm's provenance attestation** (it waited 50 s, and the 4.9.1 publish stopped after each package on registry lag). Its error now says to check the registry by hand before deprecating anything.
+- **The Pages workflow deploys from `main` only.** The `github-pages` environment lets only `main` deploy, so the release-event deploy was refused at v4.8.0, v4.9.0 and v4.9.1. The release PR's version bump on `main` redeploys the landing page instead.
 
 ## [4.9.1] - 2026-11-05
 

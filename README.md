@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.9.1</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architecture
@@ -307,6 +307,13 @@ a number instead of an assumption.
 - **Dialogue speaker IDs on AI RPG export** — `@world-forge/export-ai-rpg` refuses unresolved `dialogues[].speakers` entries by name (`exportToEngine` returns `success: false` with `speakerBlockers` alongside `listAiRpgDialogueSpeakerBlockers`, Export modal blocked, CLI exit `1`), naming both the dialogue ID and the unresolved speaker. A node with `speaker: ''` fills from the dialogue's single listed speaker only when every entity carrying that dialogue (`dialogueId`) is that listed speaker or no entity carries it; it is refused by dialogue ID, node ID, and carrier entity ID when any carrier is a different entity, and refused by dialogue ID and node ID when `dialogues[].speakers` has zero or multiple entries. Non-empty node speakers export unchanged.
 
 Requires `ai-rpg-engine` `^3.12.2`.
+
+**Known gaps against AI RPG Engine 3.12.2** (from a boot test on 2026-11-24). This release's export of the Chapel Threshold sample loads in the published engine, and moving between its zones plays. These parts don't reach play yet:
+
+- **Gated exits.** The engine moves only along `zones[].neighbors`. It drops `zones[].exits` and the pack's `connections` when it loads the pack, so a zone you reach only through a gated exit can't be entered there. In the sample, that's the crypt and the encounter inside it.
+- **NPC behaviour.** The engine resolves an entity's `aiProfile` only from profiles its host passes in, or from a pack's `entityAi`, which this exporter doesn't write yet. Until it does, exported NPCs stand idle.
+- **Dialogues through the sidecar.** Dialogues play when a host boots the pack in-process, as in the engine's JSON boot recipe. The engine's sidecar drops them when it loads the pack.
+- **Other pack data.** The engine drops these when it loads the pack, and names each one with its reason: zone descriptions and hazards, faction presences, pressure hotspots, spawn points, the player template, loot tables, landmarks, strata and stratum links, transitions, crafting stations, market nodes, buildings, hubs, strongholds, the build catalog and progression trees.
 
 ### The drawing contract
 

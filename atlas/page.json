@@ -92,30 +92,29 @@
   ],
   "changes": {
     "fileCounts": {
-      "added": 0,
-      "changed": 8,
+      "added": 1,
+      "changed": 25,
       "moved": 0,
-      "parts": 5,
+      "parts": 10,
       "removed": 0
     },
     "items": [
       {
-        "kind": "landing",
-        "sentence": "dogfood/output/chapel-threshold-exportable.json is now written by dogfood/chapel-threshold.ts.",
+        "kind": "door",
+        "sentence": "Deploy site to GitHub Pages no longer starts when a release is published.",
         "subjects": [
-          "dogfood/output/chapel-threshold-exportable.json",
-          "dogfood/chapel-threshold.ts"
+          ".github/workflows/pages.yml"
         ]
       },
       {
         "kind": "counts",
-        "sentence": "8 files changed content, across 5 parts.",
+        "sentence": "1 file added and 25 changed content, across 10 parts.",
         "subjects": []
       }
     ],
     "since": {
-      "commit": "c2baa5a854d45b48a318a1efaee0df1502e24be9",
-      "generatedAt": "2026-11-23T08:42:06.876Z"
+      "commit": "e52a33ef1b6a41c927492da4e3f83cc3ff364680",
+      "generatedAt": "2026-11-23T10:09:34.300Z"
     },
     "unchanged": false
   },
@@ -202,7 +201,7 @@
     "Window: 180 days; a pair counts from 3 shared commits, since 10 source files reach 10 revisions; the floor rises to 10 when 25 do."
   ],
   "changesTogetherWithTests": 3,
-  "commit": "e52a33ef1b6a41c927492da4e3f83cc3ff364680",
+  "commit": "d153a67cfcf3dec62e109ebfd6615a4e8f26443a",
   "defaultBranch": "main",
   "derived": "15 parts, mostly TypeScript (537 files), Astro (4), JavaScript (4), CSS (3), GDScript (1) and HTML (1). Work enters through 11 doors; the busiest is CI, which reaches 11 parts. It publishes @world-forge/editor (packages/editor), @world-forge/export-ai-rpg (packages/export-ai-rpg), @world-forge/export-godot (packages/export-godot), @world-forge/export-unreal (packages/export-unreal), @world-forge/renderer-2d (packages/renderer-2d) and @world-forge/schema (packages/schema) to npm. It deploys a site to GitHub Pages. People run world-forge-export, world-forge-export-godot and world-forge-export-unreal. People import @world-forge/export-ai-rpg, @world-forge/export-godot, @world-forge/export-unreal, @world-forge/renderer-2d and @world-forge/schema.",
   "doors": [
@@ -542,13 +541,13 @@
         {
           "checks": [],
           "checksMore": 0,
-          "lead": "on a push to main or by hand",
+          "lead": "on main",
           "runs": [
             "site/astro.config.mjs",
             "site/src/"
           ],
           "runsMore": 0,
-          "when": "on a push to main or by hand"
+          "when": "on main"
         }
       ],
       "id": ".github/workflows/pages.yml",
@@ -566,12 +565,11 @@
       "runsCount": 0,
       "runsMore": 0,
       "sends": [
-        "deploys the site on a push to main or by hand"
+        "deploys the site on main"
       ],
       "stages": [],
       "triggers": [
         "on a push to main touching 3 paths",
-        "when a release is published",
         "or by hand"
       ]
     },
@@ -1003,7 +1001,7 @@
       ]
     }
   ],
-  "generatedAt": "2026-11-23T10:09:34.300Z",
+  "generatedAt": "2026-11-24T09:14:48.143Z",
   "limits": [
     "10 imports could not be resolved: `dogfood/__tests__/dogfood-runner-exit-codes.test.ts` loads `@ai-rpg-engine/content-schema` when it is installed, which is not declared; `dogfood/export-stage-fixture.ts` imports `@ai-rpg-engine/content-schema`, which is not declared; `dogfood/godot-smoke/smoke_load_world.gd` imports `res://world.tscn`; and 7 more.",
     "16 files in editor use syntax the parser cannot read (packages/editor/src/__tests__/speed-panel-c1-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-compat.test.ts, packages/editor/src/__tests__/speed-panel-c2-triggers.test.ts and 13 more), so what they import is not known.",

@@ -40,7 +40,7 @@
           "path": ".github/workflows/ci.yml"
         },
         {
-          "hash": "5c9bb23ed429705d1444390a4f900761d77323a442000c11c96e2baf071d67ff",
+          "hash": "46ef1754cf3e3b65daff65d10669db04e2315e864ac53f22658924984d587f1d",
           "path": ".github/workflows/pages.yml"
         },
         {
@@ -94,11 +94,11 @@
           "path": "docs/audit/2026-11-21-truth-reconciliation.md"
         },
         {
-          "hash": "ce6717c360770221ebaf1db3d44f5839a15121b60ea1c7290ad2c46e3e2b0936",
+          "hash": "4476bc6091f09e0d1b7f139ca4bb7f232744afe5b534f26c2aea4d4ad5f60686",
           "path": "docs/c0-alignment/export-table.json"
         },
         {
-          "hash": "9cc088231e8e1e1192d740ebcb40b6bebda81f549e3353c31aca72606a761315",
+          "hash": "c981ef03d8f78609993d80e6600017b271b85dc189e39d151288ad71e6debefe",
           "path": "docs/c0-alignment/export-table.md"
         },
         {
@@ -106,7 +106,7 @@
           "path": "docs/c0-alignment/fixture-manifest.json"
         },
         {
-          "hash": "324c4b398c13ffa2a0038599956916f67d8608b980efdcafa2ae44f290f4ceb3",
+          "hash": "2e3ab0162d9f84913800ab5bae8eaf21d8a00fc60452e41228ee4146f7909447",
           "path": "docs/c0-alignment/fixture-pack.json"
         },
         {
@@ -709,7 +709,7 @@
           "path": "packages/editor/logo.png"
         },
         {
-          "hash": "d047f6f4c5bc5dd8479e9e71d315f23556219a5cc53a4570adbd85718c535dac",
+          "hash": "ae781fe98889ca9c5655f9054f5abb2734ac6d14ef979034e1575b27f4c15a4a",
           "path": "packages/editor/package.json"
         },
         {
@@ -1225,7 +1225,7 @@
           "testFramework": "vitest"
         },
         {
-          "hash": "31d13abb49887ac90543d10bee8276b8bcd8b8eced296c11620ff9b148a50b98",
+          "hash": "3316be063dddb10832d50aeda7aadd64135ef9455feb1a359c70ce278f9ab463",
           "importOrder": [
             "packages/export-ai-rpg/src/index.ts",
             "packages/schema/src/index.ts",
@@ -6021,7 +6021,7 @@
           "path": "packages/export-ai-rpg/logo.png"
         },
         {
-          "hash": "895f5d60a4cf9b45461609cf288f3dfd65a0bfdc4b8f4d1d29bf15f20ad81e81",
+          "hash": "6f7397891598e1ff7ba6ff77bcef8b5ac1eb5439f234d10c3758845c4cccb243",
           "path": "packages/export-ai-rpg/package.json"
         },
         {
@@ -8506,7 +8506,7 @@
           "path": "packages/export-godot/logo.png"
         },
         {
-          "hash": "4bfb6c8049a1bc5ebb2174841afd5b3f79303fef4dcbfde81d0fcd1b02bf36e7",
+          "hash": "360da8cf0f5934510bfbf8ff7a27ffa563a77c10e40310a3ee1ee37b18f98811",
           "path": "packages/export-godot/package.json"
         },
         {
@@ -9861,7 +9861,7 @@
           "path": "packages/export-unreal/logo.png"
         },
         {
-          "hash": "08f16b303690df7df83e99dfb4bebbefeb43dd13d5053c8b157748cddfb522ce",
+          "hash": "fc50c4dd57e8bdd18157af58ca2fc08d6d5f271f828239600e91583303dba225",
           "path": "packages/export-unreal/package.json"
         },
         {
@@ -11056,7 +11056,7 @@
           "path": "packages/renderer-2d/logo.png"
         },
         {
-          "hash": "9e72e5d2355445c7ac178100ffce9990770c23157529b09090c45c78d2c654ac",
+          "hash": "b2521c6ed9beda038be8ad5b3282ef357a1e913ba25af3676d39e9e2d34a0541",
           "path": "packages/renderer-2d/package.json"
         },
         {
@@ -11350,11 +11350,15 @@
           "path": ".gitignore"
         },
         {
+          "hash": "84c796020fd90a0534c6a718fca9797b743e18d61f1b9a71fba7f3eaca804faf",
+          "path": ".polyglot-pins.json"
+        },
+        {
           "hash": "b5c9864168529e5153ce39463dc347e856c5c25af22c76528aaa2f42b4bd00bb",
           "path": "AUDIT_PASS_2026-04-30.md"
         },
         {
-          "hash": "ce2c40b8f493fced3a2c657bd4cecbf296177df40d42d70df167d4bff5cbd1ad",
+          "hash": "ddc29fd5da541abb35f37c000454b835f21b21fb375ac214ed9d021d1d9cfeaf",
           "path": "CHANGELOG.md"
         },
         {
@@ -11366,35 +11370,35 @@
           "path": "PLAN.md"
         },
         {
-          "hash": "4a7e53230541e690531bd851dd579cd724f33f7a0bc886e5ea16972d3fd5cccc",
+          "hash": "2c62ab3d94a2ef6c05b4d2f52619b49b4e41c7d99b67f43ccc177fadd1d915fd",
           "path": "README.es.md"
         },
         {
-          "hash": "ac9c9a5eaf52f6bbe8b931d8980f9ba8bced1378d9e37142bd4e9ca512ca4745",
+          "hash": "5396404dea3e48f5dbd43abf3d3440c0702bbb9e68129d95ff7b725677e8f8ce",
           "path": "README.fr.md"
         },
         {
-          "hash": "d5461097c51de66376294ab0cb7bb0b584f3ec10e06cc87fceb729518bbb32c9",
+          "hash": "2490bea1fa273134c6e432ccfba570968c2592f623c52128ca5aae0f9fffc06b",
           "path": "README.hi.md"
         },
         {
-          "hash": "06031d0b83d956bad4d35f41fb66a43a4b19fa709ecdbde0ff643bb62b86523d",
+          "hash": "b5dfed7f27b240d0bc5c9968782ce57be1993aeef00f8faf1697051060d2f101",
           "path": "README.it.md"
         },
         {
-          "hash": "0b7094f231b5696f89eacebcc435dcd423d73b2dbeffafc61089a7d6cc989192",
+          "hash": "57b9992abc87ed104c9011982244021ac9cc5c5b71a9b6c73f777c2bdcaffe36",
           "path": "README.ja.md"
         },
         {
-          "hash": "9581320d825887801e0b3b66320bb175f6dcf728c9d8564ca6b9bba4a6b8a62c",
+          "hash": "2ba0db79da6e73396726988c62f4953b331b20c830b1c83b371c74ad24937744",
           "path": "README.md"
         },
         {
-          "hash": "6fa1a508a96b9b81ee6a0f32c17993e16cddde738e8edf24aacc75cdca732914",
+          "hash": "d3f043bedb1085c88da5aec722f65c2adc9337ee5cf2e965e2362d1dcb3cbef1",
           "path": "README.pt-BR.md"
         },
         {
-          "hash": "e39a710ce82165f928e9c3aca41f68188a16ef744f918362c6cb2ce921fd5e86",
+          "hash": "01962c66a98d1865f60d27ab59a338367e04b41ff262b9d9b96a7cd7d3070319",
           "path": "README.zh.md"
         },
         {
@@ -11422,11 +11426,11 @@
           "path": "multitask.md"
         },
         {
-          "hash": "265d9616bae922451cf651fb707d13ebf52bc0ebcf17902044611247f79e5b3e",
+          "hash": "d53a6ebb43440dfb050e3516fd1de056bcde8a9f0858a99472d82650a13b60b2",
           "path": "package-lock.json"
         },
         {
-          "hash": "33947aa38d6ab7507c359e4fdcd070ccd4c2a7e3a84038d35bc081d8fe658416",
+          "hash": "65d7aca7fafcba088a965784a223b442245790772da9bf19b65394e5cbcd3a1d",
           "path": "package.json"
         },
         {
@@ -11528,7 +11532,7 @@
           "path": "packages/schema/logo.png"
         },
         {
-          "hash": "364495e878d5289c5ffa12e022b7bc46fbce8170b640ce630859d6024a9d5b4b",
+          "hash": "6cf948fa83d7b730c6bcb42c70865728ec5aeedb021fc1e61c91aa0a7cf3a60c",
           "path": "packages/schema/package.json"
         },
         {
@@ -12268,7 +12272,7 @@
             "stampProjectSchemaVersion",
             "validateProject"
           ],
-          "hash": "edf9f850c2e6f8ccf01ebe7f4634673ab09e6a01f450613f53888a9e258b1b56",
+          "hash": "228dfed806b72ddae476fcfacc7ad11f9673b088cae713b53ce6d7b7f999d2f7",
           "importOrder": [
             "packages/schema/src/project.ts",
             "packages/schema/src/spatial.ts",
@@ -12483,7 +12487,7 @@
           "path": "site/src/content/docs/handbook/export-unreal.md"
         },
         {
-          "hash": "90e9b87a09d87f4d7fa9fb6dd0763e7a71081f80420af552ba9bd1908086787d",
+          "hash": "b3164b596048a753bd2e379f607377a1c96f4f3c0a7bbea2a0e34b74413dfe63",
           "path": "site/src/content/docs/handbook/export.md"
         },
         {
@@ -12525,7 +12529,7 @@
           "path": "site/src/pages/index.astro"
         },
         {
-          "hash": "19d697fb01e238bc9a84198e34b27e7d2e9afe037bf78bc7ba5a48a66614b962",
+          "hash": "a0d6ba99febb79c3c1818460d817546d4b768e336e510c88663e55684b05996d",
           "path": "site/src/site-config.ts"
         },
         {
@@ -13642,9 +13646,7 @@
           "when": {
             "branches": [
               "main"
-            ],
-            "byHand": true,
-            "event": "push"
+            ]
           }
         }
       ],
@@ -13725,9 +13727,7 @@
           "when": {
             "branches": [
               "main"
-            ],
-            "byHand": true,
-            "event": "push"
+            ]
           }
         },
         {
@@ -13740,9 +13740,7 @@
           "when": {
             "branches": [
               "main"
-            ],
-            "byHand": true,
-            "event": "push"
+            ]
           }
         }
       ],
@@ -13769,12 +13767,6 @@
             ".github/workflows/**",
             "package.json",
             "site/**"
-          ]
-        },
-        {
-          "event": "release",
-          "types": [
-            "published"
           ]
         },
         {
@@ -15296,8 +15288,8 @@
   ],
   "engine": "1.26.0",
   "generatedFrom": {
-    "commit": "e52a33ef1b6a41c927492da4e3f83cc3ff364680",
-    "tracked": 690
+    "commit": "d153a67cfcf3dec62e109ebfd6615a4e8f26443a",
+    "tracked": 691
   },
   "landings": [
     {
