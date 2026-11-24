@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.10.0] - 2026-11-24
+
+**The Speed Panel series, AI RPG exports that AI RPG Engine 3.12.2 loads, a new logo, and a real editor screenshot.** The AI RPG exporter in 4.9.1 writes packs the engine refuses at load: encounter types outside the engine's four, and item placements with no `entityId`. This release's export of the Chapel Threshold sample loads in the published engine 3.12.2, and moving between its zones plays (boot test, 2026-11-24). `SCHEMA_VERSION` follows the package version.
+
+### Known gaps against AI RPG Engine 3.12.2
+
+- The README lists them under "The Forge→Engine content contract". In short: the engine drops gated exits, so a zone reached only through one can't be entered there. NPC behaviour profiles don't resolve until this exporter writes the engine's `entityAi`. The engine's sidecar drops dialogues, which play when a host boots the pack in-process. Some other pack data is dropped at load, and the engine names each item with its reason.
+
 ### README Screenshot
 
 - **Real editor screenshot.** `site/public/screenshots/editor-canvas.jpg` (shown in the README and the handbook index) is now a capture of the running editor: the Chapel Threshold sample with the Speed Panel open over a zone. It replaces an illustration that did not show the real interface.
