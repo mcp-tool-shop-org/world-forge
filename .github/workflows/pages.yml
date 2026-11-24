@@ -9,10 +9,11 @@ on:
       # root package.json. A version-only bump must rebuild the CDN artifact.
       - 'package.json'
       - '.github/workflows/**'
-  # F-96633795: gh release create publishes six packages via release.yml and
-  # used to leave Pages on whatever site/ tree last changed.
-  release:
-    types: [published]
+  # No release trigger (v4.10.0). The github-pages environment lets only main
+  # deploy, so the release-event deploy was refused at v4.8.0, v4.9.0 and
+  # v4.9.1 (runs 33130831381, 35569777859, 42154474912). The release PR bumps
+  # package.json on main, and the push trigger above redeploys the stamped
+  # landing hero from that merge.
   workflow_dispatch:
 
 concurrency:
@@ -38,7 +39,7 @@ jobs:
     name: Build handbook (Pages artifact)
     # F-96633795: pin with deploy so a feature-branch workflow_dispatch does
     # not occupy the `pages` concurrency slot for a 20-minute build.
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # INF-B-006: cap wall time so a hung build can't burn the 6-hour default.
     timeout-minutes: 20
@@ -80,9 +81,9 @@ jobs:
     # F-4a5efc2f: job id stays deploy. The verify step name was already
     # operator-facing; the job title in the run list was not.
     name: Deploy to GitHub Pages + verify 200
-    # F-96633795: workflow_dispatch can target any ref; only main and v*
-    # tags may cut over production Pages.
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    # F-96633795: workflow_dispatch can target any ref; only main may cut over
+    # production Pages (the github-pages environment refuses any other ref).
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     # INF-B-006: deploy is normally <1 min; 20 minutes leaves generous headroom.

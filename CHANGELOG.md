@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **AI RPG export blocks on encounter-type blockers.** `"Export JSON"` in the editor Export modal is disabled while `!targetReadiness.aiRpg.ready` (leaving UE5 and Godot exports enabled), and CLI exports to the AI RPG target print each encounter blocker to stderr and exit 1 without writing output files.
 - **CI lines coverage ratchet.** Enforces a repository-wide Vitest lines threshold in CI (coverage 64.23%, floor 64 (target 90)); Codecov remains informational.
 - **Release workflow waits about 4 minutes for npm's provenance attestation** (it waited 50 s, and the 4.9.1 publish stopped after each package on registry lag). Its error now says to check the registry by hand before deprecating anything.
+- **The Pages workflow deploys from `main` only.** The `github-pages` environment lets only `main` deploy, so the release-event deploy was refused at v4.8.0, v4.9.0 and v4.9.1. The release PR's version bump on `main` redeploys the landing page instead.
 
 ## [4.9.1] - 2026-11-05
 
