@@ -89,7 +89,7 @@ describe('export-stage-fixture.ts presentation carry', () => {
         expect(scene).toContain('mother in Dockward');
     }, 60_000);
 
-    it('--engine-out is a 3.12.2 pack: no presentation, no zone-stand itemPlacements', async () => {
+    it('--engine-out is an engine 4.x pack: no presentation, no zone-stand itemPlacements', async () => {
         const out = tmpOut('wf-stage-engine-lane-');
         const engineOut = join(out, 'engine-pack.json');
         const { code, stderr } = await runScript(SCRIPT, {}, [

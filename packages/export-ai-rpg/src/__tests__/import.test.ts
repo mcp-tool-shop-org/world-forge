@@ -315,6 +315,16 @@ describe('importDialogues', () => {
     const tbEntries = fidelity.filter((f) => f.reason === 'textblock-to-string');
     expect(tbEntries.length).toBeGreaterThanOrEqual(0); // only if engine used TextBlock
   });
+
+  it('imports a node with no speaker (engine 4.0 narration) as an empty speaker', () => {
+    const result = exportToEngine(minimalProject);
+    if (!result.success) throw new Error('export failed');
+    const engineDialogues = structuredClone(result.contentPack.dialogues);
+    const [firstNodeId] = Object.keys(engineDialogues[0].nodes);
+    delete (engineDialogues[0].nodes[firstNodeId] as { speaker?: string }).speaker;
+    const { dialogues } = importDialogues(engineDialogues);
+    expect(dialogues[0].nodes[firstNodeId].speaker).toBe('');
+  });
 });
 
 // --- importPlayerTemplate ---

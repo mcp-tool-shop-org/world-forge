@@ -104,7 +104,7 @@ describe('run-unreal-smoke.ts required-fixture receipt (F-fb07f3a1)', () => {
 
         // F-eab38be2: Schema line is SCHEMA_VERSION, not WorldProject.version '1.0.0'.
         expect(receipt).toContain(`**Schema:** ${SCHEMA_VERSION}`);
-        expect(receipt).toMatch(/\*\*Schema:\*\*\s*4\./);
+        expect(receipt).toMatch(/\*\*Schema:\*\*\s*\d+\.\d+\.\d+/);
         expect(receipt).not.toContain('**Schema:** 1.0.0');
 
         // F-c621e532: missing cellar is not painted as a success-shaped coord row.

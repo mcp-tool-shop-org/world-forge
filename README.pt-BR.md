@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v5.0.0</strong> — 3719 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Arquitetura
@@ -294,13 +294,13 @@ Um exportador em execução não é a mesma coisa que um mundo que é carregado.
 
 - **IDs do falante do diálogo na exportação do RPG de IA** — `@world-forge/export-ai-rpg` recusa entradas `dialogues[].speakers` não resolvidas pelo nome (`exportToEngine` retorna `success: false` com `speakerBlockers` juntamente com `listAiRpgDialogueSpeakerBlockers`, modal de exportação bloqueado, saída da CLI `1`), nomeando tanto o ID do diálogo quanto o falante não resolvido. Um nó com `speaker: ''` é preenchido apenas a partir do único falante listado do diálogo quando cada entidade que carrega esse diálogo (`dialogueId`) é esse falante listado ou nenhuma entidade o carrega; é recusado pelo ID do diálogo, ID do nó e ID da entidade portadora quando qualquer portador é uma entidade diferente, e recusado pelo ID do diálogo e ID do nó quando `dialogues[].speakers` tem zero ou várias entradas. Falantes de nós não vazios são exportados inalterados.
 
-Requer `ai-rpg-engine` `^3.12.2`.
+Requer `ai-rpg-engine` `^4.0.0`.
 
-**Lacunas conhecidas em relação ao AI RPG Engine 3.12.2** (de um teste de carregamento em 24 de novembro de 2026). A exportação desta versão da amostra Chapel Threshold é carregada no motor publicado, e a movimentação entre suas zonas funciona. As seguintes partes ainda não chegam ao jogo:
+**Lacunas conhecidas em relação ao AI RPG Engine 4.0.0** (de um teste de carregamento em 25 de novembro de 2026). A exportação desta versão da amostra Chapel Threshold é carregada no motor publicado, e a movimentação entre suas zonas funciona. As seguintes partes ainda não chegam ao jogo:
 
 - **Saídas restritas.** O motor se move apenas ao longo de `zones[].neighbors`. Ele descarta `zones[].exits` e o `connections` do pacote quando carrega o pacote, portanto, uma zona que você só pode alcançar por meio de uma saída restrita não pode ser acessada lá. Na amostra, essa é a cripta e o encontro dentro dela.
-- **Comportamento de NPC.** O motor resolve o `aiProfile` de uma entidade apenas a partir dos perfis que seu host passa ou do `entityAi` do pacote, que este exportador ainda não grava. Até que o faça, os NPCs exportados permanecem inativos.
-- **Diálogos por meio do sidecar.** Os diálogos são reproduzidos quando um host inicia o pacote no mesmo processo (in-process), como na receita de inicialização JSON do motor. O processo sidecar do motor os descarta ao carregar o pacote.
+- **Perfis de comportamento personalizados.** `validate` e `sidecar` do AI RPG Engine 4.0 recusam, por padrão, um `aiProfile` que não conhecem (`--unresolved-ai-profile fail`). Isso vem da CLI do motor 4.0, não do teste de carregamento, que usou só perfis integrados. Este exportador escreve um perfil integrado para cada papel, então suas exportações carregam. Uma entidade à qual você der um `ai.profileId` personalizado precisa de um host que registre esse perfil, ou de `--unresolved-ai-profile warn`.
+- **Diálogos pelo sidecar.** O sidecar do motor descarta os diálogos ao carregar o pacote. No teste de carregamento, eles só funcionaram pela receita de inicialização JSON do motor, no mesmo processo e com a verificação de carga desligada; com a verificação ligada, a receita recusou o pacote, porque o manifesto lista módulos que a receita não registra e adicionar um jogador mudou o hash do conteúdo.
 - **Outros dados do pacote.** O motor os descarta quando carrega o pacote e nomeia cada um com sua razão: descrições e perigos de zona, presenças de facção, pontos críticos de pressão, pontos de geração, o modelo do jogador, tabelas de saque, pontos de referência, estratos e links de estratos, transições, estações de criação, nós de mercado, edifícios, centros, fortalezas, o catálogo de construção e as árvores de progressão.
 
 ### O contrato de desenho

@@ -1,6 +1,6 @@
 {
   "name": "@world-forge/export-godot",
-  "version": "4.10.0",
+  "version": "5.0.0",
   "description": "Godot 4 export pipeline for World Forge — zones, entities, items, dialogues, navigation, and .tscn scene generation.",
   "type": "module",
   "main": "dist/index.js",

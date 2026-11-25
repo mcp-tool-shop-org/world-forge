@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v5.0.0</strong> — 3719 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## アーキテクチャ
@@ -294,13 +294,13 @@ World Forgeは、**ジャンル**（ファンタジー、サイバーパンク�
 
 - **AI RPGエクスポートにおけるダイアログ話者ID** - `@world-forge/export-ai-rpg`は、解決できない`dialogues[].speakers`のエントリを名前で示して拒否し（`exportToEngine`は`listAiRpgDialogueSpeakerBlockers`とともに、`speakerBlockers`を含む`success: false`を返し、エクスポートモーダルはブロックされ、CLIは`1`で終了します）、ダイアログIDと解決できない話者の両方を示します。`speaker: ''`のノードは、そのダイアログを持つすべてのエンティティ（`dialogueId`）がその記載された話者である場合、またはどのエンティティもそのダイアログを持たない場合にのみ、ダイアログに記載された唯一の話者で補完されます。そのダイアログを持つエンティティのいずれかが別のエンティティである場合は、ダイアログID、ノードID、およびそのエンティティのIDを示して拒否され、`dialogues[].speakers`のエントリが0個または複数の場合は、ダイアログIDとノードIDを示して拒否されます。空でないノードの話者は、変更されずにエクスポートされます。
 
-`ai-rpg-engine` `^3.12.2`が必要です。
+`ai-rpg-engine` `^4.0.0`が必要です。
 
-**AI RPG Engine 3.12.2に対する既知のギャップ**（2026年11月24日のブートテストに基づく）。このリリースのChapel Thresholdサンプルのエクスポートは、公開されたエンジンにロードされ、そのゾーン間を移動できます。これらの部分はまだプレイに到達していません。
+**AI RPG Engine 4.0.0に対する既知のギャップ**（2026年11月25日のブートテストに基づく）。このリリースのChapel Thresholdサンプルのエクスポートは、公開されたエンジンにロードされ、そのゾーン間を移動できます。これらの部分はまだプレイに到達していません。
 
 - **ゲート付きの出口**。エンジンは`zones[].neighbors`に沿ってのみ移動します。パックをロードするときに`zones[].exits`とパックの`connections`を破棄するため、ゲート付きの出口経由でしか到達できないゾーンには入れません。サンプルでは、地下聖堂（クリプト）とその内部のエンカウンターがこれに該当します。
-- **NPCの挙動**。エンジンは、エンティティの`aiProfile`を、ホストが渡すプロファイル、またはパックの`entityAi`（このエクスポーターはまだ出力しません）からのみ解決します。対応するまで、エクスポートされたNPCは待機状態のままになります。
-- **サイドカー経由のダイアログ**。エンジンのJSONブートレシピのように、ホストがパックをインプロセスで起動するときはダイアログが動作します。エンジンのサイドカーは、パックをロードするときにダイアログを破棄します。
+- **カスタムの挙動プロファイル**。AI RPG Engine 4.0 の `validate` と `sidecar` は、既定で知らない `aiProfile` を拒否します（`--unresolved-ai-profile fail`）。これはエンジン 4.0 の CLI の仕様によるもので、組み込みプロファイルだけを使ったブートテストの結果ではありません。このエクスポーターはすべての役割に組み込みプロファイルを書き込むため、そのエクスポートは読み込まれます。カスタムの `ai.profileId` を与えたエンティティには、そのプロファイルを登録するホストか、`--unresolved-ai-profile warn` が必要です。
+- **サイドカー経由のダイアログ**。エンジンのサイドカーは、パックを読み込むときにダイアログを破棄します。ブートテストでは、エンジンのインプロセス JSON ブートレシピで、ロードゲートを無効にしたときにだけ動作しました。ゲートを有効にすると、レシピはパックを拒否しました。マニフェストにレシピが登録しないモジュールが含まれ、プレイヤーを追加したことでコンテンツハッシュが変わったためです。
 - **その他のパックデータ**。エンジンは、パックをロードするときにこれらを破棄し、それぞれの名前と理由を示します：ゾーンの説明と危険要素、派閥の存在、圧力ホットスポット、スポーンポイント、プレイヤーテンプレート、戦利品テーブル、ランドマーク、層と層のリンク、トランジション、クラフトステーション、マーケットノード、建物、ハブ、拠点、ビルドカタログ、および進行ツリー。
 
 ### 描画契約

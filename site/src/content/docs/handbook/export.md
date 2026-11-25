@@ -212,9 +212,9 @@ whole layer exists to prevent** — if the export does not tell you a field was 
 that is a bug in the export, not a detail of it.
 :::
 
-### Known gaps against AI RPG Engine 3.12.2
+### Known gaps against AI RPG Engine 4.0.0
 
-A boot test on 2026-11-24 exported the Chapel Threshold sample with v4.10.0 and
+A boot test on 2026-11-25 exported the Chapel Threshold sample with v5.0.0 and
 loaded it in the published engine. The pack loads, and moving between its zones
 plays. These parts don't reach play yet:
 
@@ -222,12 +222,17 @@ plays. These parts don't reach play yet:
   `zones[].exits` and the pack's `connections` when it loads the pack, so a zone
   you reach only through a gated exit can't be entered there. In the sample,
   that's the crypt and the encounter inside it.
-- **NPC behaviour.** The engine resolves an entity's `aiProfile` only from
-  profiles its host passes in, or from a pack's `entityAi`, which this exporter
-  doesn't write yet. Until it does, exported NPCs stand idle.
-- **Dialogues through the sidecar.** Dialogues play when a host boots the pack
-  in-process, as in the engine's JSON boot recipe. The engine's sidecar drops
-  them when it loads the pack.
+- **Custom behaviour profiles.** AI RPG Engine 4.0's `validate` and `sidecar`
+  refuse an `aiProfile` they don't know, by default (`--unresolved-ai-profile
+  fail`). This comes from the engine's 4.0 CLI, not from the boot test, which
+  used only built-in profiles. This exporter writes a built-in profile for every
+  role, so its exports load. An entity you give a custom `ai.profileId` needs a
+  host that registers that profile, or `--unresolved-ai-profile warn`.
+- **Dialogues through the sidecar.** The engine's sidecar drops dialogues when it
+  loads the pack. In the boot test they played only through the engine's
+  in-process JSON boot recipe with its load gate turned off; with the gate on,
+  the recipe refused the pack, because the manifest lists modules the recipe
+  doesn't register and adding a player changed the content hash.
 - **Other pack data.** The engine drops these when it loads the pack, and names
   each one with its reason: zone descriptions and hazards, faction presences,
   pressure hotspots, spawn points, the player template, loot tables, landmarks,
@@ -235,7 +240,9 @@ plays. These parts don't reach play yet:
   buildings, hubs, strongholds, the build catalog and progression trees.
 
 Before v4.10.0, the engine refused the exporter's packs at load: encounter types
-outside its four, and item placements with no `entityId`.
+outside its four, and item placements with no `entityId`. From v5.0.0, exports
+declare `engineVersion: ">=4.0.0 <5.0.0"`, because AI RPG Engine 4.0's load gate
+refuses a pack whose range excludes it; re-export packs made with earlier versions.
 
 ## Fidelity Reporting
 

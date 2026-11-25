@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v5.0.0</strong> — 3719 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Architettura
@@ -304,13 +304,13 @@ approssimato o eliminato. Quando un campo non può essere trasferito, l'esportaz
 
 - **ID degli oratori del dialogo nell'esportazione AI RPG:** `@world-forge/export-ai-rpg` rifiuta le voci `dialogues[].speakers` non risolte per nome (`exportToEngine` restituisce `success: false` con `speakerBlockers` insieme a `listAiRpgDialogueSpeakerBlockers`, la finestra modale di esportazione viene bloccata, l'interfaccia a riga di comando termina con codice `1`), indicando sia l'ID del dialogo che l'oratore non risolto. Un nodo con `speaker: ''` viene popolato solo dall'unico oratore elencato nel dialogo quando ogni entità che contiene quel dialogo (`dialogueId`) è l'oratore elencato o nessuna entità lo contiene; viene rifiutato per ID del dialogo, ID del nodo e ID dell'entità portante quando una qualsiasi entità portante è un'entità diversa e viene rifiutato per ID del dialogo e ID del nodo quando `dialogues[].speakers` ha zero o più voci. Gli oratori dei nodi non vuoti vengono esportati invariati.
 
-Richiede `ai-rpg-engine` `^3.12.2`.
+Richiede `ai-rpg-engine` `^4.0.0`.
 
-**Lacune note rispetto a AI RPG Engine 3.12.2** (da un test di avvio del 24-11-2026). L'esportazione di questa versione del campione Chapel Threshold viene caricata nel motore pubblicato e il passaggio tra le sue zone funziona. Queste parti non raggiungono ancora l'ambiente di gioco:
+**Lacune note rispetto a AI RPG Engine 4.0.0** (da un test di avvio del 25-11-2026). L'esportazione di questa versione del campione Chapel Threshold viene caricata nel motore pubblicato e il passaggio tra le sue zone funziona. Queste parti non raggiungono ancora l'ambiente di gioco:
 
 - **Uscite vincolate:** il motore si muove solo lungo `zones[].neighbors`. Elimina `zones[].exits` e `connections` del pacchetto quando carica il pacchetto, quindi non è possibile entrare in una zona raggiungibile solo attraverso un'uscita vincolata. Nel campione, si tratta della cripta e dell'incontro al suo interno.
-- **Comportamento dei PNG:** il motore risolve l'attributo `aiProfile` di un'entità solo dai profili che l'host passa, o da `entityAi` del pacchetto, che questo esportatore non scrive ancora. Fino a quando non lo farà, i PNG esportati rimarranno inattivi.
-- **Dialoghi tramite il sidecar:** i dialoghi vengono riprodotti quando un host avvia il pacchetto in-process, come nella ricetta di avvio JSON del motore. Il processo sidecar del motore li scarta quando carica il pacchetto.
+- **Profili di comportamento personalizzati.** `validate` e `sidecar` di AI RPG Engine 4.0 rifiutano per impostazione predefinita un `aiProfile` che non conoscono (`--unresolved-ai-profile fail`). Questo deriva dalla CLI del motore 4.0, non dal test di avvio, che ha usato solo profili integrati. Questo esportatore scrive un profilo integrato per ogni ruolo, quindi le sue esportazioni si caricano. Un'entità a cui assegni un `ai.profileId` personalizzato ha bisogno di un host che registri quel profilo, oppure di `--unresolved-ai-profile warn`.
+- **Dialoghi tramite il sidecar.** Il sidecar del motore scarta i dialoghi quando carica il pacchetto. Nel test di avvio hanno funzionato solo con la ricetta di avvio JSON del motore, nello stesso processo e con il controllo di caricamento disattivato; con il controllo attivo, la ricetta ha rifiutato il pacchetto, perché il manifesto elenca moduli che la ricetta non registra e l'aggiunta di un giocatore ha cambiato l'hash del contenuto.
 - **Altri dati del pacchetto:** il motore li elimina quando carica il pacchetto e assegna a ciascuno di essi un motivo: descrizioni e pericoli delle zone, presenze delle fazioni, punti caldi di pressione, punti di generazione, il modello del giocatore, tabelle di bottino, punti di riferimento, strati e collegamenti tra strati, transizioni, stazioni di creazione, nodi di mercato, edifici, hub, fortezze, il catalogo di costruzione e gli alberi di progressione.
 
 ### Il contratto di rendering

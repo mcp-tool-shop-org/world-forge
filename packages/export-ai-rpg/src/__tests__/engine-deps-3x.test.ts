@@ -4,9 +4,10 @@
 // C0 checklist item 1 sat open from the engine's 3.0.0 through 3.8.0: this
 // package declared `@ai-rpg-engine/* ^2.x` and type-checked against a surface
 // one major behind, so every 3.x addition was invisible to it. The errand of
-// 2026-07-29 closed it, and the 2026-11-21 bump moved the pin to ^3.12.2.
+// 2026-07-29 closed it, the 2026-11-21 bump moved the pin to ^3.12.2, and the
+// 2026-11-25 bump moved it to ^4.0.0.
 //
-// Why `src/content-hash.ts` stays duplicated even though 3.12.2 publishes
+// Why `src/content-hash.ts` stays duplicated even though 4.0.0 publishes
 // `computeContentHash` from `@ai-rpg-engine/content-schema`: the engine's
 // `gate.ts` imports `createHash` from `node:crypto`, and `exportToEngine`
 // must remain browser-safe (`f-1d037344-browser-safe-hash.test.ts`). So the
@@ -87,7 +88,7 @@ function installedVersion(pkg: string): string {
 }
 
 describe('engine deps — the export lane targets the engine it claims to', () => {
-  it('declares all six @ai-rpg-engine ranges at ^3.12.2 — six is what the tree holds', () => {
+  it('declares all six @ai-rpg-engine ranges at ^4.0.0 — six is what the tree holds', () => {
     // The contract doc said "six". C0 repeated it. Both were right, but neither
     // had counted recently: this reads the manifest, so a seventh dependency
     // added later cannot ride along undeclared.
@@ -95,15 +96,15 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     const engineRanges = Object.keys(deps).filter((k) => k.startsWith('@ai-rpg-engine/')).sort();
     expect(engineRanges).toEqual([...ENGINE_DEPS]);
     for (const dep of ENGINE_DEPS) {
-      expect(deps[dep], `${dep} must target 3.12.2+`).toBe('^3.12.2');
+      expect(deps[dep], `${dep} must target 4.0.0+`).toBe('^4.0.0');
     }
     const pkg = JSON.parse(fs.readFileSync(OWN_PACKAGE_JSON, 'utf-8')) as {
       devDependencies: Record<string, string>;
     };
-    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe('^3.12.2');
+    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe('^4.0.0');
   });
 
-  it('resolves all seven at 3.12.2 — a declared range is not an installed version', () => {
+  it('resolves all seven at 4.0.0 — a declared range is not an installed version', () => {
     // C0's item 1 was a statement about package.json; what actually determines
     // which types the converters compile against is what npm put on disk. The
     // first install of this errand produced a tree where the DECLARED ranges
@@ -112,13 +113,13 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     // ranges. The lockfile diff looked correct. This assertion is what that
     // near-miss earned.
     for (const dep of [...ENGINE_DEPS, '@ai-rpg-engine/starter-fantasy'] as const) {
-      expect(installedVersion(dep), `${dep} resolved below 3.12.2`).toBe('3.12.2');
+      expect(installedVersion(dep), `${dep} resolved below 4.0.0`).toBe('4.0.0');
     }
   });
 
   it('the emitted engineVersion range agrees with the range that is installed', () => {
     // Two independent claims about the same engine: the dep range in
-    // package.json, and the `>=3.12.2 <4.0.0` this exporter stamps into every
+    // package.json, and the `>=4.0.0 <5.0.0` this exporter stamps into every
     // manifest it writes. Nothing connected them, so bumping one and not the
     // other would ship packs advertising compatibility the exporter was never
     // compiled against.
@@ -126,7 +127,7 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     const ceiling = /<(\d+)\.\d+\.\d+/.exec(ENGINE_VERSION_RANGE)?.[1];
     expect(floor, `no floor in "${ENGINE_VERSION_RANGE}"`).toBeDefined();
     expect(declaredDeps()['@ai-rpg-engine/core']).toBe(`^${floor}`);
-    // `^3.12.2` admits <4.0.0; the stamped range must not promise more.
+    // `^4.0.0` admits <5.0.0; the stamped range must not promise more.
     expect(ceiling).toBe(`${Number(floor!.split('.')[0]) + 1}`);
   });
 });
@@ -246,8 +247,8 @@ describe('AI RPG encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', ()
   });
 });
 
-describe('3.12.2 content-hash decision — browser-safe twin stays standalone and pinned', () => {
-  it('content-schema@3.12.2 exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
+describe('4.0.0 content-hash decision — browser-safe twin stays standalone and pinned', () => {
+  it('content-schema@4.0.0 exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
     expect(typeof computeEngineContentHash).toBe('function');
     expect(typeof runLoadGate).toBe('function');
     expect(typeof applyContentPack).toBe('function');
