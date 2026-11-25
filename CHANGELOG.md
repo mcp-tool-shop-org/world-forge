@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [4.11.0] - 2026-11-25
+## [5.0.0] - 2026-11-25
 
-**Exports for AI RPG Engine 4.0.** AI RPG Engine 4.0.0's load gate refuses a pack whose `engineVersion` range excludes it, and World Forge 4.10.0 stamped `>=3.12.2 <4.0.0`. This release stamps `>=4.0.0 <5.0.0` and builds against the 4.0 packages. Re-export packs made with 4.10.0 or earlier to load them in engine 4.x.
+**Exports for AI RPG Engine 4.0, a breaking change.** Packs this release writes declare `>=4.0.0 <5.0.0`, so engine 3.x refuses them, and `@world-forge/export-ai-rpg` and `@world-forge/editor` now depend on engine `^4.0.0`. That is why this is a major release; the World Forge authoring format itself is unchanged. AI RPG Engine 4.0.0's load gate refuses a pack whose `engineVersion` range excludes it, and World Forge 4.10.0 stamped `>=3.12.2 <4.0.0`. This release stamps `>=4.0.0 <5.0.0` and builds against the 4.0 packages. Re-export packs made with 4.10.0 or earlier to load them in engine 4.x. Importing a pack written by 4.10.0 or earlier reports its `schemaVersion` as behind the current schema.
 
 ### Changed
 

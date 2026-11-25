@@ -214,7 +214,7 @@ that is a bug in the export, not a detail of it.
 
 ### Known gaps against AI RPG Engine 4.0.0
 
-A boot test on 2026-11-25 exported the Chapel Threshold sample with v4.11.0 and
+A boot test on 2026-11-25 exported the Chapel Threshold sample with v5.0.0 and
 loaded it in the published engine. The pack loads, and moving between its zones
 plays. These parts don't reach play yet:
 
@@ -240,7 +240,7 @@ plays. These parts don't reach play yet:
   buildings, hubs, strongholds, the build catalog and progression trees.
 
 Before v4.10.0, the engine refused the exporter's packs at load: encounter types
-outside its four, and item placements with no `entityId`. From v4.11.0, exports
+outside its four, and item placements with no `entityId`. From v5.0.0, exports
 declare `engineVersion: ">=4.0.0 <5.0.0"`, because AI RPG Engine 4.0's load gate
 refuses a pack whose range excludes it; re-export packs made with earlier versions.
 

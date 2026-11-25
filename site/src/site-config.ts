@@ -122,7 +122,7 @@ export const config: SiteConfig = {
         ['Drawing contract (presentation block: dimetric cells, zone anchors, occupancy, advisories)', 'Shipped (v4.9.0)'],
         ['Speed Panel: Q key trigger, four-band layout, RPG search, Quick Fix row, macros from recent actions, scope chips', 'Shipped (v4.10.0)'],
         ['AI RPG exports that AI RPG Engine 3.12.2 loads (encounter-type translation, speaker entity ids)', 'Shipped (v4.10.0)'],
-        ['Exports for AI RPG Engine 4.0 (engineVersion >=4.0.0 <5.0.0; importing narration nodes without a speaker)', 'Shipped (v4.11.0)'],
+        ['Exports for AI RPG Engine 4.0 (engineVersion >=4.0.0 <5.0.0; importing narration nodes without a speaker)', 'Shipped (v5.0.0)'],
         ['UE5 reference loader plugin', 'Ships with Star Freight'],
         ['Quest system + Canon adapter v1 + faction relationships', 'Planned'],
       ],
