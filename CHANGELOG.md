@@ -18,11 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Importing an engine pack with a narration node** no longer fails to compile against engine 4.0, where `DialogueNode.speaker` is optional. A node with no speaker imports as `speaker: ''`, the form World Forge already writes for narration.
+- **Importing an engine pack with a narration node** no longer fails to compile against engine 4.0, where `DialogueNode.speaker` is optional. A node with no speaker imports as `speaker: ''`; on re-export, the exporter fills it from the dialogue's single listed speaker or refuses it, as before.
 
 ### Docs
 
-- README and handbook (`export.md`): known gaps re-measured by a boot test against engine 4.0.0 on 2026-11-25. Closed since 3.12.2: NPC behaviour profiles now resolve on the sidecar route, and the engine accepts an empty node speaker. Still open: gated exits, dialogues through the sidecar, and the other dropped pack data. New: a custom `aiProfile` is refused by default.
+- README and handbook (`export.md`): known gaps re-measured by a boot test against engine 4.0.0 on 2026-11-25. Closed since 3.12.2: NPC behaviour profiles now resolve on the sidecar route, and the engine accepts an empty node speaker. Still open: gated exits, dialogues through the sidecar (they played in-process only with the engine's load gate off), and the other dropped pack data. Also documented, from the engine 4.0 CLI contract rather than the boot test: a custom `aiProfile` is refused by default.
 
 ## [4.10.0] - 2026-11-24
 

@@ -1,8 +1,8 @@
 # ai-rpg-engine — Engine API Contract
 
-This exporter depends on the **ai-rpg-engine 3.x** API and its dependency
+This exporter depends on the **ai-rpg-engine 4.x** API and its dependency
 ranges say so: all six `@ai-rpg-engine/*` runtime ranges (plus
-`@ai-rpg-engine/starter-fantasy` in `devDependencies`) are `^3.12.2`.
+`@ai-rpg-engine/starter-fantasy` in `devDependencies`) are `^4.0.0`.
 
 They were `^2.x` from the engine's 3.0.0 release until 2026-07-29, through
 eight minor releases, because the checklist below said "work through these
@@ -13,7 +13,9 @@ wrote. **When the engine cuts 4.x, bump the ranges first, then work the
 checklist against the compiler.**
 
 Everything below was verified against the installed 3.12.2 packages on
-2026-11-21 — read off the published `.d.ts` files and a booted engine.
+2026-11-21, and re-checked against 4.0.0 on 2026-11-25 by the build, the export
+tests and a boot test; the only API change the exporter needed was
+`DialogueNode.speaker` becoming optional (import side) — read off the published `.d.ts` files and a booted engine.
 
 ## The 3.x surface we rely on
 
@@ -28,7 +30,7 @@ value is imported at runtime by the production code):
 | `PackMetadata`, `PackGenre`, `PackTone`, `PackDifficulty` | `pack-registry` | string enums, mapped in `convert-pack.ts` via `TONE_MAP` / `GENRE_MAP` / `DIFFICULTY_MAP` |
 | `ItemDefinition` | `equipment` | `slot`: `weapon\|armor\|accessory\|tool\|trinket`; `rarity`: `common\|uncommon\|rare\|legendary` |
 
-Runtime assumptions, as they stand at 3.12.2:
+Runtime assumptions, as they stand at 4.0.0:
 
 - `GameManifest.engineVersion` carries a **range**, `ENGINE_VERSION_RANGE =
   '>=4.0.0 <5.0.0'` (`convert-pack.ts`), in both the manifest and the pack
@@ -72,8 +74,8 @@ Worked as findings by C0 (`ai-rpg-engine/docs/c0-alignment/version-skew.json`,
 | 8 | Bump this package's major version | **DEFERRED — release bookkeeping**, see below |
 
 **1 — ranges.** All six runtime dependencies and
-`@ai-rpg-engine/starter-fantasy` (`devDependencies`) at `^3.12.2`, all seven
-resolving `3.12.2`. `__tests__/engine-deps-3x.test.ts` asserts both,
+`@ai-rpg-engine/starter-fantasy` (`devDependencies`) at `^4.0.0`, all seven
+resolving `4.0.0`. `__tests__/engine-deps-3x.test.ts` asserts both,
 separately: a declared range is not an installed version, and a prior install
 produced a tree where declared ranges moved while `content-schema` still sat
 on `core@2.0.1`.
@@ -157,7 +159,7 @@ authority to publish, tag or bump.
 12 `SIM_AFFECTING_KEYS`. It is a **deliberate duplicate** of
 `@ai-rpg-engine/content-schema`'s `computeContentHash`.
 
-`@ai-rpg-engine/content-schema@3.12.2` exports `computeContentHash`,
+`@ai-rpg-engine/content-schema@4.0.0` exports `computeContentHash`,
 `runLoadGate`, `applyContentPack`, `ALLOWED_PACK_KEYS`, `SIM_AFFECTING_KEYS`,
 `EVALUATED_NOT_MAPPED_KEYS`, and `ENCOUNTER_ANCHOR_TYPES`. However, the engine's
 `gate.ts` imports `createHash` from `node:crypto`, and `exportToEngine` must

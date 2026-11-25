@@ -4,9 +4,10 @@
 // C0 checklist item 1 sat open from the engine's 3.0.0 through 3.8.0: this
 // package declared `@ai-rpg-engine/* ^2.x` and type-checked against a surface
 // one major behind, so every 3.x addition was invisible to it. The errand of
-// 2026-07-29 closed it, and the 2026-11-21 bump moved the pin to ^3.12.2.
+// 2026-07-29 closed it, the 2026-11-21 bump moved the pin to ^3.12.2, and the
+// 2026-11-25 bump moved it to ^4.0.0.
 //
-// Why `src/content-hash.ts` stays duplicated even though 3.12.2 publishes
+// Why `src/content-hash.ts` stays duplicated even though 4.0.0 publishes
 // `computeContentHash` from `@ai-rpg-engine/content-schema`: the engine's
 // `gate.ts` imports `createHash` from `node:crypto`, and `exportToEngine`
 // must remain browser-safe (`f-1d037344-browser-safe-hash.test.ts`). So the
@@ -87,7 +88,7 @@ function installedVersion(pkg: string): string {
 }
 
 describe('engine deps — the export lane targets the engine it claims to', () => {
-  it('declares all six @ai-rpg-engine ranges at ^3.12.2 — six is what the tree holds', () => {
+  it('declares all six @ai-rpg-engine ranges at ^4.0.0 — six is what the tree holds', () => {
     // The contract doc said "six". C0 repeated it. Both were right, but neither
     // had counted recently: this reads the manifest, so a seventh dependency
     // added later cannot ride along undeclared.
@@ -246,8 +247,8 @@ describe('AI RPG encounterType list pinned to engine ENCOUNTER_ANCHOR_TYPES', ()
   });
 });
 
-describe('3.12.2 content-hash decision — browser-safe twin stays standalone and pinned', () => {
-  it('content-schema@3.12.2 exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
+describe('4.0.0 content-hash decision — browser-safe twin stays standalone and pinned', () => {
+  it('content-schema@4.0.0 exports computeContentHash, gate, intake, and schema lists, while src/content-hash.ts avoids node:crypto and @ai-rpg-engine imports', () => {
     expect(typeof computeEngineContentHash).toBe('function');
     expect(typeof runLoadGate).toBe('function');
     expect(typeof applyContentPack).toBe('function');

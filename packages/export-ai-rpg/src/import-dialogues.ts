@@ -22,8 +22,9 @@ export function importDialogues(engineDialogues: EngineDialogue[]): { dialogues:
 
       nodes[nodeId] = {
         id: node.id,
-        // Engine 4.0 made DialogueNode.speaker optional (narration). World Forge writes a
-        // narration node as speaker '' (convert-dialogues.ts), so the import does the same.
+        // Engine 4.0 made DialogueNode.speaker optional (narration). World Forge's schema
+        // needs a string, so a missing speaker imports as ''. On re-export, convert-dialogues.ts
+        // fills '' from the dialogue's single listed speaker or refuses it.
         speaker: node.speaker ?? '',
         text,
         nextNodeId: node.nextNodeId,
