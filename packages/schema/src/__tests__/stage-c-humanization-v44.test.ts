@@ -14,6 +14,10 @@ import { scanDependencies } from '../dependencies.js';
 import { CanonAdapterError } from '../canon-adapter.js';
 import type { WorldProject } from '../project.js';
 import { minimalProject } from './fixtures/minimal.js';
+import { readFileSync } from 'node:fs';
+const rootPackageVersion: string = JSON.parse(
+  readFileSync(new URL('../../../../package.json', import.meta.url), 'utf-8'),
+).version;
 
 function withOverrides(overrides: Partial<WorldProject>): WorldProject {
   return { ...structuredClone(minimalProject), ...overrides };
@@ -25,9 +29,9 @@ function withOverrides(overrides: Partial<WorldProject>): WorldProject {
 describe('SCH-B-001 (v4.4): schema version is observable to downstream tools', () => {
   it('exports SCHEMA_VERSION as a public value', () => {
     expect(typeof SCHEMA_VERSION).toBe('string');
-    // Must match the published v4.x schema generation.
+    // Must match the published schema generation, i.e. the root package's version.
     expect(SCHEMA_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(SCHEMA_VERSION.startsWith('4.')).toBe(true);
+    expect(SCHEMA_VERSION).toBe(rootPackageVersion);
   });
 
   it('stamps schemaVersion on every ValidationResult', () => {
