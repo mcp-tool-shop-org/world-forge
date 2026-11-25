@@ -95,15 +95,15 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     const engineRanges = Object.keys(deps).filter((k) => k.startsWith('@ai-rpg-engine/')).sort();
     expect(engineRanges).toEqual([...ENGINE_DEPS]);
     for (const dep of ENGINE_DEPS) {
-      expect(deps[dep], `${dep} must target 3.12.2+`).toBe('^3.12.2');
+      expect(deps[dep], `${dep} must target 4.0.0+`).toBe('^4.0.0');
     }
     const pkg = JSON.parse(fs.readFileSync(OWN_PACKAGE_JSON, 'utf-8')) as {
       devDependencies: Record<string, string>;
     };
-    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe('^3.12.2');
+    expect(pkg.devDependencies['@ai-rpg-engine/starter-fantasy']).toBe('^4.0.0');
   });
 
-  it('resolves all seven at 3.12.2 — a declared range is not an installed version', () => {
+  it('resolves all seven at 4.0.0 — a declared range is not an installed version', () => {
     // C0's item 1 was a statement about package.json; what actually determines
     // which types the converters compile against is what npm put on disk. The
     // first install of this errand produced a tree where the DECLARED ranges
@@ -112,13 +112,13 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     // ranges. The lockfile diff looked correct. This assertion is what that
     // near-miss earned.
     for (const dep of [...ENGINE_DEPS, '@ai-rpg-engine/starter-fantasy'] as const) {
-      expect(installedVersion(dep), `${dep} resolved below 3.12.2`).toBe('3.12.2');
+      expect(installedVersion(dep), `${dep} resolved below 4.0.0`).toBe('4.0.0');
     }
   });
 
   it('the emitted engineVersion range agrees with the range that is installed', () => {
     // Two independent claims about the same engine: the dep range in
-    // package.json, and the `>=3.12.2 <4.0.0` this exporter stamps into every
+    // package.json, and the `>=4.0.0 <5.0.0` this exporter stamps into every
     // manifest it writes. Nothing connected them, so bumping one and not the
     // other would ship packs advertising compatibility the exporter was never
     // compiled against.
@@ -126,7 +126,7 @@ describe('engine deps — the export lane targets the engine it claims to', () =
     const ceiling = /<(\d+)\.\d+\.\d+/.exec(ENGINE_VERSION_RANGE)?.[1];
     expect(floor, `no floor in "${ENGINE_VERSION_RANGE}"`).toBeDefined();
     expect(declaredDeps()['@ai-rpg-engine/core']).toBe(`^${floor}`);
-    // `^3.12.2` admits <4.0.0; the stamped range must not promise more.
+    // `^4.0.0` admits <5.0.0; the stamped range must not promise more.
     expect(ceiling).toBe(`${Number(floor!.split('.')[0]) + 1}`);
   });
 });

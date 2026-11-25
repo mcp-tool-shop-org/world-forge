@@ -31,7 +31,7 @@ value is imported at runtime by the production code):
 Runtime assumptions, as they stand at 3.12.2:
 
 - `GameManifest.engineVersion` carries a **range**, `ENGINE_VERSION_RANGE =
-  '>=3.12.2 <4.0.0'` (`convert-pack.ts`), in both the manifest and the pack
+  '>=4.0.0 <5.0.0'` (`convert-pack.ts`), in both the manifest and the pack
   metadata. It used to be the literal `'2.0.0'` in both places. The engine's
   load gate reads it, so it is a checked claim rather than a comment.
 - The stage moves `ENGINE_REF` and `FORGE_REF` together, so a forge pack is
