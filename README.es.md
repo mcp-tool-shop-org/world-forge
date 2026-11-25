@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.11.0</strong> — 3719 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## Arquitectura
@@ -294,12 +294,12 @@ Un exportador en funcionamiento no es lo mismo que un mundo que se inicia. v4.6.
 
 - **Identificadores de oradores de diálogo en la exportación del juego de rol de IA:** `@world-forge/export-ai-rpg` rechaza las entradas de `dialogues[].speakers` no resueltas por nombre (`exportToEngine` devuelve `success: false` con `speakerBlockers` junto con `listAiRpgDialogueSpeakerBlockers`, el modal de exportación bloqueado, la salida de la CLI `1`), nombrando tanto el identificador de diálogo como el orador no resuelto. Un nodo con `speaker: ''` se completa a partir del único orador listado del diálogo solo cuando cada entidad que contiene ese diálogo (`dialogueId`) es ese orador listado o ninguna entidad lo contiene; se rechaza por el identificador de diálogo, el identificador de nodo y el identificador de entidad portadora cuando cualquier portador es una entidad diferente, y se rechaza por el identificador de diálogo y el identificador de nodo cuando `dialogues[].speakers` tiene cero o múltiples entradas. Los oradores de nodo no vacíos se exportan sin cambios.
 
-Requiere `ai-rpg-engine` `^3.12.2`.
+Requiere `ai-rpg-engine` `^4.0.0`.
 
-**Brechas conocidas con respecto a AI RPG Engine 3.12.2** (a partir de una prueba de inicio el 24 de noviembre de 2026). La exportación de esta versión de la muestra Chapel Threshold se carga en el motor publicado, y moverse entre sus zonas funciona. Estas partes aún no llegan a la jugabilidad:
+**Brechas conocidas con respecto a AI RPG Engine 4.0.0** (a partir de una prueba de inicio el 25 de noviembre de 2026). La exportación de esta versión de la muestra Chapel Threshold se carga en el motor publicado, y moverse entre sus zonas funciona. Estas partes aún no llegan a la jugabilidad:
 
 - **Salidas controladas:** el motor se mueve solo a lo largo de `zones[].neighbors`. Elimina `zones[].exits` y el `connections` del paquete cuando carga el paquete, por lo que una zona a la que solo se puede llegar a través de una salida controlada no se puede ingresar allí. En la muestra, esa es la cripta y el encuentro en su interior.
-- **Comportamiento de los NPC:** el motor resuelve el `aiProfile` de una entidad solo a partir de los perfiles que su host pasa, o del `entityAi` de un paquete, que este exportador aún no escribe. Hasta que lo haga, los NPC exportados permanecerán inactivos.
+- **Perfiles de comportamiento personalizados:** el motor ahora rechaza por defecto un `aiProfile` que no conoce (`--unresolved-ai-profile fail` en `validate` y `sidecar`). Este exportador escribe los perfiles integrados del motor para cada rol, así que sus exportaciones se cargan. Una entidad a la que le asignes un `ai.profileId` personalizado necesita un host que registre ese perfil, o `--unresolved-ai-profile warn`.
 - **Diálogos a través del sidecar:** los diálogos funcionan cuando un host inicia el paquete en el mismo proceso, como en la receta de inicio JSON del motor. El proceso sidecar del motor los descarta cuando carga el paquete.
 - **Otros datos del paquete:** el motor los elimina cuando carga el paquete y nombra cada uno con su motivo: descripciones y peligros de las zonas, presencias de facciones, puntos críticos de presión, puntos de generación, la plantilla del jugador, tablas de botín, puntos de referencia, estratos y enlaces de estratos, transiciones, estaciones de creación, nodos de mercado, edificios, centros, fortalezas, el catálogo de construcción y los árboles de progresión.
 

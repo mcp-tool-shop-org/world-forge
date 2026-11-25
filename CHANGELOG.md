@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.11.0] - 2026-11-25
+
+**Exports for AI RPG Engine 4.0.** AI RPG Engine 4.0.0's load gate refuses a pack whose `engineVersion` range excludes it, and World Forge 4.10.0 stamped `>=3.12.2 <4.0.0`. This release stamps `>=4.0.0 <5.0.0` and builds against the 4.0 packages. Re-export packs made with 4.10.0 or earlier to load them in engine 4.x.
+
+### Changed
+
+- **`ENGINE_VERSION_RANGE` is `>=4.0.0 <5.0.0`** (`@world-forge/export-ai-rpg`), in every manifest and pack the exporter writes.
+- **`@ai-rpg-engine/*` dependencies are `^4.0.0`** (`@world-forge/export-ai-rpg`, `@world-forge/editor`), and the lockfile resolves every one at 4.0.0.
+
+### Fixed
+
+- **Importing an engine pack with a narration node** no longer fails to compile against engine 4.0, where `DialogueNode.speaker` is optional. A node with no speaker imports as `speaker: ''`, the form World Forge already writes for narration.
+
+### Docs
+
+- README and handbook (`export.md`): known gaps re-measured by a boot test against engine 4.0.0 on 2026-11-25. Closed since 3.12.2: NPC behaviour profiles now resolve on the sidecar route, and the engine accepts an empty node speaker. Still open: gated exits, dialogues through the sidecar, and the other dropped pack data. New: a custom `aiProfile` is refused by default.
+
 ## [4.10.0] - 2026-11-24
 
 **The Speed Panel series, AI RPG exports that AI RPG Engine 3.12.2 loads, a new logo, and a real editor screenshot.** The AI RPG exporter in 4.9.1 writes packs the engine refuses at load: encounter types outside the engine's four, and item placements with no `entityId`. This release's export of the Chapel Threshold sample loads in the published engine 3.12.2, and moving between its zones plays (boot test, 2026-11-24). `SCHEMA_VERSION` follows the package version.

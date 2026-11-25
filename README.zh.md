@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.11.0</strong> — 3719 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## 架构
@@ -294,12 +294,12 @@ World Forge 将**类型**（奇幻、赛博朋克、海盗）与**模式**（地
 
 - **AI RPG 导出中的对话发言者 ID**——`@world-forge/export-ai-rpg` 会按名称拒绝未解析的 `dialogues[].speakers` 条目（`exportToEngine` 返回带 `speakerBlockers` 的 `success: false`，与 `listAiRpgDialogueSpeakerBlockers` 一致，导出模态框被阻止，CLI 以 `1` 退出），并同时指明对话 ID 和未解析的发言者。`speaker: ''` 的节点仅在携带该对话（`dialogueId`）的每个实体都是对话中列出的唯一发言者（或没有任何实体携带该对话）时，才会用该唯一发言者自动填充；若任何携带实体为其他实体，则会指明对话 ID、节点 ID 和携带实体 ID 予以拒绝；若 `dialogues[].speakers` 有零个或多个条目，则会指明对话 ID 和节点 ID 予以拒绝。非空的节点发言者原样导出。
 
-需要 `ai-rpg-engine` `^3.12.2`。
+需要 `ai-rpg-engine` `^4.0.0`。
 
-**相对于 AI RPG Engine 3.12.2 的已知差距**（来自 2026-11-24 的启动测试）。此版本导出的 Chapel Threshold 示例可在已发布的引擎中加载，区域之间的移动也可正常运行。以下部分尚未进入实际游玩：
+**相对于 AI RPG Engine 4.0.0 的已知差距**（来自 2026-11-25 的启动测试）。此版本导出的 Chapel Threshold 示例可在已发布的引擎中加载，区域之间的移动也可正常运行。以下部分尚未进入实际游玩：
 
 - **门控出口。** 引擎仅沿着 `zones[].neighbors` 移动。当它加载包时，它会删除 `zones[].exits` 和包中的 `connections`，因此，您只能通过门控出口到达的区域，无法在那里进入。在示例中，这就是地下墓穴和其中的遭遇。
-- **NPC 行为。** 引擎仅从其主机传递的配置文件或从包的 `entityAi` 中解析实体的 `aiProfile`，而此导出器尚未编写。在编写之前，导出的 NPC 将保持静止状态。
+- **自定义行为配置。** 引擎现在默认拒绝它不认识的 `aiProfile`（`validate` 和 `sidecar` 中的 `--unresolved-ai-profile fail`）。本导出器为每个角色写入引擎的内置配置，因此其导出可以加载。你为实体指定的自定义 `ai.profileId` 需要一个注册该配置的宿主，或使用 `--unresolved-ai-profile warn`。
 - **通过 sidecar 运行时的对话。** 当宿主像引擎的 JSON 启动方案那样在进程内启动内容包时，对话可以正常运行；而引擎的 sidecar 进程在加载内容包时会丢弃对话。
 - **其他包数据。** 引擎在加载包时会删除这些数据，并为每个数据命名其原因：区域描述和危险、派系存在、压力热点、生成点、玩家模板、战利品表、地标、地层和地层链接、过渡、制作站、市场节点、建筑物、枢纽、据点、构建目录和进度树。
 

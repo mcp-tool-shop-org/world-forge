@@ -20,7 +20,7 @@
 <p align="center">2D / 2.5D world authoring studio with peer export lanes for <a href="https://github.com/mcp-tool-shop-org/ai-rpg-engine">AI RPG Engine</a>, <a href="https://www.unrealengine.com/">Unreal Engine 5</a>, and <a href="https://godotengine.org/">Godot 4</a>.<br>One editor, many modes — paint zones, place entities, define districts, export a complete content pack for your engine of choice.</p>
 
 <!-- version:start -->
-<p align="center"><strong>v4.10.0</strong> — 3718 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
+<p align="center"><strong>v4.11.0</strong> — 3719 tests, 6 shipping packages, 7 authoring modes, tiles + interiors + town authoring + world modeling (vertical strata, typed hazards, party-gated zones), three export targets (AI RPG Engine, Unreal Engine 5, Godot 4), a measured Forge→Engine content contract, and an authored drawing contract for 2.5D clients</p>
 <!-- version:end -->
 
 ## आर्किटेक्चर
@@ -294,12 +294,12 @@ World Forge **शैली** (काल्पनिक, साइबरपंक
 
 - **AI RPG एक्सपोर्ट में संवाद वक्ता ID** — `@world-forge/export-ai-rpg` अनसुलझी `dialogues[].speakers` प्रविष्टियों को नाम लेकर अस्वीकार करता है (`exportToEngine` `listAiRpgDialogueSpeakerBlockers` के साथ `speakerBlockers` सहित `success: false` लौटाता है, एक्सपोर्ट मोडल अवरुद्ध हो जाता है, CLI `1` के साथ बाहर निकलता है), और संवाद ID तथा अनसुलझे वक्ता दोनों का नाम बताता है। `speaker: ''` वाला नोड संवाद में सूचीबद्ध एकमात्र वक्ता से तभी भरा जाता है जब उस संवाद (`dialogueId`) को रखने वाली हर इकाई वही सूचीबद्ध वक्ता हो, या कोई भी इकाई उसे न रखती हो; जब उसे रखने वाली कोई इकाई अलग हो, तो उसे संवाद ID, नोड ID और उस इकाई की ID के साथ अस्वीकार किया जाता है, और जब `dialogues[].speakers` में शून्य या एक से अधिक प्रविष्टियाँ हों, तो संवाद ID और नोड ID के साथ अस्वीकार किया जाता है। गैर-रिक्त नोड वक्ता बिना बदलाव के एक्सपोर्ट होते हैं।
 
-इसके लिए `ai-rpg-engine` `^3.12.2` की आवश्यकता है।
+इसके लिए `ai-rpg-engine` `^4.0.0` की आवश्यकता है।
 
-**AI RPG Engine 3.12.2 के सापेक्ष ज्ञात अंतर** (2026-11-24 को बूट परीक्षण से)। इस रिलीज़ का चैपल थ्रेशोल्ड नमूने का एक्सपोर्ट प्रकाशित इंजन में लोड होता है, और इसके क्षेत्रों के बीच घूमना संभव है। ये भाग अभी तक प्ले तक नहीं पहुंचते हैं:
+**AI RPG Engine 4.0.0 के सापेक्ष ज्ञात अंतर** (2026-11-25 को बूट परीक्षण से)। इस रिलीज़ का चैपल थ्रेशोल्ड नमूने का एक्सपोर्ट प्रकाशित इंजन में लोड होता है, और इसके क्षेत्रों के बीच घूमना संभव है। ये भाग अभी तक प्ले तक नहीं पहुंचते हैं:
 
 - **गेटेड निकास।** इंजन केवल `zones[].neighbors` के साथ चलता है। यह पैक लोड करते समय `zones[].exits` और पैक के `connections` को छोड़ देता है, इसलिए एक क्षेत्र जिस तक आप केवल गेटेड निकास के माध्यम से पहुंचते हैं, वहां प्रवेश नहीं किया जा सकता है। नमूने में, वह क्रिप्ट और उसके अंदर का मुठभेड़ है।
-- **NPC व्यवहार।** इंजन किसी इकाई के `aiProfile` को केवल उन प्रोफाइल से हल करता है जो इसका होस्ट पास करता है, या पैक के `entityAi` से, जिसे यह एक्सपोर्टर अभी तक नहीं लिखता है। जब तक यह नहीं करता, तब तक निर्यात किए गए NPC निष्क्रिय रहते हैं।
+- **कस्टम व्यवहार प्रोफ़ाइल।** इंजन अब डिफ़ॉल्ट रूप से ऐसा `aiProfile` अस्वीकार करता है जिसे वह नहीं जानता (`validate` और `sidecar` में `--unresolved-ai-profile fail`)। यह एक्सपोर्टर हर भूमिका के लिए इंजन की बिल्ट-इन प्रोफ़ाइल लिखता है, इसलिए इसके एक्सपोर्ट लोड होते हैं। जिस एंटिटी को आप कस्टम `ai.profileId` देते हैं, उसे ऐसा होस्ट चाहिए जो उस प्रोफ़ाइल को रजिस्टर करे, या `--unresolved-ai-profile warn`।
 - **साइडकार के माध्यम से संवाद।** संवाद तब चलते हैं जब एक होस्ट प्रक्रिया में पैक को बूट करता है, जैसा कि इंजन के JSON बूट रेसिपी में होता है। इंजन का साइडकार उन्हें पैक लोड करते समय छोड़ देता है।
 - **अन्य पैक डेटा।** इंजन उन्हें पैक लोड करते समय छोड़ देता है, और प्रत्येक का नाम उसके कारण के साथ देता है: क्षेत्र विवरण और खतरे, गुट की उपस्थिति, दबाव हॉटस्पॉट, स्पॉन पॉइंट, प्लेयर टेम्पलेट, लूट टेबल, लैंडमार्क, स्ट्रेटा और स्ट्रैटम लिंक, ट्रांज़िशन, क्राफ्टिंग स्टेशन, मार्केट नोड, इमारतें, हब, गढ़, बिल्ड कैटलॉग और प्रगति पेड़।
 
